@@ -67,6 +67,7 @@ def health_dashboard(request):
     tab = request.GET.get('type', 'overview')
     today = timezone.now().date()
     is_htmx = request.headers.get('HX-Request') == 'true'
+    htmx_target = request.headers.get('HX-Target', '')
 
     context = {
         'tabs': HEALTH_TABS,
@@ -318,7 +319,7 @@ def health_dashboard(request):
         context['is_paginated'] = page_obj.has_other_pages()
         context['horses'] = Horse.objects.filter(is_active=True)
 
-    if is_htmx:
+    if is_htmx and htmx_target == 'health-table-area':
         template = f'health/partials/{tab}_content.html'
         return render(request, template, context)
 

@@ -13,41 +13,47 @@
         </div>
     </div>
 
-    <!-- Tab Bar -->
-    <div class="border-b border-slate-200">
-        <nav class="-mb-px flex gap-1 overflow-x-auto" aria-label="Health tabs">
-            {% for tab_key, tab_label in tabs %}
-            <button
-                hx-boost="false"
-                hx-get="{% url 'health_dashboard' %}?type={{ tab_key }}"
-                hx-target="#health-table-area"
-                hx-push-url="{% url 'health_dashboard' %}?type={{ tab_key }}"
-                hx-swap="innerHTML"
-                class="whitespace-nowrap px-4 py-2.5 text-sm font-medium border-b-2 transition-colors duration-150 {% if active_tab == tab_key %}border-amber-500 text-amber-600{% else %}border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300{% endif %}"
-            >
-                {{ tab_label }}
-            </button>
-            {% endfor %}
-        </nav>
-    </div>
+    <div x-data="{ activeTab: '{{ active_tab }}' }">
+        <!-- Tab Bar -->
+        <div class="border-b border-slate-200">
+            <nav class="-mb-px flex gap-1 overflow-x-auto" aria-label="Health tabs">
+                {% for tab_key, tab_label in tabs %}
+                <button
+                    hx-boost="false"
+                    hx-get="{% url 'health_dashboard' %}?type={{ tab_key }}"
+                    hx-target="#health-table-area"
+                    hx-push-url="{% url 'health_dashboard' %}?type={{ tab_key }}"
+                    hx-swap="innerHTML"
+                    @click="activeTab = '{{ tab_key }}'"
+                    :class="activeTab === '{{ tab_key }}'
+                        ? 'border-amber-500 text-amber-600'
+                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                    class="whitespace-nowrap px-4 py-2.5 text-sm font-medium border-b-2 transition-colors duration-150"
+                >
+                    {{ tab_label }}
+                </button>
+                {% endfor %}
+            </nav>
+        </div>
 
-    <!-- Tab Content Area -->
-    <div id="health-table-area">
-        {% if active_tab == 'overview' %}
-            {% include 'health/partials/overview_content.html' %}
-        {% elif active_tab == 'vaccinations' %}
-            {% include 'health/partials/vaccinations_content.html' %}
-        {% elif active_tab == 'farrier' %}
-            {% include 'health/partials/farrier_content.html' %}
-        {% elif active_tab == 'worming' %}
-            {% include 'health/partials/worming_content.html' %}
-        {% elif active_tab == 'egg_counts' %}
-            {% include 'health/partials/egg_counts_content.html' %}
-        {% elif active_tab == 'conditions' %}
-            {% include 'health/partials/conditions_content.html' %}
-        {% elif active_tab == 'vet_visits' %}
-            {% include 'health/partials/vet_visits_content.html' %}
-        {% endif %}
+        <!-- Tab Content Area -->
+        <div id="health-table-area" hx-boost="false">
+            {% if active_tab == 'overview' %}
+                {% include 'health/partials/overview_content.html' %}
+            {% elif active_tab == 'vaccinations' %}
+                {% include 'health/partials/vaccinations_content.html' %}
+            {% elif active_tab == 'farrier' %}
+                {% include 'health/partials/farrier_content.html' %}
+            {% elif active_tab == 'worming' %}
+                {% include 'health/partials/worming_content.html' %}
+            {% elif active_tab == 'egg_counts' %}
+                {% include 'health/partials/egg_counts_content.html' %}
+            {% elif active_tab == 'conditions' %}
+                {% include 'health/partials/conditions_content.html' %}
+            {% elif active_tab == 'vet_visits' %}
+                {% include 'health/partials/vet_visits_content.html' %}
+            {% endif %}
+        </div>
     </div>
 
 </div>
