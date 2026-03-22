@@ -4,6 +4,7 @@ Core models for horse management system.
 
 from datetime import date, timedelta
 from decimal import Decimal
+from functools import cached_property
 
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
@@ -33,7 +34,7 @@ class Owner(models.Model):
     def __str__(self):
         return self.name
 
-    @property
+    @cached_property
     def active_horses(self):
         """Get horses currently placed with this owner."""
         return Horse.objects.filter(
@@ -41,11 +42,11 @@ class Owner(models.Model):
             placements__end_date__isnull=True
         ).distinct()
 
-    @property
+    @cached_property
     def active_horse_count(self):
         return self.active_horses.count()
 
-    @property
+    @cached_property
     def active_horses_via_shares(self):
         """Get horses this owner has ownership shares in (active horses only)."""
         return Horse.objects.filter(
@@ -53,7 +54,7 @@ class Owner(models.Model):
             is_active=True
         ).distinct()
 
-    @property
+    @cached_property
     def owned_horse_count(self):
         return self.active_horses_via_shares.count()
 
@@ -77,7 +78,7 @@ class Location(models.Model):
     def __str__(self):
         return f"{self.name} ({self.site})"
 
-    @property
+    @cached_property
     def current_horses(self):
         """Get horses currently at this location."""
         return Horse.objects.filter(
@@ -85,11 +86,11 @@ class Location(models.Model):
             placements__end_date__isnull=True
         ).distinct()
 
-    @property
+    @cached_property
     def current_horse_count(self):
         return self.current_horses.count()
 
-    @property
+    @cached_property
     def availability(self):
         """Return available spaces if capacity is set."""
         if self.capacity is not None:
@@ -160,23 +161,23 @@ class Horse(models.Model):
     def is_mare(self):
         return self.sex == self.Sex.MARE
 
-    @property
+    @cached_property
     def foals(self):
         """Return offspring where this horse is the dam."""
         return Horse.objects.filter(dam=self)
 
-    @property
+    @cached_property
     def current_placement(self):
         """Get the current active placement."""
         return self.placements.filter(end_date__isnull=True).first()
 
-    @property
+    @cached_property
     def current_location(self):
         """Get the current location."""
         placement = self.current_placement
         return placement.location if placement else None
 
-    @property
+    @cached_property
     def current_owner(self):
         """Get the current owner -- prefer OwnershipShare, fall back to Placement."""
         primary = self.primary_owner
@@ -185,7 +186,7 @@ class Horse(models.Model):
         placement = self.current_placement
         return placement.owner if placement else None
 
-    @property
+    @cached_property
     def current_owners(self):
         """Get all current fractional owners with their share percentages.
 
@@ -207,12 +208,12 @@ class Horse(models.Model):
             return [(self.current_owner, Decimal('100.00'))]
         return []
 
-    @property
+    @cached_property
     def has_fractional_ownership(self):
         """Check if this horse has explicit ownership share records."""
         return self.ownership_shares.exists()
 
-    @property
+    @cached_property
     def primary_owner(self):
         """Get the primary contact owner, falling back to largest shareholder."""
         share = self.ownership_shares.filter(is_primary_contact=True).first()
@@ -220,14 +221,14 @@ class Horse(models.Model):
             share = self.ownership_shares.order_by('-share_percentage').first()
         return share.owner if share else None
 
-    @property
+    @cached_property
     def owners(self):
         """Get all current owners via OwnershipShare."""
         return Owner.objects.filter(
             ownership_shares__horse=self
         ).distinct()
 
-    @property
+    @cached_property
     def has_multiple_owners(self):
         return self.ownership_shares.count() > 1
 

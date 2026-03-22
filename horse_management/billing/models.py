@@ -109,6 +109,10 @@ class ExtraCharge(models.Model):
 
     class Meta:
         ordering = ['-date']
+        indexes = [
+            models.Index(fields=['invoiced', 'date'], name='charge_invoiced_date'),
+            models.Index(fields=['horse', 'invoiced'], name='charge_horse_invoiced'),
+        ]
 
     def __str__(self):
         return f"{self.horse.name} - {self.get_charge_type_display()}: £{self.amount} ({self.date})"

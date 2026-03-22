@@ -58,6 +58,10 @@ class Vaccination(models.Model):
 
     class Meta:
         ordering = ['-date_given']
+        indexes = [
+            models.Index(fields=['horse', 'next_due_date'], name='vax_horse_nextdue'),
+            models.Index(fields=['next_due_date'], name='vax_nextdue'),
+        ]
 
     def __str__(self):
         return f"{self.horse.name} - {self.vaccination_type.name} ({self.date_given})"
@@ -142,6 +146,10 @@ class FarrierVisit(models.Model):
 
     class Meta:
         ordering = ['-date']
+        indexes = [
+            models.Index(fields=['horse', 'next_due_date'], name='farrier_horse_nextdue'),
+            models.Index(fields=['next_due_date'], name='farrier_nextdue'),
+        ]
 
     def __str__(self):
         return f"{self.horse.name} - {self.get_work_done_display()} ({self.date})"
@@ -215,6 +223,9 @@ class WormEggCount(models.Model):
 
     class Meta:
         ordering = ['-date']
+        indexes = [
+            models.Index(fields=['horse', 'date'], name='egg_horse_date'),
+        ]
 
     def __str__(self):
         return f"{self.horse.name} - {self.count} EPG ({self.date})"
@@ -277,6 +288,9 @@ class VetVisit(models.Model):
 
     class Meta:
         ordering = ['-date']
+        indexes = [
+            models.Index(fields=['horse', 'follow_up_date'], name='vet_horse_followup'),
+        ]
 
     def __str__(self):
         return f"{self.horse.name} - {self.reason} ({self.date})"

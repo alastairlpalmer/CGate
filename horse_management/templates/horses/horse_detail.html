@@ -10,7 +10,7 @@
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
             <div class="flex items-start gap-6">
                 {% if horse.photo %}
-                <img src="{{ horse.photo.url }}" alt="{{ horse.name }}" class="w-24 h-24 rounded-xl object-cover shrink-0">
+                <img src="{{ horse.photo.url }}" alt="{{ horse.name }}" class="w-24 h-24 rounded-xl object-cover shrink-0" loading="lazy" decoding="async">
                 {% else %}
                 <div class="w-24 h-24 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shrink-0">
                     <svg class="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
