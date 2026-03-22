@@ -157,10 +157,11 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STORAGES = {
     'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
     },
 }
 WHITENOISE_USE_FINDERS = True
+WHITENOISE_MAX_AGE = 60  # seconds for non-hashed files; hashed files get immutable max-age
 
 # Media files (uploads)
 MEDIA_URL = '/media/'

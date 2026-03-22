@@ -206,7 +206,13 @@
     </div>
 
     <!-- Health Alerts Row (lazy-loaded via HTMX) -->
-    <div hx-get="{% url 'dashboard_health_alerts' %}" hx-trigger="load" hx-swap="innerHTML"></div>
+    <div hx-get="{% url 'dashboard_health_alerts' %}" hx-trigger="load" hx-swap="innerHTML">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+        </div>
+    </div>
 
     <!-- Outstanding Invoices Table -->
     {% if outstanding_invoices %}
