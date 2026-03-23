@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Edit Invoice {{ object.invoice_number }} - Cgate{% endblock %}
+{% block title %}Edit Invoice {{ object.invoice_number }} - CGate{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
@@ -13,11 +13,11 @@
     </div>
 
     <div class="card">
-        <form method="post" class="divide-y divide-slate-100">
+        <form method="post" class="divide-y divide-light-sage">
             {% csrf_token %}
 
             {% if form.non_field_errors %}
-              <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+              <div class="mb-4 p-3 bg-error-red-50 border border-error-red/20 rounded text-sm text-error-red">
                 {% for error in form.non_field_errors %}
                   <p>{{ error }}</p>
                 {% endfor %}
@@ -26,40 +26,40 @@
 
             <div class="p-5 space-y-5">
                 <div>
-                    <label for="id_status" class="block text-sm font-medium text-slate-700">Status</label>
+                    <label for="id_status" class="block text-sm font-medium text-charcoal">Status</label>
                     {{ form.status }}
                     {% if form.status.errors %}
-                      <p class="mt-1 text-sm text-red-600">{{ form.status.errors.0 }}</p>
+                      <p class="mt-1 text-sm text-error-red">{{ form.status.errors.0 }}</p>
                     {% endif %}
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label for="id_payment_terms_days" class="block text-sm font-medium text-slate-700">Payment Terms (days)</label>
+                        <label for="id_payment_terms_days" class="block text-sm font-medium text-charcoal">Payment Terms (days)</label>
                         {{ form.payment_terms_days }}
                         {% if form.payment_terms_days.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.payment_terms_days.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.payment_terms_days.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
-                        <label for="id_due_date" class="block text-sm font-medium text-slate-700">Due Date</label>
+                        <label for="id_due_date" class="block text-sm font-medium text-charcoal">Due Date</label>
                         {{ form.due_date }}
                         {% if form.due_date.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.due_date.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.due_date.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
 
                 <div>
-                    <label for="id_notes" class="block text-sm font-medium text-slate-700">Notes</label>
+                    <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
                     {{ form.notes }}
                     {% if form.notes.errors %}
-                      <p class="mt-1 text-sm text-red-600">{{ form.notes.errors.0 }}</p>
+                      <p class="mt-1 text-sm text-error-red">{{ form.notes.errors.0 }}</p>
                     {% endif %}
                 </div>
             </div>
 
-            <div class="flex justify-end gap-3 px-5 py-4 bg-slate-50 rounded-b-xl">
+            <div class="flex justify-end gap-3 px-5 py-4 bg-parchment rounded-b-xl">
                 <a href="{% url 'invoice_detail' object.pk %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">Save</button>
             </div>

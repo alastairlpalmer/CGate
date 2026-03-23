@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Generate Monthly Invoices - Cgate{% endblock %}
+{% block title %}Generate Monthly Invoices - CGate{% endblock %}
 
 {% block content %}
 <div class="max-w-md mx-auto space-y-6">
@@ -14,28 +14,28 @@
     </div>
 
     <div class="card">
-        <form method="post" class="divide-y divide-slate-100">
+        <form method="post" class="divide-y divide-light-sage">
             {% csrf_token %}
 
             <div class="p-5 space-y-5">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label for="id_year" class="block text-sm font-medium text-slate-700">Year</label>
+                        <label for="id_year" class="block text-sm font-medium text-charcoal">Year</label>
                         {{ form.year }}
                     </div>
                     <div>
-                        <label for="id_month" class="block text-sm font-medium text-slate-700">Month</label>
+                        <label for="id_month" class="block text-sm font-medium text-charcoal">Month</label>
                         {{ form.month }}
                     </div>
                 </div>
 
                 <!-- Warning box -->
-                <div class="card bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <div class="card bg-light-sage border border-sand rounded-xl p-4">
                     <div class="flex items-start gap-3">
-                        <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <svg class="w-5 h-5 text-forest shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
                         </svg>
-                        <p class="text-sm text-amber-800">
+                        <p class="text-sm text-forest">
                             This will create invoices for all owners with horses during the selected month.
                             Each invoice will include livery charges and any unbilled extra charges.
                         </p>
@@ -43,7 +43,7 @@
                 </div>
             </div>
 
-            <div class="flex justify-end gap-3 px-5 py-4 bg-slate-50 rounded-b-xl">
+            <div class="flex justify-end gap-3 px-5 py-4 bg-parchment rounded-b-xl">
                 <a href="{% url 'invoice_list' %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if object %}Edit {{ object.name }}{% else %}Add Horse{% endif %} - Cgate{% endblock %}
+{% block title %}{% if object %}Edit {{ object.name }}{% else %}Add Horse{% endif %} - CGate{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
@@ -20,152 +20,152 @@
 
             <!-- Basic Info -->
             <fieldset class="p-5 space-y-5">
-                <legend class="text-base font-semibold text-slate-800 mb-4">Basic Info</legend>
+                <legend class="text-base font-semibold text-charcoal mb-4">Basic Info</legend>
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div class="sm:col-span-2">
-                        <label for="id_name" class="block text-sm font-medium text-slate-700">Name *</label>
+                        <label for="id_name" class="block text-sm font-medium text-charcoal">Name *</label>
                         {{ form.name }}
                         {% if form.name.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.name.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.name.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="id_date_of_birth" class="block text-sm font-medium text-slate-700">Date of Birth</label>
+                        <label for="id_date_of_birth" class="block text-sm font-medium text-charcoal">Date of Birth</label>
                         {{ form.date_of_birth }}
                         {% if form.date_of_birth.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.date_of_birth.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.date_of_birth.errors.0 }}</p>
                         {% endif %}
-                        <p class="mt-1 text-xs text-slate-400">Age will be calculated automatically from DOB</p>
+                        <p class="mt-1 text-xs text-sage">Age will be calculated automatically from DOB</p>
                     </div>
 
                     <div>
-                        <label for="id_age" class="block text-sm font-medium text-slate-700">Age (years)</label>
+                        <label for="id_age" class="block text-sm font-medium text-charcoal">Age (years)</label>
                         {{ form.age }}
                         {% if form.age.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.age.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.age.errors.0 }}</p>
                         {% endif %}
-                        <p class="mt-1 text-xs text-slate-400">Only used if DOB is not set</p>
+                        <p class="mt-1 text-xs text-sage">Only used if DOB is not set</p>
                     </div>
 
                     <div>
-                        <label for="id_sex" class="block text-sm font-medium text-slate-700">Sex</label>
+                        <label for="id_sex" class="block text-sm font-medium text-charcoal">Sex</label>
                         {{ form.sex }}
                         {% if form.sex.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.sex.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.sex.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="id_color" class="block text-sm font-medium text-slate-700">Colour</label>
+                        <label for="id_color" class="block text-sm font-medium text-charcoal">Colour</label>
                         {{ form.color }}
                         {% if form.color.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.color.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.color.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
             </fieldset>
 
             <!-- Identification -->
-            <fieldset class="border-t border-slate-100 px-5 pt-5 pb-5 space-y-5">
-                <legend class="text-base font-semibold text-slate-800 mb-4">Identification</legend>
+            <fieldset class="border-t border-light-sage px-5 pt-5 pb-5 space-y-5">
+                <legend class="text-base font-semibold text-charcoal mb-4">Identification</legend>
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div>
-                        <label for="id_dam" class="block text-sm font-medium text-slate-700">Dam (Mother)</label>
+                        <label for="id_dam" class="block text-sm font-medium text-charcoal">Dam (Mother)</label>
                         {{ form.dam }}
                         {% if form.dam.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.dam.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.dam.errors.0 }}</p>
                         {% endif %}
-                        <p class="mt-1 text-xs text-slate-400">Select if the dam is in the system</p>
+                        <p class="mt-1 text-xs text-sage">Select if the dam is in the system</p>
                     </div>
 
                     <div>
-                        <label for="id_sire_name" class="block text-sm font-medium text-slate-700">Sire Name</label>
+                        <label for="id_sire_name" class="block text-sm font-medium text-charcoal">Sire Name</label>
                         {{ form.sire_name }}
                         {% if form.sire_name.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.sire_name.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.sire_name.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="id_passport_number" class="block text-sm font-medium text-slate-700">Passport Number</label>
+                        <label for="id_passport_number" class="block text-sm font-medium text-charcoal">Passport Number</label>
                         {{ form.passport_number }}
                         {% if form.passport_number.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.passport_number.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.passport_number.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="id_photo" class="block text-sm font-medium text-slate-700">Photo</label>
+                        <label for="id_photo" class="block text-sm font-medium text-charcoal">Photo</label>
                         {{ form.photo }}
                         {% if form.photo.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.photo.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.photo.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div class="flex items-center gap-2">
                         {{ form.has_passport }}
-                        <label for="id_has_passport" class="text-sm text-slate-700">Has passport</label>
+                        <label for="id_has_passport" class="text-sm text-charcoal">Has passport</label>
                     </div>
 
                     <div class="flex items-center gap-2">
                         {{ form.is_active }}
-                        <label for="id_is_active" class="text-sm text-slate-700">Active</label>
+                        <label for="id_is_active" class="text-sm text-charcoal">Active</label>
                     </div>
                 </div>
             </fieldset>
 
             <!-- Notes -->
-            <fieldset class="border-t border-slate-100 px-5 pt-5 pb-5 space-y-5">
-                <legend class="text-base font-semibold text-slate-800 mb-4">Notes</legend>
+            <fieldset class="border-t border-light-sage px-5 pt-5 pb-5 space-y-5">
+                <legend class="text-base font-semibold text-charcoal mb-4">Notes</legend>
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div class="sm:col-span-2">
-                        <label for="id_breeding" class="block text-sm font-medium text-slate-700">Breeding</label>
+                        <label for="id_breeding" class="block text-sm font-medium text-charcoal">Breeding</label>
                         {{ form.breeding }}
                         {% if form.breeding.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.breeding.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.breeding.errors.0 }}</p>
                         {% endif %}
-                        <p class="mt-1 text-xs text-slate-400">Free text sire/dam information</p>
+                        <p class="mt-1 text-xs text-sage">Free text sire/dam information</p>
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label for="id_notes" class="block text-sm font-medium text-slate-700">Notes</label>
+                        <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
                         {{ form.notes }}
                         {% if form.notes.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.notes.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.notes.errors.0 }}</p>
                         {% endif %}
-                        <p class="mt-1 text-xs text-slate-400">Special notes (e.g., first winter, lame, needs rug)</p>
+                        <p class="mt-1 text-xs text-sage">Special notes (e.g., first winter, lame, needs rug)</p>
                     </div>
                 </div>
             </fieldset>
 
             <!-- Ownership Shares -->
             {% if ownership_formset %}
-            <fieldset class="border-t border-slate-100 px-5 pt-5 pb-5 space-y-4">
-                <legend class="text-base font-semibold text-slate-800 mb-4">Ownership Shares</legend>
-                <p class="text-sm text-slate-500">
+            <fieldset class="border-t border-light-sage px-5 pt-5 pb-5 space-y-4">
+                <legend class="text-base font-semibold text-charcoal mb-4">Ownership Shares</legend>
+                <p class="text-sm text-sage">
                     Assign ownership percentages. Shares must total 100% or less.
                 </p>
 
                 {{ ownership_formset.management_form }}
 
                 {% if ownership_formset.non_form_errors %}
-                <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div class="p-3 bg-error-red-50 border border-error-red/20 rounded-lg">
                     {% for error in ownership_formset.non_form_errors %}
-                    <p class="text-sm text-red-700">{{ error }}</p>
+                    <p class="text-sm text-error-red">{{ error }}</p>
                     {% endfor %}
                 </div>
                 {% endif %}
 
                 <div class="space-y-4">
                     {% for os_form in ownership_formset %}
-                    <div class="border border-slate-200 rounded-lg p-4 {% if os_form.instance.pk %}bg-white{% else %}bg-slate-50{% endif %}">
+                    <div class="border border-light-sage rounded-lg p-4 {% if os_form.instance.pk %}bg-white{% else %}bg-parchment{% endif %}">
                         {% for hidden in os_form.hidden_fields %}
                             {{ hidden }}
                         {% endfor %}
 
                         {% if os_form.errors %}
-                        <div class="mb-3 p-2 bg-red-50 rounded text-sm text-red-700">
+                        <div class="mb-3 p-2 bg-error-red-50 rounded text-sm text-error-red">
                             {% for field, errors in os_form.errors.items %}
                                 {% for error in errors %}
                                 <p>{{ error }}</p>
@@ -176,24 +176,24 @@
 
                         <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                             <div class="sm:col-span-4">
-                                <label class="block text-xs font-medium text-slate-600 mb-1">Owner</label>
+                                <label class="block text-xs font-medium text-charcoal-light mb-1">Owner</label>
                                 {{ os_form.owner }}
                             </div>
                             <div class="sm:col-span-2">
-                                <label class="block text-xs font-medium text-slate-600 mb-1">Share %</label>
+                                <label class="block text-xs font-medium text-charcoal-light mb-1">Share %</label>
                                 {{ os_form.share_percentage }}
                             </div>
                             <div class="sm:col-span-2 flex items-center gap-2 pt-4">
                                 {{ os_form.is_primary_contact }}
-                                <label class="text-xs text-slate-600">Primary</label>
+                                <label class="text-xs text-charcoal-light">Primary</label>
                             </div>
                             <div class="sm:col-span-3">
-                                <label class="block text-xs font-medium text-slate-600 mb-1">Notes</label>
+                                <label class="block text-xs font-medium text-charcoal-light mb-1">Notes</label>
                                 {{ os_form.notes }}
                             </div>
                             {% if os_form.instance.pk %}
                             <div class="sm:col-span-1 flex items-center pt-4">
-                                <label class="text-xs text-red-500 cursor-pointer flex items-center gap-1" title="Remove">
+                                <label class="text-xs text-error-red cursor-pointer flex items-center gap-1" title="Remove">
                                     {{ os_form.DELETE }}
                                     <svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
@@ -207,7 +207,7 @@
                 </div>
 
                 {% if object %}
-                <p class="text-xs text-slate-400">
+                <p class="text-xs text-sage">
                     <a href="{% url 'horse_ownership' object.pk %}" class="text-blue-500 hover:underline">Manage on separate page</a>
                 </p>
                 {% endif %}
@@ -215,7 +215,7 @@
             {% endif %}
 
             <!-- Footer -->
-            <div class="border-t border-slate-100 px-5 py-4 bg-slate-50 rounded-b-xl flex justify-end gap-3">
+            <div class="border-t border-light-sage px-5 py-4 bg-parchment rounded-b-xl flex justify-end gap-3">
                 <a href="{% if object %}{% url 'horse_detail' object.pk %}{% else %}{% url 'horse_list' %}{% endif %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% else %}Add Horse{% endif %}

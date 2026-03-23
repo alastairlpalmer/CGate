@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Cgate{% endblock %}</title>
+    <title>{% block title %}CGate{% endblock %}</title>
     {% load static %}
-    <!-- Inter Font -->
+    <!-- Brand Fonts: DM Sans (headings), Source Sans 3 (body), JetBrains Mono (data) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <!-- Tailwind CSS (compiled) -->
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     <!-- Alpine.js -->
@@ -17,11 +17,11 @@
     <script src="{% static 'js/htmx.min.js' %}"></script>
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-slate-50 font-sans antialiased" x-data="{ sidebarOpen: false }" hx-boost="true" hx-swap="innerHTML transition:true show:window:top">
+<body class="bg-parchment font-body antialiased text-charcoal" x-data="{ sidebarOpen: false }" hx-boost="true" hx-swap="innerHTML transition:true show:window:top">
 
     <!-- ── Progress Bar ── -->
     <div id="htmx-progress"
-         class="fixed top-0 left-0 z-[100] h-0.5 bg-amber-500"
+         class="fixed top-0 left-0 z-[100] h-0.5 bg-forest"
          style="width: 0%; opacity: 0; transition: none;">
     </div>
 
@@ -30,20 +30,23 @@
          x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
          x-transition:leave="transition-opacity ease-linear duration-200"
          x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-40 bg-slate-900/50 lg:hidden" @click="sidebarOpen = false"></div>
+         class="fixed inset-0 z-40 bg-forest/50 lg:hidden" @click="sidebarOpen = false"></div>
 
     <!-- ── Sidebar ── -->
     <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-           class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-200 lg:translate-x-0">
+           class="fixed inset-y-0 left-0 z-50 w-64 bg-forest flex flex-col transition-transform duration-200 lg:translate-x-0">
 
         <!-- Logo -->
-        <div class="flex items-center gap-2.5 px-5 h-16 border-b border-slate-100 shrink-0">
-            <div class="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center">
-                <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
+        <div class="flex items-center gap-2.5 px-5 h-16 border-b border-white/10 shrink-0">
+            <div class="w-8 h-8 flex items-center justify-center">
+                <svg class="w-8 h-8 text-white" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22 16c0 5.523-3.134 10-7 10s-7-4.477-7-10S11.134 6 15 6s7 4.477 7 10z" stroke="currentColor" stroke-width="2.2" fill="none"/>
+                    <line x1="15" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="15" y1="16" x2="21" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="15" y1="20" x2="21" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                 </svg>
             </div>
-            <span class="text-lg font-bold text-slate-900 tracking-tight">Cgate</span>
+            <span class="text-lg font-bold text-white tracking-tight font-heading">CGate</span>
         </div>
 
         <!-- Nav -->
@@ -107,19 +110,24 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
                 Providers
             </a>
+            <a href="{% url 'xero_settings' %}"
+               class="{% if request.resolver_match.url_name in 'xero_settings' %}nav-link-active{% else %}nav-link{% endif %}">
+                <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z"/></svg>
+                Xero
+            </a>
         </nav>
 
         <!-- User footer -->
         {% if user.is_authenticated %}
-        <div class="border-t border-slate-100 bg-slate-50 px-4 py-3 shrink-0">
+        <div class="border-t border-white/10 bg-forest-light/30 px-4 py-3 shrink-0">
             <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-sm font-semibold shrink-0">
+                <div class="w-8 h-8 rounded-full bg-sand text-forest flex items-center justify-center text-sm font-semibold shrink-0">
                     {{ user.username|make_list|first|upper }}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-slate-700 truncate">{{ user.username }}</p>
+                    <p class="text-sm font-medium text-white/90 truncate">{{ user.username }}</p>
                 </div>
-                <a href="{% url 'logout' %}" class="text-slate-400 hover:text-slate-600" title="Sign out">
+                <a href="{% url 'logout' %}" class="text-white/40 hover:text-white/80" title="Sign out">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/></svg>
                 </a>
             </div>
@@ -131,18 +139,23 @@
     <div class="lg:pl-64 min-h-screen flex flex-col">
 
         <!-- Top bar (mobile) -->
-        <header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200 lg:hidden">
+        <header class="sticky top-0 z-30 bg-parchment/80 backdrop-blur border-b border-light-sage lg:hidden">
             <div class="flex items-center justify-between h-14 px-4">
-                <button @click="sidebarOpen = true" class="text-slate-500 hover:text-slate-700">
+                <button @click="sidebarOpen = true" class="text-sage hover:text-charcoal">
                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
                 </button>
                 <div class="flex items-center gap-2">
-                    <div class="w-7 h-7 rounded-lg bg-amber-500 flex items-center justify-center">
-                        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
+                    <div class="w-7 h-7 flex items-center justify-center">
+                        <svg class="w-7 h-7 text-forest" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M22 16c0 5.523-3.134 10-7 10s-7-4.477-7-10S11.134 6 15 6s7 4.477 7 10z" stroke="currentColor" stroke-width="2.2" fill="none"/>
+                            <line x1="15" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="15" y1="16" x2="21" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="15" y1="20" x2="21" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
                     </div>
-                    <span class="text-base font-bold text-slate-900">Cgate</span>
+                    <span class="text-base font-bold text-charcoal font-heading">CGate</span>
                 </div>
-                <a href="{% url 'password_change' %}" class="text-slate-400 hover:text-slate-600">
+                <a href="{% url 'password_change' %}" class="text-sage hover:text-charcoal">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 </a>
             </div>
@@ -180,9 +193,9 @@
         </main>
 
         <!-- Footer -->
-        <footer class="border-t border-slate-200 bg-white mt-auto">
+        <footer class="border-t border-light-sage bg-white mt-auto">
             <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-                <p class="text-center text-slate-400 text-xs">Cgate &mdash; Horse Management Platform</p>
+                <p class="text-center text-sage text-xs">CGate &mdash; Equine livery management</p>
             </div>
         </footer>
     </div>

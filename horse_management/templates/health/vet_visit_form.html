@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if object %}Edit Vet Visit{% else %}Add Vet Visit{% endif %} - Cgate{% endblock %}
+{% block title %}{% if object %}Edit Vet Visit{% else %}Add Vet Visit{% endif %} - CGate{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
@@ -19,7 +19,7 @@
             {% csrf_token %}
 
             {% if form.non_field_errors %}
-              <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+              <div class="mb-4 p-3 bg-error-red-50 border border-error-red/20 rounded text-sm text-error-red">
                 {% for error in form.non_field_errors %}
                   <p>{{ error }}</p>
                 {% endfor %}
@@ -31,81 +31,81 @@
 
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div class="sm:col-span-2">
-                        <label for="{{ form.horse.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.horse.label }}</label>
+                        <label for="{{ form.horse.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.horse.label }}</label>
                         {{ form.horse }}
                         {% if form.horse.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.horse.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.horse.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="{{ form.date.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.date.label }}</label>
+                        <label for="{{ form.date.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.date.label }}</label>
                         {{ form.date }}
                         {% if form.date.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.date.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.date.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="{{ form.vet.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.vet.label }}</label>
+                        <label for="{{ form.vet.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.vet.label }}</label>
                         {{ form.vet }}
                         {% if form.vet.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.vet.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.vet.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label for="{{ form.reason.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.reason.label }}</label>
+                        <label for="{{ form.reason.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.reason.label }}</label>
                         {{ form.reason }}
                         {% if form.reason.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.reason.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.reason.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label for="{{ form.diagnosis.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.diagnosis.label }}</label>
+                        <label for="{{ form.diagnosis.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.diagnosis.label }}</label>
                         {{ form.diagnosis }}
                         {% if form.diagnosis.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.diagnosis.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.diagnosis.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label for="{{ form.treatment.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.treatment.label }}</label>
+                        <label for="{{ form.treatment.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.treatment.label }}</label>
                         {{ form.treatment }}
                         {% if form.treatment.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.treatment.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.treatment.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="{{ form.follow_up_date.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.follow_up_date.label }}</label>
+                        <label for="{{ form.follow_up_date.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.follow_up_date.label }}</label>
                         {{ form.follow_up_date }}
                         {% if form.follow_up_date.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.follow_up_date.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.follow_up_date.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="{{ form.cost.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.cost.label }}</label>
+                        <label for="{{ form.cost.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.cost.label }}</label>
                         {{ form.cost }}
                         {% if form.cost.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.cost.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.cost.errors.0 }}</p>
                         {% endif %}
-                        <p class="text-xs text-slate-400 mt-1">If &gt; &pound;0, a billable charge will be created</p>
+                        <p class="text-xs text-sage mt-1">If &gt; &pound;0, a billable charge will be created</p>
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label for="{{ form.notes.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.notes.label }}</label>
+                        <label for="{{ form.notes.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.notes.label }}</label>
                         {{ form.notes }}
                         {% if form.notes.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.notes.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.notes.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
             </fieldset>
 
-            <footer class="border-t px-5 py-4 bg-slate-50 rounded-b-xl flex justify-end gap-3">
+            <footer class="border-t px-5 py-4 bg-parchment rounded-b-xl flex justify-end gap-3">
                 <a href="{% url 'vet_visit_list' %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% else %}Add Vet Visit{% endif %}

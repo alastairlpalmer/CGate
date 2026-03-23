@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block title %}Xero Integration - CGate{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Xero Integration</h1>
+            <p class="page-subtitle">Connect your Xero account to push invoices directly</p>
+        </div>
+    </div>
+
+    <!-- Connection Status -->
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">Connection Status</h3>
+        </div>
+        <div class="p-5">
+            {% if connection.is_connected %}
+                <div class="flex items-center gap-4 mb-4">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        Connected
+                    </span>
+                    <span class="text-sm text-charcoal font-medium">{{ connection.xero_tenant_name }}</span>
+                </div>
+                <div class="text-xs text-sage mb-4">
+                    Connected {{ connection.connected_at|timesince }} ago
+                    {% if connection.last_refreshed_at %}
+                        &middot; Last refreshed {{ connection.last_refreshed_at|timesince }} ago
+                    {% endif %}
+                </div>
+                <form method="post" action="{% url 'xero_disconnect' %}">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="btn-secondary text-error-red hover:text-error-red hover:border-red-300"
+                            onclick="return confirm('Are you sure you want to disconnect from Xero? Existing sync records will be preserved.')">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.181 8.68a4.503 4.503 0 011.903 6.405m-9.768-2.782L3.56 14.06a4.5 4.5 0 006.364 6.365l.768-.769m5.455-9.702L17.904 8.2a4.5 4.5 0 00-6.364-6.365l-.768.77M12 12l-4.243 4.243"/>
+                        </svg>
+                        Disconnect from Xero
+                    </button>
+                </form>
+            {% else %}
+                <div class="flex items-center gap-4 mb-4">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-light-sage text-charcoal-light border border-light-sage">
+                        <span class="w-1.5 h-1.5 rounded-full bg-sage"></span>
+                        Not Connected
+                    </span>
+                </div>
+                <p class="text-sm text-charcoal-light mb-6">
+                    Connect your Xero account to push invoices directly from CGate.
+                    Invoices will be created as drafts in Xero for you to review before approving.
+                </p>
+                <a href="{% url 'xero_connect' %}" class="btn-primary" hx-boost="false">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.193-9.193a4.5 4.5 0 00-6.364 0l-4.5 4.5a4.5 4.5 0 001.242 7.244"/>
+                    </svg>
+                    Connect to Xero
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- How It Works -->
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">How It Works</h3>
+        </div>
+        <div class="p-5 space-y-3">
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 rounded-full bg-sand/30 text-forest flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</div>
+                <div>
+                    <p class="text-sm font-medium text-charcoal">Connect your Xero account</p>
+                    <p class="text-xs text-sage">Authorise CGate to create invoices and contacts in Xero</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 rounded-full bg-sand/30 text-forest flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</div>
+                <div>
+                    <p class="text-sm font-medium text-charcoal">Push invoices with one click</p>
+                    <p class="text-xs text-sage">Use the "Push to Xero" button on any invoice detail page</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 rounded-full bg-sand/30 text-forest flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</div>
+                <div>
+                    <p class="text-sm font-medium text-charcoal">Invoices arrive as drafts</p>
+                    <p class="text-xs text-sage">Review and approve them in Xero before sending to clients</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 rounded-full bg-sand/30 text-forest flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">4</div>
+                <div>
+                    <p class="text-sm font-medium text-charcoal">Payment status syncs back</p>
+                    <p class="text-xs text-sage">When an invoice is paid in Xero, CGate updates automatically</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Setup Guide (shown when not connected) -->
+    {% if not connection.is_connected %}
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">Setup Guide</h3>
+        </div>
+        <div class="p-5">
+            <p class="text-sm text-charcoal-light mb-3">To set up the Xero integration, you need a Xero Developer app:</p>
+            <ol class="text-sm text-charcoal-light space-y-2 list-decimal list-inside">
+                <li>Go to <span class="font-mono text-xs bg-light-sage px-1 py-0.5 rounded">developer.xero.com</span> and sign in</li>
+                <li>Click <strong>New app</strong> and choose <strong>Web app</strong></li>
+                <li>Set your app name and company URL</li>
+                <li>Add the redirect URI from your deployment settings</li>
+                <li>Copy the <strong>Client ID</strong> and generate a <strong>Client Secret</strong></li>
+                <li>Add them to your environment variables as <span class="font-mono text-xs bg-light-sage px-1 py-0.5 rounded">XERO_CLIENT_ID</span> and <span class="font-mono text-xs bg-light-sage px-1 py-0.5 rounded">XERO_CLIENT_SECRET</span></li>
+            </ol>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

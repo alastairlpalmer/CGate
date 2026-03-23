@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Invoice {{ invoice.invoice_number }} - Cgate{% endblock %}
+{% block title %}Invoice {{ invoice.invoice_number }} - CGate{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -11,7 +11,7 @@
             <h1 class="page-title">Invoice {{ invoice.invoice_number }}</h1>
             <p class="page-subtitle">{{ invoice.owner.name }} | {{ invoice.period_start }} - {{ invoice.period_end }}</p>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 flex-wrap">
             <a href="{% url 'invoice_pdf' invoice.pk %}" class="btn-secondary" hx-boost="false">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
@@ -24,6 +24,46 @@
                 </svg>
                 Download CSV
             </a>
+            {% load xero_tags %}
+            {% xero_is_connected as xero_connected %}
+            {% if xero_connected and invoice.status != 'cancelled' %}
+                {% with xero_sync=invoice.xero_sync %}
+                {% if xero_sync.sync_status == 'pushed' or xero_sync.sync_status == 'paid_in_xero' %}
+                    <div id="xero-status"
+                         hx-get="{% url 'xero_invoice_status' invoice.pk %}"
+                         hx-trigger="load"
+                         hx-swap="innerHTML"
+                         hx-boost="false">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-info-blue-50 text-info-blue border border-info-blue/20">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z"/>
+                            </svg>
+                            In Xero
+                        </span>
+                    </div>
+                {% elif xero_sync.sync_status == 'error' %}
+                    <form method="post" action="{% url 'xero_push_invoice' invoice.pk %}" class="inline" hx-boost="false">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-secondary text-error-red hover:text-error-red">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/>
+                            </svg>
+                            Retry Xero
+                        </button>
+                    </form>
+                {% else %}
+                    <form method="post" action="{% url 'xero_push_invoice' invoice.pk %}" class="inline" hx-boost="false">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-secondary">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"/>
+                            </svg>
+                            Push to Xero
+                        </button>
+                    </form>
+                {% endif %}
+                {% endwith %}
+            {% endif %}
             {% if invoice.status == 'draft' %}
             <form method="post" action="{% url 'invoice_send' invoice.pk %}" class="inline">
                 {% csrf_token %}
@@ -60,7 +100,7 @@
             <div class="p-5">
                 <dl class="space-y-4">
                     <div>
-                        <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</dt>
+                        <dt class="text-xs font-semibold text-sage uppercase tracking-wider">Status</dt>
                         <dd class="mt-1">
                             <span class="{% if invoice.status == 'paid' %}badge-success{% elif invoice.status == 'overdue' or invoice.is_overdue %}badge-danger{% elif invoice.status == 'sent' %}badge-warning{% elif invoice.status == 'cancelled' %}badge-neutral{% else %}badge-info{% endif %}">
                                 {% if invoice.is_overdue and invoice.status != 'paid' %}Overdue{% else %}{{ invoice.get_status_display }}{% endif %}
@@ -68,25 +108,25 @@
                         </dd>
                     </div>
                     <div>
-                        <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Due Date</dt>
-                        <dd class="mt-1 text-sm {% if invoice.is_overdue and invoice.status != 'paid' %}text-red-600 font-medium{% else %}text-slate-900{% endif %}">
+                        <dt class="text-xs font-semibold text-sage uppercase tracking-wider">Due Date</dt>
+                        <dd class="mt-1 text-sm {% if invoice.is_overdue and invoice.status != 'paid' %}text-error-red font-medium{% else %}text-charcoal{% endif %}">
                             {{ invoice.due_date }}
                         </dd>
                     </div>
                     <div>
-                        <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Created</dt>
-                        <dd class="mt-1 text-sm text-slate-900">{{ invoice.created_at|date:"d/m/Y" }}</dd>
+                        <dt class="text-xs font-semibold text-sage uppercase tracking-wider">Created</dt>
+                        <dd class="mt-1 text-sm text-charcoal">{{ invoice.created_at|date:"d/m/Y" }}</dd>
                     </div>
                     {% if invoice.sent_at %}
                     <div>
-                        <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sent</dt>
-                        <dd class="mt-1 text-sm text-slate-900">{{ invoice.sent_at|date:"d/m/Y H:i" }}</dd>
+                        <dt class="text-xs font-semibold text-sage uppercase tracking-wider">Sent</dt>
+                        <dd class="mt-1 text-sm text-charcoal">{{ invoice.sent_at|date:"d/m/Y H:i" }}</dd>
                     </div>
                     {% endif %}
                     {% if invoice.paid_at %}
                     <div>
-                        <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Paid</dt>
-                        <dd class="mt-1 text-sm text-slate-900">{{ invoice.paid_at|date:"d/m/Y H:i" }}</dd>
+                        <dt class="text-xs font-semibold text-sage uppercase tracking-wider">Paid</dt>
+                        <dd class="mt-1 text-sm text-charcoal">{{ invoice.paid_at|date:"d/m/Y H:i" }}</dd>
                     </div>
                     {% endif %}
                 </dl>
@@ -99,12 +139,12 @@
                 <h3 class="section-title">Bill To</h3>
             </div>
             <div class="p-5">
-                <p class="text-sm font-medium text-slate-900">{{ invoice.owner.name }}</p>
+                <p class="text-sm font-medium text-charcoal">{{ invoice.owner.name }}</p>
                 {% if invoice.owner.address %}
-                <p class="mt-1 text-sm text-slate-500 whitespace-pre-line">{{ invoice.owner.address }}</p>
+                <p class="mt-1 text-sm text-sage whitespace-pre-line">{{ invoice.owner.address }}</p>
                 {% endif %}
                 {% if invoice.owner.email %}
-                <p class="mt-2 text-sm text-slate-500">{{ invoice.owner.email }}</p>
+                <p class="mt-2 text-sm text-sage">{{ invoice.owner.email }}</p>
                 {% endif %}
             </div>
         </div>
@@ -115,18 +155,18 @@
                 <h3 class="section-title">Totals</h3>
             </div>
             <div class="p-5">
-                <div class="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Amount Due</p>
-                    <p class="text-3xl font-bold text-slate-900">&pound;{{ invoice.total|floatformat:2 }}</p>
+                <div class="bg-light-sage border border-sand rounded-xl p-6 text-center">
+                    <p class="text-xs font-semibold text-sage uppercase tracking-wider mb-1">Amount Due</p>
+                    <p class="text-3xl font-bold text-charcoal">&pound;{{ invoice.total|floatformat:2 }}</p>
                 </div>
                 <div class="mt-4 space-y-2">
                     <div class="flex justify-between text-sm">
-                        <span class="text-slate-500">Net Total</span>
-                        <span class="text-slate-900">&pound;{{ invoice.subtotal|floatformat:2 }}</span>
+                        <span class="text-sage">Net Total</span>
+                        <span class="text-charcoal">&pound;{{ invoice.subtotal|floatformat:2 }}</span>
                     </div>
                     <div class="flex justify-between text-sm">
-                        <span class="text-slate-500">VAT</span>
-                        <span class="text-slate-900">&pound;0.00</span>
+                        <span class="text-sage">VAT</span>
+                        <span class="text-charcoal">&pound;0.00</span>
                     </div>
                 </div>
             </div>
@@ -149,39 +189,39 @@
                 <tbody>
                     {% for group in horse_groups %}
                     <!-- Horse header -->
-                    <tr class="bg-slate-50/80">
-                        <td colspan="2" class="font-bold text-slate-900">
+                    <tr class="bg-parchment/80">
+                        <td colspan="2" class="font-bold text-charcoal">
                             {{ group.horse_name }}{% with share=group.items.0.share_percentage %}{% if share < 100 %} ({{ share|floatformat:0 }}% share){% endif %}{% endwith %}
                         </td>
                     </tr>
                     {% for item in group.items %}
                     <tr>
-                        <td class="text-slate-900">
+                        <td class="text-charcoal">
                             {% if item.line_type == 'livery' %}
                                 <span class="ml-4">{{ item.description }}</span>
                             {% else %}
-                                <span class="ml-8 text-slate-600">
+                                <span class="ml-8 text-charcoal-light">
                                     {% if item.charge %}{{ item.charge.date|date:"d/m/Y" }}: {% endif %}{{ item.description }}
                                 </span>
                             {% endif %}
                         </td>
-                        <td class="text-right text-slate-900">&pound;{{ item.line_total|floatformat:2 }}</td>
+                        <td class="text-right text-charcoal">&pound;{{ item.line_total|floatformat:2 }}</td>
                     </tr>
                     {% endfor %}
                     {% endfor %}
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td class="text-right text-sm font-medium text-slate-600">Net Total:</td>
-                        <td class="text-right text-sm font-medium text-slate-900">&pound;{{ invoice.subtotal|floatformat:2 }}</td>
+                        <td class="text-right text-sm font-medium text-charcoal-light">Net Total:</td>
+                        <td class="text-right text-sm font-medium text-charcoal">&pound;{{ invoice.subtotal|floatformat:2 }}</td>
                     </tr>
                     <tr>
-                        <td class="text-right text-sm font-medium text-slate-600">VAT:</td>
-                        <td class="text-right text-sm font-medium text-slate-900">&pound;0.00</td>
+                        <td class="text-right text-sm font-medium text-charcoal-light">VAT:</td>
+                        <td class="text-right text-sm font-medium text-charcoal">&pound;0.00</td>
                     </tr>
-                    <tr class="border-t-2 border-slate-300">
-                        <td class="text-right text-lg font-bold text-slate-900">Amount Due:</td>
-                        <td class="text-right text-lg font-bold text-slate-900">&pound;{{ invoice.total|floatformat:2 }}</td>
+                    <tr class="border-t-2 border-sage/30">
+                        <td class="text-right text-lg font-bold text-charcoal">Amount Due:</td>
+                        <td class="text-right text-lg font-bold text-charcoal">&pound;{{ invoice.total|floatformat:2 }}</td>
                     </tr>
                 </tfoot>
             </table>
@@ -195,7 +235,7 @@
             <h3 class="section-title">Notes</h3>
         </div>
         <div class="p-5">
-            <p class="text-sm text-slate-600">{{ invoice.notes }}</p>
+            <p class="text-sm text-charcoal-light">{{ invoice.notes }}</p>
         </div>
     </div>
     {% endif %}

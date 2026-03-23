@@ -1,9 +1,9 @@
 {% if is_paginated %}
 <nav class="mt-6 card px-5 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
-    <p class="text-sm text-slate-500">
-        Showing <span class="font-medium text-slate-700">{{ page_obj.start_index }}</span>
-        to <span class="font-medium text-slate-700">{{ page_obj.end_index }}</span>
-        of <span class="font-medium text-slate-700">{{ page_obj.paginator.count }}</span> results
+    <p class="text-sm text-sage">
+        Showing <span class="font-medium text-charcoal">{{ page_obj.start_index }}</span>
+        to <span class="font-medium text-charcoal">{{ page_obj.end_index }}</span>
+        of <span class="font-medium text-charcoal">{{ page_obj.paginator.count }}</span> results
     </p>
     <div class="flex items-center gap-2">
         {% if page_obj.has_previous %}
@@ -21,7 +21,7 @@
             Previous
         </button>
         {% endif %}
-        <span class="text-sm text-slate-500">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        <span class="text-sm text-sage">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
         {% if page_obj.has_next %}
         <button
             hx-boost="false"

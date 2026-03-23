@@ -19,7 +19,7 @@
           class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <input type="hidden" name="type" value="worming">
         <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Horse</label>
+            <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Horse</label>
             <select name="horse" class="form-select">
                 <option value="">All horses</option>
                 {% for h in horses %}
@@ -60,10 +60,10 @@
                     <td>
                         <a href="{% url 'horse_detail' t.horse.pk %}" class="link">{{ t.horse.name }}</a>
                     </td>
-                    <td class="text-slate-500">{{ t.date }}</td>
+                    <td class="text-sage">{{ t.date }}</td>
                     <td>{{ t.product_name }}</td>
-                    <td class="text-slate-500">{{ t.active_ingredient|default:"-" }}</td>
-                    <td class="text-slate-500">{{ t.administered_by|default:"-" }}</td>
+                    <td class="text-sage">{{ t.active_ingredient|default:"-" }}</td>
+                    <td class="text-sage">{{ t.administered_by|default:"-" }}</td>
                     <td>
                         <a href="{% url 'worming_update' t.pk %}" class="btn-ghost btn-xs">Edit</a>
                     </td>
@@ -72,7 +72,7 @@
                 <tr>
                     <td colspan="6">
                         <div class="py-12 text-center">
-                            <p class="text-sm font-medium text-slate-500">No worming treatments recorded</p>
+                            <p class="text-sm font-medium text-sage">No worming treatments recorded</p>
                             <a href="{% url 'worming_create' %}" class="btn-primary mt-4 inline-flex">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>

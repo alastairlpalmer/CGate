@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if object %}Edit Breeding Record{% else %}Add Breeding Record{% endif %} - Cgate{% endblock %}
+{% block title %}{% if object %}Edit Breeding Record{% else %}Add Breeding Record{% endif %} - CGate{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
@@ -19,7 +19,7 @@
             {% csrf_token %}
 
             {% if form.non_field_errors %}
-              <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+              <div class="mb-4 p-3 bg-error-red-50 border border-error-red/20 rounded text-sm text-error-red">
                 {% for error in form.non_field_errors %}
                   <p>{{ error }}</p>
                 {% endfor %}
@@ -32,130 +32,130 @@
 
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div>
-                        <label for="{{ form.mare.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.mare.label }}</label>
+                        <label for="{{ form.mare.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.mare.label }}</label>
                         {{ form.mare }}
                         {% if form.mare.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.mare.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.mare.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="{{ form.stallion_name.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.stallion_name.label }}</label>
+                        <label for="{{ form.stallion_name.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.stallion_name.label }}</label>
                         {{ form.stallion_name }}
                         {% if form.stallion_name.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.stallion_name.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.stallion_name.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="{{ form.date_covered.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.date_covered.label }}</label>
+                        <label for="{{ form.date_covered.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.date_covered.label }}</label>
                         {{ form.date_covered }}
                         {% if form.date_covered.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.date_covered.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.date_covered.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="{{ form.status.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.status.label }}</label>
+                        <label for="{{ form.status.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.status.label }}</label>
                         {{ form.status }}
                         {% if form.status.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.status.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.status.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
             </fieldset>
 
             <!-- Scanning -->
-            <fieldset class="p-5 space-y-5 border-t border-slate-200">
+            <fieldset class="p-5 space-y-5 border-t border-light-sage">
                 <legend class="section-title">Scanning</legend>
 
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div>
-                        <label for="{{ form.date_scanned_14_days.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.date_scanned_14_days.label }}</label>
+                        <label for="{{ form.date_scanned_14_days.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.date_scanned_14_days.label }}</label>
                         {{ form.date_scanned_14_days }}
                         {% if form.date_scanned_14_days.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.date_scanned_14_days.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.date_scanned_14_days.errors.0 }}</p>
                         {% endif %}
-                        <p class="text-xs text-slate-400 mt-1">In-foal confirmation scan</p>
+                        <p class="text-xs text-sage mt-1">In-foal confirmation scan</p>
                     </div>
 
                     <div>
-                        <label for="{{ form.date_scanned_heartbeat.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.date_scanned_heartbeat.label }}</label>
+                        <label for="{{ form.date_scanned_heartbeat.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.date_scanned_heartbeat.label }}</label>
                         {{ form.date_scanned_heartbeat }}
                         {% if form.date_scanned_heartbeat.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.date_scanned_heartbeat.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.date_scanned_heartbeat.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="{{ form.date_foal_due.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.date_foal_due.label }}</label>
+                        <label for="{{ form.date_foal_due.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.date_foal_due.label }}</label>
                         {{ form.date_foal_due }}
                         {% if form.date_foal_due.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.date_foal_due.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.date_foal_due.errors.0 }}</p>
                         {% endif %}
-                        <p class="text-xs text-slate-400 mt-1">Leave blank to auto-calculate (~340 days from covering)</p>
+                        <p class="text-xs text-sage mt-1">Leave blank to auto-calculate (~340 days from covering)</p>
                     </div>
                 </div>
             </fieldset>
 
             <!-- Foal Details -->
-            <fieldset class="p-5 space-y-5 border-t border-slate-200">
+            <fieldset class="p-5 space-y-5 border-t border-light-sage">
                 <legend class="section-title">Foal Details</legend>
 
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div>
-                        <label for="{{ form.foal.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.foal.label }}</label>
+                        <label for="{{ form.foal.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.foal.label }}</label>
                         {{ form.foal }}
                         {% if form.foal.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.foal.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.foal.errors.0 }}</p>
                         {% endif %}
-                        <p class="text-xs text-slate-400 mt-1">Link to the foal's horse record</p>
+                        <p class="text-xs text-sage mt-1">Link to the foal's horse record</p>
                     </div>
 
                     <div>
-                        <label for="{{ form.foal_dob.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.foal_dob.label }}</label>
+                        <label for="{{ form.foal_dob.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.foal_dob.label }}</label>
                         {{ form.foal_dob }}
                         {% if form.foal_dob.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.foal_dob.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.foal_dob.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="{{ form.foal_sex.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.foal_sex.label }}</label>
+                        <label for="{{ form.foal_sex.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.foal_sex.label }}</label>
                         {{ form.foal_sex }}
                         {% if form.foal_sex.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.foal_sex.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.foal_sex.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="{{ form.foal_colour.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.foal_colour.label }}</label>
+                        <label for="{{ form.foal_colour.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.foal_colour.label }}</label>
                         {{ form.foal_colour }}
                         {% if form.foal_colour.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.foal_colour.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.foal_colour.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label for="{{ form.foal_microchip.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.foal_microchip.label }}</label>
+                        <label for="{{ form.foal_microchip.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.foal_microchip.label }}</label>
                         {{ form.foal_microchip }}
                         {% if form.foal_microchip.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.foal_microchip.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.foal_microchip.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label for="{{ form.foaling_notes.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.foaling_notes.label }}</label>
+                        <label for="{{ form.foaling_notes.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.foaling_notes.label }}</label>
                         {{ form.foaling_notes }}
                         {% if form.foaling_notes.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.foaling_notes.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.foaling_notes.errors.0 }}</p>
                         {% endif %}
-                        <p class="text-xs text-slate-400 mt-1">Foaling ease, confirmation details, etc.</p>
+                        <p class="text-xs text-sage mt-1">Foaling ease, confirmation details, etc.</p>
                     </div>
                 </div>
             </fieldset>
 
-            <footer class="border-t px-5 py-4 bg-slate-50 rounded-b-xl flex justify-end gap-3">
+            <footer class="border-t px-5 py-4 bg-parchment rounded-b-xl flex justify-end gap-3">
                 <a href="{% url 'breeding_list' %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% else %}Add Breeding Record{% endif %}

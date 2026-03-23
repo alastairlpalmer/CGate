@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if object %}Edit Vaccination Type{% else %}Add Vaccination Type{% endif %} - Cgate{% endblock %}
+{% block title %}{% if object %}Edit Vaccination Type{% else %}Add Vaccination Type{% endif %} - CGate{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
@@ -19,7 +19,7 @@
             {% csrf_token %}
 
             {% if form.non_field_errors %}
-              <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+              <div class="mb-4 p-3 bg-error-red-50 border border-error-red/20 rounded text-sm text-error-red">
                 {% for error in form.non_field_errors %}
                   <p>{{ error }}</p>
                 {% endfor %}
@@ -31,54 +31,54 @@
 
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div class="sm:col-span-2">
-                        <label for="{{ form.name.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.name.label }}</label>
+                        <label for="{{ form.name.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.name.label }}</label>
                         {{ form.name }}
                         {% if form.name.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.name.errors.0 }}</p>
                         {% endif %}
-                        <p class="text-xs text-slate-400 mt-1">e.g. Flu/Tetanus, Strangles, Rabies</p>
+                        <p class="text-xs text-sage mt-1">e.g. Flu/Tetanus, Strangles, Rabies</p>
                     </div>
 
                     <div>
-                        <label for="{{ form.interval_months.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.interval_months.label }}</label>
+                        <label for="{{ form.interval_months.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.interval_months.label }}</label>
                         {{ form.interval_months }}
                         {% if form.interval_months.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.interval_months.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.interval_months.errors.0 }}</p>
                         {% endif %}
-                        <p class="text-xs text-slate-400 mt-1">How often this vaccination is required</p>
+                        <p class="text-xs text-sage mt-1">How often this vaccination is required</p>
                     </div>
 
                     <div>
-                        <label for="{{ form.reminder_days_before.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.reminder_days_before.label }}</label>
+                        <label for="{{ form.reminder_days_before.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.reminder_days_before.label }}</label>
                         {{ form.reminder_days_before }}
                         {% if form.reminder_days_before.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.reminder_days_before.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.reminder_days_before.errors.0 }}</p>
                         {% endif %}
-                        <p class="text-xs text-slate-400 mt-1">Days before due date to show reminder</p>
+                        <p class="text-xs text-sage mt-1">Days before due date to show reminder</p>
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label for="{{ form.description.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.description.label }}</label>
+                        <label for="{{ form.description.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.description.label }}</label>
                         {{ form.description }}
                         {% if form.description.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.description.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div class="sm:col-span-2">
                         <label class="flex items-center gap-2 cursor-pointer">
                             {{ form.is_active }}
-                            <span class="text-sm font-medium text-slate-700">Active</span>
+                            <span class="text-sm font-medium text-charcoal">Active</span>
                         </label>
                         {% if form.is_active.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.is_active.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.is_active.errors.0 }}</p>
                         {% endif %}
-                        <p class="text-xs text-slate-400 mt-1">Inactive types won't appear when recording new vaccinations</p>
+                        <p class="text-xs text-sage mt-1">Inactive types won't appear when recording new vaccinations</p>
                     </div>
                 </div>
             </fieldset>
 
-            <footer class="border-t px-5 py-4 bg-slate-50 rounded-b-xl flex justify-end gap-3">
+            <footer class="border-t px-5 py-4 bg-parchment rounded-b-xl flex justify-end gap-3">
                 <a href="{% url 'vaccination_type_list' %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% else %}Add Vaccination Type{% endif %}

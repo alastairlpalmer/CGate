@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if object %}Edit Worming Treatment{% else %}Add Worming Treatment{% endif %} - Cgate{% endblock %}
+{% block title %}{% if object %}Edit Worming Treatment{% else %}Add Worming Treatment{% endif %} - CGate{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
@@ -19,7 +19,7 @@
             {% csrf_token %}
 
             {% if form.non_field_errors %}
-              <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+              <div class="mb-4 p-3 bg-error-red-50 border border-error-red/20 rounded text-sm text-error-red">
                 {% for error in form.non_field_errors %}
                   <p>{{ error }}</p>
                 {% endfor %}
@@ -31,64 +31,64 @@
 
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div class="sm:col-span-2">
-                        <label for="{{ form.horse.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.horse.label }}</label>
+                        <label for="{{ form.horse.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.horse.label }}</label>
                         {{ form.horse }}
                         {% if form.horse.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.horse.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.horse.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="{{ form.date.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.date.label }}</label>
+                        <label for="{{ form.date.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.date.label }}</label>
                         {{ form.date }}
                         {% if form.date.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.date.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.date.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="{{ form.product_name.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.product_name.label }}</label>
+                        <label for="{{ form.product_name.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.product_name.label }}</label>
                         {{ form.product_name }}
                         {% if form.product_name.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.product_name.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.product_name.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="{{ form.active_ingredient.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.active_ingredient.label }}</label>
+                        <label for="{{ form.active_ingredient.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.active_ingredient.label }}</label>
                         {{ form.active_ingredient }}
                         {% if form.active_ingredient.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.active_ingredient.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.active_ingredient.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="{{ form.dose.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.dose.label }}</label>
+                        <label for="{{ form.dose.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.dose.label }}</label>
                         {{ form.dose }}
                         {% if form.dose.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.dose.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.dose.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label for="{{ form.administered_by.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.administered_by.label }}</label>
+                        <label for="{{ form.administered_by.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.administered_by.label }}</label>
                         {{ form.administered_by }}
                         {% if form.administered_by.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.administered_by.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.administered_by.errors.0 }}</p>
                         {% endif %}
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label for="{{ form.notes.id_for_label }}" class="text-sm font-medium text-slate-700">{{ form.notes.label }}</label>
+                        <label for="{{ form.notes.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.notes.label }}</label>
                         {{ form.notes }}
                         {% if form.notes.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.notes.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.notes.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
             </fieldset>
 
-            <footer class="border-t px-5 py-4 bg-slate-50 rounded-b-xl flex justify-end gap-3">
+            <footer class="border-t px-5 py-4 bg-parchment rounded-b-xl flex justify-end gap-3">
                 <a href="{% url 'worming_list' %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% else %}Add Treatment{% endif %}

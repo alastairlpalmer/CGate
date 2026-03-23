@@ -1,20 +1,20 @@
 <!-- Stat Cards -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
     <div class="card p-4 border-l-4 border-l-red-500">
-        <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Overdue Vaccinations</p>
-        <p class="mt-1 text-2xl font-bold {% if stat_overdue_vax > 0 %}text-red-600{% else %}text-slate-900{% endif %}">{{ stat_overdue_vax }}</p>
+        <p class="text-xs font-medium text-sage uppercase tracking-wide">Overdue Vaccinations</p>
+        <p class="mt-1 text-2xl font-bold {% if stat_overdue_vax > 0 %}text-error-red{% else %}text-charcoal{% endif %}">{{ stat_overdue_vax }}</p>
     </div>
-    <div class="card p-4 border-l-4 border-l-amber-500">
-        <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Farrier Due</p>
-        <p class="mt-1 text-2xl font-bold {% if stat_due_farrier > 0 %}text-amber-600{% else %}text-slate-900{% endif %}">{{ stat_due_farrier }}</p>
+    <div class="card p-4 border-l-4 border-l-sage">
+        <p class="text-xs font-medium text-sage uppercase tracking-wide">Farrier Due</p>
+        <p class="mt-1 text-2xl font-bold {% if stat_due_farrier > 0 %}text-forest{% else %}text-charcoal{% endif %}">{{ stat_due_farrier }}</p>
     </div>
-    <div class="card p-4 border-l-4 border-l-amber-500">
-        <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Vet Follow-ups</p>
-        <p class="mt-1 text-2xl font-bold {% if stat_vet_followups > 0 %}text-amber-600{% else %}text-slate-900{% endif %}">{{ stat_vet_followups }}</p>
+    <div class="card p-4 border-l-4 border-l-sage">
+        <p class="text-xs font-medium text-sage uppercase tracking-wide">Vet Follow-ups</p>
+        <p class="mt-1 text-2xl font-bold {% if stat_vet_followups > 0 %}text-forest{% else %}text-charcoal{% endif %}">{{ stat_vet_followups }}</p>
     </div>
     <div class="card p-4 border-l-4 border-l-red-500">
-        <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">High Egg Counts</p>
-        <p class="mt-1 text-2xl font-bold {% if stat_high_eggs > 0 %}text-red-600{% else %}text-slate-900{% endif %}">{{ stat_high_eggs }}</p>
+        <p class="text-xs font-medium text-sage uppercase tracking-wide">High Egg Counts</p>
+        <p class="mt-1 text-2xl font-bold {% if stat_high_eggs > 0 %}text-error-red{% else %}text-charcoal{% endif %}">{{ stat_high_eggs }}</p>
     </div>
 </div>
 
@@ -43,10 +43,10 @@
                     <tr>
                         <td><a href="{% url 'horse_detail' item.horse.pk %}" class="link">{{ item.horse.name }}</a></td>
                         <td>
-                            <span class="inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">{{ item.type }}</span>
+                            <span class="inline-flex items-center rounded-md bg-error-red-50 px-2 py-0.5 text-xs font-medium text-error-red">{{ item.type }}</span>
                         </td>
                         <td>{{ item.detail }}</td>
-                        <td class="text-red-600 font-semibold">{{ item.due_date }}</td>
+                        <td class="text-error-red font-semibold">{{ item.due_date }}</td>
                         <td><a href="{{ item.url }}" class="btn-ghost btn-xs">{{ item.action_label }}</a></td>
                     </tr>
                     {% endfor %}
@@ -58,7 +58,7 @@
 
     <!-- Coming Up -->
     {% if coming_up %}
-    <div class="card overflow-hidden border-l-4 border-l-amber-500">
+    <div class="card overflow-hidden border-l-4 border-l-sage">
         <div class="section-header">
             <h2 class="section-title">Coming Up</h2>
             <span class="badge-warning">{{ coming_up|length }}</span>
@@ -79,10 +79,10 @@
                     <tr>
                         <td><a href="{% url 'horse_detail' item.horse.pk %}" class="link">{{ item.horse.name }}</a></td>
                         <td>
-                            <span class="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">{{ item.type }}</span>
+                            <span class="inline-flex items-center rounded-md bg-light-sage px-2 py-0.5 text-xs font-medium text-forest">{{ item.type }}</span>
                         </td>
                         <td>{{ item.detail }}</td>
-                        <td class="text-amber-600">{{ item.due_date }}</td>
+                        <td class="text-forest">{{ item.due_date }}</td>
                         <td><a href="{{ item.url }}" class="btn-ghost btn-xs">{{ item.action_label }}</a></td>
                     </tr>
                     {% endfor %}
@@ -95,7 +95,7 @@
     <!-- Monitoring -->
     {% if active_conditions or high_egg_counts %}
     <div>
-        <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Monitoring</h2>
+        <h2 class="text-sm font-semibold text-sage uppercase tracking-wider mb-3">Monitoring</h2>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <!-- Active Conditions -->
             <div class="card overflow-hidden">
@@ -104,42 +104,42 @@
                     {% if active_conditions %}<span class="badge-warning">{{ active_conditions|length }}</span>{% endif %}
                 </div>
                 {% if active_conditions %}
-                <ul class="divide-y divide-slate-100">
+                <ul class="divide-y divide-light-sage">
                     {% for c in active_conditions %}
                     <li class="px-5 py-3 flex items-center justify-between">
                         <div>
                             <a href="{% url 'horse_detail' c.horse.pk %}" class="link text-sm font-medium">{{ c.horse.name }}</a>
-                            <p class="text-xs text-slate-500 mt-0.5">{{ c.name }}</p>
+                            <p class="text-xs text-sage mt-0.5">{{ c.name }}</p>
                         </div>
                         <a href="{% url 'condition_update' c.pk %}" class="btn-ghost btn-xs">Edit</a>
                     </li>
                     {% endfor %}
                 </ul>
                 {% else %}
-                <p class="px-5 py-6 text-sm text-slate-400 text-center">No active conditions</p>
+                <p class="px-5 py-6 text-sm text-sage text-center">No active conditions</p>
                 {% endif %}
             </div>
 
             <!-- High Egg Counts -->
             <div class="card overflow-hidden">
                 <div class="section-header">
-                    <h3 class="section-title">High Egg Counts <span class="font-normal text-slate-400">(90 days)</span></h3>
+                    <h3 class="section-title">High Egg Counts <span class="font-normal text-sage">(90 days)</span></h3>
                     {% if high_egg_counts %}<span class="badge-danger">{{ high_egg_counts|length }}</span>{% endif %}
                 </div>
                 {% if high_egg_counts %}
-                <ul class="divide-y divide-slate-100">
+                <ul class="divide-y divide-light-sage">
                     {% for ec in high_egg_counts %}
                     <li class="px-5 py-3 flex items-center justify-between">
                         <div>
                             <a href="{% url 'horse_detail' ec.horse.pk %}" class="link text-sm font-medium">{{ ec.horse.name }}</a>
-                            <p class="text-xs text-slate-500 mt-0.5">{{ ec.date }} &middot; <span class="text-red-600 font-semibold">{{ ec.count }} EPG</span></p>
+                            <p class="text-xs text-sage mt-0.5">{{ ec.date }} &middot; <span class="text-error-red font-semibold">{{ ec.count }} EPG</span></p>
                         </div>
                         <a href="{% url 'worming_create' %}?horse={{ ec.horse.pk }}" class="btn-ghost btn-xs">Record Worming</a>
                     </li>
                     {% endfor %}
                 </ul>
                 {% else %}
-                <p class="px-5 py-6 text-sm text-slate-400 text-center">No high counts</p>
+                <p class="px-5 py-6 text-sm text-sage text-center">No high counts</p>
                 {% endif %}
             </div>
         </div>
@@ -149,10 +149,10 @@
     {% if not action_required and not coming_up and not active_conditions and not high_egg_counts %}
     <div class="card">
         <div class="px-5 py-12 text-center">
-            <svg class="mx-auto h-12 w-12 text-green-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <svg class="mx-auto h-12 w-12 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
-            <p class="mt-3 text-sm font-medium text-slate-600">All clear! No overdue or upcoming health items.</p>
+            <p class="mt-3 text-sm font-medium text-charcoal-light">All clear! No overdue or upcoming health items.</p>
         </div>
     </div>
     {% endif %}

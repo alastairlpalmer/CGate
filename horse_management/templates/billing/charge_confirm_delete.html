@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Delete Charge - Cgate{% endblock %}
+{% block title %}Delete Charge - CGate{% endblock %}
 
 {% block content %}
 <div class="max-w-md mx-auto space-y-6">
@@ -14,16 +14,16 @@
         </div>
 
         <!-- Title -->
-        <h2 class="text-xl font-bold text-slate-900 mb-2">Delete Charge</h2>
-        <p class="text-sm text-slate-500">
+        <h2 class="text-xl font-bold text-charcoal mb-2">Delete Charge</h2>
+        <p class="text-sm text-sage">
             Are you sure you want to delete this charge? This action cannot be undone.
         </p>
 
         <!-- Details card -->
-        <div class="card bg-slate-50 p-4 mt-4 mb-6 text-left">
-            <p class="font-medium text-slate-900">{{ object.horse.name }}</p>
-            <p class="text-sm text-slate-500 mt-1">{{ object.description }}</p>
-            <p class="text-sm text-slate-500 mt-1">{{ object.date }} &mdash; &pound;{{ object.amount|floatformat:2 }}</p>
+        <div class="card bg-parchment p-4 mt-4 mb-6 text-left">
+            <p class="font-medium text-charcoal">{{ object.horse.name }}</p>
+            <p class="text-sm text-sage mt-1">{{ object.description }}</p>
+            <p class="text-sm text-sage mt-1">{{ object.date }} &mdash; &pound;{{ object.amount|floatformat:2 }}</p>
         </div>
 
         <!-- Actions -->

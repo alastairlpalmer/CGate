@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if object %}Edit Placement{% else %}Add Placement{% endif %} - Cgate{% endblock %}
+{% block title %}{% if object %}Edit Placement{% else %}Add Placement{% endif %} - CGate{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
@@ -13,7 +13,7 @@
     </div>
 
     <div class="card">
-        <form method="post" class="divide-y divide-slate-100">
+        <form method="post" class="divide-y divide-light-sage">
             {% csrf_token %}
 
             <!-- Horse & Owner -->
@@ -21,24 +21,24 @@
                 <legend class="section-title">Horse &amp; Owner</legend>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
                     <div class="sm:col-span-2">
-                        <label for="id_horse" class="block text-sm font-medium text-slate-700">Horse <span class="text-red-500">*</span></label>
+                        <label for="id_horse" class="block text-sm font-medium text-charcoal">Horse <span class="text-error-red">*</span></label>
                         {{ form.horse }}
                         {% if form.horse.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.horse.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.horse.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
-                        <label for="id_owner" class="block text-sm font-medium text-slate-700">Owner <span class="text-red-500">*</span></label>
+                        <label for="id_owner" class="block text-sm font-medium text-charcoal">Owner <span class="text-error-red">*</span></label>
                         {{ form.owner }}
                         {% if form.owner.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.owner.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.owner.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
-                        <label for="id_location" class="block text-sm font-medium text-slate-700">Location <span class="text-red-500">*</span></label>
+                        <label for="id_location" class="block text-sm font-medium text-charcoal">Location <span class="text-error-red">*</span></label>
                         {{ form.location }}
                         {% if form.location.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.location.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.location.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
@@ -49,27 +49,27 @@
                 <legend class="section-title">Rates &amp; Dates</legend>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
                     <div>
-                        <label for="id_rate_type" class="block text-sm font-medium text-slate-700">Rate Type <span class="text-red-500">*</span></label>
+                        <label for="id_rate_type" class="block text-sm font-medium text-charcoal">Rate Type <span class="text-error-red">*</span></label>
                         {{ form.rate_type }}
                         {% if form.rate_type.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.rate_type.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.rate_type.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div></div>
                     <div>
-                        <label for="id_start_date" class="block text-sm font-medium text-slate-700">Start Date <span class="text-red-500">*</span></label>
+                        <label for="id_start_date" class="block text-sm font-medium text-charcoal">Start Date <span class="text-error-red">*</span></label>
                         {{ form.start_date }}
                         {% if form.start_date.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.start_date.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.start_date.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
-                        <label for="id_end_date" class="block text-sm font-medium text-slate-700">End Date</label>
+                        <label for="id_end_date" class="block text-sm font-medium text-charcoal">End Date</label>
                         {{ form.end_date }}
                         {% if form.end_date.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.end_date.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.end_date.errors.0 }}</p>
                         {% endif %}
-                        <p class="mt-1 text-xs text-slate-500">Leave blank if this is a current placement</p>
+                        <p class="mt-1 text-xs text-sage">Leave blank if this is a current placement</p>
                     </div>
                 </div>
             </fieldset>
@@ -79,17 +79,17 @@
                 <legend class="section-title">Notes</legend>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
                     <div class="sm:col-span-2">
-                        <label for="id_notes" class="block text-sm font-medium text-slate-700">Notes</label>
+                        <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
                         {{ form.notes }}
                         {% if form.notes.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.notes.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-error-red">{{ form.notes.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
             </fieldset>
 
             <!-- Footer -->
-            <div class="flex justify-end gap-3 px-5 py-4 bg-slate-50 rounded-b-xl">
+            <div class="flex justify-end gap-3 px-5 py-4 bg-parchment rounded-b-xl">
                 <a href="{% url 'placement_list' %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% else %}Add Placement{% endif %}

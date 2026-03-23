@@ -19,7 +19,7 @@
           class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <input type="hidden" name="type" value="egg_counts">
         <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Horse</label>
+            <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Horse</label>
             <select name="horse" class="form-select">
                 <option value="">All horses</option>
                 {% for h in horses %}
@@ -61,12 +61,12 @@
                     <td>
                         <a href="{% url 'horse_detail' ec.horse.pk %}" class="link">{{ ec.horse.name }}</a>
                     </td>
-                    <td class="text-slate-500">{{ ec.date }}</td>
-                    <td class="{% if ec.is_high %}text-red-600{% endif %} font-semibold">
+                    <td class="text-sage">{{ ec.date }}</td>
+                    <td class="{% if ec.is_high %}text-error-red{% endif %} font-semibold">
                         {{ ec.count }}
                     </td>
-                    <td class="text-slate-500">{{ ec.get_sample_type_display }}</td>
-                    <td class="text-slate-500">{{ ec.lab_name|default:"-" }}</td>
+                    <td class="text-sage">{{ ec.get_sample_type_display }}</td>
+                    <td class="text-sage">{{ ec.lab_name|default:"-" }}</td>
                     <td>
                         {% if ec.is_high %}
                         <span class="badge-danger">High</span>
@@ -82,7 +82,7 @@
                 <tr>
                     <td colspan="7">
                         <div class="py-12 text-center">
-                            <p class="text-sm font-medium text-slate-500">No egg count records found</p>
+                            <p class="text-sm font-medium text-sage">No egg count records found</p>
                             <a href="{% url 'egg_count_create' %}" class="btn-primary mt-4 inline-flex">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if object %}Edit {{ object.name }}{% else %}Add Provider{% endif %} - Cgate{% endblock %}
+{% block title %}{% if object %}Edit {{ object.name }}{% else %}Add Provider{% endif %} - CGate{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
@@ -13,11 +13,11 @@
     </div>
 
     <div class="card">
-        <form method="post" class="divide-y divide-slate-100">
+        <form method="post" class="divide-y divide-light-sage">
             {% csrf_token %}
 
             {% if form.non_field_errors %}
-              <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+              <div class="mb-4 p-3 bg-error-red-50 border border-error-red/20 rounded text-sm text-error-red">
                 {% for error in form.non_field_errors %}
                   <p>{{ error }}</p>
                 {% endfor %}
@@ -29,59 +29,59 @@
                 <legend class="section-title">Provider Details</legend>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
                     <div class="sm:col-span-2">
-                        <label for="id_name" class="block text-sm font-medium text-slate-700">Name *</label>
+                        <label for="id_name" class="block text-sm font-medium text-charcoal">Name *</label>
                         {{ form.name }}
                         {% if form.name.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.name.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
-                        <label for="id_provider_type" class="block text-sm font-medium text-slate-700">Type *</label>
+                        <label for="id_provider_type" class="block text-sm font-medium text-charcoal">Type *</label>
                         {{ form.provider_type }}
                         {% if form.provider_type.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.provider_type.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.provider_type.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
-                        <label for="id_phone" class="block text-sm font-medium text-slate-700">Phone</label>
+                        <label for="id_phone" class="block text-sm font-medium text-charcoal">Phone</label>
                         {{ form.phone }}
                         {% if form.phone.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.phone.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.phone.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div class="sm:col-span-2">
-                        <label for="id_email" class="block text-sm font-medium text-slate-700">Email</label>
+                        <label for="id_email" class="block text-sm font-medium text-charcoal">Email</label>
                         {{ form.email }}
                         {% if form.email.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.email.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.email.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div class="sm:col-span-2">
-                        <label for="id_address" class="block text-sm font-medium text-slate-700">Address</label>
+                        <label for="id_address" class="block text-sm font-medium text-charcoal">Address</label>
                         {{ form.address }}
                         {% if form.address.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.address.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.address.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div class="sm:col-span-2">
-                        <label for="id_notes" class="block text-sm font-medium text-slate-700">Notes</label>
+                        <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
                         {{ form.notes }}
                         {% if form.notes.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.notes.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.notes.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div class="sm:col-span-2 flex items-center gap-2">
                         {{ form.is_active }}
-                        <label for="id_is_active" class="text-sm font-medium text-slate-700">Active</label>
+                        <label for="id_is_active" class="text-sm font-medium text-charcoal">Active</label>
                         {% if form.is_active.errors %}
-                          <p class="mt-1 text-sm text-red-600">{{ form.is_active.errors.0 }}</p>
+                          <p class="mt-1 text-sm text-error-red">{{ form.is_active.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
             </fieldset>
 
             <!-- Footer -->
-            <div class="flex justify-end gap-3 px-5 py-4 bg-slate-50 rounded-b-xl">
+            <div class="flex justify-end gap-3 px-5 py-4 bg-parchment rounded-b-xl">
                 <a href="{% url 'provider_list' %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% else %}Add Provider{% endif %}

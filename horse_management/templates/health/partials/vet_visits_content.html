@@ -19,7 +19,7 @@
           class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <input type="hidden" name="type" value="vet_visits">
         <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Horse</label>
+            <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Horse</label>
             <select name="horse" class="form-select">
                 <option value="">All horses</option>
                 {% for h in horses %}
@@ -61,10 +61,10 @@
                     <td>
                         <a href="{% url 'horse_detail' v.horse.pk %}" class="link">{{ v.horse.name }}</a>
                     </td>
-                    <td class="text-slate-500">{{ v.date }}</td>
+                    <td class="text-sage">{{ v.date }}</td>
                     <td>{{ v.reason|truncatewords:10 }}</td>
-                    <td class="text-slate-500">{% if v.vet %}{{ v.vet.name }}{% else %}<span class="text-slate-400">-</span>{% endif %}</td>
-                    <td class="{% if v.follow_up_date %}text-amber-600{% else %}text-slate-500{% endif %}">
+                    <td class="text-sage">{% if v.vet %}{{ v.vet.name }}{% else %}<span class="text-sage">-</span>{% endif %}</td>
+                    <td class="{% if v.follow_up_date %}text-forest{% else %}text-sage{% endif %}">
                         {{ v.follow_up_date|default:"-" }}
                     </td>
                     <td class="text-right">
@@ -78,7 +78,7 @@
                 <tr>
                     <td colspan="7">
                         <div class="py-12 text-center">
-                            <p class="text-sm font-medium text-slate-500">No vet visits recorded</p>
+                            <p class="text-sm font-medium text-sage">No vet visits recorded</p>
                             <a href="{% url 'vet_visit_create' %}" class="btn-primary mt-4 inline-flex">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>

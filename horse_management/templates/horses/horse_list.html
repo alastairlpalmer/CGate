@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Horses - Cgate{% endblock %}
+{% block title %}Horses - CGate{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -25,11 +25,11 @@
     <div class="card px-5 py-4">
         <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Search</label>
+                <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Search</label>
                 <input type="text" name="search" value="{{ request.GET.search }}" class="form-input" placeholder="Search horses...">
             </div>
             <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Location</label>
+                <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Location</label>
                 <select name="location" class="form-select">
                     <option value="">All locations</option>
                     {% for loc in locations %}
@@ -38,7 +38,7 @@
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Owner</label>
+                <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Owner</label>
                 <select name="owner" class="form-select">
                     <option value="">All owners</option>
                     {% for o in owners %}
@@ -78,7 +78,7 @@
                         <td>
                             <a href="{% url 'horse_detail' horse.pk %}" class="link font-medium">{{ horse.name }}</a>
                         </td>
-                        <td class="text-slate-500">
+                        <td class="text-sage">
                             {% if horse.age %}{{ horse.age }}yo{% endif %}
                             {{ horse.get_color_display }}
                             {{ horse.get_sex_display }}
@@ -87,12 +87,12 @@
                         <td>
                             {% if placement.owner %}
                             <a href="{% url 'owner_detail' placement.owner.pk %}" class="link">{{ placement.owner.name }}</a>
-                            {% else %}<span class="text-slate-400">-</span>{% endif %}
+                            {% else %}<span class="text-sage">-</span>{% endif %}
                         </td>
                         <td>
                             {% if placement.location %}
                             <a href="{% url 'location_detail' placement.location.pk %}" class="link">{{ placement.location.name }}</a>
-                            {% else %}<span class="text-slate-400">-</span>{% endif %}
+                            {% else %}<span class="text-sage">-</span>{% endif %}
                         </td>
                         {% endwith %}
                         <td>
@@ -120,11 +120,11 @@
     {% else %}
     <!-- Empty State -->
     <div class="card py-16 text-center">
-        <svg class="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
+        <svg class="mx-auto h-12 w-12 text-sage/50" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25L12 17.25 2.25 12l4.179-2.25"/>
         </svg>
-        <h3 class="mt-4 text-sm font-semibold text-slate-800">No horses found</h3>
-        <p class="mt-1 text-sm text-slate-500">Add your first horse to get started.</p>
+        <h3 class="mt-4 text-sm font-semibold text-charcoal">No horses found</h3>
+        <p class="mt-1 text-sm text-sage">Add your first horse to get started.</p>
         <div class="mt-6">
             <a href="{% url 'horse_create' %}" class="btn-primary">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

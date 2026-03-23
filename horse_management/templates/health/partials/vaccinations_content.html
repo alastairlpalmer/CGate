@@ -19,7 +19,7 @@
           class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <input type="hidden" name="type" value="vaccinations">
         <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
+            <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Status</label>
             <select name="status" class="form-select">
                 <option value="">All</option>
                 <option value="due" {% if request.GET.status == 'due' %}selected{% endif %}>Due Soon</option>
@@ -27,7 +27,7 @@
             </select>
         </div>
         <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Horse</label>
+            <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Horse</label>
             <select name="horse" class="form-select">
                 <option value="">All horses</option>
                 {% for h in horses %}
@@ -69,8 +69,8 @@
                         <a href="{% url 'horse_detail' vax.horse.pk %}" class="link">{{ vax.horse.name }}</a>
                     </td>
                     <td>{{ vax.vaccination_type.name }}</td>
-                    <td class="text-slate-500">{{ vax.date_given }}</td>
-                    <td class="{% if vax.next_due_date and vax.next_due_date < today %}text-red-600 font-semibold{% elif vax.is_due_soon %}text-amber-600{% else %}text-slate-500{% endif %}">
+                    <td class="text-sage">{{ vax.date_given }}</td>
+                    <td class="{% if vax.next_due_date and vax.next_due_date < today %}text-error-red font-semibold{% elif vax.is_due_soon %}text-forest{% else %}text-sage{% endif %}">
                         {{ vax.next_due_date }}
                     </td>
                     <td>
@@ -93,7 +93,7 @@
                 <tr>
                     <td colspan="6">
                         <div class="py-12 text-center">
-                            <p class="text-sm font-medium text-slate-500">No vaccination records found</p>
+                            <p class="text-sm font-medium text-sage">No vaccination records found</p>
                             <a href="{% url 'vaccination_create' %}" class="btn-primary mt-4 inline-flex">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>

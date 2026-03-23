@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Manage Ownership - {{ horse.name }} - Cgate{% endblock %}
+{% block title %}Manage Ownership - {{ horse.name }} - CGate{% endblock %}
 
 {% block content %}
 <div class="max-w-3xl mx-auto space-y-6">
@@ -20,28 +20,28 @@
             {{ formset.management_form }}
 
             {% if formset.non_form_errors %}
-            <div class="p-4 bg-red-50 border-b border-red-200">
+            <div class="p-4 bg-error-red-50 border-b border-error-red/20">
                 {% for error in formset.non_form_errors %}
-                <p class="text-sm text-red-700">{{ error }}</p>
+                <p class="text-sm text-error-red">{{ error }}</p>
                 {% endfor %}
             </div>
             {% endif %}
 
             <div class="p-5 space-y-4">
-                <p class="text-sm text-slate-500">
+                <p class="text-sm text-sage">
                     Assign ownership percentages to each owner. Shares must total 100% or less.
                     Livery and extra charges will be split according to these percentages.
                 </p>
 
                 <div id="ownership-forms" class="space-y-4">
                     {% for form in formset %}
-                    <div class="ownership-row border border-slate-200 rounded-lg p-4 {% if form.instance.pk %}bg-white{% else %}bg-slate-50{% endif %}">
+                    <div class="ownership-row border border-light-sage rounded-lg p-4 {% if form.instance.pk %}bg-white{% else %}bg-parchment{% endif %}">
                         {% for hidden in form.hidden_fields %}
                             {{ hidden }}
                         {% endfor %}
 
                         {% if form.errors %}
-                        <div class="mb-3 p-2 bg-red-50 rounded text-sm text-red-700">
+                        <div class="mb-3 p-2 bg-error-red-50 rounded text-sm text-error-red">
                             {% for field, errors in form.errors.items %}
                                 {% for error in errors %}
                                 <p>{{ error }}</p>
@@ -52,24 +52,24 @@
 
                         <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                             <div class="sm:col-span-4">
-                                <label class="block text-xs font-medium text-slate-600 mb-1">Owner</label>
+                                <label class="block text-xs font-medium text-charcoal-light mb-1">Owner</label>
                                 {{ form.owner }}
                             </div>
                             <div class="sm:col-span-2">
-                                <label class="block text-xs font-medium text-slate-600 mb-1">Share %</label>
+                                <label class="block text-xs font-medium text-charcoal-light mb-1">Share %</label>
                                 {{ form.share_percentage }}
                             </div>
                             <div class="sm:col-span-2 flex items-center gap-2 pt-4">
                                 {{ form.is_primary_contact }}
-                                <label class="text-xs text-slate-600">Primary</label>
+                                <label class="text-xs text-charcoal-light">Primary</label>
                             </div>
                             <div class="sm:col-span-3">
-                                <label class="block text-xs font-medium text-slate-600 mb-1">Notes</label>
+                                <label class="block text-xs font-medium text-charcoal-light mb-1">Notes</label>
                                 {{ form.notes }}
                             </div>
                             {% if form.instance.pk %}
                             <div class="sm:col-span-1 flex items-center pt-4">
-                                <label class="text-xs text-red-500 cursor-pointer flex items-center gap-1" title="Remove">
+                                <label class="text-xs text-error-red cursor-pointer flex items-center gap-1" title="Remove">
                                     {{ form.DELETE }}
                                     <svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
@@ -84,7 +84,7 @@
             </div>
 
             <!-- Footer -->
-            <div class="border-t border-slate-100 px-5 py-4 bg-slate-50 rounded-b-xl flex justify-end gap-3">
+            <div class="border-t border-light-sage px-5 py-4 bg-parchment rounded-b-xl flex justify-end gap-3">
                 <a href="{% url 'horse_detail' horse.pk %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

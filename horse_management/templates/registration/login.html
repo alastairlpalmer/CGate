@@ -4,87 +4,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign In - Cgate</title>
+    <title>Sign in - CGate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
                 extend: {
+                    colors: {
+                        forest: { DEFAULT: '#1B3A2D', light: '#2A5A45' },
+                        sage: { DEFAULT: '#6B8F71', 50: '#F0F4F0' },
+                        sand: { DEFAULT: '#D4C5A9', 50: '#F5F1E8' },
+                        charcoal: '#2C2C2C',
+                        parchment: '#F7F5F0',
+                        saddle: '#A0522D',
+                        'light-sage': '#E8EDE9',
+                    },
                     fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
+                        heading: ['"DM Sans"', 'sans-serif'],
+                        body: ['"Source Sans 3"', 'sans-serif'],
                     }
                 }
             }
         }
     </script>
 </head>
-<body class="h-full font-sans antialiased bg-white">
+<body class="h-full font-body antialiased bg-white text-charcoal">
     <div class="flex min-h-full">
 
         <!-- Left branded panel -->
-        <div class="hidden lg:flex lg:w-1/2 bg-slate-800 flex-col justify-center px-12 xl:px-20">
+        <div class="hidden lg:flex lg:w-1/2 bg-forest flex-col justify-center px-12 xl:px-20">
             <!-- Logo -->
             <div class="flex items-center gap-3 mb-8">
-                <svg class="h-10 w-10 text-amber-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                    <path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 01.359.852L12.982 9.75h7.268a.75.75 0 01.548 1.262l-10.5 11.25a.75.75 0 01-1.272-.71l1.992-7.302H3.75a.75.75 0 01-.548-1.262l10.5-11.25a.75.75 0 01.913-.143z" clip-rule="evenodd" />
+                <svg class="h-10 w-10 text-white" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22 16c0 5.523-3.134 10-7 10s-7-4.477-7-10S11.134 6 15 6s7 4.477 7 10z" stroke="currentColor" stroke-width="2.2" fill="none"/>
+                    <line x1="15" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="15" y1="16" x2="21" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="15" y1="20" x2="21" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                 </svg>
-                <span class="text-3xl font-bold text-white tracking-tight">Cgate</span>
+                <span class="text-3xl font-bold text-white tracking-tight font-heading">CGate</span>
             </div>
 
             <!-- Tagline -->
-            <h1 class="text-2xl font-semibold text-white mb-2">Professional Horse Management</h1>
-            <p class="text-slate-400 mb-10 text-base">Everything you need to manage your equine operations in one place.</p>
+            <h1 class="text-2xl font-semibold text-white mb-2 font-heading">Equine livery management</h1>
+            <p class="text-white/60 mb-10 text-base">Everything you need to manage your yard in one place.</p>
 
             <!-- Feature bullets -->
             <ul class="space-y-5">
                 <li class="flex items-start gap-3">
-                    <svg class="h-6 w-6 text-amber-500 mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <svg class="h-6 w-6 text-sand mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                         <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" />
                     </svg>
                     <div>
                         <p class="text-white font-medium">Track health records</p>
-                        <p class="text-slate-400 text-sm">Maintain comprehensive veterinary and health histories for every horse.</p>
+                        <p class="text-white/50 text-sm">Vaccinations, farrier visits, and vet records for every horse.</p>
                     </div>
                 </li>
                 <li class="flex items-start gap-3">
-                    <svg class="h-6 w-6 text-amber-500 mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <svg class="h-6 w-6 text-sand mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                         <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" />
                     </svg>
                     <div>
-                        <p class="text-white font-medium">Manage billing & invoices</p>
-                        <p class="text-slate-400 text-sm">Generate invoices and keep billing organised across all owners.</p>
+                        <p class="text-white font-medium">Manage billing and invoices</p>
+                        <p class="text-white/50 text-sm">Generate invoices and keep billing organised across all owners.</p>
                     </div>
                 </li>
                 <li class="flex items-start gap-3">
-                    <svg class="h-6 w-6 text-amber-500 mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <svg class="h-6 w-6 text-sand mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                         <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" />
                     </svg>
                     <div>
-                        <p class="text-white font-medium">Monitor locations & placements</p>
-                        <p class="text-slate-400 text-sm">Track where every horse is and manage moves between locations.</p>
+                        <p class="text-white font-medium">Monitor locations and placements</p>
+                        <p class="text-white/50 text-sm">Track where every horse is and manage moves between sites.</p>
                     </div>
                 </li>
             </ul>
         </div>
 
         <!-- Right form panel -->
-        <div class="flex flex-1 flex-col justify-center px-6 py-12 sm:px-12 lg:w-1/2 lg:px-16 xl:px-24">
+        <div class="flex flex-1 flex-col justify-center px-6 py-12 sm:px-12 lg:w-1/2 lg:px-16 xl:px-24 bg-parchment">
             <div class="mx-auto w-full max-w-sm">
 
-                <!-- Mobile logo (visible only on smaller screens) -->
+                <!-- Mobile logo -->
                 <div class="flex items-center gap-2 mb-10 lg:hidden">
-                    <svg class="h-8 w-8 text-amber-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                        <path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 01.359.852L12.982 9.75h7.268a.75.75 0 01.548 1.262l-10.5 11.25a.75.75 0 01-1.272-.71l1.992-7.302H3.75a.75.75 0 01-.548-1.262l10.5-11.25a.75.75 0 01.913-.143z" clip-rule="evenodd" />
+                    <svg class="h-8 w-8 text-forest" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M22 16c0 5.523-3.134 10-7 10s-7-4.477-7-10S11.134 6 15 6s7 4.477 7 10z" stroke="currentColor" stroke-width="2.2" fill="none"/>
+                        <line x1="15" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="15" y1="16" x2="21" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="15" y1="20" x2="21" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
-                    <span class="text-2xl font-bold text-slate-800 tracking-tight">Cgate</span>
+                    <span class="text-2xl font-bold text-charcoal tracking-tight font-heading">CGate</span>
                 </div>
 
-                <h2 class="text-2xl font-bold text-slate-900 mb-1">Sign in to your account</h2>
-                <p class="text-sm text-slate-500 mb-8">Enter your credentials to access the dashboard.</p>
+                <h2 class="text-2xl font-bold text-charcoal mb-1 font-heading">Sign in to your account</h2>
+                <p class="text-sm text-sage mb-8">Enter your credentials to access the dashboard.</p>
 
                 <!-- Error message -->
                 {% if form.errors %}
@@ -100,9 +116,8 @@
                 <form method="post" class="space-y-5" x-data="{ loading: false }" @submit="loading = true">
                     {% csrf_token %}
 
-                    <!-- Username -->
                     <div>
-                        <label for="id_username" class="block text-sm font-medium text-slate-700 mb-1.5">Username</label>
+                        <label for="id_username" class="block text-sm font-medium text-charcoal mb-1.5">Username</label>
                         <input
                             type="text"
                             name="username"
@@ -110,36 +125,33 @@
                             autocomplete="username"
                             required
                             autofocus
-                            class="block w-full rounded-lg border-slate-300 focus:border-amber-500 focus:ring-amber-500 text-sm px-3 py-2 border shadow-sm placeholder-slate-400"
+                            class="block w-full rounded-lg border-sage/30 focus:border-sage focus:ring-sage text-sm px-3 py-2 border shadow-sm placeholder-sage/60"
                             placeholder="Enter your username"
                         >
                     </div>
 
-                    <!-- Password -->
                     <div>
-                        <label for="id_password" class="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+                        <label for="id_password" class="block text-sm font-medium text-charcoal mb-1.5">Password</label>
                         <input
                             type="password"
                             name="password"
                             id="id_password"
                             autocomplete="current-password"
                             required
-                            class="block w-full rounded-lg border-slate-300 focus:border-amber-500 focus:ring-amber-500 text-sm px-3 py-2 border shadow-sm placeholder-slate-400"
+                            class="block w-full rounded-lg border-sage/30 focus:border-sage focus:ring-sage text-sm px-3 py-2 border shadow-sm placeholder-sage/60"
                             placeholder="Enter your password"
                         >
                     </div>
 
-                    <!-- Forgot password link -->
                     <div class="flex justify-end">
-                        <a href="{% url 'password_reset' %}" class="text-sm font-medium text-amber-600 hover:text-amber-500 transition-colors">
+                        <a href="{% url 'password_reset' %}" class="text-sm font-medium text-forest hover:text-sage transition-colors">
                             Forgot your password?
                         </a>
                     </div>
 
-                    <!-- Submit button -->
                     <button
                         type="submit"
-                        class="w-full bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium text-sm px-4 py-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 flex items-center justify-center gap-2"
+                        class="w-full bg-forest hover:bg-forest-light text-white rounded-lg font-medium text-sm px-4 py-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-sage focus:ring-offset-2 flex items-center justify-center gap-2"
                         :class="{ 'opacity-75 cursor-not-allowed': loading }"
                         :disabled="loading"
                     >

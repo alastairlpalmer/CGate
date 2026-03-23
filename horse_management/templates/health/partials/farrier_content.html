@@ -19,7 +19,7 @@
           class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <input type="hidden" name="type" value="farrier">
         <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
+            <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Status</label>
             <select name="status" class="form-select">
                 <option value="">All</option>
                 <option value="due" {% if request.GET.status == 'due' %}selected{% endif %}>Due Soon</option>
@@ -27,7 +27,7 @@
             </select>
         </div>
         <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Horse</label>
+            <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Horse</label>
             <select name="horse" class="form-select">
                 <option value="">All horses</option>
                 {% for h in horses %}
@@ -69,16 +69,16 @@
                     <td>
                         <a href="{% url 'horse_detail' visit.horse.pk %}" class="link">{{ visit.horse.name }}</a>
                     </td>
-                    <td class="text-slate-500">{{ visit.date }}</td>
+                    <td class="text-sage">{{ visit.date }}</td>
                     <td>{{ visit.get_work_done_display }}</td>
-                    <td class="text-slate-500">
-                        {% if visit.service_provider %}{{ visit.service_provider.name }}{% else %}<span class="text-slate-400">-</span>{% endif %}
+                    <td class="text-sage">
+                        {% if visit.service_provider %}{{ visit.service_provider.name }}{% else %}<span class="text-sage">-</span>{% endif %}
                     </td>
-                    <td class="{% if visit.next_due_date and visit.next_due_date < today %}text-red-600 font-semibold{% elif visit.is_due_soon %}text-amber-600{% else %}text-slate-500{% endif %}">
-                        {% if visit.next_due_date %}{{ visit.next_due_date }}{% else %}<span class="text-slate-400">-</span>{% endif %}
+                    <td class="{% if visit.next_due_date and visit.next_due_date < today %}text-error-red font-semibold{% elif visit.is_due_soon %}text-forest{% else %}text-sage{% endif %}">
+                        {% if visit.next_due_date %}{{ visit.next_due_date }}{% else %}<span class="text-sage">-</span>{% endif %}
                     </td>
                     <td class="text-right">
-                        {% if visit.cost %}&pound;{{ visit.cost|floatformat:2 }}{% else %}<span class="text-slate-400">-</span>{% endif %}
+                        {% if visit.cost %}&pound;{{ visit.cost|floatformat:2 }}{% else %}<span class="text-sage">-</span>{% endif %}
                     </td>
                     <td>
                         <a href="{% url 'farrier_update' visit.pk %}" class="btn-ghost btn-xs">Edit</a>
@@ -88,7 +88,7 @@
                 <tr>
                     <td colspan="7">
                         <div class="py-12 text-center">
-                            <p class="text-sm font-medium text-slate-500">No farrier visits recorded</p>
+                            <p class="text-sm font-medium text-sage">No farrier visits recorded</p>
                             <a href="{% url 'farrier_create' %}" class="btn-primary mt-4 inline-flex">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>

@@ -10,11 +10,11 @@
      x-transition:leave-start="translate-y-0 opacity-100"
      x-transition:leave-end="translate-y-full opacity-0"
      x-cloak
-     class="fixed bottom-0 left-0 lg:left-64 right-0 z-40 bg-white border-t border-slate-200 shadow-lg">
+     class="fixed bottom-0 left-0 lg:left-64 right-0 z-40 bg-white border-t border-light-sage shadow-lg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
         <div class="flex items-center gap-3">
-            <span class="text-sm font-medium text-slate-700" x-text="selectedHorses.size + ' horse' + (selectedHorses.size !== 1 ? 's' : '') + ' selected'"></span>
-            <button @click="clearAll()" class="text-xs text-slate-500 hover:text-slate-700 underline">Clear</button>
+            <span class="text-sm font-medium text-charcoal" x-text="selectedHorses.size + ' horse' + (selectedHorses.size !== 1 ? 's' : '') + ' selected'"></span>
+            <button @click="clearAll()" class="text-xs text-sage hover:text-charcoal underline">Clear</button>
         </div>
         <div class="flex items-center gap-3">
             <select x-model="actionType" class="form-select text-sm py-1.5">
@@ -45,7 +45,7 @@
      x-transition:leave-start="opacity-100"
      x-transition:leave-end="opacity-0"
      x-cloak
-     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50"
+     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/50"
      @click.self="modalOpen = false">
 
     <div x-show="modalOpen"
@@ -58,9 +58,9 @@
          class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
 
         <!-- Modal Header -->
-        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
-            <h3 class="text-lg font-semibold text-slate-900" x-text="modalTitle"></h3>
-            <button @click="modalOpen = false" class="text-slate-400 hover:text-slate-600">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-light-sage">
+            <h3 class="text-lg font-semibold text-charcoal" x-text="modalTitle"></h3>
+            <button @click="modalOpen = false" class="text-sage hover:text-charcoal-light">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -72,7 +72,7 @@
              hx-get=""
              hx-trigger="load"
              hx-swap="innerHTML">
-            <div class="p-5 text-center text-slate-500">
+            <div class="p-5 text-center text-sage">
                 <p class="text-sm">Loading form...</p>
             </div>
         </div>
@@ -143,7 +143,7 @@ function bulkActions() {
 
             // Load form via HTMX
             var container = document.getElementById('bulk-form-container');
-            container.innerHTML = '<div class="p-5 text-center text-slate-500"><p class="text-sm">Loading form...</p></div>';
+            container.innerHTML = '<div class="p-5 text-center text-sage"><p class="text-sm">Loading form...</p></div>';
 
             var self = this;
             htmx.ajax('GET', '/health/bulk/form/?action_type=' + this.actionType, {

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ location.name }} - Cgate{% endblock %}
+{% block title %}{{ location.name }} - CGate{% endblock %}
 
 {% block content %}
 <div class="space-y-6" x-data="bulkActions()">
@@ -22,17 +22,17 @@
         <div class="p-5">
             <dl class="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <div>
-                    <dt class="text-xs font-medium text-slate-500 uppercase tracking-wide">Current Horses</dt>
-                    <dd class="mt-1 text-3xl font-bold text-slate-900">{{ horses|length }}</dd>
+                    <dt class="text-xs font-medium text-sage uppercase tracking-wide">Current Horses</dt>
+                    <dd class="mt-1 text-3xl font-bold text-charcoal">{{ horses|length }}</dd>
                 </div>
                 {% if location.capacity %}
                 <div>
-                    <dt class="text-xs font-medium text-slate-500 uppercase tracking-wide">Capacity</dt>
-                    <dd class="mt-1 text-3xl font-bold text-slate-900">{{ location.capacity }}</dd>
+                    <dt class="text-xs font-medium text-sage uppercase tracking-wide">Capacity</dt>
+                    <dd class="mt-1 text-3xl font-bold text-charcoal">{{ location.capacity }}</dd>
                 </div>
                 <div>
-                    <dt class="text-xs font-medium text-slate-500 uppercase tracking-wide">Available</dt>
-                    <dd class="mt-1 text-3xl font-bold {% if location.availability > 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                    <dt class="text-xs font-medium text-sage uppercase tracking-wide">Available</dt>
+                    <dd class="mt-1 text-3xl font-bold {% if location.availability > 0 %}text-sage{% else %}text-error-red{% endif %}">
                         {{ location.availability }}
                     </dd>
                 </div>
@@ -42,8 +42,8 @@
             <!-- Capacity Progress Bar -->
             {% if location.capacity %}
             <div class="mt-5">
-                <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
-                    <div class="h-2 rounded-full {% if location.availability <= 0 %}bg-red-500{% elif location.availability <= 2 %}bg-amber-500{% else %}bg-green-500{% endif %}"
+                <div class="h-2 rounded-full bg-light-sage overflow-hidden">
+                    <div class="h-2 rounded-full {% if location.availability <= 0 %}bg-error-red{% elif location.availability <= 2 %}bg-forest{% else %}bg-sage{% endif %}"
                          style="width: {% widthratio horses|length location.capacity 100 %}%"></div>
                 </div>
             </div>
@@ -51,7 +51,7 @@
 
             <!-- Description -->
             {% if location.description %}
-            <p class="mt-4 text-sm text-slate-600">{{ location.description }}</p>
+            <p class="mt-4 text-sm text-charcoal-light">{{ location.description }}</p>
             {% endif %}
         </div>
     </div>
@@ -90,7 +90,7 @@
                                 {{ horse.name }}
                             </a>
                         </td>
-                        <td class="text-slate-500">
+                        <td class="text-sage">
                             {% if horse.age %}{{ horse.age }}yo{% endif %}
                             {{ horse.get_color_display }}
                             {{ horse.get_sex_display }}
@@ -115,7 +115,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center text-slate-400 py-8">No horses at this location</td>
+                        <td colspan="5" class="text-center text-sage py-8">No horses at this location</td>
                     </tr>
                     {% endfor %}
                 </tbody>
