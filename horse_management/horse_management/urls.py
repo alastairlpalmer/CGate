@@ -17,6 +17,7 @@ urlpatterns = [
     path('invoicing/', include('invoicing.urls')),
     path('health/', include('health.urls')),
     path('billing/', include('billing.urls')),
+    path('xero/', include('xero_integration.urls')),
 ]
 
 if settings.DEBUG:

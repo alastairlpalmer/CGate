@@ -32,3 +32,6 @@ django-htmx>=1.17.0
 django-crispy-forms>=2.1
 crispy-tailwind>=1.0.1
 
+# Xero API integration
+requests>=2.31.0
+

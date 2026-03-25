@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'health.apps.HealthConfig',
     'billing.apps.BillingConfig',
     'notifications.apps.NotificationsConfig',
+    'xero_integration.apps.XeroIntegrationConfig',
 ]
 
 # Only add celery apps when not on Vercel (no worker process there)
@@ -181,6 +182,12 @@ EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@horsemanagement.local')
+
+# Xero OAuth2
+XERO_CLIENT_ID = env('XERO_CLIENT_ID', default='')
+XERO_CLIENT_SECRET = env('XERO_CLIENT_SECRET', default='')
+XERO_REDIRECT_URI = env('XERO_REDIRECT_URI', default='')
+XERO_SCOPES = 'openid profile email accounting.transactions accounting.contacts offline_access'
 
 # Celery Configuration
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379/0')

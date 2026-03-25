@@ -29,7 +29,7 @@ class InvoiceListView(LoginRequiredMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        queryset = Invoice.objects.select_related('owner')
+        queryset = Invoice.objects.select_related('owner', 'xero_sync')
 
         status = self.request.GET.get('status')
         if status:
