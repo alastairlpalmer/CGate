@@ -19,6 +19,14 @@ if _project_dir not in sys.path:
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'horse_management.settings')
 
+# Run migrations automatically on serverless cold-start (Vercel)
+import subprocess
+subprocess.run(
+    [sys.executable, 'manage.py', 'migrate', '--noinput'],
+    cwd=str(_this_dir),
+    timeout=30,
+)
+
 # Try to boot Django; capture the error if it fails
 _django_app = None
 _boot_error = None
