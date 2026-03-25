@@ -102,25 +102,6 @@
         </div>
     </div>
 
-    <!-- Setup Guide (shown when not connected) -->
-    {% if not connection.is_connected %}
-    <div class="card">
-        <div class="section-header">
-            <h3 class="section-title">Setup Guide</h3>
-        </div>
-        <div class="p-5">
-            <p class="text-sm text-charcoal-light mb-3">To set up the Xero integration, you need a Xero Developer app:</p>
-            <ol class="text-sm text-charcoal-light space-y-2 list-decimal list-inside">
-                <li>Go to <span class="font-mono text-xs bg-light-sage px-1 py-0.5 rounded">developer.xero.com</span> and sign in</li>
-                <li>Click <strong>New app</strong> and choose <strong>Web app</strong></li>
-                <li>Set your app name and company URL</li>
-                <li>Add the redirect URI from your deployment settings</li>
-                <li>Copy the <strong>Client ID</strong> and generate a <strong>Client Secret</strong></li>
-                <li>Add them to your environment variables as <span class="font-mono text-xs bg-light-sage px-1 py-0.5 rounded">XERO_CLIENT_ID</span> and <span class="font-mono text-xs bg-light-sage px-1 py-0.5 rounded">XERO_CLIENT_SECRET</span></li>
-            </ol>
-        </div>
-    </div>
-    {% endif %}
 
 </div>
 {% endblock %}
