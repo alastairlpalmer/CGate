@@ -19,20 +19,15 @@ if _project_dir not in sys.path:
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'horse_management.settings')
 
-# Run migrations automatically on serverless cold-start (Vercel)
-import subprocess
-subprocess.run(
-    [sys.executable, 'manage.py', 'migrate', '--noinput'],
-    cwd=str(_this_dir),
-    timeout=30,
-)
-
 # Try to boot Django; capture the error if it fails
 _django_app = None
 _boot_error = None
 try:
     from django.core.wsgi import get_wsgi_application
     _django_app = get_wsgi_application()
+    # Run pending migrations on serverless cold-start (Vercel)
+    from django.core.management import call_command
+    call_command('migrate', '--noinput')
 except Exception:
     import traceback
     _boot_error = traceback.format_exc()
@@ -43,7 +38,8 @@ def application(environ, start_response):
     # If Django failed to boot, return a generic error (no internals leaked)
     if _django_app is None:
         body = json.dumps({
-            'error': 'Application failed to start. Check server logs.',
+            'error': 'Application failed to start.',
+            'detail': _boot_error or 'Unknown error',
         }).encode()
         start_response('500 Internal Server Error', [
             ('Content-Type', 'application/json'),
