@@ -187,7 +187,7 @@ DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@horsemanagement.
 XERO_CLIENT_ID = env('XERO_CLIENT_ID', default='')
 XERO_CLIENT_SECRET = env('XERO_CLIENT_SECRET', default='')
 XERO_REDIRECT_URI = env('XERO_REDIRECT_URI', default='')
-XERO_SCOPES = 'openid profile email accounting.transactions accounting.contacts offline_access'
+XERO_SCOPES = 'openid profile email accounting.invoices accounting.contacts offline_access'
 
 # Celery Configuration
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379/0')
