@@ -28,7 +28,7 @@
             {% xero_is_connected as xero_connected %}
             {% if xero_connected and invoice.status != 'cancelled' %}
                 {% with xero_sync=invoice.xero_sync %}
-                {% if xero_sync.sync_status == 'pushed' or xero_sync.sync_status == 'paid_in_xero' %}
+                {% if xero_sync and xero_sync.sync_status == 'pushed' or xero_sync and xero_sync.sync_status == 'paid_in_xero' %}
                     <div id="xero-status"
                          hx-get="{% url 'xero_invoice_status' invoice.pk %}"
                          hx-trigger="load"
@@ -41,7 +41,7 @@
                             In Xero
                         </span>
                     </div>
-                {% elif xero_sync.sync_status == 'error' %}
+                {% elif xero_sync and xero_sync.sync_status == 'error' %}
                     <form method="post" action="{% url 'xero_push_invoice' invoice.pk %}" class="inline" hx-boost="false">
                         {% csrf_token %}
                         <button type="submit" class="btn-secondary text-error-red hover:text-error-red">
