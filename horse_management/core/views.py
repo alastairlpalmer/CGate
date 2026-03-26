@@ -36,8 +36,8 @@ from health.models import (
 )
 
 from .forms import (
-    HorseForm, LocationForm, MoveHorseForm, OwnerForm,
-    OwnershipShareFormSet, PlacementForm,
+    ArrivalForm, DepartureForm, HorseForm, LocationForm, MoveHorseForm,
+    OwnerForm, OwnershipShareFormSet, PlacementForm, SingleArrivalForm,
 )
 from .models import Horse, Invoice, Location, Owner, OwnershipShare, Placement, RateType
 
@@ -276,6 +276,7 @@ class HorseDetailView(LoginRequiredMixin, DetailView):
         context['current_placement'] = horse.placements.filter(
             end_date__isnull=True
         ).select_related('owner', 'location', 'rate_type').first()
+        context['today'] = timezone.now().date()
         context['placements'] = horse.placements.select_related(
             'owner', 'location', 'rate_type'
         ).all()[:10]
@@ -562,6 +563,7 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['current_tab'] = self.request.GET.get('tab', 'current')
+        context['today'] = timezone.now().date()
 
         # Current horses (always needed for the info card counts)
         active_placements = Prefetch(
@@ -664,6 +666,195 @@ class PlacementUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_success_url(self):
         return reverse_lazy('location_list') + '?tab=history'
+
+
+# ── Arrival & Departure Views ──
+
+@login_required
+def log_arrival(request, pk):
+    """Log one or more horses arriving at a location."""
+    location = get_object_or_404(Location, pk=pk)
+
+    # Horses without an active placement (available to arrive)
+    horses_with_active = Placement.objects.filter(
+        horse=OuterRef('pk'), end_date__isnull=True
+    )
+    available_horses = Horse.objects.filter(
+        is_active=True
+    ).exclude(
+        Exists(horses_with_active)
+    ).order_by('name')
+
+    if request.method == 'POST':
+        form = ArrivalForm(request.POST)
+        form.fields['horses'].queryset = available_horses
+        if form.is_valid():
+            horses = form.cleaned_data['horses']
+            owner = form.cleaned_data['owner']
+            rate_type = form.cleaned_data['rate_type']
+            arrival_date = form.cleaned_data['arrival_date']
+            notes = form.cleaned_data['notes']
+
+            created = 0
+            errors = []
+            with transaction.atomic():
+                for horse in horses:
+                    placement = Placement(
+                        horse=horse,
+                        owner=owner,
+                        location=location,
+                        rate_type=rate_type,
+                        start_date=arrival_date,
+                        notes=notes,
+                    )
+                    try:
+                        placement.full_clean()
+                        placement.save()
+                        created += 1
+                    except ValidationError as e:
+                        errors.append(f"{horse.name}: {e}")
+
+            if created:
+                messages.success(
+                    request,
+                    f"{created} horse{'s' if created != 1 else ''} arrived at {location.name}."
+                )
+            for err in errors:
+                messages.error(request, err)
+            return redirect('location_detail', pk=location.pk)
+    else:
+        form = ArrivalForm(initial={'arrival_date': timezone.now().date()})
+        form.fields['horses'].queryset = available_horses
+
+    return render(request, 'locations/location_arrive.html', {
+        'location': location,
+        'form': form,
+    })
+
+
+@login_required
+def log_departure(request, pk):
+    """Log departure of selected horses from a location (POST only)."""
+    location = get_object_or_404(Location, pk=pk)
+
+    if request.method == 'POST':
+        horse_ids = request.POST.getlist('horse_ids')
+        departure_date_str = request.POST.get('departure_date')
+        notes = request.POST.get('notes', '')
+
+        if not horse_ids:
+            messages.error(request, "No horses selected.")
+            return redirect('location_detail', pk=location.pk)
+
+        if not departure_date_str:
+            messages.error(request, "Departure date is required.")
+            return redirect('location_detail', pk=location.pk)
+
+        from datetime import date
+        try:
+            departure_date = date.fromisoformat(departure_date_str)
+        except ValueError:
+            messages.error(request, "Invalid date format.")
+            return redirect('location_detail', pk=location.pk)
+
+        departed = 0
+        with transaction.atomic():
+            placements = Placement.objects.filter(
+                horse_id__in=horse_ids,
+                location=location,
+                end_date__isnull=True,
+            )
+            for placement in placements:
+                if departure_date < placement.start_date:
+                    messages.error(
+                        request,
+                        f"{placement.horse.name}: departure date cannot be before arrival ({placement.start_date})."
+                    )
+                    continue
+                placement.end_date = departure_date
+                if notes:
+                    placement.notes = (placement.notes or '') + f"\nDeparted: {notes}" if placement.notes else notes
+                placement.save()
+                departed += 1
+
+        if departed:
+            messages.success(
+                request,
+                f"{departed} horse{'s' if departed != 1 else ''} departed from {location.name}."
+            )
+        return redirect('location_detail', pk=location.pk)
+
+    return redirect('location_detail', pk=location.pk)
+
+
+@login_required
+def horse_arrive(request, pk):
+    """Log a single horse arriving at a location (from Horse Detail)."""
+    horse = get_object_or_404(Horse, pk=pk)
+
+    if request.method == 'POST':
+        form = SingleArrivalForm(request.POST)
+        if form.is_valid():
+            placement = Placement(
+                horse=horse,
+                owner=form.cleaned_data['owner'],
+                location=form.cleaned_data['location'],
+                rate_type=form.cleaned_data['rate_type'],
+                start_date=form.cleaned_data['arrival_date'],
+                notes=form.cleaned_data['notes'],
+            )
+            try:
+                placement.full_clean()
+                placement.save()
+                messages.success(request, f"{horse.name} arrived at {placement.location.name}.")
+                return redirect('horse_detail', pk=horse.pk)
+            except ValidationError as e:
+                messages.error(request, str(e))
+    else:
+        initial = {'arrival_date': timezone.now().date()}
+        # Pre-fill owner from horse's primary owner
+        primary_owner = horse.primary_owner
+        if primary_owner:
+            initial['owner'] = primary_owner.pk
+        form = SingleArrivalForm(initial=initial)
+
+    return render(request, 'horses/horse_arrive.html', {
+        'horse': horse,
+        'form': form,
+    })
+
+
+@login_required
+def horse_depart(request, pk):
+    """Log a single horse departing (from Horse Detail, POST only)."""
+    horse = get_object_or_404(Horse, pk=pk)
+    current_placement = horse.current_placement
+
+    if request.method == 'POST' and current_placement:
+        departure_date_str = request.POST.get('departure_date')
+        if not departure_date_str:
+            messages.error(request, "Departure date is required.")
+            return redirect('horse_detail', pk=horse.pk)
+
+        from datetime import date
+        try:
+            departure_date = date.fromisoformat(departure_date_str)
+        except ValueError:
+            messages.error(request, "Invalid date format.")
+            return redirect('horse_detail', pk=horse.pk)
+
+        if departure_date < current_placement.start_date:
+            messages.error(
+                request,
+                f"Departure date cannot be before arrival ({current_placement.start_date})."
+            )
+            return redirect('horse_detail', pk=horse.pk)
+
+        current_placement.end_date = departure_date
+        current_placement.save()
+        messages.success(request, f"{horse.name} departed from {current_placement.location.name}.")
+
+    return redirect('horse_detail', pk=horse.pk)
 
 
 @login_required

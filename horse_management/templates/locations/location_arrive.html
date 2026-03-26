@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}Log Arrival at {{ location.name }} - CGate{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Log Arrival</h1>
+            <p class="page-subtitle">{{ location.name }} &middot; {{ location.site }}</p>
+        </div>
+    </div>
+
+    <!-- Arrival Form -->
+    <div class="card">
+        <form method="post">
+            {% csrf_token %}
+
+            <!-- Horse Selection -->
+            <fieldset class="p-5 space-y-5">
+                <legend class="text-base font-semibold text-charcoal mb-2">Select Horses</legend>
+                <p class="text-xs text-sage mb-3">Only horses without a current placement are shown.</p>
+
+                {% if form.horses.errors %}
+                <p class="text-xs text-error-red">{{ form.horses.errors.0 }}</p>
+                {% endif %}
+
+                <div class="max-h-64 overflow-y-auto border border-light-sage rounded-lg p-3 space-y-2">
+                    {% for checkbox in form.horses %}
+                    <label class="flex items-center gap-3 py-1.5 px-2 rounded hover:bg-parchment cursor-pointer">
+                        {{ checkbox.tag }}
+                        <span class="text-sm text-charcoal">{{ checkbox.choice_label }}</span>
+                    </label>
+                    {% empty %}
+                    <p class="text-sm text-sage text-center py-4">All horses are currently placed.</p>
+                    {% endfor %}
+                </div>
+            </fieldset>
+
+            <!-- Placement Details -->
+            <fieldset class="p-5 pt-0 space-y-5">
+                <legend class="text-base font-semibold text-charcoal mb-4">Placement Details</legend>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div>
+                        <label for="id_owner" class="block text-sm font-medium text-charcoal">Owner *</label>
+                        {{ form.owner }}
+                        {% if form.owner.errors %}
+                        <p class="mt-1 text-xs text-error-red">{{ form.owner.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="id_rate_type" class="block text-sm font-medium text-charcoal">Rate Type *</label>
+                        {{ form.rate_type }}
+                        {% if form.rate_type.errors %}
+                        <p class="mt-1 text-xs text-error-red">{{ form.rate_type.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <label for="id_arrival_date" class="block text-sm font-medium text-charcoal">Arrival Date *</label>
+                    {{ form.arrival_date }}
+                    {% if form.arrival_date.errors %}
+                    <p class="mt-1 text-xs text-error-red">{{ form.arrival_date.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
+                    {{ form.notes }}
+                </div>
+            </fieldset>
+
+            <!-- Footer -->
+            <div class="border-t border-light-sage px-5 py-4 bg-parchment rounded-b-xl flex justify-end gap-3">
+                <a href="{% url 'location_detail' location.pk %}" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
+                    Log Arrival
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

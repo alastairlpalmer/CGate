@@ -18,6 +18,8 @@ urlpatterns = [
     path('horses/<int:pk>/', views.HorseDetailView.as_view(), name='horse_detail'),
     path('horses/<int:pk>/edit/', views.HorseUpdateView.as_view(), name='horse_update'),
     path('horses/<int:pk>/move/', views.horse_move, name='horse_move'),
+    path('horses/<int:pk>/arrive/', views.horse_arrive, name='horse_arrive'),
+    path('horses/<int:pk>/depart/', views.horse_depart, name='horse_depart'),
     path('horses/<int:pk>/ownership/', views.manage_ownership_shares, name='horse_ownership'),
 
     # Owners
@@ -31,6 +33,8 @@ urlpatterns = [
     path('locations/add/', views.LocationCreateView.as_view(), name='location_create'),
     path('locations/<int:pk>/', views.LocationDetailView.as_view(), name='location_detail'),
     path('locations/<int:pk>/edit/', views.LocationUpdateView.as_view(), name='location_update'),
+    path('locations/<int:pk>/arrive/', views.log_arrival, name='location_arrive'),
+    path('locations/<int:pk>/depart/', views.log_departure, name='location_depart'),
 
     # Placements (create/edit still needed, list redirects to locations)
     path('placements/', RedirectView.as_view(url='/locations/?tab=history', permanent=False), name='placement_list'),

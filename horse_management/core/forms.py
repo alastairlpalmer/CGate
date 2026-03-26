@@ -117,6 +117,64 @@ class MoveHorseForm(forms.Form):
     )
 
 
+class ArrivalForm(forms.Form):
+    """Form for logging horse arrivals at a location (supports multiple horses)."""
+    horses = forms.ModelMultipleChoiceField(
+        queryset=Horse.objects.filter(is_active=True),
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-checkbox rounded'}),
+        help_text="Select horses to arrive at this location"
+    )
+    owner = forms.ModelChoiceField(
+        queryset=Owner.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    rate_type = forms.ModelChoiceField(
+        queryset=RateType.objects.filter(is_active=True),
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    arrival_date = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'})
+    )
+    notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2})
+    )
+
+
+class SingleArrivalForm(forms.Form):
+    """Form for logging a single horse arrival (from Horse Detail page)."""
+    location = forms.ModelChoiceField(
+        queryset=Location.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    owner = forms.ModelChoiceField(
+        queryset=Owner.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    rate_type = forms.ModelChoiceField(
+        queryset=RateType.objects.filter(is_active=True),
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    arrival_date = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'})
+    )
+    notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2})
+    )
+
+
+class DepartureForm(forms.Form):
+    """Form for logging horse departures."""
+    departure_date = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'})
+    )
+    notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2})
+    )
+
+
 class OwnershipShareForm(forms.ModelForm):
     class Meta:
         model = OwnershipShare
