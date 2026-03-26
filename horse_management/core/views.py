@@ -526,6 +526,33 @@ class LocationListView(LoginRequiredMixin, ListView):
             )
         ).order_by('site', 'name')
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['current_tab'] = self.request.GET.get('tab', 'locations')
+
+        # Movement History tab data
+        if context['current_tab'] == 'history':
+            placements = Placement.objects.select_related(
+                'horse', 'owner', 'location', 'rate_type'
+            )
+            status = self.request.GET.get('status', 'active')
+            if status == 'active':
+                placements = placements.filter(end_date__isnull=True)
+            elif status == 'ended':
+                placements = placements.filter(end_date__isnull=False)
+            location_filter = self.request.GET.get('location')
+            if location_filter:
+                placements = placements.filter(location_id=location_filter)
+            owner_filter = self.request.GET.get('owner')
+            if owner_filter:
+                placements = placements.filter(owner_id=owner_filter)
+            context['placements'] = placements.order_by('-start_date')[:50]
+            context['current_status'] = status
+            context['all_locations'] = Location.objects.all()
+            context['owners'] = Owner.objects.all()
+
+        return context
+
 
 class LocationDetailView(LoginRequiredMixin, DetailView):
     model = Location
@@ -534,7 +561,9 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Optimized: prefetch active placements with owner to avoid N+1
+        context['current_tab'] = self.request.GET.get('tab', 'current')
+
+        # Current horses (always needed for the info card counts)
         active_placements = Prefetch(
             'placements',
             queryset=Placement.objects.filter(
@@ -546,6 +575,20 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
             placements__location=self.object,
             placements__end_date__isnull=True
         ).distinct().prefetch_related(active_placements)
+
+        # History tab data
+        if context['current_tab'] == 'history':
+            history = Placement.objects.filter(
+                location=self.object
+            ).select_related('horse', 'owner', 'rate_type')
+            status = self.request.GET.get('status', 'all')
+            if status == 'active':
+                history = history.filter(end_date__isnull=True)
+            elif status == 'ended':
+                history = history.filter(end_date__isnull=False)
+            context['history_placements'] = history.order_by('-start_date')[:50]
+            context['current_status'] = status
+
         return context
 
 
@@ -609,14 +652,18 @@ class PlacementCreateView(LoginRequiredMixin, CreateView):
     model = Placement
     form_class = PlacementForm
     template_name = 'placements/placement_form.html'
-    success_url = reverse_lazy('placement_list')
+
+    def get_success_url(self):
+        return reverse_lazy('location_list') + '?tab=history'
 
 
 class PlacementUpdateView(LoginRequiredMixin, UpdateView):
     model = Placement
     form_class = PlacementForm
     template_name = 'placements/placement_form.html'
-    success_url = reverse_lazy('placement_list')
+
+    def get_success_url(self):
+        return reverse_lazy('location_list') + '?tab=history'
 
 
 @login_required

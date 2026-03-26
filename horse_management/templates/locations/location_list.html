@@ -10,11 +10,150 @@
         <div>
             <h1 class="page-title">Locations</h1>
         </div>
+        {% if current_tab == 'history' %}
+        <a href="{% url 'placement_create' %}" class="btn-primary">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            Add Placement
+        </a>
+        {% else %}
         <a href="{% url 'location_create' %}" class="btn-primary">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
             Add Location
         </a>
+        {% endif %}
     </div>
+
+    <!-- Tabs -->
+    <div class="border-b border-light-sage">
+        <nav class="flex gap-6">
+            <a href="{% url 'location_list' %}"
+               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-100 {% if current_tab != 'history' %}border-forest text-forest{% else %}border-transparent text-sage hover:text-charcoal hover:border-sage/50{% endif %}">
+                <svg class="w-4 h-4 inline-block mr-1 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+                Locations
+            </a>
+            <a href="{% url 'location_list' %}?tab=history"
+               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-100 {% if current_tab == 'history' %}border-forest text-forest{% else %}border-transparent text-sage hover:text-charcoal hover:border-sage/50{% endif %}">
+                <svg class="w-4 h-4 inline-block mr-1 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
+                Movement History
+            </a>
+        </nav>
+    </div>
+
+    {% if current_tab == 'history' %}
+    <!-- ═══ Movement History Tab ═══ -->
+
+    <!-- Filters -->
+    <div class="card px-5 py-3">
+        <div class="flex flex-wrap items-center gap-4">
+            <div class="inline-flex rounded-lg shadow-sm">
+                <a href="?tab=history&status=active{% if request.GET.location %}&location={{ request.GET.location }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner }}{% endif %}"
+                   class="px-4 py-2 text-sm font-medium rounded-l-lg border {% if current_status == 'active' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
+                    Active
+                </a>
+                <a href="?tab=history&status=ended{% if request.GET.location %}&location={{ request.GET.location }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner }}{% endif %}"
+                   class="px-4 py-2 text-sm font-medium border-t border-b {% if current_status == 'ended' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
+                    Ended
+                </a>
+                <a href="?tab=history&status=all{% if request.GET.location %}&location={{ request.GET.location }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner }}{% endif %}"
+                   class="px-4 py-2 text-sm font-medium rounded-r-lg border {% if current_status == 'all' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
+                    All
+                </a>
+            </div>
+
+            <select onchange="window.location.href='?tab=history&status={{ current_status }}&location='+this.value+'{% if request.GET.owner %}&owner={{ request.GET.owner }}{% endif %}'"
+                    class="form-select w-auto">
+                <option value="">All Locations</option>
+                {% for loc in all_locations %}
+                <option value="{{ loc.pk }}" {% if request.GET.location == loc.pk|stringformat:"d" %}selected{% endif %}>{{ loc.name }}</option>
+                {% endfor %}
+            </select>
+
+            <select onchange="window.location.href='?tab=history&status={{ current_status }}&owner='+this.value+'{% if request.GET.location %}&location={{ request.GET.location }}{% endif %}'"
+                    class="form-select w-auto">
+                <option value="">All Owners</option>
+                {% for own in owners %}
+                <option value="{{ own.pk }}" {% if request.GET.owner == own.pk|stringformat:"d" %}selected{% endif %}>{{ own.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <!-- Placements Table -->
+    <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Horse</th>
+                        <th>Owner</th>
+                        <th>Location</th>
+                        <th>Rate</th>
+                        <th>Arrived</th>
+                        <th>Departed</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for placement in placements %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'horse_detail' placement.horse.pk %}" class="link">{{ placement.horse.name }}</a>
+                        </td>
+                        <td>
+                            <a href="{% url 'owner_detail' placement.owner.pk %}" class="link">{{ placement.owner.name }}</a>
+                        </td>
+                        <td>
+                            <a href="{% url 'location_detail' placement.location.pk %}" class="link">{{ placement.location.name }}</a>
+                        </td>
+                        <td class="text-sage">
+                            {{ placement.rate_type.name }} (&pound;{{ placement.rate_type.daily_rate }}/day)
+                        </td>
+                        <td class="text-sage">{{ placement.start_date }}</td>
+                        <td>
+                            {% if placement.end_date %}
+                                <span class="text-sage">{{ placement.end_date }}</span>
+                            {% else %}
+                                <span class="badge-success">Current</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="flex items-center gap-1">
+                                {% if not placement.end_date %}
+                                <a href="{% url 'horse_move' placement.horse.pk %}" class="btn-ghost btn-xs">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
+                                    </svg>
+                                    Move
+                                </a>
+                                {% endif %}
+                                <a href="{% url 'placement_update' placement.pk %}" class="btn-ghost btn-xs">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
+                                    </svg>
+                                    Edit
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">
+                            <div class="py-12 text-center">
+                                <svg class="mx-auto h-12 w-12 text-sage/50" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
+                                </svg>
+                                <p class="mt-3 text-sm font-medium text-sage">No movements found</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- ═══ Locations Tab (default) ═══ -->
 
     <!-- Location Cards Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -78,6 +217,8 @@
         </div>
         {% endfor %}
     </div>
+
+    {% endif %}
 
 </div>
 {% endblock %}

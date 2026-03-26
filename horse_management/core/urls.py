@@ -3,6 +3,7 @@ URL configuration for core app.
 """
 
 from django.urls import path
+from django.views.generic import RedirectView
 
 from . import views
 
@@ -31,8 +32,8 @@ urlpatterns = [
     path('locations/<int:pk>/', views.LocationDetailView.as_view(), name='location_detail'),
     path('locations/<int:pk>/edit/', views.LocationUpdateView.as_view(), name='location_update'),
 
-    # Placements
-    path('placements/', views.PlacementListView.as_view(), name='placement_list'),
+    # Placements (create/edit still needed, list redirects to locations)
+    path('placements/', RedirectView.as_view(url='/locations/?tab=history', permanent=False), name='placement_list'),
     path('placements/add/', views.PlacementCreateView.as_view(), name='placement_create'),
     path('placements/<int:pk>/edit/', views.PlacementUpdateView.as_view(), name='placement_update'),
 ]

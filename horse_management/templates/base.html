@@ -73,14 +73,9 @@
                 Owners
             </a>
             <a href="{% url 'location_list' %}"
-               class="{% if request.resolver_match.url_name in 'location_list,location_detail,location_create,location_update' %}nav-link-active{% else %}nav-link{% endif %}">
+               class="{% if request.resolver_match.url_name in 'location_list,location_detail,location_create,location_update,placement_list,placement_create,placement_update' %}nav-link-active{% else %}nav-link{% endif %}">
                 <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
                 Locations
-            </a>
-            <a href="{% url 'placement_list' %}"
-               class="{% if request.resolver_match.url_name in 'placement_list,placement_create,placement_update' %}nav-link-active{% else %}nav-link{% endif %}">
-                <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
-                Placements
             </a>
             <a href="{% url 'health_dashboard' %}"
                class="{% if request.resolver_match.url_name in 'health_dashboard,vaccination_list,vaccination_create,vaccination_update,farrier_list,farrier_create,farrier_update,worming_list,worming_create,worming_update,egg_count_list,egg_count_create,egg_count_update,condition_list,condition_create,condition_update,vet_visit_list,vet_visit_create,vet_visit_update' %}nav-link-active{% else %}nav-link{% endif %}">
