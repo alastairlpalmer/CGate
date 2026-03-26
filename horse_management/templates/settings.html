@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings - CGate{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Settings</h1>
+            <p class="page-subtitle">Manage your integrations and service providers</p>
+        </div>
+    </div>
+
+    <!-- Integrations -->
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">Integrations</h3>
+        </div>
+        <div class="p-5">
+            <!-- Xero -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-lg bg-info-blue-50 text-info-blue flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-charcoal">Xero</p>
+                        {% if xero_connection.is_connected %}
+                            <p class="text-xs text-sage">Connected to {{ xero_connection.xero_tenant_name }}</p>
+                        {% else %}
+                            <p class="text-xs text-sage">Push invoices directly to Xero as drafts</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    {% if xero_connection.is_connected %}
+                        <div class="flex items-center gap-3">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                Connected
+                            </span>
+                            <form method="post" action="{% url 'xero_disconnect' %}" class="inline">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        class="text-xs text-sage hover:text-error-red transition-colors"
+                                        onclick="return confirm('Are you sure you want to disconnect from Xero?')">
+                                    Disconnect
+                                </button>
+                            </form>
+                        </div>
+                    {% else %}
+                        <a href="{% url 'xero_connect' %}" class="btn-primary btn-sm" hx-boost="false">
+                            Connect
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Service Providers -->
+    <div class="card">
+        <div class="section-header flex items-center justify-between">
+            <h3 class="section-title">Service Providers</h3>
+            <a href="{% url 'provider_create' %}" class="btn-primary btn-sm">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                </svg>
+                Add Provider
+            </a>
+        </div>
+        <div class="p-5">
+            {% if providers %}
+                <div class="space-y-3">
+                    {% for provider in providers %}
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-light-sage text-forest flex items-center justify-center text-xs font-semibold shrink-0">
+                                {{ provider.name|make_list|first|upper }}
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-charcoal">{{ provider.name }}</p>
+                                <p class="text-xs text-sage">{{ provider.get_provider_type_display }}</p>
+                            </div>
+                        </div>
+                        <a href="{% url 'provider_update' provider.pk %}" class="text-xs text-sage hover:text-forest transition-colors">
+                            Edit
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-sm text-sage">No service providers yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

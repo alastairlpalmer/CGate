@@ -26,11 +26,8 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def xero_settings(request):
-    """Xero integration settings page."""
-    connection = XeroConnection.get_connection()
-    return render(request, 'xero_integration/settings.html', {
-        'connection': connection,
-    })
+    """Redirect to unified settings page."""
+    return redirect('app_settings')
 
 
 @login_required
@@ -51,20 +48,20 @@ def xero_callback(request):
     error = request.GET.get('error')
     if error:
         messages.error(request, f'Xero authorization failed: {error}')
-        return redirect('xero_settings')
+        return redirect('app_settings')
 
     code = request.GET.get('code')
     state = request.GET.get('state')
 
     if not code or not state:
         messages.error(request, 'Invalid callback from Xero (missing code or state).')
-        return redirect('xero_settings')
+        return redirect('app_settings')
 
     # Validate state parameter
     conn = XeroConnection.get_connection()
     if not conn.oauth_state or conn.oauth_state != state:
         messages.error(request, 'Invalid state parameter. Please try connecting again.')
-        return redirect('xero_settings')
+        return redirect('app_settings')
 
     # Clear state immediately
     conn.oauth_state = ''
@@ -85,7 +82,7 @@ def xero_callback(request):
         tenants = XeroClient.get_tenant_connections(token_data['access_token'])
         if not tenants:
             messages.error(request, 'No Xero organisations found. Please ensure you have access to at least one organisation.')
-            return redirect('xero_settings')
+            return redirect('app_settings')
 
         # Use first tenant (single-tenant app)
         tenant = tenants[0]
@@ -105,7 +102,7 @@ def xero_callback(request):
         logger.exception('Xero OAuth callback failed')
         messages.error(request, f'Failed to connect to Xero: {e}')
 
-    return redirect('xero_settings')
+    return redirect('app_settings')
 
 
 @login_required
@@ -124,7 +121,7 @@ def xero_disconnect(request):
     conn.save()
 
     messages.success(request, 'Disconnected from Xero.')
-    return redirect('xero_settings')
+    return redirect('app_settings')
 
 
 @login_required

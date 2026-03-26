@@ -58,6 +58,18 @@ logger = logging.getLogger(__name__)
 
 
 @login_required
+def app_settings(request):
+    """Unified settings page for integrations and providers."""
+    from billing.models import ServiceProvider
+    from xero_integration.models import XeroConnection
+
+    return render(request, 'settings.html', {
+        'xero_connection': XeroConnection.get_connection(),
+        'providers': ServiceProvider.objects.filter(is_active=True).order_by('name'),
+    })
+
+
+@login_required
 def dashboard(request):
     """Main dashboard view."""
     try:

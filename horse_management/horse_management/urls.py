@@ -7,10 +7,11 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from core.views import health_check
+from core.views import app_settings, health_check
 
 urlpatterns = [
     path('_health/', health_check, name='health_check'),
+    path('settings/', app_settings, name='app_settings'),
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
     path('', include('core.urls')),
