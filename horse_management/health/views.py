@@ -961,3 +961,22 @@ class BreedingRecordUpdateView(LoginRequiredMixin, UpdateView):
     form_class = BreedingRecordForm
     template_name = 'health/breeding_form.html'
     success_url = reverse_lazy('breeding_list')
+
+
+# ─── Quick-add vet (HTMX) ───────────────────────────────────────────
+
+@login_required
+def quick_add_vet(request):
+    """Create a ServiceProvider (vet) inline and return an <option> element."""
+    if request.method != 'POST':
+        return HttpResponseBadRequest("POST required")
+    name = request.POST.get('vet_name', '').strip()
+    if not name:
+        return HttpResponseBadRequest("Name is required")
+    from billing.models import ServiceProvider
+    provider = ServiceProvider.objects.create(
+        name=name,
+        provider_type='vet',
+    )
+    html = f'<option value="{provider.pk}" selected>{provider.name} (Veterinarian)</option>'
+    return HttpResponse(html)

@@ -49,7 +49,14 @@ class Vaccination(models.Model):
     )
     date_given = models.DateField()
     next_due_date = models.DateField(null=True, blank=True)
-    vet_name = models.CharField(max_length=200, blank=True)
+    vet = models.ForeignKey(
+        'billing.ServiceProvider',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='vaccinations',
+        limit_choices_to={'provider_type': 'vet'},
+    )
     batch_number = models.CharField(max_length=100, blank=True)
     notes = models.TextField(blank=True)
     reminder_sent = models.BooleanField(default=False)

@@ -23,14 +23,14 @@ class VaccinationForm(forms.ModelForm):
         model = Vaccination
         fields = [
             'horse', 'vaccination_type', 'date_given', 'next_due_date',
-            'vet_name', 'batch_number', 'notes'
+            'vet', 'batch_number', 'notes'
         ]
         widgets = {
             'horse': forms.Select(attrs={'class': 'form-select'}),
             'vaccination_type': forms.Select(attrs={'class': 'form-select'}),
             'date_given': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
             'next_due_date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
-            'vet_name': forms.TextInput(attrs={'class': 'form-input'}),
+            'vet': forms.Select(attrs={'class': 'form-select'}),
             'batch_number': forms.TextInput(attrs={'class': 'form-input'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
@@ -39,6 +39,12 @@ class VaccinationForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Allow blank so model.save() can auto-calculate from vaccination_type interval
         self.fields['next_due_date'].required = False
+        # Filter vet dropdown to active vets only
+        from billing.models import ServiceProvider
+        self.fields['vet'].queryset = ServiceProvider.objects.filter(
+            provider_type='vet', is_active=True
+        )
+        self.fields['vet'].empty_label = "Select vet..."
 
     def clean(self):
         cleaned_data = super().clean()
@@ -166,12 +172,12 @@ class VetVisitForm(forms.ModelForm):
 class BulkVaccinationForm(forms.ModelForm):
     class Meta:
         model = Vaccination
-        fields = ['vaccination_type', 'date_given', 'next_due_date', 'vet_name', 'batch_number', 'notes']
+        fields = ['vaccination_type', 'date_given', 'next_due_date', 'vet', 'batch_number', 'notes']
         widgets = {
             'vaccination_type': forms.Select(attrs={'class': 'form-select'}),
             'date_given': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
             'next_due_date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
-            'vet_name': forms.TextInput(attrs={'class': 'form-input'}),
+            'vet': forms.Select(attrs={'class': 'form-select'}),
             'batch_number': forms.TextInput(attrs={'class': 'form-input'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
@@ -179,6 +185,11 @@ class BulkVaccinationForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['next_due_date'].required = False
+        from billing.models import ServiceProvider
+        self.fields['vet'].queryset = ServiceProvider.objects.filter(
+            provider_type='vet', is_active=True
+        )
+        self.fields['vet'].empty_label = "Select vet..."
 
 
 class BulkFarrierVisitForm(forms.ModelForm):

@@ -28,10 +28,10 @@ class VaccinationTypeAdmin(admin.ModelAdmin):
 class VaccinationAdmin(admin.ModelAdmin):
     list_display = [
         'horse', 'vaccination_type', 'date_given', 'next_due_date',
-        'vet_name', 'status_display', 'reminder_sent'
+        'vet', 'status_display', 'reminder_sent'
     ]
     list_filter = ['vaccination_type', 'reminder_sent', 'date_given']
-    search_fields = ['horse__name', 'vet_name', 'batch_number']
+    search_fields = ['horse__name', 'vet__name', 'batch_number']
     date_hierarchy = 'date_given'
     raw_id_fields = ['horse']
     readonly_fields = ['created_at', 'updated_at']

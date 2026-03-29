@@ -63,12 +63,45 @@
                         <p class="text-xs text-sage mt-1">Leave blank to auto-calculate</p>
                     </div>
 
-                    <div>
-                        <label for="{{ form.vet_name.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.vet_name.label }}</label>
-                        {{ form.vet_name }}
-                        {% if form.vet_name.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.vet_name.errors.0 }}</p>
+                    <div x-data="{ adding: false }">
+                        <label for="{{ form.vet.id_for_label }}" class="text-sm font-medium text-charcoal">Vet</label>
+                        <div class="flex gap-2 items-start">
+                            <div class="flex-1">
+                                {{ form.vet }}
+                            </div>
+                            <button type="button"
+                                    @click="adding = !adding"
+                                    class="btn-secondary px-2 py-1.5 text-sm"
+                                    title="Add new vet">
+                                <span x-text="adding ? '✕' : '+'"></span>
+                            </button>
+                        </div>
+                        {% if form.vet.errors %}
+                          <p class="mt-1 text-sm text-error-red">{{ form.vet.errors.0 }}</p>
                         {% endif %}
+
+                        <!-- Inline add vet -->
+                        <div x-show="adding" x-cloak class="mt-2 flex gap-2">
+                            <input type="text" id="new-vet-name" placeholder="Vet name" class="form-input flex-1">
+                            <button type="button"
+                                    class="btn-primary px-3 py-1.5 text-sm"
+                                    onclick="
+                                      const name = document.getElementById('new-vet-name').value.trim();
+                                      if (!name) return;
+                                      fetch('{% url 'quick_add_vet' %}', {
+                                        method: 'POST',
+                                        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/x-www-form-urlencoded'},
+                                        body: 'vet_name=' + encodeURIComponent(name)
+                                      })
+                                      .then(r => r.text())
+                                      .then(html => {
+                                        const sel = document.getElementById('{{ form.vet.id_for_label }}');
+                                        sel.insertAdjacentHTML('beforeend', html);
+                                        sel.value = sel.options[sel.options.length - 1].value;
+                                        document.getElementById('new-vet-name').value = '';
+                                      });
+                                    ">Add</button>
+                        </div>
                     </div>
 
                     <div>
