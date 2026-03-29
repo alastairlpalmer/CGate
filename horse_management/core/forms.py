@@ -4,7 +4,7 @@ Forms for core app.
 
 from django import forms
 
-from .models import Horse, Location, Owner, OwnershipShare, Placement, RateType
+from .models import BusinessSettings, Horse, Location, Owner, OwnershipShare, Placement, RateType
 
 
 class OwnerForm(forms.ModelForm):
@@ -207,4 +207,26 @@ class RateTypeForm(forms.ModelForm):
             'daily_rate': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
             'description': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+        }
+
+
+class BusinessSettingsForm(forms.ModelForm):
+    class Meta:
+        model = BusinessSettings
+        fields = [
+            'business_name', 'address', 'phone', 'email', 'website',
+            'vat_registration', 'bank_details', 'card_payment_url',
+            'default_payment_terms', 'invoice_prefix',
+        ]
+        widgets = {
+            'business_name': forms.TextInput(attrs={'class': 'form-input'}),
+            'address': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+            'phone': forms.TextInput(attrs={'class': 'form-input'}),
+            'email': forms.EmailInput(attrs={'class': 'form-input'}),
+            'website': forms.URLInput(attrs={'class': 'form-input'}),
+            'vat_registration': forms.TextInput(attrs={'class': 'form-input'}),
+            'bank_details': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
+            'card_payment_url': forms.URLInput(attrs={'class': 'form-input'}),
+            'default_payment_terms': forms.NumberInput(attrs={'class': 'form-input'}),
+            'invoice_prefix': forms.TextInput(attrs={'class': 'form-input', 'maxlength': 10}),
         }

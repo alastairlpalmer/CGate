@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Edit Rate Type{% else %}Add Rate Type{% endif %} - CGate{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto space-y-6">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{% if object %}Edit Rate Type{% else %}Add Rate Type{% endif %}</h1>
+        </div>
+    </div>
+
+    <div class="card">
+        <form method="post">
+            {% csrf_token %}
+            <fieldset class="p-5 space-y-4">
+                <div>
+                    <label for="{{ form.name.id_for_label }}" class="text-sm font-medium text-charcoal">Name</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}<p class="mt-1 text-sm text-error-red">{{ form.name.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.daily_rate.id_for_label }}" class="text-sm font-medium text-charcoal">Daily Rate</label>
+                    {{ form.daily_rate }}
+                    {% if form.daily_rate.errors %}<p class="mt-1 text-sm text-error-red">{{ form.daily_rate.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.description.id_for_label }}" class="text-sm font-medium text-charcoal">Description</label>
+                    {{ form.description }}
+                </div>
+                <div class="flex items-center gap-2">
+                    {{ form.is_active }}
+                    <label for="{{ form.is_active.id_for_label }}" class="text-sm font-medium text-charcoal">Active</label>
+                </div>
+            </fieldset>
+            <footer class="border-t px-5 py-4 bg-parchment rounded-b-xl flex justify-end gap-3">
+                <a href="{% url 'app_settings' %}" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">{% if object %}Save Changes{% else %}Add Rate Type{% endif %}</button>
+            </footer>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

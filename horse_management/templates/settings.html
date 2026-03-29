@@ -9,11 +9,176 @@
     <div class="page-header">
         <div>
             <h1 class="page-title">Settings</h1>
-            <p class="page-subtitle">Manage your integrations and service providers</p>
+            <p class="page-subtitle">Manage your business, rates, providers, and integrations</p>
         </div>
     </div>
 
-    <!-- Integrations -->
+    <!-- ── Business Details ── -->
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">Business Details</h3>
+        </div>
+        <form method="post" class="p-5">
+            {% csrf_token %}
+            <input type="hidden" name="save_business" value="1">
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                    <label for="{{ biz_form.business_name.id_for_label }}" class="text-sm font-medium text-charcoal">Business Name</label>
+                    {{ biz_form.business_name }}
+                </div>
+
+                <div class="sm:col-span-2">
+                    <label for="{{ biz_form.address.id_for_label }}" class="text-sm font-medium text-charcoal">Address</label>
+                    {{ biz_form.address }}
+                </div>
+
+                <div>
+                    <label for="{{ biz_form.phone.id_for_label }}" class="text-sm font-medium text-charcoal">Phone</label>
+                    {{ biz_form.phone }}
+                </div>
+
+                <div>
+                    <label for="{{ biz_form.email.id_for_label }}" class="text-sm font-medium text-charcoal">Email</label>
+                    {{ biz_form.email }}
+                </div>
+
+                <div>
+                    <label for="{{ biz_form.website.id_for_label }}" class="text-sm font-medium text-charcoal">Website</label>
+                    {{ biz_form.website }}
+                </div>
+
+                <div>
+                    <label for="{{ biz_form.vat_registration.id_for_label }}" class="text-sm font-medium text-charcoal">VAT Registration</label>
+                    {{ biz_form.vat_registration }}
+                </div>
+
+                <div class="sm:col-span-2">
+                    <label for="{{ biz_form.bank_details.id_for_label }}" class="text-sm font-medium text-charcoal">Bank Details</label>
+                    {{ biz_form.bank_details }}
+                </div>
+
+                <div>
+                    <label for="{{ biz_form.card_payment_url.id_for_label }}" class="text-sm font-medium text-charcoal">Card Payment URL</label>
+                    {{ biz_form.card_payment_url }}
+                    <p class="text-xs text-sage mt-1">e.g. SumUp payment link</p>
+                </div>
+
+                <div>
+                    <label for="{{ biz_form.invoice_prefix.id_for_label }}" class="text-sm font-medium text-charcoal">Invoice Prefix</label>
+                    {{ biz_form.invoice_prefix }}
+                </div>
+
+                <div>
+                    <label for="{{ biz_form.default_payment_terms.id_for_label }}" class="text-sm font-medium text-charcoal">Payment Terms (days)</label>
+                    {{ biz_form.default_payment_terms }}
+                </div>
+            </div>
+
+            <div class="mt-4 flex justify-end">
+                <button type="submit" class="btn-primary btn-sm">Save Business Details</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ── Rate Types ── -->
+    <div class="card">
+        <div class="section-header flex items-center justify-between">
+            <h3 class="section-title">Rate Types</h3>
+            <a href="{% url 'rate_type_create' %}" class="btn-primary btn-sm">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                </svg>
+                Add Rate
+            </a>
+        </div>
+        <div class="p-5">
+            {% if rate_types %}
+                <div class="space-y-3">
+                    {% for rate in rate_types %}
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-charcoal">{{ rate.name }}</p>
+                            <p class="text-xs text-sage">&pound;{{ rate.daily_rate }}/day{% if not rate.is_active %} &middot; <span class="text-warning-amber">Inactive</span>{% endif %}</p>
+                        </div>
+                        <a href="{% url 'rate_type_update' rate.pk %}" class="text-xs text-sage hover:text-forest transition-colors">Edit</a>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-sm text-sage">No rate types configured.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ── Vaccination Types ── -->
+    <div class="card">
+        <div class="section-header flex items-center justify-between">
+            <h3 class="section-title">Vaccination Types</h3>
+            <a href="{% url 'vaccination_type_create' %}" class="btn-primary btn-sm">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                </svg>
+                Add Type
+            </a>
+        </div>
+        <div class="p-5">
+            {% if vaccination_types %}
+                <div class="space-y-3">
+                    {% for vt in vaccination_types %}
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-charcoal">{{ vt.name }}</p>
+                            <p class="text-xs text-sage">Every {{ vt.interval_months }} months &middot; Reminder {{ vt.reminder_days_before }} days before{% if not vt.is_active %} &middot; <span class="text-warning-amber">Inactive</span>{% endif %}</p>
+                        </div>
+                        <a href="{% url 'vaccination_type_update' vt.pk %}" class="text-xs text-sage hover:text-forest transition-colors">Edit</a>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-sm text-sage">No vaccination types configured.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ── Service Providers ── -->
+    <div class="card">
+        <div class="section-header flex items-center justify-between">
+            <h3 class="section-title">Service Providers</h3>
+            <a href="{% url 'provider_create' %}" class="btn-primary btn-sm">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                </svg>
+                Add Provider
+            </a>
+        </div>
+        <div class="p-5">
+            {% if providers %}
+                <div class="space-y-3">
+                    {% for provider in providers %}
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-light-sage text-forest flex items-center justify-center text-xs font-semibold shrink-0">
+                                {{ provider.name|make_list|first|upper }}
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-charcoal">{{ provider.name }}</p>
+                                <p class="text-xs text-sage">{{ provider.get_provider_type_display }}</p>
+                            </div>
+                        </div>
+                        <a href="{% url 'provider_update' provider.pk %}" class="text-xs text-sage hover:text-forest transition-colors">
+                            Edit
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-sm text-sage">No service providers yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ── Integrations ── -->
     <div class="card">
         <div class="section-header">
             <h3 class="section-title">Integrations</h3>
@@ -62,40 +227,19 @@
         </div>
     </div>
 
-    <!-- Service Providers -->
+    <!-- ── Account ── -->
     <div class="card">
-        <div class="section-header flex items-center justify-between">
-            <h3 class="section-title">Service Providers</h3>
-            <a href="{% url 'provider_create' %}" class="btn-primary btn-sm">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                </svg>
-                Add Provider
-            </a>
+        <div class="section-header">
+            <h3 class="section-title">Account</h3>
         </div>
-        <div class="p-5">
-            {% if providers %}
-                <div class="space-y-3">
-                    {% for provider in providers %}
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-light-sage text-forest flex items-center justify-center text-xs font-semibold shrink-0">
-                                {{ provider.name|make_list|first|upper }}
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium text-charcoal">{{ provider.name }}</p>
-                                <p class="text-xs text-sage">{{ provider.get_provider_type_display }}</p>
-                            </div>
-                        </div>
-                        <a href="{% url 'provider_update' provider.pk %}" class="text-xs text-sage hover:text-forest transition-colors">
-                            Edit
-                        </a>
-                    </div>
-                    {% endfor %}
+        <div class="p-5 space-y-3">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-charcoal">{{ user.username }}</p>
+                    <p class="text-xs text-sage">{{ user.email|default:"No email set" }}</p>
                 </div>
-            {% else %}
-                <p class="text-sm text-sage">No service providers yet.</p>
-            {% endif %}
+                <a href="{% url 'password_change' %}" class="btn-secondary btn-sm">Change Password</a>
+            </div>
         </div>
     </div>
 
