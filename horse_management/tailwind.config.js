@@ -4,6 +4,14 @@ module.exports = {
     './templates/**/*.html',
     './horse_management/templates/**/*.html',
   ],
+  safelist: [
+    // Classes used in Alpine.js :class bindings that Tailwind JIT can't detect
+    'bg-info-blue', 'text-info-blue', 'border-l-info-blue',
+    'bg-saddle', 'text-saddle', 'border-l-saddle',
+    'bg-error-red', 'text-error-red', 'border-l-error-red',
+    'bg-sand', 'text-sand', 'border-l-sand',
+    'bg-sage', 'bg-forest',
+  ],
   theme: {
     extend: {
       colors: {
