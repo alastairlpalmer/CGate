@@ -289,7 +289,27 @@
             {% endif %}
 
             <!-- Unified Timeline -->
-            <div class="card" x-data="{ activeFilter: 'all' }">
+            <div class="card" x-data="{
+                activeFilter: 'all',
+                pillColors: {
+                    all:         '#1B3A2D',
+                    placement:   '#2E86AB',
+                    vaccination: '#6B8F71',
+                    farrier:     '#A0522D',
+                    vet_visit:   '#C0392B',
+                    breeding:    '#1B3A2D',
+                    worming:     '#D4C5A9'
+                },
+                pillText: {
+                    all: '#fff', placement: '#fff', vaccination: '#fff',
+                    farrier: '#fff', vet_visit: '#fff', breeding: '#fff',
+                    worming: '#2C2C2C'
+                },
+                pillStyle(key) {
+                    if (this.activeFilter === key) return `background-color:${this.pillColors[key]};color:${this.pillText[key]}`;
+                    return 'background-color:#E8EDE9;color:#2C2C2C';
+                }
+            }">
                 <div class="section-header">
                     <h3 class="section-title">Timeline</h3>
                     <div class="flex items-center gap-2">
@@ -302,43 +322,22 @@
 
                 <!-- Filter Pills -->
                 <div class="px-5 pt-4 pb-2 flex flex-wrap gap-2">
-                    <button @click="activeFilter = 'all'"
-                        :class="activeFilter === 'all' ? 'bg-forest text-white shadow-sm' : 'bg-light-sage text-charcoal hover:bg-sage/20'"
-                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-150">
-                        All
-                    </button>
-                    <button @click="activeFilter = 'placement'"
-                        :class="activeFilter === 'placement' ? 'bg-info-blue text-white shadow-sm' : 'bg-light-sage text-charcoal hover:bg-sage/20'"
-                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-150">
-                        Placements
-                    </button>
-                    <button @click="activeFilter = 'vaccination'"
-                        :class="activeFilter === 'vaccination' ? 'bg-sage text-white shadow-sm' : 'bg-light-sage text-charcoal hover:bg-sage/20'"
-                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-150">
-                        Vaccinations
-                    </button>
-                    <button @click="activeFilter = 'farrier'"
-                        :class="activeFilter === 'farrier' ? 'bg-saddle text-white shadow-sm' : 'bg-light-sage text-charcoal hover:bg-sage/20'"
-                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-150">
-                        Farrier
-                    </button>
-                    <button @click="activeFilter = 'vet_visit'"
-                        :class="activeFilter === 'vet_visit' ? 'bg-error-red text-white shadow-sm' : 'bg-light-sage text-charcoal hover:bg-sage/20'"
-                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-150">
-                        Vet Visits
-                    </button>
+                    <button @click="activeFilter = 'all'" :style="pillStyle('all')"
+                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-150">All</button>
+                    <button @click="activeFilter = 'placement'" :style="pillStyle('placement')"
+                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-150">Placements</button>
+                    <button @click="activeFilter = 'vaccination'" :style="pillStyle('vaccination')"
+                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-150">Vaccinations</button>
+                    <button @click="activeFilter = 'farrier'" :style="pillStyle('farrier')"
+                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-150">Farrier</button>
+                    <button @click="activeFilter = 'vet_visit'" :style="pillStyle('vet_visit')"
+                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-150">Vet Visits</button>
                     {% if horse.is_mare %}
-                    <button @click="activeFilter = 'breeding'"
-                        :class="activeFilter === 'breeding' ? 'bg-forest text-white shadow-sm' : 'bg-light-sage text-charcoal hover:bg-sage/20'"
-                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-150">
-                        Breeding
-                    </button>
+                    <button @click="activeFilter = 'breeding'" :style="pillStyle('breeding')"
+                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-150">Breeding</button>
                     {% endif %}
-                    <button @click="activeFilter = 'worming'"
-                        :class="activeFilter === 'worming' ? 'bg-sand text-charcoal shadow-sm' : 'bg-light-sage text-charcoal hover:bg-sage/20'"
-                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-150">
-                        Worming
-                    </button>
+                    <button @click="activeFilter = 'worming'" :style="pillStyle('worming')"
+                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-150">Worming</button>
                 </div>
 
                 <!-- Timeline Entries -->
