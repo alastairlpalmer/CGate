@@ -42,8 +42,13 @@
             <select onchange="window.location.href='?status={{ current_status }}&location='+this.value+'{% if request.GET.owner %}&owner={{ request.GET.owner }}{% endif %}'"
                     class="form-select w-auto">
                 <option value="">All Locations</option>
-                {% for loc in locations %}
-                <option value="{{ loc.pk }}" {% if request.GET.location == loc.pk|stringformat:"d" %}selected{% endif %}>{{ loc.name }}</option>
+                {% regroup locations by site as site_list %}
+                {% for site in site_list %}
+                <optgroup label="{{ site.grouper }}">
+                    {% for loc in site.list %}
+                    <option value="{{ loc.pk }}" {% if request.GET.location == loc.pk|stringformat:"d" %}selected{% endif %}>{{ loc.name }}</option>
+                    {% endfor %}
+                </optgroup>
                 {% endfor %}
             </select>
 

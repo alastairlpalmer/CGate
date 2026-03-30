@@ -7,6 +7,24 @@ from django import forms
 from .models import BusinessSettings, Horse, Location, Owner, OwnershipShare, Placement, RateType
 
 
+def get_grouped_location_choices():
+    """Build location choices grouped by site for <optgroup> rendering."""
+    locations = Location.objects.order_by('site', 'name')
+    choices = [('', '---------')]
+    current_site = None
+    group = []
+    for loc in locations:
+        if loc.site != current_site:
+            if current_site is not None:
+                choices.append((current_site, group))
+            current_site = loc.site
+            group = []
+        group.append((loc.pk, loc.name))
+    if current_site is not None:
+        choices.append((current_site, group))
+    return choices
+
+
 class OwnerForm(forms.ModelForm):
     class Meta:
         model = Owner
@@ -72,6 +90,10 @@ class PlacementForm(forms.ModelForm):
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['location'].choices = get_grouped_location_choices()
+
     def clean(self):
         cleaned_data = super().clean()
         start_date = cleaned_data.get('start_date')
@@ -96,6 +118,11 @@ class MoveHorseForm(forms.Form):
         queryset=Location.objects.all(),
         widget=forms.Select(attrs={'class': 'form-select'})
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['new_location'].choices = get_grouped_location_choices()
+
     new_owner = forms.ModelChoiceField(
         queryset=Owner.objects.all(),
         required=False,
@@ -147,6 +174,11 @@ class SingleArrivalForm(forms.Form):
         queryset=Location.objects.all(),
         widget=forms.Select(attrs={'class': 'form-select'})
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['location'].choices = get_grouped_location_choices()
+
     owner = forms.ModelChoiceField(
         queryset=Owner.objects.all(),
         widget=forms.Select(attrs={'class': 'form-select'})

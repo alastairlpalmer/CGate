@@ -76,7 +76,7 @@ class Location(models.Model):
         ordering = ['site', 'name']
 
     def __str__(self):
-        return f"{self.name} ({self.site})"
+        return f"{self.site} — {self.name}"
 
     @cached_property
     def current_horses(self):

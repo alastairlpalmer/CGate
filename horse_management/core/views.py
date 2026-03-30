@@ -308,7 +308,7 @@ class HorseListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['locations'] = Location.objects.values('pk', 'name')
+        context['locations'] = Location.objects.order_by('site', 'name')
         context['owners'] = Owner.objects.values('pk', 'name')
         return context
 
@@ -603,6 +603,16 @@ class LocationListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['current_tab'] = self.request.GET.get('tab', 'locations')
 
+        if context['current_tab'] != 'history':
+            # Group locations by site for card display
+            from itertools import groupby
+            grouped = []
+            for site, locs in groupby(context['locations'], key=lambda l: l.site):
+                site_locs = list(locs)
+                site_horse_count = sum(l.horse_count for l in site_locs)
+                grouped.append((site, site_locs, site_horse_count))
+            context['grouped_locations'] = grouped
+
         # Movement History tab data
         if context['current_tab'] == 'history':
             placements = Placement.objects.select_related(
@@ -621,7 +631,7 @@ class LocationListView(LoginRequiredMixin, ListView):
                 placements = placements.filter(owner_id=owner_filter)
             context['placements'] = placements.order_by('-start_date')[:50]
             context['current_status'] = status
-            context['all_locations'] = Location.objects.all()
+            context['all_locations'] = Location.objects.order_by('site', 'name')
             context['owners'] = Owner.objects.all()
 
         return context
@@ -717,7 +727,7 @@ class PlacementListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['current_status'] = self.request.GET.get('status', 'active')
-        context['locations'] = Location.objects.all()
+        context['locations'] = Location.objects.order_by('site', 'name')
         context['owners'] = Owner.objects.all()
         return context
 
