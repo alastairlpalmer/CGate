@@ -331,8 +331,10 @@ class HorseDetailView(LoginRequiredMixin, DetailView):
         ).all()[:10]
         context['vaccinations'] = horse.vaccinations.select_related(
             'vaccination_type'
-        ).all()[:5]
-        context['farrier_visits'] = horse.farrier_visits.all()[:5]
+        ).all()[:10]
+        context['farrier_visits'] = horse.farrier_visits.select_related(
+            'service_provider'
+        ).all()[:10]
         context['extra_charges'] = horse.extra_charges.select_related(
             'owner'
         ).all()[:10]
@@ -350,6 +352,27 @@ class HorseDetailView(LoginRequiredMixin, DetailView):
             ).first()
         # Foals via dam FK
         context['foals'] = Horse.objects.filter(dam=horse) if horse.is_mare else []
+
+        # Build unified timeline
+        timeline = []
+        for p in context['placements']:
+            timeline.append({'type': 'placement', 'date': p.start_date, 'obj': p})
+        for v in context['vaccinations']:
+            timeline.append({'type': 'vaccination', 'date': v.date_given, 'obj': v})
+        for f in context['farrier_visits']:
+            timeline.append({'type': 'farrier', 'date': f.date, 'obj': f})
+        for w in context['worming_treatments']:
+            timeline.append({'type': 'worming', 'date': w.date, 'obj': w})
+        for ec in context['egg_counts']:
+            timeline.append({'type': 'egg_count', 'date': ec.date, 'obj': ec})
+        for v in context['vet_visits']:
+            timeline.append({'type': 'vet_visit', 'date': v.date, 'obj': v})
+        if horse.is_mare:
+            for br in context.get('breeding_records', []):
+                timeline.append({'type': 'breeding', 'date': br.date_covered, 'obj': br})
+        timeline.sort(key=lambda e: e['date'], reverse=True)
+        context['timeline_events'] = timeline
+
         return context
 
 
