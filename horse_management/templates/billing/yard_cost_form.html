@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Edit Yard Cost{% else %}Add Yard Cost{% endif %} - CGate{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{% if object %}Edit Yard Cost{% else %}Add Yard Cost{% endif %}</h1>
+        </div>
+    </div>
+
+    <div class="card">
+        <form method="post" enctype="multipart/form-data" class="divide-y divide-light-sage" x-data="{ isRecurring: {{ object.is_recurring|yesno:'true,false'|default:'false' }} }">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="mb-4 p-3 bg-error-red-50 border border-error-red/20 rounded text-sm text-error-red">
+                {% for error in form.non_field_errors %}
+                  <p>{{ error }}</p>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <!-- Cost Details -->
+            <fieldset class="p-5 space-y-4">
+                <legend class="section-title">Cost Details</legend>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
+                    <div>
+                        <label for="id_category" class="block text-sm font-medium text-charcoal">Category *</label>
+                        {{ form.category }}
+                        {% if form.category.errors %}
+                          <p class="mt-1 text-sm text-error-red">{{ form.category.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="id_date" class="block text-sm font-medium text-charcoal">Date *</label>
+                        {{ form.date }}
+                        {% if form.date.errors %}
+                          <p class="mt-1 text-sm text-error-red">{{ form.date.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="id_supplier" class="block text-sm font-medium text-charcoal">Supplier</label>
+                        {{ form.supplier }}
+                        {% if form.supplier.errors %}
+                          <p class="mt-1 text-sm text-error-red">{{ form.supplier.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="id_amount" class="block text-sm font-medium text-charcoal">Amount *</label>
+                        {{ form.amount }}
+                        {% if form.amount.errors %}
+                          <p class="mt-1 text-sm text-error-red">{{ form.amount.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="id_vat_amount" class="block text-sm font-medium text-charcoal">VAT Amount</label>
+                        {{ form.vat_amount }}
+                        <p class="mt-1 text-xs text-sage">Leave as 0 if not VAT registered</p>
+                        {% if form.vat_amount.errors %}
+                          <p class="mt-1 text-sm text-error-red">{{ form.vat_amount.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Description & Notes -->
+            <fieldset class="p-5 space-y-4">
+                <legend class="section-title">Details</legend>
+                <div class="grid grid-cols-1 gap-4 mt-3">
+                    <div>
+                        <label for="id_description" class="block text-sm font-medium text-charcoal">Description *</label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                          <p class="mt-1 text-sm text-error-red">{{ form.description.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
+                        {{ form.notes }}
+                        {% if form.notes.errors %}
+                          <p class="mt-1 text-sm text-error-red">{{ form.notes.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Recurring & Receipt -->
+            <fieldset class="p-5 space-y-4">
+                <legend class="section-title">Options</legend>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
+                    <div class="sm:col-span-2 flex items-center gap-3">
+                        <div @click="isRecurring = !isRecurring">
+                            {{ form.is_recurring }}
+                        </div>
+                        <label for="id_is_recurring" class="text-sm font-medium text-charcoal cursor-pointer" @click="isRecurring = !isRecurring">
+                            This is a recurring cost
+                        </label>
+                    </div>
+                    <div x-show="isRecurring" x-transition x-cloak>
+                        <label for="id_recurrence_interval" class="block text-sm font-medium text-charcoal">Recurrence</label>
+                        {{ form.recurrence_interval }}
+                        {% if form.recurrence_interval.errors %}
+                          <p class="mt-1 text-sm text-error-red">{{ form.recurrence_interval.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label for="id_receipt_image" class="block text-sm font-medium text-charcoal">Receipt Image</label>
+                        {{ form.receipt_image }}
+                        {% if form.receipt_image.errors %}
+                          <p class="mt-1 text-sm text-error-red">{{ form.receipt_image.errors.0 }}</p>
+                        {% endif %}
+                        {% if object.receipt_image %}
+                        <p class="mt-1 text-sm text-sage">
+                            Current: <a href="{{ object.receipt_image.url }}" target="_blank" class="link">View receipt</a>
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Footer -->
+            <div class="flex justify-end gap-3 px-5 py-4 bg-parchment rounded-b-xl">
+                <a href="{% url 'costs_list' %}" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">
+                    {% if object %}Save Changes{% else %}Add Yard Cost{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

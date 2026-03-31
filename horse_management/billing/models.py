@@ -122,3 +122,65 @@ class ExtraCharge(models.Model):
         self.invoiced = True
         self.invoice = invoice
         self.save(update_fields=['invoiced', 'invoice'])
+
+
+class YardCost(models.Model):
+    """Yard-level costs not tied to a specific horse."""
+
+    class CostCategory(models.TextChoices):
+        HAY = 'hay', 'Hay'
+        STRAW = 'straw', 'Straw/Bedding'
+        FEED = 'feed', 'Feed'
+        SUPPLEMENTS = 'supplements', 'Supplements'
+        STAFF = 'staff', 'Staff/Wages'
+        RENT = 'rent', 'Rent/Lease'
+        FUEL = 'fuel', 'Fuel'
+        UTILITIES = 'utilities', 'Utilities'
+        REPAIRS = 'repairs', 'Repairs/Maintenance'
+        INSURANCE = 'insurance', 'Insurance'
+        EQUIPMENT = 'equipment', 'Equipment'
+        PROFESSIONAL = 'professional', 'Professional Services'
+        OTHER = 'other', 'Other'
+
+    class RecurrenceInterval(models.TextChoices):
+        WEEKLY = 'weekly', 'Weekly'
+        MONTHLY = 'monthly', 'Monthly'
+        QUARTERLY = 'quarterly', 'Quarterly'
+        ANNUAL = 'annual', 'Annual'
+
+    category = models.CharField(max_length=20, choices=CostCategory.choices)
+    date = models.DateField()
+    supplier = models.CharField(max_length=200, blank=True)
+    description = models.CharField(max_length=500)
+    amount = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.00'))],
+    )
+    vat_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00'))],
+    )
+    is_recurring = models.BooleanField(default=False)
+    recurrence_interval = models.CharField(
+        max_length=20, choices=RecurrenceInterval.choices, blank=True
+    )
+    receipt_image = models.ImageField(
+        upload_to='receipts/yard/%Y/%m/', blank=True, null=True
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date']
+        indexes = [
+            models.Index(fields=['date', 'category'], name='yardcost_date_category'),
+            models.Index(fields=['is_recurring'], name='yardcost_recurring'),
+        ]
+
+    def __str__(self):
+        return f"{self.get_category_display()} - {self.description}: £{self.amount} ({self.date})"
+
+    @property
+    def total_with_vat(self):
+        return self.amount + self.vat_amount

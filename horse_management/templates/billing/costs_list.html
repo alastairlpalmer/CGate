@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+
+{% block title %}Costs - CGate{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Costs</h1>
+            <p class="page-subtitle">All yard and rechargeable costs in one place</p>
+        </div>
+        <div class="flex items-center gap-2" x-data="{ open: false }">
+            <div class="relative">
+                <button @click="open = !open" class="btn-primary">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
+                    Add Cost
+                    <svg class="w-3 h-3 ml-1" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+                    </svg>
+                </button>
+                <div x-show="open" @click.outside="open = false" x-transition
+                     class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-light-sage z-20 overflow-hidden" x-cloak>
+                    <a href="{% url 'yard_cost_create' %}" class="flex items-center gap-3 px-4 py-3 hover:bg-parchment transition-colors">
+                        <svg class="w-5 h-5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21m-3.75 3H21"/>
+                        </svg>
+                        <div>
+                            <p class="text-sm font-medium text-charcoal">Yard Cost</p>
+                            <p class="text-xs text-sage">Hay, rent, staff, fuel, etc.</p>
+                        </div>
+                    </a>
+                    <a href="{% url 'charge_create' %}" class="flex items-center gap-3 px-4 py-3 hover:bg-parchment transition-colors border-t border-light-sage">
+                        <svg class="w-5 h-5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75"/>
+                        </svg>
+                        <div>
+                            <p class="text-sm font-medium text-charcoal">Rechargeable Cost</p>
+                            <p class="text-xs text-sage">Horse-specific, billed to owner</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="card p-5">
+            <dt class="text-xs font-medium text-sage uppercase tracking-wide">This Month</dt>
+            <dd class="mt-1 text-2xl font-bold text-charcoal">&pound;{{ month_total|floatformat:2 }}</dd>
+        </div>
+        <div class="card p-5">
+            <dt class="text-xs font-medium text-sage uppercase tracking-wide">This Year</dt>
+            <dd class="mt-1 text-2xl font-bold text-charcoal">&pound;{{ year_total|floatformat:2 }}</dd>
+        </div>
+        <div class="card p-5">
+            <dt class="text-xs font-medium text-sage uppercase tracking-wide">Rechargeable Unbilled</dt>
+            <dd class="mt-1 text-2xl font-bold text-forest">&pound;{{ unbilled_total|floatformat:2 }}</dd>
+        </div>
+        <div class="card p-5">
+            <dt class="text-xs font-medium text-sage uppercase tracking-wide">Yard Costs (Month)</dt>
+            <dd class="mt-1 text-2xl font-bold text-charcoal">&pound;{{ yard_month_total|floatformat:2 }}</dd>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card px-5 py-4">
+        <form method="get" class="flex flex-wrap items-end gap-4">
+            <!-- Date Period Pills -->
+            <div>
+                <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Period</label>
+                <div class="inline-flex rounded-lg shadow-sm">
+                    <a href="?period=month{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source }}{% endif %}"
+                       class="px-3 py-2 text-xs font-medium rounded-l-lg border {% if current_period == 'month' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
+                        Month
+                    </a>
+                    <a href="?period=quarter{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source }}{% endif %}"
+                       class="px-3 py-2 text-xs font-medium border-t border-b {% if current_period == 'quarter' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
+                        Quarter
+                    </a>
+                    <a href="?period=year{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source }}{% endif %}"
+                       class="px-3 py-2 text-xs font-medium rounded-r-lg border {% if current_period == 'year' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
+                        Year
+                    </a>
+                </div>
+            </div>
+
+            <!-- Category -->
+            <div>
+                <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Category</label>
+                <select name="category" class="form-select w-auto">
+                    <option value="">All categories</option>
+                    {% for val, label in all_categories %}
+                    <option value="{{ val }}" {% if request.GET.category == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Source -->
+            <div>
+                <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Type</label>
+                <select name="source" class="form-select w-auto">
+                    <option value="">All costs</option>
+                    <option value="rechargeable" {% if request.GET.source == 'rechargeable' %}selected{% endif %}>Rechargeable only</option>
+                    <option value="yard" {% if request.GET.source == 'yard' %}selected{% endif %}>Yard costs only</option>
+                </select>
+            </div>
+
+            <!-- Supplier -->
+            <div>
+                <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Supplier</label>
+                <input type="text" name="supplier" value="{{ request.GET.supplier }}" placeholder="Search supplier..." class="form-input w-auto">
+            </div>
+
+            <!-- Hidden period pass-through -->
+            <input type="hidden" name="period" value="{{ current_period }}">
+
+            <div class="flex items-end gap-2">
+                <button type="submit" class="btn-secondary">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z"/>
+                    </svg>
+                    Filter
+                </button>
+                <a href="{% url 'costs_list' %}" class="btn-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Costs Table -->
+    <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Description</th>
+                        <th>Supplier</th>
+                        <th class="text-right">Amount</th>
+                        <th>Horse</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cost in costs %}
+                    <tr>
+                        <td class="text-sage tabular-nums">{{ cost.date }}</td>
+                        <td>
+                            <span class="{% if cost.category_key == 'hay' or cost.category_key == 'straw' or cost.category_key == 'feed' %}badge-success{% elif cost.category_key == 'vet' %}badge-danger{% elif cost.category_key == 'farrier' %}badge-warning{% elif cost.category_key == 'staff' or cost.category_key == 'rent' %}badge-info{% else %}badge-neutral{% endif %}">
+                                {{ cost.category }}
+                            </span>
+                        </td>
+                        <td class="text-charcoal">{{ cost.description|truncatewords:10 }}</td>
+                        <td class="text-sage">{{ cost.supplier|default:"—" }}</td>
+                        <td class="text-right font-medium text-charcoal tabular-nums">&pound;{{ cost.amount|floatformat:2 }}</td>
+                        <td>
+                            {% if cost.horse_pk %}
+                            <a href="{% url 'horse_detail' cost.horse_pk %}" class="link">{{ cost.horse }}</a>
+                            {% else %}
+                            <span class="text-sage">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if cost.source == 'charge' %}
+                                {% if cost.invoiced %}
+                                <span class="badge-success">Invoiced</span>
+                                {% else %}
+                                <span class="badge-warning">Unbilled</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge-neutral">Yard</span>
+                                {% if cost.is_recurring %}
+                                <span class="badge-info">Recurring</span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="flex items-center gap-1">
+                                <a href="{{ cost.edit_url }}" class="btn-ghost btn-xs">Edit</a>
+                                {% if cost.source == 'yard' %}
+                                <a href="{% url 'yard_cost_duplicate' cost.pk %}" class="btn-ghost btn-xs" title="Duplicate with today's date">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.5a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/>
+                                    </svg>
+                                </a>
+                                {% endif %}
+                                {% if cost.source == 'yard' or not cost.invoiced %}
+                                <a href="{{ cost.delete_url }}" class="btn-ghost btn-xs text-error-red hover:text-error-red hover:bg-error-red-50">Delete</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8">
+                            <div class="py-12 text-center">
+                                <svg class="mx-auto h-12 w-12 text-sage/50" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/>
+                                </svg>
+                                <p class="mt-3 text-sm font-medium text-sage">No costs found for this period</p>
+                                <p class="mt-1 text-xs text-sage">Try adjusting your filters or add your first cost.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% include 'includes/pagination.html' %}
+
+</div>
+{% endblock %}

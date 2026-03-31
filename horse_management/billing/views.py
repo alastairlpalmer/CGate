@@ -2,17 +2,26 @@
 Views for billing app.
 """
 
+from datetime import date
+from decimal import Decimal
+from itertools import chain
+from operator import attrgetter
+
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.shortcuts import redirect
+from django.core.paginator import Paginator
+from django.db.models import Sum
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
 from core.models import Horse, Owner
 
-from .forms import ExtraChargeForm, ServiceProviderForm
-from .models import ExtraCharge, ServiceProvider
+from .forms import ExtraChargeForm, ServiceProviderForm, YardCostForm
+from .models import ExtraCharge, ServiceProvider, YardCost
 
 
 class ExtraChargeListView(LoginRequiredMixin, ListView):
@@ -150,3 +159,229 @@ class ServiceProviderUpdateView(LoginRequiredMixin, UpdateView):
     form_class = ServiceProviderForm
     template_name = 'billing/provider_form.html'
     success_url = reverse_lazy('provider_list')
+
+
+# ── Unified Costs View ──────────────────────────────────────────
+
+class CostsListView(LoginRequiredMixin, ListView):
+    template_name = 'billing/costs_list.html'
+    context_object_name = 'costs'
+    paginate_by = 50
+
+    def _date_range(self):
+        """Return (start_date, end_date, period_label) based on GET params."""
+        today = date.today()
+        period = self.request.GET.get('period', 'month')
+        if period == 'quarter':
+            q_start_month = ((today.month - 1) // 3) * 3 + 1
+            start = today.replace(month=q_start_month, day=1)
+            label = 'This Quarter'
+        elif period == 'year':
+            start = today.replace(month=1, day=1)
+            label = 'This Year'
+        elif period == 'custom':
+            from_str = self.request.GET.get('from', '')
+            to_str = self.request.GET.get('to', '')
+            try:
+                start = date.fromisoformat(from_str)
+                end = date.fromisoformat(to_str)
+                return start, end, 'Custom'
+            except (ValueError, TypeError):
+                start = today.replace(day=1)
+                label = 'This Month'
+        else:
+            start = today.replace(day=1)
+            label = 'This Month'
+        return start, today, label
+
+    def get_queryset(self):
+        # We don't use a real queryset — we merge in get_context_data
+        return ExtraCharge.objects.none()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        today = date.today()
+        start_date, end_date, period_label = self._date_range()
+
+        # Base querysets
+        charges_qs = ExtraCharge.objects.select_related(
+            'horse', 'owner', 'service_provider'
+        )
+        yard_qs = YardCost.objects.all()
+
+        # Apply date filter
+        charges_qs = charges_qs.filter(date__gte=start_date, date__lte=end_date)
+        yard_qs = yard_qs.filter(date__gte=start_date, date__lte=end_date)
+
+        # Category filter
+        category = self.request.GET.get('category', '')
+        if category:
+            charges_qs = charges_qs.filter(charge_type=category)
+            yard_qs = yard_qs.filter(category=category)
+
+        # Rechargeable filter
+        source = self.request.GET.get('source', '')
+        if source == 'rechargeable':
+            yard_qs = YardCost.objects.none()
+        elif source == 'yard':
+            charges_qs = ExtraCharge.objects.none()
+
+        # Supplier search
+        supplier = self.request.GET.get('supplier', '')
+        if supplier:
+            charges_qs = charges_qs.filter(service_provider__name__icontains=supplier)
+            yard_qs = yard_qs.filter(supplier__icontains=supplier)
+
+        # Normalize into dicts for merged display
+        merged = []
+        for c in charges_qs:
+            merged.append({
+                'source': 'charge',
+                'date': c.date,
+                'category': c.get_charge_type_display(),
+                'category_key': c.charge_type,
+                'description': c.description,
+                'supplier': c.service_provider.name if c.service_provider else '',
+                'amount': c.amount,
+                'horse': c.horse.name if c.horse else '',
+                'horse_pk': c.horse.pk if c.horse else None,
+                'invoiced': c.invoiced,
+                'is_recurring': False,
+                'pk': c.pk,
+                'edit_url': f'/billing/charges/{c.pk}/edit/',
+                'delete_url': f'/billing/charges/{c.pk}/delete/',
+            })
+        for y in yard_qs:
+            merged.append({
+                'source': 'yard',
+                'date': y.date,
+                'category': y.get_category_display(),
+                'category_key': y.category,
+                'description': y.description,
+                'supplier': y.supplier,
+                'amount': y.amount,
+                'horse': '',
+                'horse_pk': None,
+                'invoiced': False,
+                'is_recurring': y.is_recurring,
+                'pk': y.pk,
+                'edit_url': f'/billing/costs/yard/{y.pk}/edit/',
+                'delete_url': f'/billing/costs/yard/{y.pk}/delete/',
+            })
+        merged.sort(key=lambda x: x['date'], reverse=True)
+
+        # Paginate the merged list
+        paginator = Paginator(merged, self.paginate_by)
+        page_number = self.request.GET.get('page', 1)
+        page_obj = paginator.get_page(page_number)
+
+        context['costs'] = page_obj
+        context['page_obj'] = page_obj
+        context['paginator'] = paginator
+        context['is_paginated'] = page_obj.has_other_pages()
+
+        # Summary totals
+        month_start = today.replace(day=1)
+        year_start = today.replace(month=1, day=1)
+        context['month_total'] = (
+            (ExtraCharge.objects.filter(date__gte=month_start).aggregate(s=Sum('amount'))['s'] or Decimal('0')) +
+            (YardCost.objects.filter(date__gte=month_start).aggregate(s=Sum('amount'))['s'] or Decimal('0'))
+        )
+        context['year_total'] = (
+            (ExtraCharge.objects.filter(date__gte=year_start).aggregate(s=Sum('amount'))['s'] or Decimal('0')) +
+            (YardCost.objects.filter(date__gte=year_start).aggregate(s=Sum('amount'))['s'] or Decimal('0'))
+        )
+        context['unbilled_total'] = (
+            ExtraCharge.objects.filter(invoiced=False).aggregate(s=Sum('amount'))['s'] or Decimal('0')
+        )
+        context['yard_month_total'] = (
+            YardCost.objects.filter(date__gte=month_start).aggregate(s=Sum('amount'))['s'] or Decimal('0')
+        )
+
+        context['period_label'] = period_label
+        context['current_period'] = self.request.GET.get('period', 'month')
+
+        # Merged category choices for filter dropdown
+        all_categories = []
+        for val, label in ExtraCharge.ChargeType.choices:
+            all_categories.append((val, label))
+        for val, label in YardCost.CostCategory.choices:
+            if val not in dict(ExtraCharge.ChargeType.choices):
+                all_categories.append((val, label))
+        all_categories.sort(key=lambda x: x[1])
+        context['all_categories'] = all_categories
+
+        return context
+
+
+# ── YardCost CRUD ────────────────────────────────────────────────
+
+class YardCostCreateView(LoginRequiredMixin, CreateView):
+    model = YardCost
+    form_class = YardCostForm
+    template_name = 'billing/yard_cost_form.html'
+    success_url = reverse_lazy('costs_list')
+
+    def get_initial(self):
+        initial = super().get_initial()
+        initial['date'] = timezone.now().date()
+        return initial
+
+    def form_valid(self, form):
+        messages.success(self.request, "Yard cost added.")
+        return super().form_valid(form)
+
+
+class YardCostUpdateView(LoginRequiredMixin, UpdateView):
+    model = YardCost
+    form_class = YardCostForm
+    template_name = 'billing/yard_cost_form.html'
+    success_url = reverse_lazy('costs_list')
+
+    def form_valid(self, form):
+        messages.success(self.request, "Yard cost updated.")
+        return super().form_valid(form)
+
+
+class YardCostDeleteView(LoginRequiredMixin, DeleteView):
+    model = YardCost
+    template_name = 'billing/yard_cost_confirm_delete.html'
+    success_url = reverse_lazy('costs_list')
+
+    def form_valid(self, form):
+        messages.success(self.request, "Yard cost deleted.")
+        return super().form_valid(form)
+
+
+@login_required
+def yard_cost_duplicate(request, pk):
+    """Duplicate a yard cost with today's date."""
+    original = get_object_or_404(YardCost, pk=pk)
+    YardCost.objects.create(
+        category=original.category,
+        date=timezone.now().date(),
+        supplier=original.supplier,
+        description=original.description,
+        amount=original.amount,
+        vat_amount=original.vat_amount,
+        is_recurring=original.is_recurring,
+        recurrence_interval=original.recurrence_interval,
+        notes=original.notes,
+    )
+    messages.success(request, f"Duplicated '{original.description}' with today's date.")
+    return redirect('costs_list')
+
+
+@login_required
+def supplier_autocomplete(request):
+    """Return distinct supplier names for autocomplete."""
+    q = request.GET.get('q', '')
+    if len(q) < 2:
+        return JsonResponse([], safe=False)
+    suppliers = (
+        YardCost.objects
+        .filter(supplier__icontains=q)
+        .values_list('supplier', flat=True)
+        .distinct()[:10]
+    )
+    return JsonResponse(list(suppliers), safe=False)

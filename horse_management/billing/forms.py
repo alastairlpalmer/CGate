@@ -4,7 +4,7 @@ Forms for billing app.
 
 from django import forms
 
-from .models import ExtraCharge, ServiceProvider
+from .models import ExtraCharge, ServiceProvider, YardCost
 
 
 class ExtraChargeForm(forms.ModelForm):
@@ -24,6 +24,28 @@ class ExtraChargeForm(forms.ModelForm):
             'description': forms.TextInput(attrs={'class': 'form-input'}),
             'amount': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
             'split_by_ownership': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+            'receipt_image': forms.FileInput(attrs={'class': 'form-input'}),
+            'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+        }
+
+
+class YardCostForm(forms.ModelForm):
+    class Meta:
+        model = YardCost
+        fields = [
+            'category', 'date', 'supplier', 'description',
+            'amount', 'vat_amount', 'is_recurring', 'recurrence_interval',
+            'receipt_image', 'notes',
+        ]
+        widgets = {
+            'category': forms.Select(attrs={'class': 'form-select'}),
+            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'supplier': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Local Hay Merchant'}),
+            'description': forms.TextInput(attrs={'class': 'form-input'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
+            'vat_amount': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
+            'is_recurring': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+            'recurrence_interval': forms.Select(attrs={'class': 'form-select'}),
             'receipt_image': forms.FileInput(attrs={'class': 'form-input'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
