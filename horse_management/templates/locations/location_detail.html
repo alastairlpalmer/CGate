@@ -8,12 +8,15 @@
     <!-- Page Header -->
     <div class="page-header">
         <div>
-            <div class="flex items-center gap-1.5 text-sm text-sage mb-1">
+            <a href="{% url 'location_list' %}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest transition-colors duration-100 mb-1 group">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+                </svg>
                 <svg class="w-4 h-4 text-forest" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21m-3.75 3H21"/>
                 </svg>
                 <span class="font-medium text-forest">{{ location.site }}</span>
-            </div>
+            </a>
             <h1 class="page-title">{{ location.name }}</h1>
         </div>
         <div class="flex items-center gap-2">
@@ -36,22 +39,28 @@
                     <dt class="text-xs font-medium text-sage uppercase tracking-wide">Current Horses</dt>
                     <dd class="mt-1 text-3xl font-bold text-charcoal">{{ horses|length }}</dd>
                 </div>
-                {% if location.capacity %}
                 <div>
                     <dt class="text-xs font-medium text-sage uppercase tracking-wide">Capacity</dt>
+                    {% if location.capacity %}
                     <dd class="mt-1 text-3xl font-bold text-charcoal">{{ location.capacity }}</dd>
+                    {% else %}
+                    <dd class="mt-1 text-sm text-sage">Not set &middot; <a href="{% url 'location_update' location.pk %}" class="link text-sm">Edit</a></dd>
+                    {% endif %}
                 </div>
                 <div>
                     <dt class="text-xs font-medium text-sage uppercase tracking-wide">Available</dt>
+                    {% if location.capacity %}
                     <dd class="mt-1 text-3xl font-bold {% if location.availability > 0 %}text-sage{% else %}text-error-red{% endif %}">
                         {{ location.availability }}
                     </dd>
+                    {% else %}
+                    <dd class="mt-1 text-sm text-sage">&mdash;</dd>
+                    {% endif %}
                 </div>
-                {% endif %}
             </dl>
 
-            <!-- Capacity Progress Bar -->
             {% if location.capacity %}
+            <!-- Capacity Progress Bar -->
             <div class="mt-5">
                 <div class="h-2 rounded-full bg-light-sage overflow-hidden">
                     <div class="h-2 rounded-full {% if location.availability <= 0 %}bg-error-red{% elif location.availability <= 2 %}bg-forest{% else %}bg-sage{% endif %}"
