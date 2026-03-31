@@ -83,6 +83,7 @@ def app_settings(request):
         'biz_form': biz_form,
         'rate_types': RateType.objects.all(),
         'vaccination_types': VaccinationType.objects.all(),
+        'locations': Location.objects.order_by('site', 'name'),
     })
 
 
