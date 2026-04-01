@@ -590,7 +590,8 @@ def horse_move(request, pk):
                 location=form.cleaned_data['new_location'],
                 rate_type=new_rate_type,
                 start_date=move_date,
-                notes=form.cleaned_data['notes']
+                expected_departure=form.cleaned_data.get('expected_departure'),
+                notes=form.cleaned_data['notes'],
             )
             try:
                 new_placement.full_clean()
@@ -886,6 +887,7 @@ def log_arrival(request, pk):
             owner = form.cleaned_data['owner']
             rate_type = form.cleaned_data['rate_type']
             arrival_date = form.cleaned_data['arrival_date']
+            expected_departure = form.cleaned_data.get('expected_departure')
             notes = form.cleaned_data['notes']
 
             created = 0
@@ -898,6 +900,7 @@ def log_arrival(request, pk):
                         location=location,
                         rate_type=rate_type,
                         start_date=arrival_date,
+                        expected_departure=expected_departure,
                         notes=notes,
                     )
                     try:
@@ -981,6 +984,58 @@ def log_departure(request, pk):
 
 
 @login_required
+def new_arrival(request):
+    """Create a new horse and place it at a location in one step."""
+    from .forms import NewArrivalForm
+
+    if request.method == 'POST':
+        form = NewArrivalForm(request.POST)
+        if form.is_valid():
+            with transaction.atomic():
+                # Create horse
+                horse = Horse.objects.create(
+                    name=form.cleaned_data['name'],
+                    sex=form.cleaned_data.get('sex') or '',
+                    color=form.cleaned_data.get('color') or '',
+                    date_of_birth=form.cleaned_data.get('date_of_birth'),
+                    sire_name=form.cleaned_data.get('sire_name') or '',
+                    passport_number=form.cleaned_data.get('passport_number') or '',
+                    has_passport=form.cleaned_data.get('has_passport', False),
+                    is_active=True,
+                )
+                # Create ownership share
+                OwnershipShare.objects.create(
+                    horse=horse,
+                    owner=form.cleaned_data['owner'],
+                    share_percentage=100,
+                    is_primary_contact=True,
+                )
+                # Create placement
+                placement = Placement(
+                    horse=horse,
+                    owner=form.cleaned_data['owner'],
+                    location=form.cleaned_data['location'],
+                    rate_type=form.cleaned_data['rate_type'],
+                    start_date=form.cleaned_data['arrival_date'],
+                    expected_departure=form.cleaned_data.get('expected_departure'),
+                    notes=form.cleaned_data.get('notes', ''),
+                )
+                placement.full_clean()
+                placement.save()
+
+            messages.success(request, f"{horse.name} created and arrived at {placement.location.name}.")
+            return redirect('horse_detail', pk=horse.pk)
+    else:
+        initial = {'arrival_date': timezone.now().date()}
+        location_id = request.GET.get('location')
+        if location_id:
+            initial['location'] = location_id
+        form = NewArrivalForm(initial=initial)
+
+    return render(request, 'horses/horse_new_arrival.html', {'form': form})
+
+
+@login_required
 def horse_arrive(request, pk):
     """Log a single horse arriving at a location (from Horse Detail)."""
     horse = get_object_or_404(Horse, pk=pk)
@@ -994,6 +1049,7 @@ def horse_arrive(request, pk):
                 location=form.cleaned_data['location'],
                 rate_type=form.cleaned_data['rate_type'],
                 start_date=form.cleaned_data['arrival_date'],
+                expected_departure=form.cleaned_data.get('expected_departure'),
                 notes=form.cleaned_data['notes'],
             )
             try:

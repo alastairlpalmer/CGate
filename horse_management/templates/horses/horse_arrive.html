@@ -47,12 +47,23 @@
                     </div>
                 </div>
 
-                <div>
-                    <label for="id_arrival_date" class="block text-sm font-medium text-charcoal">Arrival Date *</label>
-                    {{ form.arrival_date }}
-                    {% if form.arrival_date.errors %}
-                    <p class="mt-1 text-xs text-error-red">{{ form.arrival_date.errors.0 }}</p>
-                    {% endif %}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div>
+                        <label for="id_arrival_date" class="block text-sm font-medium text-charcoal">Arrival Date *</label>
+                        {{ form.arrival_date }}
+                        {% if form.arrival_date.errors %}
+                        <p class="mt-1 text-xs text-error-red">{{ form.arrival_date.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="id_expected_departure" class="block text-sm font-medium text-charcoal">Expected Departure</label>
+                        {{ form.expected_departure }}
+                        <p class="mt-1 text-xs text-sage">When is this horse expected to leave?</p>
+                        {% if form.expected_departure.errors %}
+                        <p class="mt-1 text-xs text-error-red">{{ form.expected_departure.errors.0 }}</p>
+                        {% endif %}
+                    </div>
                 </div>
 
                 <div>

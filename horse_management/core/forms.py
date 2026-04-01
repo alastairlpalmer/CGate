@@ -169,6 +169,11 @@ class ArrivalForm(forms.Form):
     arrival_date = forms.DateField(
         widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'})
     )
+    expected_departure = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+        help_text="When are these horses expected to leave?"
+    )
     notes = forms.CharField(
         required=False,
         widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2})
@@ -206,6 +211,76 @@ class SingleArrivalForm(forms.Form):
         required=False,
         widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2})
     )
+
+
+class NewArrivalForm(forms.Form):
+    """Combined form: create a new horse and place it in one step."""
+    # Horse fields
+    name = forms.CharField(
+        max_length=200,
+        widget=forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Horse name'})
+    )
+    sex = forms.ChoiceField(
+        choices=[('', '---------')] + list(Horse.SEX_CHOICES) if hasattr(Horse, 'SEX_CHOICES') else [('', '---------')],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    color = forms.ChoiceField(
+        choices=[('', '---------')] + list(Horse.COLOR_CHOICES) if hasattr(Horse, 'COLOR_CHOICES') else [('', '---------')],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    date_of_birth = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'})
+    )
+    sire_name = forms.CharField(
+        max_length=200, required=False,
+        widget=forms.TextInput(attrs={'class': 'form-input'})
+    )
+    passport_number = forms.CharField(
+        max_length=50, required=False,
+        widget=forms.TextInput(attrs={'class': 'form-input'})
+    )
+    has_passport = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-checkbox'})
+    )
+
+    # Owner
+    owner = forms.ModelChoiceField(
+        queryset=Owner.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
+    # Placement fields
+    location = forms.ModelChoiceField(
+        queryset=Location.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    rate_type = forms.ModelChoiceField(
+        queryset=RateType.objects.filter(is_active=True),
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    arrival_date = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'})
+    )
+    expected_departure = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+        help_text="When is this horse expected to leave?"
+    )
+    notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2})
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['location'].choices = get_grouped_location_choices()
+        # Populate sex/color choices from the model
+        self.fields['sex'].choices = [('', '---------')] + list(Horse._meta.get_field('sex').choices)
+        self.fields['color'].choices = [('', '---------')] + list(Horse._meta.get_field('color').choices)
 
 
 class DepartureForm(forms.Form):
