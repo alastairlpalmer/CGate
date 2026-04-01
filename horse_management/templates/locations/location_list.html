@@ -213,7 +213,10 @@
                         </div>
                     </div>
                     <div class="border-t border-light-sage px-5 py-3 flex justify-between items-center">
-                        <a href="{% url 'location_detail' location.pk %}" class="link text-sm">View horses &rarr;</a>
+                        <div class="flex items-center gap-4">
+                            <a href="{% url 'location_detail' location.pk %}" class="link text-sm">View horses &rarr;</a>
+                            <a href="{% url 'feed_out_create' location_pk=location.pk %}" class="text-sm text-sage hover:text-forest transition-colors duration-100">Feed Out</a>
+                        </div>
                         <a href="{% url 'location_update' location.pk %}" class="text-sm text-sage hover:text-charcoal-light transition-colors duration-100">Edit</a>
                     </div>
                 </div>

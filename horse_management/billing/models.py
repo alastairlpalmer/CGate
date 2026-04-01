@@ -98,6 +98,13 @@ class ExtraCharge(models.Model):
         blank=True,
         null=True
     )
+    feed_out = models.ForeignKey(
+        'FeedOut',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='extra_charges',
+    )
     split_by_ownership = models.BooleanField(
         default=True,
         help_text="Split this charge among owners by their ownership %. "
@@ -184,3 +191,52 @@ class YardCost(models.Model):
     @property
     def total_with_vat(self):
         return self.amount + self.vat_amount
+
+
+class FeedOut(models.Model):
+    """Record of feed delivered to a field/location."""
+
+    class FeedType(models.TextChoices):
+        HAY = 'hay', 'Hay'
+        HAYLAGE = 'haylage', 'Haylage'
+        HARD_FEED = 'hard_feed', 'Hard Feed'
+        SUPPLEMENTS = 'supplements', 'Supplements'
+        OTHER = 'other', 'Other'
+
+    location = models.ForeignKey(
+        'core.Location',
+        on_delete=models.CASCADE,
+        related_name='feed_outs',
+    )
+    date = models.DateField()
+    feed_type = models.CharField(max_length=20, choices=FeedType.choices)
+    quantity = models.CharField(
+        max_length=100, blank=True,
+        help_text="e.g. 2 bales, 10kg, half a round bale"
+    )
+    total_cost = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.00'))],
+    )
+    notes = models.TextField(blank=True)
+    is_recharged = models.BooleanField(
+        default=False,
+        help_text="Recharge this cost to horse owners in the field"
+    )
+    yard_cost = models.ForeignKey(
+        YardCost,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='feed_outs',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date']
+        indexes = [
+            models.Index(fields=['location', 'date'], name='feedout_location_date'),
+        ]
+
+    def __str__(self):
+        return f"{self.get_feed_type_display()} - {self.location.name} ({self.date})"

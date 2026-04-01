@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block title %}Feed Out - {{ location.name }} - CGate{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <p class="text-sm text-sage mb-1">{{ location.site }} &middot; {{ location.name }}</p>
+            <h1 class="page-title">Record Feed Out</h1>
+        </div>
+    </div>
+
+    <div class="card">
+        <form method="post" x-data="{
+            isRecharged: false,
+            totalCost: 0,
+            selectedCount: {{ horses_with_owners|length }},
+            totalHorses: {{ horses_with_owners|length }},
+            get perHorse() {
+                return this.selectedCount > 0 ? (this.totalCost / this.selectedCount).toFixed(2) : '0.00';
+            },
+            toggleAll(checked) {
+                document.querySelectorAll('[name=recharge_horses]').forEach(cb => { cb.checked = checked; });
+                this.selectedCount = checked ? this.totalHorses : 0;
+            },
+            updateCount() {
+                this.selectedCount = document.querySelectorAll('[name=recharge_horses]:checked').length;
+            }
+        }" class="divide-y divide-light-sage">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="mb-4 p-3 bg-error-red-50 border border-error-red/20 rounded text-sm text-error-red">
+                {% for error in form.non_field_errors %}
+                  <p>{{ error }}</p>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <!-- Feed Details -->
+            <fieldset class="p-5 space-y-4">
+                <legend class="section-title">Feed Details</legend>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
+                    <div>
+                        <label for="id_feed_type" class="block text-sm font-medium text-charcoal">Feed Type *</label>
+                        {{ form.feed_type }}
+                        {% if form.feed_type.errors %}<p class="mt-1 text-sm text-error-red">{{ form.feed_type.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="id_date" class="block text-sm font-medium text-charcoal">Date *</label>
+                        {{ form.date }}
+                        {% if form.date.errors %}<p class="mt-1 text-sm text-error-red">{{ form.date.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="id_quantity" class="block text-sm font-medium text-charcoal">Quantity</label>
+                        {{ form.quantity }}
+                        {% if form.quantity.errors %}<p class="mt-1 text-sm text-error-red">{{ form.quantity.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="id_total_cost" class="block text-sm font-medium text-charcoal">Total Cost *</label>
+                        {{ form.total_cost }}
+                        {% if form.total_cost.errors %}<p class="mt-1 text-sm text-error-red">{{ form.total_cost.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Recharge to Owners -->
+            <fieldset class="p-5 space-y-4">
+                <legend class="section-title">Recharge to Owners</legend>
+                <div class="mt-3">
+                    <div class="flex items-center gap-3">
+                        {{ form.is_recharged }}
+                        <label for="id_is_recharged" class="text-sm font-medium text-charcoal cursor-pointer"
+                               @click="$nextTick(() => { isRecharged = document.getElementById('id_is_recharged').checked })">
+                            Recharge this cost to horse owners in this field
+                        </label>
+                    </div>
+
+                    <div x-show="isRecharged" x-transition x-cloak class="mt-4 space-y-3">
+                        {% if horses_with_owners %}
+                        <!-- Per-horse cost indicator -->
+                        <div class="flex items-center justify-between bg-light-sage rounded-lg px-4 py-2">
+                            <span class="text-sm text-charcoal">
+                                <span class="font-semibold" x-text="'£' + perHorse"></span> per horse
+                            </span>
+                            <span class="text-xs text-sage" x-text="selectedCount + ' of ' + totalHorses + ' horse' + (totalHorses !== 1 ? 's' : '') + ' selected'"></span>
+                        </div>
+
+                        <!-- Select all toggle -->
+                        <div class="flex items-center gap-2 pb-1">
+                            <input type="checkbox" checked class="form-checkbox rounded" @change="toggleAll($el.checked)">
+                            <span class="text-xs font-medium text-sage uppercase tracking-wider">Select All</span>
+                        </div>
+
+                        <!-- Horse list -->
+                        <div class="max-h-56 overflow-y-auto border border-light-sage rounded-lg divide-y divide-light-sage">
+                            {% for item in horses_with_owners %}
+                            <label class="flex items-center gap-3 px-4 py-2.5 hover:bg-parchment cursor-pointer transition-colors">
+                                <input type="checkbox" name="recharge_horses" value="{{ item.horse.pk }}"
+                                       {% if item.has_owner %}checked{% endif %}
+                                       @change="updateCount()"
+                                       class="form-checkbox rounded">
+                                <div class="flex-1 min-w-0">
+                                    <span class="text-sm font-medium text-charcoal">{{ item.horse.name }}</span>
+                                    <span class="text-xs text-sage ml-2">{{ item.owner_name }}</span>
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-sm text-sage">No horses currently at this location.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Notes -->
+            <fieldset class="p-5 space-y-4">
+                <legend class="section-title">Notes</legend>
+                <div class="mt-3">
+                    {{ form.notes }}
+                    {% if form.notes.errors %}<p class="mt-1 text-sm text-error-red">{{ form.notes.errors.0 }}</p>{% endif %}
+                </div>
+            </fieldset>
+
+            <!-- Footer -->
+            <div class="flex justify-end gap-3 px-5 py-4 bg-parchment rounded-b-xl">
+                <a href="{% url 'location_detail' location.pk %}" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">Record Feed Out</button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

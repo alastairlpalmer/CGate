@@ -4,7 +4,7 @@ Forms for billing app.
 
 from django import forms
 
-from .models import ExtraCharge, ServiceProvider, YardCost
+from .models import ExtraCharge, FeedOut, ServiceProvider, YardCost
 
 
 class ExtraChargeForm(forms.ModelForm):
@@ -47,6 +47,20 @@ class YardCostForm(forms.ModelForm):
             'is_recurring': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
             'recurrence_interval': forms.Select(attrs={'class': 'form-select'}),
             'receipt_image': forms.FileInput(attrs={'class': 'form-input'}),
+            'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+        }
+
+
+class FeedOutForm(forms.ModelForm):
+    class Meta:
+        model = FeedOut
+        fields = ['date', 'feed_type', 'quantity', 'total_cost', 'is_recharged', 'notes']
+        widgets = {
+            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'feed_type': forms.Select(attrs={'class': 'form-select'}),
+            'quantity': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. 2 bales, 10kg'}),
+            'total_cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
+            'is_recharged': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 

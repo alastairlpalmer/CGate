@@ -5,7 +5,7 @@ Django admin configuration for billing models.
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import ExtraCharge, ServiceProvider, YardCost
+from .models import ExtraCharge, FeedOut, ServiceProvider, YardCost
 
 
 @admin.register(ServiceProvider)
@@ -44,4 +44,14 @@ class YardCostAdmin(admin.ModelAdmin):
     list_filter = ['category', 'is_recurring', 'date']
     search_fields = ['supplier', 'description']
     date_hierarchy = 'date'
+    readonly_fields = ['created_at', 'updated_at']
+
+
+@admin.register(FeedOut)
+class FeedOutAdmin(admin.ModelAdmin):
+    list_display = ['location', 'date', 'feed_type', 'quantity', 'total_cost', 'is_recharged']
+    list_filter = ['feed_type', 'is_recharged', 'date']
+    search_fields = ['location__name', 'notes']
+    date_hierarchy = 'date'
+    raw_id_fields = ['location', 'yard_cost']
     readonly_fields = ['created_at', 'updated_at']

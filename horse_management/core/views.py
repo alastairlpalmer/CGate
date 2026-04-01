@@ -674,6 +674,13 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
             context['history_placements'] = history.order_by('-start_date')[:50]
             context['current_status'] = status
 
+        # Feed history tab data
+        if context['current_tab'] == 'feed':
+            from billing.models import FeedOut
+            context['feed_outs'] = FeedOut.objects.filter(
+                location=self.object
+            ).select_related('yard_cost').order_by('-date')[:50]
+
         return context
 
 

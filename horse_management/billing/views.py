@@ -20,8 +20,8 @@ from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
 from core.models import Horse, Owner
 
-from .forms import ExtraChargeForm, ServiceProviderForm, YardCostForm
-from .models import ExtraCharge, ServiceProvider, YardCost
+from .forms import ExtraChargeForm, FeedOutForm, ServiceProviderForm, YardCostForm
+from .models import ExtraCharge, FeedOut, ServiceProvider, YardCost
 
 
 class ExtraChargeListView(LoginRequiredMixin, ListView):
@@ -385,3 +385,85 @@ def supplier_autocomplete(request):
         .distinct()[:10]
     )
     return JsonResponse(list(suppliers), safe=False)
+
+
+# ── Feed Out ─────────────────────────────────────────────────────
+
+@login_required
+def feed_out_create(request, location_pk):
+    """Record feed delivered to a location, optionally recharging to horse owners."""
+    from django.db import transaction
+
+    from core.models import Location
+
+    location = get_object_or_404(Location, pk=location_pk)
+    horses_at_location = Horse.objects.filter(
+        placements__location=location,
+        placements__end_date__isnull=True,
+    ).distinct().select_related()
+
+    # Build list with owner info for the template
+    horses_with_owners = []
+    for h in horses_at_location:
+        owner = h.current_owner
+        horses_with_owners.append({
+            'horse': h,
+            'owner_name': owner.name if owner else 'No owner',
+            'has_owner': owner is not None,
+        })
+
+    if request.method == 'POST':
+        form = FeedOutForm(request.POST)
+        if form.is_valid():
+            with transaction.atomic():
+                feed_out = form.save(commit=False)
+                feed_out.location = location
+                feed_out.save()
+
+                # Create YardCost for internal tracking
+                cat = 'hay' if feed_out.feed_type in ('hay', 'haylage') else 'feed'
+                yard_cost = YardCost.objects.create(
+                    category=cat,
+                    date=feed_out.date,
+                    description=f"Feed out: {feed_out.get_feed_type_display()} to {location.name}"
+                                + (f" ({feed_out.quantity})" if feed_out.quantity else ""),
+                    amount=feed_out.total_cost,
+                )
+                feed_out.yard_cost = yard_cost
+                feed_out.save(update_fields=['yard_cost'])
+
+                # Recharge to horse owners
+                if feed_out.is_recharged:
+                    selected_ids = request.POST.getlist('recharge_horses')
+                    selected = horses_at_location.filter(pk__in=selected_ids)
+                    count = selected.count()
+                    if count > 0:
+                        per_horse = (feed_out.total_cost / Decimal(count)).quantize(Decimal('0.01'))
+                        remainder = feed_out.total_cost - (per_horse * count)
+                        for i, horse in enumerate(selected):
+                            owner = horse.current_owner
+                            if not owner:
+                                continue
+                            amount = per_horse + remainder if i == 0 else per_horse
+                            ExtraCharge.objects.create(
+                                horse=horse,
+                                owner=owner,
+                                charge_type='feed',
+                                date=feed_out.date,
+                                description=f"{feed_out.get_feed_type_display()} - {location.name}"
+                                            + (f" ({feed_out.quantity})" if feed_out.quantity else ""),
+                                amount=amount,
+                                split_by_ownership=True,
+                                feed_out=feed_out,
+                            )
+
+            messages.success(request, f"Feed out recorded for {location.name}.")
+            return redirect('location_detail', pk=location.pk)
+    else:
+        form = FeedOutForm(initial={'date': timezone.now().date()})
+
+    return render(request, 'billing/feed_out_form.html', {
+        'form': form,
+        'location': location,
+        'horses_with_owners': horses_with_owners,
+    })
