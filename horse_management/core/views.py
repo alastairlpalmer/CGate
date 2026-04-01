@@ -44,14 +44,9 @@ from .models import Horse, Invoice, Location, Owner, OwnershipShare, Placement, 
 
 def health_check(request):
     """Lightweight DB ping. No auth required. Used by Vercel cron to keep Supabase awake."""
-    start = time.monotonic()
     with connection.cursor() as cursor:
         cursor.execute("SELECT 1")
-    db_ms = (time.monotonic() - start) * 1000
-    return JsonResponse({
-        "status": "ok",
-        "db_ping_ms": round(db_ms, 1),
-    })
+    return JsonResponse({"status": "ok"})
 
 
 logger = logging.getLogger(__name__)

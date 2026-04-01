@@ -4,7 +4,7 @@ Billing and extra charges models.
 
 from decimal import Decimal
 
-from django.core.validators import MinValueValidator
+from django.core.validators import FileExtensionValidator, MinValueValidator
 from django.db import models
 
 
@@ -95,8 +95,8 @@ class ExtraCharge(models.Model):
     )
     receipt_image = models.ImageField(
         upload_to='receipts/%Y/%m/',
-        blank=True,
-        null=True
+        blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'pdf'])],
     )
     feed_out = models.ForeignKey(
         'FeedOut',
@@ -172,7 +172,8 @@ class YardCost(models.Model):
         max_length=20, choices=RecurrenceInterval.choices, blank=True
     )
     receipt_image = models.ImageField(
-        upload_to='receipts/yard/%Y/%m/', blank=True, null=True
+        upload_to='receipts/yard/%Y/%m/', blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'pdf'])],
     )
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

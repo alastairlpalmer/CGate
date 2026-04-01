@@ -6,7 +6,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from functools import cached_property
 
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
 from django.db import models
 from django.db.models import F
 from django.utils import timezone
@@ -143,7 +143,10 @@ class Horse(models.Model):
         related_name='offspring_as_dam', help_text="Dam (mother) if she is in the system"
     )
     sire_name = models.CharField(max_length=200, blank=True, help_text="Stallion name")
-    photo = models.ImageField(upload_to='horses/', blank=True, null=True)
+    photo = models.ImageField(
+        upload_to='horses/', blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])],
+    )
     notes = models.TextField(blank=True, help_text="Special notes (e.g., first winter, lame, needs rug)")
     passport_number = models.CharField(max_length=100, blank=True)
     has_passport = models.BooleanField(default=True)
@@ -560,7 +563,10 @@ class BusinessSettings(models.Model):
         default="N/A",
         help_text="VAT registration number, or N/A if not registered"
     )
-    logo = models.ImageField(upload_to='business/', blank=True, null=True)
+    logo = models.ImageField(
+        upload_to='business/', blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'svg'])],
+    )
     bank_details = models.TextField(blank=True, help_text="Bank details for payment")
     card_payment_url = models.URLField(
         blank=True,

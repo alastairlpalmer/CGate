@@ -162,6 +162,7 @@ STORAGES = {
     },
 }
 WHITENOISE_USE_FINDERS = True
+WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0  # 1 year in production, no cache in dev
 
 # Media files (uploads)
 MEDIA_URL = '/media/'
@@ -207,6 +208,14 @@ LOGIN_URL = '/accounts/login/'
 SESSION_COOKIE_AGE = 28800  # 8 hours
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+# CSRF cookie
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Lax'
+
+# Clickjacking protection
+X_FRAME_OPTIONS = 'DENY'
 
 # Logging — surface slow-request warnings in Vercel function logs
 LOGGING = {
