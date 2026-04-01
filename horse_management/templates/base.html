@@ -15,6 +15,8 @@
     <script defer src="{% static 'js/alpine.min.js' %}"></script>
     <!-- HTMX -->
     <script src="{% static 'js/htmx.min.js' %}"></script>
+    <!-- Chart.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-parchment font-body antialiased text-charcoal" x-data="{ sidebarOpen: false }" hx-boost="true" hx-swap="innerHTML transition:true show:window:top">

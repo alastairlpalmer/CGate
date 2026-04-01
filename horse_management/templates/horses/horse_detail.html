@@ -121,6 +121,12 @@
                             <dt class="text-xs font-medium text-sage uppercase tracking-wider">Arrived</dt>
                             <dd class="mt-1 text-sm text-charcoal">{{ current_placement.start_date }}</dd>
                         </div>
+                        {% if current_placement.expected_departure %}
+                        <div>
+                            <dt class="text-xs font-medium text-sage uppercase tracking-wider">Expected Departure</dt>
+                            <dd class="mt-1 text-sm text-forest font-medium">{{ current_placement.expected_departure }}</dd>
+                        </div>
+                        {% endif %}
                     </dl>
                     {% else %}
                     <div class="text-center py-6">

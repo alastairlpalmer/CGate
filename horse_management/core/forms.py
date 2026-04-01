@@ -80,7 +80,7 @@ class HorseForm(forms.ModelForm):
 class PlacementForm(forms.ModelForm):
     class Meta:
         model = Placement
-        fields = ['horse', 'owner', 'location', 'rate_type', 'start_date', 'end_date', 'notes']
+        fields = ['horse', 'owner', 'location', 'rate_type', 'start_date', 'end_date', 'expected_departure', 'notes']
         widgets = {
             'horse': forms.Select(attrs={'class': 'form-select'}),
             'owner': forms.Select(attrs={'class': 'form-select'}),
@@ -88,6 +88,7 @@ class PlacementForm(forms.ModelForm):
             'rate_type': forms.Select(attrs={'class': 'form-select'}),
             'start_date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
             'end_date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'expected_departure': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -138,6 +139,11 @@ class MoveHorseForm(forms.Form):
     )
     move_date = forms.DateField(
         widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'})
+    )
+    expected_departure = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+        help_text="When do you expect this horse to leave?"
     )
     notes = forms.CharField(
         required=False,
@@ -190,6 +196,11 @@ class SingleArrivalForm(forms.Form):
     )
     arrival_date = forms.DateField(
         widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'})
+    )
+    expected_departure = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+        help_text="When do you expect this horse to leave?"
     )
     notes = forms.CharField(
         required=False,

@@ -134,39 +134,21 @@ def dashboard(request):
 
 def _dashboard_inner(request):
     """Dashboard queries (health alerts loaded via HTMX)."""
+    import calendar
+    import json
+    from datetime import date
+    from decimal import Decimal
+
+    from django.db.models.functions import TruncMonth
+
+    from billing.models import FeedOut, YardCost
+
     today = timezone.now().date()
     thirty_days = today + timedelta(days=30)
     two_weeks = today + timedelta(days=14)
 
     # Horse counts
     total_horses = Horse.objects.filter(is_active=True).count()
-    horses_by_location = Location.objects.annotate(
-        horse_count=Count(
-            'placements',
-            filter=Q(placements__end_date__isnull=True)
-        )
-    ).filter(horse_count__gt=0).order_by('-horse_count')
-
-    # Owner summary — fall back to placement-based count if OwnershipShare
-    # table hasn't been created yet (migration 0006).
-    try:
-        owners_with_horses = Owner.objects.annotate(
-            horse_count=Count(
-                'ownership_shares',
-                filter=Q(ownership_shares__horse__is_active=True),
-                distinct=True,
-            )
-        ).filter(horse_count__gt=0).order_by('-horse_count')[:10]
-        # Force evaluation to trigger any DB error now
-        list(owners_with_horses)
-    except Exception:
-        owners_with_horses = Owner.objects.annotate(
-            horse_count=Count(
-                'placements',
-                filter=Q(placements__end_date__isnull=True),
-                distinct=True,
-            )
-        ).filter(horse_count__gt=0).order_by('-horse_count')[:10]
 
     # Vaccinations due soon
     vaccinations_due = Vaccination.objects.filter(
@@ -188,23 +170,144 @@ def _dashboard_inner(request):
     ).select_related('owner').order_by('due_date')[:10]
 
     # Unbilled charges
-    unbilled_charges = ExtraCharge.objects.filter(
-        invoiced=False
-    ).select_related('horse', 'owner').order_by('-date')[:10]
-
     unbilled_total = ExtraCharge.objects.filter(invoiced=False).aggregate(
         total=Sum('amount')
     )['total'] or 0
 
+    # ── Revenue vs Cost Chart Data ──────────────────────────────
+    twelve_months_ago = today.replace(day=1) - timedelta(days=365)
+
+    # Historical revenue by month (invoices)
+    revenue_qs = (
+        Invoice.objects.filter(
+            status__in=['paid', 'sent'],
+            period_end__gte=twelve_months_ago,
+        )
+        .annotate(month=TruncMonth('period_end'))
+        .values('month')
+        .annotate(total=Sum('total'))
+        .order_by('month')
+    )
+    revenue_map = {r['month'].date(): float(r['total']) for r in revenue_qs}
+
+    # Historical costs by month (ExtraCharge + YardCost)
+    charge_qs = (
+        ExtraCharge.objects.filter(date__gte=twelve_months_ago)
+        .annotate(month=TruncMonth('date'))
+        .values('month')
+        .annotate(total=Sum('amount'))
+        .order_by('month')
+    )
+    yard_qs = (
+        YardCost.objects.filter(date__gte=twelve_months_ago)
+        .annotate(month=TruncMonth('date'))
+        .values('month')
+        .annotate(total=Sum('amount'))
+        .order_by('month')
+    )
+    cost_map = {}
+    for c in charge_qs:
+        d = c['month'].date()
+        cost_map[d] = cost_map.get(d, 0) + float(c['total'])
+    for y in yard_qs:
+        d = y['month'].date()
+        cost_map[d] = cost_map.get(d, 0) + float(y['total'])
+
+    # Build month labels for last 12 months
+    month_labels = []
+    revenue_data = []
+    cost_data = []
+    cursor = today.replace(day=1) - timedelta(days=335)  # ~11 months ago
+    cursor = cursor.replace(day=1)
+    for i in range(12):
+        m = (cursor.month + i - 1) % 12 + 1
+        y = cursor.year + (cursor.month + i - 1) // 12
+        d = date(y, m, 1)
+        month_labels.append(d.strftime('%b %y'))
+        revenue_data.append(revenue_map.get(d, 0))
+        cost_data.append(cost_map.get(d, 0))
+
+    # Revenue forecast (next 6 months)
+    active_placements = Placement.objects.filter(
+        end_date__isnull=True
+    ).select_related('rate_type')
+    forecast_labels = []
+    forecast_revenue = []
+    forecast_cost = []
+    avg_cost = sum(cost_data[-3:]) / 3 if any(cost_data[-3:]) else 0
+    for i in range(1, 7):
+        m = (today.month + i - 1) % 12 + 1
+        y = today.year + (today.month + i - 1) // 12
+        d = date(y, m, 1)
+        days_in_month = calendar.monthrange(y, m)[1]
+        forecast_labels.append(d.strftime('%b %y'))
+        # Sum revenue from placements still expected to be active
+        month_rev = Decimal('0')
+        for p in active_placements:
+            depart = p.expected_departure
+            if depart and depart < d:
+                continue  # Horse expected to have left before this month
+            month_rev += p.rate_type.daily_rate * days_in_month
+        forecast_revenue.append(float(month_rev))
+        forecast_cost.append(round(avg_cost, 2))
+
+    chart_data = json.dumps({
+        'monthly': {
+            'labels': month_labels + forecast_labels,
+            'revenue': revenue_data + forecast_revenue,
+            'costs': cost_data + forecast_cost,
+            'forecastStart': len(month_labels),
+        },
+    })
+
+    # ── Site Capacity Data ──────────────────────────────────────
+    sites_capacity = (
+        Location.objects.values('site')
+        .annotate(
+            total_horses=Count('placements', filter=Q(placements__end_date__isnull=True)),
+            total_capacity=Sum('capacity'),
+        )
+        .order_by('site')
+    )
+    capacity_data = json.dumps({
+        'labels': [s['site'] for s in sites_capacity],
+        'horses': [s['total_horses'] for s in sites_capacity],
+        'capacity': [s['total_capacity'] or 0 for s in sites_capacity],
+    })
+
+    # ── Recent Activity Timeline ────────────────────────────────
+    activity = []
+    # Recent placements (arrivals)
+    for p in Placement.objects.filter(end_date__isnull=True).select_related('horse', 'location').order_by('-start_date')[:5]:
+        activity.append({'date': p.start_date, 'type': 'placement', 'desc': f"{p.horse.name} arrived at {p.location.name}", 'link': f'/horses/{p.horse.pk}/'})
+    # Recent vaccinations
+    for v in Vaccination.objects.select_related('horse', 'vaccination_type').order_by('-date_given')[:5]:
+        activity.append({'date': v.date_given, 'type': 'vaccination', 'desc': f"{v.horse.name} — {v.vaccination_type.name}", 'link': f'/horses/{v.horse.pk}/'})
+    # Recent farrier
+    for f in FarrierVisit.objects.select_related('horse').order_by('-date')[:5]:
+        activity.append({'date': f.date, 'type': 'farrier', 'desc': f"{f.horse.name} — {f.get_work_done_display()}", 'link': f'/horses/{f.horse.pk}/'})
+    # Recent vet visits
+    for v in VetVisit.objects.select_related('horse').order_by('-date')[:5]:
+        activity.append({'date': v.date, 'type': 'vet_visit', 'desc': f"{v.horse.name} — {v.reason[:40]}", 'link': f'/horses/{v.horse.pk}/'})
+    # Recent feed outs
+    for fo in FeedOut.objects.select_related('location').order_by('-date')[:5]:
+        activity.append({'date': fo.date, 'type': 'feed', 'desc': f"{fo.get_feed_type_display()} to {fo.location.name}", 'link': f'/locations/{fo.location.pk}/?tab=feed'})
+    # Recent charges
+    for c in ExtraCharge.objects.select_related('horse').order_by('-date')[:5]:
+        activity.append({'date': c.date, 'type': 'charge', 'desc': f"{c.horse.name} — {c.get_charge_type_display()} £{c.amount}", 'link': f'/billing/charges/{c.pk}/edit/'})
+
+    activity.sort(key=lambda x: x['date'], reverse=True)
+    activity = activity[:15]
+
     context = {
         'total_horses': total_horses,
-        'horses_by_location': horses_by_location,
-        'owners_with_horses': owners_with_horses,
         'vaccinations_due': vaccinations_due,
         'farrier_due': farrier_due,
         'outstanding_invoices': outstanding_invoices,
-        'unbilled_charges': unbilled_charges,
         'unbilled_total': unbilled_total,
+        'chart_data': chart_data,
+        'capacity_data': capacity_data,
+        'activity': activity,
     }
 
     return render(request, 'dashboard.html', context)
