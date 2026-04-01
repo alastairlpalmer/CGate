@@ -15,11 +15,11 @@
     <script defer src="{% static 'js/alpine.min.js' %}"></script>
     <!-- HTMX -->
     <script src="{% static 'js/htmx.min.js' %}"></script>
-    <!-- Chart.js -->
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <!-- Chart.js (no defer — must load before dashboard scripts) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-parchment font-body antialiased text-charcoal" x-data="{ sidebarOpen: false }" hx-boost="true" hx-swap="innerHTML transition:true show:window:top">
+<body class="bg-parchment font-body antialiased text-charcoal" x-data="{ sidebarOpen: false }" x-cloak>
 
     <!-- ── Progress Bar ── -->
     <div id="htmx-progress"
@@ -52,7 +52,8 @@
         </div>
 
         <!-- Nav -->
-        <nav class="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
+        <nav class="flex-1 overflow-y-auto px-3 py-2 space-y-0.5"
+             hx-boost="true" hx-target="#main-content" hx-swap="innerHTML show:window:top" hx-select="#main-content">
 
             <!-- Overview -->
             <div class="nav-group-label">Overview</div>
@@ -185,7 +186,8 @@
         {% endif %}
 
         <!-- Main content -->
-        <main id="main-content" class="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-7xl w-full mx-auto">
+        <main id="main-content" class="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-7xl w-full mx-auto"
+              hx-boost="true" hx-target="#main-content" hx-swap="innerHTML show:window:top" hx-select="#main-content">
             {% block content %}{% endblock %}
         </main>
 
@@ -229,7 +231,7 @@
         }, 150);
     });
 
-    // ── Page entrance animation + scroll to top ──
+    // ── Page entrance animation + scroll to top + nav highlight ──
     document.body.addEventListener('htmx:afterSwap', function (e) {
         if (e.detail.boosted) {
             window.scrollTo({ top: 0, behavior: 'instant' });
@@ -239,6 +241,20 @@
         main.classList.remove('page-enter');
         void main.offsetWidth;
         main.classList.add('page-enter');
+        // Update sidebar nav active state based on current path
+        var path = window.location.pathname;
+        document.querySelectorAll('nav a[href]').forEach(function(a) {
+            var href = a.getAttribute('href');
+            if (!href || href === '#') return;
+            var isActive = (href === '/' && path === '/') || (href !== '/' && path.startsWith(href));
+            a.className = isActive ? 'nav-link-active' : 'nav-link';
+        });
+        // Update page title from response
+        var title = e.detail.xhr && e.detail.xhr.responseText;
+        if (title) {
+            var m = title.match(/<title>(.*?)<\/title>/);
+            if (m) document.title = m[1];
+        }
     });
 
     // ── Close mobile sidebar on navigate ──

@@ -124,6 +124,8 @@ class MoveHorseForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['new_location'].choices = get_grouped_location_choices()
+        self.fields['new_owner'].queryset = Owner.objects.all()
+        self.fields['new_rate_type'].queryset = RateType.objects.filter(is_active=True)
 
     new_owner = forms.ModelChoiceField(
         queryset=Owner.objects.all(),
@@ -179,6 +181,11 @@ class ArrivalForm(forms.Form):
         widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2})
     )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['owner'].queryset = Owner.objects.all()
+        self.fields['rate_type'].queryset = RateType.objects.filter(is_active=True)
+
 
 class SingleArrivalForm(forms.Form):
     """Form for logging a single horse arrival (from Horse Detail page)."""
@@ -190,6 +197,8 @@ class SingleArrivalForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['location'].choices = get_grouped_location_choices()
+        self.fields['owner'].queryset = Owner.objects.all()
+        self.fields['rate_type'].queryset = RateType.objects.filter(is_active=True)
 
     owner = forms.ModelChoiceField(
         queryset=Owner.objects.all(),
@@ -221,12 +230,12 @@ class NewArrivalForm(forms.Form):
         widget=forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Horse name'})
     )
     sex = forms.ChoiceField(
-        choices=[('', '---------')] + list(Horse.SEX_CHOICES) if hasattr(Horse, 'SEX_CHOICES') else [('', '---------')],
+        choices=[('', '---------')],
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})
     )
     color = forms.ChoiceField(
-        choices=[('', '---------')] + list(Horse.COLOR_CHOICES) if hasattr(Horse, 'COLOR_CHOICES') else [('', '---------')],
+        choices=[('', '---------')],
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})
     )
@@ -277,10 +286,11 @@ class NewArrivalForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['location'].choices = get_grouped_location_choices()
-        # Populate sex/color choices from the model
         self.fields['sex'].choices = [('', '---------')] + list(Horse._meta.get_field('sex').choices)
         self.fields['color'].choices = [('', '---------')] + list(Horse._meta.get_field('color').choices)
+        self.fields['owner'].queryset = Owner.objects.all()
+        self.fields['location'].choices = get_grouped_location_choices()
+        self.fields['rate_type'].queryset = RateType.objects.filter(is_active=True)
 
 
 class DepartureForm(forms.Form):
