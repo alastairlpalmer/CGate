@@ -62,10 +62,20 @@ class Owner(models.Model):
 class Location(models.Model):
     """Physical location where horses are kept."""
 
+    class Usage(models.TextChoices):
+        HORSES = 'horses', 'Horses'
+        MIXED = 'mixed', 'Mixed Grazing'
+        RESTED = 'rested', 'Rested'
+        HAY = 'hay', 'Hay'
+        OTHER = 'other', 'Other'
+
     name = models.CharField(max_length=200)
     site = models.CharField(
         max_length=100,
         help_text="Main site name (e.g., Colgate, Somerford, California Farm)"
+    )
+    usage = models.CharField(
+        max_length=20, choices=Usage.choices, default=Usage.HORSES,
     )
     description = models.TextField(blank=True)
     capacity = models.PositiveIntegerField(null=True, blank=True)

@@ -42,10 +42,11 @@ class OwnerForm(forms.ModelForm):
 class LocationForm(forms.ModelForm):
     class Meta:
         model = Location
-        fields = ['name', 'site', 'description', 'capacity']
+        fields = ['name', 'site', 'usage', 'description', 'capacity']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
             'site': forms.TextInput(attrs={'class': 'form-input'}),
+            'usage': forms.Select(attrs={'class': 'form-select'}),
             'description': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
             'capacity': forms.NumberInput(attrs={'class': 'form-input'}),
         }

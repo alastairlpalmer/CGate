@@ -140,7 +140,8 @@
                                 <div>
                                     <p class="text-sm font-medium text-charcoal">{{ loc.name }}</p>
                                     <p class="text-xs text-sage">
-                                        {% if loc.capacity %}Capacity: {{ loc.capacity }}{% else %}No capacity set{% endif %}
+                                        {{ loc.get_usage_display }}
+                                        &middot; {% if loc.capacity %}Capacity: {{ loc.capacity }}{% else %}No capacity set{% endif %}
                                         {% if loc.description %}&middot; {{ loc.description|truncatewords:8 }}{% endif %}
                                     </p>
                                 </div>
