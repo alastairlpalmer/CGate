@@ -40,6 +40,15 @@
                 </div>
 
                 <div>
+                    <label for="id_usage" class="block text-sm font-medium text-charcoal">Usage <span class="text-error-red">*</span></label>
+                    {{ form.usage }}
+                    {% if form.usage.errors %}
+                    <p class="mt-1 text-xs text-error-red">{{ form.usage.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-sage">What is this field currently being used for?</p>
+                </div>
+
+                <div>
                     <label for="id_capacity" class="block text-sm font-medium text-charcoal">Capacity</label>
                     {{ form.capacity }}
                     {% if form.capacity.errors %}
