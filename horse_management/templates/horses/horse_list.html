@@ -10,7 +10,10 @@
         <div>
             <h1 class="page-title">Horses</h1>
             {% if paginator.count is not None %}
-            <p class="page-subtitle">{{ paginator.count }} horse{{ paginator.count|pluralize }} in total</p>
+            <p class="page-subtitle">
+                {{ paginator.count }} horse{{ paginator.count|pluralize }}
+                {% if request.GET.search or request.GET.location or request.GET.owner %}<span class="text-forest">(filtered)</span>{% endif %}
+            </p>
             {% endif %}
         </div>
         {% if user.is_staff %}

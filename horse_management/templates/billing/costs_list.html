@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load ui_extras %}
 
 {% block title %}Costs - CGate{% endblock %}
 
@@ -150,13 +151,13 @@
                 <tbody>
                     {% for cost in costs %}
                     <tr>
-                        <td class="text-sage tabular-nums">{{ cost.date }}</td>
+                        <td class="text-sage" title="{{ cost.date }}">{{ cost.date|ago_label }}</td>
                         <td>
                             <span class="{% if cost.category_key == 'hay' or cost.category_key == 'straw' or cost.category_key == 'feed' %}badge-success{% elif cost.category_key == 'vet' %}badge-danger{% elif cost.category_key == 'farrier' %}badge-warning{% elif cost.category_key == 'staff' or cost.category_key == 'rent' %}badge-info{% else %}badge-neutral{% endif %}">
                                 {{ cost.category }}
                             </span>
                         </td>
-                        <td class="text-charcoal">{{ cost.description|truncatewords:10 }}</td>
+                        <td class="text-charcoal" title="{{ cost.description }}">{{ cost.description|truncatewords:10 }}</td>
                         <td class="text-sage">{{ cost.supplier|default:"—" }}</td>
                         <td class="text-right font-medium text-charcoal tabular-nums">&pound;{{ cost.amount|floatformat:2 }}</td>
                         <td>
@@ -191,7 +192,7 @@
                                 </a>
                                 {% endif %}
                                 {% if cost.source == 'yard' or not cost.invoiced %}
-                                <a href="{{ cost.delete_url }}" class="btn-ghost btn-xs text-error-red hover:text-error-red hover:bg-error-red-50">Delete</a>
+                                <a href="{{ cost.delete_url }}" class="btn-ghost btn-xs text-error-red hover:text-error-red hover:bg-error-red-50" onclick="return confirm('Delete this cost?')">Delete</a>
                                 {% endif %}
                             </div>
                         </td>

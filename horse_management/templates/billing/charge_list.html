@@ -107,7 +107,7 @@
                                 {{ charge.get_charge_type_display }}
                             </span>
                         </td>
-                        <td class="text-charcoal">{{ charge.description|truncatewords:10 }}</td>
+                        <td class="text-charcoal" title="{{ charge.description }}">{{ charge.description|truncatewords:10 }}</td>
                         <td class="text-right font-medium text-charcoal">&pound;{{ charge.amount|floatformat:2 }}</td>
                         <td>
                             {% if charge.invoiced %}
@@ -120,7 +120,7 @@
                             <div class="flex items-center gap-1">
                                 <a href="{% url 'charge_update' charge.pk %}" class="btn-ghost btn-xs">Edit</a>
                                 {% if not charge.invoiced %}
-                                <a href="{% url 'charge_delete' charge.pk %}" class="btn-ghost btn-xs text-error-red hover:text-error-red hover:bg-error-red-50">Delete</a>
+                                <a href="{% url 'charge_delete' charge.pk %}" class="btn-ghost btn-xs text-error-red hover:text-error-red hover:bg-error-red-50" onclick="return confirm('Delete this charge?')">Delete</a>
                                 {% endif %}
                             </div>
                         </td>
