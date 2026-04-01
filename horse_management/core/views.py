@@ -188,7 +188,11 @@ def _dashboard_inner(request):
         .annotate(total=Sum('total'))
         .order_by('month')
     )
-    revenue_map = {r['month'].date(): float(r['total']) for r in revenue_qs}
+    def _to_date(val):
+        """Normalise TruncMonth result to a date (SQLite returns date, Postgres returns datetime)."""
+        return val.date() if hasattr(val, 'date') and callable(val.date) else val
+
+    revenue_map = {_to_date(r['month']): float(r['total']) for r in revenue_qs}
 
     # Historical costs by month (ExtraCharge + YardCost)
     charge_qs = (
@@ -207,21 +211,24 @@ def _dashboard_inner(request):
     )
     cost_map = {}
     for c in charge_qs:
-        d = c['month'].date()
+        d = _to_date(c['month'])
         cost_map[d] = cost_map.get(d, 0) + float(c['total'])
     for y in yard_qs:
-        d = y['month'].date()
+        d = _to_date(y['month'])
         cost_map[d] = cost_map.get(d, 0) + float(y['total'])
 
     # Build month labels for last 12 months
     month_labels = []
     revenue_data = []
     cost_data = []
-    cursor = today.replace(day=1) - timedelta(days=335)  # ~11 months ago
-    cursor = cursor.replace(day=1)
     for i in range(12):
-        m = (cursor.month + i - 1) % 12 + 1
-        y = cursor.year + (cursor.month + i - 1) // 12
+        # Walk back from current month
+        m_offset = 11 - i  # 11 months ago down to 0 (current month)
+        m = today.month - m_offset
+        y = today.year
+        while m <= 0:
+            m += 12
+            y -= 1
         d = date(y, m, 1)
         month_labels.append(d.strftime('%b %y'))
         revenue_data.append(revenue_map.get(d, 0))
@@ -236,8 +243,11 @@ def _dashboard_inner(request):
     forecast_cost = []
     avg_cost = sum(cost_data[-3:]) / 3 if any(cost_data[-3:]) else 0
     for i in range(1, 7):
-        m = (today.month + i - 1) % 12 + 1
-        y = today.year + (today.month + i - 1) // 12
+        m = today.month + i
+        y = today.year
+        while m > 12:
+            m -= 12
+            y += 1
         d = date(y, m, 1)
         days_in_month = calendar.monthrange(y, m)[1]
         forecast_labels.append(d.strftime('%b %y'))
@@ -593,20 +603,20 @@ def horse_move(request, pk):
                 expected_departure=form.cleaned_data.get('expected_departure'),
                 notes=form.cleaned_data['notes'],
             )
+
             try:
-                new_placement.full_clean()
+                with transaction.atomic():
+                    # End current placement FIRST so overlap validation passes
+                    if current_placement:
+                        current_placement.end_date = move_date - timedelta(days=1)
+                        current_placement.save()
+                    new_placement.full_clean()
+                    new_placement.save()
             except ValidationError as e:
                 messages.error(request, str(e))
                 return render(request, 'horses/horse_move.html', {
                     'horse': horse, 'form': form, 'current_placement': current_placement
                 })
-
-            with transaction.atomic():
-                # End current placement and create new one atomically
-                if current_placement:
-                    current_placement.end_date = move_date - timedelta(days=1)
-                    current_placement.save()
-                new_placement.save()
 
             messages.success(request, f"{horse.name} moved successfully.")
             return redirect('horse_detail', pk=horse.pk)
