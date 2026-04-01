@@ -236,10 +236,10 @@ def _dashboard_inner(request):
         revenue_data.append(revenue_map.get(d, 0))
         cost_data.append(cost_map.get(d, 0))
 
-    # Revenue forecast (next 6 months)
-    active_placements = Placement.objects.filter(
+    # Revenue forecast (next 6 months) — evaluate queryset once
+    active_placements = list(Placement.objects.filter(
         end_date__isnull=True
-    ).select_related('rate_type')
+    ).select_related('rate_type').only('expected_departure', 'rate_type__daily_rate'))
     forecast_labels = []
     forecast_revenue = []
     forecast_cost = []
@@ -253,12 +253,10 @@ def _dashboard_inner(request):
         d = date(y, m, 1)
         days_in_month = calendar.monthrange(y, m)[1]
         forecast_labels.append(d.strftime('%b %y'))
-        # Sum revenue from placements still expected to be active
         month_rev = Decimal('0')
         for p in active_placements:
-            depart = p.expected_departure
-            if depart and depart < d:
-                continue  # Horse expected to have left before this month
+            if p.expected_departure and p.expected_departure < d:
+                continue
             month_rev += p.rate_type.daily_rate * days_in_month
         forecast_revenue.append(float(month_rev))
         forecast_cost.append(round(avg_cost, 2))
@@ -287,29 +285,22 @@ def _dashboard_inner(request):
         'capacity': [s['total_capacity'] or 0 for s in sites_capacity],
     }
 
-    # ── Recent Activity Timeline ────────────────────────────────
+    # ── Recent Activity Timeline (6 queries, 3 records each) ────
     activity = []
-    # Recent placements (arrivals)
-    for p in Placement.objects.filter(end_date__isnull=True).select_related('horse', 'location').order_by('-start_date')[:5]:
+    for p in Placement.objects.filter(end_date__isnull=True).select_related('horse', 'location').order_by('-start_date')[:3]:
         activity.append({'date': p.start_date, 'type': 'placement', 'desc': f"{p.horse.name} arrived at {p.location.name}", 'link': f'/horses/{p.horse.pk}/'})
-    # Recent vaccinations
-    for v in Vaccination.objects.select_related('horse', 'vaccination_type').order_by('-date_given')[:5]:
+    for v in Vaccination.objects.select_related('horse', 'vaccination_type').order_by('-date_given')[:3]:
         activity.append({'date': v.date_given, 'type': 'vaccination', 'desc': f"{v.horse.name} — {v.vaccination_type.name}", 'link': f'/horses/{v.horse.pk}/'})
-    # Recent farrier
-    for f in FarrierVisit.objects.select_related('horse').order_by('-date')[:5]:
+    for f in FarrierVisit.objects.select_related('horse').order_by('-date')[:3]:
         activity.append({'date': f.date, 'type': 'farrier', 'desc': f"{f.horse.name} — {f.get_work_done_display()}", 'link': f'/horses/{f.horse.pk}/'})
-    # Recent vet visits
-    for v in VetVisit.objects.select_related('horse').order_by('-date')[:5]:
+    for v in VetVisit.objects.select_related('horse').order_by('-date')[:3]:
         activity.append({'date': v.date, 'type': 'vet_visit', 'desc': f"{v.horse.name} — {v.reason[:40]}", 'link': f'/horses/{v.horse.pk}/'})
-    # Recent feed outs
-    for fo in FeedOut.objects.select_related('location').order_by('-date')[:5]:
+    for fo in FeedOut.objects.select_related('location').order_by('-date')[:3]:
         activity.append({'date': fo.date, 'type': 'feed', 'desc': f"{fo.get_feed_type_display()} to {fo.location.name}", 'link': f'/locations/{fo.location.pk}/?tab=feed'})
-    # Recent charges
-    for c in ExtraCharge.objects.select_related('horse').order_by('-date')[:5]:
+    for c in ExtraCharge.objects.select_related('horse').order_by('-date')[:3]:
         activity.append({'date': c.date, 'type': 'charge', 'desc': f"{c.horse.name} — {c.get_charge_type_display()} £{c.amount}", 'link': f'/billing/charges/{c.pk}/edit/'})
-
     activity.sort(key=lambda x: x['date'], reverse=True)
-    activity = activity[:15]
+    activity = activity[:12]
 
     context = {
         'total_horses': total_horses,
@@ -460,14 +451,18 @@ class HorseDetailView(LoginRequiredMixin, DetailView):
         context['egg_counts'] = horse.worm_egg_counts.all()[:10]
         context['medical_conditions'] = horse.medical_conditions.all()
         context['vet_visits'] = horse.vet_visits.select_related('vet').all()[:10]
-        # Breeding (mare only)
+        # Breeding (mare only) — single query, filter active in Python
         if horse.is_mare:
-            context['breeding_records'] = horse.breeding_records.select_related('foal').all()
-            context['active_pregnancy'] = horse.breeding_records.filter(
-                status__in=['covered', 'confirmed']
-            ).first()
-        # Foals via dam FK
-        context['foals'] = Horse.objects.filter(dam=horse) if horse.is_mare else []
+            breeding_records = list(horse.breeding_records.select_related('foal').all())
+            context['breeding_records'] = breeding_records
+            context['active_pregnancy'] = next(
+                (br for br in breeding_records if br.status in ('covered', 'confirmed')), None
+            )
+            context['foals'] = Horse.objects.filter(dam=horse).only(
+                'pk', 'name', 'date_of_birth', 'sex', 'color'
+            )
+        else:
+            context['foals'] = []
 
         # Build unified timeline
         timeline = []

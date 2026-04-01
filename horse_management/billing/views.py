@@ -13,7 +13,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 
 from core.mixins import StaffRequiredMixin, staff_required
 from django.core.paginator import Paginator
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -282,23 +282,22 @@ class CostsListView(StaffRequiredMixin, ListView):
         context['paginator'] = paginator
         context['is_paginated'] = page_obj.has_other_pages()
 
-        # Summary totals
+        # Summary totals — batch into 2 queries instead of 7
         month_start = today.replace(day=1)
         year_start = today.replace(month=1, day=1)
-        context['month_total'] = (
-            (ExtraCharge.objects.filter(date__gte=month_start).aggregate(s=Sum('amount'))['s'] or Decimal('0')) +
-            (YardCost.objects.filter(date__gte=month_start).aggregate(s=Sum('amount'))['s'] or Decimal('0'))
+        charge_agg = ExtraCharge.objects.aggregate(
+            month=Sum('amount', filter=Q(date__gte=month_start)),
+            year=Sum('amount', filter=Q(date__gte=year_start)),
+            unbilled=Sum('amount', filter=Q(invoiced=False)),
         )
-        context['year_total'] = (
-            (ExtraCharge.objects.filter(date__gte=year_start).aggregate(s=Sum('amount'))['s'] or Decimal('0')) +
-            (YardCost.objects.filter(date__gte=year_start).aggregate(s=Sum('amount'))['s'] or Decimal('0'))
+        yard_agg = YardCost.objects.aggregate(
+            month=Sum('amount', filter=Q(date__gte=month_start)),
+            year=Sum('amount', filter=Q(date__gte=year_start)),
         )
-        context['unbilled_total'] = (
-            ExtraCharge.objects.filter(invoiced=False).aggregate(s=Sum('amount'))['s'] or Decimal('0')
-        )
-        context['yard_month_total'] = (
-            YardCost.objects.filter(date__gte=month_start).aggregate(s=Sum('amount'))['s'] or Decimal('0')
-        )
+        context['month_total'] = (charge_agg['month'] or Decimal('0')) + (yard_agg['month'] or Decimal('0'))
+        context['year_total'] = (charge_agg['year'] or Decimal('0')) + (yard_agg['year'] or Decimal('0'))
+        context['unbilled_total'] = charge_agg['unbilled'] or Decimal('0')
+        context['yard_month_total'] = yard_agg['month'] or Decimal('0')
 
         context['period_label'] = period_label
         context['current_period'] = self.request.GET.get('period', 'month')
