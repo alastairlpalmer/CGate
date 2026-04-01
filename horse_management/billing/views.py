@@ -10,6 +10,8 @@ from operator import attrgetter
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+
+from core.mixins import StaffRequiredMixin, staff_required
 from django.core.paginator import Paginator
 from django.db.models import Sum
 from django.http import JsonResponse
@@ -67,7 +69,7 @@ class ExtraChargeListView(LoginRequiredMixin, ListView):
         return context
 
 
-class ExtraChargeCreateView(LoginRequiredMixin, CreateView):
+class ExtraChargeCreateView(StaffRequiredMixin, CreateView):
     model = ExtraCharge
     form_class = ExtraChargeForm
     template_name = 'billing/charge_form.html'
@@ -92,7 +94,7 @@ class ExtraChargeCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class ExtraChargeUpdateView(LoginRequiredMixin, UpdateView):
+class ExtraChargeUpdateView(StaffRequiredMixin, UpdateView):
     model = ExtraCharge
     form_class = ExtraChargeForm
     template_name = 'billing/charge_form.html'
@@ -110,7 +112,7 @@ class ExtraChargeUpdateView(LoginRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class ExtraChargeDeleteView(LoginRequiredMixin, DeleteView):
+class ExtraChargeDeleteView(StaffRequiredMixin, DeleteView):
     model = ExtraCharge
     template_name = 'billing/charge_confirm_delete.html'
     success_url = reverse_lazy('charge_list')
@@ -147,14 +149,14 @@ class ServiceProviderListView(LoginRequiredMixin, ListView):
         return context
 
 
-class ServiceProviderCreateView(LoginRequiredMixin, CreateView):
+class ServiceProviderCreateView(StaffRequiredMixin, CreateView):
     model = ServiceProvider
     form_class = ServiceProviderForm
     template_name = 'billing/provider_form.html'
     success_url = reverse_lazy('provider_list')
 
 
-class ServiceProviderUpdateView(LoginRequiredMixin, UpdateView):
+class ServiceProviderUpdateView(StaffRequiredMixin, UpdateView):
     model = ServiceProvider
     form_class = ServiceProviderForm
     template_name = 'billing/provider_form.html'
@@ -163,7 +165,7 @@ class ServiceProviderUpdateView(LoginRequiredMixin, UpdateView):
 
 # ── Unified Costs View ──────────────────────────────────────────
 
-class CostsListView(LoginRequiredMixin, ListView):
+class CostsListView(StaffRequiredMixin, ListView):
     template_name = 'billing/costs_list.html'
     context_object_name = 'costs'
     paginate_by = 50
@@ -316,7 +318,7 @@ class CostsListView(LoginRequiredMixin, ListView):
 
 # ── YardCost CRUD ────────────────────────────────────────────────
 
-class YardCostCreateView(LoginRequiredMixin, CreateView):
+class YardCostCreateView(StaffRequiredMixin, CreateView):
     model = YardCost
     form_class = YardCostForm
     template_name = 'billing/yard_cost_form.html'
@@ -332,7 +334,7 @@ class YardCostCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class YardCostUpdateView(LoginRequiredMixin, UpdateView):
+class YardCostUpdateView(StaffRequiredMixin, UpdateView):
     model = YardCost
     form_class = YardCostForm
     template_name = 'billing/yard_cost_form.html'
@@ -343,7 +345,7 @@ class YardCostUpdateView(LoginRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class YardCostDeleteView(LoginRequiredMixin, DeleteView):
+class YardCostDeleteView(StaffRequiredMixin, DeleteView):
     model = YardCost
     template_name = 'billing/yard_cost_confirm_delete.html'
     success_url = reverse_lazy('costs_list')
@@ -353,7 +355,7 @@ class YardCostDeleteView(LoginRequiredMixin, DeleteView):
         return super().form_valid(form)
 
 
-@login_required
+@staff_required
 def yard_cost_duplicate(request, pk):
     """Duplicate a yard cost with today's date."""
     original = get_object_or_404(YardCost, pk=pk)
@@ -389,7 +391,7 @@ def supplier_autocomplete(request):
 
 # ── Feed Out ─────────────────────────────────────────────────────
 
-@login_required
+@staff_required
 def feed_out_create(request, location_pk):
     """Record feed delivered to a location, optionally recharging to horse owners."""
     from django.db import transaction

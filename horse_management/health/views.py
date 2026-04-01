@@ -8,6 +8,8 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+
+from core.mixins import StaffRequiredMixin
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
@@ -536,7 +538,7 @@ class VaccinationTypeListView(LoginRequiredMixin, ListView):
         return queryset.order_by('name')
 
 
-class VaccinationTypeCreateView(LoginRequiredMixin, CreateView):
+class VaccinationTypeCreateView(StaffRequiredMixin, CreateView):
     model = VaccinationType
     form_class = VaccinationTypeForm
     template_name = 'health/vaccination_type_form.html'
@@ -547,7 +549,7 @@ class VaccinationTypeCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class VaccinationTypeUpdateView(LoginRequiredMixin, UpdateView):
+class VaccinationTypeUpdateView(StaffRequiredMixin, UpdateView):
     model = VaccinationType
     form_class = VaccinationTypeForm
     template_name = 'health/vaccination_type_form.html'

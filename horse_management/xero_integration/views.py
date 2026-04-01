@@ -7,6 +7,8 @@ import secrets
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+
+from core.mixins import staff_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -30,7 +32,7 @@ def xero_settings(request):
     return redirect('app_settings')
 
 
-@login_required
+@staff_required
 def xero_connect(request):
     """Initiate OAuth flow by redirecting to Xero."""
     state = secrets.token_urlsafe(32)
@@ -42,7 +44,7 @@ def xero_connect(request):
     return redirect(auth_url)
 
 
-@login_required
+@staff_required
 def xero_callback(request):
     """Handle OAuth callback from Xero."""
     error = request.GET.get('error')
@@ -105,7 +107,7 @@ def xero_callback(request):
     return redirect('app_settings')
 
 
-@login_required
+@staff_required
 @require_POST
 def xero_disconnect(request):
     """Disconnect from Xero."""
@@ -124,7 +126,7 @@ def xero_disconnect(request):
     return redirect('app_settings')
 
 
-@login_required
+@staff_required
 @require_POST
 def xero_push_invoice(request, pk):
     """Push an invoice to Xero."""

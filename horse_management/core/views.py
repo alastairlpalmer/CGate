@@ -9,6 +9,8 @@ from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+
+from .mixins import StaffRequiredMixin, staff_required
 from django.db import connection, transaction
 from django.http import JsonResponse
 from django.core.exceptions import ValidationError
@@ -52,7 +54,7 @@ def health_check(request):
 logger = logging.getLogger(__name__)
 
 
-@login_required
+@staff_required
 def app_settings(request):
     """Unified settings page for integrations, providers, business config."""
     from billing.models import ServiceProvider
@@ -82,7 +84,7 @@ def app_settings(request):
     })
 
 
-@login_required
+@staff_required
 def rate_type_create(request):
     """Create a new rate type."""
     from .forms import RateTypeForm
@@ -97,7 +99,7 @@ def rate_type_create(request):
     return render(request, 'settings/rate_type_form.html', {'form': form})
 
 
-@login_required
+@staff_required
 def rate_type_update(request, pk):
     """Edit a rate type."""
     from .forms import RateTypeForm
@@ -485,7 +487,7 @@ class HorseDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class HorseCreateView(LoginRequiredMixin, CreateView):
+class HorseCreateView(StaffRequiredMixin, CreateView):
     model = Horse
     form_class = HorseForm
     template_name = 'horses/horse_form.html'
@@ -515,7 +517,7 @@ class HorseCreateView(LoginRequiredMixin, CreateView):
         return redirect(self.get_success_url())
 
 
-class HorseUpdateView(LoginRequiredMixin, UpdateView):
+class HorseUpdateView(StaffRequiredMixin, UpdateView):
     model = Horse
     form_class = HorseForm
     template_name = 'horses/horse_form.html'
@@ -551,7 +553,7 @@ class HorseUpdateView(LoginRequiredMixin, UpdateView):
         return redirect(self.get_success_url())
 
 
-@login_required
+@staff_required
 def horse_move(request, pk):
     """Move a horse to a new location."""
     horse = get_object_or_404(Horse, pk=pk)
@@ -679,14 +681,14 @@ class OwnerDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class OwnerCreateView(LoginRequiredMixin, CreateView):
+class OwnerCreateView(StaffRequiredMixin, CreateView):
     model = Owner
     form_class = OwnerForm
     template_name = 'owners/owner_form.html'
     success_url = reverse_lazy('owner_list')
 
 
-class OwnerUpdateView(LoginRequiredMixin, UpdateView):
+class OwnerUpdateView(StaffRequiredMixin, UpdateView):
     model = Owner
     form_class = OwnerForm
     template_name = 'owners/owner_form.html'
@@ -793,14 +795,14 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class LocationCreateView(LoginRequiredMixin, CreateView):
+class LocationCreateView(StaffRequiredMixin, CreateView):
     model = Location
     form_class = LocationForm
     template_name = 'locations/location_form.html'
     success_url = reverse_lazy('location_list')
 
 
-class LocationUpdateView(LoginRequiredMixin, UpdateView):
+class LocationUpdateView(StaffRequiredMixin, UpdateView):
     model = Location
     form_class = LocationForm
     template_name = 'locations/location_form.html'
@@ -849,7 +851,7 @@ class PlacementListView(LoginRequiredMixin, ListView):
         return context
 
 
-class PlacementCreateView(LoginRequiredMixin, CreateView):
+class PlacementCreateView(StaffRequiredMixin, CreateView):
     model = Placement
     form_class = PlacementForm
     template_name = 'placements/placement_form.html'
@@ -858,7 +860,7 @@ class PlacementCreateView(LoginRequiredMixin, CreateView):
         return reverse_lazy('location_list') + '?tab=history'
 
 
-class PlacementUpdateView(LoginRequiredMixin, UpdateView):
+class PlacementUpdateView(StaffRequiredMixin, UpdateView):
     model = Placement
     form_class = PlacementForm
     template_name = 'placements/placement_form.html'
@@ -869,7 +871,7 @@ class PlacementUpdateView(LoginRequiredMixin, UpdateView):
 
 # ── Arrival & Departure Views ──
 
-@login_required
+@staff_required
 def log_arrival(request, pk):
     """Log one or more horses arriving at a location."""
     location = get_object_or_404(Location, pk=pk)
@@ -933,7 +935,7 @@ def log_arrival(request, pk):
     })
 
 
-@login_required
+@staff_required
 def log_departure(request, pk):
     """Log departure of selected horses from a location (POST only)."""
     location = get_object_or_404(Location, pk=pk)
@@ -988,7 +990,7 @@ def log_departure(request, pk):
     return redirect('location_detail', pk=location.pk)
 
 
-@login_required
+@staff_required
 def new_arrival(request):
     """Create a new horse and place it at a location in one step."""
     from .forms import NewArrivalForm
@@ -1040,7 +1042,7 @@ def new_arrival(request):
     return render(request, 'horses/horse_new_arrival.html', {'form': form})
 
 
-@login_required
+@staff_required
 def horse_arrive(request, pk):
     """Log a single horse arriving at a location (from Horse Detail)."""
     horse = get_object_or_404(Horse, pk=pk)
@@ -1078,7 +1080,7 @@ def horse_arrive(request, pk):
     })
 
 
-@login_required
+@staff_required
 def horse_depart(request, pk):
     """Log a single horse departing (from Horse Detail, POST only)."""
     horse = get_object_or_404(Horse, pk=pk)
@@ -1111,7 +1113,7 @@ def horse_depart(request, pk):
     return redirect('horse_detail', pk=horse.pk)
 
 
-@login_required
+@staff_required
 def manage_ownership_shares(request, pk):
     """Manage fractional ownership shares for a horse."""
     horse = get_object_or_404(Horse, pk=pk)

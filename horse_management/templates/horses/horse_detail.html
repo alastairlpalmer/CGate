@@ -45,6 +45,7 @@
                     {% endif %}
                 </div>
             </div>
+            {% if user.is_staff %}
             <div class="flex items-center gap-2 shrink-0">
                 {% if current_placement %}
                 <a href="{% url 'horse_move' horse.pk %}" class="btn-success">
@@ -84,6 +85,7 @@
                     Edit
                 </a>
             </div>
+            {% endif %}
         </div>
     </div>
 

@@ -8,6 +8,8 @@ from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+
+from core.mixins import StaffRequiredMixin, staff_required
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -63,7 +65,7 @@ class InvoiceDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class InvoiceUpdateView(LoginRequiredMixin, UpdateView):
+class InvoiceUpdateView(StaffRequiredMixin, UpdateView):
     model = Invoice
     form_class = InvoiceUpdateForm
     template_name = 'invoicing/invoice_form.html'
@@ -72,7 +74,7 @@ class InvoiceUpdateView(LoginRequiredMixin, UpdateView):
         return reverse_lazy('invoice_detail', kwargs={'pk': self.object.pk})
 
 
-@login_required
+@staff_required
 def invoice_create(request):
     """Create a new invoice."""
     initial = {}
@@ -170,7 +172,7 @@ def invoice_pdf(request, pk):
     return response
 
 
-@login_required
+@staff_required
 def invoice_send(request, pk):
     """Send invoice via email."""
     if request.method != 'POST':
@@ -200,7 +202,7 @@ def invoice_send(request, pk):
     return redirect('invoice_detail', pk=pk)
 
 
-@login_required
+@staff_required
 def invoice_mark_paid(request, pk):
     """Mark invoice as paid."""
     if request.method != 'POST':
@@ -215,7 +217,7 @@ def invoice_mark_paid(request, pk):
     return redirect('invoice_detail', pk=pk)
 
 
-@login_required
+@staff_required
 def invoice_generate_monthly(request):
     """Generate invoices for all owners for a month."""
     if request.method == 'POST':

@@ -13,6 +13,7 @@
             <p class="page-subtitle">{{ paginator.count }} horse{{ paginator.count|pluralize }} in total</p>
             {% endif %}
         </div>
+        {% if user.is_staff %}
         <div class="flex items-center gap-2">
             <a href="{% url 'horse_new_arrival' %}" class="btn-success">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -24,6 +25,7 @@
                 Add Horse
             </a>
         </div>
+        {% endif %}
     </div>
 
     <!-- Filter Bar -->
