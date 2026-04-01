@@ -1,37 +1,36 @@
 # Django core
-Django>=5.0,<6.0
-django-environ>=0.11.2
-whitenoise>=6.5.0
+Django~=5.2.12
+django-environ~=0.13.0
+whitenoise~=6.12.0
 
 # Database
-psycopg2-binary>=2.9.9
+psycopg2-binary~=2.9.11
 
 # PDF Generation
-reportlab>=4.1.0
+reportlab~=4.4.10
 
 # Task queue
-celery>=5.3.6
-redis>=5.0.1
-django-celery-beat>=2.5.0
-django-celery-results>=2.5.1
+celery~=5.6.2
+redis~=7.4.0
+django-celery-beat~=2.9.0
+django-celery-results~=2.6.0
 
 # Image handling
-Pillow>=10.2.0
+Pillow~=12.1.1
 
 # Development
-django-debug-toolbar>=4.2.0
+django-debug-toolbar~=6.2.0
 
 # Testing
-pytest>=8.0.0
-pytest-django>=4.7.0
+pytest~=8.0.0
+pytest-django~=4.12.0
 
 # HTMX support
-django-htmx>=1.17.0
+django-htmx~=1.27.0
 
 # Forms
-django-crispy-forms>=2.1
-crispy-tailwind>=1.0.1
+django-crispy-forms~=2.6
+crispy-tailwind~=1.0.3
 
 # Xero API integration
-requests>=2.31.0
-
+requests~=2.33.0

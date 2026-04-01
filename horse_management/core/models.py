@@ -6,8 +6,15 @@ from datetime import date, timedelta
 from decimal import Decimal
 from functools import cached_property
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
 from django.db import models
+
+
+def validate_file_size(value):
+    """Reject uploads larger than 5MB."""
+    if value.size > 5 * 1024 * 1024:
+        raise DjangoValidationError("File size must be under 5MB.")
 from django.db.models import F
 from django.utils import timezone
 
@@ -145,7 +152,10 @@ class Horse(models.Model):
     sire_name = models.CharField(max_length=200, blank=True, help_text="Stallion name")
     photo = models.ImageField(
         upload_to='horses/', blank=True, null=True,
-        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])],
+        validators=[
+            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp']),
+            validate_file_size,
+        ],
     )
     notes = models.TextField(blank=True, help_text="Special notes (e.g., first winter, lame, needs rug)")
     passport_number = models.CharField(max_length=100, blank=True)
@@ -565,7 +575,10 @@ class BusinessSettings(models.Model):
     )
     logo = models.ImageField(
         upload_to='business/', blank=True, null=True,
-        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'svg'])],
+        validators=[
+            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'svg']),
+            validate_file_size,
+        ],
     )
     bank_details = models.TextField(blank=True, help_text="Bank details for payment")
     card_payment_url = models.URLField(

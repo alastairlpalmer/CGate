@@ -168,6 +168,10 @@ WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0  # 1 year in production, no ca
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Upload limits — 10MB max per file, 12MB max request body
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024   # 12MB
+
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
