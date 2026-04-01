@@ -123,16 +123,21 @@ def dashboard(request):
         return _dashboard_inner(request)
     except Exception:
         logger.exception("Dashboard error")
-        return render(request, 'error.html', {
-            'error_title': 'Dashboard Error',
-            'error_message': 'An unexpected error occurred loading the dashboard. Please try again or contact support.',
-        }, status=500)
+        return render(request, 'dashboard.html', {
+            'total_horses': 0,
+            'vaccinations_due': [],
+            'farrier_due': [],
+            'outstanding_invoices': [],
+            'unbilled_total': 0,
+            'chart_data': {'monthly': {'labels': [], 'revenue': [], 'costs': [], 'forecastStart': 0}},
+            'capacity_data': {'labels': [], 'horses': [], 'capacity': []},
+            'activity': [],
+        })
 
 
 def _dashboard_inner(request):
     """Dashboard queries (health alerts loaded via HTMX)."""
     import calendar
-    import json
     from datetime import date
     from decimal import Decimal
 
@@ -258,17 +263,17 @@ def _dashboard_inner(request):
         forecast_revenue.append(float(month_rev))
         forecast_cost.append(round(avg_cost, 2))
 
-    chart_data = json.dumps({
+    chart_data = {
         'monthly': {
             'labels': month_labels + forecast_labels,
             'revenue': revenue_data + forecast_revenue,
             'costs': cost_data + forecast_cost,
             'forecastStart': len(month_labels),
         },
-    })
+    }
 
     # ── Site Capacity Data ──────────────────────────────────────
-    sites_capacity = (
+    sites_capacity = list(
         Location.objects.values('site')
         .annotate(
             total_horses=Count('placements', filter=Q(placements__end_date__isnull=True)),
@@ -276,11 +281,11 @@ def _dashboard_inner(request):
         )
         .order_by('site')
     )
-    capacity_data = json.dumps({
+    capacity_data = {
         'labels': [s['site'] for s in sites_capacity],
         'horses': [s['total_horses'] for s in sites_capacity],
         'capacity': [s['total_capacity'] or 0 for s in sites_capacity],
-    })
+    }
 
     # ── Recent Activity Timeline ────────────────────────────────
     activity = []

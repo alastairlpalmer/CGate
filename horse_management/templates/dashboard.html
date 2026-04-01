@@ -270,11 +270,15 @@
 
 </div>
 
+<!-- Chart data -->
+{{ chart_data|json_script:"chart-data" }}
+{{ capacity_data|json_script:"capacity-data" }}
+
 <!-- Chart.js Initialization -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const chartData = {{ chart_data|safe }};
-    const capacityData = {{ capacity_data|safe }};
+    const chartData = JSON.parse(document.getElementById('chart-data').textContent);
+    const capacityData = JSON.parse(document.getElementById('capacity-data').textContent);
 
     // Colour palette
     const colors = {
