@@ -239,9 +239,10 @@
 
     // ── Page entrance animation + scroll to top + nav highlight ──
     document.body.addEventListener('htmx:afterSwap', function (e) {
-        if (e.detail.boosted) {
-            window.scrollTo({ top: 0, behavior: 'instant' });
-        }
+        // Only run full-page logic on boosted navigation, not partial loads
+        if (!e.detail.boosted) return;
+
+        window.scrollTo({ top: 0, behavior: 'instant' });
         var main = document.getElementById('main-content');
         if (!main) return;
         main.classList.remove('page-enter');
@@ -263,7 +264,7 @@
         }
         // Re-initialize Alpine on swapped content
         try {
-            if (main && window.Alpine) Alpine.initTree(main);
+            if (window.Alpine) Alpine.initTree(main);
         } catch(err) { /* Alpine init errors are non-fatal */ }
         // Re-run inline scripts (skip json_script type=application/json)
         main.querySelectorAll('script:not([type])').forEach(function(old) {
