@@ -283,9 +283,13 @@
 
 <!-- Chart.js Initialization -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const chartData = JSON.parse(document.getElementById('chart-data').textContent);
-    const capacityData = JSON.parse(document.getElementById('capacity-data').textContent);
+(function() {
+    if (typeof Chart === 'undefined') return; // Chart.js not loaded yet
+    var el1 = document.getElementById('chart-data');
+    var el2 = document.getElementById('capacity-data');
+    if (!el1 || !el2) return; // Data not available (error fallback)
+    const chartData = JSON.parse(el1.textContent);
+    const capacityData = JSON.parse(el2.textContent);
 
     // Colour palette
     const colors = {
@@ -296,6 +300,9 @@ document.addEventListener('DOMContentLoaded', function() {
         parchment: '#F7F5F0',
         lightSage: '#E8EDE9',
     };
+
+    // Destroy existing charts if re-navigating via HTMX
+    Chart.helpers.each(Chart.instances, function(instance) { instance.destroy(); });
 
     // ── Revenue vs Cost Line Chart ──
     const revenueCtx = document.getElementById('revenueChart');
@@ -420,6 +427,6 @@ document.addEventListener('DOMContentLoaded', function() {
             },
         });
     }
-});
+})();
 </script>
 {% endblock %}

@@ -21,7 +21,8 @@
             crossorigin="anonymous"></script>
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-parchment font-body antialiased text-charcoal" x-data="{ sidebarOpen: false }" x-cloak>
+<body class="bg-parchment font-body antialiased text-charcoal" x-data="{ sidebarOpen: false }" x-cloak
+      hx-boost="true" hx-swap="outerHTML show:window:top" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
 
     <!-- ── Progress Bar ── -->
     <div id="htmx-progress"
@@ -54,8 +55,7 @@
         </div>
 
         <!-- Nav -->
-        <nav class="flex-1 overflow-y-auto px-3 py-2 space-y-0.5"
-             hx-boost="true" hx-target="#main-content" hx-swap="innerHTML show:window:top" hx-select="#main-content">
+        <nav class="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
 
             <!-- Overview -->
             <div class="nav-group-label">Overview</div>
@@ -193,8 +193,7 @@
         {% endif %}
 
         <!-- Main content -->
-        <main id="main-content" class="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-7xl w-full mx-auto"
-              hx-boost="true" hx-target="#main-content" hx-swap="innerHTML show:window:top" hx-select="#main-content">
+        <main id="main-content" class="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-7xl w-full mx-auto">
             {% block content %}{% endblock %}
         </main>
 
@@ -262,6 +261,15 @@
             var m = title.match(/<title>(.*?)<\/title>/);
             if (m) document.title = m[1];
         }
+        // Re-initialize Alpine on swapped content and re-run inline scripts
+        try {
+            if (main && window.Alpine) Alpine.initTree(main);
+        } catch(err) { /* Alpine init errors are non-fatal */ }
+        main.querySelectorAll('script').forEach(function(old) {
+            var s = document.createElement('script');
+            s.textContent = old.textContent;
+            old.replaceWith(s);
+        });
     });
 
     // ── Close mobile sidebar on navigate ──
