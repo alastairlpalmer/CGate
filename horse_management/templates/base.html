@@ -261,14 +261,15 @@
             var m = title.match(/<title>(.*?)<\/title>/);
             if (m) document.title = m[1];
         }
-        // Re-initialize Alpine on swapped content and re-run inline scripts
+        // Re-initialize Alpine on swapped content
         try {
             if (main && window.Alpine) Alpine.initTree(main);
         } catch(err) { /* Alpine init errors are non-fatal */ }
-        main.querySelectorAll('script').forEach(function(old) {
+        // Re-run inline scripts (skip json_script type=application/json)
+        main.querySelectorAll('script:not([type])').forEach(function(old) {
             var s = document.createElement('script');
             s.textContent = old.textContent;
-            old.replaceWith(s);
+            old.parentNode.replaceChild(s, old);
         });
     });
 
