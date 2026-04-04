@@ -44,6 +44,7 @@
                 Log Delivery
             </a>
             <a href="{% url 'feed_stock_adjust' %}" class="text-xs text-sage hover:text-charcoal transition-colors">Adjust Stock</a>
+            <a href="{% url 'feed_stock_clear' %}" class="text-xs text-sage/50 hover:text-error-red transition-colors">Reset</a>
         </div>
         <form method="get" class="flex items-center gap-3">
             <select name="site" class="form-select w-auto" onchange="this.form.requestSubmit()">

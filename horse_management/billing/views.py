@@ -507,6 +507,19 @@ def feed_stock_adjust(request):
     return render(request, 'billing/feed_stock_adjust.html', {'form': form})
 
 
+@staff_required
+def feed_stock_clear(request):
+    """Clear all feed stock records to start fresh."""
+    if request.method == 'POST':
+        count = FeedStock.objects.count()
+        FeedStock.objects.all().delete()
+        messages.success(request, f"Cleared {count} stock records. You can now start tracking from scratch.")
+        return redirect('feed_dashboard')
+    return render(request, 'billing/feed_stock_clear.html', {
+        'count': FeedStock.objects.count(),
+    })
+
+
 @login_required
 def supplier_autocomplete(request):
     """Return distinct supplier names for autocomplete."""
