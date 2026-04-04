@@ -1,30 +1,71 @@
+{% load ui_extras %}
+
 <!-- Stat Cards -->
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-    <div class="card p-4 border-l-4 border-l-red-500">
-        <p class="text-xs font-medium text-sage uppercase tracking-wide">Overdue Vaccinations</p>
-        <p class="mt-1 text-2xl font-bold {% if stat_overdue_vax > 0 %}text-error-red{% else %}text-charcoal{% endif %}">{{ stat_overdue_vax }}</p>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+    <div class="card p-5 border-l-4 {% if stat_overdue_vax > 0 %}border-l-error-red{% else %}border-l-sage{% endif %}">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full {% if stat_overdue_vax > 0 %}bg-error-red-50{% else %}bg-light-sage{% endif %} flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 {% if stat_overdue_vax > 0 %}text-error-red{% else %}text-sage{% endif %}" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-2xl font-bold {% if stat_overdue_vax > 0 %}text-error-red{% else %}text-charcoal{% endif %}">{{ stat_overdue_vax }}</p>
+                <p class="text-xs text-sage">Overdue Vaccinations</p>
+            </div>
+        </div>
     </div>
-    <div class="card p-4 border-l-4 border-l-sage">
-        <p class="text-xs font-medium text-sage uppercase tracking-wide">Farrier Due</p>
-        <p class="mt-1 text-2xl font-bold {% if stat_due_farrier > 0 %}text-forest{% else %}text-charcoal{% endif %}">{{ stat_due_farrier }}</p>
+    <div class="card p-5 border-l-4 {% if stat_due_farrier > 0 %}border-l-saddle{% else %}border-l-light-sage{% endif %}">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full {% if stat_due_farrier > 0 %}bg-saddle-50{% else %}bg-light-sage{% endif %} flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 {% if stat_due_farrier > 0 %}text-saddle{% else %}text-sage{% endif %}" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.648 3.203a.75.75 0 01-1.088-.791l1.078-6.29-4.57-4.454a.75.75 0 01.416-1.28l6.317-.917L11.11 1.607a.75.75 0 011.78 0l3.186 6.45 6.317.917a.75.75 0 01.416 1.28l-4.57 4.454 1.078 6.29a.75.75 0 01-1.088.791L12 15.17z"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-2xl font-bold {% if stat_due_farrier > 0 %}text-saddle{% else %}text-charcoal{% endif %}">{{ stat_due_farrier }}</p>
+                <p class="text-xs text-sage">Farrier Due</p>
+            </div>
+        </div>
     </div>
-    <div class="card p-4 border-l-4 border-l-sage">
-        <p class="text-xs font-medium text-sage uppercase tracking-wide">Vet Follow-ups</p>
-        <p class="mt-1 text-2xl font-bold {% if stat_vet_followups > 0 %}text-forest{% else %}text-charcoal{% endif %}">{{ stat_vet_followups }}</p>
+    <div class="card p-5 border-l-4 {% if stat_vet_followups > 0 %}border-l-info-blue{% else %}border-l-light-sage{% endif %}">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full {% if stat_vet_followups > 0 %}bg-info-blue-50{% else %}bg-light-sage{% endif %} flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 {% if stat_vet_followups > 0 %}text-info-blue{% else %}text-sage{% endif %}" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-2xl font-bold {% if stat_vet_followups > 0 %}text-info-blue{% else %}text-charcoal{% endif %}">{{ stat_vet_followups }}</p>
+                <p class="text-xs text-sage">Vet Follow-ups</p>
+            </div>
+        </div>
     </div>
-    <div class="card p-4 border-l-4 border-l-red-500">
-        <p class="text-xs font-medium text-sage uppercase tracking-wide">High Egg Counts</p>
-        <p class="mt-1 text-2xl font-bold {% if stat_high_eggs > 0 %}text-error-red{% else %}text-charcoal{% endif %}">{{ stat_high_eggs }}</p>
+    <div class="card p-5 border-l-4 {% if stat_high_eggs > 0 %}border-l-error-red{% else %}border-l-light-sage{% endif %}">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full {% if stat_high_eggs > 0 %}bg-error-red-50{% else %}bg-light-sage{% endif %} flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 {% if stat_high_eggs > 0 %}text-error-red{% else %}text-sage{% endif %}" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-2xl font-bold {% if stat_high_eggs > 0 %}text-error-red{% else %}text-charcoal{% endif %}">{{ stat_high_eggs }}</p>
+                <p class="text-xs text-sage">High Egg Counts</p>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="space-y-6">
+<div class="space-y-6 mt-6">
 
     <!-- Action Required -->
     {% if action_required %}
-    <div class="card overflow-hidden border-l-4 border-l-red-500">
+    <div class="card overflow-hidden">
         <div class="section-header">
-            <h2 class="section-title">Action Required</h2>
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-error-red animate-pulse"></span>
+                <h2 class="section-title">Action Required</h2>
+            </div>
             <span class="badge-danger">{{ action_required|length }}</span>
         </div>
         <div class="overflow-x-auto">
@@ -34,20 +75,27 @@
                         <th>Horse</th>
                         <th>Type</th>
                         <th>Detail</th>
-                        <th>Due Date</th>
-                        <th>Actions</th>
+                        <th>Due</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in action_required %}
                     <tr>
-                        <td><a href="{% url 'horse_detail' item.horse.pk %}" class="link">{{ item.horse.name }}</a></td>
                         <td>
-                            <span class="inline-flex items-center rounded-md bg-error-red-50 px-2 py-0.5 text-xs font-medium text-error-red">{{ item.type }}</span>
+                            <a href="{% url 'horse_detail' item.horse.pk %}" class="link font-medium">{{ item.horse.name }}</a>
                         </td>
-                        <td>{{ item.detail }}</td>
-                        <td class="text-error-red font-semibold">{{ item.due_date }}</td>
-                        <td><a href="{{ item.url }}" class="btn-ghost btn-xs">{{ item.action_label }}</a></td>
+                        <td>
+                            <span class="{% if item.type == 'Farrier' %}badge-warning{% else %}badge-danger{% endif %}">{{ item.type }}</span>
+                        </td>
+                        <td class="text-charcoal">{{ item.detail }}</td>
+                        <td>
+                            <span class="text-error-red font-medium">{{ item.due_date|due_label }}</span>
+                            <p class="text-xs text-sage">{{ item.due_date }}</p>
+                        </td>
+                        <td class="text-right">
+                            <a href="{{ item.url }}" class="btn-ghost btn-xs">{{ item.action_label }}</a>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -58,10 +106,10 @@
 
     <!-- Coming Up -->
     {% if coming_up %}
-    <div class="card overflow-hidden border-l-4 border-l-sage">
+    <div class="card overflow-hidden">
         <div class="section-header">
             <h2 class="section-title">Coming Up</h2>
-            <span class="badge-warning">{{ coming_up|length }}</span>
+            <span class="badge-info">{{ coming_up|length }}</span>
         </div>
         <div class="overflow-x-auto">
             <table class="data-table">
@@ -70,20 +118,27 @@
                         <th>Horse</th>
                         <th>Type</th>
                         <th>Detail</th>
-                        <th>Due Date</th>
-                        <th>Actions</th>
+                        <th>Due</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in coming_up %}
                     <tr>
-                        <td><a href="{% url 'horse_detail' item.horse.pk %}" class="link">{{ item.horse.name }}</a></td>
                         <td>
-                            <span class="inline-flex items-center rounded-md bg-light-sage px-2 py-0.5 text-xs font-medium text-forest">{{ item.type }}</span>
+                            <a href="{% url 'horse_detail' item.horse.pk %}" class="link font-medium">{{ item.horse.name }}</a>
                         </td>
-                        <td>{{ item.detail }}</td>
-                        <td class="text-forest">{{ item.due_date }}</td>
-                        <td><a href="{{ item.url }}" class="btn-ghost btn-xs">{{ item.action_label }}</a></td>
+                        <td>
+                            <span class="badge-success">{{ item.type }}</span>
+                        </td>
+                        <td class="text-charcoal">{{ item.detail }}</td>
+                        <td>
+                            <span class="text-forest">{{ item.due_date|due_label }}</span>
+                            <p class="text-xs text-sage">{{ item.due_date }}</p>
+                        </td>
+                        <td class="text-right">
+                            <a href="{{ item.url }}" class="btn-ghost btn-xs">{{ item.action_label }}</a>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -94,54 +149,51 @@
 
     <!-- Monitoring -->
     {% if active_conditions or high_egg_counts %}
-    <div>
-        <h2 class="text-sm font-semibold text-sage uppercase tracking-wider mb-3">Monitoring</h2>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <!-- Active Conditions -->
-            <div class="card overflow-hidden">
-                <div class="section-header">
-                    <h3 class="section-title">Active Conditions</h3>
-                    {% if active_conditions %}<span class="badge-warning">{{ active_conditions|length }}</span>{% endif %}
-                </div>
-                {% if active_conditions %}
-                <ul class="divide-y divide-light-sage">
-                    {% for c in active_conditions %}
-                    <li class="px-5 py-3 flex items-center justify-between">
-                        <div>
-                            <a href="{% url 'horse_detail' c.horse.pk %}" class="link text-sm font-medium">{{ c.horse.name }}</a>
-                            <p class="text-xs text-sage mt-0.5">{{ c.name }}</p>
-                        </div>
-                        <a href="{% url 'condition_update' c.pk %}" class="btn-ghost btn-xs">Edit</a>
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% else %}
-                <p class="px-5 py-6 text-sm text-sage text-center">No active conditions</p>
-                {% endif %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Active Conditions -->
+        <div class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">Active Conditions</h3>
+                {% if active_conditions %}<span class="badge-warning">{{ active_conditions|length }}</span>{% endif %}
             </div>
+            {% if active_conditions %}
+            <ul class="divide-y divide-light-sage">
+                {% for c in active_conditions %}
+                <li class="px-5 py-3 flex items-center justify-between">
+                    <div>
+                        <a href="{% url 'horse_detail' c.horse.pk %}" class="link text-sm font-medium">{{ c.horse.name }}</a>
+                        <p class="text-xs text-sage mt-0.5">{{ c.name }}</p>
+                    </div>
+                    <a href="{% url 'condition_update' c.pk %}" class="btn-ghost btn-xs">Edit</a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="px-5 py-6 text-sm text-sage text-center">No active conditions</p>
+            {% endif %}
+        </div>
 
-            <!-- High Egg Counts -->
-            <div class="card overflow-hidden">
-                <div class="section-header">
-                    <h3 class="section-title">High Egg Counts <span class="font-normal text-sage">(90 days)</span></h3>
-                    {% if high_egg_counts %}<span class="badge-danger">{{ high_egg_counts|length }}</span>{% endif %}
-                </div>
-                {% if high_egg_counts %}
-                <ul class="divide-y divide-light-sage">
-                    {% for ec in high_egg_counts %}
-                    <li class="px-5 py-3 flex items-center justify-between">
-                        <div>
-                            <a href="{% url 'horse_detail' ec.horse.pk %}" class="link text-sm font-medium">{{ ec.horse.name }}</a>
-                            <p class="text-xs text-sage mt-0.5">{{ ec.date }} &middot; <span class="text-error-red font-semibold">{{ ec.count }} EPG</span></p>
-                        </div>
-                        <a href="{% url 'worming_create' %}?horse={{ ec.horse.pk }}" class="btn-ghost btn-xs">Record Worming</a>
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% else %}
-                <p class="px-5 py-6 text-sm text-sage text-center">No high counts</p>
-                {% endif %}
+        <!-- High Egg Counts -->
+        <div class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">High Egg Counts</h3>
+                {% if high_egg_counts %}<span class="badge-danger">{{ high_egg_counts|length }}</span>{% endif %}
             </div>
+            {% if high_egg_counts %}
+            <ul class="divide-y divide-light-sage">
+                {% for ec in high_egg_counts %}
+                <li class="px-5 py-3 flex items-center justify-between">
+                    <div>
+                        <a href="{% url 'horse_detail' ec.horse.pk %}" class="link text-sm font-medium">{{ ec.horse.name }}</a>
+                        <p class="text-xs text-sage mt-0.5">{{ ec.date|ago_label }} &middot; <span class="text-error-red font-semibold">{{ ec.count }} EPG</span></p>
+                    </div>
+                    <a href="{% url 'worming_create' %}?horse={{ ec.horse.pk }}" class="btn-ghost btn-xs">Record Worming</a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="px-5 py-6 text-sm text-sage text-center">No high counts in last 90 days</p>
+            {% endif %}
         </div>
     </div>
     {% endif %}
