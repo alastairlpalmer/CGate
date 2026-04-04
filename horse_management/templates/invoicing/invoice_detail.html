@@ -33,6 +33,8 @@
                          hx-get="{% url 'xero_invoice_status' invoice.pk %}"
                          hx-trigger="load"
                          hx-swap="innerHTML"
+                         hx-target="this"
+                         hx-select="unset"
                          hx-boost="false">
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-info-blue-50 text-info-blue border border-info-blue/20">
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
