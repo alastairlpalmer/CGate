@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}Feed Store - CGate{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Feed Store</h1>
+            <p class="page-subtitle">Track feed deliveries, stock levels, and feed-outs</p>
+        </div>
+    </div>
+
+    {% include 'health/partials/feed_store_content.html' %}
+
+</div>
+{% endblock %}
