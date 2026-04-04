@@ -367,6 +367,7 @@ def yard_cost_duplicate(request, pk):
         vat_amount=original.vat_amount,
         is_recurring=original.is_recurring,
         recurrence_interval=original.recurrence_interval,
+        recurrence_end_date=original.recurrence_end_date,
         notes=original.notes,
     )
     messages.success(request, f"Duplicated '{original.description}' with today's date.")

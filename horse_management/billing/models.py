@@ -176,6 +176,10 @@ class YardCost(models.Model):
     recurrence_interval = models.CharField(
         max_length=20, choices=RecurrenceInterval.choices, blank=True
     )
+    recurrence_end_date = models.DateField(
+        null=True, blank=True,
+        help_text="Leave blank if the recurring cost has no end date"
+    )
     receipt_image = models.ImageField(
         upload_to='receipts/yard/%Y/%m/', blank=True, null=True,
         validators=[

@@ -107,6 +107,14 @@
                           <p class="mt-1 text-sm text-error-red">{{ form.recurrence_interval.errors.0 }}</p>
                         {% endif %}
                     </div>
+                    <div x-show="isRecurring" x-transition x-cloak>
+                        <label for="id_recurrence_end_date" class="block text-sm font-medium text-charcoal">End Date</label>
+                        {{ form.recurrence_end_date }}
+                        {% if form.recurrence_end_date.errors %}
+                          <p class="mt-1 text-sm text-error-red">{{ form.recurrence_end_date.errors.0 }}</p>
+                        {% endif %}
+                        <p class="mt-1 text-xs text-sage">Leave blank if ongoing</p>
+                    </div>
                     <div class="sm:col-span-2">
                         <label for="id_receipt_image" class="block text-sm font-medium text-charcoal">Receipt Image</label>
                         {{ form.receipt_image }}

@@ -34,7 +34,7 @@ class YardCostForm(forms.ModelForm):
         model = YardCost
         fields = [
             'category', 'date', 'supplier', 'description',
-            'amount', 'vat_amount', 'is_recurring', 'recurrence_interval',
+            'amount', 'vat_amount', 'is_recurring', 'recurrence_interval', 'recurrence_end_date',
             'receipt_image', 'notes',
         ]
         widgets = {
@@ -46,6 +46,7 @@ class YardCostForm(forms.ModelForm):
             'vat_amount': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
             'is_recurring': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
             'recurrence_interval': forms.Select(attrs={'class': 'form-select'}),
+            'recurrence_end_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'receipt_image': forms.FileInput(attrs={'class': 'form-input'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
