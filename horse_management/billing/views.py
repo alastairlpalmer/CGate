@@ -450,6 +450,23 @@ def feed_out_create(request, location_pk):
             with transaction.atomic():
                 feed_out = form.save(commit=False)
                 feed_out.location = location
+
+                # Auto-calculate cost from stock if not provided
+                if not feed_out.total_cost and feed_out.quantity_numeric and feed_out.unit:
+                    latest_stock = FeedStock.objects.filter(
+                        feed_type=feed_out.feed_type,
+                        unit=feed_out.unit,
+                        cost__gt=0,
+                        quantity__gt=0,
+                    ).order_by('-date').first()
+                    if latest_stock:
+                        cost_per_unit = latest_stock.cost / latest_stock.quantity
+                        feed_out.total_cost = (cost_per_unit * feed_out.quantity_numeric).quantize(Decimal('0.01'))
+                    else:
+                        feed_out.total_cost = Decimal('0.00')
+                elif not feed_out.total_cost:
+                    feed_out.total_cost = Decimal('0.00')
+
                 feed_out.save()
 
                 # Create YardCost for internal tracking

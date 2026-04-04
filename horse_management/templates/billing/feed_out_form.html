@@ -69,8 +69,9 @@
                         <p class="mt-1 text-xs text-sage">Optional note (e.g. "half a round bale")</p>
                     </div>
                     <div>
-                        <label for="id_total_cost" class="block text-sm font-medium text-charcoal">Total Cost *</label>
+                        <label for="id_total_cost" class="block text-sm font-medium text-charcoal">Total Cost</label>
                         {{ form.total_cost }}
+                        <p class="mt-1 text-xs text-sage">Leave blank to auto-calculate from delivery cost</p>
                         {% if form.total_cost.errors %}<p class="mt-1 text-sm text-error-red">{{ form.total_cost.errors.0 }}</p>{% endif %}
                     </div>
                 </div>

@@ -244,7 +244,7 @@ class FeedOut(models.Model):
         max_length=20, choices=FeedUnit.choices, blank=True,
     )
     total_cost = models.DecimalField(
-        max_digits=10, decimal_places=2,
+        max_digits=10, decimal_places=2, default=Decimal('0.00'),
         validators=[MinValueValidator(Decimal('0.00'))],
     )
     notes = models.TextField(blank=True)

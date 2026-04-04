@@ -61,10 +61,14 @@ class FeedOutForm(forms.ModelForm):
             'quantity_numeric': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'placeholder': 'e.g. 3'}),
             'unit': forms.Select(attrs={'class': 'form-select'}),
             'quantity': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Description (e.g. 2 round bales)'}),
-            'total_cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
+            'total_cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'placeholder': 'Auto-calculated if left blank'}),
             'is_recharged': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['total_cost'].required = False
 
 
 class FeedStockForm(forms.ModelForm):
