@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Adjust Stock - CGate{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto space-y-6">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Adjust Stock</h1>
+            <p class="page-subtitle">Manually correct stock levels without logging a feed-out</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <form method="post" class="divide-y divide-light-sage">
+            {% csrf_token %}
+
+            <fieldset class="p-5 space-y-4">
+                <legend class="section-title">Adjustment</legend>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
+                    <div>
+                        <label for="id_site" class="block text-sm font-medium text-charcoal">Site *</label>
+                        {{ form.site }}
+                    </div>
+                    <div>
+                        <label for="id_feed_type" class="block text-sm font-medium text-charcoal">Feed Type *</label>
+                        {{ form.feed_type }}
+                    </div>
+                    <div>
+                        <label for="id_quantity" class="block text-sm font-medium text-charcoal">Quantity *</label>
+                        {{ form.quantity }}
+                        <p class="mt-1 text-xs text-sage">Positive to add, or select Waste to reduce</p>
+                    </div>
+                    <div>
+                        <label for="id_unit" class="block text-sm font-medium text-charcoal">Unit *</label>
+                        {{ form.unit }}
+                    </div>
+                    <div>
+                        <label for="id_entry_type" class="block text-sm font-medium text-charcoal">Reason</label>
+                        {{ form.entry_type }}
+                    </div>
+                    <div>
+                        <label for="id_date" class="block text-sm font-medium text-charcoal">Date</label>
+                        {{ form.date }}
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="p-5 space-y-4">
+                <legend class="section-title">Notes</legend>
+                <div class="mt-3">
+                    {{ form.notes }}
+                    <p class="mt-1 text-xs text-sage">Why is this adjustment being made?</p>
+                </div>
+            </fieldset>
+
+            <div class="flex justify-end gap-3 px-5 py-4 bg-parchment rounded-b-xl">
+                <a href="{% url 'feed_dashboard' %}" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">Apply Adjustment</button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

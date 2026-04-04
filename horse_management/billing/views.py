@@ -455,7 +455,7 @@ class FeedStockCreateView(StaffRequiredMixin, CreateView):
     model = FeedStock
     form_class = FeedStockForm
     template_name = 'billing/feed_stock_form.html'
-    success_url = reverse_lazy('health_dashboard')
+    success_url = reverse_lazy('feed_dashboard')
 
     def get_initial(self):
         initial = super().get_initial()
@@ -480,6 +480,31 @@ class FeedStockCreateView(StaffRequiredMixin, CreateView):
             )
         messages.success(self.request, f"Logged {stock.quantity} {stock.get_unit_display()} of {stock.get_feed_type_display()}.")
         return response
+
+
+@staff_required
+def feed_stock_adjust(request):
+    """Manually adjust feed stock (reduce/increase without a feed-out)."""
+    from .forms import FeedStockForm
+    from .models import FeedType, FeedUnit
+
+    if request.method == 'POST':
+        form = FeedStockForm(request.POST)
+        if form.is_valid():
+            stock = form.save(commit=False)
+            # Negate quantity for waste/reduction
+            if stock.entry_type == 'waste':
+                stock.quantity = -abs(stock.quantity)
+            stock.save()
+            messages.success(request, f"Stock adjusted: {stock.quantity:+g} {stock.get_unit_display()} {stock.get_feed_type_display()} at {stock.site}.")
+            return redirect('feed_dashboard')
+    else:
+        form = FeedStockForm(initial={
+            'date': timezone.now().date(),
+            'entry_type': 'adjustment',
+        })
+
+    return render(request, 'billing/feed_stock_adjust.html', {'form': form})
 
 
 @login_required

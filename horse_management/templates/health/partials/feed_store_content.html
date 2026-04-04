@@ -36,14 +36,16 @@
 <!-- Actions + Filters -->
 <div class="card px-5 py-4 mt-6">
     <div class="flex flex-wrap items-center justify-between gap-4">
-        <a href="{% url 'feed_stock_create' %}" class="btn-primary">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-            </svg>
-            Log Delivery
-        </a>
-        <form method="get" class="flex items-center gap-3" hx-boost="false" hx-get="{% url 'health_dashboard' %}" hx-target="#health-table-area" hx-swap="innerHTML">
-            <input type="hidden" name="type" value="feed_store">
+        <div class="flex items-center gap-3">
+            <a href="{% url 'feed_stock_create' %}" class="btn-primary">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                </svg>
+                Log Delivery
+            </a>
+            <a href="{% url 'feed_stock_adjust' %}" class="text-xs text-sage hover:text-charcoal transition-colors">Adjust Stock</a>
+        </div>
+        <form method="get" class="flex items-center gap-3">
             <select name="site" class="form-select w-auto" onchange="this.form.requestSubmit()">
                 <option value="">All sites</option>
                 {% for site in all_sites %}

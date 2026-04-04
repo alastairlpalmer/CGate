@@ -19,6 +19,7 @@ urlpatterns = [
     # Feed
     path('feed/', views.feed_dashboard, name='feed_dashboard'),
     path('feed-stock/add/', views.FeedStockCreateView.as_view(), name='feed_stock_create'),
+    path('feed-stock/adjust/', views.feed_stock_adjust, name='feed_stock_adjust'),
     path('feed-out/<int:location_pk>/add/', views.feed_out_create, name='feed_out_create'),
 
     # Supplier autocomplete
