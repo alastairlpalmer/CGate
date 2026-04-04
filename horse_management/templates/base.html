@@ -304,5 +304,111 @@
 })();
 </script>
 
+<!-- Register Alpine components before Alpine starts (loaded with defer) -->
+<script>
+document.addEventListener('alpine:init', function() {
+    Alpine.data('bulkActions', function() {
+        return {
+            selectedHorses: new Set(),
+            actionType: '',
+            modalOpen: false,
+            modalTitle: '',
+
+            toggleHorse(id) {
+                if (this.selectedHorses.has(id)) {
+                    this.selectedHorses.delete(id);
+                } else {
+                    this.selectedHorses.add(id);
+                }
+                this.selectedHorses = new Set(this.selectedHorses);
+            },
+
+            isSelected(id) {
+                return this.selectedHorses.has(id);
+            },
+
+            selectAll(ids) {
+                ids.forEach(id => this.selectedHorses.add(id));
+                this.selectedHorses = new Set(this.selectedHorses);
+            },
+
+            clearAll() {
+                this.selectedHorses = new Set();
+                document.querySelectorAll('input[data-horse-checkbox]').forEach(cb => cb.checked = false);
+                var selectAllCb = document.querySelector('input[data-select-all]');
+                if (selectAllCb) selectAllCb.checked = false;
+            },
+
+            toggleAll(event) {
+                var checkboxes = document.querySelectorAll('input[data-horse-checkbox]');
+                if (event.target.checked) {
+                    var ids = [];
+                    checkboxes.forEach(function(cb) {
+                        cb.checked = true;
+                        ids.push(parseInt(cb.value));
+                    });
+                    this.selectAll(ids);
+                } else {
+                    this.clearAll();
+                }
+            },
+
+            openModal() {
+                if (!this.actionType || this.selectedHorses.size === 0) return;
+
+                var labels = {
+                    vaccination: 'Record Vaccination',
+                    farrier: 'Record Farrier Visit',
+                    worming: 'Record Worming Treatment',
+                    egg_count: 'Record Egg Count',
+                    vet_visit: 'Record Vet Visit',
+                    condition: 'Record Medical Condition',
+                    expected_departure: 'Set Expected Departure',
+                    actual_departure: 'Set Departure Date'
+                };
+                this.modalTitle = labels[this.actionType] + ' (' + this.selectedHorses.size + ' horses)';
+
+                var container = document.getElementById('bulk-form-container');
+                container.innerHTML = '<div class="p-5 text-center text-sage"><p class="text-sm">Loading form...</p></div>';
+
+                var self = this;
+                fetch('/health/bulk/form/?action_type=' + this.actionType, {
+                    credentials: 'same-origin'
+                })
+                .then(function(resp) { return resp.text(); })
+                .then(function(html) {
+                    container.innerHTML = html;
+                    htmx.process(container);
+                    var form = container.querySelector('form');
+                    if (form) {
+                        form.setAttribute('hx-select', 'unset');
+                        self.selectedHorses.forEach(function(id) {
+                            var input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = 'horse_ids';
+                            input.value = id;
+                            form.appendChild(input);
+                        });
+                        htmx.process(form);
+                    }
+                });
+
+                this.modalOpen = true;
+            },
+
+            init() {
+                var self = this;
+                document.body.addEventListener('bulkActionComplete', function() {
+                    self.modalOpen = false;
+                    self.clearAll();
+                    self.actionType = '';
+                    window.location.reload();
+                });
+            }
+        };
+    });
+});
+</script>
+
 </body>
 </html>

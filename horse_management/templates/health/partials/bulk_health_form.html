@@ -1,5 +1,6 @@
 <form hx-post="{% url 'bulk_health_apply' %}"
       hx-target="#bulk-form-container"
+      hx-select="unset"
       hx-swap="innerHTML">
     {% csrf_token %}
     <input type="hidden" name="action_type" value="{{ action_type }}">
