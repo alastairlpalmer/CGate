@@ -20,7 +20,7 @@ class ExtraChargeForm(forms.ModelForm):
             'owner': forms.Select(attrs={'class': 'form-select'}),
             'service_provider': forms.Select(attrs={'class': 'form-select'}),
             'charge_type': forms.Select(attrs={'class': 'form-select'}),
-            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'description': forms.TextInput(attrs={'class': 'form-input'}),
             'amount': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
             'split_by_ownership': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
@@ -39,7 +39,7 @@ class YardCostForm(forms.ModelForm):
         ]
         widgets = {
             'category': forms.Select(attrs={'class': 'form-select'}),
-            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'supplier': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Local Hay Merchant'}),
             'description': forms.TextInput(attrs={'class': 'form-input'}),
             'amount': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
@@ -56,7 +56,7 @@ class FeedOutForm(forms.ModelForm):
         model = FeedOut
         fields = ['date', 'feed_type', 'quantity_numeric', 'unit', 'quantity', 'total_cost', 'is_recharged', 'notes']
         widgets = {
-            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'feed_type': forms.Select(attrs={'class': 'form-select'}),
             'quantity_numeric': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'placeholder': 'e.g. 3'}),
             'unit': forms.Select(attrs={'class': 'form-select'}),
@@ -74,7 +74,7 @@ class FeedStockForm(forms.ModelForm):
         widgets = {
             'site': forms.Select(attrs={'class': 'form-select'}),
             'feed_type': forms.Select(attrs={'class': 'form-select'}),
-            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
             'unit': forms.Select(attrs={'class': 'form-select'}),
             'entry_type': forms.Select(attrs={'class': 'form-select'}),

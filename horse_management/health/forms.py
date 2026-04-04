@@ -28,8 +28,8 @@ class VaccinationForm(forms.ModelForm):
         widgets = {
             'horse': forms.Select(attrs={'class': 'form-select'}),
             'vaccination_type': forms.Select(attrs={'class': 'form-select'}),
-            'date_given': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
-            'next_due_date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'date_given': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'vet': forms.Select(attrs={'class': 'form-select'}),
             'batch_number': forms.TextInput(attrs={'class': 'form-input'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
@@ -64,10 +64,10 @@ class FarrierVisitForm(forms.ModelForm):
         ]
         widgets = {
             'horse': forms.Select(attrs={'class': 'form-select'}),
-            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'service_provider': forms.Select(attrs={'class': 'form-select'}),
             'work_done': forms.Select(attrs={'class': 'form-select'}),
-            'next_due_date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
@@ -103,7 +103,7 @@ class WormingTreatmentForm(forms.ModelForm):
         ]
         widgets = {
             'horse': forms.Select(attrs={'class': 'form-select'}),
-            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'product_name': forms.TextInput(attrs={'class': 'form-input'}),
             'active_ingredient': forms.TextInput(attrs={'class': 'form-input'}),
             'dose': forms.TextInput(attrs={'class': 'form-input'}),
@@ -118,7 +118,7 @@ class WormEggCountForm(forms.ModelForm):
         fields = ['horse', 'date', 'count', 'lab_name', 'sample_type', 'notes']
         widgets = {
             'horse': forms.Select(attrs={'class': 'form-select'}),
-            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'count': forms.NumberInput(attrs={'class': 'form-input'}),
             'lab_name': forms.TextInput(attrs={'class': 'form-input'}),
             'sample_type': forms.Select(attrs={'class': 'form-select'}),
@@ -133,7 +133,7 @@ class MedicalConditionForm(forms.ModelForm):
         widgets = {
             'horse': forms.Select(attrs={'class': 'form-select'}),
             'name': forms.TextInput(attrs={'class': 'form-input'}),
-            'diagnosed_date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'diagnosed_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'status': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
@@ -148,12 +148,12 @@ class VetVisitForm(forms.ModelForm):
         ]
         widgets = {
             'horse': forms.Select(attrs={'class': 'form-select'}),
-            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'vet': forms.Select(attrs={'class': 'form-select'}),
             'reason': forms.TextInput(attrs={'class': 'form-input'}),
             'diagnosis': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'treatment': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
-            'follow_up_date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'follow_up_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
@@ -175,8 +175,8 @@ class BulkVaccinationForm(forms.ModelForm):
         fields = ['vaccination_type', 'date_given', 'next_due_date', 'vet', 'batch_number', 'notes']
         widgets = {
             'vaccination_type': forms.Select(attrs={'class': 'form-select'}),
-            'date_given': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
-            'next_due_date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'date_given': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'vet': forms.Select(attrs={'class': 'form-select'}),
             'batch_number': forms.TextInput(attrs={'class': 'form-input'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
@@ -197,10 +197,10 @@ class BulkFarrierVisitForm(forms.ModelForm):
         model = FarrierVisit
         fields = ['date', 'service_provider', 'work_done', 'next_due_date', 'cost', 'notes']
         widgets = {
-            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'service_provider': forms.Select(attrs={'class': 'form-select'}),
             'work_done': forms.Select(attrs={'class': 'form-select'}),
-            'next_due_date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
@@ -211,7 +211,7 @@ class BulkWormingTreatmentForm(forms.ModelForm):
         model = WormingTreatment
         fields = ['date', 'product_name', 'active_ingredient', 'dose', 'administered_by', 'notes']
         widgets = {
-            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'product_name': forms.TextInput(attrs={'class': 'form-input'}),
             'active_ingredient': forms.TextInput(attrs={'class': 'form-input'}),
             'dose': forms.TextInput(attrs={'class': 'form-input'}),
@@ -225,7 +225,7 @@ class BulkWormEggCountForm(forms.ModelForm):
         model = WormEggCount
         fields = ['date', 'count', 'lab_name', 'sample_type', 'notes']
         widgets = {
-            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'count': forms.NumberInput(attrs={'class': 'form-input'}),
             'lab_name': forms.TextInput(attrs={'class': 'form-input'}),
             'sample_type': forms.Select(attrs={'class': 'form-select'}),
@@ -238,12 +238,12 @@ class BulkVetVisitForm(forms.ModelForm):
         model = VetVisit
         fields = ['date', 'vet', 'reason', 'diagnosis', 'treatment', 'follow_up_date', 'cost', 'notes']
         widgets = {
-            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'vet': forms.Select(attrs={'class': 'form-select'}),
             'reason': forms.TextInput(attrs={'class': 'form-input'}),
             'diagnosis': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'treatment': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
-            'follow_up_date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'follow_up_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
@@ -255,7 +255,7 @@ class BulkMedicalConditionForm(forms.ModelForm):
         fields = ['name', 'diagnosed_date', 'status', 'notes']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
-            'diagnosed_date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'diagnosed_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'status': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
@@ -273,12 +273,12 @@ class BreedingRecordForm(forms.ModelForm):
         widgets = {
             'mare': forms.Select(attrs={'class': 'form-select'}),
             'stallion_name': forms.TextInput(attrs={'class': 'form-input'}),
-            'date_covered': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
-            'date_scanned_14_days': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
-            'date_scanned_heartbeat': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
-            'date_foal_due': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'date_covered': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'date_scanned_14_days': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'date_scanned_heartbeat': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'date_foal_due': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'foal': forms.Select(attrs={'class': 'form-select'}),
-            'foal_dob': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'foal_dob': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'foal_sex': forms.Select(attrs={'class': 'form-select'}),
             'foal_colour': forms.Select(attrs={'class': 'form-select'}),
             'foal_microchip': forms.TextInput(attrs={'class': 'form-input'}),

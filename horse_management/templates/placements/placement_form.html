@@ -71,6 +71,14 @@
                         {% endif %}
                         <p class="mt-1 text-xs text-sage">Leave blank if this is a current placement</p>
                     </div>
+                    <div>
+                        <label for="id_expected_departure" class="block text-sm font-medium text-charcoal">Expected Departure</label>
+                        {{ form.expected_departure }}
+                        {% if form.expected_departure.errors %}
+                        <p class="mt-1 text-xs text-error-red">{{ form.expected_departure.errors.0 }}</p>
+                        {% endif %}
+                        <p class="mt-1 text-xs text-sage">When is this horse expected to leave? (for forecasting)</p>
+                    </div>
                 </div>
             </fieldset>
 

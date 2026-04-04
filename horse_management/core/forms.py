@@ -92,9 +92,9 @@ class PlacementForm(forms.ModelForm):
             'owner': forms.Select(attrs={'class': 'form-select'}),
             'location': forms.Select(attrs={'class': 'form-select'}),
             'rate_type': forms.Select(attrs={'class': 'form-select'}),
-            'start_date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
-            'end_date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
-            'expected_departure': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'start_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'end_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'expected_departure': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -146,11 +146,11 @@ class MoveHorseForm(forms.Form):
         help_text="Leave empty to keep current rate"
     )
     move_date = forms.DateField(
-        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'})
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'})
     )
     expected_departure = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
         help_text="When do you expect this horse to leave?"
     )
     notes = forms.CharField(
@@ -175,11 +175,11 @@ class ArrivalForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'})
     )
     arrival_date = forms.DateField(
-        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'})
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'})
     )
     expected_departure = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
         help_text="When are these horses expected to leave?"
     )
     notes = forms.CharField(
@@ -215,11 +215,11 @@ class SingleArrivalForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'})
     )
     arrival_date = forms.DateField(
-        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'})
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'})
     )
     expected_departure = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
         help_text="When do you expect this horse to leave?"
     )
     notes = forms.CharField(
@@ -247,7 +247,7 @@ class NewArrivalForm(forms.Form):
     )
     date_of_birth = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'})
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'})
     )
     sire_name = forms.CharField(
         max_length=200, required=False,
@@ -278,11 +278,11 @@ class NewArrivalForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'})
     )
     arrival_date = forms.DateField(
-        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'})
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'})
     )
     expected_departure = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
         help_text="When is this horse expected to leave?"
     )
     notes = forms.CharField(
@@ -302,7 +302,7 @@ class NewArrivalForm(forms.Form):
 class DepartureForm(forms.Form):
     """Form for logging horse departures."""
     departure_date = forms.DateField(
-        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'})
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'})
     )
     notes = forms.CharField(
         required=False,

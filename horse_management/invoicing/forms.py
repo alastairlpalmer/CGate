@@ -16,10 +16,10 @@ class InvoiceCreateForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'})
     )
     period_start = forms.DateField(
-        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'})
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'})
     )
     period_end = forms.DateField(
-        widget=forms.DateInput(attrs={'class': 'form-input', 'type': 'date'})
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'})
     )
     notes = forms.CharField(
         required=False,
@@ -66,7 +66,7 @@ class InvoiceUpdateForm(forms.ModelForm):
         widgets = {
             'status': forms.Select(attrs={'class': 'form-select'}),
             'payment_terms_days': forms.NumberInput(attrs={'class': 'form-input'}),
-            'due_date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
         }
 
