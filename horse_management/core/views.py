@@ -273,7 +273,10 @@ def _dashboard_inner(request):
     # ── Site Capacity Data ──────────────────────────────────────
     # Only include locations with capacity set for meaningful chart
     sites_capacity = list(
-        Location.objects.filter(capacity__isnull=False)
+        Location.objects.filter(
+            capacity__isnull=False,
+            usage__in=[Location.Usage.HORSES, Location.Usage.MIXED],
+        )
         .values('site')
         .annotate(
             total_horses=Count('placements', filter=Q(placements__end_date__isnull=True)),
