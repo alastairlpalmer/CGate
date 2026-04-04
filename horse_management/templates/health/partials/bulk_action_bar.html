@@ -25,6 +25,8 @@
                 <option value="egg_count">Record Egg Count</option>
                 <option value="vet_visit">Record Vet Visit</option>
                 <option value="condition">Record Condition</option>
+                <option value="expected_departure">Set Expected Departure</option>
+                <option value="actual_departure">Set Departure Date</option>
             </select>
             <button @click="openModal()"
                     :disabled="!actionType"
@@ -134,7 +136,9 @@ function bulkActions() {
                 worming: 'Record Worming Treatment',
                 egg_count: 'Record Egg Count',
                 vet_visit: 'Record Vet Visit',
-                condition: 'Record Medical Condition'
+                condition: 'Record Medical Condition',
+                expected_departure: 'Set Expected Departure',
+                actual_departure: 'Set Departure Date'
             };
             this.modalTitle = labels[this.actionType] + ' (' + this.selectedHorses.size + ' horses)';
 

@@ -249,6 +249,22 @@ class BulkVetVisitForm(forms.ModelForm):
         }
 
 
+# ─── Bulk Departure Forms ────────────────────────────────────────────
+
+class BulkExpectedDepartureForm(forms.Form):
+    date = forms.DateField(
+        label='Expected Departure Date',
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+    )
+
+
+class BulkActualDepartureForm(forms.Form):
+    date = forms.DateField(
+        label='Departure Date',
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+    )
+
+
 class BulkMedicalConditionForm(forms.ModelForm):
     class Meta:
         model = MedicalCondition

@@ -21,10 +21,12 @@ from django.utils import timezone
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from billing.models import ExtraCharge
-from core.models import Horse
+from core.models import Horse, Placement
 
 from .forms import (
     BreedingRecordForm,
+    BulkActualDepartureForm,
+    BulkExpectedDepartureForm,
     BulkFarrierVisitForm,
     BulkMedicalConditionForm,
     BulkVaccinationForm,
@@ -337,6 +339,8 @@ BULK_FORM_MAP = {
     'egg_count': BulkWormEggCountForm,
     'vet_visit': BulkVetVisitForm,
     'condition': BulkMedicalConditionForm,
+    'expected_departure': BulkExpectedDepartureForm,
+    'actual_departure': BulkActualDepartureForm,
 }
 
 BULK_MODEL_MAP = {
@@ -355,6 +359,8 @@ BULK_LABELS = {
     'egg_count': 'Egg Count',
     'vet_visit': 'Vet Visit',
     'condition': 'Medical Condition',
+    'expected_departure': 'Expected Departure',
+    'actual_departure': 'Departure Date',
 }
 
 
@@ -365,10 +371,15 @@ def bulk_health_form(request):
     if not form_class:
         return HttpResponseBadRequest('Invalid action type')
 
-    form = form_class(initial={'date': timezone.now().date()} if 'date' in [f.name for f in form_class.Meta.model._meta.get_fields()] else {})
-    # Set initial date for vaccination (field is date_given)
+    # Determine initial date value
     if action_type == 'vaccination':
         form = form_class(initial={'date_given': timezone.now().date()})
+    elif action_type in ('expected_departure', 'actual_departure'):
+        form = form_class(initial={'date': timezone.now().date()})
+    elif hasattr(form_class, 'Meta') and hasattr(form_class.Meta, 'model') and 'date' in [f.name for f in form_class.Meta.model._meta.get_fields()]:
+        form = form_class(initial={'date': timezone.now().date()})
+    else:
+        form = form_class()
 
     return render(request, 'health/partials/bulk_health_form.html', {
         'form': form,
@@ -401,48 +412,67 @@ def bulk_health_apply(request):
     count = 0
 
     with transaction.atomic():
-        for horse in horses:
-            obj = form.save(commit=False)
-            obj.pk = None
-            obj.horse = horse
-            obj.save()
+        # Departure date actions update placements, not health records
+        if action_type in ('expected_departure', 'actual_departure'):
+            date_val = form.cleaned_data['date']
+            for horse in horses:
+                placement = Placement.objects.filter(
+                    horse=horse, end_date__isnull=True
+                ).first()
+                if not placement:
+                    continue
+                if action_type == 'expected_departure':
+                    placement.expected_departure = date_val
+                else:
+                    placement.end_date = date_val
+                placement.save()
+                count += 1
+        else:
+            for horse in horses:
+                obj = form.save(commit=False)
+                obj.pk = None
+                obj.horse = horse
+                obj.save()
 
-            # Create ExtraCharge for farrier visits with cost > 0
-            if action_type == 'farrier' and form.cleaned_data.get('cost', 0) > 0:
-                owner = horse.current_owner
-                if owner:
-                    charge = ExtraCharge.objects.create(
-                        horse=horse,
-                        owner=owner,
-                        service_provider=obj.service_provider,
-                        charge_type='farrier',
-                        date=obj.date,
-                        description=f"Farrier - {obj.get_work_done_display()}",
-                        amount=obj.cost,
-                    )
-                    obj.extra_charge = charge
-                    obj.save()
+                # Create ExtraCharge for farrier visits with cost > 0
+                if action_type == 'farrier' and form.cleaned_data.get('cost', 0) > 0:
+                    owner = horse.current_owner
+                    if owner:
+                        charge = ExtraCharge.objects.create(
+                            horse=horse,
+                            owner=owner,
+                            service_provider=obj.service_provider,
+                            charge_type='farrier',
+                            date=obj.date,
+                            description=f"Farrier - {obj.get_work_done_display()}",
+                            amount=obj.cost,
+                        )
+                        obj.extra_charge = charge
+                        obj.save()
 
-            # Create ExtraCharge for vet visits with cost > 0
-            if action_type == 'vet_visit' and form.cleaned_data.get('cost', 0) > 0:
-                owner = horse.current_owner
-                if owner:
-                    charge = ExtraCharge.objects.create(
-                        horse=horse,
-                        owner=owner,
-                        service_provider=obj.vet,
-                        charge_type='vet',
-                        date=obj.date,
-                        description=f"Vet - {obj.reason[:200]}",
-                        amount=obj.cost,
-                    )
-                    obj.extra_charge = charge
-                    obj.save()
+                # Create ExtraCharge for vet visits with cost > 0
+                if action_type == 'vet_visit' and form.cleaned_data.get('cost', 0) > 0:
+                    owner = horse.current_owner
+                    if owner:
+                        charge = ExtraCharge.objects.create(
+                            horse=horse,
+                            owner=owner,
+                            service_provider=obj.vet,
+                            charge_type='vet',
+                            date=obj.date,
+                            description=f"Vet - {obj.reason[:200]}",
+                            amount=obj.cost,
+                        )
+                        obj.extra_charge = charge
+                        obj.save()
 
-            count += 1
+                count += 1
 
     label = BULK_LABELS.get(action_type, action_type)
-    messages.success(request, f"{label} recorded for {count} horse{'s' if count != 1 else ''}.")
+    if action_type in ('expected_departure', 'actual_departure'):
+        messages.success(request, f"{label} set for {count} horse{'s' if count != 1 else ''}.")
+    else:
+        messages.success(request, f"{label} recorded for {count} horse{'s' if count != 1 else ''}.")
 
     # Return HX-Trigger to close modal and refresh page
     response = HttpResponse(status=204)
