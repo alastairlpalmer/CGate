@@ -1,0 +1,114 @@
+{% load ui_extras %}
+
+<!-- Stock Summary Cards -->
+<div class="mt-6">
+    {% if stock_summary %}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {% for item in stock_summary %}
+        <div class="card p-5 border-l-4 {% if item.balance <= 0 %}border-l-error-red{% elif item.balance < 10 %}border-l-saddle{% else %}border-l-sage{% endif %}">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-2xl font-bold {% if item.balance <= 0 %}text-error-red{% elif item.balance < 10 %}text-saddle{% else %}text-charcoal{% endif %}">
+                        {{ item.balance|floatformat:0 }}
+                    </p>
+                    <p class="text-xs text-sage">{{ item.unit_display }} of {{ item.feed_type_display }}</p>
+                </div>
+                <div class="text-right text-xs text-sage">
+                    <p class="text-forest">+{{ item.total_in|floatformat:0 }} in</p>
+                    <p class="text-error-red">-{{ item.total_out|floatformat:0 }} out</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card p-8 text-center">
+        <svg class="mx-auto h-10 w-10 text-sage/50 mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/>
+        </svg>
+        <p class="text-sm text-sage">No feed stock recorded yet. Log your first delivery to start tracking.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Actions + Filter -->
+<div class="card px-5 py-4 mt-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <a href="{% url 'feed_stock_create' %}" class="btn-primary">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                </svg>
+                Log Delivery
+            </a>
+        </div>
+        <form method="get" class="flex items-center gap-3" hx-boost="false" hx-get="{% url 'health_dashboard' %}" hx-target="#health-table-area" hx-swap="innerHTML">
+            <input type="hidden" name="type" value="feed_store">
+            <select name="feed_type" class="form-select w-auto" onchange="this.form.requestSubmit()">
+                <option value="">All feed types</option>
+                {% for val, label in feed_types %}
+                <option value="{{ val }}" {% if current_feed_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+</div>
+
+<!-- Ledger -->
+<div class="card overflow-hidden mt-6">
+    <div class="section-header">
+        <h2 class="section-title">Stock Ledger</h2>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th></th>
+                    <th>Type</th>
+                    <th>Qty</th>
+                    <th>Detail</th>
+                    <th class="text-right">Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in ledger %}
+                <tr>
+                    <td class="text-sage" title="{{ entry.date }}">{{ entry.date|ago_label }}</td>
+                    <td>
+                        {% if entry.direction == 'in' %}
+                        <span class="inline-flex items-center gap-1 text-xs font-semibold text-forest">
+                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19.5v-15m0 0l-6.75 6.75M12 4.5l6.75 6.75"/></svg>
+                            IN
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1 text-xs font-semibold text-error-red">
+                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m0 0l6.75-6.75M12 19.5l-6.75-6.75"/></svg>
+                            OUT
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge-neutral">{{ entry.feed_type }}</span>
+                    </td>
+                    <td class="font-medium tabular-nums {% if entry.direction == 'in' %}text-forest{% else %}text-error-red{% endif %}">
+                        {% if entry.direction == 'in' %}+{% else %}-{% endif %}{{ entry.quantity|floatformat:0 }} {{ entry.unit }}
+                    </td>
+                    <td class="text-sage">{{ entry.detail }}</td>
+                    <td class="text-right text-sage tabular-nums">
+                        {% if entry.cost %}&pound;{{ entry.cost|floatformat:2 }}{% else %}&mdash;{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6">
+                        <div class="py-8 text-center">
+                            <p class="text-sm text-sage">No stock movements recorded yet</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

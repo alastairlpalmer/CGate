@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Log Feed Delivery - CGate{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Log Feed Delivery</h1>
+            <p class="page-subtitle">Record incoming feed stock</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <form method="post" class="divide-y divide-light-sage">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="p-5 pb-0">
+                <div class="p-3 bg-error-red-50 border border-error-red/20 rounded text-sm text-error-red">
+                    {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <fieldset class="p-5 space-y-4">
+                <legend class="section-title">Delivery Details</legend>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
+                    <div>
+                        <label for="id_feed_type" class="block text-sm font-medium text-charcoal">Feed Type *</label>
+                        {{ form.feed_type }}
+                        {% if form.feed_type.errors %}<p class="mt-1 text-sm text-error-red">{{ form.feed_type.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="id_date" class="block text-sm font-medium text-charcoal">Date *</label>
+                        {{ form.date }}
+                        {% if form.date.errors %}<p class="mt-1 text-sm text-error-red">{{ form.date.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="id_quantity" class="block text-sm font-medium text-charcoal">Quantity *</label>
+                        {{ form.quantity }}
+                        {% if form.quantity.errors %}<p class="mt-1 text-sm text-error-red">{{ form.quantity.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="id_unit" class="block text-sm font-medium text-charcoal">Unit *</label>
+                        {{ form.unit }}
+                        {% if form.unit.errors %}<p class="mt-1 text-sm text-error-red">{{ form.unit.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="id_entry_type" class="block text-sm font-medium text-charcoal">Entry Type</label>
+                        {{ form.entry_type }}
+                    </div>
+                    <div>
+                        <label for="id_supplier" class="block text-sm font-medium text-charcoal">Supplier</label>
+                        {{ form.supplier }}
+                    </div>
+                    <div>
+                        <label for="id_cost" class="block text-sm font-medium text-charcoal">Total Cost</label>
+                        {{ form.cost }}
+                        <p class="mt-1 text-xs text-sage">If entered, creates a yard cost record</p>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="p-5 space-y-4">
+                <legend class="section-title">Notes</legend>
+                <div class="mt-3">
+                    {{ form.notes }}
+                </div>
+            </fieldset>
+
+            <div class="flex justify-end gap-3 px-5 py-4 bg-parchment rounded-b-xl">
+                <a href="{% url 'health_dashboard' %}?type=feed_store" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">Log Delivery</button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

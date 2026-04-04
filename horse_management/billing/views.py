@@ -22,8 +22,8 @@ from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
 from core.models import Horse, Owner
 
-from .forms import ExtraChargeForm, FeedOutForm, ServiceProviderForm, YardCostForm
-from .models import ExtraCharge, FeedOut, ServiceProvider, YardCost
+from .forms import ExtraChargeForm, FeedOutForm, FeedStockForm, ServiceProviderForm, YardCostForm
+from .models import ExtraCharge, FeedOut, FeedStock, ServiceProvider, YardCost
 
 
 class ExtraChargeListView(LoginRequiredMixin, ListView):
@@ -371,6 +371,37 @@ def yard_cost_duplicate(request, pk):
     )
     messages.success(request, f"Duplicated '{original.description}' with today's date.")
     return redirect('costs_list')
+
+
+class FeedStockCreateView(StaffRequiredMixin, CreateView):
+    model = FeedStock
+    form_class = FeedStockForm
+    template_name = 'billing/feed_stock_form.html'
+    success_url = reverse_lazy('health_dashboard')
+
+    def get_initial(self):
+        initial = super().get_initial()
+        initial['date'] = timezone.now().date()
+        return initial
+
+    def get_success_url(self):
+        return reverse_lazy('health_dashboard') + '?type=feed_store'
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        stock = self.object
+        # Create YardCost if cost > 0
+        if stock.cost and stock.cost > 0:
+            cat = 'hay' if stock.feed_type in ('hay', 'haylage') else 'feed'
+            YardCost.objects.create(
+                category=cat,
+                date=stock.date,
+                supplier=stock.supplier,
+                description=f"Feed delivery: {stock.quantity} {stock.get_unit_display()} {stock.get_feed_type_display()}",
+                amount=stock.cost,
+            )
+        messages.success(self.request, f"Logged {stock.quantity} {stock.get_unit_display()} of {stock.get_feed_type_display()}.")
+        return response
 
 
 @login_required

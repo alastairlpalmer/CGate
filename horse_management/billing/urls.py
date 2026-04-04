@@ -16,7 +16,8 @@ urlpatterns = [
     path('costs/yard/<int:pk>/delete/', views.YardCostDeleteView.as_view(), name='yard_cost_delete'),
     path('costs/yard/<int:pk>/duplicate/', views.yard_cost_duplicate, name='yard_cost_duplicate'),
 
-    # Feed out
+    # Feed stock & feed out
+    path('feed-stock/add/', views.FeedStockCreateView.as_view(), name='feed_stock_create'),
     path('feed-out/<int:location_pk>/add/', views.feed_out_create, name='feed_out_create'),
 
     # Supplier autocomplete

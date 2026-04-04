@@ -4,7 +4,7 @@ Forms for billing app.
 
 from django import forms
 
-from .models import ExtraCharge, FeedOut, ServiceProvider, YardCost
+from .models import ExtraCharge, FeedOut, FeedStock, ServiceProvider, YardCost
 
 
 class ExtraChargeForm(forms.ModelForm):
@@ -54,13 +54,31 @@ class YardCostForm(forms.ModelForm):
 class FeedOutForm(forms.ModelForm):
     class Meta:
         model = FeedOut
-        fields = ['date', 'feed_type', 'quantity', 'total_cost', 'is_recharged', 'notes']
+        fields = ['date', 'feed_type', 'quantity_numeric', 'unit', 'quantity', 'total_cost', 'is_recharged', 'notes']
         widgets = {
             'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
             'feed_type': forms.Select(attrs={'class': 'form-select'}),
-            'quantity': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. 2 bales, 10kg'}),
+            'quantity_numeric': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'placeholder': 'e.g. 3'}),
+            'unit': forms.Select(attrs={'class': 'form-select'}),
+            'quantity': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Description (e.g. 2 round bales)'}),
             'total_cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
             'is_recharged': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+            'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+        }
+
+
+class FeedStockForm(forms.ModelForm):
+    class Meta:
+        model = FeedStock
+        fields = ['feed_type', 'date', 'quantity', 'unit', 'entry_type', 'supplier', 'cost', 'notes']
+        widgets = {
+            'feed_type': forms.Select(attrs={'class': 'form-select'}),
+            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
+            'unit': forms.Select(attrs={'class': 'form-select'}),
+            'entry_type': forms.Select(attrs={'class': 'form-select'}),
+            'supplier': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Local Hay Merchant'}),
+            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 

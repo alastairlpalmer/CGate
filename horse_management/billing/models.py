@@ -202,15 +202,25 @@ class YardCost(models.Model):
         return self.amount + self.vat_amount
 
 
+class FeedType(models.TextChoices):
+    """Shared feed type choices used by FeedOut and FeedStock."""
+    HAY = 'hay', 'Hay'
+    HAYLAGE = 'haylage', 'Haylage'
+    HARD_FEED = 'hard_feed', 'Hard Feed'
+    SUPPLEMENTS = 'supplements', 'Supplements'
+    OTHER = 'other', 'Other'
+
+
+class FeedUnit(models.TextChoices):
+    """Shared unit choices for feed quantities."""
+    BALES = 'bales', 'Bales'
+    BAGS = 'bags', 'Bags'
+    KG = 'kg', 'Kilograms'
+    TONNES = 'tonnes', 'Tonnes'
+
+
 class FeedOut(models.Model):
     """Record of feed delivered to a field/location."""
-
-    class FeedType(models.TextChoices):
-        HAY = 'hay', 'Hay'
-        HAYLAGE = 'haylage', 'Haylage'
-        HARD_FEED = 'hard_feed', 'Hard Feed'
-        SUPPLEMENTS = 'supplements', 'Supplements'
-        OTHER = 'other', 'Other'
 
     location = models.ForeignKey(
         'core.Location',
@@ -222,6 +232,13 @@ class FeedOut(models.Model):
     quantity = models.CharField(
         max_length=100, blank=True,
         help_text="e.g. 2 bales, 10kg, half a round bale"
+    )
+    quantity_numeric = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Numeric quantity for stock tracking",
+    )
+    unit = models.CharField(
+        max_length=20, choices=FeedUnit.choices, blank=True,
     )
     total_cost = models.DecimalField(
         max_digits=10, decimal_places=2,
@@ -249,3 +266,37 @@ class FeedOut(models.Model):
 
     def __str__(self):
         return f"{self.get_feed_type_display()} - {self.location.name} ({self.date})"
+
+
+class FeedStock(models.Model):
+    """Records feed deliveries and adjustments for stock tracking."""
+
+    class EntryType(models.TextChoices):
+        DELIVERY = 'delivery', 'Delivery'
+        ADJUSTMENT = 'adjustment', 'Adjustment'
+        WASTE = 'waste', 'Waste'
+
+    feed_type = models.CharField(max_length=20, choices=FeedType.choices)
+    date = models.DateField()
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    unit = models.CharField(max_length=20, choices=FeedUnit.choices)
+    entry_type = models.CharField(
+        max_length=20, choices=EntryType.choices, default=EntryType.DELIVERY,
+    )
+    supplier = models.CharField(max_length=200, blank=True)
+    cost = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00'))],
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date']
+        indexes = [
+            models.Index(fields=['feed_type', 'date'], name='feedstock_type_date'),
+        ]
+
+    def __str__(self):
+        return f"{self.get_entry_type_display()}: {self.quantity} {self.get_unit_display()} {self.get_feed_type_display()} ({self.date})"

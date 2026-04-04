@@ -40,6 +40,8 @@
         <div id="health-table-area" hx-boost="false">
             {% if active_tab == 'overview' %}
                 {% include 'health/partials/overview_content.html' %}
+            {% elif active_tab == 'feed_store' %}
+                {% include 'health/partials/feed_store_content.html' %}
             {% elif active_tab == 'vaccinations' %}
                 {% include 'health/partials/vaccinations_content.html' %}
             {% elif active_tab == 'farrier' %}

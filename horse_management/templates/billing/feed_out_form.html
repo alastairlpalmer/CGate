@@ -55,9 +55,18 @@
                         {% if form.date.errors %}<p class="mt-1 text-sm text-error-red">{{ form.date.errors.0 }}</p>{% endif %}
                     </div>
                     <div>
-                        <label for="id_quantity" class="block text-sm font-medium text-charcoal">Quantity</label>
+                        <label for="id_quantity_numeric" class="block text-sm font-medium text-charcoal">Quantity</label>
+                        {{ form.quantity_numeric }}
+                        {% if form.quantity_numeric.errors %}<p class="mt-1 text-sm text-error-red">{{ form.quantity_numeric.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="id_unit" class="block text-sm font-medium text-charcoal">Unit</label>
+                        {{ form.unit }}
+                    </div>
+                    <div>
+                        <label for="id_quantity" class="block text-sm font-medium text-charcoal">Description</label>
                         {{ form.quantity }}
-                        {% if form.quantity.errors %}<p class="mt-1 text-sm text-error-red">{{ form.quantity.errors.0 }}</p>{% endif %}
+                        <p class="mt-1 text-xs text-sage">Optional note (e.g. "half a round bale")</p>
                     </div>
                     <div>
                         <label for="id_total_cost" class="block text-sm font-medium text-charcoal">Total Cost *</label>
