@@ -82,37 +82,38 @@ def health_dashboard(request):
         from billing.models import FeedOut, FeedStock, FeedType, FeedUnit
         from django.db.models import Sum
 
-        # Stock summary: deliveries in minus feed-outs, grouped by feed_type + unit
         feed_filter = request.GET.get('feed_type', '')
+        site_filter = request.GET.get('site', '')
 
-        # Get all stock entries (deliveries/adjustments)
         stock_qs = FeedStock.objects.all()
-        # Get all feed-outs with numeric quantity
         out_qs = FeedOut.objects.filter(quantity_numeric__isnull=False, unit__gt='')
 
         if feed_filter:
             stock_qs = stock_qs.filter(feed_type=feed_filter)
             out_qs = out_qs.filter(feed_type=feed_filter)
+        if site_filter:
+            stock_qs = stock_qs.filter(site=site_filter)
+            out_qs = out_qs.filter(location__site=site_filter)
 
-        # Calculate balances per feed_type + unit
-        stock_in = stock_qs.values('feed_type', 'unit').annotate(total=Sum('quantity'))
-        stock_out = out_qs.values('feed_type', 'unit').annotate(total=Sum('quantity_numeric'))
+        # Calculate balances grouped by site + feed_type + unit
+        stock_in = stock_qs.values('site', 'feed_type', 'unit').annotate(total=Sum('quantity'))
+        stock_out = out_qs.values('location__site', 'feed_type', 'unit').annotate(total=Sum('quantity_numeric'))
 
-        # Build balance map
         balances = {}
         for s in stock_in:
-            key = (s['feed_type'], s['unit'])
+            key = (s['site'] or 'Unassigned', s['feed_type'], s['unit'])
             balances[key] = {'in': float(s['total'] or 0), 'out': 0}
         for s in stock_out:
-            key = (s['feed_type'], s['unit'])
+            key = (s['location__site'] or 'Unassigned', s['feed_type'], s['unit'])
             if key not in balances:
                 balances[key] = {'in': 0, 'out': 0}
             balances[key]['out'] = float(s['total'] or 0)
 
         stock_summary = []
-        for (ft, unit), vals in sorted(balances.items()):
+        for (site, ft, unit), vals in sorted(balances.items()):
             balance = vals['in'] - vals['out']
             stock_summary.append({
+                'site': site,
                 'feed_type': ft,
                 'feed_type_display': dict(FeedType.choices).get(ft, ft),
                 'unit': unit,
@@ -122,12 +123,13 @@ def health_dashboard(request):
                 'balance': balance,
             })
 
-        # Build ledger: merge deliveries + feed-outs
+        # Build ledger
         ledger = []
         for s in stock_qs.order_by('-date')[:30]:
             ledger.append({
                 'date': s.date,
                 'direction': 'in',
+                'site': s.site or '',
                 'feed_type': s.get_feed_type_display(),
                 'quantity': s.quantity,
                 'unit': s.get_unit_display(),
@@ -139,6 +141,7 @@ def health_dashboard(request):
             ledger.append({
                 'date': fo.date,
                 'direction': 'out',
+                'site': fo.location.site,
                 'feed_type': fo.get_feed_type_display(),
                 'quantity': fo.quantity_numeric,
                 'unit': fo.get_unit_display(),
@@ -149,10 +152,16 @@ def health_dashboard(request):
         ledger.sort(key=lambda x: x['date'], reverse=True)
         ledger = ledger[:40]
 
+        # Get distinct sites for filter
+        from core.models import Location
+        all_sites = list(Location.objects.values_list('site', flat=True).distinct().order_by('site'))
+
         context['stock_summary'] = stock_summary
         context['ledger'] = ledger
         context['feed_types'] = FeedType.choices
+        context['all_sites'] = all_sites
         context['current_feed_filter'] = feed_filter
+        context['current_site_filter'] = site_filter
 
     elif tab == 'overview':
         thirty_days = today + timedelta(days=30)

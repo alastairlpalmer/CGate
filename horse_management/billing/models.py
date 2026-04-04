@@ -213,7 +213,10 @@ class FeedType(models.TextChoices):
 
 class FeedUnit(models.TextChoices):
     """Shared unit choices for feed quantities."""
-    BALES = 'bales', 'Bales'
+    SMALL_BALES = 'small_bales', 'Small Bales'
+    LARGE_BALES = 'large_bales', 'Large Bales'
+    ROUND_BALES = 'round_bales', 'Round Bales'
+    LARGE_SQUARE = 'large_square', 'Large Square Bales'
     BAGS = 'bags', 'Bags'
     KG = 'kg', 'Kilograms'
     TONNES = 'tonnes', 'Tonnes'
@@ -276,6 +279,10 @@ class FeedStock(models.Model):
         ADJUSTMENT = 'adjustment', 'Adjustment'
         WASTE = 'waste', 'Waste'
 
+    site = models.CharField(
+        max_length=100, blank=True,
+        help_text="Which site is this stock stored at (e.g. Colgate, Somerford)"
+    )
     feed_type = models.CharField(max_length=20, choices=FeedType.choices)
     date = models.DateField()
     quantity = models.DecimalField(max_digits=10, decimal_places=2)

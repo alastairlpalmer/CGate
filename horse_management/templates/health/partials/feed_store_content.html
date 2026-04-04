@@ -3,15 +3,17 @@
 <!-- Stock Summary Cards -->
 <div class="mt-6">
     {% if stock_summary %}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for item in stock_summary %}
         <div class="card p-5 border-l-4 {% if item.balance <= 0 %}border-l-error-red{% elif item.balance < 10 %}border-l-saddle{% else %}border-l-sage{% endif %}">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-2xl font-bold {% if item.balance <= 0 %}text-error-red{% elif item.balance < 10 %}text-saddle{% else %}text-charcoal{% endif %}">
                         {{ item.balance|floatformat:0 }}
+                        <span class="text-sm font-medium text-sage">{{ item.unit_display }}</span>
                     </p>
-                    <p class="text-xs text-sage">{{ item.unit_display }} of {{ item.feed_type_display }}</p>
+                    <p class="text-sm font-medium text-charcoal">{{ item.feed_type_display }}</p>
+                    <p class="text-xs text-sage">{{ item.site }}</p>
                 </div>
                 <div class="text-right text-xs text-sage">
                     <p class="text-forest">+{{ item.total_in|floatformat:0 }} in</p>
@@ -31,19 +33,23 @@
     {% endif %}
 </div>
 
-<!-- Actions + Filter -->
+<!-- Actions + Filters -->
 <div class="card px-5 py-4 mt-6">
     <div class="flex flex-wrap items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-            <a href="{% url 'feed_stock_create' %}" class="btn-primary">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                </svg>
-                Log Delivery
-            </a>
-        </div>
+        <a href="{% url 'feed_stock_create' %}" class="btn-primary">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+            </svg>
+            Log Delivery
+        </a>
         <form method="get" class="flex items-center gap-3" hx-boost="false" hx-get="{% url 'health_dashboard' %}" hx-target="#health-table-area" hx-swap="innerHTML">
             <input type="hidden" name="type" value="feed_store">
+            <select name="site" class="form-select w-auto" onchange="this.form.requestSubmit()">
+                <option value="">All sites</option>
+                {% for site in all_sites %}
+                <option value="{{ site }}" {% if current_site_filter == site %}selected{% endif %}>{{ site }}</option>
+                {% endfor %}
+            </select>
             <select name="feed_type" class="form-select w-auto" onchange="this.form.requestSubmit()">
                 <option value="">All feed types</option>
                 {% for val, label in feed_types %}
@@ -65,6 +71,7 @@
                 <tr>
                     <th>Date</th>
                     <th></th>
+                    <th>Site</th>
                     <th>Type</th>
                     <th>Qty</th>
                     <th>Detail</th>
@@ -88,9 +95,8 @@
                         </span>
                         {% endif %}
                     </td>
-                    <td>
-                        <span class="badge-neutral">{{ entry.feed_type }}</span>
-                    </td>
+                    <td class="text-sage text-xs">{{ entry.site }}</td>
+                    <td><span class="badge-neutral">{{ entry.feed_type }}</span></td>
                     <td class="font-medium tabular-nums {% if entry.direction == 'in' %}text-forest{% else %}text-error-red{% endif %}">
                         {% if entry.direction == 'in' %}+{% else %}-{% endif %}{{ entry.quantity|floatformat:0 }} {{ entry.unit }}
                     </td>
@@ -101,7 +107,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6">
+                    <td colspan="7">
                         <div class="py-8 text-center">
                             <p class="text-sm text-sage">No stock movements recorded yet</p>
                         </div>

@@ -70,8 +70,9 @@ class FeedOutForm(forms.ModelForm):
 class FeedStockForm(forms.ModelForm):
     class Meta:
         model = FeedStock
-        fields = ['feed_type', 'date', 'quantity', 'unit', 'entry_type', 'supplier', 'cost', 'notes']
+        fields = ['site', 'feed_type', 'date', 'quantity', 'unit', 'entry_type', 'supplier', 'cost', 'notes']
         widgets = {
+            'site': forms.Select(attrs={'class': 'form-select'}),
             'feed_type': forms.Select(attrs={'class': 'form-select'}),
             'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
@@ -81,6 +82,15 @@ class FeedStockForm(forms.ModelForm):
             'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from core.models import Location
+        sites = Location.objects.values_list('site', flat=True).distinct().order_by('site')
+        self.fields['site'].widget = forms.Select(
+            attrs={'class': 'form-select'},
+            choices=[('', '---------')] + [(s, s) for s in sites],
+        )
 
 
 class ServiceProviderForm(forms.ModelForm):

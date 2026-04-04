@@ -28,6 +28,12 @@
                 <legend class="section-title">Delivery Details</legend>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
                     <div>
+                        <label for="id_site" class="block text-sm font-medium text-charcoal">Site *</label>
+                        {{ form.site }}
+                        {% if form.site.errors %}<p class="mt-1 text-sm text-error-red">{{ form.site.errors.0 }}</p>{% endif %}
+                        <p class="mt-1 text-xs text-sage">Where is this stock stored?</p>
+                    </div>
+                    <div>
                         <label for="id_feed_type" class="block text-sm font-medium text-charcoal">Feed Type *</label>
                         {{ form.feed_type }}
                         {% if form.feed_type.errors %}<p class="mt-1 text-sm text-error-red">{{ form.feed_type.errors.0 }}</p>{% endif %}
