@@ -53,20 +53,26 @@ class LocationForm(forms.ModelForm):
 
 
 class HorseForm(forms.ModelForm):
+    # Override date_of_birth to disable localization so HTML5 date input gets YYYY-MM-DD
+    date_of_birth = forms.DateField(
+        required=False,
+        input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+    )
+
     class Meta:
         model = Horse
         fields = [
             'name', 'date_of_birth', 'age', 'sex', 'color',
-            'dam', 'sire_name', 'breeding', 'photo',
+            'dam_name', 'sire_name', 'breeding', 'photo',
             'notes', 'passport_number', 'has_passport', 'is_active'
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
-            'date_of_birth': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
             'age': forms.NumberInput(attrs={'class': 'form-input'}),
             'sex': forms.Select(attrs={'class': 'form-select'}),
             'color': forms.Select(attrs={'class': 'form-select'}),
-            'dam': forms.Select(attrs={'class': 'form-select'}),
+            'dam_name': forms.TextInput(attrs={'class': 'form-input'}),
             'sire_name': forms.TextInput(attrs={'class': 'form-input'}),
             'breeding': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'photo': forms.ClearableFileInput(attrs={'class': 'form-input'}),

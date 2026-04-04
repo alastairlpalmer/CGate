@@ -149,6 +149,7 @@ class Horse(models.Model):
         'self', null=True, blank=True, on_delete=models.SET_NULL,
         related_name='offspring_as_dam', help_text="Dam (mother) if she is in the system"
     )
+    dam_name = models.CharField(max_length=200, blank=True, help_text="Dam (mother) name")
     sire_name = models.CharField(max_length=200, blank=True, help_text="Stallion name")
     photo = models.ImageField(
         upload_to='horses/', blank=True, null=True,

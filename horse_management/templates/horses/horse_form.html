@@ -71,12 +71,11 @@
                 <legend class="text-base font-semibold text-charcoal mb-4">Identification</legend>
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div>
-                        <label for="id_dam" class="block text-sm font-medium text-charcoal">Dam (Mother)</label>
-                        {{ form.dam }}
-                        {% if form.dam.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.dam.errors.0 }}</p>
+                        <label for="id_dam_name" class="block text-sm font-medium text-charcoal">Dam (Mother)</label>
+                        {{ form.dam_name }}
+                        {% if form.dam_name.errors %}
+                        <p class="mt-1 text-xs text-error-red">{{ form.dam_name.errors.0 }}</p>
                         {% endif %}
-                        <p class="mt-1 text-xs text-sage">Select if the dam is in the system</p>
                     </div>
 
                     <div>
