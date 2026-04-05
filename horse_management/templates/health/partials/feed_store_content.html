@@ -83,7 +83,7 @@
             <tbody>
                 {% for entry in ledger %}
                 <tr>
-                    <td class="text-sage" title="{{ entry.date }}">{{ entry.date|ago_label }}</td>
+                    <td class="text-sage" title="{{ entry.date|date:"d M Y" }}">{{ entry.date|ago_label }}</td>
                     <td>
                         {% if entry.direction == 'in' %}
                         <span class="inline-flex items-center gap-1 text-xs font-semibold text-forest">

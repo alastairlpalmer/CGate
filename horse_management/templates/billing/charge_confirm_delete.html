@@ -23,7 +23,7 @@
         <div class="card bg-parchment p-4 mt-4 mb-6 text-left">
             <p class="font-medium text-charcoal">{{ object.horse.name }}</p>
             <p class="text-sm text-sage mt-1">{{ object.description }}</p>
-            <p class="text-sm text-sage mt-1">{{ object.date }} &mdash; &pound;{{ object.amount|floatformat:2 }}</p>
+            <p class="text-sm text-sage mt-1">{{ object.date|date:"d M Y" }} &mdash; &pound;{{ object.amount|floatformat:2 }}</p>
         </div>
 
         <!-- Actions -->

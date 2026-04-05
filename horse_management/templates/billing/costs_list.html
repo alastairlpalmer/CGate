@@ -151,7 +151,7 @@
                 <tbody>
                     {% for cost in costs %}
                     <tr>
-                        <td class="text-sage" title="{{ cost.date }}">{{ cost.date|ago_label }}</td>
+                        <td class="text-sage" title="{{ cost.date|date:"d M Y" }}">{{ cost.date|ago_label }}</td>
                         <td>
                             <span class="{% if cost.category_key == 'hay' or cost.category_key == 'straw' or cost.category_key == 'feed' %}badge-success{% elif cost.category_key == 'vet' %}badge-danger{% elif cost.category_key == 'farrier' %}badge-warning{% elif cost.category_key == 'staff' or cost.category_key == 'rent' %}badge-info{% else %}badge-neutral{% endif %}">
                                 {{ cost.category }}

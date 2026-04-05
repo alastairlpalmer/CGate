@@ -72,7 +72,7 @@
                             <a href="{% url 'horse_detail' br.mare.pk %}" class="link">{{ br.mare.name }}</a>
                         </td>
                         <td>{{ br.stallion_name }}</td>
-                        <td class="text-sage">{{ br.date_covered }}</td>
+                        <td class="text-sage">{{ br.date_covered|date:"d M Y" }}</td>
                         <td class="text-sage">{{ br.date_foal_due|default:"-" }}</td>
                         <td>
                             {% if br.status == 'confirmed' %}

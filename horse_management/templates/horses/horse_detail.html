@@ -136,12 +136,12 @@
                         </div>
                         <div>
                             <dt class="text-xs font-medium text-sage uppercase tracking-wider">Arrived</dt>
-                            <dd class="mt-1 text-sm text-charcoal">{{ current_placement.start_date }}</dd>
+                            <dd class="mt-1 text-sm text-charcoal">{{ current_placement.start_date|date:"d M Y" }}</dd>
                         </div>
                         {% if current_placement.expected_departure %}
                         <div>
                             <dt class="text-xs font-medium text-sage uppercase tracking-wider">Expected Departure</dt>
-                            <dd class="mt-1 text-sm text-forest font-medium">{{ current_placement.expected_departure }}</dd>
+                            <dd class="mt-1 text-sm text-forest font-medium">{{ current_placement.expected_departure|date:"d M Y" }}</dd>
                         </div>
                         {% endif %}
                     </dl>
@@ -213,7 +213,7 @@
                             <div class="flex items-center justify-between py-1">
                                 <div>
                                     <span class="text-sm font-medium text-charcoal">{{ c.name }}</span>
-                                    {% if c.diagnosed_date %}<span class="text-xs text-sage ml-2">since {{ c.diagnosed_date }}</span>{% endif %}
+                                    {% if c.diagnosed_date %}<span class="text-xs text-sage ml-2">since {{ c.diagnosed_date|date:"d M Y" }}</span>{% endif %}
                                 </div>
                                 {% if c.status == 'active' %}
                                 <span class="badge-danger">Active</span>
@@ -245,12 +245,12 @@
                             </div>
                             <div>
                                 <dt class="text-forest text-xs font-medium">Date Covered</dt>
-                                <dd class="text-charcoal">{{ active_pregnancy.date_covered }}</dd>
+                                <dd class="text-charcoal">{{ active_pregnancy.date_covered|date:"d M Y" }}</dd>
                             </div>
                             {% if active_pregnancy.date_foal_due %}
                             <div>
                                 <dt class="text-forest text-xs font-medium">Foal Due</dt>
-                                <dd class="text-charcoal font-medium">{{ active_pregnancy.date_foal_due }}</dd>
+                                <dd class="text-charcoal font-medium">{{ active_pregnancy.date_foal_due|date:"d M Y" }}</dd>
                             </div>
                             {% endif %}
                             <div>
@@ -436,7 +436,7 @@
                                         <span class="text-xs font-semibold uppercase tracking-wider text-saddle">Egg Count</span>
                                         {% endif %}
                                     </div>
-                                    <span class="text-xs text-sage shrink-0" title="{{ event.date }}">{{ event.date|ago_label }}</span>
+                                    <span class="text-xs text-sage shrink-0" title="{{ event.date|date:"d M Y" }}">{{ event.date|ago_label }}</span>
                                 </div>
 
                                 <!-- Type-specific details -->
@@ -446,15 +446,15 @@
                                     <p class="text-sage text-xs mt-0.5">
                                         Owner: {{ event.obj.owner.name }}
                                         &middot; &pound;{{ event.obj.rate_type.daily_rate }}/day
-                                        &middot; {{ event.obj.start_date }} &ndash;
-                                        {% if event.obj.end_date %}{{ event.obj.end_date }}{% else %}<span class="text-forest font-medium">Present</span>{% endif %}
+                                        &middot; {{ event.obj.start_date|date:"d M Y" }} &ndash;
+                                        {% if event.obj.end_date %}{{ event.obj.end_date|date:"d M Y" }}{% else %}<span class="text-forest font-medium">Present</span>{% endif %}
                                     </p>
 
                                     {% elif event.type == 'vaccination' %}
                                     <p class="text-charcoal font-medium">{{ event.obj.vaccination_type.name }}</p>
                                     {% if event.obj.next_due_date %}
                                     <p class="text-xs mt-0.5 {% if event.obj.is_overdue %}text-error-red font-medium{% elif event.obj.is_due_soon %}text-forest font-medium{% else %}text-sage{% endif %}">
-                                        Next due: {{ event.obj.next_due_date }}
+                                        Next due: {{ event.obj.next_due_date|date:"d M Y" }}
                                     </p>
                                     {% endif %}
 
@@ -465,7 +465,7 @@
                                         {% if event.obj.next_due_date %}
                                         {% if event.obj.cost %}&middot; {% endif %}
                                         <span class="{% if event.obj.is_overdue %}text-error-red font-medium{% elif event.obj.is_due_soon %}text-forest font-medium{% else %}{% endif %}">
-                                            Next: {{ event.obj.next_due_date }}
+                                            Next: {{ event.obj.next_due_date|date:"d M Y" }}
                                         </span>
                                         {% endif %}
                                     </p>
@@ -476,7 +476,7 @@
                                         {% if event.obj.vet %}{{ event.obj.vet.name }}{% endif %}
                                         {% if event.obj.cost %}&middot; &pound;{{ event.obj.cost|floatformat:2 }}{% endif %}
                                         {% if event.obj.follow_up_date %}
-                                        &middot; <span class="text-forest font-medium">Follow-up: {{ event.obj.follow_up_date }}</span>
+                                        &middot; <span class="text-forest font-medium">Follow-up: {{ event.obj.follow_up_date|date:"d M Y" }}</span>
                                         {% endif %}
                                     </p>
 

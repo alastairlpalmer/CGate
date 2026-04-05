@@ -137,7 +137,7 @@
                             {% else %}bg-sage{% endif %}"></div>
                         <a href="{{ event.link }}" class="block hover:bg-parchment rounded-lg px-2 py-1 -mx-2 transition-colors">
                             <p class="text-sm text-charcoal">{{ event.desc }}</p>
-                            <p class="text-xs text-sage">{{ event.date|ago_label }} &middot; {{ event.date }}</p>
+                            <p class="text-xs text-sage">{{ event.date|ago_label }} &middot; {{ event.date|date:"d M Y" }}</p>
                         </a>
                     </div>
                     {% empty %}
@@ -174,7 +174,7 @@
                                 <span class="text-sm {% if vax.is_overdue %}text-error-red font-medium{% else %}text-forest{% endif %}">
                                     {{ vax.next_due_date|due_label }}
                                 </span>
-                                <p class="text-xs text-sage">{{ vax.next_due_date }}</p>
+                                <p class="text-xs text-sage">{{ vax.next_due_date|date:"d M Y" }}</p>
                             </div>
                         </div>
                     </div>
@@ -208,7 +208,7 @@
                             <span class="text-sm {% if visit.is_overdue %}text-error-red font-medium{% else %}text-forest{% endif %}">
                                 {{ visit.next_due_date|due_label }}
                             </span>
-                            <p class="text-xs text-sage">{{ visit.next_due_date }}</p>
+                            <p class="text-xs text-sage">{{ visit.next_due_date|date:"d M Y" }}</p>
                         </div>
                     </div>
                 </li>
@@ -258,7 +258,7 @@
                         <td>{{ invoice.owner.name }}</td>
                         <td class="font-medium">&pound;{{ invoice.total|floatformat:2 }}</td>
                         <td class="{% if invoice.is_overdue %}text-error-red font-medium{% else %}text-sage{% endif %}">
-                            {{ invoice.due_date }}
+                            {{ invoice.due_date|date:"d M Y" }}
                         </td>
                         <td>
                             {% if invoice.is_overdue %}

@@ -105,7 +105,7 @@
                             {% endif %}
                         </td>
                         <td class="{% if invoice.is_overdue and invoice.status != 'paid' %}text-error-red font-medium{% else %}text-sage{% endif %}">
-                            {{ invoice.due_date }}
+                            {{ invoice.due_date|date:"d M Y" }}
                         </td>
                         <td>
                             <div class="flex items-center gap-1">

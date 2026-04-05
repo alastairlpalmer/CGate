@@ -69,13 +69,13 @@
                         <td>
                             <a href="{% url 'horse_detail' visit.horse.pk %}" class="link">{{ visit.horse.name }}</a>
                         </td>
-                        <td class="text-sage">{{ visit.date }}</td>
+                        <td class="text-sage">{{ visit.date|date:"d M Y" }}</td>
                         <td>{{ visit.get_work_done_display }}</td>
                         <td class="text-sage">
                             {% if visit.service_provider %}{{ visit.service_provider.name }}{% else %}<span class="text-sage">-</span>{% endif %}
                         </td>
                         <td class="{% if visit.next_due_date and visit.next_due_date < today %}text-error-red font-semibold{% elif visit.is_due_soon %}text-forest{% else %}text-sage{% endif %}">
-                            {% if visit.next_due_date %}{{ visit.next_due_date }}{% else %}<span class="text-sage">-</span>{% endif %}
+                            {% if visit.next_due_date %}{{ visit.next_due_date|date:"d M Y" }}{% else %}<span class="text-sage">-</span>{% endif %}
                         </td>
                         <td class="text-right">
                             {% if visit.cost %}&pound;{{ visit.cost|floatformat:2 }}{% else %}<span class="text-sage">-</span>{% endif %}

@@ -212,7 +212,7 @@
                 <tbody>
                     {% for charge in extra_charges %}
                     <tr>
-                        <td class="text-sage">{{ charge.date }}</td>
+                        <td class="text-sage">{{ charge.date|date:"d M Y" }}</td>
                         <td class="text-charcoal font-medium">{{ charge.horse.name }}</td>
                         <td class="text-sage">{{ charge.get_charge_type_display }}</td>
                         <td class="text-sage">{{ charge.description }}</td>
@@ -264,7 +264,7 @@
                             <span class="badge-neutral">{{ invoice.get_status_display }}</span>
                             {% endif %}
                         </td>
-                        <td class="text-sage">{{ invoice.due_date }}</td>
+                        <td class="text-sage">{{ invoice.due_date|date:"d M Y" }}</td>
                     </tr>
                     {% empty %}
                     <tr>

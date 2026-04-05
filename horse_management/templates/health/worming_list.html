@@ -60,7 +60,7 @@
                         <td>
                             <a href="{% url 'horse_detail' t.horse.pk %}" class="link">{{ t.horse.name }}</a>
                         </td>
-                        <td class="text-sage">{{ t.date }}</td>
+                        <td class="text-sage">{{ t.date|date:"d M Y" }}</td>
                         <td>{{ t.product_name }}</td>
                         <td class="text-sage">{{ t.active_ingredient|default:"-" }}</td>
                         <td class="text-sage">{{ t.administered_by|default:"-" }}</td>

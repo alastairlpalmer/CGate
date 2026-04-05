@@ -69,9 +69,9 @@
                             <a href="{% url 'horse_detail' vax.horse.pk %}" class="link">{{ vax.horse.name }}</a>
                         </td>
                         <td>{{ vax.vaccination_type.name }}</td>
-                        <td class="text-sage">{{ vax.date_given }}</td>
+                        <td class="text-sage">{{ vax.date_given|date:"d M Y" }}</td>
                         <td class="{% if vax.next_due_date < today %}text-error-red font-semibold{% elif vax.is_due_soon %}text-forest{% else %}text-sage{% endif %}">
-                            {{ vax.next_due_date }}
+                            {{ vax.next_due_date|date:"d M Y" }}
                         </td>
                         <td>
                             {% if vax.next_due_date < today %}

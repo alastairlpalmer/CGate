@@ -111,10 +111,10 @@
                         <td class="text-sage">
                             {{ placement.rate_type.name }} (&pound;{{ placement.rate_type.daily_rate }}/day)
                         </td>
-                        <td class="text-sage">{{ placement.start_date }}</td>
+                        <td class="text-sage">{{ placement.start_date|date:"d M Y" }}</td>
                         <td>
                             {% if placement.end_date %}
-                                <span class="text-sage">{{ placement.end_date }}</span>
+                                <span class="text-sage">{{ placement.end_date|date:"d M Y" }}</span>
                             {% else %}
                                 <span class="badge-success">Current</span>
                             {% endif %}

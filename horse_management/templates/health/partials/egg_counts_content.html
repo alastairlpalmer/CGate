@@ -61,7 +61,7 @@
                     <td>
                         <a href="{% url 'horse_detail' ec.horse.pk %}" class="link">{{ ec.horse.name }}</a>
                     </td>
-                    <td class="text-sage">{{ ec.date }}</td>
+                    <td class="text-sage">{{ ec.date|date:"d M Y" }}</td>
                     <td class="{% if ec.is_high %}text-error-red{% endif %} font-semibold">
                         {{ ec.count }}
                     </td>

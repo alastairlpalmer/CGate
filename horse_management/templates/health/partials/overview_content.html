@@ -91,7 +91,7 @@
                         <td class="text-charcoal">{{ item.detail }}</td>
                         <td>
                             <span class="text-error-red font-medium">{{ item.due_date|due_label }}</span>
-                            <p class="text-xs text-sage">{{ item.due_date }}</p>
+                            <p class="text-xs text-sage">{{ item.due_date|date:"d M Y" }}</p>
                         </td>
                         <td class="text-right">
                             <a href="{{ item.url }}" class="btn-ghost btn-xs">{{ item.action_label }}</a>
@@ -134,7 +134,7 @@
                         <td class="text-charcoal">{{ item.detail }}</td>
                         <td>
                             <span class="text-forest">{{ item.due_date|due_label }}</span>
-                            <p class="text-xs text-sage">{{ item.due_date }}</p>
+                            <p class="text-xs text-sage">{{ item.due_date|date:"d M Y" }}</p>
                         </td>
                         <td class="text-right">
                             <a href="{{ item.url }}" class="btn-ghost btn-xs">{{ item.action_label }}</a>

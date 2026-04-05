@@ -95,7 +95,7 @@
                 <tbody>
                     {% for charge in charges %}
                     <tr>
-                        <td class="text-sage">{{ charge.date }}</td>
+                        <td class="text-sage">{{ charge.date|date:"d M Y" }}</td>
                         <td>
                             <a href="{% url 'horse_detail' charge.horse.pk %}" class="link">{{ charge.horse.name }}</a>
                         </td>

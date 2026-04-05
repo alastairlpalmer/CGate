@@ -112,7 +112,7 @@
                     <div>
                         <dt class="text-xs font-semibold text-sage uppercase tracking-wider">Due Date</dt>
                         <dd class="mt-1 text-sm {% if invoice.is_overdue and invoice.status != 'paid' %}text-error-red font-medium{% else %}text-charcoal{% endif %}">
-                            {{ invoice.due_date }}
+                            {{ invoice.due_date|date:"d M Y" }}
                         </dd>
                     </div>
                     <div>

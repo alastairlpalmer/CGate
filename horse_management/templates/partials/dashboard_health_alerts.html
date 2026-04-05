@@ -96,7 +96,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <a href="{% url 'horse_detail' ec.horse.pk %}" class="link text-sm">{{ ec.horse.name }}</a>
-                        <p class="text-xs text-sage">{{ ec.date }}</p>
+                        <p class="text-xs text-sage">{{ ec.date|date:"d M Y" }}</p>
                     </div>
                     <span class="badge-danger">{{ ec.count }} EPG</span>
                 </div>
@@ -121,7 +121,7 @@
                         <p class="text-xs text-sage">{{ v.reason|truncatewords:6 }}</p>
                     </div>
                     <span class="text-sm text-forest">
-                        {{ v.follow_up_date }}
+                        {{ v.follow_up_date|date:"d M Y" }}
                     </span>
                 </div>
             </li>

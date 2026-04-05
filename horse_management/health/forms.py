@@ -6,6 +6,7 @@ from datetime import timedelta
 
 from django import forms
 
+from core.models import Horse
 from .models import (
     BreedingRecord,
     FarrierVisit,
@@ -18,7 +19,17 @@ from .models import (
 )
 
 
-class VaccinationForm(forms.ModelForm):
+class ActiveHorseFormMixin:
+    """Mixin to restrict horse/mare dropdown to active horses only."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'horse' in self.fields:
+            self.fields['horse'].queryset = Horse.objects.filter(is_active=True)
+        if 'mare' in self.fields:
+            self.fields['mare'].queryset = Horse.objects.filter(is_active=True)
+
+
+class VaccinationForm(ActiveHorseFormMixin, forms.ModelForm):
     class Meta:
         model = Vaccination
         fields = [
@@ -55,7 +66,7 @@ class VaccinationForm(forms.ModelForm):
         return cleaned_data
 
 
-class FarrierVisitForm(forms.ModelForm):
+class FarrierVisitForm(ActiveHorseFormMixin, forms.ModelForm):
     class Meta:
         model = FarrierVisit
         fields = [
@@ -94,7 +105,7 @@ class VaccinationTypeForm(forms.ModelForm):
         }
 
 
-class WormingTreatmentForm(forms.ModelForm):
+class WormingTreatmentForm(ActiveHorseFormMixin, forms.ModelForm):
     class Meta:
         model = WormingTreatment
         fields = [
@@ -112,7 +123,7 @@ class WormingTreatmentForm(forms.ModelForm):
         }
 
 
-class WormEggCountForm(forms.ModelForm):
+class WormEggCountForm(ActiveHorseFormMixin, forms.ModelForm):
     class Meta:
         model = WormEggCount
         fields = ['horse', 'date', 'count', 'lab_name', 'sample_type', 'notes']
@@ -126,7 +137,7 @@ class WormEggCountForm(forms.ModelForm):
         }
 
 
-class MedicalConditionForm(forms.ModelForm):
+class MedicalConditionForm(ActiveHorseFormMixin, forms.ModelForm):
     class Meta:
         model = MedicalCondition
         fields = ['horse', 'name', 'diagnosed_date', 'status', 'notes']
@@ -139,7 +150,7 @@ class MedicalConditionForm(forms.ModelForm):
         }
 
 
-class VetVisitForm(forms.ModelForm):
+class VetVisitForm(ActiveHorseFormMixin, forms.ModelForm):
     class Meta:
         model = VetVisit
         fields = [
@@ -277,7 +288,7 @@ class BulkMedicalConditionForm(forms.ModelForm):
         }
 
 
-class BreedingRecordForm(forms.ModelForm):
+class BreedingRecordForm(ActiveHorseFormMixin, forms.ModelForm):
     class Meta:
         model = BreedingRecord
         fields = [

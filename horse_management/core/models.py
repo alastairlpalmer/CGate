@@ -218,15 +218,10 @@ class Horse(models.Model):
         Falls back to placement owner at 100% if no ownership records exist.
         """
         shares = list(
-            self.ownership_shares.select_related('owner')
-            .values_list('owner', 'share_percentage')
+            self.ownership_shares.select_related('owner').all()
         )
         if shares:
-            # Resolve owner PKs to Owner instances
-            owner_map = {o.pk: o for o in Owner.objects.filter(
-                pk__in=[s[0] for s in shares]
-            )}
-            return [(owner_map[pk], pct) for pk, pct in shares]
+            return [(s.owner, s.share_percentage) for s in shares]
         # Fallback to placement owner
         if self.current_owner:
             return [(self.current_owner, Decimal('100.00'))]

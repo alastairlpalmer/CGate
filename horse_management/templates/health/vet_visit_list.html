@@ -61,11 +61,11 @@
                         <td>
                             <a href="{% url 'horse_detail' v.horse.pk %}" class="link">{{ v.horse.name }}</a>
                         </td>
-                        <td class="text-sage">{{ v.date }}</td>
+                        <td class="text-sage">{{ v.date|date:"d M Y" }}</td>
                         <td>{{ v.reason|truncatewords:10 }}</td>
                         <td class="text-sage">{% if v.vet %}{{ v.vet.name }}{% else %}<span class="text-sage">-</span>{% endif %}</td>
                         <td class="{% if v.follow_up_date %}text-forest{% else %}text-sage{% endif %}">
-                            {{ v.follow_up_date|default:"-" }}
+                            {% if v.follow_up_date %}{{ v.follow_up_date|date:"d M Y" }}{% else %}-{% endif %}
                         </td>
                         <td class="text-right">
                             &pound;{{ v.cost|floatformat:2 }}
