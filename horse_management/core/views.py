@@ -274,24 +274,30 @@ def _dashboard_inner(request):
     }
 
     # ── Site Capacity Data ──────────────────────────────────────
-    # Only include locations with capacity set for meaningful chart
+    # Show all sites that have horse/mixed locations, count only
+    # distinct active horses with current placements.
     sites_capacity = list(
         Location.objects.filter(
-            capacity__isnull=False,
             usage__in=[Location.Usage.HORSES, Location.Usage.MIXED],
         )
         .values('site')
         .annotate(
-            total_horses=Count('placements', filter=Q(placements__end_date__isnull=True)),
+            total_horses=Count(
+                'placements__horse',
+                filter=Q(
+                    placements__end_date__isnull=True,
+                    placements__horse__is_active=True,
+                ),
+                distinct=True,
+            ),
             total_capacity=Sum('capacity'),
         )
-        .filter(total_capacity__gt=0)
         .order_by('site')
     )
     capacity_data = {
         'labels': [s['site'] for s in sites_capacity],
         'horses': [s['total_horses'] for s in sites_capacity],
-        'capacity': [s['total_capacity'] for s in sites_capacity],
+        'capacity': [s['total_capacity'] or 0 for s in sites_capacity],
     }
 
     # ── Recent Activity Timeline (6 queries, 3 records each) ────
