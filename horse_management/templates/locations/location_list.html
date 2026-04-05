@@ -24,19 +24,17 @@
     </div>
 
     <!-- Tabs -->
-    <div class="border-b border-light-sage">
-        <nav class="flex gap-6">
-            <a href="{% url 'location_list' %}"
-               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-100 {% if current_tab != 'history' %}border-forest text-forest{% else %}border-transparent text-sage hover:text-charcoal hover:border-sage/50{% endif %}">
-                <svg class="w-4 h-4 inline-block mr-1 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
-                Locations
-            </a>
-            <a href="{% url 'location_list' %}?tab=history"
-               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-100 {% if current_tab == 'history' %}border-forest text-forest{% else %}border-transparent text-sage hover:text-charcoal hover:border-sage/50{% endif %}">
-                <svg class="w-4 h-4 inline-block mr-1 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
-                Movement History
-            </a>
-        </nav>
+    <div class="flex gap-1 bg-white rounded-lg border border-light-sage p-1 w-fit">
+        <a href="{% url 'location_list' %}"
+           class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors inline-flex items-center gap-1.5 {% if current_tab != 'history' %}bg-forest text-white{% else %}text-sage hover:text-charcoal{% endif %}">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+            Locations
+        </a>
+        <a href="{% url 'location_list' %}?tab=history"
+           class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors inline-flex items-center gap-1.5 {% if current_tab == 'history' %}bg-forest text-white{% else %}text-sage hover:text-charcoal{% endif %}">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
+            Movement History
+        </a>
     </div>
 
     {% if current_tab == 'history' %}
