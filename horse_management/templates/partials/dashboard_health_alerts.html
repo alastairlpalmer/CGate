@@ -1,34 +1,42 @@
 {% if pending_departures %}
 <div class="mb-6">
     <div class="card border-l-4 border-amber-500">
-        <div class="section-header">
-            <h2 class="section-title">Pending Departures</h2>
-            <span class="badge-danger">{{ pending_departures|length }} to confirm</span>
+        <div class="px-5 py-3 flex items-center justify-between">
+            <div>
+                <h2 class="text-sm font-semibold text-charcoal">Pending Departures</h2>
+                <p class="text-xs text-sage">Confirm horses have left the property</p>
+            </div>
         </div>
-        <p class="px-5 pb-2 text-xs text-sage">These horses have a departure date that has passed but are still marked as active.</p>
-        <ul class="divide-y divide-light-sage">
-            {% for p in pending_departures %}
-            <li class="px-5 py-3">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="min-w-0">
-                        <a href="{% url 'horse_detail' p.horse.pk %}" class="link text-sm font-medium">{{ p.horse.name }}</a>
-                        <p class="text-xs text-sage">{{ p.owner.name }} &middot; {{ p.location.name }} &middot; Departed {{ p.end_date|date:"d M Y" }}</p>
+        <div class="px-5 pb-3 space-y-2">
+            {% for group in pending_departures %}
+            <div class="flex items-center justify-between gap-3 bg-parchment rounded-lg px-3 py-2" x-data="{ expanded: false }">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-medium text-charcoal">{{ group.owner_name }}</span>
+                        <span class="text-xs text-sage">&middot; {{ group.date|date:"d M Y" }}</span>
+                        <span class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">{{ group.horses|length }}</span>
                     </div>
-                    <div class="flex items-center gap-2 shrink-0">
-                        <form method="post" action="{% url 'confirm_departure' p.horse.pk %}"
-                              hx-post="{% url 'confirm_departure' p.horse.pk %}"
-                              hx-target="closest li"
-                              hx-swap="outerHTML"
-                              hx-select="unset">
-                            {% csrf_token %}
-                            <button type="submit" class="btn-primary btn-xs">Confirm Departed</button>
-                        </form>
-                        <a href="{% url 'horse_detail' p.horse.pk %}" class="btn-secondary btn-xs">View</a>
+                    <div x-show="expanded" x-collapse x-cloak class="mt-1">
+                        <p class="text-xs text-sage">{% for h in group.horses %}{{ h.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
                     </div>
                 </div>
-            </li>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button @click="expanded = !expanded" class="text-xs text-sage hover:text-charcoal" x-text="expanded ? 'Hide' : 'Details'"></button>
+                    <form method="post" action="{% url 'confirm_departures_bulk' %}"
+                          hx-post="{% url 'confirm_departures_bulk' %}"
+                          hx-target="closest .bg-parchment"
+                          hx-swap="outerHTML"
+                          hx-select="unset">
+                        {% csrf_token %}
+                        {% for id in group.horse_ids %}
+                        <input type="hidden" name="horse_ids" value="{{ id }}">
+                        {% endfor %}
+                        <button type="submit" class="btn-primary btn-xs">Confirm</button>
+                    </form>
+                </div>
+            </div>
             {% endfor %}
-        </ul>
+        </div>
     </div>
 </div>
 {% endif %}

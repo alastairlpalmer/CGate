@@ -361,13 +361,22 @@ def dashboard_health_alerts(request):
         horse__is_active=True,
     ).select_related('horse', 'vet').order_by('follow_up_date')[:10]
 
-    # Pending departures: placement ended but horse still active
-    pending_departures = Placement.objects.filter(
+    # Pending departures: placement ended but horse still active, grouped by owner+date
+    pending_placements = Placement.objects.filter(
         end_date__lte=today,
         horse__is_active=True,
     ).exclude(
         end_date__isnull=True,
-    ).select_related('horse', 'owner', 'location').order_by('end_date')[:20]
+    ).select_related('horse', 'owner', 'location').order_by('owner__name', 'end_date')
+    # Group by (owner, end_date) for bulk confirmation
+    pending_groups = {}
+    for p in pending_placements:
+        key = (p.owner_id, p.owner.name if p.owner else 'Unknown', p.end_date)
+        if key not in pending_groups:
+            pending_groups[key] = {'owner_name': key[1], 'date': p.end_date, 'horses': [], 'horse_ids': []}
+        pending_groups[key]['horses'].append(p.horse)
+        pending_groups[key]['horse_ids'].append(str(p.horse.pk))
+    pending_departures = list(pending_groups.values())
 
     # Upcoming departures: expected_departure within 7 days
     upcoming_departures = Placement.objects.filter(
@@ -1314,7 +1323,19 @@ def confirm_departure(request, pk):
         horse.is_active = False
         horse.save()
         messages.success(request, f"{horse.name} confirmed as departed.")
-    # HTMX: return empty to remove the row
+    if request.headers.get('HX-Request'):
+        return HttpResponse('')
+    return redirect('dashboard')
+
+
+@staff_required
+def confirm_departures_bulk(request):
+    """Confirm multiple horses as departed in one action (HTMX endpoint)."""
+    if request.method == 'POST':
+        horse_ids = request.POST.getlist('horse_ids')
+        if horse_ids:
+            count = Horse.objects.filter(pk__in=horse_ids, is_active=True).update(is_active=False)
+            messages.success(request, f"{count} horse{'s' if count != 1 else ''} confirmed as departed.")
     if request.headers.get('HX-Request'):
         return HttpResponse('')
     return redirect('dashboard')
