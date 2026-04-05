@@ -1153,6 +1153,10 @@ def log_departure(request, pk):
                 if notes:
                     placement.notes = (placement.notes or '') + f"\nDeparted: {notes}" if placement.notes else notes
                 placement.save()
+                # Deactivate horse when departure date is today or past
+                if departure_date <= timezone.now().date():
+                    placement.horse.is_active = False
+                    placement.horse.save(update_fields=['is_active'])
                 departed += 1
 
         if departed:
