@@ -438,13 +438,22 @@ class HorseListView(LoginRequiredMixin, ListView):
                 Q(placements__location__name__icontains=search)
             ).distinct()
         elif self.status == 'departed':
+            # Departed: inactive OR active with no current placement (limbo)
             queryset = Horse.objects.filter(
-                is_active=False
-            ).prefetch_related(last_placements)
+                Q(is_active=False) |
+                ~Q(placements__end_date__isnull=True)
+            ).distinct().prefetch_related(last_placements,
+                Prefetch(
+                    'ownership_shares',
+                    queryset=OwnershipShare.objects.select_related('owner'),
+                ),
+            )
         else:
+            # Current: active AND has an active placement
             queryset = Horse.objects.filter(
-                is_active=True
-            ).prefetch_related(
+                is_active=True,
+                placements__end_date__isnull=True,
+            ).distinct().prefetch_related(
                 active_placements,
                 Prefetch(
                     'ownership_shares',
@@ -482,32 +491,40 @@ class HorseListView(LoginRequiredMixin, ListView):
         context['locations'] = Location.objects.order_by('site', 'name')
         context['owners'] = Owner.objects.values('pk', 'name').order_by('name')
         context['is_searching'] = self.is_searching
-        context['total_current'] = Horse.objects.filter(is_active=True).count()
-        context['total_departed'] = Horse.objects.filter(is_active=False).count()
+        # Current = active AND has an active placement
+        context['total_current'] = Horse.objects.filter(
+            is_active=True, placements__end_date__isnull=True,
+        ).distinct().count()
+        # Departed = inactive OR no active placement
+        context['total_departed'] = Horse.objects.filter(
+            Q(is_active=False) | ~Q(placements__end_date__isnull=True)
+        ).distinct().count()
+
+        # Helper: resolve owner from active placement, last placement, or ownership shares
+        def _get_owner(h):
+            ap = getattr(h, 'active_placements', [])
+            if ap and ap[0].owner:
+                return ap[0].owner
+            lp = getattr(h, 'last_placements', [])
+            if lp and lp[0].owner:
+                return lp[0].owner
+            shares = getattr(h, 'ownership_shares_list', None)
+            if shares is None:
+                shares = list(h.ownership_shares.all())
+                h.ownership_shares_list = shares
+            if shares:
+                primary = next((s for s in shares if s.is_primary_contact), None)
+                return (primary or shares[0]).owner
+            return None
+
+        # Attach resolved owner to all horses for template use
+        horses = list(context['horses'])
+        for h in horses:
+            h.resolved_owner = _get_owner(h)
 
         # Build grouped data for current tab (not when searching or departed)
         if self.status == 'current' and not self.is_searching:
-            horses = list(context['horses'])
             group_by = context['group_by']
-
-            # Helper: resolve owner from active placement or ownership shares
-            def _get_owner(h):
-                p = h.active_placements[0] if h.active_placements else None
-                if p and p.owner:
-                    return p.owner
-                shares = getattr(h, 'ownership_shares_list', None)
-                if shares is None:
-                    shares = list(h.ownership_shares.all())
-                    h.ownership_shares_list = shares
-                if shares:
-                    primary = next((s for s in shares if s.is_primary_contact), None)
-                    return (primary or shares[0]).owner
-                return None
-
-            # Attach resolved owner to each horse for template use
-            for h in horses:
-                owner = _get_owner(h)
-                h.resolved_owner = owner
 
             if group_by == 'owner':
                 def key_fn(h):

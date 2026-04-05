@@ -225,9 +225,7 @@
                             {{ horse.get_sex_display }}
                         </td>
                         <td class="text-xs text-sage">
-                            {% with p=horse.last_placements.0 %}
-                            {% if p and p.owner %}{{ p.owner.name }}{% else %}-{% endif %}
-                            {% endwith %}
+                            {% if horse.resolved_owner %}{{ horse.resolved_owner.name }}{% else %}-{% endif %}
                         </td>
                         <td class="text-xs text-sage">
                             {% with p=horse.last_placements.0 %}
