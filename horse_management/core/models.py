@@ -318,6 +318,14 @@ class Placement(models.Model):
             models.Index(fields=['horse', 'location', 'end_date'], name='placement_horse_loc_end'),
             models.Index(fields=['horse', 'owner', 'end_date'], name='placement_horse_owner_end'),
         ]
+        constraints = [
+            # Prevent a horse from having more than one open-ended placement
+            models.UniqueConstraint(
+                fields=['horse'],
+                condition=models.Q(end_date__isnull=True),
+                name='unique_active_placement_per_horse',
+            ),
+        ]
 
     def __str__(self):
         status = "current" if self.is_current else f"ended {self.end_date}"
@@ -357,6 +365,11 @@ class Placement(models.Model):
                 f"{self.horse.name} already has a placement from "
                 f"{conflict.start_date} to {end} that overlaps with these dates."
             )
+
+    def save(self, *args, **kwargs):
+        # Always validate overlaps, even when clean() isn't called
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     @property
     def is_current(self):
