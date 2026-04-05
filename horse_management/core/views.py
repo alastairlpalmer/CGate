@@ -383,9 +383,13 @@ class HorseListView(LoginRequiredMixin, ListView):
             ).select_related('owner', 'location'),
             to_attr='active_placements',
         )
-        queryset = Horse.objects.filter(is_active=True).prefetch_related(
-            active_placements
-        )
+        show_all = self.request.GET.get('show_all')
+        if show_all:
+            queryset = Horse.objects.all().prefetch_related(active_placements)
+        else:
+            queryset = Horse.objects.filter(is_active=True).prefetch_related(
+                active_placements
+            )
 
         # Search filter
         search = self.request.GET.get('search')
@@ -423,6 +427,7 @@ class HorseListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['locations'] = Location.objects.order_by('site', 'name')
         context['owners'] = Owner.objects.values('pk', 'name')
+        context['show_all'] = bool(self.request.GET.get('show_all'))
         return context
 
 
@@ -680,6 +685,19 @@ class OwnerDetailView(LoginRequiredMixin, DetailView):
             horse.share_pct = share_map.get(horse.pk)
 
         context['horses'] = horses
+
+        # Departed / inactive horses for "Other Horses" section
+        last_placement = Prefetch(
+            'placements',
+            queryset=Placement.objects.select_related('location').order_by('-end_date'),
+            to_attr='last_placements',
+        )
+        departed_horses = Horse.objects.filter(
+            ownership_shares__owner=self.object,
+            is_active=False,
+        ).distinct().prefetch_related(last_placement)
+        context['departed_horses'] = departed_horses
+
         context['invoices'] = self.object.invoices.all()[:10]
         context['extra_charges'] = self.object.extra_charges.filter(
             invoiced=False

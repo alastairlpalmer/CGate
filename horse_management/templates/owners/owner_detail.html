@@ -139,6 +139,59 @@
 
     </div>
 
+    <!-- Other Horses (departed / inactive) -->
+    {% if departed_horses %}
+    <div class="card overflow-hidden" x-data="{ open: false }">
+        <div class="section-header cursor-pointer" @click="open = !open">
+            <div class="flex items-center gap-2">
+                <h2 class="section-title">Other Horses</h2>
+                <span class="badge-info">{{ departed_horses|length }}</span>
+            </div>
+            <svg class="w-4 h-4 text-sage transition-transform" :class="open && 'rotate-180'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+            </svg>
+        </div>
+        <div x-show="open" x-collapse x-cloak>
+            <div class="overflow-x-auto">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Details</th>
+                            <th>Last Location</th>
+                            <th>Departed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for horse in departed_horses %}
+                        <tr class="opacity-60">
+                            <td>
+                                <a href="{% url 'horse_detail' horse.pk %}" class="link text-sm font-medium">{{ horse.name }}</a>
+                            </td>
+                            <td class="text-xs text-sage">
+                                {% if horse.age %}{{ horse.age }}yo{% endif %}
+                                {{ horse.get_color_display }}
+                                {{ horse.get_sex_display }}
+                            </td>
+                            <td class="text-xs text-sage">
+                                {% with placement=horse.last_placements.0 %}
+                                {% if placement %}{{ placement.location.name }}{% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="text-xs text-sage">
+                                {% with placement=horse.last_placements.0 %}
+                                {% if placement and placement.end_date %}{{ placement.end_date|date:"d M Y" }}{% else %}&mdash;{% endif %}
+                                {% endwith %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Unbilled Charges -->
     {% if extra_charges %}
     <div class="card overflow-hidden">

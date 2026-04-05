@@ -62,6 +62,10 @@
                 </select>
             </div>
             <div class="flex items-end gap-2">
+                <label class="flex items-center gap-2 text-sm text-charcoal mb-2">
+                    <input type="checkbox" name="show_all" value="1" {% if show_all %}checked{% endif %} class="form-checkbox rounded">
+                    Include departed
+                </label>
                 <button type="submit" class="btn-secondary">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z"/>
@@ -89,9 +93,10 @@
                 </thead>
                 <tbody>
                     {% for horse in horses %}
-                    <tr>
+                    <tr{% if not horse.is_active %} class="opacity-50"{% endif %}>
                         <td>
                             <a href="{% url 'horse_detail' horse.pk %}" class="link font-medium">{{ horse.name }}</a>
+                            {% if not horse.is_active %}<span class="ml-1 text-xs text-sage italic">Departed</span>{% endif %}
                         </td>
                         <td class="text-sage">
                             {% if horse.age %}{{ horse.age }}yo{% endif %}
