@@ -3,7 +3,7 @@
 {% block title %}Horses - CGate{% endblock %}
 
 {% block content %}
-<div class="space-y-4">
+<div class="space-y-4" x-data="bulkActions">
 
     <!-- Page Header -->
     <div class="page-header">
@@ -88,7 +88,7 @@
         </form>
     </div>
 
-    <!-- Tabs: Current | Departed + Group Toggle -->
+    <!-- Tabs: Current | All + Group Toggle -->
     <div class="flex items-center justify-between">
         <div class="flex gap-1 bg-white rounded-lg border border-light-sage p-1">
             <a href="{% url 'horse_list' %}{% if request.GET.search %}?search={{ request.GET.search }}{% endif %}"
@@ -131,6 +131,9 @@
             <table class="data-table">
                 <thead>
                     <tr>
+                        <th class="w-10">
+                            <input type="checkbox" data-select-all @change="toggleAll($event)" class="form-checkbox rounded">
+                        </th>
                         <th>Name</th>
                         <th>Details</th>
                         <th>Owner</th>
@@ -141,6 +144,11 @@
                 <tbody>
                     {% for horse in horses %}
                     <tr{% if not horse.is_active %} class="opacity-50"{% endif %}>
+                        <td>
+                            <input type="checkbox" data-horse-checkbox value="{{ horse.pk }}"
+                                   @change="toggleHorse({{ horse.pk }})" :checked="isSelected({{ horse.pk }})"
+                                   class="form-checkbox rounded">
+                        </td>
                         <td>
                             <a href="{% url 'horse_detail' horse.pk %}" class="link font-medium">{{ horse.name }}</a>
                         </td>
@@ -188,13 +196,16 @@
     {% endif %}
 
     {% elif status == 'departed' %}
-    <!-- ── Departed Tab ── -->
+    <!-- ── All/Departed Tab ── -->
     {% if horses %}
     <div class="card overflow-hidden">
         <div class="overflow-x-auto">
             <table class="data-table">
                 <thead>
                     <tr>
+                        <th class="w-10">
+                            <input type="checkbox" data-select-all @change="toggleAll($event)" class="form-checkbox rounded">
+                        </th>
                         <th>Name</th>
                         <th>Details</th>
                         <th>Owner</th>
@@ -205,6 +216,11 @@
                 <tbody>
                     {% for horse in horses %}
                     <tr class="opacity-60">
+                        <td>
+                            <input type="checkbox" data-horse-checkbox value="{{ horse.pk }}"
+                                   @change="toggleHorse({{ horse.pk }})" :checked="isSelected({{ horse.pk }})"
+                                   class="form-checkbox rounded">
+                        </td>
                         <td>
                             <a href="{% url 'horse_detail' horse.pk %}" class="link font-medium">{{ horse.name }}</a>
                         </td>
@@ -267,6 +283,9 @@
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th class="w-10">
+                                <input type="checkbox" data-select-all @change="toggleAll($event)" class="form-checkbox rounded">
+                            </th>
                             <th>Name</th>
                             <th>Details</th>
                             {% if group_by == 'location' %}
@@ -280,6 +299,11 @@
                     <tbody>
                         {% for horse in group.horses %}
                         <tr>
+                            <td>
+                                <input type="checkbox" data-horse-checkbox value="{{ horse.pk }}"
+                                       @change="toggleHorse({{ horse.pk }})" :checked="isSelected({{ horse.pk }})"
+                                       class="form-checkbox rounded">
+                            </td>
                             <td>
                                 <a href="{% url 'horse_detail' horse.pk %}" class="link font-medium">{{ horse.name }}</a>
                             </td>
@@ -338,6 +362,9 @@
     </div>
     {% endif %}
     {% endif %}
+
+    <!-- Bulk Action Bar -->
+    {% include 'health/partials/bulk_action_bar.html' %}
 
 </div>
 {% endblock %}
