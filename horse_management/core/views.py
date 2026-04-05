@@ -324,6 +324,22 @@ def _dashboard_inner(request):
     activity.sort(key=lambda x: x['date'], reverse=True)
     activity = activity[:12]
 
+    # Pending departures (grouped by owner + date) for inline display
+    pending_placements = Placement.objects.filter(
+        end_date__lte=today,
+        horse__is_active=True,
+    ).exclude(
+        end_date__isnull=True,
+    ).select_related('horse', 'owner', 'location').order_by('owner__name', 'end_date')
+    pending_groups = {}
+    for p in pending_placements:
+        key = (p.owner_id, p.owner.name if p.owner else 'Unknown', p.end_date)
+        if key not in pending_groups:
+            pending_groups[key] = {'owner_name': key[1], 'date': p.end_date, 'horses': [], 'horse_ids': []}
+        pending_groups[key]['horses'].append(p.horse)
+        pending_groups[key]['horse_ids'].append(str(p.horse.pk))
+    pending_departures = list(pending_groups.values())
+
     context = {
         'total_horses': total_horses,
         'vaccinations_due': vaccinations_due,
@@ -333,6 +349,7 @@ def _dashboard_inner(request):
         'chart_data': chart_data,
         'capacity_data': capacity_data,
         'activity': activity,
+        'pending_departures': pending_departures,
     }
 
     return render(request, 'dashboard.html', context)
@@ -361,23 +378,6 @@ def dashboard_health_alerts(request):
         horse__is_active=True,
     ).select_related('horse', 'vet').order_by('follow_up_date')[:10]
 
-    # Pending departures: placement ended but horse still active, grouped by owner+date
-    pending_placements = Placement.objects.filter(
-        end_date__lte=today,
-        horse__is_active=True,
-    ).exclude(
-        end_date__isnull=True,
-    ).select_related('horse', 'owner', 'location').order_by('owner__name', 'end_date')
-    # Group by (owner, end_date) for bulk confirmation
-    pending_groups = {}
-    for p in pending_placements:
-        key = (p.owner_id, p.owner.name if p.owner else 'Unknown', p.end_date)
-        if key not in pending_groups:
-            pending_groups[key] = {'owner_name': key[1], 'date': p.end_date, 'horses': [], 'horse_ids': []}
-        pending_groups[key]['horses'].append(p.horse)
-        pending_groups[key]['horse_ids'].append(str(p.horse.pk))
-    pending_departures = list(pending_groups.values())
-
     # Upcoming departures: expected_departure within 7 days
     upcoming_departures = Placement.objects.filter(
         expected_departure__gt=today,
@@ -390,7 +390,6 @@ def dashboard_health_alerts(request):
         'ehv_due': ehv_due,
         'high_egg_counts': high_egg_counts,
         'vet_follow_ups': vet_follow_ups,
-        'pending_departures': pending_departures,
         'upcoming_departures': upcoming_departures,
     }
 
