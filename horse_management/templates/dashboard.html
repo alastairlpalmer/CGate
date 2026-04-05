@@ -110,17 +110,92 @@
     <!-- Two-Column: Capacity + Activity -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        <!-- Site Capacity -->
-        <div class="card">
-            <div class="section-header">
-                <h2 class="section-title">Site Capacity</h2>
-                <a href="{% url 'location_list' %}" class="text-xs link">View all &rarr;</a>
-            </div>
-            <div class="p-5">
-                <div style="height: 220px;">
-                    <canvas id="capacityChart"></canvas>
+        <!-- Left column: Site Capacity + Pending Departures -->
+        <div class="space-y-6">
+            <!-- Site Capacity -->
+            <div class="card">
+                <div class="section-header">
+                    <h2 class="section-title">Site Capacity</h2>
+                    <a href="{% url 'location_list' %}" class="text-xs link">View all &rarr;</a>
+                </div>
+                <div class="p-5">
+                    <div style="height: 220px;">
+                        <canvas id="capacityChart"></canvas>
+                    </div>
                 </div>
             </div>
+
+            <!-- Pending Departures -->
+            {% if pending_departures %}
+            <div class="card border-l-4 border-amber-500">
+                <div class="px-4 py-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-sm font-semibold text-charcoal">Pending Departures</h2>
+                        <span class="text-xs text-sage">Confirm horses have left</span>
+                    </div>
+                </div>
+                <div class="px-4 pb-3 space-y-1.5">
+                    {% for group in pending_departures %}
+                    <div class="bg-parchment rounded-lg px-3 py-2" x-data="{ editing: false }">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="text-sm font-medium text-charcoal">{{ group.owner_name }}</span>
+                                <span class="text-xs text-sage">&middot; {{ group.date|date:"d M Y" }}</span>
+                                <span class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">{{ group.horses|length }}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <button @click="editing = !editing" class="text-xs text-sage hover:text-charcoal underline" x-text="editing ? 'Done' : 'Edit'"></button>
+                                <form method="post" action="{% url 'confirm_departures_bulk' %}"
+                                      hx-post="{% url 'confirm_departures_bulk' %}"
+                                      hx-target="closest .bg-parchment"
+                                      hx-swap="outerHTML"
+                                      hx-select="unset">
+                                    {% csrf_token %}
+                                    {% for id in group.horse_ids %}
+                                    <input type="hidden" name="horse_ids" value="{{ id }}">
+                                    {% endfor %}
+                                    <button type="submit" class="btn-primary btn-xs">Confirm All</button>
+                                </form>
+                            </div>
+                        </div>
+                        <div x-show="editing" x-collapse x-cloak class="mt-2 space-y-1">
+                            {% for horse in group.horses %}
+                            <div class="flex items-center justify-between text-xs py-1 px-2 bg-white rounded">
+                                <a href="{% url 'horse_detail' horse.pk %}" class="link">{{ horse.name }}</a>
+                                <div class="flex items-center gap-1">
+                                    <form method="post" action="{% url 'confirm_departure' horse.pk %}"
+                                          hx-post="{% url 'confirm_departure' horse.pk %}"
+                                          hx-target="closest .bg-white"
+                                          hx-swap="outerHTML"
+                                          hx-select="unset">
+                                        {% csrf_token %}
+                                        <button type="submit" class="text-sage hover:text-forest" title="Confirm departed">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                    <form method="post" action="{% url 'cancel_departure' horse.pk %}"
+                                          hx-post="{% url 'cancel_departure' horse.pk %}"
+                                          hx-target="closest .bg-white"
+                                          hx-swap="outerHTML"
+                                          hx-select="unset">
+                                        {% csrf_token %}
+                                        <button type="submit" class="text-sage hover:text-error-red" title="Remove from departure">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Recent Activity Timeline -->
@@ -154,79 +229,6 @@
         </div>
 
     </div>
-
-    <!-- Pending Departures (below capacity/activity) -->
-    {% if pending_departures %}
-    <div class="card border-l-4 border-amber-500">
-        <div class="px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <h2 class="text-sm font-semibold text-charcoal">Pending Departures</h2>
-                <span class="text-xs text-sage">Confirm horses have left</span>
-            </div>
-        </div>
-        <div class="px-4 pb-3 space-y-1.5">
-            {% for group in pending_departures %}
-            <div class="bg-parchment rounded-lg px-3 py-2" x-data="{ editing: false }">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-2 min-w-0">
-                        <span class="text-sm font-medium text-charcoal">{{ group.owner_name }}</span>
-                        <span class="text-xs text-sage">&middot; {{ group.date|date:"d M Y" }}</span>
-                        <span class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">{{ group.horses|length }}</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 shrink-0">
-                        <button @click="editing = !editing" class="text-xs text-sage hover:text-charcoal underline" x-text="editing ? 'Done' : 'Edit'"></button>
-                        <form method="post" action="{% url 'confirm_departures_bulk' %}"
-                              hx-post="{% url 'confirm_departures_bulk' %}"
-                              hx-target="closest .bg-parchment"
-                              hx-swap="outerHTML"
-                              hx-select="unset">
-                            {% csrf_token %}
-                            {% for id in group.horse_ids %}
-                            <input type="hidden" name="horse_ids" value="{{ id }}">
-                            {% endfor %}
-                            <button type="submit" class="btn-primary btn-xs">Confirm All</button>
-                        </form>
-                    </div>
-                </div>
-                <!-- Editable horse list -->
-                <div x-show="editing" x-collapse x-cloak class="mt-2 space-y-1">
-                    {% for horse in group.horses %}
-                    <div class="flex items-center justify-between text-xs py-1 px-2 bg-white rounded">
-                        <a href="{% url 'horse_detail' horse.pk %}" class="link">{{ horse.name }}</a>
-                        <div class="flex items-center gap-1">
-                            <form method="post" action="{% url 'confirm_departure' horse.pk %}"
-                                  hx-post="{% url 'confirm_departure' horse.pk %}"
-                                  hx-target="closest .bg-white"
-                                  hx-swap="outerHTML"
-                                  hx-select="unset">
-                                {% csrf_token %}
-                                <button type="submit" class="text-sage hover:text-forest" title="Confirm departed">
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
-                                    </svg>
-                                </button>
-                            </form>
-                            <form method="post" action="{% url 'cancel_departure' horse.pk %}"
-                                  hx-post="{% url 'cancel_departure' horse.pk %}"
-                                  hx-target="closest .bg-white"
-                                  hx-swap="outerHTML"
-                                  hx-select="unset">
-                                {% csrf_token %}
-                                <button type="submit" class="text-sage hover:text-error-red" title="Remove from departure - horse didn't leave">
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                                    </svg>
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
 
     <!-- Two-Column: Vaccinations + Farrier -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
