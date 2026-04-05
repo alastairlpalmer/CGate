@@ -150,8 +150,10 @@ def _dashboard_inner(request):
     thirty_days = today + timedelta(days=30)
     two_weeks = today + timedelta(days=14)
 
-    # Horse counts
-    total_horses = Horse.objects.filter(is_active=True).count()
+    # Horse counts: active AND currently placed (not limbo/departed)
+    total_horses = Horse.objects.filter(
+        is_active=True, placements__end_date__isnull=True,
+    ).distinct().count()
 
     # Vaccinations due soon
     vaccinations_due = Vaccination.objects.filter(
