@@ -1207,6 +1207,10 @@ def horse_depart(request, pk):
 
         current_placement.end_date = departure_date
         current_placement.save()
+        # Deactivate horse when departure date is today or past
+        if departure_date <= timezone.now().date():
+            horse.is_active = False
+            horse.save()
         messages.success(request, f"{horse.name} departed from {current_placement.location.name}.")
 
     return redirect('horse_detail', pk=horse.pk)

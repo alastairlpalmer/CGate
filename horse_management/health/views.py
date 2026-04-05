@@ -425,6 +425,10 @@ def bulk_health_apply(request):
                     placement.expected_departure = date_val
                 else:
                     placement.end_date = date_val
+                    # Deactivate horse when departure date is today or past
+                    if date_val <= timezone.now().date():
+                        horse.is_active = False
+                        horse.save()
                 placement.save()
                 count += 1
         else:
