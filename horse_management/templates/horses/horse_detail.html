@@ -46,6 +46,11 @@
                         {{ horse.get_sex_display }}
                         {% if horse.date_of_birth %}<span class="ml-1 text-sage">(DOB: {{ horse.date_of_birth }})</span>{% endif %}
                     </p>
+                    {% if horse.current_owner %}
+                    <p class="mt-1 text-sm">
+                        Owner: <a href="{% url 'owner_detail' horse.current_owner.pk %}" class="link font-medium">{{ horse.current_owner.name }}</a>
+                    </p>
+                    {% endif %}
                     {% if horse.dam_name or horse.dam or horse.sire_name %}
                     <p class="mt-1 text-xs text-sage">
                         {% if horse.sire_name %}Sire: {{ horse.sire_name }}{% endif %}

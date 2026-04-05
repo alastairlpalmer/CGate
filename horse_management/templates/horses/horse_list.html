@@ -153,15 +153,7 @@
                             {{ horse.get_sex_display }}
                         </td>
                         <td class="text-xs">
-                            {% if horse.is_active %}
-                                {% with p=horse.active_placements.0 %}
-                                {% if p and p.owner %}<a href="{% url 'owner_detail' p.owner.pk %}" class="link">{{ p.owner.name }}</a>{% else %}<span class="text-sage">-</span>{% endif %}
-                                {% endwith %}
-                            {% else %}
-                                {% with p=horse.last_placements.0 %}
-                                {% if p and p.owner %}<span class="text-sage">{{ p.owner.name }}</span>{% else %}<span class="text-sage">-</span>{% endif %}
-                                {% endwith %}
-                            {% endif %}
+                            {% if horse.resolved_owner %}<a href="{% url 'owner_detail' horse.resolved_owner.pk %}" class="link">{{ horse.resolved_owner.name }}</a>{% else %}<span class="text-sage">-</span>{% endif %}
                         </td>
                         <td class="text-xs">
                             {% if horse.is_active %}
