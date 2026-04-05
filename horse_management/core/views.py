@@ -5,6 +5,7 @@ Views for core app.
 import logging
 import time
 from datetime import timedelta
+from itertools import groupby
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -373,7 +374,20 @@ class HorseListView(LoginRequiredMixin, ListView):
     model = Horse
     template_name = 'horses/horse_list.html'
     context_object_name = 'horses'
-    paginate_by = 25
+
+    @property
+    def status(self):
+        return self.request.GET.get('status', 'current')
+
+    @property
+    def is_searching(self):
+        return bool(self.request.GET.get('search'))
+
+    def get_paginate_by(self, queryset):
+        # Only paginate departed tab (current tab shows all, grouped)
+        if self.status == 'departed':
+            return 25
+        return None
 
     def get_queryset(self):
         active_placements = Prefetch(
@@ -383,23 +397,37 @@ class HorseListView(LoginRequiredMixin, ListView):
             ).select_related('owner', 'location'),
             to_attr='active_placements',
         )
-        show_all = self.request.GET.get('show_all')
-        if show_all:
-            queryset = Horse.objects.all().prefetch_related(active_placements)
-        else:
-            queryset = Horse.objects.filter(is_active=True).prefetch_related(
-                active_placements
-            )
+        last_placements = Prefetch(
+            'placements',
+            queryset=Placement.objects.select_related(
+                'owner', 'location'
+            ).order_by('-end_date'),
+            to_attr='last_placements',
+        )
 
-        # Search filter
-        search = self.request.GET.get('search')
+        search = self.request.GET.get('search', '').strip()
+
+        # Search searches ALL horses (active + inactive)
         if search:
+            queryset = Horse.objects.all().prefetch_related(
+                active_placements, last_placements
+            )
             queryset = queryset.filter(
                 Q(name__icontains=search) |
-                Q(notes__icontains=search)
-            )
+                Q(notes__icontains=search) |
+                Q(placements__owner__name__icontains=search) |
+                Q(placements__location__name__icontains=search)
+            ).distinct()
+        elif self.status == 'departed':
+            queryset = Horse.objects.filter(
+                is_active=False
+            ).prefetch_related(last_placements)
+        else:
+            queryset = Horse.objects.filter(
+                is_active=True
+            ).prefetch_related(active_placements)
 
-        # Location filter
+        # Advanced filters (location/owner dropdowns)
         location = self.request.GET.get('location')
         if location:
             queryset = queryset.filter(
@@ -410,7 +438,6 @@ class HorseListView(LoginRequiredMixin, ListView):
                 ))
             )
 
-        # Owner filter
         owner = self.request.GET.get('owner')
         if owner:
             queryset = queryset.filter(
@@ -425,9 +452,57 @@ class HorseListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['status'] = self.status
+        context['group_by'] = self.request.GET.get('group_by', 'location')
         context['locations'] = Location.objects.order_by('site', 'name')
-        context['owners'] = Owner.objects.values('pk', 'name')
-        context['show_all'] = bool(self.request.GET.get('show_all'))
+        context['owners'] = Owner.objects.values('pk', 'name').order_by('name')
+        context['is_searching'] = self.is_searching
+        context['total_current'] = Horse.objects.filter(is_active=True).count()
+        context['total_departed'] = Horse.objects.filter(is_active=False).count()
+
+        # Build grouped data for current tab (not when searching or departed)
+        if self.status == 'current' and not self.is_searching:
+            horses = list(context['horses'])
+            group_by = context['group_by']
+
+            if group_by == 'owner':
+                def key_fn(h):
+                    p = h.active_placements[0] if h.active_placements else None
+                    return (p.owner.name if p and p.owner else 'No Owner',
+                            p.owner.pk if p and p.owner else 0)
+                horses.sort(key=lambda h: key_fn(h)[0])
+                grouped = []
+                for (name, pk), group in groupby(horses, key=key_fn):
+                    group_list = list(group)
+                    grouped.append({
+                        'name': name,
+                        'pk': pk,
+                        'count': len(group_list),
+                        'horses': group_list,
+                    })
+                context['grouped_horses'] = grouped
+            else:
+                # Group by location (default)
+                def key_fn(h):
+                    p = h.active_placements[0] if h.active_placements else None
+                    return (
+                        p.location.site if p and p.location else '',
+                        p.location.name if p and p.location else 'No Location',
+                        p.location.pk if p and p.location else 0,
+                    )
+                horses.sort(key=lambda h: key_fn(h))
+                grouped = []
+                for (site, loc_name, pk), group in groupby(horses, key=key_fn):
+                    group_list = list(group)
+                    grouped.append({
+                        'site': site,
+                        'name': loc_name,
+                        'pk': pk,
+                        'count': len(group_list),
+                        'horses': group_list,
+                    })
+                context['grouped_horses'] = grouped
+
         return context
 
 
