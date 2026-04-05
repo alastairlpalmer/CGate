@@ -13,7 +13,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 
 from .mixins import StaffRequiredMixin, staff_required
 from django.db import connection, transaction
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Exists, OuterRef, Prefetch, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
