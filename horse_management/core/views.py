@@ -425,7 +425,13 @@ class HorseListView(LoginRequiredMixin, ListView):
         else:
             queryset = Horse.objects.filter(
                 is_active=True
-            ).prefetch_related(active_placements)
+            ).prefetch_related(
+                active_placements,
+                Prefetch(
+                    'ownership_shares',
+                    queryset=OwnershipShare.objects.select_related('owner'),
+                ),
+            )
 
         # Advanced filters (location/owner dropdowns)
         location = self.request.GET.get('location')
@@ -465,11 +471,29 @@ class HorseListView(LoginRequiredMixin, ListView):
             horses = list(context['horses'])
             group_by = context['group_by']
 
+            # Helper: resolve owner from active placement or ownership shares
+            def _get_owner(h):
+                p = h.active_placements[0] if h.active_placements else None
+                if p and p.owner:
+                    return p.owner
+                shares = getattr(h, 'ownership_shares_list', None)
+                if shares is None:
+                    shares = list(h.ownership_shares.all())
+                    h.ownership_shares_list = shares
+                if shares:
+                    primary = next((s for s in shares if s.is_primary_contact), None)
+                    return (primary or shares[0]).owner
+                return None
+
+            # Attach resolved owner to each horse for template use
+            for h in horses:
+                owner = _get_owner(h)
+                h.resolved_owner = owner
+
             if group_by == 'owner':
                 def key_fn(h):
-                    p = h.active_placements[0] if h.active_placements else None
-                    return (p.owner.name if p and p.owner else 'No Owner',
-                            p.owner.pk if p and p.owner else 0)
+                    o = h.resolved_owner
+                    return (o.name if o else 'No Owner', o.pk if o else 0)
                 horses.sort(key=lambda h: key_fn(h)[0])
                 grouped = []
                 for (name, pk), group in groupby(horses, key=key_fn):

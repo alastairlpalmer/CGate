@@ -303,9 +303,7 @@
                             </td>
                             {% if group_by == 'location' %}
                             <td class="text-xs">
-                                {% with p=horse.active_placements.0 %}
-                                {% if p and p.owner %}<a href="{% url 'owner_detail' p.owner.pk %}" class="link">{{ p.owner.name }}</a>{% else %}<span class="text-sage">-</span>{% endif %}
-                                {% endwith %}
+                                {% if horse.resolved_owner %}<a href="{% url 'owner_detail' horse.resolved_owner.pk %}" class="link">{{ horse.resolved_owner.name }}</a>{% else %}<span class="text-sage">-</span>{% endif %}
                             </td>
                             {% else %}
                             <td class="text-xs">
