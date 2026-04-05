@@ -100,7 +100,7 @@
             </a>
             <a href="{% url 'horse_list' %}?status=departed{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}"
                class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors {% if status == 'departed' %}bg-forest text-white{% else %}text-sage hover:text-charcoal{% endif %}">
-                Departed <span class="{% if status == 'departed' %}text-white/70{% else %}text-sage{% endif %}">{{ total_departed }}</span>
+                All <span class="{% if status == 'departed' %}text-white/70{% else %}text-sage{% endif %}">{{ total_departed }}</span>
             </a>
         </div>
 
