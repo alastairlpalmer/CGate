@@ -193,18 +193,32 @@
                     {% for horse in group.horses %}
                     <div class="flex items-center justify-between text-xs py-1 px-2 bg-white rounded">
                         <a href="{% url 'horse_detail' horse.pk %}" class="link">{{ horse.name }}</a>
-                        <form method="post" action="{% url 'confirm_departure' horse.pk %}"
-                              hx-post="{% url 'confirm_departure' horse.pk %}"
-                              hx-target="closest .bg-white"
-                              hx-swap="outerHTML"
-                              hx-select="unset">
-                            {% csrf_token %}
-                            <button type="submit" class="text-sage hover:text-error-red" title="Confirm this horse individually">
-                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
-                                </svg>
-                            </button>
-                        </form>
+                        <div class="flex items-center gap-1">
+                            <form method="post" action="{% url 'confirm_departure' horse.pk %}"
+                                  hx-post="{% url 'confirm_departure' horse.pk %}"
+                                  hx-target="closest .bg-white"
+                                  hx-swap="outerHTML"
+                                  hx-select="unset">
+                                {% csrf_token %}
+                                <button type="submit" class="text-sage hover:text-forest" title="Confirm departed">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                                    </svg>
+                                </button>
+                            </form>
+                            <form method="post" action="{% url 'cancel_departure' horse.pk %}"
+                                  hx-post="{% url 'cancel_departure' horse.pk %}"
+                                  hx-target="closest .bg-white"
+                                  hx-swap="outerHTML"
+                                  hx-select="unset">
+                                {% csrf_token %}
+                                <button type="submit" class="text-sage hover:text-error-red" title="Remove from departure - horse didn't leave">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                            </form>
+                        </div>
                     </div>
                     {% endfor %}
                 </div>

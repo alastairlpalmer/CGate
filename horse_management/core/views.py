@@ -1328,6 +1328,22 @@ def confirm_departure(request, pk):
 
 
 @staff_required
+def cancel_departure(request, pk):
+    """Undo a pending departure - clear placement end_date (HTMX endpoint)."""
+    horse = get_object_or_404(Horse, pk=pk)
+    if request.method == 'POST':
+        # Find the most recent ended placement and re-open it
+        placement = horse.placements.filter(end_date__isnull=False).order_by('-end_date').first()
+        if placement:
+            placement.end_date = None
+            placement.save()
+            messages.success(request, f"{horse.name} departure cancelled.")
+    if request.headers.get('HX-Request'):
+        return HttpResponse('')
+    return redirect('dashboard')
+
+
+@staff_required
 def confirm_departures_bulk(request):
     """Confirm multiple horses as departed in one action (HTMX endpoint)."""
     if request.method == 'POST':
