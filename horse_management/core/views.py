@@ -792,8 +792,11 @@ class OwnerListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         return Owner.objects.annotate(
             horse_count=Count(
-                'ownership_shares',
-                filter=Q(ownership_shares__horse__is_active=True),
+                'ownership_shares__horse',
+                filter=Q(
+                    ownership_shares__horse__is_active=True,
+                    ownership_shares__horse__placements__end_date__isnull=True,
+                ),
                 distinct=True,
             )
         ).order_by('name')
@@ -873,8 +876,12 @@ class LocationListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         return Location.objects.annotate(
             horse_count=Count(
-                'placements',
-                filter=Q(placements__end_date__isnull=True)
+                'placements__horse',
+                filter=Q(
+                    placements__end_date__isnull=True,
+                    placements__horse__is_active=True,
+                ),
+                distinct=True,
             )
         ).order_by('site', 'name')
 

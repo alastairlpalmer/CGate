@@ -2,6 +2,8 @@
 Forms for core app.
 """
 
+from decimal import Decimal
+
 from django import forms
 
 from .models import BusinessSettings, Horse, Location, Owner, OwnershipShare, Placement, RateType
@@ -324,10 +326,24 @@ class OwnershipShareForm(forms.ModelForm):
         }
 
 
+class BaseOwnershipShareFormSet(forms.BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        total = Decimal('0')
+        for form in self.forms:
+            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                total += form.cleaned_data.get('share_percentage') or Decimal('0')
+        if total > Decimal('100.00'):
+            raise forms.ValidationError(
+                f"Total ownership is {total}%, which exceeds 100%."
+            )
+
+
 OwnershipShareFormSet = forms.inlineformset_factory(
     Horse,
     OwnershipShare,
     form=OwnershipShareForm,
+    formset=BaseOwnershipShareFormSet,
     extra=1,
     can_delete=True,
 )

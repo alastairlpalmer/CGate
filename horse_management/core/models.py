@@ -572,6 +572,10 @@ class OwnershipShare(models.Model):
                 f"which exceeds 100%."
             )
 
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
 
 class BusinessSettings(models.Model):
     """Singleton model for business configuration."""
