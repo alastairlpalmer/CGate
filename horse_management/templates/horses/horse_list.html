@@ -106,15 +106,15 @@
 
         {% if status == 'current' and not is_searching %}
         <!-- Group by toggle -->
-        <div class="flex items-center gap-2 text-xs text-sage">
-            <span class="uppercase tracking-wider font-semibold">Group by</span>
-            <div class="flex gap-0 bg-white rounded-lg border border-light-sage p-0.5">
+        <div class="flex items-center gap-2 text-sm text-sage">
+            <span class="text-xs uppercase tracking-wider font-semibold">Group by</span>
+            <div class="flex gap-1 bg-white rounded-lg border border-light-sage p-1">
                 <a href="{% url 'horse_list' %}?group_by=location{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}"
-                   class="px-3 py-1 text-xs font-medium rounded transition-colors {% if group_by == 'location' %}bg-charcoal text-white{% else %}text-charcoal-light bg-parchment hover:bg-light-sage{% endif %}">
+                   class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors {% if group_by == 'location' %}bg-forest text-white{% else %}text-sage hover:text-charcoal{% endif %}">
                     Location
                 </a>
                 <a href="{% url 'horse_list' %}?group_by=owner{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}"
-                   class="px-3 py-1 text-xs font-medium rounded transition-colors {% if group_by == 'owner' %}bg-charcoal text-white{% else %}text-charcoal-light bg-parchment hover:bg-light-sage{% endif %}">
+                   class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors {% if group_by == 'owner' %}bg-forest text-white{% else %}text-sage hover:text-charcoal{% endif %}">
                     Owner
                 </a>
             </div>
