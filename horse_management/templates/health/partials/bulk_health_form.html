@@ -16,6 +16,13 @@
         </div>
         {% endif %}
 
+        {% if action_type == 'actual_departure' %}
+        <div class="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+            <strong>Past or today's date:</strong> horses will be marked as departed and moved to the Departed section.<br>
+            <strong>Future date:</strong> horses remain active until the date arrives, then you'll be prompted to confirm on the dashboard.
+        </div>
+        {% endif %}
+
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {% for field in form %}
             <div class="{% if field.name == 'notes' or field.name == 'diagnosis' or field.name == 'treatment' %}sm:col-span-2{% endif %}">

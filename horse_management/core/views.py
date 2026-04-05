@@ -328,6 +328,7 @@ def dashboard_health_alerts(request):
     """HTMX partial: health alerts loaded after initial dashboard render."""
     today = timezone.now().date()
     thirty_days = today + timedelta(days=30)
+    seven_days = today + timedelta(days=7)
 
     ehv_due = BreedingRecord.objects.filter(
         status='confirmed',
@@ -345,10 +346,28 @@ def dashboard_health_alerts(request):
         horse__is_active=True,
     ).select_related('horse', 'vet').order_by('follow_up_date')[:10]
 
+    # Pending departures: placement ended but horse still active
+    pending_departures = Placement.objects.filter(
+        end_date__lte=today,
+        horse__is_active=True,
+    ).exclude(
+        end_date__isnull=True,
+    ).select_related('horse', 'owner', 'location').order_by('end_date')[:20]
+
+    # Upcoming departures: expected_departure within 7 days
+    upcoming_departures = Placement.objects.filter(
+        expected_departure__gt=today,
+        expected_departure__lte=seven_days,
+        end_date__isnull=True,
+        horse__is_active=True,
+    ).select_related('horse', 'owner', 'location').order_by('expected_departure')[:10]
+
     context = {
         'ehv_due': ehv_due,
         'high_egg_counts': high_egg_counts,
         'vet_follow_ups': vet_follow_ups,
+        'pending_departures': pending_departures,
+        'upcoming_departures': upcoming_departures,
     }
 
     return render(request, 'partials/dashboard_health_alerts.html', context)
@@ -1238,6 +1257,20 @@ def horse_depart(request, pk):
         messages.success(request, f"{horse.name} departed from {current_placement.location.name}.")
 
     return redirect('horse_detail', pk=horse.pk)
+
+
+@staff_required
+def confirm_departure(request, pk):
+    """Confirm a horse has departed and deactivate it (HTMX endpoint)."""
+    horse = get_object_or_404(Horse, pk=pk)
+    if request.method == 'POST':
+        horse.is_active = False
+        horse.save()
+        messages.success(request, f"{horse.name} confirmed as departed.")
+    # HTMX: return empty to remove the row
+    if request.headers.get('HX-Request'):
+        return HttpResponse('')
+    return redirect('dashboard')
 
 
 @staff_required

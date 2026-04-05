@@ -1,3 +1,62 @@
+{% if pending_departures %}
+<div class="mb-6">
+    <div class="card border-l-4 border-amber-500">
+        <div class="section-header">
+            <h2 class="section-title">Pending Departures</h2>
+            <span class="badge-danger">{{ pending_departures|length }} to confirm</span>
+        </div>
+        <p class="px-5 pb-2 text-xs text-sage">These horses have a departure date that has passed but are still marked as active.</p>
+        <ul class="divide-y divide-light-sage">
+            {% for p in pending_departures %}
+            <li class="px-5 py-3">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <a href="{% url 'horse_detail' p.horse.pk %}" class="link text-sm font-medium">{{ p.horse.name }}</a>
+                        <p class="text-xs text-sage">{{ p.owner.name }} &middot; {{ p.location.name }} &middot; Departed {{ p.end_date|date:"d M Y" }}</p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <form method="post" action="{% url 'confirm_departure' p.horse.pk %}"
+                              hx-post="{% url 'confirm_departure' p.horse.pk %}"
+                              hx-target="closest li"
+                              hx-swap="outerHTML"
+                              hx-select="unset">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-primary btn-xs">Confirm Departed</button>
+                        </form>
+                        <a href="{% url 'horse_detail' p.horse.pk %}" class="btn-secondary btn-xs">View</a>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+
+{% if upcoming_departures %}
+<div class="mb-6">
+    <div class="card border-l-4 border-info-blue">
+        <div class="section-header">
+            <h2 class="section-title">Upcoming Departures</h2>
+            <span class="badge-info">Next 7 days</span>
+        </div>
+        <ul class="divide-y divide-light-sage">
+            {% for p in upcoming_departures %}
+            <li class="px-5 py-3">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <a href="{% url 'horse_detail' p.horse.pk %}" class="link text-sm">{{ p.horse.name }}</a>
+                        <p class="text-xs text-sage">{{ p.owner.name }} &middot; {{ p.location.name }}</p>
+                    </div>
+                    <span class="text-sm text-info-blue">{{ p.expected_departure|date:"d M Y" }}</span>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+
 {% if ehv_due or high_egg_counts or vet_follow_ups %}
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
