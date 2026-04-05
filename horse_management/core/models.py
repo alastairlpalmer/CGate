@@ -312,6 +312,7 @@ class Placement(models.Model):
             models.Index(fields=['horse', 'end_date'], name='placement_horse_enddate'),
             models.Index(fields=['horse', 'location', 'end_date'], name='placement_horse_loc_end'),
             models.Index(fields=['horse', 'owner', 'end_date'], name='placement_horse_owner_end'),
+            models.Index(fields=['end_date'], name='placement_enddate_solo'),
         ]
         constraints = [
             # Prevent a horse from having more than one open-ended placement
@@ -677,6 +678,9 @@ class Invoice(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['owner', 'status'], name='invoice_owner_status'),
+        ]
 
     def __str__(self):
         return f"{self.invoice_number} - {self.owner.name}"

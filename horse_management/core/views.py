@@ -497,14 +497,19 @@ class HorseListView(LoginRequiredMixin, ListView):
         context['locations'] = Location.objects.order_by('site', 'name')
         context['owners'] = Owner.objects.values('pk', 'name').order_by('name')
         context['is_searching'] = self.is_searching
-        # Current = active AND has an active placement
-        context['total_current'] = Horse.objects.filter(
-            is_active=True, placements__end_date__isnull=True,
-        ).distinct().count()
-        # Departed = inactive OR no active placement
-        context['total_departed'] = Horse.objects.filter(
-            Q(is_active=False) | ~Q(placements__end_date__isnull=True)
-        ).distinct().count()
+        # Single query for both counts
+        counts = Horse.objects.aggregate(
+            total_current=Count(
+                'pk', filter=Q(is_active=True, placements__end_date__isnull=True),
+                distinct=True,
+            ),
+            total_departed=Count(
+                'pk', filter=Q(is_active=False) | ~Q(placements__end_date__isnull=True),
+                distinct=True,
+            ),
+        )
+        context['total_current'] = counts['total_current']
+        context['total_departed'] = counts['total_departed']
 
         # Helper: resolve owner - prefer OwnershipShare (canonical), fall back to placement
         def _get_owner(h):
@@ -810,7 +815,7 @@ class OwnerDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Optimized: prefetch active placements with location to avoid N+1
+        # Single query for all horses, split active/departed in Python
         active_placements = Prefetch(
             'placements',
             queryset=Placement.objects.filter(
@@ -818,31 +823,29 @@ class OwnerDetailView(LoginRequiredMixin, DetailView):
             ).select_related('location'),
             to_attr='active_placements',
         )
-        # Get horses via ownership shares, annotate with share %
-        shares = OwnershipShare.objects.filter(owner=self.object).select_related('horse')
-        share_map = {s.horse_id: s.share_percentage for s in shares}
-
-        horses = Horse.objects.filter(
-            ownership_shares__owner=self.object,
-            is_active=True,
-        ).distinct().prefetch_related(active_placements)
-
-        # Attach share_pct to each horse for template use
-        for horse in horses:
-            horse.share_pct = share_map.get(horse.pk)
-
-        context['horses'] = horses
-
-        # Departed / inactive horses for "Other Horses" section
-        last_placement = Prefetch(
+        last_placements = Prefetch(
             'placements',
             queryset=Placement.objects.select_related('location').order_by('-end_date'),
             to_attr='last_placements',
         )
-        departed_horses = Horse.objects.filter(
+        shares = OwnershipShare.objects.filter(owner=self.object).select_related('horse')
+        share_map = {s.horse_id: s.share_percentage for s in shares}
+
+        all_horses = list(Horse.objects.filter(
             ownership_shares__owner=self.object,
-            is_active=False,
-        ).distinct().prefetch_related(last_placement)
+        ).distinct().prefetch_related(active_placements, last_placements))
+
+        # Attach share_pct and split into active/departed
+        active_horses = []
+        departed_horses = []
+        for horse in all_horses:
+            horse.share_pct = share_map.get(horse.pk)
+            if horse.is_active:
+                active_horses.append(horse)
+            else:
+                departed_horses.append(horse)
+
+        context['horses'] = active_horses
         context['departed_horses'] = departed_horses
 
         context['invoices'] = self.object.invoices.all()[:10]
