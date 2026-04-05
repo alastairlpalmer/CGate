@@ -435,9 +435,14 @@ class HorseListView(LoginRequiredMixin, ListView):
         search = self.request.GET.get('search', '').strip()
 
         # Search searches ALL horses (active + inactive)
+        ownership_shares_prefetch = Prefetch(
+            'ownership_shares',
+            queryset=OwnershipShare.objects.select_related('owner'),
+        )
+
         if search:
             queryset = Horse.objects.all().prefetch_related(
-                active_placements, last_placements
+                active_placements, last_placements, ownership_shares_prefetch
             )
             queryset = queryset.filter(
                 Q(name__icontains=search) |
@@ -450,11 +455,8 @@ class HorseListView(LoginRequiredMixin, ListView):
             queryset = Horse.objects.filter(
                 Q(is_active=False) |
                 ~Q(placements__end_date__isnull=True)
-            ).distinct().prefetch_related(last_placements,
-                Prefetch(
-                    'ownership_shares',
-                    queryset=OwnershipShare.objects.select_related('owner'),
-                ),
+            ).distinct().prefetch_related(
+                last_placements, ownership_shares_prefetch,
             )
         else:
             # Current: active AND has an active placement
@@ -462,11 +464,7 @@ class HorseListView(LoginRequiredMixin, ListView):
                 is_active=True,
                 placements__end_date__isnull=True,
             ).distinct().prefetch_related(
-                active_placements,
-                Prefetch(
-                    'ownership_shares',
-                    queryset=OwnershipShare.objects.select_related('owner'),
-                ),
+                active_placements, ownership_shares_prefetch,
             )
 
         # Advanced filters (location/owner dropdowns)
@@ -508,14 +506,9 @@ class HorseListView(LoginRequiredMixin, ListView):
             Q(is_active=False) | ~Q(placements__end_date__isnull=True)
         ).distinct().count()
 
-        # Helper: resolve owner from active placement, last placement, or ownership shares
+        # Helper: resolve owner - prefer OwnershipShare (canonical), fall back to placement
         def _get_owner(h):
-            ap = getattr(h, 'active_placements', [])
-            if ap and ap[0].owner:
-                return ap[0].owner
-            lp = getattr(h, 'last_placements', [])
-            if lp and lp[0].owner:
-                return lp[0].owner
+            # 1. OwnershipShare is the canonical ownership record
             shares = getattr(h, 'ownership_shares_list', None)
             if shares is None:
                 shares = list(h.ownership_shares.all())
@@ -523,6 +516,14 @@ class HorseListView(LoginRequiredMixin, ListView):
             if shares:
                 primary = next((s for s in shares if s.is_primary_contact), None)
                 return (primary or shares[0]).owner
+            # 2. Fall back to active placement owner
+            ap = getattr(h, 'active_placements', [])
+            if ap and ap[0].owner:
+                return ap[0].owner
+            # 3. Fall back to last placement owner
+            lp = getattr(h, 'last_placements', [])
+            if lp and lp[0].owner:
+                return lp[0].owner
             return None
 
         # Attach resolved owner to all horses for template use
