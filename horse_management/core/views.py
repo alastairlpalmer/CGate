@@ -274,14 +274,22 @@ def _dashboard_inner(request):
     }
 
     # ── Site Capacity Data ──────────────────────────────────────
-    # Show all sites that have horse/mixed locations, count only
-    # distinct active horses with current placements.
-    sites_capacity = list(
-        Location.objects.filter(
-            usage__in=[Location.Usage.HORSES, Location.Usage.MIXED],
+    # Two separate queries to avoid JOIN inflation:
+    # Sum(capacity) gets inflated when joined with placements.
+    horse_locations = Location.objects.filter(
+        usage__in=[Location.Usage.HORSES, Location.Usage.MIXED],
+    )
+    # 1. Capacity per site (no join, accurate sum)
+    site_capacity = {
+        row['site']: row['total_capacity'] or 0
+        for row in horse_locations.values('site').annotate(
+            total_capacity=Sum('capacity'),
         )
-        .values('site')
-        .annotate(
+    }
+    # 2. Horse count per site (join with placements, distinct)
+    site_horses = {
+        row['site']: row['total_horses']
+        for row in horse_locations.values('site').annotate(
             total_horses=Count(
                 'placements__horse',
                 filter=Q(
@@ -290,14 +298,13 @@ def _dashboard_inner(request):
                 ),
                 distinct=True,
             ),
-            total_capacity=Sum('capacity'),
         )
-        .order_by('site')
-    )
+    }
+    sites = sorted(site_capacity.keys())
     capacity_data = {
-        'labels': [s['site'] for s in sites_capacity],
-        'horses': [s['total_horses'] for s in sites_capacity],
-        'capacity': [s['total_capacity'] or 0 for s in sites_capacity],
+        'labels': sites,
+        'horses': [site_horses.get(s, 0) for s in sites],
+        'capacity': [site_capacity.get(s, 0) for s in sites],
     }
 
     # ── Recent Activity Timeline (6 queries, 3 records each) ────
