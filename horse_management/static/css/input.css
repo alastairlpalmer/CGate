@@ -65,7 +65,23 @@
         @apply absolute bottom-0 left-0 w-0 h-px bg-forest transition-all duration-200;
     }
     .link:hover::after { @apply w-full; }
+
+    /* Mobile Bottom Tab Bar */
+    .tab-bar-item { @apply flex flex-col items-center justify-center flex-1 gap-0.5 text-sage/60 transition-colors duration-100 active:bg-light-sage/50; }
+    .tab-bar-item-active { @apply text-forest; }
+    .tab-bar-label { @apply text-[10px] font-medium leading-tight; }
+
+    /* More Bottom Sheet nav items */
+    .sheet-nav-item { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-charcoal rounded-btn hover:bg-light-sage active:bg-light-sage/70 transition-colors duration-100; }
+    .sheet-nav-item-active { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-forest bg-sage-50 rounded-btn transition-colors duration-100; }
 }
+
+/* Safe area insets for notched phones (iPhone X+) */
+.tab-bar-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.sheet-safe-bottom { height: env(safe-area-inset-bottom, 0px); }
+
+/* Tab bar HTMX request feedback */
+.tab-bar-item.htmx-request { @apply opacity-60; }
 
 /* Form widget override — Django renders widgets that already have classes; cascade ours */
 input[type="text"], input[type="email"], input[type="password"], input[type="number"],
