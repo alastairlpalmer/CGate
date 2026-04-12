@@ -191,7 +191,7 @@ def check_xero_invoice_status(sync):
     Updates sync record and local invoice if Xero reports PAID.
     Returns the updated sync record.
     """
-    from core.models import Invoice
+    from invoicing.models import Invoice
 
     client = XeroClient()
     xero_invoice = client.get_invoice(sync.xero_invoice_id)

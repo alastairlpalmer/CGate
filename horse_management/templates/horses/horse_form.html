@@ -22,47 +22,11 @@
             <fieldset class="p-5 space-y-5">
                 <legend class="text-base font-semibold text-charcoal mb-4">Basic Info</legend>
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    <div class="sm:col-span-2">
-                        <label for="id_name" class="block text-sm font-medium text-charcoal">Name *</label>
-                        {{ form.name }}
-                        {% if form.name.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.name.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-
-                    <div>
-                        <label for="id_date_of_birth" class="block text-sm font-medium text-charcoal">Date of Birth</label>
-                        {{ form.date_of_birth }}
-                        {% if form.date_of_birth.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.date_of_birth.errors.0 }}</p>
-                        {% endif %}
-                        <p class="mt-1 text-xs text-sage">Age will be calculated automatically from DOB</p>
-                    </div>
-
-                    <div>
-                        <label for="id_age" class="block text-sm font-medium text-charcoal">Age (years)</label>
-                        {{ form.age }}
-                        {% if form.age.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.age.errors.0 }}</p>
-                        {% endif %}
-                        <p class="mt-1 text-xs text-sage">Only used if DOB is not set</p>
-                    </div>
-
-                    <div>
-                        <label for="id_sex" class="block text-sm font-medium text-charcoal">Sex</label>
-                        {{ form.sex }}
-                        {% if form.sex.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.sex.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-
-                    <div>
-                        <label for="id_color" class="block text-sm font-medium text-charcoal">Colour</label>
-                        {{ form.color }}
-                        {% if form.color.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.color.errors.0 }}</p>
-                        {% endif %}
-                    </div>
+                    {% include "includes/form_field.html" with field=form.name span="2" %}
+                    {% include "includes/form_field.html" with field=form.date_of_birth help="Age will be calculated automatically from DOB" %}
+                    {% include "includes/form_field.html" with field=form.age help="Only used if DOB is not set" %}
+                    {% include "includes/form_field.html" with field=form.sex %}
+                    {% include "includes/form_field.html" with field=form.color label="Colour" %}
                 </div>
             </fieldset>
 
@@ -70,47 +34,12 @@
             <fieldset class="border-t border-light-sage px-5 pt-5 pb-5 space-y-5">
                 <legend class="text-base font-semibold text-charcoal mb-4">Identification</legend>
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    <div>
-                        <label for="id_dam_name" class="block text-sm font-medium text-charcoal">Dam (Mother)</label>
-                        {{ form.dam_name }}
-                        {% if form.dam_name.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.dam_name.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-
-                    <div>
-                        <label for="id_sire_name" class="block text-sm font-medium text-charcoal">Sire Name</label>
-                        {{ form.sire_name }}
-                        {% if form.sire_name.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.sire_name.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-
-                    <div>
-                        <label for="id_passport_number" class="block text-sm font-medium text-charcoal">Passport Number</label>
-                        {{ form.passport_number }}
-                        {% if form.passport_number.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.passport_number.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-
-                    <div>
-                        <label for="id_photo" class="block text-sm font-medium text-charcoal">Photo</label>
-                        {{ form.photo }}
-                        {% if form.photo.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.photo.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        {{ form.has_passport }}
-                        <label for="id_has_passport" class="text-sm text-charcoal">Has passport</label>
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        {{ form.is_active }}
-                        <label for="id_is_active" class="text-sm text-charcoal">Active</label>
-                    </div>
+                    {% include "includes/form_field.html" with field=form.dam_name label="Dam (Mother)" %}
+                    {% include "includes/form_field.html" with field=form.sire_name %}
+                    {% include "includes/form_field.html" with field=form.passport_number %}
+                    {% include "includes/form_field.html" with field=form.photo %}
+                    {% include "includes/form_field.html" with field=form.has_passport %}
+                    {% include "includes/form_field.html" with field=form.is_active %}
                 </div>
             </fieldset>
 
@@ -118,23 +47,8 @@
             <fieldset class="border-t border-light-sage px-5 pt-5 pb-5 space-y-5">
                 <legend class="text-base font-semibold text-charcoal mb-4">Notes</legend>
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    <div class="sm:col-span-2">
-                        <label for="id_breeding" class="block text-sm font-medium text-charcoal">Breeding</label>
-                        {{ form.breeding }}
-                        {% if form.breeding.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.breeding.errors.0 }}</p>
-                        {% endif %}
-                        <p class="mt-1 text-xs text-sage">Free text sire/dam information</p>
-                    </div>
-
-                    <div class="sm:col-span-2">
-                        <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
-                        {{ form.notes }}
-                        {% if form.notes.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.notes.errors.0 }}</p>
-                        {% endif %}
-                        <p class="mt-1 text-xs text-sage">Special notes (e.g., first winter, lame, needs rug)</p>
-                    </div>
+                    {% include "includes/form_field.html" with field=form.breeding span="2" help="Free text sire/dam information" %}
+                    {% include "includes/form_field.html" with field=form.notes span="2" help="Special notes (e.g., first winter, lame, needs rug)" %}
                 </div>
             </fieldset>
 

@@ -1,0 +1,39 @@
+{% comment %}
+Reusable page header with title, subtitle, and action buttons.
+
+Usage:
+  {% include "includes/page_header.html" with title="Horses" subtitle="Manage your horses" %}
+  {% include "includes/page_header.html" with title="Horses" add_url="/horses/add/" add_label="Add Horse" %}
+
+Parameters:
+  title       - Required. Page heading text.
+  subtitle    - Optional. Subheading text.
+  add_url     - Optional. URL for the primary action button.
+  add_label   - Optional. Label for the primary action button (default: "Add New").
+  extra_url   - Optional. URL for a secondary action button.
+  extra_label - Optional. Label for the secondary action button.
+{% endcomment %}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ title }}</h1>
+        {% if subtitle %}
+        <p class="page-subtitle">{{ subtitle }}</p>
+        {% endif %}
+    </div>
+    {% if add_url or extra_url %}
+    <div class="flex items-center gap-3">
+        {% if extra_url %}
+        <a href="{{ extra_url }}" class="btn-secondary">{{ extra_label|default:"Action" }}</a>
+        {% endif %}
+        {% if add_url %}
+        <a href="{{ add_url }}" class="btn-primary">
+            <svg class="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+            </svg>
+            {{ add_label|default:"Add New" }}
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>

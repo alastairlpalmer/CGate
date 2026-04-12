@@ -13,7 +13,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from core.models import Invoice
+from invoicing.models import Invoice
 
 from .client import XeroAPIError, XeroClient, XeroTokenExpiredError
 from .models import XeroConnection, XeroInvoiceSync

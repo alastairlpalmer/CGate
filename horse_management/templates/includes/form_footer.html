@@ -1,0 +1,16 @@
+{% comment %}
+Reusable form footer with cancel and submit buttons.
+
+Usage:
+  {% include "includes/form_footer.html" with cancel_url="/horses/" submit_label="Add Horse" %}
+  {% include "includes/form_footer.html" with cancel_url="/horses/1/" submit_label="Save Changes" %}
+
+Parameters:
+  cancel_url   - Required. URL for the cancel button.
+  submit_label - Optional. Submit button text (default: "Save").
+{% endcomment %}
+
+<div class="border-t border-light-sage px-5 py-4 bg-parchment rounded-b-xl flex justify-end gap-3">
+    <a href="{{ cancel_url }}" class="btn-secondary">Cancel</a>
+    <button type="submit" class="btn-primary">{{ submit_label|default:"Save" }}</button>
+</div>

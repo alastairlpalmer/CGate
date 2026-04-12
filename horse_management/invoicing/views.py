@@ -16,7 +16,8 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views.generic import DetailView, ListView, UpdateView
 
-from core.models import Invoice, Owner
+from core.models import Owner
+from invoicing.models import Invoice
 
 from .forms import InvoiceCreateForm, InvoiceUpdateForm, MonthlyInvoiceForm
 from .pdf import generate_invoice_pdf

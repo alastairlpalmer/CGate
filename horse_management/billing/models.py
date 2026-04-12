@@ -89,7 +89,7 @@ class ExtraCharge(models.Model):
     )
     invoiced = models.BooleanField(default=False)
     invoice = models.ForeignKey(
-        'core.Invoice',
+        'invoicing.Invoice',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

@@ -20,50 +20,11 @@
             <!-- Location Details -->
             <fieldset class="px-5 py-5 space-y-5">
                 <legend class="text-base font-semibold text-charcoal">Location Details</legend>
-
-                <div>
-                    <label for="id_name" class="block text-sm font-medium text-charcoal">Name <span class="text-error-red">*</span></label>
-                    {{ form.name }}
-                    {% if form.name.errors %}
-                    <p class="mt-1 text-xs text-error-red">{{ form.name.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-xs text-sage">e.g., "Front Field", "The Banks"</p>
-                </div>
-
-                <div>
-                    <label for="id_site" class="block text-sm font-medium text-charcoal">Site <span class="text-error-red">*</span></label>
-                    {{ form.site }}
-                    {% if form.site.errors %}
-                    <p class="mt-1 text-xs text-error-red">{{ form.site.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-xs text-sage">e.g., "Colgate", "Somerford", "California Farm"</p>
-                </div>
-
-                <div>
-                    <label for="id_usage" class="block text-sm font-medium text-charcoal">Usage <span class="text-error-red">*</span></label>
-                    {{ form.usage }}
-                    {% if form.usage.errors %}
-                    <p class="mt-1 text-xs text-error-red">{{ form.usage.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-xs text-sage">What is this field currently being used for?</p>
-                </div>
-
-                <div>
-                    <label for="id_capacity" class="block text-sm font-medium text-charcoal">Capacity</label>
-                    {{ form.capacity }}
-                    {% if form.capacity.errors %}
-                    <p class="mt-1 text-xs text-error-red">{{ form.capacity.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-xs text-sage">Maximum number of horses (optional)</p>
-                </div>
-
-                <div>
-                    <label for="id_description" class="block text-sm font-medium text-charcoal">Description</label>
-                    {{ form.description }}
-                    {% if form.description.errors %}
-                    <p class="mt-1 text-xs text-error-red">{{ form.description.errors.0 }}</p>
-                    {% endif %}
-                </div>
+                {% include "includes/form_field.html" with field=form.name help='e.g., "Front Field", "The Banks"' %}
+                {% include "includes/form_field.html" with field=form.site help='e.g., "Colgate", "Somerford", "California Farm"' %}
+                {% include "includes/form_field.html" with field=form.usage help="What is this field currently being used for?" %}
+                {% include "includes/form_field.html" with field=form.capacity help="Maximum number of horses (optional)" %}
+                {% include "includes/form_field.html" with field=form.description %}
             </fieldset>
 
             <!-- Footer -->

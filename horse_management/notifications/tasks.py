@@ -8,7 +8,7 @@ from datetime import timedelta
 from celery import shared_task
 from django.utils import timezone
 
-from core.models import Invoice
+from invoicing.models import Invoice
 from health.models import BreedingRecord, FarrierVisit, Vaccination
 
 from .emails import (

@@ -22,59 +22,18 @@
             <fieldset class="p-5 space-y-5">
                 <legend class="text-base font-semibold text-charcoal mb-4">Contact Details</legend>
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    <div class="sm:col-span-2">
-                        <label for="id_name" class="block text-sm font-medium text-charcoal">Name <span class="text-error-red">*</span></label>
-                        {{ form.name }}
-                        {% if form.name.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.name.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-
-                    <div>
-                        <label for="id_email" class="block text-sm font-medium text-charcoal">Email</label>
-                        {{ form.email }}
-                        {% if form.email.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.email.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-
-                    <div>
-                        <label for="id_phone" class="block text-sm font-medium text-charcoal">Phone</label>
-                        {{ form.phone }}
-                        {% if form.phone.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.phone.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-
-                    <div class="sm:col-span-2">
-                        <label for="id_address" class="block text-sm font-medium text-charcoal">Address</label>
-                        {{ form.address }}
-                        {% if form.address.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.address.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-
-                    <div>
-                        <label for="id_account_code" class="block text-sm font-medium text-charcoal">Account Code</label>
-                        {{ form.account_code }}
-                        {% if form.account_code.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.account_code.errors.0 }}</p>
-                        {% endif %}
-                        <p class="mt-1 text-xs text-sage">For accounting systems (e.g. Xero)</p>
-                    </div>
+                    {% include "includes/form_field.html" with field=form.name span="2" %}
+                    {% include "includes/form_field.html" with field=form.email %}
+                    {% include "includes/form_field.html" with field=form.phone %}
+                    {% include "includes/form_field.html" with field=form.address span="2" %}
+                    {% include "includes/form_field.html" with field=form.account_code help="For accounting systems (e.g. Xero)" %}
                 </div>
             </fieldset>
 
             <!-- Notes -->
             <fieldset class="border-t border-light-sage px-5 pt-5 pb-5 space-y-5">
                 <legend class="text-base font-semibold text-charcoal mb-4">Notes</legend>
-                <div>
-                    <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
-                    {{ form.notes }}
-                    {% if form.notes.errors %}
-                    <p class="mt-1 text-xs text-error-red">{{ form.notes.errors.0 }}</p>
-                    {% endif %}
-                </div>
+                {% include "includes/form_field.html" with field=form.notes %}
             </fieldset>
 
             <!-- Footer -->

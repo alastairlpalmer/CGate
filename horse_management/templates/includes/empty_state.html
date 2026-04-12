@@ -1,0 +1,32 @@
+{% comment %}
+Reusable empty state for lists with no results.
+
+Usage:
+  {% include "includes/empty_state.html" with message="No horses found." %}
+  {% include "includes/empty_state.html" with message="No horses found." add_url="/horses/add/" add_label="Add Horse" %}
+  {% include "includes/empty_state.html" with message="No results match your filters." icon="search" %}
+
+Parameters:
+  message   - Required. The message to display.
+  add_url   - Optional. URL for an action button.
+  add_label - Optional. Label for the action button (default: "Add New").
+  icon      - Optional. Icon type: "empty" (default) or "search".
+{% endcomment %}
+
+<div class="card p-8 text-center">
+    <div class="mx-auto w-12 h-12 rounded-full bg-light-sage flex items-center justify-center mb-3">
+        {% if icon == "search" %}
+        <svg class="w-6 h-6 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+        </svg>
+        {% else %}
+        <svg class="w-6 h-6 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/>
+        </svg>
+        {% endif %}
+    </div>
+    <p class="text-sm text-sage">{{ message }}</p>
+    {% if add_url %}
+    <a href="{{ add_url }}" class="btn-primary mt-4 inline-flex">{{ add_label|default:"Add New" }}</a>
+    {% endif %}
+</div>

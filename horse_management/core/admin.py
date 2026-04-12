@@ -6,12 +6,12 @@ from django.contrib import admin
 from django.db.models import Count, Prefetch, Q
 from django.utils.html import format_html
 
+from invoicing.models import Invoice, InvoiceLineItem
+
 from .models import (
     BusinessSettings,
     Horse,
     HorseOwnership,
-    Invoice,
-    InvoiceLineItem,
     Location,
     Owner,
     OwnershipShare,

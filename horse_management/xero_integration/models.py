@@ -87,7 +87,7 @@ class XeroInvoiceSync(models.Model):
         ERROR = 'error', 'Error'
 
     invoice = models.OneToOneField(
-        'core.Invoice',
+        'invoicing.Invoice',
         on_delete=models.CASCADE,
         related_name='xero_sync',
     )

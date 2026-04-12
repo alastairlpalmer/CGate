@@ -14,12 +14,11 @@ from billing.models import ExtraCharge
 from core.models import (
     BusinessSettings,
     Horse,
-    Invoice,
-    InvoiceLineItem,
     Owner,
     OwnershipShare,
     Placement,
 )
+from invoicing.models import Invoice, InvoiceLineItem
 from .utils import format_date_short, format_date_short_year, group_preview_charges_by_horse
 
 

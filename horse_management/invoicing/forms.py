@@ -5,7 +5,8 @@ Forms for invoicing app.
 from django import forms
 from django.utils import timezone
 
-from core.models import Invoice, Owner
+from core.models import Owner
+from invoicing.models import Invoice
 
 
 class InvoiceCreateForm(forms.Form):

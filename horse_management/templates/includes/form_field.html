@@ -1,0 +1,45 @@
+{% comment %}
+Reusable form field renderer.
+
+Usage:
+  {% include "includes/form_field.html" with field=form.name %}
+  {% include "includes/form_field.html" with field=form.name label="Custom Label" help="Custom help text" %}
+  {% include "includes/form_field.html" with field=form.name span=2 %}
+
+Parameters:
+  field     - Required. The form field (e.g. form.name)
+  label     - Optional. Override the field's default label
+  help      - Optional. Override or add help text below the field
+  span      - Optional. Column span: 2 = "sm:col-span-2" (full width in 2-col grid)
+  required  - Optional. Show asterisk. Auto-detected from field if not set.
+{% endcomment %}
+
+<div{% if span == "2" %} class="sm:col-span-2"{% endif %}>
+    {% if field.field.widget.input_type != "checkbox" %}
+        <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-charcoal">
+            {{ label|default:field.label }}{% if required or field.field.required %} *{% endif %}
+        </label>
+        {{ field }}
+        {% if field.errors %}
+        <p class="mt-1 text-xs text-error-red">{{ field.errors.0 }}</p>
+        {% endif %}
+        {% if help %}
+        <p class="mt-1 text-xs text-sage">{{ help }}</p>
+        {% elif field.help_text %}
+        <p class="mt-1 text-xs text-sage">{{ field.help_text }}</p>
+        {% endif %}
+    {% else %}
+        <label class="inline-flex items-center gap-2 cursor-pointer">
+            {{ field }}
+            <span class="text-sm font-medium text-charcoal">{{ label|default:field.label }}</span>
+        </label>
+        {% if field.errors %}
+        <p class="mt-1 text-xs text-error-red">{{ field.errors.0 }}</p>
+        {% endif %}
+        {% if help %}
+        <p class="mt-1 text-xs text-sage">{{ help }}</p>
+        {% elif field.help_text %}
+        <p class="mt-1 text-xs text-sage">{{ field.help_text }}</p>
+        {% endif %}
+    {% endif %}
+</div>
