@@ -69,7 +69,7 @@
     /* Mobile Bottom Tab Bar */
     .tab-bar-item { @apply flex flex-col items-center justify-center flex-1 gap-0.5 text-sage/60 transition-colors duration-100 active:bg-light-sage/50 no-underline; }
     .tab-bar-item.active { @apply text-forest; }
-    .tab-bar-label { @apply text-[10px] font-medium leading-tight; }
+    .tab-bar-label { @apply text-[11px] font-medium leading-tight; }
 
     /* More Bottom Sheet nav items */
     .sheet-nav-item { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-charcoal rounded-btn hover:bg-light-sage active:bg-light-sage/70 transition-colors duration-100; }
@@ -80,6 +80,16 @@
 .tab-bar-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .sheet-safe-bottom { height: env(safe-area-inset-bottom, 0px); }
 
+/* Prevent page-level horizontal overflow from extending the iOS viewport
+   (which would push fixed bottom tab bar partially off-screen) */
+html, body { overflow-x: hidden; overflow-x: clip; }
+body { overscroll-behavior-y: none; }
+#main-content { min-width: 0; max-width: 100%; }
+
+/* Tab bar + safe area coordination */
+.more-sheet-above-tabs { bottom: calc(4rem + env(safe-area-inset-bottom, 0px)); }
+.pb-tab-bar { padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px)); }
+
 /* Tab bar HTMX request feedback */
 .tab-bar-item.htmx-request { @apply opacity-60; }
 .sheet-nav-item.htmx-request { @apply opacity-60; }
@@ -88,7 +98,18 @@
 input[type="text"], input[type="email"], input[type="password"], input[type="number"],
 input[type="url"], input[type="tel"], input[type="date"], input[type="datetime-local"],
 textarea, select {
-    @apply block w-full rounded-btn border-sage/30 shadow-sm focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150;
+    @apply block w-full rounded-btn border-sage/30 shadow-sm focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 px-3 py-2 border transition-all duration-150;
+    font-size: 16px; /* prevent iOS Safari auto-zoom on focus */
+}
+@media (min-width: 640px) {
+    input[type="text"], input[type="email"], input[type="password"], input[type="number"],
+    input[type="url"], input[type="tel"], input[type="date"], input[type="datetime-local"],
+    textarea, select { font-size: 0.875rem; } /* restore text-sm at sm+ */
+}
+/* .form-input/.form-select/.form-textarea component classes carry text-sm via @apply;
+   their class specificity beats the bare `select` selector, so bump on mobile to avoid iOS zoom. */
+@media (max-width: 639px) {
+    .form-input, .form-select, .form-textarea { font-size: 16px; }
 }
 input[type="checkbox"] { @apply rounded-sm border-sage/30 text-forest focus:ring-sage; }
 input[type="file"] { @apply block w-full text-sm text-sage file:mr-3 file:rounded-btn file:border-0 file:bg-light-sage file:px-3 file:py-2 file:text-sm file:font-medium file:text-forest hover:file:bg-sage-100 cursor-pointer; }

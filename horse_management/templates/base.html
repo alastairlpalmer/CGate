@@ -18,7 +18,7 @@
     <script src="{% static 'js/htmx.min.js' %}"></script>
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-parchment font-body antialiased text-charcoal" x-data="{ moreSheetOpen: false }" x-cloak
+<body class="bg-parchment font-body antialiased text-charcoal" x-data="{ moreSheetOpen: false }"
       hx-boost="true" hx-swap="outerHTML show:window:top" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
 
     <!-- ── Progress Bar ── -->
@@ -180,7 +180,7 @@
         {% endif %}
 
         <!-- Main content -->
-        <main id="main-content" class="flex-1 px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-6 max-w-7xl w-full mx-auto">
+        <main id="main-content" class="flex-1 px-4 sm:px-6 lg:px-8 py-6 pb-tab-bar lg:pb-6 max-w-7xl w-full mx-auto">
             {% block content %}{% endblock %}
         </main>
 
@@ -227,7 +227,7 @@
     </nav>
 
     <!-- ── More Bottom Sheet ── -->
-    <div x-show="moreSheetOpen" x-cloak class="fixed inset-x-0 top-0 bottom-16 z-50 lg:hidden" @keydown.escape.window="moreSheetOpen = false">
+    <div x-show="moreSheetOpen" x-cloak class="fixed inset-x-0 top-0 more-sheet-above-tabs z-50 lg:hidden" @keydown.escape.window="moreSheetOpen = false">
         <!-- Scrim -->
         <div @click="moreSheetOpen = false"
              class="absolute inset-0 bg-charcoal/40"></div>
