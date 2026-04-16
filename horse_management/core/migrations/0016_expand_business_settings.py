@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+import core.models
 import django.core.validators
 import django.db.models.deletion
 from django.conf import settings
@@ -80,6 +81,7 @@ class Migration(migrations.Migration):
                     django.core.validators.FileExtensionValidator(
                         allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'svg']
                     ),
+                    core.models.validate_file_size,
                 ],
             ),
         ),

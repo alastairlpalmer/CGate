@@ -164,8 +164,11 @@ class FarrierVisit(models.Model):
     def save(self, *args, **kwargs):
         # Auto-calculate next due date using the admin-configured interval
         if not self.next_due_date:
-            from core.models import BusinessSettings
-            weeks = BusinessSettings.get_settings().farrier_revisit_weeks
+            try:
+                from core.models import BusinessSettings
+                weeks = BusinessSettings.get_settings().farrier_revisit_weeks
+            except Exception:
+                weeks = 6  # Safe default if settings table unavailable (e.g. during migration)
             self.next_due_date = self.date + timedelta(weeks=weeks)
         super().save(*args, **kwargs)
 
@@ -241,8 +244,11 @@ class WormEggCount(models.Model):
 
     @property
     def is_high(self):
-        from core.models import BusinessSettings
-        threshold = BusinessSettings.get_settings().worm_egg_threshold
+        try:
+            from core.models import BusinessSettings
+            threshold = BusinessSettings.get_settings().worm_egg_threshold
+        except Exception:
+            threshold = 200  # Safe default if settings table unavailable
         return self.count > threshold
 
 

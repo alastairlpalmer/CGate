@@ -402,7 +402,7 @@
                 <!-- Xero push-status setting (visible when connected) -->
                 {% if xero_connection.is_connected %}
                 <div class="border-t border-sage/10 pt-4">
-                    <form method="post" enctype="multipart/form-data">
+                    <form method="post" enctype="multipart/form-data" hx-boost="false">
                         {% csrf_token %}
                         <input type="hidden" name="save_business" value="1">
                         <input type="hidden" name="active_tab" value="integrations">

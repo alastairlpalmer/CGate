@@ -634,6 +634,7 @@ class BusinessSettings(models.Model):
     # ── Yard & health defaults ─────────────────────────────────────────────────
     farrier_revisit_weeks = models.PositiveSmallIntegerField(
         default=6,
+        validators=[MinValueValidator(1)],
         help_text="Default weeks between farrier visits when auto-calculating next due date"
     )
     worm_egg_threshold = models.PositiveIntegerField(

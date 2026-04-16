@@ -87,9 +87,10 @@ def build_xero_invoice_payload(invoice, xero_contact_id):
     """
     biz_settings = BusinessSettings.get_settings()
     vat_reg = getattr(biz_settings, 'vat_registration', 'N/A') or 'N/A'
+    vat_rate = getattr(biz_settings, 'vat_rate', 0) or 0
 
-    # Map CSV tax types to API tax types
-    if vat_reg.upper() in ('N/A', '', 'NONE'):
+    # No VAT if not registered or rate is zero
+    if vat_reg.upper() in ('N/A', '', 'NONE') or not vat_rate:
         tax_type = 'NONE'
     else:
         tax_type = 'OUTPUT2'  # 20% VAT on Income
@@ -117,7 +118,7 @@ def build_xero_invoice_payload(invoice, xero_contact_id):
         'DueDate': invoice.due_date.strftime('%Y-%m-%d'),
         'LineItems': line_items,
         'CurrencyCode': 'GBP',
-        'Status': BusinessSettings.get_settings().xero_invoice_status,
+        'Status': biz_settings.xero_invoice_status,
         'LineAmountTypes': 'Exclusive',
     }
 

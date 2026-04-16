@@ -3,7 +3,7 @@ Settings, rate types, and health check views.
 """
 
 from django.contrib import messages
-from django.db import connection
+from django.db import connection, transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -46,8 +46,11 @@ def app_settings(request):
         active_tab = request.POST.get('active_tab', 'business')
         biz_form = BusinessSettingsForm(request.POST, request.FILES, instance=business)
         if biz_form.is_valid():
-            _save_with_audit(biz_form, request.user)
-            messages.success(request, "Settings saved.")
+            if biz_form.changed_data:
+                _save_with_audit(biz_form, request.user)
+                messages.success(request, "Settings saved.")
+            else:
+                messages.info(request, "No changes to save.")
             return redirect(f"{request.path}?tab={active_tab}")
     else:
         active_tab = request.GET.get('tab', 'business')
@@ -68,38 +71,45 @@ def app_settings(request):
 
 
 def _save_with_audit(form, user):
-    """Save a BusinessSettingsForm and write a SettingsChangeLog entry per changed field."""
+    """Save a BusinessSettingsForm and write a SettingsChangeLog entry per changed field.
+
+    Wrapped in a transaction so audit log entries are always consistent with the saved data.
+    """
     from ..models import SettingsChangeLog
 
     instance = form.instance
     changed_fields = form.changed_data
 
-    # Capture old values before save
+    # Capture old values before save (file fields need special handling)
     old_values = {}
     for field_name in changed_fields:
         old_val = getattr(instance, field_name, '')
-        old_values[field_name] = str(old_val) if old_val is not None else ''
-
-    form.save()
-
-    # Reload to get new values
-    instance.refresh_from_db()
-    log_entries = []
-    for field_name in changed_fields:
-        new_val = getattr(instance, field_name, '')
-        # Skip binary/file fields — just log that they changed
-        if hasattr(new_val, 'name'):
-            new_display = new_val.name or '(cleared)'
+        if hasattr(old_val, 'name'):
+            # FieldFile — store the filename, empty string if no file
+            old_values[field_name] = old_val.name or '(none)'
         else:
-            new_display = str(new_val) if new_val is not None else ''
-        log_entries.append(SettingsChangeLog(
-            changed_by=user,
-            field_name=field_name,
-            old_value=old_values.get(field_name, ''),
-            new_value=new_display,
-        ))
-    if log_entries:
-        SettingsChangeLog.objects.bulk_create(log_entries)
+            old_values[field_name] = str(old_val) if old_val is not None else ''
+
+    with transaction.atomic():
+        form.save()
+        instance.refresh_from_db()
+
+        log_entries = []
+        for field_name in changed_fields:
+            new_val = getattr(instance, field_name, '')
+            if hasattr(new_val, 'name'):
+                # FieldFile after save — empty name means file was cleared
+                new_display = new_val.name or '(cleared)'
+            else:
+                new_display = str(new_val) if new_val is not None else ''
+            log_entries.append(SettingsChangeLog(
+                changed_by=user,
+                field_name=field_name,
+                old_value=old_values.get(field_name, ''),
+                new_value=new_display,
+            ))
+        if log_entries:
+            SettingsChangeLog.objects.bulk_create(log_entries)
 
 
 @staff_required
