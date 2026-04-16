@@ -575,24 +575,46 @@ class OwnershipShare(models.Model):
 class BusinessSettings(models.Model):
     """Singleton model for business configuration."""
 
+    class XeroInvoiceStatus(models.TextChoices):
+        DRAFT = 'DRAFT', 'Draft'
+        SUBMITTED = 'SUBMITTED', 'Submitted'
+        AUTHORISED = 'AUTHORISED', 'Authorised'
+
+    # ── Business identity ──────────────────────────────────────────────────────
     business_name = models.CharField(max_length=200, default="Horse Livery")
     address = models.TextField(blank=True)
     phone = models.CharField(max_length=50, blank=True)
     email = models.EmailField(blank=True)
     website = models.URLField(blank=True)
-    vat_registration = models.CharField(
-        max_length=50,
-        blank=True,
-        default="N/A",
-        help_text="VAT registration number, or N/A if not registered"
-    )
     logo = models.ImageField(
         upload_to='business/', blank=True, null=True,
         validators=[
             FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'svg']),
             validate_file_size,
         ],
+        help_text="PNG, JPEG, WebP or SVG. Max 5MB."
     )
+    currency_symbol = models.CharField(
+        max_length=5,
+        default='£',
+        help_text="Symbol shown on invoices and throughout the UI"
+    )
+
+    # ── Tax & registration ─────────────────────────────────────────────────────
+    vat_registration = models.CharField(
+        max_length=50,
+        blank=True,
+        default="N/A",
+        help_text="VAT registration number, or N/A if not registered"
+    )
+    vat_rate = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00')), MaxValueValidator(Decimal('100.00'))],
+        help_text="VAT percentage applied to invoices (0 = no VAT)"
+    )
+
+    # ── Payment & invoicing ────────────────────────────────────────────────────
     bank_details = models.TextField(blank=True, help_text="Bank details for payment")
     card_payment_url = models.URLField(
         blank=True,
@@ -602,8 +624,31 @@ class BusinessSettings(models.Model):
         default=30,
         help_text="Default payment terms in days"
     )
+    invoice_due_warning_days = models.PositiveSmallIntegerField(
+        default=7,
+        help_text="Flag invoices as 'due soon' this many days before the due date"
+    )
     invoice_prefix = models.CharField(max_length=10, default="INV")
     next_invoice_number = models.PositiveIntegerField(default=1)
+
+    # ── Yard & health defaults ─────────────────────────────────────────────────
+    farrier_revisit_weeks = models.PositiveSmallIntegerField(
+        default=6,
+        help_text="Default weeks between farrier visits when auto-calculating next due date"
+    )
+    worm_egg_threshold = models.PositiveIntegerField(
+        default=200,
+        help_text="Worm egg count (EPG) above which a result is flagged as high"
+    )
+
+    # ── Xero integration defaults ──────────────────────────────────────────────
+    xero_invoice_status = models.CharField(
+        max_length=20,
+        choices=XeroInvoiceStatus.choices,
+        default=XeroInvoiceStatus.DRAFT,
+        help_text="Status invoices are created with when pushed to Xero"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -633,6 +678,26 @@ class BusinessSettings(models.Model):
         )
         self.refresh_from_db(fields=['next_invoice_number'])
         return f"{self.invoice_prefix}{number:05d}"
+
+
+class SettingsChangeLog(models.Model):
+    """Audit log for changes to BusinessSettings."""
+
+    changed_by = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, related_name='settings_changes'
+    )
+    changed_at = models.DateTimeField(auto_now_add=True)
+    field_name = models.CharField(max_length=100)
+    old_value = models.TextField(blank=True)
+    new_value = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-changed_at']
+        verbose_name = "Settings Change"
+        verbose_name_plural = "Settings Changes"
+
+    def __str__(self):
+        return f"{self.field_name} changed at {self.changed_at:%Y-%m-%d %H:%M}"
 
 
 # Invoice and InvoiceLineItem have been moved to invoicing.models.

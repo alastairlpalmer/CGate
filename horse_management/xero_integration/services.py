@@ -117,7 +117,7 @@ def build_xero_invoice_payload(invoice, xero_contact_id):
         'DueDate': invoice.due_date.strftime('%Y-%m-%d'),
         'LineItems': line_items,
         'CurrencyCode': 'GBP',
-        'Status': 'DRAFT',
+        'Status': BusinessSettings.get_settings().xero_invoice_status,
         'LineAmountTypes': 'Exclusive',
     }
 

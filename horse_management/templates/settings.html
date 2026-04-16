@@ -3,7 +3,8 @@
 {% block title %}Settings - CGate{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-6"
+     x-data="{ tab: new URLSearchParams(location.search).get('tab') || '{{ active_tab|default:'business' }}' }">
 
     <!-- Page Header -->
     <div class="page-header">
@@ -13,297 +14,473 @@
         </div>
     </div>
 
-    <!-- ── Business Details ── -->
-    <div class="card">
-        <div class="section-header">
-            <h3 class="section-title">Business Details</h3>
-        </div>
-        <form method="post" class="p-5">
-            {% csrf_token %}
-            <input type="hidden" name="save_business" value="1">
-
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div class="sm:col-span-2">
-                    <label for="{{ biz_form.business_name.id_for_label }}" class="text-sm font-medium text-charcoal">Business Name</label>
-                    {{ biz_form.business_name }}
-                </div>
-
-                <div class="sm:col-span-2">
-                    <label for="{{ biz_form.address.id_for_label }}" class="text-sm font-medium text-charcoal">Address</label>
-                    {{ biz_form.address }}
-                </div>
-
-                <div>
-                    <label for="{{ biz_form.phone.id_for_label }}" class="text-sm font-medium text-charcoal">Phone</label>
-                    {{ biz_form.phone }}
-                </div>
-
-                <div>
-                    <label for="{{ biz_form.email.id_for_label }}" class="text-sm font-medium text-charcoal">Email</label>
-                    {{ biz_form.email }}
-                </div>
-
-                <div>
-                    <label for="{{ biz_form.website.id_for_label }}" class="text-sm font-medium text-charcoal">Website</label>
-                    {{ biz_form.website }}
-                </div>
-
-                <div>
-                    <label for="{{ biz_form.vat_registration.id_for_label }}" class="text-sm font-medium text-charcoal">VAT Registration</label>
-                    {{ biz_form.vat_registration }}
-                </div>
-
-                <div class="sm:col-span-2">
-                    <label for="{{ biz_form.bank_details.id_for_label }}" class="text-sm font-medium text-charcoal">Bank Details</label>
-                    {{ biz_form.bank_details }}
-                </div>
-
-                <div>
-                    <label for="{{ biz_form.card_payment_url.id_for_label }}" class="text-sm font-medium text-charcoal">Card Payment URL</label>
-                    {{ biz_form.card_payment_url }}
-                    <p class="text-xs text-sage mt-1">e.g. SumUp payment link</p>
-                </div>
-
-                <div>
-                    <label for="{{ biz_form.invoice_prefix.id_for_label }}" class="text-sm font-medium text-charcoal">Invoice Prefix</label>
-                    {{ biz_form.invoice_prefix }}
-                </div>
-
-                <div>
-                    <label for="{{ biz_form.default_payment_terms.id_for_label }}" class="text-sm font-medium text-charcoal">Payment Terms (days)</label>
-                    {{ biz_form.default_payment_terms }}
-                </div>
-            </div>
-
-            <div class="mt-4 flex justify-end">
-                <button type="submit" class="btn-primary btn-sm">Save Business Details</button>
-            </div>
-        </form>
+    <!-- Tab Nav -->
+    <div class="card p-0 overflow-hidden">
+        <nav class="flex overflow-x-auto border-b border-sage/20 bg-white">
+            {% for slug, label in tabs %}
+            <button type="button"
+                    @click="tab = '{{ slug }}'"
+                    :class="tab === '{{ slug }}'
+                        ? 'border-b-2 border-forest text-forest font-semibold'
+                        : 'text-sage hover:text-charcoal'"
+                    class="shrink-0 px-5 py-3 text-sm transition-colors whitespace-nowrap">
+                {{ label }}
+            </button>
+            {% endfor %}
+        </nav>
     </div>
 
-    <!-- ── Rate Types ── -->
-    <div class="card">
-        <div class="section-header flex items-center justify-between">
-            <h3 class="section-title">Rate Types</h3>
-            <a href="{% url 'rate_type_create' %}" class="btn-primary btn-sm">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                </svg>
-                Add Rate
-            </a>
-        </div>
-        <div class="p-5">
-            {% if rate_types %}
-                <div class="space-y-3">
-                    {% for rate in rate_types %}
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-charcoal">{{ rate.name }}</p>
-                            <p class="text-xs text-sage">&pound;{{ rate.daily_rate }}/day{% if not rate.is_active %} &middot; <span class="text-warning-amber">Inactive</span>{% endif %}</p>
-                        </div>
-                        <a href="{% url 'rate_type_update' rate.pk %}" class="text-xs text-sage hover:text-forest transition-colors">Edit</a>
+    <!-- ══════════════════════════════════════════════════════════════
+         TAB: Business
+    ══════════════════════════════════════════════════════════════ -->
+    <div x-show="tab === 'business'" x-cloak>
+        <div class="card">
+            <div class="section-header">
+                <h3 class="section-title">Business Details</h3>
+            </div>
+            <form method="post" enctype="multipart/form-data" class="p-5">
+                {% csrf_token %}
+                <input type="hidden" name="save_business" value="1">
+                <input type="hidden" name="active_tab" value="business">
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <label for="{{ biz_form.business_name.id_for_label }}" class="text-sm font-medium text-charcoal">Business Name</label>
+                        {{ biz_form.business_name }}
                     </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-sm text-sage">No rate types configured.</p>
-            {% endif %}
-        </div>
-    </div>
 
-    <!-- ── Locations & Sites ── -->
-    <div class="card">
-        <div class="section-header flex items-center justify-between">
-            <h3 class="section-title">Locations &amp; Sites</h3>
-            <a href="{% url 'location_create' %}" class="btn-primary btn-sm">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                </svg>
-                Add Location
-            </a>
-        </div>
-        <div class="p-5">
-            {% if locations %}
-                {% regroup locations by site as site_list %}
-                <div class="space-y-5">
-                    {% for site in site_list %}
+                    <div class="sm:col-span-2">
+                        <label for="{{ biz_form.address.id_for_label }}" class="text-sm font-medium text-charcoal">Address</label>
+                        {{ biz_form.address }}
+                    </div>
+
                     <div>
-                        <div class="flex items-center gap-2 mb-2">
-                            <svg class="w-4 h-4 text-forest" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21m-3.75 3H21"/>
-                            </svg>
-                            <span class="text-sm font-semibold text-charcoal">{{ site.grouper }}</span>
-                        </div>
-                        <div class="space-y-2 ml-6">
-                            {% for loc in site.list %}
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-sm font-medium text-charcoal">{{ loc.name }}</p>
-                                    <p class="text-xs text-sage">
-                                        {{ loc.get_usage_display }}
-                                        &middot; {% if loc.capacity %}Capacity: {{ loc.capacity }}{% else %}No capacity set{% endif %}
-                                        {% if loc.description %}&middot; {{ loc.description|truncatewords:8 }}{% endif %}
-                                    </p>
-                                </div>
-                                <a href="{% url 'location_update' loc.pk %}" class="text-xs text-sage hover:text-forest transition-colors">Edit</a>
+                        <label for="{{ biz_form.phone.id_for_label }}" class="text-sm font-medium text-charcoal">Phone</label>
+                        {{ biz_form.phone }}
+                    </div>
+
+                    <div>
+                        <label for="{{ biz_form.email.id_for_label }}" class="text-sm font-medium text-charcoal">Email</label>
+                        {{ biz_form.email }}
+                    </div>
+
+                    <div>
+                        <label for="{{ biz_form.website.id_for_label }}" class="text-sm font-medium text-charcoal">Website</label>
+                        {{ biz_form.website }}
+                    </div>
+
+                    <div>
+                        <label for="{{ biz_form.currency_symbol.id_for_label }}" class="text-sm font-medium text-charcoal">Currency Symbol</label>
+                        {{ biz_form.currency_symbol }}
+                        <p class="text-xs text-sage mt-1">Shown on invoices and reports</p>
+                    </div>
+
+                    <!-- Logo upload -->
+                    <div class="sm:col-span-2">
+                        <label class="text-sm font-medium text-charcoal">Business Logo</label>
+                        <div class="mt-1 flex items-start gap-4">
+                            {% if business.logo %}
+                            <img src="{{ business.logo.url }}" alt="Current logo"
+                                 class="h-16 w-auto rounded border border-sage/20 object-contain bg-white p-1">
+                            {% endif %}
+                            <div class="flex-1">
+                                {{ biz_form.logo }}
+                                <p class="text-xs text-sage mt-1">PNG, JPEG, WebP or SVG. Max 5MB.</p>
                             </div>
-                            {% endfor %}
                         </div>
                     </div>
-                    {% endfor %}
                 </div>
-            {% else %}
-                <p class="text-sm text-sage">No locations configured.</p>
-            {% endif %}
+
+                <div class="mt-4 flex justify-end">
+                    <button type="submit" class="btn-primary btn-sm">Save Business Details</button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- ── Vaccination Types ── -->
-    <div class="card">
-        <div class="section-header flex items-center justify-between">
-            <h3 class="section-title">Vaccination Types</h3>
-            <a href="{% url 'vaccination_type_create' %}" class="btn-primary btn-sm">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                </svg>
-                Add Type
-            </a>
-        </div>
-        <div class="p-5">
-            {% if vaccination_types %}
-                <div class="space-y-3">
-                    {% for vt in vaccination_types %}
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-charcoal">{{ vt.name }}</p>
-                            <p class="text-xs text-sage">Every {{ vt.interval_months }} months &middot; Reminder {{ vt.reminder_days_before }} days before{% if not vt.is_active %} &middot; <span class="text-warning-amber">Inactive</span>{% endif %}</p>
-                        </div>
-                        <a href="{% url 'vaccination_type_update' vt.pk %}" class="text-xs text-sage hover:text-forest transition-colors">Edit</a>
+    <!-- ══════════════════════════════════════════════════════════════
+         TAB: Invoicing
+    ══════════════════════════════════════════════════════════════ -->
+    <div x-show="tab === 'invoicing'" x-cloak>
+        <div class="card">
+            <div class="section-header">
+                <h3 class="section-title">Invoicing &amp; Tax</h3>
+            </div>
+            <form method="post" enctype="multipart/form-data" class="p-5">
+                {% csrf_token %}
+                <input type="hidden" name="save_business" value="1">
+                <input type="hidden" name="active_tab" value="invoicing">
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label for="{{ biz_form.invoice_prefix.id_for_label }}" class="text-sm font-medium text-charcoal">Invoice Prefix</label>
+                        {{ biz_form.invoice_prefix }}
+                        <p class="text-xs text-sage mt-1">e.g. INV → INV00001</p>
                     </div>
-                    {% endfor %}
+
+                    <div>
+                        <label for="{{ biz_form.default_payment_terms.id_for_label }}" class="text-sm font-medium text-charcoal">Payment Terms (days)</label>
+                        {{ biz_form.default_payment_terms }}
+                    </div>
+
+                    <div>
+                        <label for="{{ biz_form.invoice_due_warning_days.id_for_label }}" class="text-sm font-medium text-charcoal">Due-Soon Warning (days)</label>
+                        {{ biz_form.invoice_due_warning_days }}
+                        <p class="text-xs text-sage mt-1">Flag invoices as due soon this many days before due date</p>
+                    </div>
+
+                    <div>
+                        <label for="{{ biz_form.vat_registration.id_for_label }}" class="text-sm font-medium text-charcoal">VAT Registration Number</label>
+                        {{ biz_form.vat_registration }}
+                    </div>
+
+                    <div>
+                        <label for="{{ biz_form.vat_rate.id_for_label }}" class="text-sm font-medium text-charcoal">VAT Rate (%)</label>
+                        {{ biz_form.vat_rate }}
+                        <p class="text-xs text-sage mt-1">Set to 0 if not VAT registered</p>
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label for="{{ biz_form.bank_details.id_for_label }}" class="text-sm font-medium text-charcoal">Bank Details</label>
+                        {{ biz_form.bank_details }}
+                        <p class="text-xs text-sage mt-1">Shown on invoices for bank transfer payments</p>
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label for="{{ biz_form.card_payment_url.id_for_label }}" class="text-sm font-medium text-charcoal">Card Payment URL</label>
+                        {{ biz_form.card_payment_url }}
+                        <p class="text-xs text-sage mt-1">e.g. SumUp payment link shown on invoices</p>
+                    </div>
                 </div>
-            {% else %}
-                <p class="text-sm text-sage">No vaccination types configured.</p>
-            {% endif %}
+
+                <div class="mt-4 flex justify-end">
+                    <button type="submit" class="btn-primary btn-sm">Save Invoicing Settings</button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- ── Service Providers ── -->
-    <div class="card">
-        <div class="section-header flex items-center justify-between">
-            <h3 class="section-title">Service Providers</h3>
-            <a href="{% url 'provider_create' %}" class="btn-primary btn-sm">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                </svg>
-                Add Provider
-            </a>
+    <!-- ══════════════════════════════════════════════════════════════
+         TAB: Yard & Health
+    ══════════════════════════════════════════════════════════════ -->
+    <div x-show="tab === 'yard'" x-cloak>
+        <div class="card">
+            <div class="section-header">
+                <h3 class="section-title">Yard &amp; Health Defaults</h3>
+            </div>
+            <form method="post" enctype="multipart/form-data" class="p-5">
+                {% csrf_token %}
+                <input type="hidden" name="save_business" value="1">
+                <input type="hidden" name="active_tab" value="yard">
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label for="{{ biz_form.farrier_revisit_weeks.id_for_label }}" class="text-sm font-medium text-charcoal">Farrier Revisit Interval (weeks)</label>
+                        {{ biz_form.farrier_revisit_weeks }}
+                        <p class="text-xs text-sage mt-1">Default weeks between farrier visits when auto-scheduling</p>
+                    </div>
+
+                    <div>
+                        <label for="{{ biz_form.worm_egg_threshold.id_for_label }}" class="text-sm font-medium text-charcoal">Worm Egg Count Threshold (EPG)</label>
+                        {{ biz_form.worm_egg_threshold }}
+                        <p class="text-xs text-sage mt-1">Counts above this are flagged as high risk</p>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex justify-end">
+                    <button type="submit" class="btn-primary btn-sm">Save Yard &amp; Health Settings</button>
+                </div>
+            </form>
         </div>
-        <div class="p-5">
-            {% if providers %}
-                <div class="space-y-3">
-                    {% for provider in providers %}
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-light-sage text-forest flex items-center justify-center text-xs font-semibold shrink-0">
-                                {{ provider.name|make_list|first|upper }}
-                            </div>
+
+        <!-- Vaccination Types -->
+        <div class="card mt-6">
+            <div class="section-header flex items-center justify-between">
+                <h3 class="section-title">Vaccination Types</h3>
+                <a href="{% url 'vaccination_type_create' %}" class="btn-primary btn-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
+                    Add Type
+                </a>
+            </div>
+            <div class="p-5">
+                {% if vaccination_types %}
+                    <div class="space-y-3">
+                        {% for vt in vaccination_types %}
+                        <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-sm font-medium text-charcoal">{{ provider.name }}</p>
-                                <p class="text-xs text-sage">{{ provider.get_provider_type_display }}</p>
+                                <p class="text-sm font-medium text-charcoal">{{ vt.name }}</p>
+                                <p class="text-xs text-sage">Every {{ vt.interval_months }} months &middot; Reminder {{ vt.reminder_days_before }} days before{% if not vt.is_active %} &middot; <span class="text-warning-amber">Inactive</span>{% endif %}</p>
                             </div>
+                            <a href="{% url 'vaccination_type_update' vt.pk %}" class="text-xs text-sage hover:text-forest transition-colors">Edit</a>
                         </div>
-                        <a href="{% url 'provider_update' provider.pk %}" class="text-xs text-sage hover:text-forest transition-colors">
-                            Edit
-                        </a>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-sm text-sage">No service providers yet.</p>
-            {% endif %}
+                {% else %}
+                    <p class="text-sm text-sage">No vaccination types configured.</p>
+                {% endif %}
+            </div>
         </div>
     </div>
 
-    <!-- ── Integrations ── -->
-    <div class="card">
-        <div class="section-header">
-            <h3 class="section-title">Integrations</h3>
+    <!-- ══════════════════════════════════════════════════════════════
+         TAB: Locations
+    ══════════════════════════════════════════════════════════════ -->
+    <div x-show="tab === 'locations'" x-cloak>
+        <div class="card">
+            <div class="section-header flex items-center justify-between">
+                <h3 class="section-title">Locations &amp; Sites</h3>
+                <a href="{% url 'location_create' %}" class="btn-primary btn-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
+                    Add Location
+                </a>
+            </div>
+            <div class="p-5">
+                {% if locations %}
+                    {% regroup locations by site as site_list %}
+                    <div class="space-y-5">
+                        {% for site in site_list %}
+                        <div>
+                            <div class="flex items-center gap-2 mb-2">
+                                <svg class="w-4 h-4 text-forest" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21m-3.75 3H21"/>
+                                </svg>
+                                <span class="text-sm font-semibold text-charcoal">{{ site.grouper }}</span>
+                            </div>
+                            <div class="space-y-2 ml-6">
+                                {% for loc in site.list %}
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-charcoal">{{ loc.name }}</p>
+                                        <p class="text-xs text-sage">
+                                            {{ loc.get_usage_display }}
+                                            &middot; {% if loc.capacity %}Capacity: {{ loc.capacity }}{% else %}No capacity set{% endif %}
+                                            {% if loc.description %}&middot; {{ loc.description|truncatewords:8 }}{% endif %}
+                                        </p>
+                                    </div>
+                                    <a href="{% url 'location_update' loc.pk %}" class="text-xs text-sage hover:text-forest transition-colors">Edit</a>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-sm text-sage">No locations configured.</p>
+                {% endif %}
+            </div>
         </div>
-        <div class="p-5">
-            <!-- Xero -->
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-lg bg-info-blue-50 text-info-blue flex items-center justify-center shrink-0">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z"/>
-                        </svg>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         TAB: Rates
+    ══════════════════════════════════════════════════════════════ -->
+    <div x-show="tab === 'rates'" x-cloak>
+        <div class="card">
+            <div class="section-header flex items-center justify-between">
+                <h3 class="section-title">Rate Types</h3>
+                <a href="{% url 'rate_type_create' %}" class="btn-primary btn-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
+                    Add Rate
+                </a>
+            </div>
+            <div class="p-5">
+                {% if rate_types %}
+                    <div class="space-y-3">
+                        {% for rate in rate_types %}
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-charcoal">{{ rate.name }}</p>
+                                <p class="text-xs text-sage">&pound;{{ rate.daily_rate }}/day{% if not rate.is_active %} &middot; <span class="text-warning-amber">Inactive</span>{% endif %}</p>
+                            </div>
+                            <a href="{% url 'rate_type_update' rate.pk %}" class="text-xs text-sage hover:text-forest transition-colors">Edit</a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-sm text-sage">No rate types configured.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         TAB: Providers
+    ══════════════════════════════════════════════════════════════ -->
+    <div x-show="tab === 'providers'" x-cloak>
+        <div class="card">
+            <div class="section-header flex items-center justify-between">
+                <h3 class="section-title">Service Providers</h3>
+                <a href="{% url 'provider_create' %}" class="btn-primary btn-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
+                    Add Provider
+                </a>
+            </div>
+            <div class="p-5">
+                {% if providers %}
+                    <div class="space-y-3">
+                        {% for provider in providers %}
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-light-sage text-forest flex items-center justify-center text-xs font-semibold shrink-0">
+                                    {{ provider.name|make_list|first|upper }}
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-charcoal">{{ provider.name }}</p>
+                                    <p class="text-xs text-sage">{{ provider.get_provider_type_display }}</p>
+                                </div>
+                            </div>
+                            <a href="{% url 'provider_update' provider.pk %}" class="text-xs text-sage hover:text-forest transition-colors">Edit</a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-sm text-sage">No service providers yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         TAB: Integrations
+    ══════════════════════════════════════════════════════════════ -->
+    <div x-show="tab === 'integrations'" x-cloak>
+        <!-- Xero connection -->
+        <div class="card">
+            <div class="section-header">
+                <h3 class="section-title">Xero</h3>
+            </div>
+            <div class="p-5 space-y-5">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-lg bg-info-blue-50 text-info-blue flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-charcoal">Xero</p>
+                            {% if xero_connection.is_connected %}
+                                <p class="text-xs text-sage">Connected to <strong>{{ xero_connection.xero_tenant_name }}</strong></p>
+                                {% if xero_connection.connected_at %}
+                                <p class="text-xs text-sage">Since {{ xero_connection.connected_at|date:"j M Y" }}</p>
+                                {% endif %}
+                            {% else %}
+                                <p class="text-xs text-sage">Push invoices directly to Xero</p>
+                            {% endif %}
+                        </div>
                     </div>
                     <div>
-                        <p class="text-sm font-medium text-charcoal">Xero</p>
                         {% if xero_connection.is_connected %}
-                            <p class="text-xs text-sage">Connected to {{ xero_connection.xero_tenant_name }}</p>
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sage-50 text-forest border border-sage/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-forest"></span>
+                                    Connected
+                                </span>
+                                <form method="post" action="{% url 'xero_disconnect' %}" class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                            class="text-xs text-sage hover:text-error-red transition-colors"
+                                            onclick="return confirm('Are you sure you want to disconnect from Xero?')">
+                                        Disconnect
+                                    </button>
+                                </form>
+                            </div>
                         {% else %}
-                            <p class="text-xs text-sage">Push invoices directly to Xero as drafts</p>
+                            <a href="{% url 'xero_connect' %}" class="btn-primary btn-sm" hx-boost="false">Connect</a>
                         {% endif %}
                     </div>
                 </div>
-                <div>
-                    {% if xero_connection.is_connected %}
-                        <div class="flex items-center gap-3">
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sage-50 text-forest border border-sage/20">
-                                <span class="w-1.5 h-1.5 rounded-full bg-forest"></span>
-                                Connected
-                            </span>
-                            <form method="post" action="{% url 'xero_disconnect' %}" class="inline">
-                                {% csrf_token %}
-                                <button type="submit"
-                                        class="text-xs text-sage hover:text-error-red transition-colors"
-                                        onclick="return confirm('Are you sure you want to disconnect from Xero?')">
-                                    Disconnect
-                                </button>
-                            </form>
+
+                <!-- Xero push-status setting (visible when connected) -->
+                {% if xero_connection.is_connected %}
+                <div class="border-t border-sage/10 pt-4">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="save_business" value="1">
+                        <input type="hidden" name="active_tab" value="integrations">
+                        <div class="flex items-end gap-4">
+                            <div class="flex-1 max-w-xs">
+                                <label for="{{ biz_form.xero_invoice_status.id_for_label }}" class="text-sm font-medium text-charcoal">Invoice Status when pushed</label>
+                                {{ biz_form.xero_invoice_status }}
+                                <p class="text-xs text-sage mt-1">Draft = editable in Xero before approving</p>
+                            </div>
+                            <button type="submit" class="btn-secondary btn-sm shrink-0">Save</button>
                         </div>
-                    {% else %}
-                        <a href="{% url 'xero_connect' %}" class="btn-primary btn-sm" hx-boost="false">
-                            Connect
-                        </a>
-                    {% endif %}
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Data Management -->
+        <div class="card mt-6">
+            <div class="section-header">
+                <h3 class="section-title">Data Management</h3>
+            </div>
+            <div class="p-5 space-y-3">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-charcoal">Reset Feed Stock</p>
+                        <p class="text-xs text-sage">Clear all feed stock records (deliveries &amp; adjustments) to start tracking from scratch</p>
+                    </div>
+                    <a href="{% url 'feed_stock_clear' %}" class="btn-secondary btn-sm text-error-red border-error-red/30 hover:bg-error-red-50">Reset</a>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ── Data Management ── -->
-    <div class="card">
-        <div class="section-header">
-            <h3 class="section-title">Data Management</h3>
-        </div>
-        <div class="p-5 space-y-3">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-charcoal">Reset Feed Stock</p>
-                    <p class="text-xs text-sage">Clear all feed stock records (deliveries &amp; adjustments) to start tracking from scratch</p>
+    <!-- ══════════════════════════════════════════════════════════════
+         TAB: Account
+    ══════════════════════════════════════════════════════════════ -->
+    <div x-show="tab === 'account'" x-cloak>
+        <div class="card">
+            <div class="section-header">
+                <h3 class="section-title">Account</h3>
+            </div>
+            <div class="p-5 space-y-3">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-charcoal">{{ user.username }}</p>
+                        <p class="text-xs text-sage">{{ user.email|default:"No email set" }}</p>
+                    </div>
+                    <a href="{% url 'password_change' %}" class="btn-secondary btn-sm">Change Password</a>
                 </div>
-                <a href="{% url 'feed_stock_clear' %}" class="btn-secondary btn-sm text-error-red border-error-red/30 hover:bg-error-red-50">Reset</a>
             </div>
         </div>
-    </div>
 
-    <!-- ── Account ── -->
-    <div class="card">
-        <div class="section-header">
-            <h3 class="section-title">Account</h3>
-        </div>
-        <div class="p-5 space-y-3">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-charcoal">{{ user.username }}</p>
-                    <p class="text-xs text-sage">{{ user.email|default:"No email set" }}</p>
+        <!-- Settings change log -->
+        {% if change_log %}
+        <div class="card mt-6">
+            <div class="section-header">
+                <h3 class="section-title">Recent Settings Changes</h3>
+            </div>
+            <div class="p-5">
+                <div class="space-y-2">
+                    {% for entry in change_log %}
+                    <div class="flex items-start gap-3 text-xs">
+                        <span class="text-sage shrink-0 tabular-nums">{{ entry.changed_at|date:"j M Y H:i" }}</span>
+                        <span class="text-charcoal font-medium shrink-0">{{ entry.field_name }}</span>
+                        <span class="text-sage truncate">
+                            {% if entry.old_value %}<span class="line-through">{{ entry.old_value|truncatechars:30 }}</span> &rarr; {% endif %}
+                            {{ entry.new_value|truncatechars:40 }}
+                        </span>
+                        {% if entry.changed_by %}
+                        <span class="text-sage shrink-0">by {{ entry.changed_by.username }}</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
                 </div>
-                <a href="{% url 'password_change' %}" class="btn-secondary btn-sm">Change Password</a>
             </div>
         </div>
+        {% endif %}
     </div>
 
 </div>

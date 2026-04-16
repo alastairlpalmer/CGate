@@ -365,9 +365,17 @@ class BusinessSettingsForm(forms.ModelForm):
     class Meta:
         model = BusinessSettings
         fields = [
-            'business_name', 'address', 'phone', 'email', 'website',
-            'vat_registration', 'bank_details', 'card_payment_url',
-            'default_payment_terms', 'invoice_prefix',
+            # Business identity
+            'business_name', 'address', 'phone', 'email', 'website', 'logo', 'currency_symbol',
+            # Tax
+            'vat_registration', 'vat_rate',
+            # Payment & invoicing
+            'bank_details', 'card_payment_url',
+            'default_payment_terms', 'invoice_due_warning_days', 'invoice_prefix',
+            # Yard & health
+            'farrier_revisit_weeks', 'worm_egg_threshold',
+            # Xero
+            'xero_invoice_status',
         ]
         widgets = {
             'business_name': forms.TextInput(attrs={'class': 'form-input'}),
@@ -375,9 +383,16 @@ class BusinessSettingsForm(forms.ModelForm):
             'phone': forms.TextInput(attrs={'class': 'form-input'}),
             'email': forms.EmailInput(attrs={'class': 'form-input'}),
             'website': forms.URLInput(attrs={'class': 'form-input'}),
+            'logo': forms.ClearableFileInput(attrs={'class': 'form-input', 'accept': 'image/*'}),
+            'currency_symbol': forms.TextInput(attrs={'class': 'form-input', 'maxlength': 5}),
             'vat_registration': forms.TextInput(attrs={'class': 'form-input'}),
+            'vat_rate': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'min': '0', 'max': '100'}),
             'bank_details': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
             'card_payment_url': forms.URLInput(attrs={'class': 'form-input'}),
-            'default_payment_terms': forms.NumberInput(attrs={'class': 'form-input'}),
+            'default_payment_terms': forms.NumberInput(attrs={'class': 'form-input', 'min': '1'}),
+            'invoice_due_warning_days': forms.NumberInput(attrs={'class': 'form-input', 'min': '1'}),
             'invoice_prefix': forms.TextInput(attrs={'class': 'form-input', 'maxlength': 10}),
+            'farrier_revisit_weeks': forms.NumberInput(attrs={'class': 'form-input', 'min': '1'}),
+            'worm_egg_threshold': forms.NumberInput(attrs={'class': 'form-input', 'min': '0'}),
+            'xero_invoice_status': forms.Select(attrs={'class': 'form-select'}),
         }

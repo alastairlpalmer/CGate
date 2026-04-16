@@ -162,9 +162,11 @@ class FarrierVisit(models.Model):
         return f"{self.horse.name} - {self.get_work_done_display()} ({self.date})"
 
     def save(self, *args, **kwargs):
-        # Auto-calculate next due date (typically 6-8 weeks)
+        # Auto-calculate next due date using the admin-configured interval
         if not self.next_due_date:
-            self.next_due_date = self.date + timedelta(weeks=6)
+            from core.models import BusinessSettings
+            weeks = BusinessSettings.get_settings().farrier_revisit_weeks
+            self.next_due_date = self.date + timedelta(weeks=weeks)
         super().save(*args, **kwargs)
 
     @property
@@ -239,7 +241,9 @@ class WormEggCount(models.Model):
 
     @property
     def is_high(self):
-        return self.count > 200
+        from core.models import BusinessSettings
+        threshold = BusinessSettings.get_settings().worm_egg_threshold
+        return self.count > threshold
 
 
 class MedicalCondition(models.Model):
