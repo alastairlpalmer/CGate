@@ -67,17 +67,29 @@
     .link:hover::after { @apply w-full; }
 
     /* Mobile Bottom Tab Bar */
-    .tab-bar-item { @apply flex flex-col items-center justify-center flex-1 gap-0.5 text-sage/60 transition-colors duration-100 active:bg-light-sage/50 no-underline; }
+    .tab-bar-item {
+        @apply flex flex-col items-center justify-center flex-1 gap-1 px-1 text-sage/60 transition-colors duration-100 active:bg-light-sage/50 no-underline;
+        min-width: 0;
+    }
     .tab-bar-item.active { @apply text-forest; }
-    .tab-bar-label { @apply text-[11px] font-medium leading-tight; }
+    .tab-bar-label {
+        @apply text-[11px] font-medium leading-none text-center;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 
     /* More Bottom Sheet nav items */
     .sheet-nav-item { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-charcoal rounded-btn hover:bg-light-sage active:bg-light-sage/70 transition-colors duration-100; }
     .sheet-nav-item-active { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-forest bg-sage-50 rounded-btn transition-colors duration-100; }
 }
 
-/* Safe area insets for notched phones (iPhone X+) */
-.tab-bar-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+/* Safe area insets for notched phones (iPhone X+).
+   On iOS Safari the floating URL pill overlays fixed-bottom elements;
+   env(safe-area-inset-bottom) does NOT cover that chrome, so we
+   take max(inset, 8px) to guarantee a minimum breathing strip. */
+.tab-bar-safe { padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px); }
 .sheet-safe-bottom { height: env(safe-area-inset-bottom, 0px); }
 
 /* Prevent page-level horizontal overflow from extending the iOS viewport
@@ -86,9 +98,11 @@ html, body { overflow-x: hidden; overflow-x: clip; }
 body { overscroll-behavior-y: none; }
 #main-content { min-width: 0; max-width: 100%; }
 
-/* Tab bar + safe area coordination */
+/* Tab bar + safe area coordination.
+   pb-tab-bar clears tab bar (4rem) + safe area + 3rem visual buffer
+   so the last page card never sits under the tab bar or Safari's URL pill. */
 .more-sheet-above-tabs { bottom: calc(4rem + env(safe-area-inset-bottom, 0px)); }
-.pb-tab-bar { padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px)); }
+.pb-tab-bar { padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px)); }
 
 /* Tab bar HTMX request feedback */
 .tab-bar-item.htmx-request { @apply opacity-60; }
