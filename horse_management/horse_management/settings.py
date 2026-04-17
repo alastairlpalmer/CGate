@@ -256,10 +256,6 @@ if not DEBUG:
     # SSL redirect disabled - Vercel handles HTTPS at the edge
     SECURE_SSL_REDIRECT = False
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    # Trust Vercel's X-Forwarded-Host so request.get_host() returns the public
-    # domain (c-gate-ten.vercel.app) instead of the internal Lambda hostname.
-    # Required for CSRF origin/referer validation on POST requests.
-    USE_X_FORWARDED_HOST = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
