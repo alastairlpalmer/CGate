@@ -230,11 +230,6 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 # Clickjacking protection
 X_FRAME_OPTIONS = 'DENY'
 
-# Custom CSRF failure view — returns the exact reason string so we can
-# diagnose production 403s without DEBUG. Remove once the CSRF issue is
-# resolved and login is stable.
-CSRF_FAILURE_VIEW = 'core.views.csrf.csrf_failure'
-
 # Logging — surface slow-request warnings in Vercel function logs
 LOGGING = {
     'version': 1,
