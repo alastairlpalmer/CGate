@@ -16,13 +16,13 @@
     </a>
 
     <!-- Hero Header -->
-    <div class="card p-6">
-        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
-            <div class="flex items-start gap-6">
+    <div class="card p-4 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
+            <div class="flex items-start gap-4 sm:gap-6 min-w-0">
                 {% if horse.photo %}
-                <img src="{{ horse.photo.url }}" alt="{{ horse.name }}" class="w-24 h-24 rounded-xl object-cover shrink-0" loading="lazy" decoding="async">
+                <img src="{{ horse.photo.url }}" alt="{{ horse.name }}" class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover shrink-0" loading="lazy" decoding="async">
                 {% else %}
-                <div class="w-24 h-24 rounded-xl bg-gradient-to-br from-sage to-forest flex items-center justify-center shrink-0">
+                <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-gradient-to-br from-sage to-forest flex items-center justify-center shrink-0">
                     <svg class="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25L12 17.25 2.25 12l4.179-2.25"/>
                     </svg>
@@ -61,20 +61,20 @@
                 </div>
             </div>
             {% if user.is_staff %}
-            <div class="flex items-center gap-2 shrink-0">
+            <div class="flex flex-wrap items-center gap-2 sm:shrink-0">
                 {% if current_placement %}
-                <a href="{% url 'horse_move' horse.pk %}" class="btn-success">
+                <a href="{% url 'horse_move' horse.pk %}" class="btn-success flex-1 sm:flex-none justify-center">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
                     </svg>
                     Move
                 </a>
-                <form method="post" action="{% url 'horse_depart' horse.pk %}" class="inline-flex" x-data="{ showDate: false }">
+                <form method="post" action="{% url 'horse_depart' horse.pk %}" class="inline-flex flex-1 sm:flex-none" x-data="{ showDate: false }">
                     {% csrf_token %}
                     <input type="hidden" name="departure_date" :value="document.getElementById('depart-date-{{ horse.pk }}') ? document.getElementById('depart-date-{{ horse.pk }}').value : ''" x-ref="depDate">
-                    <div class="flex items-center gap-1">
-                        <input x-show="showDate" x-transition type="date" id="depart-date-{{ horse.pk }}" class="form-input text-sm py-1.5 w-auto" value="{{ today|date:'Y-m-d' }}" @change="$refs.depDate.value = $el.value" x-cloak>
-                        <button x-show="!showDate" type="button" @click="showDate = true; $nextTick(() => { $refs.depDate.value = document.getElementById('depart-date-{{ horse.pk }}').value })" class="btn-secondary text-error-red border-error-red/30 hover:bg-red-50">
+                    <div class="flex flex-wrap items-center gap-1 w-full">
+                        <input x-show="showDate" x-transition type="date" id="depart-date-{{ horse.pk }}" class="form-input text-sm py-1.5 w-auto flex-1 sm:flex-none" value="{{ today|date:'Y-m-d' }}" @change="$refs.depDate.value = $el.value" x-cloak>
+                        <button x-show="!showDate" type="button" @click="showDate = true; $nextTick(() => { $refs.depDate.value = document.getElementById('depart-date-{{ horse.pk }}').value })" class="btn-secondary text-error-red border-error-red/30 hover:bg-red-50 flex-1 sm:flex-none justify-center">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/>
                             </svg>
@@ -86,14 +86,14 @@
                     </div>
                 </form>
                 {% else %}
-                <a href="{% url 'horse_arrive' horse.pk %}" class="btn-success">
+                <a href="{% url 'horse_arrive' horse.pk %}" class="btn-success flex-1 sm:flex-none justify-center">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                     </svg>
                     Log Arrival
                 </a>
                 {% endif %}
-                <a href="{% url 'horse_update' horse.pk %}" class="btn-secondary">
+                <a href="{% url 'horse_update' horse.pk %}" class="btn-secondary flex-1 sm:flex-none justify-center">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
                     </svg>
@@ -291,17 +291,20 @@
                                 <tr>
                                     <th>Name</th>
                                     <th>DOB</th>
-                                    <th>Sex</th>
-                                    <th>Colour</th>
+                                    <th class="hidden sm:table-cell">Sex</th>
+                                    <th class="hidden sm:table-cell">Colour</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for foal in foals %}
                                 <tr>
-                                    <td><a href="{% url 'horse_detail' foal.pk %}" class="link">{{ foal.name }}</a></td>
+                                    <td>
+                                        <a href="{% url 'horse_detail' foal.pk %}" class="link">{{ foal.name }}</a>
+                                        <div class="sm:hidden text-xs text-sage mt-0.5">{{ foal.get_sex_display }} &middot; {{ foal.get_color_display }}</div>
+                                    </td>
                                     <td class="text-sage">{{ foal.date_of_birth|default:"-" }}</td>
-                                    <td class="text-sage">{{ foal.get_sex_display }}</td>
-                                    <td class="text-sage">{{ foal.get_color_display }}</td>
+                                    <td class="text-sage hidden sm:table-cell">{{ foal.get_sex_display }}</td>
+                                    <td class="text-sage hidden sm:table-cell">{{ foal.get_color_display }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -335,7 +338,7 @@
             }">
                 <div class="section-header">
                     <h3 class="section-title">Timeline</h3>
-                    <div class="flex items-center gap-2">
+                    <div class="hidden md:flex items-center gap-2">
                         <a href="{% url 'vaccination_create' %}?horse={{ horse.pk }}" class="btn-ghost btn-xs">+ Vaccination</a>
                         <a href="{% url 'farrier_create' %}?horse={{ horse.pk }}" class="btn-ghost btn-xs">+ Farrier</a>
                         <a href="{% url 'worming_create' %}?horse={{ horse.pk }}" class="btn-ghost btn-xs">+ Worming</a>
@@ -561,7 +564,7 @@
                     <h3 class="section-title">Quick Actions</h3>
                 </div>
                 <div class="p-4">
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-2 gap-2">
                         <a href="{% url 'vaccination_create' %}?horse={{ horse.pk }}" class="card-hover p-3 text-center flex flex-col items-center gap-1.5">
                             <svg class="w-5 h-5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3"/>

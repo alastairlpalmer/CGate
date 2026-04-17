@@ -11,14 +11,14 @@
             <h1 class="page-title">Horses</h1>
         </div>
         {% if user.is_staff %}
-        <div class="flex items-center gap-2">
-            <a href="{% url 'horse_new_arrival' %}" class="btn-success">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+            <a href="{% url 'horse_new_arrival' %}" class="btn-success justify-center">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                 </svg>
                 New Arrival
             </a>
-            <a href="{% url 'horse_create' %}" class="btn-secondary">
+            <a href="{% url 'horse_create' %}" class="btn-secondary justify-center">
                 Add Horse
             </a>
         </div>
@@ -32,16 +32,16 @@
             {% if status == 'departed' %}<input type="hidden" name="status" value="departed">{% endif %}
             {% if group_by == 'owner' %}<input type="hidden" name="group_by" value="owner">{% endif %}
 
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3">
                 <!-- Search -->
-                <div class="flex-1">
+                <div class="flex-1 min-w-full sm:min-w-0">
                     <input type="text" name="search" value="{{ request.GET.search }}"
-                           class="form-input" placeholder="Search by name, owner, location...">
+                           class="form-input w-full" placeholder="Search by name, owner, location...">
                 </div>
 
                 <!-- Filter toggle -->
                 <button type="button" @click="filtersOpen = !filtersOpen"
-                        class="btn-secondary relative"
+                        class="btn-secondary relative shrink-0"
                         :class="filtersOpen && 'ring-2 ring-forest/30'">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z"/>
@@ -52,10 +52,10 @@
                 </button>
 
                 <!-- Search button -->
-                <button type="submit" class="btn-primary">Search</button>
+                <button type="submit" class="btn-primary flex-1 sm:flex-none justify-center">Search</button>
 
                 {% if request.GET.search or request.GET.location or request.GET.owner %}
-                <a href="{% url 'horse_list' %}{% if status == 'departed' %}?status=departed{% endif %}" class="btn-secondary">Clear</a>
+                <a href="{% url 'horse_list' %}{% if status == 'departed' %}?status=departed{% endif %}" class="btn-secondary flex-1 sm:flex-none justify-center">Clear</a>
                 {% endif %}
             </div>
 
@@ -89,8 +89,8 @@
     </div>
 
     <!-- Tabs: Current | All + Group Toggle -->
-    <div class="flex items-center justify-between">
-        <div class="flex gap-1 bg-white rounded-lg border border-light-sage p-1">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="flex gap-1 bg-white rounded-lg border border-light-sage p-1 self-start">
             <a href="{% url 'horse_list' %}{% if request.GET.search %}?search={{ request.GET.search }}{% endif %}"
                class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors {% if status == 'current' %}bg-forest text-white{% else %}text-sage hover:text-charcoal{% endif %}">
                 Current <span class="{% if status == 'current' %}text-white/70{% else %}text-sage{% endif %}">{{ total_current }}</span>
@@ -103,7 +103,7 @@
 
         {% if status == 'current' and not is_searching %}
         <!-- Group by toggle -->
-        <div class="flex items-center gap-2 text-sm text-sage">
+        <div class="flex flex-wrap items-center gap-2 text-sm text-sage">
             <span class="text-xs uppercase tracking-wider font-semibold">Group by</span>
             <div class="flex gap-1 bg-white rounded-lg border border-light-sage p-1">
                 <a href="{% url 'horse_list' %}?group_by=location{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}"
@@ -135,9 +135,9 @@
                             <input type="checkbox" data-select-all @change="toggleAll($event)" class="form-checkbox rounded">
                         </th>
                         <th>Name</th>
-                        <th>Details</th>
-                        <th>Owner</th>
-                        <th>Location</th>
+                        <th class="hidden md:table-cell">Details</th>
+                        <th class="hidden sm:table-cell">Owner</th>
+                        <th class="hidden sm:table-cell">Location</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -151,16 +151,28 @@
                         </td>
                         <td>
                             <a href="{% url 'horse_detail' horse.pk %}" class="link font-medium">{{ horse.name }}</a>
+                            <div class="sm:hidden text-xs text-sage mt-0.5 space-y-0.5">
+                                {% if horse.resolved_owner %}<div class="truncate">{{ horse.resolved_owner.name }}</div>{% endif %}
+                                {% if horse.is_active %}
+                                    {% with p=horse.active_placements.0 %}
+                                    {% if p and p.location %}<div class="truncate">{{ p.location.name }}</div>{% endif %}
+                                    {% endwith %}
+                                {% else %}
+                                    {% with p=horse.last_placements.0 %}
+                                    {% if p and p.location %}<div class="truncate">{{ p.location.name }}</div>{% endif %}
+                                    {% endwith %}
+                                {% endif %}
+                            </div>
                         </td>
-                        <td class="text-xs text-sage">
+                        <td class="text-xs text-sage hidden md:table-cell">
                             {% if horse.age %}{{ horse.age }}yo{% endif %}
                             {{ horse.get_color_display }}
                             {{ horse.get_sex_display }}
                         </td>
-                        <td class="text-xs">
+                        <td class="text-xs hidden sm:table-cell">
                             {% if horse.resolved_owner %}<a href="{% url 'owner_detail' horse.resolved_owner.pk %}" class="link">{{ horse.resolved_owner.name }}</a>{% else %}<span class="text-sage">-</span>{% endif %}
                         </td>
-                        <td class="text-xs">
+                        <td class="text-xs hidden sm:table-cell">
                             {% if horse.is_active %}
                                 {% with p=horse.active_placements.0 %}
                                 {% if p and p.location %}<a href="{% url 'location_detail' p.location.pk %}" class="link">{{ p.location.name }}</a>{% else %}<span class="text-sage">-</span>{% endif %}
@@ -207,9 +219,9 @@
                             <input type="checkbox" data-select-all @change="toggleAll($event)" class="form-checkbox rounded">
                         </th>
                         <th>Name</th>
-                        <th>Details</th>
-                        <th>Owner</th>
-                        <th>Last Location</th>
+                        <th class="hidden md:table-cell">Details</th>
+                        <th class="hidden sm:table-cell">Owner</th>
+                        <th class="hidden md:table-cell">Last Location</th>
                         <th>Departed</th>
                     </tr>
                 </thead>
@@ -223,16 +235,22 @@
                         </td>
                         <td>
                             <a href="{% url 'horse_detail' horse.pk %}" class="link font-medium">{{ horse.name }}</a>
+                            <div class="sm:hidden text-xs text-sage mt-0.5 space-y-0.5">
+                                {% if horse.resolved_owner %}<div class="truncate">{{ horse.resolved_owner.name }}</div>{% endif %}
+                                {% with p=horse.last_placements.0 %}
+                                {% if p and p.location %}<div class="truncate">{{ p.location.name }}</div>{% endif %}
+                                {% endwith %}
+                            </div>
                         </td>
-                        <td class="text-xs text-sage">
+                        <td class="text-xs text-sage hidden md:table-cell">
                             {% if horse.age %}{{ horse.age }}yo{% endif %}
                             {{ horse.get_color_display }}
                             {{ horse.get_sex_display }}
                         </td>
-                        <td class="text-xs text-sage">
+                        <td class="text-xs text-sage hidden sm:table-cell">
                             {% if horse.resolved_owner %}{{ horse.resolved_owner.name }}{% else %}-{% endif %}
                         </td>
-                        <td class="text-xs text-sage">
+                        <td class="text-xs text-sage hidden md:table-cell">
                             {% with p=horse.last_placements.0 %}
                             {% if p and p.location %}{{ p.location.name }}{% else %}-{% endif %}
                             {% endwith %}
@@ -261,23 +279,23 @@
         {% for group in grouped_horses %}
         <div class="card overflow-hidden">
             <div class="section-header">
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
                     {% if group_by == 'location' %}
                     {% if group.pk %}
-                    <a href="{% url 'location_detail' group.pk %}" class="section-title link">{{ group.name }}</a>
+                    <a href="{% url 'location_detail' group.pk %}" class="section-title link truncate">{{ group.name }}</a>
                     {% else %}
-                    <h2 class="section-title">{{ group.name }}</h2>
+                    <h2 class="section-title truncate">{{ group.name }}</h2>
                     {% endif %}
-                    {% if group.site %}<span class="text-xs text-sage">{{ group.site }}</span>{% endif %}
+                    {% if group.site %}<span class="text-xs text-sage truncate">{{ group.site }}</span>{% endif %}
                     {% else %}
                     {% if group.pk %}
-                    <a href="{% url 'owner_detail' group.pk %}" class="section-title link">{{ group.name }}</a>
+                    <a href="{% url 'owner_detail' group.pk %}" class="section-title link truncate">{{ group.name }}</a>
                     {% else %}
-                    <h2 class="section-title">{{ group.name }}</h2>
+                    <h2 class="section-title truncate">{{ group.name }}</h2>
                     {% endif %}
                     {% endif %}
                 </div>
-                <span class="badge-info">{{ group.count }}</span>
+                <span class="badge-info shrink-0">{{ group.count }}</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="data-table">
@@ -287,13 +305,13 @@
                                 <input type="checkbox" data-select-all @change="toggleAll($event)" class="form-checkbox rounded">
                             </th>
                             <th>Name</th>
-                            <th>Details</th>
+                            <th class="hidden md:table-cell">Details</th>
                             {% if group_by == 'location' %}
-                            <th>Owner</th>
+                            <th class="hidden sm:table-cell">Owner</th>
                             {% else %}
-                            <th>Location</th>
+                            <th class="hidden sm:table-cell">Location</th>
                             {% endif %}
-                            <th>Actions</th>
+                            <th class="text-right sm:text-left">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -306,32 +324,41 @@
                             </td>
                             <td>
                                 <a href="{% url 'horse_detail' horse.pk %}" class="link font-medium">{{ horse.name }}</a>
+                                <div class="sm:hidden text-xs text-sage mt-0.5">
+                                    {% if group_by == 'location' %}
+                                        {% if horse.resolved_owner %}<span class="truncate">{{ horse.resolved_owner.name }}</span>{% endif %}
+                                    {% else %}
+                                        {% with p=horse.active_placements.0 %}
+                                        {% if p and p.location %}<span class="truncate">{{ p.location.name }}</span>{% endif %}
+                                        {% endwith %}
+                                    {% endif %}
+                                </div>
                             </td>
-                            <td class="text-xs text-sage">
+                            <td class="text-xs text-sage hidden md:table-cell">
                                 {% if horse.age %}{{ horse.age }}yo{% endif %}
                                 {{ horse.get_color_display }}
                                 {{ horse.get_sex_display }}
                             </td>
                             {% if group_by == 'location' %}
-                            <td class="text-xs">
+                            <td class="text-xs hidden sm:table-cell">
                                 {% if horse.resolved_owner %}<a href="{% url 'owner_detail' horse.resolved_owner.pk %}" class="link">{{ horse.resolved_owner.name }}</a>{% else %}<span class="text-sage">-</span>{% endif %}
                             </td>
                             {% else %}
-                            <td class="text-xs">
+                            <td class="text-xs hidden sm:table-cell">
                                 {% with p=horse.active_placements.0 %}
                                 {% if p and p.location %}<a href="{% url 'location_detail' p.location.pk %}" class="link">{{ p.location.name }}</a>{% else %}<span class="text-sage">-</span>{% endif %}
                                 {% endwith %}
                             </td>
                             {% endif %}
                             <td>
-                                <div class="flex items-center gap-1">
-                                    <a href="{% url 'horse_update' horse.pk %}" class="btn-ghost btn-xs" title="Edit">
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <div class="flex items-center justify-end sm:justify-start gap-2">
+                                    <a href="{% url 'horse_update' horse.pk %}" class="btn-ghost p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 sm:btn-xs flex items-center justify-center" title="Edit" aria-label="Edit">
+                                        <svg class="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
                                         </svg>
                                     </a>
-                                    <a href="{% url 'horse_move' horse.pk %}" class="btn-ghost btn-xs" title="Move">
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <a href="{% url 'horse_move' horse.pk %}" class="btn-ghost p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 sm:btn-xs flex items-center justify-center" title="Move" aria-label="Move">
+                                        <svg class="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
                                         </svg>
                                     </a>
