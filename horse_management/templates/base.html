@@ -5,17 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}CGate{% endblock %}</title>
     {% load static %}
+    {% load cache_bust %}
     <!-- Brand Fonts: DM Sans (headings), Source Sans 3 (body), JetBrains Mono (data) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <!-- Tailwind CSS (compiled) -->
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="stylesheet" href="{% static_v 'css/styles.css' %}">
     <!-- Alpine.js + Collapse plugin -->
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3/dist/cdn.min.js"></script>
-    <script defer src="{% static 'js/alpine.min.js' %}"></script>
+    <script defer src="{% static_v 'js/alpine.min.js' %}"></script>
     <!-- HTMX -->
-    <script src="{% static 'js/htmx.min.js' %}"></script>
+    <script src="{% static_v 'js/htmx.min.js' %}"></script>
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-parchment font-body antialiased text-charcoal" x-data="{ moreSheetOpen: false }"
