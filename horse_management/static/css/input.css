@@ -15,6 +15,7 @@
     .btn-success { @apply btn bg-sage text-white hover:bg-sage-light focus:ring-sage shadow-sm; }
     .btn-ghost { @apply btn text-sage hover:text-charcoal hover:bg-light-sage focus:ring-sage; }
     .btn-xs { @apply px-2 py-1 text-xs rounded-sm; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
 
     /* Badges */
     .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
@@ -181,10 +182,16 @@ input[type="file"] { @apply block w-full text-sm text-sage file:mr-3 file:rounde
     position: absolute;
     width: 1rem;
     height: 1rem;
-    border: 2px solid white;
+    border: 2px solid #6B8F71; /* sage — works on white/light backgrounds */
     border-right-color: transparent;
     border-radius: 50%;
     animation: spin 0.6s linear infinite;
+}
+.btn-primary.btn-loading::after,
+.btn-danger.btn-loading::after,
+.btn-success.btn-loading::after {
+    border-color: white;
+    border-right-color: transparent;
 }
 @keyframes spin {
     to { transform: rotate(360deg); }
@@ -204,7 +211,7 @@ input[type="file"] { @apply block w-full text-sm text-sage file:mr-3 file:rounde
     to   { width: 0%; }
 }
 .toast-countdown {
-    @apply absolute bottom-0 left-0 h-0.5 opacity-20;
+    @apply absolute bottom-0 left-0 h-1 opacity-40;
     background: currentColor;
     animation: shrink 5s linear forwards;
 }
