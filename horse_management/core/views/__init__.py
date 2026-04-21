@@ -40,8 +40,6 @@ from .placements import (  # noqa: F401
 )
 from .settings import (  # noqa: F401
     app_settings,
-    dashboard_preferences,
-    dashboard_reorder,
     dashboard_toggle,
     health_check,
     rate_type_create,

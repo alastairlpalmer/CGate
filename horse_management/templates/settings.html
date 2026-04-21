@@ -9,10 +9,11 @@
     <div class="page-header">
         <div>
             <h1 class="page-title">Settings</h1>
-            <p class="page-subtitle">Manage your business, rates, providers, and integrations</p>
+            <p class="page-subtitle">{% if user.is_staff %}Manage your business, rates, providers, and integrations{% else %}Your account and dashboard preferences{% endif %}</p>
         </div>
     </div>
 
+    {% if user.is_staff %}
     <!-- ── Business Details ── -->
     <div class="card">
         <div class="section-header">
@@ -289,6 +290,8 @@
             </div>
         </div>
     </div>
+
+    {% endif %}
 
     <!-- ── Dashboard ── -->
     <div class="card">

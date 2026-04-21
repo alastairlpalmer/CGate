@@ -1,8 +1,3 @@
-{# Health alerts row — rendered inside an HTMX-loaded wrapper on dashboard.html.
-   `health_keys` is an ordered list of the user's visible health widget keys
-   (may include any of: health_upcoming_dep, health_ehv_due, health_egg_counts,
-   health_vet_followups). `health_upcoming_dep` uses `lg:col-span-3` to span
-   the whole row. #}
 {% if health_keys %}
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     {% for key in health_keys %}
