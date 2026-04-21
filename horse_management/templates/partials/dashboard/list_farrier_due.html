@@ -1,0 +1,29 @@
+{% load ui_extras %}
+<div class="card">
+    <div class="section-header">
+        <h2 class="section-title">Farrier Due (2 Weeks)</h2>
+        <a href="{% url 'farrier_list' %}" class="text-xs link">View all &rarr;</a>
+    </div>
+    <ul class="divide-y divide-light-sage">
+        {% for visit in farrier_due %}
+        <li class="px-5 py-3">
+            <div class="flex items-center justify-between">
+                <div>
+                    <a href="{% url 'horse_detail' visit.horse.pk %}" class="link text-sm">{{ visit.horse.name }}</a>
+                    <p class="text-xs text-sage">{{ visit.get_work_done_display }}</p>
+                </div>
+                <div class="text-right">
+                    <span class="text-sm {% if visit.is_overdue %}text-error-red font-medium{% else %}text-forest{% endif %}">
+                        {{ visit.next_due_date|due_label }}
+                    </span>
+                    <p class="text-xs text-sage">{{ visit.next_due_date|date:"d M Y" }}</p>
+                </div>
+            </div>
+        </li>
+        {% empty %}
+        <li class="px-5 py-8 text-center">
+            <p class="text-sm text-sage">No farrier visits due soon</p>
+        </li>
+        {% endfor %}
+    </ul>
+</div>

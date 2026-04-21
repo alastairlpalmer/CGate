@@ -1,0 +1,21 @@
+{% if upcoming_departures %}
+<div class="card border-l-4 border-info-blue lg:col-span-3">
+    <div class="section-header">
+        <h2 class="section-title">Upcoming Departures</h2>
+        <span class="badge-info">Next 7 days</span>
+    </div>
+    <ul class="divide-y divide-light-sage">
+        {% for p in upcoming_departures %}
+        <li class="px-5 py-3">
+            <div class="flex items-center justify-between">
+                <div>
+                    <a href="{% url 'horse_detail' p.horse.pk %}" class="link text-sm">{{ p.horse.name }}</a>
+                    <p class="text-xs text-sage">{{ p.owner.name }} &middot; {{ p.location.name }}</p>
+                </div>
+                <span class="text-sm text-info-blue">{{ p.expected_departure|date:"d M Y" }}</span>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}

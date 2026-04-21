@@ -4,10 +4,12 @@
 {% block title %}Dashboard - CGate{% endblock %}
 
 {% block content %}
+{% if 'chart_revenue' in visible_keys or 'chart_capacity' in visible_keys %}
 <!-- Chart.js: loaded inside content so hx-boost navigation picks it up -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"
         integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ"
         crossorigin="anonymous"></script>
+{% endif %}
 <div class="space-y-8">
 
     <!-- Page Header -->
@@ -15,293 +17,32 @@
         <h1 class="page-title">Dashboard</h1>
     </div>
 
-    <!-- Stat Cards -->
+    {# KPI row — 4-column grid #}
+    {% if visible_widgets.kpi %}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-
-        <!-- Total Horses -->
-        <div class="card-hover border-l-4 border-sage p-5">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-light-sage flex items-center justify-center flex-shrink-0">
-                    <svg class="w-6 h-6 text-forest" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-charcoal">{{ total_horses }}</p>
-                    <p class="text-sm text-sage">Total Horses</p>
-                </div>
-            </div>
-            <div class="mt-4 pt-3 border-t border-light-sage">
-                <a href="{% url 'horse_list' %}" class="text-xs link">View all &rarr;</a>
-            </div>
-        </div>
-
-        <!-- Vaccinations Due -->
-        <div class="card-hover border-l-4 border-saddle p-5">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-saddle-50 flex items-center justify-center flex-shrink-0">
-                    <svg class="w-6 h-6 text-saddle" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-charcoal">{{ vaccinations_due|length }}</p>
-                    <p class="text-sm text-sage">Vaccinations Due</p>
-                </div>
-            </div>
-            <div class="mt-4 pt-3 border-t border-light-sage">
-                <a href="{% url 'vaccination_list' %}" class="text-xs link">View all &rarr;</a>
-            </div>
-        </div>
-
-        <!-- Unbilled Charges -->
-        <div class="card-hover border-l-4 border-sage p-5">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-sage-50 flex items-center justify-center flex-shrink-0">
-                    <svg class="w-6 h-6 text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-charcoal">&pound;{{ unbilled_total|floatformat:2 }}</p>
-                    <p class="text-sm text-sage">Unbilled Charges</p>
-                </div>
-            </div>
-            <div class="mt-4 pt-3 border-t border-light-sage">
-                <a href="{% url 'charge_list' %}" class="text-xs link">View all &rarr;</a>
-            </div>
-        </div>
-
-        <!-- Outstanding Invoices -->
-        <div class="card-hover border-l-4 border-error-red p-5">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-error-red-50 flex items-center justify-center flex-shrink-0">
-                    <svg class="w-6 h-6 text-error-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-charcoal">{{ outstanding_invoices|length }}</p>
-                    <p class="text-sm text-sage">Outstanding Invoices</p>
-                </div>
-            </div>
-            <div class="mt-4 pt-3 border-t border-light-sage">
-                <a href="{% url 'invoice_list' %}" class="text-xs link">View all &rarr;</a>
-            </div>
-        </div>
-
+        {% for key in visible_widgets.kpi %}
+        {% include "partials/dashboard/"|add:key|add:".html" %}
+        {% endfor %}
     </div>
+    {% endif %}
 
-    <!-- Revenue vs Cost Chart -->
-    <div class="card">
-        <div class="section-header">
-            <h2 class="section-title">Revenue vs Costs</h2>
-            <span class="text-xs text-sage">Forecast shown as dashed line</span>
-        </div>
-        <div class="p-5">
-            <div style="height: 300px;">
-                <canvas id="revenueChart"></canvas>
-            </div>
-        </div>
-    </div>
+    {# Charts — full width, stacked #}
+    {% for key in visible_widgets.chart %}
+    {% include "partials/dashboard/"|add:key|add:".html" %}
+    {% endfor %}
 
-    <!-- Two-Column: Capacity + Activity -->
+    {# Lists / tables / timelines — 2-column grid. Widgets that need full width
+       use `lg:col-span-2` on their outer element. #}
+    {% if visible_widgets.list %}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        <!-- Left column: Site Capacity + Pending Departures -->
-        <div class="space-y-6">
-            <!-- Site Capacity -->
-            <div class="card">
-                <div class="section-header">
-                    <h2 class="section-title">Site Capacity</h2>
-                    <a href="{% url 'location_list' %}" class="text-xs link">View all &rarr;</a>
-                </div>
-                <div class="p-5">
-                    <div style="height: 220px;">
-                        <canvas id="capacityChart"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pending Departures -->
-            {% if pending_departures %}
-            <div class="card border-l-4 border-amber-500">
-                <div class="px-4 py-3 flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <h2 class="text-sm font-semibold text-charcoal">Pending Departures</h2>
-                        <span class="text-xs text-sage">Confirm horses have left</span>
-                    </div>
-                </div>
-                <div class="px-4 pb-3 space-y-1.5">
-                    {% for group in pending_departures %}
-                    <div class="bg-parchment rounded-lg px-3 py-2" x-data="{ editing: false }">
-                        <div class="flex items-center justify-between gap-3">
-                            <div class="flex items-center gap-2 min-w-0">
-                                <span class="text-sm font-medium text-charcoal">{{ group.owner_name }}</span>
-                                <span class="text-xs text-sage">&middot; {{ group.date|date:"d M Y" }}</span>
-                                <span class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">{{ group.horses|length }}</span>
-                            </div>
-                            <div class="flex items-center gap-1.5 shrink-0">
-                                <button @click="editing = !editing" class="text-xs text-sage hover:text-charcoal underline" x-text="editing ? 'Done' : 'Edit'"></button>
-                                <form method="post" action="{% url 'confirm_departures_bulk' %}"
-                                      hx-post="{% url 'confirm_departures_bulk' %}"
-                                      hx-target="closest .bg-parchment"
-                                      hx-swap="outerHTML"
-                                      hx-select="unset">
-                                    {% csrf_token %}
-                                    {% for id in group.horse_ids %}
-                                    <input type="hidden" name="horse_ids" value="{{ id }}">
-                                    {% endfor %}
-                                    <button type="submit" class="btn-primary btn-xs">Confirm All</button>
-                                </form>
-                            </div>
-                        </div>
-                        <div x-show="editing" x-collapse x-cloak class="mt-2 space-y-1">
-                            {% for horse in group.horses %}
-                            <div class="flex items-center justify-between text-xs py-1 px-2 bg-white rounded">
-                                <a href="{% url 'horse_detail' horse.pk %}" class="link">{{ horse.name }}</a>
-                                <div class="flex items-center gap-1">
-                                    <form method="post" action="{% url 'confirm_departure' horse.pk %}"
-                                          hx-post="{% url 'confirm_departure' horse.pk %}"
-                                          hx-target="closest .bg-white"
-                                          hx-swap="outerHTML"
-                                          hx-select="unset">
-                                        {% csrf_token %}
-                                        <button type="submit" class="text-sage hover:text-forest" title="Confirm departed">
-                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
-                                            </svg>
-                                        </button>
-                                    </form>
-                                    <form method="post" action="{% url 'cancel_departure' horse.pk %}"
-                                          hx-post="{% url 'cancel_departure' horse.pk %}"
-                                          hx-target="closest .bg-white"
-                                          hx-swap="outerHTML"
-                                          hx-select="unset">
-                                        {% csrf_token %}
-                                        <button type="submit" class="text-sage hover:text-error-red" title="Remove from departure">
-                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                                            </svg>
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Recent Activity Timeline -->
-        <div class="card">
-            <div class="section-header">
-                <h2 class="section-title">Recent Activity</h2>
-            </div>
-            <div class="px-5 pb-5 pt-3">
-                <div class="relative">
-                    <div class="absolute left-[7px] top-2 bottom-2 w-px bg-sand/60"></div>
-                    {% for event in activity %}
-                    <div class="relative pl-7 pb-3 last:pb-0">
-                        <div class="absolute left-0 top-1.5 w-[15px] h-[15px] rounded-full border-2 border-white shadow-sm
-                            {% if event.type == 'placement' %}bg-info-blue
-                            {% elif event.type == 'vaccination' %}bg-sage
-                            {% elif event.type == 'farrier' %}bg-saddle
-                            {% elif event.type == 'vet_visit' %}bg-error-red
-                            {% elif event.type == 'feed' %}bg-sand
-                            {% elif event.type == 'charge' %}bg-forest
-                            {% else %}bg-sage{% endif %}"></div>
-                        <a href="{{ event.link }}" class="block hover:bg-parchment rounded-lg px-2 py-1 -mx-2 transition-colors">
-                            <p class="text-sm text-charcoal">{{ event.desc }}</p>
-                            <p class="text-xs text-sage">{{ event.date|ago_label }} &middot; {{ event.date|date:"d M Y" }}</p>
-                        </a>
-                    </div>
-                    {% empty %}
-                    <p class="text-sm text-sage py-4 pl-7">No recent activity</p>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-
+        {% for key in visible_widgets.list %}
+        {% include "partials/dashboard/"|add:key|add:".html" %}
+        {% endfor %}
     </div>
+    {% endif %}
 
-    <!-- Two-Column: Vaccinations + Farrier -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        <!-- Vaccinations Due -->
-        <div class="card">
-            <div class="section-header">
-                <h2 class="section-title">Vaccinations Due (30 Days)</h2>
-                <a href="{% url 'vaccination_list' %}" class="text-xs link">View all &rarr;</a>
-            </div>
-            <ul class="divide-y divide-light-sage">
-                {% for vax in vaccinations_due %}
-                <li class="px-5 py-3">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <a href="{% url 'horse_detail' vax.horse.pk %}" class="link text-sm">{{ vax.horse.name }}</a>
-                            <p class="text-xs text-sage">{{ vax.vaccination_type.name }}</p>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            {% if vax.is_overdue %}
-                            <span class="w-2 h-2 rounded-full bg-error-red animate-pulse"></span>
-                            {% endif %}
-                            <div class="text-right">
-                                <span class="text-sm {% if vax.is_overdue %}text-error-red font-medium{% else %}text-forest{% endif %}">
-                                    {{ vax.next_due_date|due_label }}
-                                </span>
-                                <p class="text-xs text-sage">{{ vax.next_due_date|date:"d M Y" }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </li>
-                {% empty %}
-                <li class="px-5 py-8 text-center">
-                    <svg class="w-8 h-8 text-sage mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p class="text-sm text-sage">All vaccinations up to date</p>
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
-
-        <!-- Farrier Due -->
-        <div class="card">
-            <div class="section-header">
-                <h2 class="section-title">Farrier Due (2 Weeks)</h2>
-                <a href="{% url 'farrier_list' %}" class="text-xs link">View all &rarr;</a>
-            </div>
-            <ul class="divide-y divide-light-sage">
-                {% for visit in farrier_due %}
-                <li class="px-5 py-3">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <a href="{% url 'horse_detail' visit.horse.pk %}" class="link text-sm">{{ visit.horse.name }}</a>
-                            <p class="text-xs text-sage">{{ visit.get_work_done_display }}</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-sm {% if visit.is_overdue %}text-error-red font-medium{% else %}text-forest{% endif %}">
-                                {{ visit.next_due_date|due_label }}
-                            </span>
-                            <p class="text-xs text-sage">{{ visit.next_due_date|date:"d M Y" }}</p>
-                        </div>
-                    </div>
-                </li>
-                {% empty %}
-                <li class="px-5 py-8 text-center">
-                    <p class="text-sm text-sage">No farrier visits due soon</p>
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
-
-    </div>
-
-    <!-- Health Alerts Row (lazy-loaded via HTMX) -->
+    {# Health alerts — lazy-loaded via HTMX, only when at least one is visible #}
+    {% if any_health_visible %}
     <div hx-get="{% url 'dashboard_health_alerts' %}" hx-trigger="load" hx-swap="innerHTML" hx-target="this" hx-select="unset" hx-push-url="false">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="skeleton-card"></div>
@@ -309,66 +50,29 @@
             <div class="skeleton-card"></div>
         </div>
     </div>
+    {% endif %}
 
-    <!-- Outstanding Invoices Table -->
-    {% if outstanding_invoices %}
-    <div class="card">
-        <div class="section-header">
-            <h2 class="section-title">Outstanding Invoices</h2>
-            <a href="{% url 'invoice_list' %}" class="text-xs link">View all &rarr;</a>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Invoice</th>
-                        <th>Owner</th>
-                        <th>Amount</th>
-                        <th>Due Date</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for invoice in outstanding_invoices %}
-                    <tr>
-                        <td>
-                            <a href="{% url 'invoice_detail' invoice.pk %}" class="link">{{ invoice.invoice_number }}</a>
-                        </td>
-                        <td>{{ invoice.owner.name }}</td>
-                        <td class="font-medium">&pound;{{ invoice.total|floatformat:2 }}</td>
-                        <td class="{% if invoice.is_overdue %}text-error-red font-medium{% else %}text-sage{% endif %}">
-                            {{ invoice.due_date|date:"d M Y" }}
-                        </td>
-                        <td>
-                            {% if invoice.is_overdue %}
-                            <span class="badge-danger">Overdue</span>
-                            {% else %}
-                            <span class="badge-warning">{{ invoice.get_status_display }}</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    {% if not visible_widgets.kpi and not visible_widgets.chart and not visible_widgets.list and not any_health_visible %}
+    <div class="card p-8 text-center">
+        <p class="text-sm text-sage mb-3">Your dashboard is empty.</p>
+        <a href="{% url 'dashboard_preferences' %}" class="btn-primary btn-xs">Customize Dashboard</a>
     </div>
     {% endif %}
 
 </div>
 
-<!-- Chart data -->
+{% if 'chart_revenue' in visible_keys %}
 {{ chart_data|json_script:"chart-data" }}
+{% endif %}
+{% if 'chart_capacity' in visible_keys %}
 {{ capacity_data|json_script:"capacity-data" }}
+{% endif %}
 
+{% if 'chart_revenue' in visible_keys or 'chart_capacity' in visible_keys %}
 <!-- Chart.js Initialization -->
 <script>
 (function() {
     if (typeof Chart === 'undefined') return; // Chart.js not loaded yet
-    var el1 = document.getElementById('chart-data');
-    var el2 = document.getElementById('capacity-data');
-    if (!el1 || !el2) return; // Data not available (error fallback)
-    const chartData = JSON.parse(el1.textContent);
-    const capacityData = JSON.parse(el2.textContent);
 
     // Colour palette
     const colors = {
@@ -384,8 +88,10 @@
     Chart.helpers.each(Chart.instances, function(instance) { instance.destroy(); });
 
     // ── Revenue vs Cost Line Chart ──
+    const chartDataEl = document.getElementById('chart-data');
     const revenueCtx = document.getElementById('revenueChart');
-    if (revenueCtx) {
+    if (revenueCtx && chartDataEl) {
+        const chartData = JSON.parse(chartDataEl.textContent);
         const m = chartData.monthly;
         const forecastIdx = m.forecastStart;
         new Chart(revenueCtx, {
@@ -461,51 +167,56 @@
     }
 
     // ── Site Capacity Horizontal Bar Chart ──
+    const capacityDataEl = document.getElementById('capacity-data');
     const capCtx = document.getElementById('capacityChart');
-    if (capCtx && capacityData.labels.length > 0) {
-        const available = capacityData.capacity.map((cap, i) => Math.max(0, cap - capacityData.horses[i]));
-        new Chart(capCtx, {
-            type: 'bar',
-            data: {
-                labels: capacityData.labels,
-                datasets: [
-                    {
-                        label: 'Horses',
-                        data: capacityData.horses,
-                        backgroundColor: colors.sage,
-                        borderRadius: 4,
-                    },
-                    {
-                        label: 'Available',
-                        data: available,
-                        backgroundColor: colors.lightSage,
-                        borderRadius: 4,
-                    },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-                plugins: {
-                    legend: { position: 'top', labels: { usePointStyle: true, padding: 20, font: { family: "'Source Sans 3', sans-serif", size: 12 } } },
-                    tooltip: {
-                        backgroundColor: '#2C2C2C',
-                        callbacks: {
-                            afterBody: function(ctx) {
-                                const i = ctx[0].dataIndex;
-                                return 'Total capacity: ' + capacityData.capacity[i];
+    if (capCtx && capacityDataEl) {
+        const capacityData = JSON.parse(capacityDataEl.textContent);
+        if (capacityData.labels.length > 0) {
+            const available = capacityData.capacity.map((cap, i) => Math.max(0, cap - capacityData.horses[i]));
+            new Chart(capCtx, {
+                type: 'bar',
+                data: {
+                    labels: capacityData.labels,
+                    datasets: [
+                        {
+                            label: 'Horses',
+                            data: capacityData.horses,
+                            backgroundColor: colors.sage,
+                            borderRadius: 4,
+                        },
+                        {
+                            label: 'Available',
+                            data: available,
+                            backgroundColor: colors.lightSage,
+                            borderRadius: 4,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { position: 'top', labels: { usePointStyle: true, padding: 20, font: { family: "'Source Sans 3', sans-serif", size: 12 } } },
+                        tooltip: {
+                            backgroundColor: '#2C2C2C',
+                            callbacks: {
+                                afterBody: function(ctx) {
+                                    const i = ctx[0].dataIndex;
+                                    return 'Total capacity: ' + capacityData.capacity[i];
+                                }
                             }
-                        }
+                        },
+                    },
+                    scales: {
+                        x: { stacked: true, grid: { color: colors.lightSage }, ticks: { font: { size: 11 }, color: '#6B8F71', stepSize: 1 } },
+                        y: { stacked: true, grid: { display: false }, ticks: { font: { family: "'DM Sans', sans-serif", size: 12, weight: '600' }, color: '#2C2C2C' } },
                     },
                 },
-                scales: {
-                    x: { stacked: true, grid: { color: colors.lightSage }, ticks: { font: { size: 11 }, color: '#6B8F71', stepSize: 1 } },
-                    y: { stacked: true, grid: { display: false }, ticks: { font: { family: "'DM Sans', sans-serif", size: 12, weight: '600' }, color: '#2C2C2C' } },
-                },
-            },
-        });
+            });
+        }
     }
 })();
 </script>
+{% endif %}
 {% endblock %}

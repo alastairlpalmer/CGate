@@ -1,0 +1,22 @@
+{% if ehv_due %}
+<div class="card border-l-4 border-blue-400">
+    <div class="section-header">
+        <h2 class="section-title">EHV Vaccinations Due</h2>
+    </div>
+    <ul class="divide-y divide-light-sage">
+        {% for br in ehv_due %}
+        <li class="px-5 py-3">
+            <div class="flex items-center justify-between">
+                <div>
+                    <a href="{% url 'horse_detail' br.mare.pk %}" class="link text-sm">{{ br.mare.name }}</a>
+                    <p class="text-xs text-sage">x {{ br.stallion_name }}</p>
+                </div>
+                <span class="text-sm text-info-blue">
+                    Due: {{ br.date_foal_due|default:"TBC" }}
+                </span>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
