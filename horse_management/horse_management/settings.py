@@ -48,6 +48,15 @@ if VERCEL_PRODUCTION_URL:
         ALLOWED_HOSTS.append(VERCEL_PRODUCTION_URL)
     CSRF_TRUSTED_ORIGINS.append(f'https://{VERCEL_PRODUCTION_URL}')
 
+# When running on Vercel, always allow any *.vercel.app hostname so branch
+# preview deployments work (their auto-generated URLs are not in the env's
+# ALLOWED_HOSTS list and VERCEL_URL doesn't always match the browser URL).
+if os.environ.get('VERCEL'):
+    if '.vercel.app' not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append('.vercel.app')
+    if 'https://*.vercel.app' not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append('https://*.vercel.app')
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
