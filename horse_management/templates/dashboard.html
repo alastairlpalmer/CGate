@@ -17,7 +17,6 @@
         <h1 class="page-title">Dashboard</h1>
     </div>
 
-    {# KPI row — 4-column grid #}
     {% if visible_widgets.kpi %}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {% for key in visible_widgets.kpi %}
@@ -26,10 +25,6 @@
     </div>
     {% endif %}
 
-    {# Charts + lists + tables share a 2-column grid. Individual partials use
-       `lg:col-span-2` to span full width (e.g. revenue chart, outstanding
-       invoices table); others sit in a single column. `grid-flow-row-dense`
-       lets shorter items fill gaps left by full-width neighbours. #}
     {% if visible_widgets.chart or visible_widgets.list %}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 grid-flow-row-dense">
         {% for key in visible_widgets.chart %}
@@ -41,7 +36,6 @@
     </div>
     {% endif %}
 
-    {# Health alerts — lazy-loaded via HTMX, only when at least one is visible #}
     {% if any_health_visible %}
     <div hx-get="{% url 'dashboard_health_alerts' %}" hx-trigger="load" hx-swap="innerHTML" hx-target="this" hx-select="unset" hx-push-url="false">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
