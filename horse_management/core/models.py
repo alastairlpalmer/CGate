@@ -7,6 +7,7 @@ from decimal import Decimal
 from functools import cached_property
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.conf import settings
 from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
 from django.db import models
 
@@ -633,6 +634,61 @@ class BusinessSettings(models.Model):
         )
         self.refresh_from_db(fields=['next_invoice_number'])
         return f"{self.invoice_prefix}{number:05d}"
+
+
+class DashboardPreference(models.Model):
+    """Per-user home dashboard layout (widget visibility + order)."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='dashboard_preference',
+    )
+    # {"kpi_total_horses": {"visible": True, "order": 0}, ...}
+    layout = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"DashboardPreference for {self.user}"
+
+    @classmethod
+    def get_for(cls, user):
+        """Get-or-create the user's preference row (mirrors BusinessSettings.get_settings)."""
+        obj, _ = cls.objects.get_or_create(user=user)
+        return obj
+
+    def resolved_layout(self):
+        """Merge stored layout over DEFAULT_LAYOUT.
+
+        New widgets added to the registry appear visible at the end of their
+        group's order. Stored keys no longer in the registry are ignored.
+        """
+        from .dashboard_widgets import DEFAULT_LAYOUT, WIDGETS_BY_KEY
+        resolved = {}
+        for key, default in DEFAULT_LAYOUT.items():
+            stored = self.layout.get(key) if isinstance(self.layout, dict) else None
+            if isinstance(stored, dict):
+                resolved[key] = {
+                    "visible": bool(stored.get("visible", default["visible"])),
+                    "order": int(stored.get("order", default["order"])),
+                }
+            else:
+                resolved[key] = dict(default)
+        # Drop any stale keys (defensive — DEFAULT_LAYOUT is already the filter).
+        return {k: v for k, v in resolved.items() if k in WIDGETS_BY_KEY}
+
+    def visible_ordered_keys_by_group(self):
+        """Return {group: [key, ...]} filtered to visible keys, sorted by order."""
+        from .dashboard_widgets import GROUPS, WIDGETS_BY_KEY
+        layout = self.resolved_layout()
+        grouped = {g: [] for g in GROUPS}
+        ordered = sorted(layout.items(), key=lambda kv: kv[1]["order"])
+        for key, meta in ordered:
+            if not meta["visible"]:
+                continue
+            group = WIDGETS_BY_KEY[key]["group"]
+            grouped[group].append(key)
+        return grouped
 
 
 # Invoice and InvoiceLineItem have been moved to invoicing.models.

@@ -7,13 +7,24 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from core.views import app_settings, health_check, rate_type_create, rate_type_update
+from core.views import (
+    app_settings,
+    dashboard_preferences,
+    dashboard_reorder,
+    dashboard_toggle,
+    health_check,
+    rate_type_create,
+    rate_type_update,
+)
 
 urlpatterns = [
     path('_health/', health_check, name='health_check'),
     path('settings/', app_settings, name='app_settings'),
     path('settings/rates/add/', rate_type_create, name='rate_type_create'),
     path('settings/rates/<int:pk>/edit/', rate_type_update, name='rate_type_update'),
+    path('settings/dashboard/', dashboard_preferences, name='dashboard_preferences'),
+    path('settings/dashboard/toggle/', dashboard_toggle, name='dashboard_toggle'),
+    path('settings/dashboard/reorder/', dashboard_reorder, name='dashboard_reorder'),
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
     path('', include('core.urls')),

@@ -1,0 +1,118 @@
+{# Per-user dashboard preferences UI.
+   Input: `groups` = list of {key, name, items: [{key, name, group, visible, order}]}.
+   - Toggle visibility: POSTs to dashboard_toggle on change.
+   - Reorder: drag-and-drop via SortableJS (within a group only), with
+     keyboard-accessible up/down buttons as a fallback. #}
+<div class="space-y-6" x-data>
+    {% csrf_token %}
+    <p class="text-sm text-sage">
+        Show, hide, and reorder the widgets on your home dashboard. Changes save
+        automatically and apply on your next visit.
+    </p>
+
+    {% for group in groups %}
+    <div>
+        <h3 class="text-xs font-semibold text-sage uppercase tracking-wider mb-2">{{ group.name }}</h3>
+        <ul class="divide-y divide-light-sage border border-light-sage rounded-card bg-white"
+            data-dashboard-group="{{ group.key }}">
+            {% for item in group.items %}
+            <li class="flex items-center justify-between gap-3 px-4 py-3"
+                data-widget-key="{{ item.key }}">
+                <div class="flex items-center gap-3 min-w-0">
+                    <span class="dashboard-drag-handle text-sage hover:text-charcoal cursor-move select-none" aria-hidden="true" title="Drag to reorder">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </span>
+                    <span class="text-sm text-charcoal truncate">{{ item.name }}</span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    {# Keyboard-accessible reorder fallback — required for users who can't drag #}
+                    <form method="post" action="{% url 'dashboard_reorder' %}"
+                          hx-post="{% url 'dashboard_reorder' %}"
+                          hx-swap="none"
+                          hx-target="this"
+                          class="inline-flex">
+                        {% csrf_token %}
+                        <input type="hidden" name="key" value="{{ item.key }}">
+                        <input type="hidden" name="direction" value="up">
+                        <button type="submit" class="p-1 text-sage hover:text-charcoal" title="Move up" aria-label="Move {{ item.name }} up">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+                            </svg>
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'dashboard_reorder' %}"
+                          hx-post="{% url 'dashboard_reorder' %}"
+                          hx-swap="none"
+                          hx-target="this"
+                          class="inline-flex">
+                        {% csrf_token %}
+                        <input type="hidden" name="key" value="{{ item.key }}">
+                        <input type="hidden" name="direction" value="down">
+                        <button type="submit" class="p-1 text-sage hover:text-charcoal" title="Move down" aria-label="Move {{ item.name }} down">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                    </form>
+                    {# Toggle switch — Alpine manages local state, HTMX saves on change.
+                       CSRF token is passed via X-CSRFToken header because
+                       CSRF_COOKIE_HTTPONLY is True (HTMX cannot read it from cookies). #}
+                    <button type="button" role="switch"
+                            x-data="{ on: {{ item.visible|yesno:'true,false' }} }"
+                            :aria-checked="on ? 'true' : 'false'"
+                            aria-checked="{{ item.visible|yesno:'true,false' }}"
+                            @click="on = !on;
+                                    htmx.ajax('POST', '{% url 'dashboard_toggle' %}', {
+                                      values: { key: '{{ item.key }}', visible: on ? 'true' : 'false' },
+                                      swap: 'none',
+                                      headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                                    });"
+                            class="form-toggle"
+                            aria-label="Toggle {{ item.name }}">
+                        <span class="form-toggle-thumb"></span>
+                    </button>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endfor %}
+</div>
+
+{# SortableJS — loaded once. Safe to re-include; the second <script> no-ops if already loaded. #}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"
+        integrity="sha384-rRoXxn2yHlrZYB587Ki9RO1tONhLdM6XfORg7Rw4uwH4/Fh/5nP7IUX91bkaKUgs"
+        crossorigin="anonymous"></script>
+<script>
+(function() {
+    function csrfToken() {
+        const el = document.querySelector('[name=csrfmiddlewaretoken]');
+        return el ? el.value : '';
+    }
+    function initSortable(list) {
+        if (list.__sortableInit) return;
+        list.__sortableInit = true;
+        new Sortable(list, {
+            animation: 150,
+            handle: '.dashboard-drag-handle',
+            onEnd: function() {
+                const group = list.dataset.dashboardGroup;
+                const order = Array.from(list.querySelectorAll('[data-widget-key]'))
+                                   .map(el => el.dataset.widgetKey);
+                const fd = new FormData();
+                fd.append('group', group);
+                order.forEach(k => fd.append('order', k));
+                fd.append('csrfmiddlewaretoken', csrfToken());
+                fetch('{% url "dashboard_reorder" %}', {
+                    method: 'POST',
+                    body: fd,
+                    credentials: 'same-origin',
+                });
+            },
+        });
+    }
+    document.querySelectorAll('[data-dashboard-group]').forEach(initSortable);
+})();
+</script>

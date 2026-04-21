@@ -1,99 +1,12 @@
-{% if upcoming_departures %}
-<div class="mb-6">
-    <div class="card border-l-4 border-info-blue">
-        <div class="section-header">
-            <h2 class="section-title">Upcoming Departures</h2>
-            <span class="badge-info">Next 7 days</span>
-        </div>
-        <ul class="divide-y divide-light-sage">
-            {% for p in upcoming_departures %}
-            <li class="px-5 py-3">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <a href="{% url 'horse_detail' p.horse.pk %}" class="link text-sm">{{ p.horse.name }}</a>
-                        <p class="text-xs text-sage">{{ p.owner.name }} &middot; {{ p.location.name }}</p>
-                    </div>
-                    <span class="text-sm text-info-blue">{{ p.expected_departure|date:"d M Y" }}</span>
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-</div>
-{% endif %}
-
-{% if ehv_due or high_egg_counts or vet_follow_ups %}
+{# Health alerts row — rendered inside an HTMX-loaded wrapper on dashboard.html.
+   `health_keys` is an ordered list of the user's visible health widget keys
+   (may include any of: health_upcoming_dep, health_ehv_due, health_egg_counts,
+   health_vet_followups). `health_upcoming_dep` uses `lg:col-span-3` to span
+   the whole row. #}
+{% if health_keys %}
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-    <!-- EHV Due -->
-    {% if ehv_due %}
-    <div class="card border-l-4 border-blue-400">
-        <div class="section-header">
-            <h2 class="section-title">EHV Vaccinations Due</h2>
-        </div>
-        <ul class="divide-y divide-light-sage">
-            {% for br in ehv_due %}
-            <li class="px-5 py-3">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <a href="{% url 'horse_detail' br.mare.pk %}" class="link text-sm">{{ br.mare.name }}</a>
-                        <p class="text-xs text-sage">x {{ br.stallion_name }}</p>
-                    </div>
-                    <span class="text-sm text-info-blue">
-                        Due: {{ br.date_foal_due|default:"TBC" }}
-                    </span>
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
-
-    <!-- High Egg Counts -->
-    {% if high_egg_counts %}
-    <div class="card border-l-4 border-error-red">
-        <div class="section-header">
-            <h2 class="section-title">High Egg Counts (&gt;200 EPG)</h2>
-        </div>
-        <ul class="divide-y divide-light-sage">
-            {% for ec in high_egg_counts %}
-            <li class="px-5 py-3">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <a href="{% url 'horse_detail' ec.horse.pk %}" class="link text-sm">{{ ec.horse.name }}</a>
-                        <p class="text-xs text-sage">{{ ec.date|date:"d M Y" }}</p>
-                    </div>
-                    <span class="badge-danger">{{ ec.count }} EPG</span>
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
-
-    <!-- Vet Follow-ups -->
-    {% if vet_follow_ups %}
-    <div class="card border-l-4 border-sage">
-        <div class="section-header">
-            <h2 class="section-title">Vet Follow-ups</h2>
-        </div>
-        <ul class="divide-y divide-light-sage">
-            {% for v in vet_follow_ups %}
-            <li class="px-5 py-3">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <a href="{% url 'horse_detail' v.horse.pk %}" class="link text-sm">{{ v.horse.name }}</a>
-                        <p class="text-xs text-sage">{{ v.reason|truncatewords:6 }}</p>
-                    </div>
-                    <span class="text-sm text-forest">
-                        {{ v.follow_up_date|date:"d M Y" }}
-                    </span>
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
-
+    {% for key in health_keys %}
+    {% include "partials/dashboard/"|add:key|add:".html" %}
+    {% endfor %}
 </div>
 {% endif %}

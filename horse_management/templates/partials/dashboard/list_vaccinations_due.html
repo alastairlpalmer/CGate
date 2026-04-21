@@ -1,0 +1,37 @@
+{% load ui_extras %}
+<div class="card">
+    <div class="section-header">
+        <h2 class="section-title">Vaccinations Due (30 Days)</h2>
+        <a href="{% url 'vaccination_list' %}" class="text-xs link">View all &rarr;</a>
+    </div>
+    <ul class="divide-y divide-light-sage">
+        {% for vax in vaccinations_due %}
+        <li class="px-5 py-3">
+            <div class="flex items-center justify-between">
+                <div>
+                    <a href="{% url 'horse_detail' vax.horse.pk %}" class="link text-sm">{{ vax.horse.name }}</a>
+                    <p class="text-xs text-sage">{{ vax.vaccination_type.name }}</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    {% if vax.is_overdue %}
+                    <span class="w-2 h-2 rounded-full bg-error-red animate-pulse"></span>
+                    {% endif %}
+                    <div class="text-right">
+                        <span class="text-sm {% if vax.is_overdue %}text-error-red font-medium{% else %}text-forest{% endif %}">
+                            {{ vax.next_due_date|due_label }}
+                        </span>
+                        <p class="text-xs text-sage">{{ vax.next_due_date|date:"d M Y" }}</p>
+                    </div>
+                </div>
+            </div>
+        </li>
+        {% empty %}
+        <li class="px-5 py-8 text-center">
+            <svg class="w-8 h-8 text-sage mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p class="text-sm text-sage">All vaccinations up to date</p>
+        </li>
+        {% endfor %}
+    </ul>
+</div>

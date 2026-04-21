@@ -1,0 +1,29 @@
+{% load ui_extras %}
+<div class="card">
+    <div class="section-header">
+        <h2 class="section-title">Recent Activity</h2>
+    </div>
+    <div class="px-5 pb-5 pt-3">
+        <div class="relative">
+            <div class="absolute left-[7px] top-2 bottom-2 w-px bg-sand/60"></div>
+            {% for event in activity %}
+            <div class="relative pl-7 pb-3 last:pb-0">
+                <div class="absolute left-0 top-1.5 w-[15px] h-[15px] rounded-full border-2 border-white shadow-sm
+                    {% if event.type == 'placement' %}bg-info-blue
+                    {% elif event.type == 'vaccination' %}bg-sage
+                    {% elif event.type == 'farrier' %}bg-saddle
+                    {% elif event.type == 'vet_visit' %}bg-error-red
+                    {% elif event.type == 'feed' %}bg-sand
+                    {% elif event.type == 'charge' %}bg-forest
+                    {% else %}bg-sage{% endif %}"></div>
+                <a href="{{ event.link }}" class="block hover:bg-parchment rounded-lg px-2 py-1 -mx-2 transition-colors">
+                    <p class="text-sm text-charcoal">{{ event.desc }}</p>
+                    <p class="text-xs text-sage">{{ event.date|ago_label }} &middot; {{ event.date|date:"d M Y" }}</p>
+                </a>
+            </div>
+            {% empty %}
+            <p class="text-sm text-sage py-4 pl-7">No recent activity</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>

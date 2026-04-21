@@ -1,0 +1,22 @@
+{% if vet_follow_ups %}
+<div class="card border-l-4 border-sage">
+    <div class="section-header">
+        <h2 class="section-title">Vet Follow-ups</h2>
+    </div>
+    <ul class="divide-y divide-light-sage">
+        {% for v in vet_follow_ups %}
+        <li class="px-5 py-3">
+            <div class="flex items-center justify-between">
+                <div>
+                    <a href="{% url 'horse_detail' v.horse.pk %}" class="link text-sm">{{ v.horse.name }}</a>
+                    <p class="text-xs text-sage">{{ v.reason|truncatewords:6 }}</p>
+                </div>
+                <span class="text-sm text-forest">
+                    {{ v.follow_up_date|date:"d M Y" }}
+                </span>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}

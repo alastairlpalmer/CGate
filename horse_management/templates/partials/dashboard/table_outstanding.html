@@ -1,0 +1,42 @@
+{% if outstanding_invoices %}
+<div class="card lg:col-span-2">
+    <div class="section-header">
+        <h2 class="section-title">Outstanding Invoices</h2>
+        <a href="{% url 'invoice_list' %}" class="text-xs link">View all &rarr;</a>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Invoice</th>
+                    <th>Owner</th>
+                    <th>Amount</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for invoice in outstanding_invoices %}
+                <tr>
+                    <td>
+                        <a href="{% url 'invoice_detail' invoice.pk %}" class="link">{{ invoice.invoice_number }}</a>
+                    </td>
+                    <td>{{ invoice.owner.name }}</td>
+                    <td class="font-medium">&pound;{{ invoice.total|floatformat:2 }}</td>
+                    <td class="{% if invoice.is_overdue %}text-error-red font-medium{% else %}text-sage{% endif %}">
+                        {{ invoice.due_date|date:"d M Y" }}
+                    </td>
+                    <td>
+                        {% if invoice.is_overdue %}
+                        <span class="badge-danger">Overdue</span>
+                        {% else %}
+                        <span class="badge-warning">{{ invoice.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}

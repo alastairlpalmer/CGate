@@ -1,0 +1,20 @@
+{% if high_egg_counts %}
+<div class="card border-l-4 border-error-red">
+    <div class="section-header">
+        <h2 class="section-title">High Egg Counts (&gt;200 EPG)</h2>
+    </div>
+    <ul class="divide-y divide-light-sage">
+        {% for ec in high_egg_counts %}
+        <li class="px-5 py-3">
+            <div class="flex items-center justify-between">
+                <div>
+                    <a href="{% url 'horse_detail' ec.horse.pk %}" class="link text-sm">{{ ec.horse.name }}</a>
+                    <p class="text-xs text-sage">{{ ec.date|date:"d M Y" }}</p>
+                </div>
+                <span class="badge-danger">{{ ec.count }} EPG</span>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
