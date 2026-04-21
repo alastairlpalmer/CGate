@@ -90,6 +90,39 @@ class DashboardPreferenceModelTests(TestCase):
         self.assertEqual(kpi[0], 'kpi_outstanding_invoices')
 
 
+class DashboardToggleCSRFTests(TestCase):
+    """Regression test: the toggle UI uses ``htmx.ajax`` (not an hx-post form),
+    so the CSRF token must travel in a header. CSRF_COOKIE_HTTPONLY is True
+    in settings, so cookie-based auto-injection does not work — the template
+    must set X-CSRFToken explicitly."""
+
+    def test_toggle_rejects_post_without_csrf(self):
+        from django.test import Client
+        client = Client(enforce_csrf_checks=True)
+        user = make_user('csrfuser')
+        client.force_login(user)
+        resp = client.post(
+            reverse('dashboard_toggle'),
+            {'key': 'chart_revenue', 'visible': 'false'},
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_toggle_accepts_post_with_csrf_header(self):
+        from django.test import Client
+        client = Client(enforce_csrf_checks=True)
+        user = make_user('csrfheaderuser')
+        client.force_login(user)
+        # Prime the CSRF cookie via a GET.
+        get_resp = client.get(reverse('dashboard_preferences'))
+        token = get_resp.cookies['csrftoken'].value
+        resp = client.post(
+            reverse('dashboard_toggle'),
+            {'key': 'chart_revenue', 'visible': 'false'},
+            HTTP_X_CSRFTOKEN=token,
+        )
+        self.assertEqual(resp.status_code, 204)
+
+
 class DashboardToggleEndpointTests(TestCase):
     def setUp(self):
         self.user = make_user('toggleuser')

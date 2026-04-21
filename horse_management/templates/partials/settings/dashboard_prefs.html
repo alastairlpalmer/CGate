@@ -56,7 +56,9 @@
                             </svg>
                         </button>
                     </form>
-                    {# Toggle switch — Alpine manages local state, HTMX saves on change #}
+                    {# Toggle switch — Alpine manages local state, HTMX saves on change.
+                       CSRF token is passed via X-CSRFToken header because
+                       CSRF_COOKIE_HTTPONLY is True (HTMX cannot read it from cookies). #}
                     <button type="button" role="switch"
                             x-data="{ on: {{ item.visible|yesno:'true,false' }} }"
                             :aria-checked="on ? 'true' : 'false'"
@@ -65,6 +67,7 @@
                                     htmx.ajax('POST', '{% url 'dashboard_toggle' %}', {
                                       values: { key: '{{ item.key }}', visible: on ? 'true' : 'false' },
                                       swap: 'none',
+                                      headers: { 'X-CSRFToken': '{{ csrf_token }}' },
                                     });"
                             class="form-toggle"
                             aria-label="Toggle {{ item.name }}">
@@ -80,7 +83,7 @@
 
 {# SortableJS — loaded once. Safe to re-include; the second <script> no-ops if already loaded. #}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"
-        integrity="sha384-Ul+g9DLt22cUAovcTOPelRUVRQAsdZx8xM4YkZnp1OTuUhncgwHr2lq6pcazs3a5"
+        integrity="sha384-rRoXxn2yHlrZYB587Ki9RO1tONhLdM6XfORg7Rw4uwH4/Fh/5nP7IUX91bkaKUgs"
         crossorigin="anonymous"></script>
 <script>
 (function() {

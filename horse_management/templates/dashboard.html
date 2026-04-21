@@ -26,15 +26,15 @@
     </div>
     {% endif %}
 
-    {# Charts — full width, stacked #}
-    {% for key in visible_widgets.chart %}
-    {% include "partials/dashboard/"|add:key|add:".html" %}
-    {% endfor %}
-
-    {# Lists / tables / timelines — 2-column grid. Widgets that need full width
-       use `lg:col-span-2` on their outer element. #}
-    {% if visible_widgets.list %}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    {# Charts + lists + tables share a 2-column grid. Individual partials use
+       `lg:col-span-2` to span full width (e.g. revenue chart, outstanding
+       invoices table); others sit in a single column. `grid-flow-row-dense`
+       lets shorter items fill gaps left by full-width neighbours. #}
+    {% if visible_widgets.chart or visible_widgets.list %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 grid-flow-row-dense">
+        {% for key in visible_widgets.chart %}
+        {% include "partials/dashboard/"|add:key|add:".html" %}
+        {% endfor %}
         {% for key in visible_widgets.list %}
         {% include "partials/dashboard/"|add:key|add:".html" %}
         {% endfor %}

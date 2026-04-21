@@ -108,11 +108,11 @@ def _dashboard_inner(request):
 
     farrier_due = []
     if 'list_farrier_due' in visible:
-        farrier_due = FarrierVisit.objects.filter(
+        farrier_due = list(FarrierVisit.objects.filter(
             next_due_date__lte=two_weeks,
             next_due_date__gte=today,
             horse__is_active=True
-        ).select_related('horse').order_by('next_due_date')[:10]
+        ).select_related('horse').order_by('next_due_date')[:10])
 
     # ── Revenue vs Cost Chart Data ──────────────────────────────
     chart_data = {'monthly': {'labels': [], 'revenue': [], 'costs': [], 'forecastStart': 0}}
