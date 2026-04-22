@@ -605,6 +605,7 @@ class BusinessSettings(models.Model):
     )
     invoice_prefix = models.CharField(max_length=10, default="INV")
     next_invoice_number = models.PositiveIntegerField(default=1)
+    next_run_number = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -634,6 +635,15 @@ class BusinessSettings(models.Model):
         )
         self.refresh_from_db(fields=['next_invoice_number'])
         return f"{self.invoice_prefix}{number:05d}"
+
+    def get_next_run_number(self):
+        """Get and atomically increment the next invoice run number."""
+        number = self.next_run_number
+        BusinessSettings.objects.filter(pk=self.pk).update(
+            next_run_number=F('next_run_number') + 1
+        )
+        self.refresh_from_db(fields=['next_run_number'])
+        return number
 
 
 class DashboardPreference(models.Model):

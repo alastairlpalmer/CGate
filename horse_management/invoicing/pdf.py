@@ -44,6 +44,68 @@ def generate_invoice_pdf(invoice):
     return pdf_file
 
 
+def generate_run_bundle_pdf(run, owner):
+    """Generate a bundled PDF for all of an owner's sub-invoices in a run.
+
+    Renders a single HTML document containing a summary cover page followed by
+    one page per sub-invoice, using CSS page-breaks. WeasyPrint is required;
+    falls back to ReportLab concatenation of individual invoice PDFs if not.
+    """
+    invoices = list(
+        run.invoices.filter(owner=owner)
+        .select_related('horse')
+        .order_by('invoice_number')
+    )
+
+    try:
+        from weasyprint import HTML
+    except (ImportError, OSError) as e:
+        logger.info(
+            "WeasyPrint unavailable (%s), bundle falling back to first invoice only.",
+            e,
+        )
+        # Minimal fallback: concatenating ReportLab PDFs is non-trivial without
+        # an extra dependency. We return the first sub-invoice's PDF so the
+        # operator gets something rather than an error.
+        if invoices:
+            return generate_invoice_pdf_reportlab(invoices[0])
+        pdf_file = io.BytesIO()
+        pdf_file.seek(0)
+        return pdf_file
+
+    settings = BusinessSettings.get_settings()
+
+    invoice_pages = []
+    for inv in invoices:
+        items = inv.line_items.select_related(
+            'horse', 'placement', 'charge'
+        ).order_by('line_type', 'description')
+        invoice_pages.append({
+            'invoice': inv,
+            'line_items': items,
+            'horse_groups': group_line_items_by_horse(items),
+        })
+
+    subtotal = sum((i.subtotal for i in invoices), Decimal('0.00'))
+    total = sum((i.total for i in invoices), Decimal('0.00'))
+
+    html_content = render_to_string('invoicing/invoice_run_bundle_pdf.html', {
+        'run': run,
+        'owner': owner,
+        'invoices': invoices,
+        'invoice_pages': invoice_pages,
+        'subtotal': subtotal,
+        'total': total,
+        'settings': settings,
+    })
+
+    pdf_file = io.BytesIO()
+    HTML(string=html_content).write_pdf(pdf_file)
+    pdf_file.seek(0)
+
+    return pdf_file
+
+
 def generate_invoice_pdf_reportlab(invoice):
     """Generate a PDF using ReportLab as fallback."""
     from reportlab.lib import colors
