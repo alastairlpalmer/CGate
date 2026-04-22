@@ -228,7 +228,10 @@ class InvoiceService:
 
         if run is not None and horse is not None:
             sub_no = run.allocate_sub_number()
-            invoice_number = f"{run.display_number}/{sub_no:04d}"
+            # Xero's InvoiceNumber field chokes on URL-reserved characters
+            # when fetched via GET /Invoices/{InvoiceNumber}; dash is the only
+            # safe separator per Xero API guidance.
+            invoice_number = f"{run.display_number}-{sub_no:04d}"
         else:
             invoice_number = settings.get_next_invoice_number()
 

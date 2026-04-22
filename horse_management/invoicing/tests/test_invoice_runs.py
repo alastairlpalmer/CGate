@@ -145,7 +145,7 @@ class InvoiceRunOFFModeTests(TestCase):
 
         # Compound numbering is sequential and prefixed by the run number.
         numbers = [inv.invoice_number for inv in chloe_invoices]
-        self.assertEqual(numbers, ['0001/0001', '0001/0002', '0001/0003'])
+        self.assertEqual(numbers, ['0001-0001', '0001-0002', '0001-0003'])
 
         # Each sub-invoice has horse set and corresponding line items.
         names = [inv.horse.name for inv in chloe_invoices]
@@ -159,7 +159,7 @@ class InvoiceRunOFFModeTests(TestCase):
         # Map sub-number suffix -> horse name
         for inv in invoices:
             if inv.horse and inv.owner.name == 'Mrs Chloe Vestey':
-                suffix = inv.invoice_number.split('/')[1]
+                suffix = inv.invoice_number.split('-')[1]
                 if suffix == '0001':
                     self.assertEqual(inv.horse.name, 'Acuarela')
                 elif suffix == '0002':
@@ -175,7 +175,7 @@ class InvoiceRunOFFModeTests(TestCase):
         solo_invoices = [i for i in invoices if i.owner == data['solo']]
         self.assertEqual(len(solo_invoices), 1)
         self.assertEqual(solo_invoices[0].horse, data['horses']['Bonnie'])
-        self.assertTrue(solo_invoices[0].invoice_number.startswith('0001/'))
+        self.assertTrue(solo_invoices[0].invoice_number.startswith('0001-'))
 
     def test_extra_charge_lands_on_correct_sub_invoice(self):
         data = build_fixture()
@@ -206,7 +206,7 @@ class InvoiceRunOFFModeTests(TestCase):
         # Only Chloe's 3 horses should produce invoices.
         self.assertEqual(len(invoices), 3)
         numbers = sorted(inv.invoice_number for inv in invoices)
-        self.assertEqual(numbers, ['0001/0001', '0001/0002', '0001/0003'])
+        self.assertEqual(numbers, ['0001-0001', '0001-0002', '0001-0003'])
 
     def test_run_number_increments_across_runs(self):
         build_fixture()
@@ -269,7 +269,10 @@ class XeroPayloadTests(TestCase):
         payload = build_xero_invoice_payload(sub, 'xero-contact-id-123')
 
         self.assertEqual(payload['InvoiceNumber'], sub.invoice_number)
-        self.assertTrue(payload['InvoiceNumber'].startswith('0001/'))
+        self.assertTrue(payload['InvoiceNumber'].startswith('0001-'))
+        # Xero API: dash is the only safe separator; forward slash would
+        # break GET /Invoices/{InvoiceNumber} lookups.
+        self.assertNotIn('/', payload['InvoiceNumber'])
         # Line items should be Ink's only.
         self.assertGreater(len(payload['LineItems']), 0)
 
@@ -289,7 +292,7 @@ class RunDetailViewTests(TestCase):
         self.assertIn('Run #0001', content)
         self.assertIn('Mrs Chloe Vestey', content)
         self.assertIn('Acuarela', content)
-        self.assertIn('0001/0001', content)
+        self.assertIn('0001-0001', content)
         # Bundle PDF button visible for OFF runs.
         self.assertIn('Download bundle PDF', content)
 
