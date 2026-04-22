@@ -18,4 +18,10 @@ urlpatterns = [
     path('<int:pk>/send/', views.invoice_send, name='invoice_send'),
     path('<int:pk>/mark-paid/', views.invoice_mark_paid, name='invoice_mark_paid'),
     path('export-csv/', views.invoice_export_csv, name='invoice_export_csv'),
+    path('runs/<int:run_id>/', views.invoice_run_detail, name='invoice_run_detail'),
+    path(
+        'runs/<int:run_id>/bundle/<int:owner_id>.pdf',
+        views.invoice_run_bundle_pdf,
+        name='invoice_run_bundle_pdf',
+    ),
 ]

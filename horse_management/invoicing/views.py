@@ -4,6 +4,7 @@ Views for invoicing app.
 
 import io
 from datetime import timedelta
+from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -17,10 +18,10 @@ from django.utils import timezone
 from django.views.generic import DetailView, ListView, UpdateView
 
 from core.models import Owner
-from invoicing.models import Invoice
+from invoicing.models import Invoice, InvoiceRun
 
 from .forms import InvoiceCreateForm, InvoiceUpdateForm, MonthlyInvoiceForm
-from .pdf import generate_invoice_pdf
+from .pdf import generate_invoice_pdf, generate_run_bundle_pdf
 from .services import DuplicateInvoiceError, InvoiceService
 from .utils import group_line_items_by_horse, write_xero_csv
 
@@ -226,21 +227,85 @@ def invoice_generate_monthly(request):
         if form.is_valid():
             year = form.cleaned_data['year']
             month = int(form.cleaned_data['month'])
+            concatenate = form.cleaned_data.get('concatenate_invoices', True)
 
-            invoices, skipped = InvoiceService.generate_monthly_invoices(year, month)
+            run, invoices, skipped = InvoiceService.generate_monthly_invoices(
+                year, month,
+                concatenate=concatenate,
+                created_by=request.user if request.user.is_authenticated else None,
+            )
 
             msg = f"Generated {len(invoices)} invoice{'s' if len(invoices) != 1 else ''}."
             if skipped:
                 names = ', '.join(o.name for o in skipped)
                 msg += f" Skipped {len(skipped)} (already invoiced): {names}."
             messages.success(request, msg)
-            return redirect('invoice_list')
+            return redirect('invoice_run_detail', run_id=run.id)
     else:
         form = MonthlyInvoiceForm()
 
     return render(request, 'invoicing/invoice_generate.html', {
         'form': form,
     })
+
+
+@login_required
+def invoice_run_detail(request, run_id):
+    """Display the summary page for an invoice run, grouped by owner."""
+    run = get_object_or_404(InvoiceRun, pk=run_id)
+    invoices = run.invoices.select_related('owner', 'horse').order_by(
+        'owner__name', 'invoice_number'
+    )
+
+    owner_groups = []
+    current = None
+    for inv in invoices:
+        if current is None or current['owner'].pk != inv.owner.pk:
+            current = {
+                'owner': inv.owner,
+                'invoices': [],
+                'subtotal': Decimal('0.00'),
+                'total': Decimal('0.00'),
+            }
+            owner_groups.append(current)
+        current['invoices'].append(inv)
+        current['subtotal'] += inv.subtotal
+        current['total'] += inv.total
+
+    run_subtotal = sum((g['subtotal'] for g in owner_groups), Decimal('0.00'))
+    run_total = sum((g['total'] for g in owner_groups), Decimal('0.00'))
+
+    return render(request, 'invoicing/invoice_run_detail.html', {
+        'run': run,
+        'owner_groups': owner_groups,
+        'run_subtotal': run_subtotal,
+        'run_total': run_total,
+    })
+
+
+@login_required
+def invoice_run_bundle_pdf(request, run_id, owner_id):
+    """Download a bundled PDF for one owner in an OFF-mode run.
+
+    The PDF begins with a summary cover page listing each sub-invoice, followed
+    by each sub-invoice's own page. Only valid for non-concatenated runs.
+    """
+    run = get_object_or_404(InvoiceRun, pk=run_id)
+    owner = get_object_or_404(Owner, pk=owner_id)
+
+    if run.concatenate_invoices:
+        return HttpResponse(
+            "Bundle PDFs are only available for non-concatenated runs.",
+            status=404,
+        )
+
+    pdf_file = generate_run_bundle_pdf(run, owner)
+    safe_owner = owner.name.replace(' ', '-').replace('/', '-')
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    response['Content-Disposition'] = (
+        f'attachment; filename="Run-{run.display_number}-{safe_owner}.pdf"'
+    )
+    return response
 
 
 @login_required

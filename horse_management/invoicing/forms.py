@@ -102,6 +102,16 @@ class MonthlyInvoiceForm(forms.Form):
         choices=MONTH_CHOICES,
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
+    concatenate_invoices = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Concatenate invoices?",
+        help_text=(
+            "ON (default): one invoice per owner with all their horses as line items. "
+            "OFF: one invoice per horse, bundled into a per-owner summary PDF."
+        ),
+        widget=forms.CheckboxInput(attrs={'class': 'form-checkbox rounded'}),
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
