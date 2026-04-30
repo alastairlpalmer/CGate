@@ -93,6 +93,8 @@ class Vaccination(models.Model):
     def is_due_soon(self):
         """Check if vaccination is due within reminder period."""
         from django.utils import timezone
+        if not self.next_due_date:
+            return False
         days_until = (self.next_due_date - timezone.now().date()).days
         return 0 <= days_until <= self.vaccination_type.reminder_days_before
 

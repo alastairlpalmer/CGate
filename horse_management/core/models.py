@@ -9,14 +9,14 @@ from functools import cached_property
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.conf import settings
 from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
-from django.db import models
+from django.db import models, transaction
+from django.db.models import F
 
 
 def validate_file_size(value):
     """Reject uploads larger than 5MB."""
     if value.size > 5 * 1024 * 1024:
         raise DjangoValidationError("File size must be under 5MB.")
-from django.db.models import F
 
 
 class Owner(models.Model):
@@ -333,6 +333,11 @@ class Placement(models.Model):
         if not self.horse_id or not self.start_date:
             return
 
+        if self.end_date and self.end_date < self.start_date:
+            raise ValidationError(
+                "Placement end date cannot be before start date."
+            )
+
         # Find overlapping placements for the same horse
         overlapping = Placement.objects.filter(horse=self.horse)
         if self.pk:
@@ -590,7 +595,7 @@ class BusinessSettings(models.Model):
     logo = models.ImageField(
         upload_to='business/', blank=True, null=True,
         validators=[
-            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'svg']),
+            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp']),
             validate_file_size,
         ],
     )
@@ -627,12 +632,18 @@ class BusinessSettings(models.Model):
         return obj
 
     def get_next_invoice_number(self):
-        """Get and atomically increment the next invoice number."""
-        number = self.next_invoice_number
-        BusinessSettings.objects.filter(pk=self.pk).update(
-            next_invoice_number=F('next_invoice_number') + 1
-        )
-        self.refresh_from_db(fields=['next_invoice_number'])
+        """Get and atomically increment the next invoice number.
+
+        Uses select_for_update inside a transaction so that two concurrent
+        invoice creations cannot read the same value and emit duplicate
+        invoice numbers.
+        """
+        with transaction.atomic():
+            locked = BusinessSettings.objects.select_for_update().get(pk=self.pk)
+            number = locked.next_invoice_number
+            locked.next_invoice_number = number + 1
+            locked.save(update_fields=['next_invoice_number'])
+        self.next_invoice_number = number + 1
         return f"{self.invoice_prefix}{number:05d}"
 
 
