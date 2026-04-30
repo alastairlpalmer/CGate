@@ -8,83 +8,89 @@
 <div class="space-y-6">
 
     <!-- Back link -->
-    <a href="{% url 'horse_list' %}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest transition-colors">
-        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+    <a href="{% url 'horse_list' %}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest transition-colors group">
+        <svg class="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
         </svg>
-        Back to Horses
+        All Horses
     </a>
 
     <!-- Hero Header -->
-    <div class="card p-6">
-        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
-            <div class="flex items-start gap-6">
-                {% if horse.photo %}
-                <img src="{{ horse.photo.url }}" alt="{{ horse.name }}" class="w-24 h-24 rounded-xl object-cover shrink-0" loading="lazy" decoding="async">
-                {% else %}
-                <div class="w-24 h-24 rounded-xl bg-gradient-to-br from-sage to-forest flex items-center justify-center shrink-0">
-                    <svg class="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25L12 17.25 2.25 12l4.179-2.25"/>
-                    </svg>
-                </div>
-                {% endif %}
+    <div class="card p-6 relative overflow-hidden">
+        <!-- Subtle decorative gradient -->
+        <div class="absolute inset-0 bg-gradient-to-br from-sage-50/40 via-transparent to-transparent pointer-events-none"></div>
+        <div class="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
+            <div class="flex items-start gap-5 min-w-0">
+                {% include 'horses/_horse_avatar.html' with horse=horse size='lg' %}
                 <div class="min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
                         <h1 class="page-title">{{ horse.name }}</h1>
                         {% if horse.is_active %}
-                        <span class="badge-success">Active</span>
+                        <span class="badge-success">
+                            <span class="w-1.5 h-1.5 rounded-full bg-forest mr-1.5 animate-pulse"></span>Active
+                        </span>
                         {% else %}
                         <span class="badge-neutral">Inactive</span>
                         {% endif %}
                         {% if horse.has_passport %}
-                        <span class="badge-info">Passport</span>
+                        <span class="badge-info" title="{% if horse.passport_number %}Passport: {{ horse.passport_number }}{% else %}Has passport{% endif %}">
+                            <svg class="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/></svg>
+                            Passport
+                        </span>
+                        {% else %}
+                        <span class="badge-danger" title="No passport on record">No passport</span>
                         {% endif %}
                     </div>
-                    <p class="mt-1 text-sm text-sage">
-                        {% if horse.calculated_age %}{{ horse.calculated_age }}yo &middot; {% endif %}
+                    <p class="mt-1.5 text-sm text-sage">
+                        {% if horse.calculated_age %}<span class="text-charcoal-light font-medium">{{ horse.calculated_age }}yo</span> &middot; {% endif %}
                         {{ horse.get_color_display }} &middot;
                         {{ horse.get_sex_display }}
-                        {% if horse.date_of_birth %}<span class="ml-1 text-sage">(DOB: {{ horse.date_of_birth }})</span>{% endif %}
+                        {% if horse.date_of_birth %}<span class="ml-1 text-sage/80">· born {{ horse.date_of_birth|date:"d M Y" }}</span>{% endif %}
                     </p>
                     {% if horse.current_owner %}
-                    <p class="mt-1 text-sm">
-                        Owner: <a href="{% url 'owner_detail' horse.current_owner.pk %}" class="link font-medium">{{ horse.current_owner.name }}</a>
+                    <p class="mt-2 text-sm text-charcoal-light flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                        <a href="{% url 'owner_detail' horse.current_owner.pk %}" class="link">{{ horse.current_owner.name }}</a>
                     </p>
                     {% endif %}
                     {% if horse.dam_name or horse.dam or horse.sire_name %}
-                    <p class="mt-1 text-xs text-sage">
-                        {% if horse.sire_name %}Sire: {{ horse.sire_name }}{% endif %}
-                        {% if horse.sire_name and horse.dam_name or horse.sire_name and horse.dam %} &middot; {% endif %}
-                        {% if horse.dam %}Dam: <a href="{% url 'horse_detail' horse.dam.pk %}" class="link text-xs">{{ horse.dam.name }}</a>{% elif horse.dam_name %}Dam: {{ horse.dam_name }}{% endif %}
+                    <p class="mt-1 text-xs text-sage flex items-center gap-1.5 flex-wrap">
+                        <svg class="w-3 h-3 text-sage/70" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 13.5V3.75m0 9.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 3.75V16.5m12-3V3.75m0 9.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 3.75V16.5m-6-13.5V1.5m0 1.5v9.75m0 0a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 3.75V16.5"/></svg>
+                        {% if horse.sire_name %}<span><span class="text-sage/70">Sire:</span> {{ horse.sire_name }}</span>{% endif %}
+                        {% if horse.sire_name and horse.dam_name or horse.sire_name and horse.dam %}<span class="text-sage/40">·</span>{% endif %}
+                        {% if horse.dam %}<span><span class="text-sage/70">Dam:</span> <a href="{% url 'horse_detail' horse.dam.pk %}" class="link text-xs">{{ horse.dam.name }}</a></span>{% elif horse.dam_name %}<span><span class="text-sage/70">Dam:</span> {{ horse.dam_name }}</span>{% endif %}
                     </p>
                     {% endif %}
                 </div>
             </div>
             {% if user.is_staff %}
-            <div class="flex items-center gap-2 shrink-0">
+            <div class="flex items-center gap-2 shrink-0 flex-wrap">
                 {% if current_placement %}
-                <a href="{% url 'horse_move' horse.pk %}" class="btn-success">
+                <a href="{% url 'horse_move' horse.pk %}" class="btn-success" title="Move to a different location">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
                     </svg>
                     Move
                 </a>
-                <form method="post" action="{% url 'horse_depart' horse.pk %}" class="inline-flex" x-data="{ showDate: false }">
-                    {% csrf_token %}
-                    <input type="hidden" name="departure_date" :value="document.getElementById('depart-date-{{ horse.pk }}') ? document.getElementById('depart-date-{{ horse.pk }}').value : ''" x-ref="depDate">
-                    <div class="flex items-center gap-1">
-                        <input x-show="showDate" x-transition type="date" id="depart-date-{{ horse.pk }}" class="form-input text-sm py-1.5 w-auto" value="{{ today|date:'Y-m-d' }}" @change="$refs.depDate.value = $el.value" x-cloak>
-                        <button x-show="!showDate" type="button" @click="showDate = true; $nextTick(() => { $refs.depDate.value = document.getElementById('depart-date-{{ horse.pk }}').value })" class="btn-secondary text-error-red border-error-red/30 hover:bg-red-50">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/>
-                            </svg>
-                            Depart
+                <div x-data="{ showDate: false }" class="relative">
+                    <button x-show="!showDate" type="button" @click="showDate = true"
+                            class="btn-secondary text-error-red border-error-red/30 hover:bg-error-red-50">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/>
+                        </svg>
+                        Depart
+                    </button>
+                    <form x-show="showDate" x-cloak x-transition method="post" action="{% url 'horse_depart' horse.pk %}"
+                          class="flex items-center gap-1.5 bg-error-red-50 border border-error-red/20 rounded-btn p-1 pl-2.5">
+                        {% csrf_token %}
+                        <label class="text-xs font-medium text-error-red">Depart on</label>
+                        <input type="date" name="departure_date" class="form-input !mt-0 text-sm py-1 px-2 w-auto" value="{{ today|date:'Y-m-d' }}" required>
+                        <button type="submit" class="btn bg-error-red text-white hover:bg-error-red/90 text-xs px-2.5 py-1">Confirm</button>
+                        <button type="button" @click="showDate = false" class="btn-ghost btn-xs" aria-label="Cancel">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
-                        <button x-show="showDate" type="submit" class="btn-primary bg-error-red border-error-red hover:bg-red-700 text-sm" x-cloak>
-                            Confirm
-                        </button>
-                    </div>
-                </form>
+                    </form>
+                </div>
                 {% else %}
                 <a href="{% url 'horse_arrive' horse.pk %}" class="btn-success">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -93,11 +99,11 @@
                     Log Arrival
                 </a>
                 {% endif %}
-                <a href="{% url 'horse_update' horse.pk %}" class="btn-secondary">
+                <a href="{% url 'horse_update' horse.pk %}" class="btn-secondary" title="Edit horse details">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
                     </svg>
-                    Edit
+                    <span class="hidden sm:inline">Edit</span>
                 </a>
             </div>
             {% endif %}
@@ -113,46 +119,67 @@
             <!-- Current Placement -->
             <div class="card">
                 <div class="section-header">
-                    <h3 class="section-title">Current Placement</h3>
+                    <h3 class="section-title flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-info-blue"></span>
+                        Current Placement
+                    </h3>
+                    {% if current_placement %}
+                    <span class="text-xs text-sage tabular-nums" title="Days since arrival">
+                        {{ current_placement.start_date|timesince|cut:"," }} on site
+                    </span>
+                    {% endif %}
                 </div>
                 <div class="p-5">
                     {% if current_placement %}
                     <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
                         <div>
-                            <dt class="text-xs font-medium text-sage uppercase tracking-wider">Location</dt>
+                            <dt class="text-xs font-medium text-sage uppercase tracking-wider flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+                                Location
+                            </dt>
                             <dd class="mt-1 text-sm text-charcoal">
                                 <a href="{% url 'location_detail' current_placement.location.pk %}" class="link">{{ current_placement.location.name }}</a>
                             </dd>
                         </div>
                         <div>
-                            <dt class="text-xs font-medium text-sage uppercase tracking-wider">Owner</dt>
+                            <dt class="text-xs font-medium text-sage uppercase tracking-wider flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                                Owner
+                            </dt>
                             <dd class="mt-1 text-sm text-charcoal">
                                 <a href="{% url 'owner_detail' current_placement.owner.pk %}" class="link">{{ current_placement.owner.name }}</a>
                             </dd>
                         </div>
                         <div>
                             <dt class="text-xs font-medium text-sage uppercase tracking-wider">Rate</dt>
-                            <dd class="mt-1 text-sm text-charcoal">{{ current_placement.rate_type.name }} (&pound;{{ current_placement.rate_type.daily_rate }}/day)</dd>
+                            <dd class="mt-1 text-sm text-charcoal">
+                                {{ current_placement.rate_type.name }}
+                                <span class="text-sage">·</span>
+                                <span class="font-mono text-charcoal-light">£{{ current_placement.rate_type.daily_rate }}/day</span>
+                            </dd>
                         </div>
                         <div>
                             <dt class="text-xs font-medium text-sage uppercase tracking-wider">Arrived</dt>
-                            <dd class="mt-1 text-sm text-charcoal">{{ current_placement.start_date|date:"d M Y" }}</dd>
+                            <dd class="mt-1 text-sm text-charcoal tabular-nums">{{ current_placement.start_date|date:"d M Y" }}</dd>
                         </div>
                         {% if current_placement.expected_departure %}
-                        <div>
+                        <div class="sm:col-span-2 mt-1 pt-3 border-t border-light-sage/70">
                             <dt class="text-xs font-medium text-sage uppercase tracking-wider">Expected Departure</dt>
-                            <dd class="mt-1 text-sm text-forest font-medium">{{ current_placement.expected_departure|date:"d M Y" }}</dd>
+                            <dd class="mt-1 text-sm text-forest font-medium tabular-nums">{{ current_placement.expected_departure|date:"d M Y" }}</dd>
                         </div>
                         {% endif %}
                     </dl>
                     {% else %}
-                    <div class="text-center py-6">
-                        <svg class="mx-auto h-10 w-10 text-sage/50" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
-                        </svg>
-                        <p class="mt-2 text-sm text-sage">No current placement</p>
-                        <a href="{% url 'horse_arrive' horse.pk %}" class="btn-primary mt-3 inline-flex">
+                    <div class="text-center py-8">
+                        <div class="mx-auto w-12 h-12 rounded-full bg-light-sage/60 flex items-center justify-center">
+                            <svg class="h-6 w-6 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
+                            </svg>
+                        </div>
+                        <p class="mt-3 text-sm font-medium text-charcoal">No current placement</p>
+                        <p class="text-xs text-sage mt-0.5">{{ horse.name }} isn't currently at a location.</p>
+                        <a href="{% url 'horse_arrive' horse.pk %}" class="btn-primary mt-4 inline-flex">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                             </svg>
@@ -560,56 +587,80 @@
                 <div class="section-header">
                     <h3 class="section-title">Quick Actions</h3>
                 </div>
-                <div class="p-4">
+                <div class="p-3">
                     <div class="grid grid-cols-2 gap-2">
-                        <a href="{% url 'vaccination_create' %}?horse={{ horse.pk }}" class="card-hover p-3 text-center flex flex-col items-center gap-1.5">
-                            <svg class="w-5 h-5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3"/>
-                            </svg>
+                        <a href="{% url 'vaccination_create' %}?horse={{ horse.pk }}"
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-sage/40 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                            <div class="w-9 h-9 rounded-full bg-sage-50 flex items-center justify-center group-hover/qa:bg-sage-100 transition-colors">
+                                <svg class="w-4 h-4 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3"/>
+                                </svg>
+                            </div>
                             <span class="text-xs font-medium text-charcoal-light">Vaccination</span>
                         </a>
-                        <a href="{% url 'farrier_create' %}?horse={{ horse.pk }}" class="card-hover p-3 text-center flex flex-col items-center gap-1.5">
-                            <svg class="w-5 h-5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.648 3.203a.75.75 0 01-1.088-.791l1.078-6.29-4.57-4.454a.75.75 0 01.416-1.28l6.317-.917L11.11 1.607a.75.75 0 011.78 0l3.186 6.45 6.317.917a.75.75 0 01.416 1.28l-4.57 4.454 1.078 6.29a.75.75 0 01-1.088.791L12 15.17z"/>
-                            </svg>
+                        <a href="{% url 'farrier_create' %}?horse={{ horse.pk }}"
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-saddle/40 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                            <div class="w-9 h-9 rounded-full bg-saddle-50 flex items-center justify-center group-hover/qa:bg-saddle-100 transition-colors">
+                                <svg class="w-4 h-4 text-saddle" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.648 3.203a.75.75 0 01-1.088-.791l1.078-6.29-4.57-4.454a.75.75 0 01.416-1.28l6.317-.917L11.11 1.607a.75.75 0 011.78 0l3.186 6.45 6.317.917a.75.75 0 01.416 1.28l-4.57 4.454 1.078 6.29a.75.75 0 01-1.088.791L12 15.17z"/>
+                                </svg>
+                            </div>
                             <span class="text-xs font-medium text-charcoal-light">Farrier</span>
                         </a>
-                        <a href="{% url 'worming_create' %}?horse={{ horse.pk }}" class="card-hover p-3 text-center flex flex-col items-center gap-1.5">
-                            <svg class="w-5 h-5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19 14.5M14.25 3.104c.251.023.501.05.75.082M19 14.5l-1.386 4.16a2.25 2.25 0 01-2.137 1.59H8.523a2.25 2.25 0 01-2.137-1.59L5 14.5m14 0H5"/>
-                            </svg>
+                        <a href="{% url 'worming_create' %}?horse={{ horse.pk }}"
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-sand/60 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                            <div class="w-9 h-9 rounded-full bg-sand-50 flex items-center justify-center group-hover/qa:bg-sand-100 transition-colors">
+                                <svg class="w-4 h-4 text-saddle" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19 14.5M14.25 3.104c.251.023.501.05.75.082M19 14.5l-1.386 4.16a2.25 2.25 0 01-2.137 1.59H8.523a2.25 2.25 0 01-2.137-1.59L5 14.5m14 0H5"/>
+                                </svg>
+                            </div>
                             <span class="text-xs font-medium text-charcoal-light">Worming</span>
                         </a>
-                        <a href="{% url 'egg_count_create' %}?horse={{ horse.pk }}" class="card-hover p-3 text-center flex flex-col items-center gap-1.5">
-                            <svg class="w-5 h-5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/>
-                            </svg>
+                        <a href="{% url 'egg_count_create' %}?horse={{ horse.pk }}"
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-sand/60 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                            <div class="w-9 h-9 rounded-full bg-sand-50 flex items-center justify-center group-hover/qa:bg-sand-100 transition-colors">
+                                <svg class="w-4 h-4 text-saddle" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/>
+                                </svg>
+                            </div>
                             <span class="text-xs font-medium text-charcoal-light">Egg Count</span>
                         </a>
-                        <a href="{% url 'condition_create' %}?horse={{ horse.pk }}" class="card-hover p-3 text-center flex flex-col items-center gap-1.5">
-                            <svg class="w-5 h-5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/>
-                            </svg>
+                        <a href="{% url 'condition_create' %}?horse={{ horse.pk }}"
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-error-red/30 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                            <div class="w-9 h-9 rounded-full bg-error-red-50 flex items-center justify-center group-hover/qa:bg-error-red-100 transition-colors">
+                                <svg class="w-4 h-4 text-error-red" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/>
+                                </svg>
+                            </div>
                             <span class="text-xs font-medium text-charcoal-light">Condition</span>
                         </a>
-                        <a href="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" class="card-hover p-3 text-center flex flex-col items-center gap-1.5">
-                            <svg class="w-5 h-5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
+                        <a href="{% url 'vet_visit_create' %}?horse={{ horse.pk }}"
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-error-red/30 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                            <div class="w-9 h-9 rounded-full bg-error-red-50 flex items-center justify-center group-hover/qa:bg-error-red-100 transition-colors">
+                                <svg class="w-4 h-4 text-error-red" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
                             <span class="text-xs font-medium text-charcoal-light">Vet Visit</span>
                         </a>
                         {% if horse.is_mare %}
-                        <a href="{% url 'breeding_create' %}?horse={{ horse.pk }}" class="card-hover p-3 text-center flex flex-col items-center gap-1.5">
-                            <svg class="w-5 h-5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
-                            </svg>
+                        <a href="{% url 'breeding_create' %}?horse={{ horse.pk }}"
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-forest/30 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                            <div class="w-9 h-9 rounded-full bg-sage-50 flex items-center justify-center group-hover/qa:bg-sage-100 transition-colors">
+                                <svg class="w-4 h-4 text-forest" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+                                </svg>
+                            </div>
                             <span class="text-xs font-medium text-charcoal-light">Breeding</span>
                         </a>
                         {% endif %}
-                        <a href="{% url 'charge_create' %}?horse={{ horse.pk }}" class="card-hover p-3 text-center flex flex-col items-center gap-1.5">
-                            <svg class="w-5 h-5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75"/>
-                            </svg>
+                        <a href="{% url 'charge_create' %}?horse={{ horse.pk }}"
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-info-blue/30 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                            <div class="w-9 h-9 rounded-full bg-info-blue-50 flex items-center justify-center group-hover/qa:bg-info-blue-100 transition-colors">
+                                <svg class="w-4 h-4 text-info-blue" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75"/>
+                                </svg>
+                            </div>
                             <span class="text-xs font-medium text-charcoal-light">Charge</span>
                         </a>
                     </div>
