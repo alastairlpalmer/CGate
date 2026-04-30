@@ -3,49 +3,15 @@ PDF generation for invoices.
 """
 
 import io
-import logging
 from decimal import Decimal
-
-from django.template.loader import render_to_string
 
 from core.models import BusinessSettings
 
 from .utils import group_line_items_by_horse
 
-logger = logging.getLogger(__name__)
-
 
 def generate_invoice_pdf(invoice):
-    """Generate a PDF for an invoice using WeasyPrint."""
-    try:
-        from weasyprint import HTML
-    except (ImportError, OSError) as e:
-        logger.info("WeasyPrint unavailable (%s), using ReportLab fallback.", e)
-        return generate_invoice_pdf_reportlab(invoice)
-
-    settings = BusinessSettings.get_settings()
-
-    line_items = invoice.line_items.select_related(
-        'horse', 'placement', 'charge'
-    ).order_by('line_type', 'description')
-    horse_groups = group_line_items_by_horse(line_items)
-
-    html_content = render_to_string('invoicing/invoice_pdf.html', {
-        'invoice': invoice,
-        'settings': settings,
-        'line_items': line_items,
-        'horse_groups': horse_groups,
-    })
-
-    pdf_file = io.BytesIO()
-    HTML(string=html_content).write_pdf(pdf_file)
-    pdf_file.seek(0)
-
-    return pdf_file
-
-
-def generate_invoice_pdf_reportlab(invoice):
-    """Generate a PDF using ReportLab as fallback."""
+    """Generate a PDF for an invoice using ReportLab."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
