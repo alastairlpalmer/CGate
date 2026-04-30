@@ -24,7 +24,24 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'horse_management.settings')
 import django
 django.setup()
 
+from django.db import transaction
+
 from core.models import Horse, Location, Owner, Placement, RateType
+
+
+REQUIRED_LOCATION_HEADERS = {'Horse', 'Location', 'Owners'}
+
+
+def open_csv(filepath):
+    """Open a CSV with BOM-aware UTF-8 first, falling back to cp1252.
+
+    Excel often exports as cp1252; without this fallback an exported file
+    crashes the importer mid-loop with UnicodeDecodeError.
+    """
+    try:
+        return open(filepath, 'r', encoding='utf-8-sig')
+    except UnicodeDecodeError:
+        return open(filepath, 'r', encoding='cp1252')
 
 
 def parse_date(date_str):
@@ -188,8 +205,14 @@ def get_site_from_location(location_name):
     return location_name.split()[0] if location_name else 'Unknown'
 
 
+@transaction.atomic
 def import_location_csv(filepath):
-    """Import from horses-by-location CSV format."""
+    """Import from horses-by-location CSV format.
+
+    Wrapped in a transaction so any mid-import failure rolls back, leaving
+    the database in its previous consistent state instead of a half-finished
+    mix of horses/owners/placements.
+    """
     print(f"\nImporting from: {filepath}")
 
     owners_created = 0
@@ -203,8 +226,18 @@ def import_location_csv(filepath):
     location_cache = {}
     rate_cache = {}
 
-    with open(filepath, 'r', encoding='utf-8') as f:
+    with open_csv(filepath) as f:
         reader = csv.DictReader(f)
+
+        # Validate headers up front; DictReader silently returns None for
+        # missing columns, which would otherwise drop every row in silence.
+        fieldnames = set(reader.fieldnames or [])
+        missing = REQUIRED_LOCATION_HEADERS - fieldnames
+        if missing:
+            raise ValueError(
+                f"CSV {filepath} is missing required columns: "
+                f"{sorted(missing)}. Found: {sorted(fieldnames)}"
+            )
 
         for row in reader:
             # Skip empty rows

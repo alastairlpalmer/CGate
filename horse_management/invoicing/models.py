@@ -51,6 +51,7 @@ class Invoice(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     sent_at = models.DateTimeField(null=True, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)
+    last_overdue_reminder_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = 'core_invoice'
