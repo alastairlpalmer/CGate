@@ -81,7 +81,9 @@ class ExtraChargeCreateView(StaffRequiredMixin, CreateView):
         if horse_id:
             initial['horse'] = horse_id
             try:
-                horse = Horse.objects.get(pk=horse_id)
+                horse = Horse.objects.prefetch_related(
+                    'ownership_shares__owner', 'placements__owner'
+                ).get(pk=horse_id)
                 if horse.current_owner:
                     initial['owner'] = horse.current_owner.pk
             except Horse.DoesNotExist:
@@ -546,10 +548,27 @@ def feed_out_create(request, location_pk):
     from core.models import Location
 
     location = get_object_or_404(Location, pk=location_pk)
+    # Prefetch active placements + ownership shares so `current_owner`
+    # below resolves entirely from cache instead of issuing a query per
+    # horse on locations with many residents.
+    from django.db.models import Prefetch
+    from core.models import OwnershipShare, Placement
+
     horses_at_location = Horse.objects.filter(
         placements__location=location,
         placements__end_date__isnull=True,
-    ).distinct().select_related()
+    ).distinct().prefetch_related(
+        Prefetch(
+            'placements',
+            queryset=Placement.objects.filter(
+                end_date__isnull=True
+            ).select_related('owner'),
+        ),
+        Prefetch(
+            'ownership_shares',
+            queryset=OwnershipShare.objects.select_related('owner'),
+        ),
+    )
 
     # Build list with owner info for the template
     horses_with_owners = []
@@ -600,9 +619,12 @@ def feed_out_create(request, location_pk):
 
                 # Recharge to horse owners
                 if feed_out.is_recharged:
-                    selected_ids = request.POST.getlist('recharge_horses')
-                    selected = horses_at_location.filter(pk__in=selected_ids)
-                    count = selected.count()
+                    selected_ids = {int(i) for i in request.POST.getlist('recharge_horses') if i.isdigit()}
+                    # Filter the already-prefetched queryset in Python so
+                    # we keep the prefetch cache (a fresh `.filter()` would
+                    # discard it and re-trigger N+1 on `current_owner`).
+                    selected = [h for h in horses_at_location if h.pk in selected_ids]
+                    count = len(selected)
                     if count > 0:
                         per_horse = (feed_out.total_cost / Decimal(count)).quantize(Decimal('0.01'))
                         remainder = feed_out.total_cost - (per_horse * count)

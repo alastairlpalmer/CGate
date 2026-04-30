@@ -192,8 +192,16 @@ class Horse(models.Model):
 
     @cached_property
     def current_placement(self):
-        """Get the current active placement."""
-        return self.placements.filter(end_date__isnull=True).first()
+        """Get the current active placement.
+
+        Iterates `self.placements.all()` so a `prefetch_related('placements')`
+        on the queryset is honoured (otherwise this issues a fresh query per
+        horse on list pages).
+        """
+        for placement in self.placements.all():
+            if placement.end_date is None:
+                return placement
+        return None
 
     @cached_property
     def current_location(self):
@@ -234,11 +242,19 @@ class Horse(models.Model):
 
     @cached_property
     def primary_owner(self):
-        """Get the primary contact owner, falling back to largest shareholder."""
-        share = self.ownership_shares.filter(is_primary_contact=True).first()
-        if not share:
-            share = self.ownership_shares.order_by('-share_percentage').first()
-        return share.owner if share else None
+        """Get the primary contact owner, falling back to largest shareholder.
+
+        Iterates `self.ownership_shares.all()` so a
+        `prefetch_related('ownership_shares__owner')` is honoured. Without
+        prefetching this issues a single query (vs the previous two).
+        """
+        shares = list(self.ownership_shares.all())
+        if not shares:
+            return None
+        primary = next((s for s in shares if s.is_primary_contact), None)
+        if primary is None:
+            primary = max(shares, key=lambda s: s.share_percentage)
+        return primary.owner
 
     @cached_property
     def owners(self):
