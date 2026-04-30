@@ -1,0 +1,27 @@
+{% comment %}
+Horse avatar — shows photo if available, otherwise initial-letter placeholder.
+Args:
+    horse  – Horse instance (required)
+    size   – 'sm' (32px, default), 'md' (40px), 'lg' (96px hero)
+{% endcomment %}
+{% if size == 'lg' %}
+    {% if horse.photo %}
+        <img src="{{ horse.photo.url }}" alt="{{ horse.name }}" class="w-24 h-24 rounded-xl object-cover shrink-0 ring-1 ring-light-sage shadow-sm" loading="lazy" decoding="async">
+    {% else %}
+        <div class="w-24 h-24 rounded-xl bg-gradient-to-br from-sage to-forest flex items-center justify-center shrink-0 shadow-sm">
+            <span class="text-3xl font-bold text-white/90 font-heading uppercase tracking-wide">{{ horse.name|slice:":1" }}</span>
+        </div>
+    {% endif %}
+{% elif size == 'md' %}
+    {% if horse.photo %}
+        <img src="{{ horse.photo.url }}" alt="" class="w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-light-sage" loading="lazy" decoding="async">
+    {% else %}
+        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-sage-100 to-sage-200 flex items-center justify-center shrink-0 ring-1 ring-light-sage text-sm font-semibold text-forest uppercase">{{ horse.name|slice:":1" }}</div>
+    {% endif %}
+{% else %}
+    {% if horse.photo %}
+        <img src="{{ horse.photo.url }}" alt="" class="w-8 h-8 rounded-full object-cover shrink-0 ring-1 ring-light-sage" loading="lazy" decoding="async">
+    {% else %}
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-sage-100 to-sage-200 flex items-center justify-center shrink-0 ring-1 ring-light-sage text-xs font-semibold text-forest uppercase">{{ horse.name|slice:":1" }}</div>
+    {% endif %}
+{% endif %}
