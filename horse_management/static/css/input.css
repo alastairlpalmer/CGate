@@ -110,6 +110,12 @@ body { overscroll-behavior-y: none; }
 .more-sheet-above-tabs { bottom: calc(4rem + env(safe-area-inset-bottom, 0px)); }
 .pb-tab-bar { padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px)); }
 
+/* Bulk action bar sits ABOVE the mobile tab bar (which is 4rem + safe area)
+   so its controls aren't hidden behind the nav. On desktop the tab bar is
+   hidden, so the bar sits flush to the bottom. */
+.bulk-bar-above-tabs { bottom: calc(4rem + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 1024px) { .bulk-bar-above-tabs { bottom: 0; } }
+
 /* Tab bar HTMX request feedback */
 .tab-bar-item.htmx-request { @apply opacity-60; }
 .sheet-nav-item.htmx-request { @apply opacity-60; }

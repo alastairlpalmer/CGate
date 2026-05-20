@@ -22,7 +22,7 @@ Parameters:
         {% endif %}
     </div>
     {% if add_url or extra_url %}
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center gap-3">
         {% if extra_url %}
         <a href="{{ extra_url }}" class="btn-secondary">{{ extra_label|default:"Action" }}</a>
         {% endif %}

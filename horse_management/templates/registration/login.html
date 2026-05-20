@@ -1,36 +1,18 @@
 {% load static %}
+{% load cache_bust %}
 <!DOCTYPE html>
 <html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Sign in - CGate</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        forest: { DEFAULT: '#1B3A2D', light: '#2A5A45' },
-                        sage: { DEFAULT: '#6B8F71', 50: '#F0F4F0' },
-                        sand: { DEFAULT: '#D4C5A9', 50: '#F5F1E8' },
-                        charcoal: '#2C2C2C',
-                        parchment: '#F7F5F0',
-                        saddle: '#A0522D',
-                        'light-sage': '#E8EDE9',
-                    },
-                    fontFamily: {
-                        heading: ['"DM Sans"', 'sans-serif'],
-                        body: ['"Source Sans 3"', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Tailwind CSS (compiled — same stylesheet as the rest of the app) -->
+    <link rel="stylesheet" href="{% static_v 'css/styles.css' %}">
+    <!-- Alpine.js (local) -->
+    <script defer src="{% static_v 'js/alpine.min.js' %}"></script>
 </head>
 <body class="h-full font-body antialiased bg-white text-charcoal">
     <div class="flex min-h-full">
