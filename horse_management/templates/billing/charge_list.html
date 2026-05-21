@@ -76,9 +76,50 @@
         </form>
     </div>
 
-    <!-- Charge Table -->
+    <!-- Charges -->
     <div class="card overflow-hidden">
-        <div class="overflow-x-auto">
+        {% if charges %}
+        <!-- Mobile: card list -->
+        <div class="md:hidden divide-y divide-light-sage">
+            {% for charge in charges %}
+            <div class="p-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <a href="{% url 'horse_detail' charge.horse.pk %}" class="link font-medium">{{ charge.horse.name }}</a>
+                        <p class="text-xs text-sage mt-0.5">
+                            <a href="{% url 'owner_detail' charge.owner.pk %}" class="hover:text-charcoal">{{ charge.owner.name }}</a>
+                            &middot; {{ charge.date|date:"d M Y" }}
+                        </p>
+                    </div>
+                    <span class="font-semibold text-charcoal whitespace-nowrap">&pound;{{ charge.amount|floatformat:2 }}</span>
+                </div>
+                {% if charge.description %}
+                <p class="text-sm text-charcoal-light mt-2">{{ charge.description|truncatewords:14 }}</p>
+                {% endif %}
+                <div class="flex items-center justify-between gap-2 mt-3">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="{% if charge.charge_type == 'vet' %}badge-danger{% elif charge.charge_type == 'farrier' %}badge-warning{% elif charge.charge_type == 'feed' %}badge-success{% else %}badge-neutral{% endif %}">
+                            {{ charge.get_charge_type_display }}
+                        </span>
+                        {% if charge.invoiced %}
+                            <span class="badge-success">Invoiced</span>
+                        {% else %}
+                            <span class="badge-warning">Unbilled</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <a href="{% url 'charge_update' charge.pk %}" class="btn-ghost btn-xs">Edit</a>
+                        {% if not charge.invoiced %}
+                        <a href="{% url 'charge_delete' charge.pk %}" class="btn-ghost btn-xs text-error-red hover:text-error-red hover:bg-error-red-50" onclick="return confirm('Delete this charge?')">Delete</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Desktop: table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="data-table">
                 <thead>
                     <tr>
@@ -125,27 +166,24 @@
                             </div>
                         </td>
                     </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="8">
-                            <div class="py-12 text-center">
-                                <svg class="mx-auto h-12 w-12 text-sage/50" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/>
-                                </svg>
-                                <p class="mt-3 text-sm font-medium text-sage">No charges found</p>
-                                <a href="{% url 'charge_create' %}" class="btn-primary mt-4 inline-flex">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                                    </svg>
-                                    Add your first charge
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+        {% else %}
+        <div class="py-12 text-center">
+            <svg class="mx-auto h-12 w-12 text-sage/50" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/>
+            </svg>
+            <p class="mt-3 text-sm font-medium text-sage">No charges found</p>
+            <a href="{% url 'charge_create' %}" class="btn-primary mt-4 inline-flex">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                </svg>
+                Add your first charge
+            </a>
+        </div>
+        {% endif %}
     </div>
 
     {% include 'includes/pagination.html' %}
