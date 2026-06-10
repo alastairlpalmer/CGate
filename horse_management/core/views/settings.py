@@ -15,10 +15,22 @@ from ..models import DashboardPreference, Location
 
 
 def health_check(request):
-    """Lightweight DB ping. No auth required. Used by Vercel cron to keep Supabase awake."""
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT 1")
-    return JsonResponse({"status": "ok"})
+    """Lightweight DB ping. No auth required. Used by Vercel cron to keep Supabase awake.
+
+    On DB failure returns 503 with the connection vendor and exception class
+    (no messages/credentials) so an outage is diagnosable from the browser:
+    vendor "sqlite" in production means DATABASE_URL is missing/unparsed;
+    "postgresql" with an error means Supabase is unreachable or refusing auth.
+    """
+    payload = {'db_vendor': connection.vendor}
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+    except Exception as exc:
+        payload.update({'status': 'error', 'error': type(exc).__name__})
+        return JsonResponse(payload, status=503)
+    payload['status'] = 'ok'
+    return JsonResponse(payload)
 
 
 @login_required

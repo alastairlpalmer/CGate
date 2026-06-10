@@ -135,17 +135,21 @@ def _dashboard_inner(request):
 
         revenue_map = {_to_date(r['month']): float(r['total']) for r in revenue_qs}
 
+        # order_by() clears each model's Meta.ordering — compound queries
+        # reject ordered subqueries on SQLite.
         charge_qs = (
             ExtraCharge.objects.filter(date__gte=twelve_months_ago)
             .annotate(month=TruncMonth('date'))
             .values('month')
             .annotate(total=Sum('amount'))
+            .order_by()
         )
         yard_qs = (
             YardCost.objects.filter(date__gte=twelve_months_ago)
             .annotate(month=TruncMonth('date'))
             .values('month')
             .annotate(total=Sum('amount'))
+            .order_by()
         )
         cost_map = {}
         # Single round trip for both cost sources; months can repeat across the

@@ -83,4 +83,15 @@ class QueryCountTestCase(TestCase):
         self.assertMaxQueries(reverse('horse_list'), 14)
 
     def test_dashboard_query_count(self):
-        self.assertMaxQueries(reverse('dashboard'), 22)
+        # The dashboard view catches all exceptions and re-renders an empty
+        # fallback, which can mask real errors (it hid a broken UNION query
+        # once) — so also assert nothing was logged and the chart rendered.
+        with self.assertNoLogs('core.views.dashboard', level='ERROR'):
+            with CaptureQueriesContext(connection) as ctx:
+                response = self.client.get(reverse('dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertLessEqual(len(ctx.captured_queries), 22)
+        self.assertTrue(
+            response.context['chart_data']['monthly']['labels'],
+            'dashboard rendered the empty fallback context',
+        )
