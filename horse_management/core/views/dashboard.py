@@ -140,22 +140,19 @@ def _dashboard_inner(request):
             .annotate(month=TruncMonth('date'))
             .values('month')
             .annotate(total=Sum('amount'))
-            .order_by('month')
         )
         yard_qs = (
             YardCost.objects.filter(date__gte=twelve_months_ago)
             .annotate(month=TruncMonth('date'))
             .values('month')
             .annotate(total=Sum('amount'))
-            .order_by('month')
         )
         cost_map = {}
-        for c in charge_qs:
+        # Single round trip for both cost sources; months can repeat across the
+        # two arms (all=True), merged below.
+        for c in charge_qs.union(yard_qs, all=True):
             d = _to_date(c['month'])
             cost_map[d] = cost_map.get(d, 0) + float(c['total'])
-        for y in yard_qs:
-            d = _to_date(y['month'])
-            cost_map[d] = cost_map.get(d, 0) + float(y['total'])
 
         month_labels = []
         revenue_data = []
@@ -208,28 +205,26 @@ def _dashboard_inner(request):
     # ── Site Capacity Data ──────────────────────────────────────
     capacity_data = {'labels': [], 'horses': [], 'capacity': []}
     if 'chart_capacity' in visible:
-        horse_locations = Location.objects.filter(
+        # One query: per-location counts (correct under the placements join),
+        # then sum per site in Python. Annotating Sum(capacity) and the
+        # placement Count together would inflate capacity across joined rows.
+        location_rows = Location.objects.filter(
             usage__in=[Location.Usage.HORSES, Location.Usage.MIXED],
-        )
-        site_capacity = {
-            row['site']: row['total_capacity'] or 0
-            for row in horse_locations.values('site').annotate(
-                total_capacity=Sum('capacity'),
-            )
-        }
-        site_horses = {
-            row['site']: row['total_horses']
-            for row in horse_locations.values('site').annotate(
-                total_horses=Count(
-                    'placements__horse',
-                    filter=Q(
-                        placements__end_date__isnull=True,
-                        placements__horse__is_active=True,
-                    ),
-                    distinct=True,
+        ).annotate(
+            horse_count=Count(
+                'placements__horse',
+                filter=Q(
+                    placements__end_date__isnull=True,
+                    placements__horse__is_active=True,
                 ),
-            )
-        }
+                distinct=True,
+            ),
+        ).values('site', 'capacity', 'horse_count')
+        site_capacity = {}
+        site_horses = {}
+        for row in location_rows:
+            site_capacity[row['site']] = site_capacity.get(row['site'], 0) + (row['capacity'] or 0)
+            site_horses[row['site']] = site_horses.get(row['site'], 0) + row['horse_count']
         sites = sorted(site_capacity.keys())
         capacity_data = {
             'labels': sites,

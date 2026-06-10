@@ -72,8 +72,8 @@ class ExtraChargeListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['horses'] = Horse.objects.all().order_by('-is_active', 'name')
-        context['owners'] = Owner.objects.all()
+        context['horses'] = Horse.objects.only('pk', 'name', 'is_active').order_by('-is_active', 'name')
+        context['owners'] = Owner.objects.only('pk', 'name')
         context['charge_types'] = ExtraCharge.ChargeType.choices
         return context
 
