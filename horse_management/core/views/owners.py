@@ -18,7 +18,7 @@ class OwnerListView(LoginRequiredMixin, ListView):
     context_object_name = 'owners'
 
     def get_queryset(self):
-        return Owner.objects.annotate(
+        queryset = Owner.objects.annotate(
             horse_count=Count(
                 'ownership_shares__horse',
                 filter=Q(
@@ -27,7 +27,15 @@ class OwnerListView(LoginRequiredMixin, ListView):
                 ),
                 distinct=True,
             )
-        ).order_by('name')
+        )
+        search = self.request.GET.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search)
+                | Q(email__icontains=search)
+                | Q(phone__icontains=search)
+            )
+        return queryset.order_by('name')
 
 
 class OwnerDetailView(LoginRequiredMixin, DetailView):

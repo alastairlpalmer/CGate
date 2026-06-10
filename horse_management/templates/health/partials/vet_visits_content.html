@@ -16,7 +16,8 @@
           hx-target="#health-table-area"
           hx-swap="innerHTML"
           hx-push-url="true"
-          class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          hx-trigger="change, submit"
+          class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <input type="hidden" name="type" value="vet_visits">
         <div>
             <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Horse</label>
@@ -42,7 +43,40 @@
 
 <!-- Vet Visit Table -->
 <div class="card overflow-hidden">
-    <div class="overflow-x-auto">
+
+    <!-- Mobile cards -->
+    <ul class="divide-y divide-light-sage md:hidden">
+        {% for v in vet_visits %}
+        <li class="list-card">
+            <div class="flex-1 min-w-0">
+                <a href="{% url 'horse_detail' v.horse.pk %}" class="list-card-link">
+                    <span class="list-card-title">{{ v.horse.name }}</span>
+                </a>
+                <div class="list-card-meta line-clamp-2">{{ v.reason|truncatewords:10 }}</div>
+                <div class="list-card-meta">
+                    {{ v.date|date:"d M Y" }}{% if v.vet %} &middot; {{ v.vet.name }}{% endif %}
+                    {% if v.follow_up_date %} &middot; <span class="text-forest">follow-up {{ v.follow_up_date|date:"d M Y" }}</span>{% endif %}
+                </div>
+            </div>
+            <div class="flex flex-col items-end gap-1 shrink-0">
+                <span class="font-semibold text-charcoal tabular-nums text-sm">&pound;{{ v.cost|floatformat:2 }}</span>
+                <div class="list-card-actions">
+                    <a href="{% url 'vet_visit_update' v.pk %}" class="btn-icon" title="Edit" aria-label="Edit vet visit">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+                    </a>
+                </div>
+            </div>
+        </li>
+        {% empty %}
+        <li class="py-12 text-center">
+            <p class="text-sm font-medium text-sage">No vet visits recorded</p>
+            <a href="{% url 'vet_visit_create' %}" class="btn-primary mt-4 inline-flex">Add your first vet visit</a>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <!-- Desktop table -->
+    <div class="hidden md:block overflow-x-auto">
         <table class="data-table">
             <thead>
                 <tr>

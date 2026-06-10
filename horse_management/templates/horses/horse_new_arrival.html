@@ -28,7 +28,7 @@
             {% endif %}
 
             <!-- Horse Details -->
-            <fieldset class="p-5 space-y-4">
+            <fieldset class="p-4 sm:p-5 space-y-4">
                 <legend class="section-title">Horse</legend>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
                     <div class="sm:col-span-2">
@@ -64,7 +64,7 @@
             </fieldset>
 
             <!-- Owner -->
-            <fieldset class="p-5 space-y-4">
+            <fieldset class="p-4 sm:p-5 space-y-4">
                 <legend class="section-title">Owner</legend>
                 <div class="mt-3">
                     <label for="id_owner" class="block text-sm font-medium text-charcoal">Owner *</label>
@@ -75,7 +75,7 @@
             </fieldset>
 
             <!-- Placement -->
-            <fieldset class="p-5 space-y-4">
+            <fieldset class="p-4 sm:p-5 space-y-4">
                 <legend class="section-title">Placement</legend>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
                     <div>
@@ -106,7 +106,7 @@
             </fieldset>
 
             <!-- Footer -->
-            <div class="flex justify-end gap-3 px-5 py-4 bg-parchment rounded-b-xl">
+            <div class="form-footer">
                 <a href="{% url 'horse_list' %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

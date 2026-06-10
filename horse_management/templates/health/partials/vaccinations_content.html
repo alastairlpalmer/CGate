@@ -16,7 +16,8 @@
           hx-target="#health-table-area"
           hx-swap="innerHTML"
           hx-push-url="true"
-          class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          hx-trigger="change, submit"
+          class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <input type="hidden" name="type" value="vaccinations">
         <div>
             <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Status</label>
@@ -50,7 +51,48 @@
 
 <!-- Vaccination Table -->
 <div class="card overflow-hidden">
-    <div class="overflow-x-auto">
+
+    <!-- Mobile cards -->
+    <ul class="divide-y divide-light-sage md:hidden">
+        {% for vax in vaccinations %}
+        <li class="list-card">
+            <div class="flex-1 min-w-0">
+                <a href="{% url 'horse_detail' vax.horse.pk %}" class="list-card-link">
+                    <span class="list-card-title">{{ vax.horse.name }}</span>
+                </a>
+                <div class="list-card-meta">{{ vax.vaccination_type.name }} &middot; given {{ vax.date_given|date:"d M Y" }}</div>
+                <div class="mt-1.5 flex items-center gap-1.5">
+                    {% if vax.next_due_date and vax.next_due_date < today %}
+                    <span class="badge-danger">Overdue</span>
+                    {% elif vax.is_due_soon %}
+                    <span class="badge-warning">Due Soon</span>
+                    {% else %}
+                    <span class="badge-success">OK</span>
+                    {% endif %}
+                    {% if vax.next_due_date %}
+                    <span class="text-xs {% if vax.next_due_date < today %}text-error-red font-semibold{% elif vax.is_due_soon %}text-forest{% else %}text-sage{% endif %}">due {{ vax.next_due_date|date:"d M Y" }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="list-card-actions self-center">
+                <a href="{% url 'vaccination_update' vax.pk %}" class="btn-icon" title="Edit" aria-label="Edit vaccination">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+                </a>
+                <a href="{% url 'vaccination_create' %}?horse={{ vax.horse.pk }}" class="btn-icon" title="Re-vaccinate" aria-label="Re-vaccinate {{ vax.horse.name }}">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </a>
+            </div>
+        </li>
+        {% empty %}
+        <li class="py-12 text-center">
+            <p class="text-sm font-medium text-sage">No vaccination records found</p>
+            <a href="{% url 'vaccination_create' %}" class="btn-primary mt-4 inline-flex">Add your first vaccination</a>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <!-- Desktop table -->
+    <div class="hidden md:block overflow-x-auto">
         <table class="data-table">
             <thead>
                 <tr>

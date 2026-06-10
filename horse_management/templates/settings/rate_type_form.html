@@ -14,7 +14,7 @@
     <div class="card">
         <form method="post">
             {% csrf_token %}
-            <fieldset class="p-5 space-y-4">
+            <fieldset class="p-4 sm:p-5 space-y-4">
                 <div>
                     <label for="{{ form.name.id_for_label }}" class="text-sm font-medium text-charcoal">Name</label>
                     {{ form.name }}
@@ -34,7 +34,7 @@
                     <label for="{{ form.is_active.id_for_label }}" class="text-sm font-medium text-charcoal">Active</label>
                 </div>
             </fieldset>
-            <footer class="border-t px-5 py-4 bg-parchment rounded-b-xl flex justify-end gap-3">
+            <footer class="form-footer">
                 <a href="{% url 'app_settings' %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">{% if object %}Save Changes{% else %}Add Rate Type{% endif %}</button>
             </footer>

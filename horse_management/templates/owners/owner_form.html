@@ -19,7 +19,7 @@
             {% csrf_token %}
 
             <!-- Contact Details -->
-            <fieldset class="p-5 space-y-5">
+            <fieldset class="p-4 sm:p-5 space-y-4 sm:space-y-5">
                 <legend class="text-base font-semibold text-charcoal mb-4">Contact Details</legend>
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     {% include "includes/form_field.html" with field=form.name span="2" %}
@@ -31,13 +31,13 @@
             </fieldset>
 
             <!-- Notes -->
-            <fieldset class="border-t border-light-sage px-5 pt-5 pb-5 space-y-5">
+            <fieldset class="border-t border-light-sage px-4 sm:px-5 pt-4 sm:pt-5 pb-4 sm:pb-5 space-y-4 sm:space-y-5">
                 <legend class="text-base font-semibold text-charcoal mb-4">Notes</legend>
                 {% include "includes/form_field.html" with field=form.notes %}
             </fieldset>
 
             <!-- Footer -->
-            <div class="border-t border-light-sage px-5 py-4 bg-parchment rounded-b-xl flex justify-end gap-3">
+            <div class="form-footer">
                 <a href="{% if object %}{% url 'owner_detail' object.pk %}{% else %}{% url 'owner_list' %}{% endif %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% else %}Add Owner{% endif %}

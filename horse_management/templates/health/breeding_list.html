@@ -21,11 +21,14 @@
     </div>
 
     <!-- Filter Bar -->
-    <div class="card px-5 py-4">
-        <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="card px-4 py-3 sm:px-5 sm:py-4">
+        <form method="get" class="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
                 <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Mare</label>
-                <select name="horse" class="form-select">
+                <select name="horse" class="form-select"
+                        hx-get="{{ request.path }}" hx-trigger="change"
+                        hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
+                        hx-include="closest form" hx-push-url="true">
                     <option value="">All mares</option>
                     {% for h in horses %}
                     <option value="{{ h.pk }}" {% if request.GET.horse == h.pk|stringformat:"s" %}selected{% endif %}>{{ h.name }}</option>
@@ -34,7 +37,10 @@
             </div>
             <div>
                 <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Status</label>
-                <select name="status" class="form-select">
+                <select name="status" class="form-select"
+                        hx-get="{{ request.path }}" hx-trigger="change"
+                        hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
+                        hx-include="closest form" hx-push-url="true">
                     <option value="">All</option>
                     <option value="covered" {% if request.GET.status == 'covered' %}selected{% endif %}>Covered</option>
                     <option value="confirmed" {% if request.GET.status == 'confirmed' %}selected{% endif %}>Confirmed In-Foal</option>
@@ -43,16 +49,62 @@
                     <option value="barren" {% if request.GET.status == 'barren' %}selected{% endif %}>Barren</option>
                 </select>
             </div>
-            <div class="flex items-end gap-2">
-                <button type="submit" class="btn-secondary">Filter</button>
-                <a href="{% url 'breeding_list' %}" class="btn-secondary">Clear</a>
+            <div class="col-span-2 md:col-span-2 flex items-end justify-end">
+                {% if request.GET.horse or request.GET.status %}
+                <a href="{% url 'breeding_list' %}" class="btn-ghost text-xs">Clear filters</a>
+                {% endif %}
             </div>
         </form>
     </div>
 
+    <div id="list-results" class="space-y-6">
+
     <!-- Breeding Record Table -->
     <div class="card overflow-hidden">
-        <div class="overflow-x-auto">
+
+        <!-- Mobile cards -->
+        <ul class="divide-y divide-light-sage md:hidden">
+            {% for br in breeding_records %}
+            <li class="list-card">
+                <div class="flex-1 min-w-0">
+                    <a href="{% url 'horse_detail' br.mare.pk %}" class="list-card-link">
+                        <span class="list-card-title">{{ br.mare.name }}</span>
+                    </a>
+                    <div class="list-card-meta">&times; {{ br.stallion_name }} &middot; covered {{ br.date_covered|date:"d M Y" }}</div>
+                    <div class="list-card-meta">
+                        {% if br.date_foal_due %}foal due {{ br.date_foal_due }}{% endif %}
+                        {% if br.foal %}{% if br.date_foal_due %} &middot; {% endif %}foal: <a href="{% url 'horse_detail' br.foal.pk %}" class="relative z-10 link">{{ br.foal.name }}</a>{% endif %}
+                    </div>
+                    <div class="mt-1.5">
+                        {% if br.status == 'confirmed' %}
+                        <span class="badge-info">Confirmed</span>
+                        {% elif br.status == 'born' %}
+                        <span class="badge-success">Born</span>
+                        {% elif br.status == 'covered' %}
+                        <span class="badge-warning">Covered</span>
+                        {% elif br.status == 'lost' %}
+                        <span class="badge-danger">Lost</span>
+                        {% else %}
+                        <span class="badge-neutral">Barren</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="list-card-actions self-center">
+                    <a href="{% url 'breeding_update' br.pk %}" class="btn-icon" title="Edit" aria-label="Edit breeding record">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+                    </a>
+                </div>
+            </li>
+            {% empty %}
+            <li class="py-12 text-center">
+                <p class="text-sm font-medium text-sage">No breeding records found</p>
+                <a href="{% url 'breeding_create' %}" class="btn-primary mt-4 inline-flex">Add your first breeding record</a>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="data-table">
                 <thead>
                     <tr>
@@ -120,6 +172,8 @@
     </div>
 
     {% include 'includes/pagination.html' %}
+
+    </div><!-- /#list-results -->
 
 </div>
 {% endblock %}

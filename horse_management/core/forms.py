@@ -32,9 +32,9 @@ class OwnerForm(forms.ModelForm):
         model = Owner
         fields = ['name', 'email', 'phone', 'address', 'account_code', 'notes']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-input'}),
-            'email': forms.EmailInput(attrs={'class': 'form-input'}),
-            'phone': forms.TextInput(attrs={'class': 'form-input'}),
+            'name': forms.TextInput(attrs={'class': 'form-input', 'autocomplete': 'name'}),
+            'email': forms.EmailInput(attrs={'class': 'form-input', 'autocomplete': 'email'}),
+            'phone': forms.TextInput(attrs={'class': 'form-input', 'type': 'tel', 'autocomplete': 'tel'}),
             'address': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
             'account_code': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Xero account code'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
@@ -319,7 +319,7 @@ class OwnershipShareForm(forms.ModelForm):
         widgets = {
             'owner': forms.Select(attrs={'class': 'form-select'}),
             'share_percentage': forms.NumberInput(attrs={
-                'class': 'form-input', 'step': '0.01', 'min': '0.01', 'max': '100',
+                'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0.01', 'max': '100',
             }),
             'is_primary_contact': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 1}),
@@ -355,7 +355,7 @@ class RateTypeForm(forms.ModelForm):
         fields = ['name', 'daily_rate', 'description', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
-            'daily_rate': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
+            'daily_rate': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'description': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
         }
@@ -372,7 +372,7 @@ class BusinessSettingsForm(forms.ModelForm):
         widgets = {
             'business_name': forms.TextInput(attrs={'class': 'form-input'}),
             'address': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
-            'phone': forms.TextInput(attrs={'class': 'form-input'}),
+            'phone': forms.TextInput(attrs={'class': 'form-input', 'type': 'tel', 'autocomplete': 'tel'}),
             'email': forms.EmailInput(attrs={'class': 'form-input'}),
             'website': forms.URLInput(attrs={'class': 'form-input'}),
             'vat_registration': forms.TextInput(attrs={'class': 'form-input'}),

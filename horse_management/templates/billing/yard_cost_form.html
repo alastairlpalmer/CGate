@@ -25,7 +25,7 @@
             {% endif %}
 
             <!-- Cost Details -->
-            <fieldset class="p-5 space-y-4">
+            <fieldset class="p-4 sm:p-5 space-y-4">
                 <legend class="section-title">Cost Details</legend>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
                     <div>
@@ -68,7 +68,7 @@
             </fieldset>
 
             <!-- Description & Notes -->
-            <fieldset class="p-5 space-y-4">
+            <fieldset class="p-4 sm:p-5 space-y-4">
                 <legend class="section-title">Details</legend>
                 <div class="grid grid-cols-1 gap-4 mt-3">
                     <div>
@@ -89,7 +89,7 @@
             </fieldset>
 
             <!-- Recurring & Receipt -->
-            <fieldset class="p-5 space-y-4">
+            <fieldset class="p-4 sm:p-5 space-y-4">
                 <legend class="section-title">Options</legend>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
                     <div class="sm:col-span-2 flex items-center gap-3">
@@ -131,7 +131,7 @@
             </fieldset>
 
             <!-- Footer -->
-            <div class="flex justify-end gap-3 px-5 py-4 bg-parchment rounded-b-xl">
+            <div class="form-footer">
                 <a href="{% url 'costs_list' %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% else %}Add Yard Cost{% endif %}

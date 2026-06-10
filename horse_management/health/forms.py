@@ -79,7 +79,7 @@ class FarrierVisitForm(ActiveHorseFormMixin, forms.ModelForm):
             'service_provider': forms.Select(attrs={'class': 'form-select'}),
             'work_done': forms.Select(attrs={'class': 'form-select'}),
             'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
-            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
+            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -165,7 +165,7 @@ class VetVisitForm(ActiveHorseFormMixin, forms.ModelForm):
             'diagnosis': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'treatment': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'follow_up_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
-            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
+            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -212,7 +212,7 @@ class BulkFarrierVisitForm(forms.ModelForm):
             'service_provider': forms.Select(attrs={'class': 'form-select'}),
             'work_done': forms.Select(attrs={'class': 'form-select'}),
             'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
-            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
+            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -255,7 +255,7 @@ class BulkVetVisitForm(forms.ModelForm):
             'diagnosis': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'treatment': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'follow_up_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
-            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
+            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 

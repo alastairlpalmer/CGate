@@ -1,0 +1,35 @@
+{% comment %}
+Reusable live-search input. Results update via HTMX as the user types.
+Must sit inside a <form method="get"> (other filter fields in the same form
+are carried along via hx-include). The results region on the page must be
+wrapped in an element matching `target` (default: #list-results).
+
+Usage:
+    {% include 'includes/search_bar.html' with placeholder="Search owners…" action_url=request.path %}
+Optional params: target (CSS selector), autofocus (truthy)
+{% endcomment %}
+<div class="flex-1 relative" x-data="{ q: '' }" x-init="q = $refs.searchInput.value">
+    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sage/70 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+    </svg>
+    <input type="search" name="search" x-ref="searchInput" x-model="q"
+           value="{{ request.GET.search }}"
+           class="form-input pl-9 pr-10 !mt-0" placeholder="{{ placeholder|default:'Search…' }}"
+           autocomplete="off" enterkeyhint="search" aria-label="{{ placeholder|default:'Search' }}"
+           {% if autofocus %}autofocus{% endif %}
+           hx-get="{{ action_url }}"
+           hx-trigger="input changed delay:300ms, search"
+           hx-target="{{ target|default:'#list-results' }}"
+           hx-select="{{ target|default:'#list-results' }}"
+           hx-swap="outerHTML"
+           hx-include="closest form"
+           hx-push-url="true">
+    <button type="button" x-show="q" x-cloak
+            @click="q = ''; $refs.searchInput.dispatchEvent(new Event('input', { bubbles: true })); $refs.searchInput.focus()"
+            class="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 inline-flex items-center justify-center text-sage/60 hover:text-charcoal rounded transition-colors"
+            title="Clear search" aria-label="Clear search">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+    </button>
+</div>

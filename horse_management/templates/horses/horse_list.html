@@ -33,24 +33,7 @@
             {% if group_by == 'owner' %}<input type="hidden" name="group_by" value="owner">{% endif %}
 
             <div class="flex items-center gap-2">
-                <!-- Search with leading icon -->
-                <div class="flex-1 relative">
-                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sage/70 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
-                    </svg>
-                    <input type="text" name="search" value="{{ request.GET.search }}"
-                           class="form-input pl-9 pr-9" placeholder="Search by name, owner, location…"
-                           autocomplete="off">
-                    {% if request.GET.search %}
-                    <a href="{% url 'horse_list' %}{% if status == 'departed' %}?status=departed{% endif %}"
-                       class="absolute right-2.5 top-1/2 -translate-y-1/2 text-sage/60 hover:text-charcoal p-1 rounded transition-colors"
-                       title="Clear search" aria-label="Clear search">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </a>
-                    {% endif %}
-                </div>
+                {% include 'includes/search_bar.html' with placeholder="Search by name, owner, location…" action_url=request.path %}
 
                 <!-- Filter toggle -->
                 <button type="button" @click="filtersOpen = !filtersOpen"
@@ -77,7 +60,10 @@
             <div x-show="filtersOpen" x-collapse x-cloak class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-light-sage">
                 <div>
                     <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Location</label>
-                    <select name="location" class="form-select" onchange="this.form.submit()">
+                    <select name="location" class="form-select"
+                            hx-get="{{ request.path }}" hx-trigger="change"
+                            hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
+                            hx-include="closest form" hx-push-url="true">
                         <option value="">All locations</option>
                         {% regroup locations by site as site_list %}
                         {% for site in site_list %}
@@ -91,7 +77,10 @@
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Owner</label>
-                    <select name="owner" class="form-select" onchange="this.form.submit()">
+                    <select name="owner" class="form-select"
+                            hx-get="{{ request.path }}" hx-trigger="change"
+                            hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
+                            hx-include="closest form" hx-push-url="true">
                         <option value="">All owners</option>
                         {% for o in owners %}
                         <option value="{{ o.pk }}" {% if request.GET.owner == o.pk|stringformat:"s" %}selected{% endif %}>{{ o.name }}</option>
@@ -101,6 +90,8 @@
             </div>
         </form>
     </div>
+
+    <div id="list-results" class="space-y-4">
 
     <!-- Tabs: Active | Departed + Group Toggle -->
     <div class="flex items-center justify-between flex-wrap gap-3">
@@ -157,7 +148,45 @@
             </div>
             <span class="badge-info">{{ horses|length }}</span>
         </div>
-        <div class="overflow-x-auto">
+        <!-- Mobile cards -->
+        <ul class="divide-y divide-light-sage md:hidden">
+            {% for horse in horses %}
+            <li class="list-card{% if not horse.is_active %} opacity-60{% endif %}">
+                <label class="relative z-10 inline-flex items-center justify-center w-10 h-10 -ml-2 -my-1.5 shrink-0 cursor-pointer">
+                    <input type="checkbox" data-horse-checkbox value="{{ horse.pk }}"
+                           @change="toggleHorse({{ horse.pk }})" :checked="isSelected({{ horse.pk }})"
+                           class="form-checkbox rounded">
+                </label>
+                <a href="{% url 'horse_detail' horse.pk %}" class="list-card-link flex items-center gap-3 flex-1 min-w-0">
+                    {% include 'horses/_horse_avatar.html' with horse=horse size='sm' %}
+                    <span class="min-w-0">
+                        <span class="list-card-title block">{{ horse.name }}</span>
+                        <span class="list-card-meta block truncate">
+                            {% if horse.age %}{{ horse.age }}yo · {% endif %}{{ horse.get_color_display }} · {{ horse.get_sex_display }}
+                        </span>
+                        <span class="list-card-meta block truncate">
+                            {% if horse.resolved_owner %}{{ horse.resolved_owner.name }}{% endif %}
+                            {% if horse.is_active %}
+                                {% with p=horse.active_placements.0 %}{% if p and p.location %}{% if horse.resolved_owner %} · {% endif %}{{ p.location.name }}{% endif %}{% endwith %}
+                            {% else %}
+                                {% with p=horse.last_placements.0 %}{% if p and p.location %}{% if horse.resolved_owner %} · {% endif %}{{ p.location.name }}{% endif %}{% endwith %}
+                            {% endif %}
+                        </span>
+                    </span>
+                </a>
+                <span class="shrink-0 self-center">
+                    {% if horse.is_active %}
+                    <span class="badge-success"><span class="w-1.5 h-1.5 rounded-full bg-forest mr-1.5"></span>Active</span>
+                    {% else %}
+                    <span class="badge-neutral">Departed</span>
+                    {% endif %}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="data-table">
                 <thead>
                     <tr>
@@ -238,7 +267,36 @@
     <!-- ── Departed Tab ── -->
     {% if horses %}
     <div class="card overflow-hidden">
-        <div class="overflow-x-auto">
+        <!-- Mobile cards -->
+        <ul class="divide-y divide-light-sage md:hidden">
+            {% for horse in horses %}
+            <li class="list-card">
+                <label class="relative z-10 inline-flex items-center justify-center w-10 h-10 -ml-2 -my-1.5 shrink-0 cursor-pointer">
+                    <input type="checkbox" data-horse-checkbox value="{{ horse.pk }}"
+                           @change="toggleHorse({{ horse.pk }})" :checked="isSelected({{ horse.pk }})"
+                           class="form-checkbox rounded">
+                </label>
+                <a href="{% url 'horse_detail' horse.pk %}" class="list-card-link flex items-center gap-3 flex-1 min-w-0">
+                    <span class="opacity-70">{% include 'horses/_horse_avatar.html' with horse=horse size='sm' %}</span>
+                    <span class="min-w-0">
+                        <span class="list-card-title block text-charcoal-light">{{ horse.name }}</span>
+                        <span class="list-card-meta block truncate">
+                            {% if horse.resolved_owner %}{{ horse.resolved_owner.name }}{% endif %}
+                            {% with p=horse.last_placements.0 %}{% if p and p.location %}{% if horse.resolved_owner %} · {% endif %}{{ p.location.name }}{% endif %}{% endwith %}
+                        </span>
+                    </span>
+                </a>
+                <span class="shrink-0 self-center text-xs text-sage tabular-nums">
+                    {% with p=horse.last_placements.0 %}
+                    {% if p and p.end_date %}{{ p.end_date|date:"d M Y" }}{% else %}&mdash;{% endif %}
+                    {% endwith %}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="data-table">
                 <thead>
                     <tr>
@@ -338,7 +396,46 @@
                 </div>
                 <span class="badge-info shrink-0">{{ group.count }}</span>
             </div>
-            <div x-show="!collapsed" x-collapse class="overflow-x-auto">
+            <div x-show="!collapsed" x-collapse>
+                <!-- Mobile cards -->
+                <ul class="divide-y divide-light-sage md:hidden">
+                    {% for horse in group.horses %}
+                    <li class="list-card">
+                        <label class="relative z-10 inline-flex items-center justify-center w-10 h-10 -ml-2 -my-1.5 shrink-0 cursor-pointer">
+                            <input type="checkbox" data-horse-checkbox value="{{ horse.pk }}"
+                                   @change="toggleHorse({{ horse.pk }})" :checked="isSelected({{ horse.pk }})"
+                                   class="form-checkbox rounded">
+                        </label>
+                        <a href="{% url 'horse_detail' horse.pk %}" class="list-card-link flex items-center gap-3 flex-1 min-w-0">
+                            {% include 'horses/_horse_avatar.html' with horse=horse size='sm' %}
+                            <span class="min-w-0">
+                                <span class="list-card-title block">{{ horse.name }}</span>
+                                <span class="list-card-meta block truncate">
+                                    {% if horse.age %}{{ horse.age }}yo · {% endif %}{{ horse.get_color_display }} · {{ horse.get_sex_display }}
+                                </span>
+                                <span class="list-card-meta block truncate">
+                                    {% if group_by == 'location' %}
+                                        {% if horse.resolved_owner %}{{ horse.resolved_owner.name }}{% endif %}
+                                    {% else %}
+                                        {% with p=horse.active_placements.0 %}{% if p and p.location %}{{ p.location.name }}{% endif %}{% endwith %}
+                                    {% endif %}
+                                </span>
+                            </span>
+                        </a>
+                        <div class="list-card-actions self-center">
+                            <a href="{% url 'horse_update' horse.pk %}" class="btn-icon" title="Edit" aria-label="Edit {{ horse.name }}">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+                            </a>
+                            <a href="{% url 'horse_move' horse.pk %}" class="btn-icon" title="Move" aria-label="Move {{ horse.name }}">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
+                            </a>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                <!-- Desktop table -->
+                <div class="hidden md:block overflow-x-auto">
                 <table class="data-table">
                     <thead>
                         <tr>
@@ -385,14 +482,14 @@
                             </td>
                             {% endif %}
                             <td class="pr-5">
-                                <div class="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                                    <a href="{% url 'horse_update' horse.pk %}" class="btn-ghost btn-xs" title="Edit" aria-label="Edit {{ horse.name }}">
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <div class="flex items-center justify-end gap-1 lg:opacity-60 lg:group-hover:opacity-100 transition-opacity">
+                                    <a href="{% url 'horse_update' horse.pk %}" class="btn-icon" title="Edit" aria-label="Edit {{ horse.name }}">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
                                         </svg>
                                     </a>
-                                    <a href="{% url 'horse_move' horse.pk %}" class="btn-ghost btn-xs" title="Move" aria-label="Move {{ horse.name }}">
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <a href="{% url 'horse_move' horse.pk %}" class="btn-icon" title="Move" aria-label="Move {{ horse.name }}">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
                                         </svg>
                                     </a>
@@ -402,6 +499,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
         {% endfor %}
@@ -426,6 +524,8 @@
     </div>
     {% endif %}
     {% endif %}
+
+    </div><!-- /#list-results -->
 
     <!-- Bulk Action Bar -->
     {% include 'health/partials/bulk_action_bar.html' %}

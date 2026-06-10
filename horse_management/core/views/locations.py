@@ -25,7 +25,7 @@ class LocationListView(LoginRequiredMixin, ListView):
     context_object_name = 'locations'
 
     def get_queryset(self):
-        return Location.objects.annotate(
+        queryset = Location.objects.annotate(
             horse_count=Count(
                 'placements__horse',
                 filter=Q(
@@ -34,7 +34,14 @@ class LocationListView(LoginRequiredMixin, ListView):
                 ),
                 distinct=True,
             )
-        ).order_by('site', 'name')
+        )
+        if self.request.GET.get('tab', 'locations') != 'history':
+            search = self.request.GET.get('search', '').strip()
+            if search:
+                queryset = queryset.filter(
+                    Q(name__icontains=search) | Q(site__icontains=search)
+                )
+        return queryset.order_by('site', 'name')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

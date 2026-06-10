@@ -24,6 +24,7 @@
                     hx-target="#health-table-area"
                     hx-push-url="{% url 'health_dashboard' %}?type={{ tab_key }}"
                     hx-swap="innerHTML"
+                    hx-indicator="#health-skeleton"
                     @click="activeTab = '{{ tab_key }}'"
                     :class="activeTab === '{{ tab_key }}'
                         ? 'border-forest text-forest'
@@ -34,6 +35,11 @@
                 </button>
                 {% endfor %}
             </nav>
+        </div>
+
+        <!-- Loading skeleton (shown while a tab loads) -->
+        <div id="health-skeleton" class="mt-4">
+            {% include 'includes/skeleton_table.html' %}
         </div>
 
         <!-- Tab Content Area -->

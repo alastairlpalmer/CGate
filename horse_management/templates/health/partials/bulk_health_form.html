@@ -5,7 +5,7 @@
     {% csrf_token %}
     <input type="hidden" name="action_type" value="{{ action_type }}">
 
-    <fieldset class="p-5 space-y-4">
+    <fieldset class="p-4 sm:p-5 space-y-4">
         <legend class="text-sm font-medium text-charcoal mb-2">{{ action_label }} Details</legend>
 
         {% if form.non_field_errors %}

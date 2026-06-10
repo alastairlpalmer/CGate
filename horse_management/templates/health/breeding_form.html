@@ -27,7 +27,7 @@
             {% endif %}
 
             <!-- Mare & Stallion -->
-            <fieldset class="p-5 space-y-5">
+            <fieldset class="p-4 sm:p-5 space-y-4 sm:space-y-5">
                 <legend class="section-title">Mare &amp; Stallion</legend>
 
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -66,7 +66,7 @@
             </fieldset>
 
             <!-- Scanning -->
-            <fieldset class="p-5 space-y-5 border-t border-light-sage">
+            <fieldset class="p-4 sm:p-5 space-y-4 sm:space-y-5 border-t border-light-sage">
                 <legend class="section-title">Scanning</legend>
 
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -99,7 +99,7 @@
             </fieldset>
 
             <!-- Foal Details -->
-            <fieldset class="p-5 space-y-5 border-t border-light-sage">
+            <fieldset class="p-4 sm:p-5 space-y-4 sm:space-y-5 border-t border-light-sage">
                 <legend class="section-title">Foal Details</legend>
 
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -155,7 +155,7 @@
                 </div>
             </fieldset>
 
-            <footer class="border-t px-5 py-4 bg-parchment rounded-b-xl flex justify-end gap-3">
+            <footer class="form-footer">
                 <a href="{% url 'breeding_list' %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% else %}Add Breeding Record{% endif %}
