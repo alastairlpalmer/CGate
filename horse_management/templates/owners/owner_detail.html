@@ -52,7 +52,9 @@
                     {% if owner.phone %}
                     <div>
                         <dt class="text-xs font-medium text-sage uppercase tracking-wider">Phone</dt>
-                        <dd class="mt-1 text-sm text-charcoal">{{ owner.phone }}</dd>
+                        <dd class="mt-1 text-sm text-charcoal">
+                            <a href="tel:{{ owner.phone }}" class="link">{{ owner.phone }}</a>
+                        </dd>
                     </div>
                     {% endif %}
                     {% if owner.address %}

@@ -120,6 +120,11 @@ body { overscroll-behavior-y: none; }
    so the last page card never sits under the tab bar or Safari's URL pill. */
 .more-sheet-above-tabs { bottom: calc(4rem + env(safe-area-inset-bottom, 0px)); }
 .pb-tab-bar { padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px)); }
+/* Bulk-select action bar docks above the mobile tab bar; flush bottom on desktop */
+.bulk-bar-above-tabs { bottom: calc(4rem + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 1024px) {
+    .bulk-bar-above-tabs { bottom: 0; }
+}
 
 /* Tab bar HTMX request feedback */
 .tab-bar-item.htmx-request { @apply opacity-60; }
@@ -191,6 +196,12 @@ input[type="file"] { @apply block w-full text-sm text-sage file:mr-3 file:rounde
 .skeleton-circle  { @apply skeleton rounded-full; }
 .skeleton-card    { @apply skeleton rounded-card h-24; }
 
+/* Health tab skeleton: hidden until HTMX flags a request (hx-indicator),
+   then swaps in for the stale tab content */
+#health-skeleton { display: none; }
+#health-skeleton.htmx-request { display: block; }
+#health-skeleton.htmx-request + #health-table-area { display: none; }
+
 /* Button loading spinner */
 .btn-loading {
     position: relative;
@@ -252,6 +263,11 @@ input[type="file"] { @apply block w-full text-sm text-sage file:mr-3 file:rounde
 
 /* Alpine.js cloak — hide until Alpine initialises */
 [x-cloak] { display: none !important; }
+
+/* Keep anchored headings clear of the sticky mobile header */
+@media (max-width: 1023px) {
+    [id] { scroll-margin-top: 3.5rem; }
+}
 
 /* Nav click feedback */
 .nav-link.htmx-request,
