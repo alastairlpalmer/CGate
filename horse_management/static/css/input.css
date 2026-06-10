@@ -211,6 +211,26 @@ input[type="file"] { @apply block w-full text-sm text-sage file:mr-3 file:rounde
     to { transform: rotate(360deg); }
 }
 
+/* Form footer — sticky just above the mobile tab bar so Save stays reachable
+   on long forms; static again on desktop where the sidebar layout has no tab bar. */
+.form-footer {
+    @apply border-t border-light-sage px-4 py-3 sm:px-5 sm:py-4 bg-parchment rounded-b-xl flex justify-end gap-3 z-20;
+    position: sticky;
+    bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 1024px) {
+    .form-footer { position: static; }
+}
+@media (max-width: 639px) {
+    /* Full-width Cancel/Save split on phones */
+    .form-footer > a, .form-footer > button { flex: 1 1 0%; }
+}
+
+/* Invalid field highlight — applied by includes/form_field.html when bound with errors */
+.field-invalid input, .field-invalid select, .field-invalid textarea {
+    @apply border-error-red focus:border-error-red focus:ring-error-red/20;
+}
+
 /* Form error shake animation */
 @keyframes shake {
     0%, 100% { transform: translateX(0); }

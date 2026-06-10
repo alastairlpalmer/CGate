@@ -17,7 +17,7 @@
             {% csrf_token %}
 
             <!-- Horse & Owner -->
-            <fieldset class="p-5 space-y-4">
+            <fieldset class="p-4 sm:p-5 space-y-4">
                 <legend class="section-title">Horse &amp; Owner</legend>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
                     <div class="sm:col-span-2">
@@ -45,7 +45,7 @@
             </fieldset>
 
             <!-- Rates & Dates -->
-            <fieldset class="p-5 space-y-4">
+            <fieldset class="p-4 sm:p-5 space-y-4">
                 <legend class="section-title">Rates &amp; Dates</legend>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
                     <div>
@@ -83,7 +83,7 @@
             </fieldset>
 
             <!-- Notes -->
-            <fieldset class="p-5 space-y-4">
+            <fieldset class="p-4 sm:p-5 space-y-4">
                 <legend class="section-title">Notes</legend>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
                     <div class="sm:col-span-2">
@@ -97,7 +97,7 @@
             </fieldset>
 
             <!-- Footer -->
-            <div class="flex justify-end gap-3 px-5 py-4 bg-parchment rounded-b-xl">
+            <div class="form-footer">
                 <a href="{% url 'placement_list' %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% else %}Add Placement{% endif %}

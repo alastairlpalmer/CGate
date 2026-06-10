@@ -14,14 +14,14 @@ Parameters:
   required  - Optional. Show asterisk. Auto-detected from field if not set.
 {% endcomment %}
 
-<div{% if span == "2" %} class="sm:col-span-2"{% endif %}>
+<div class="{% if span == "2" %}sm:col-span-2{% endif %}{% if field.errors %} field-invalid{% endif %}">
     {% if field.field.widget.input_type != "checkbox" %}
         <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-charcoal">
             {{ label|default:field.label }}{% if required or field.field.required %} *{% endif %}
         </label>
         {{ field }}
         {% if field.errors %}
-        <p class="mt-1 text-xs text-error-red">{{ field.errors.0 }}</p>
+        <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ field.errors.0 }}</p>
         {% endif %}
         {% if help %}
         <p class="mt-1 text-xs text-sage">{{ help }}</p>
@@ -34,7 +34,7 @@ Parameters:
             <span class="text-sm font-medium text-charcoal">{{ label|default:field.label }}</span>
         </label>
         {% if field.errors %}
-        <p class="mt-1 text-xs text-error-red">{{ field.errors.0 }}</p>
+        <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ field.errors.0 }}</p>
         {% endif %}
         {% if help %}
         <p class="mt-1 text-xs text-sage">{{ help }}</p>

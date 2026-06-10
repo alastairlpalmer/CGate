@@ -319,7 +319,7 @@ class OwnershipShareForm(forms.ModelForm):
         widgets = {
             'owner': forms.Select(attrs={'class': 'form-select'}),
             'share_percentage': forms.NumberInput(attrs={
-                'class': 'form-input', 'step': '0.01', 'min': '0.01', 'max': '100',
+                'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0.01', 'max': '100',
             }),
             'is_primary_contact': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 1}),
@@ -355,7 +355,7 @@ class RateTypeForm(forms.ModelForm):
         fields = ['name', 'daily_rate', 'description', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
-            'daily_rate': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
+            'daily_rate': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'description': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
         }

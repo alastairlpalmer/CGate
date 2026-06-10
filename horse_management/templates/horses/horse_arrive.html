@@ -18,7 +18,7 @@
         <form method="post">
             {% csrf_token %}
 
-            <fieldset class="p-5 space-y-5">
+            <fieldset class="p-4 sm:p-5 space-y-4 sm:space-y-5">
                 <legend class="text-base font-semibold text-charcoal mb-4">Placement Details</legend>
 
                 <div>
@@ -73,7 +73,7 @@
             </fieldset>
 
             <!-- Footer -->
-            <div class="border-t border-light-sage px-5 py-4 bg-parchment rounded-b-xl flex justify-end gap-3">
+            <div class="form-footer">
                 <a href="{% url 'horse_detail' horse.pk %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
