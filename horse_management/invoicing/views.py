@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 
 from core.mixins import StaffRequiredMixin, staff_required
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -41,6 +42,13 @@ class InvoiceListView(LoginRequiredMixin, ListView):
         owner = self.request.GET.get('owner')
         if owner:
             queryset = queryset.filter(owner_id=owner)
+
+        search = self.request.GET.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(invoice_number__icontains=search)
+                | Q(owner__name__icontains=search)
+            )
 
         return queryset.order_by('-created_at')
 

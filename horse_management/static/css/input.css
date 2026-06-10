@@ -8,13 +8,16 @@
     .card-hover { @apply bg-white rounded-card border border-light-sage shadow-sm hover:shadow-md hover:border-sage/40 transition-all duration-150 hover:-translate-y-0.5; }
 
     /* Buttons */
-    .btn { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-btn transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 cursor-pointer active:scale-[0.97]; }
+    .btn { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-btn transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 cursor-pointer active:scale-[0.97] touch-manipulation; }
     .btn-primary { @apply btn bg-forest text-white hover:bg-forest-light focus:ring-sage shadow-sm; }
     .btn-secondary { @apply btn bg-white text-charcoal border border-sage/30 hover:bg-light-sage focus:ring-sage; }
     .btn-danger { @apply btn bg-error-red text-white hover:bg-error-red/90 focus:ring-error-red shadow-sm; }
     .btn-success { @apply btn bg-sage text-white hover:bg-sage-light focus:ring-sage shadow-sm; }
     .btn-ghost { @apply btn text-sage hover:text-charcoal hover:bg-light-sage focus:ring-sage; }
     .btn-xs { @apply px-2 py-1 text-xs rounded-sm; }
+    /* Icon-only action button — 44px touch target on mobile, compact on desktop */
+    .btn-icon { @apply inline-flex items-center justify-center w-11 h-11 sm:w-8 sm:h-8 shrink-0 rounded-btn text-sage hover:text-charcoal hover:bg-light-sage active:bg-light-sage/70 transition-colors duration-100 touch-manipulation; }
+    .btn-icon-danger { @apply btn-icon text-error-red/70 hover:text-error-red hover:bg-error-red-50 active:bg-error-red-50; }
 
     /* Badges */
     .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
@@ -89,6 +92,14 @@
     /* More Bottom Sheet nav items */
     .sheet-nav-item { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-charcoal rounded-btn hover:bg-light-sage active:bg-light-sage/70 transition-colors duration-100; }
     .sheet-nav-item-active { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-forest bg-sage-50 rounded-btn transition-colors duration-100; }
+
+    /* Mobile list cards (cards < md, table at md+) */
+    .list-card { @apply relative flex items-start gap-3 px-4 py-3 active:bg-sand-50/60 transition-colors duration-100; }
+    .list-card-title { @apply font-medium text-charcoal text-sm leading-snug; }
+    .list-card-meta { @apply text-xs text-sage mt-0.5; }
+    /* Stretched link: makes the whole card tappable; sibling actions stack above via relative z-10 */
+    .list-card-link::after { content: ''; @apply absolute inset-0; }
+    .list-card-actions { @apply relative z-10 flex items-center gap-0.5 shrink-0 -my-1.5 -mr-1.5; }
 }
 
 /* Safe area insets for notched phones (iPhone X+).
@@ -117,6 +128,7 @@ body { overscroll-behavior-y: none; }
 /* Form widget override — Django renders widgets that already have classes; cascade ours */
 input[type="text"], input[type="email"], input[type="password"], input[type="number"],
 input[type="url"], input[type="tel"], input[type="date"], input[type="datetime-local"],
+input[type="search"],
 textarea, select {
     @apply block w-full rounded-btn border-sage/30 shadow-sm focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 px-3 py-2 border transition-all duration-150;
     font-size: 16px; /* prevent iOS Safari auto-zoom on focus */
@@ -124,8 +136,11 @@ textarea, select {
 @media (min-width: 640px) {
     input[type="text"], input[type="email"], input[type="password"], input[type="number"],
     input[type="url"], input[type="tel"], input[type="date"], input[type="datetime-local"],
+    input[type="search"],
     textarea, select { font-size: 0.875rem; } /* restore text-sm at sm+ */
 }
+/* Hide webkit's native clear so the shared search bar's clear button is the single control */
+input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
 /* .form-input/.form-select/.form-textarea component classes carry text-sm via @apply;
    their class specificity beats the bare `select` selector, so bump on mobile to avoid iOS zoom. */
 @media (max-width: 639px) {

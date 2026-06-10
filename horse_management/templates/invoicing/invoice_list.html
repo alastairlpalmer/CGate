@@ -32,39 +32,45 @@
         </div>
     </div>
 
-    <!-- Filters -->
-    <div class="card px-5 py-4">
-        <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-                <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Owner</label>
-                <select name="owner" class="form-select">
-                    <option value="">All owners</option>
-                    {% for o in owners %}
-                    <option value="{{ o.pk }}" {% if request.GET.owner == o.pk|stringformat:"s" %}selected{% endif %}>{{ o.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Status</label>
-                <select name="status" class="form-select">
-                    <option value="">All statuses</option>
-                    {% for value, label in status_choices %}
-                    <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div></div>
-            <div class="flex items-end gap-2">
-                <button type="submit" class="btn-secondary">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z"/>
-                    </svg>
-                    Filter
-                </button>
-                <a href="{% url 'invoice_list' %}" class="btn-secondary">Clear</a>
+    <!-- Search + Filters -->
+    <div class="card px-4 py-3 sm:px-5 sm:py-4">
+        <form method="get" class="space-y-3">
+            {% include 'includes/search_bar.html' with placeholder="Search by invoice # or owner…" action_url=request.path %}
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Owner</label>
+                    <select name="owner" class="form-select"
+                            hx-get="{{ request.path }}" hx-trigger="change"
+                            hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
+                            hx-include="closest form" hx-push-url="true">
+                        <option value="">All owners</option>
+                        {% for o in owners %}
+                        <option value="{{ o.pk }}" {% if request.GET.owner == o.pk|stringformat:"s" %}selected{% endif %}>{{ o.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Status</label>
+                    <select name="status" class="form-select"
+                            hx-get="{{ request.path }}" hx-trigger="change"
+                            hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
+                            hx-include="closest form" hx-push-url="true">
+                        <option value="">All statuses</option>
+                        {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-span-2 sm:col-span-2 flex items-end justify-end">
+                    {% if request.GET.search or request.GET.owner or request.GET.status %}
+                    <a href="{% url 'invoice_list' %}" class="btn-ghost text-xs">Clear filters</a>
+                    {% endif %}
+                </div>
             </div>
         </form>
     </div>
+
+    <div id="list-results" class="space-y-6">
 
     <!-- Invoice Table -->
     <div class="card overflow-hidden">
@@ -153,6 +159,8 @@
     </div>
 
     {% include 'includes/pagination.html' %}
+
+    </div><!-- /#list-results -->
 
 </div>
 {% endblock %}

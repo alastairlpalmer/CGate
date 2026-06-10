@@ -59,6 +59,15 @@ class ExtraChargeListView(LoginRequiredMixin, ListView):
         if owner:
             queryset = queryset.filter(owner_id=owner)
 
+        search = self.request.GET.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(description__icontains=search)
+                | Q(horse__name__icontains=search)
+                | Q(owner__name__icontains=search)
+                | Q(service_provider__name__icontains=search)
+            )
+
         return queryset.order_by('-date')
 
     def get_context_data(self, **kwargs):

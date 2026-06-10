@@ -105,7 +105,7 @@ class ServiceProviderForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
             'provider_type': forms.Select(attrs={'class': 'form-select'}),
-            'phone': forms.TextInput(attrs={'class': 'form-input'}),
+            'phone': forms.TextInput(attrs={'class': 'form-input', 'type': 'tel', 'autocomplete': 'tel'}),
             'email': forms.EmailInput(attrs={'class': 'form-input'}),
             'address': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
