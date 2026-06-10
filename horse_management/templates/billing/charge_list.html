@@ -89,9 +89,47 @@
 
     <div id="list-results" class="space-y-6">
 
-    <!-- Charge Table -->
+    {% if charges %}
     <div class="card overflow-hidden">
-        <div class="overflow-x-auto">
+
+        <!-- Mobile cards -->
+        <ul class="divide-y divide-light-sage md:hidden">
+            {% for charge in charges %}
+            <li class="list-card">
+                <div class="flex-1 min-w-0">
+                    <a href="{% url 'charge_update' charge.pk %}" class="list-card-link">
+                        <span class="list-card-title line-clamp-2">{{ charge.description }}</span>
+                    </a>
+                    <div class="list-card-meta">
+                        {{ charge.date|date:"d M Y" }} &middot; {{ charge.horse.name }} &middot; {{ charge.owner.name }}
+                    </div>
+                    <div class="mt-1.5 flex items-center gap-1.5">
+                        <span class="{% if charge.charge_type == 'vet' %}badge-danger{% elif charge.charge_type == 'farrier' %}badge-warning{% elif charge.charge_type == 'feed' %}badge-success{% else %}badge-neutral{% endif %}">
+                            {{ charge.get_charge_type_display }}
+                        </span>
+                        {% if charge.invoiced %}
+                        <span class="badge-success">Invoiced</span>
+                        {% else %}
+                        <span class="badge-warning">Unbilled</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="flex flex-col items-end gap-1 shrink-0">
+                    <span class="font-semibold text-charcoal tabular-nums">&pound;{{ charge.amount|floatformat:2 }}</span>
+                    {% if not charge.invoiced %}
+                    <div class="list-card-actions mt-1">
+                        <a href="{% url 'charge_delete' charge.pk %}" class="btn-icon-danger" title="Delete" aria-label="Delete charge" onclick="return confirm('Delete this charge?')">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="data-table">
                 <thead>
                     <tr>
@@ -138,28 +176,29 @@
                             </div>
                         </td>
                     </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="8">
-                            <div class="py-12 text-center">
-                                <svg class="mx-auto h-12 w-12 text-sage/50" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/>
-                                </svg>
-                                <p class="mt-3 text-sm font-medium text-sage">No charges found</p>
-                                <a href="{% url 'charge_create' %}" class="btn-primary mt-4 inline-flex">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                                    </svg>
-                                    Add your first charge
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+    {% else %}
+    <div class="card py-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-sage/50" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/>
+        </svg>
+        <p class="mt-3 text-sm font-medium text-sage">No charges found</p>
+        {% if request.GET.search or request.GET.invoiced or request.GET.type or request.GET.horse or request.GET.owner %}
+        <a href="{% url 'charge_list' %}" class="btn-ghost mt-4 inline-flex text-xs">Clear filters</a>
+        {% else %}
+        <a href="{% url 'charge_create' %}" class="btn-primary mt-4 inline-flex">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+            </svg>
+            Add your first charge
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
 
     {% include 'includes/pagination.html' %}
 

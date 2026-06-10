@@ -106,6 +106,16 @@ class ListSearchTestCase(TestCase):
         self.assertContains(response, 'Dobbin')
         self.assertNotContains(response, 'Star')
 
+    def test_health_dashboard_tabs_render(self):
+        for tab in ('overview', 'vaccinations', 'farrier', 'worming', 'egg_counts', 'conditions', 'vet_visits'):
+            response = self.client.get(reverse('health_dashboard'), {'type': tab})
+            self.assertEqual(response.status_code, 200, tab)
+
+    def test_breeding_list_renders(self):
+        response = self.client.get(reverse('breeding_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="list-results"')
+
     def test_list_pages_render_without_search(self):
         for url_name in ('owner_list', 'location_list', 'invoice_list', 'charge_list', 'horse_list'):
             response = self.client.get(reverse(url_name))

@@ -81,9 +81,44 @@
         </div>
     </div>
 
-    <!-- Placements Table -->
+    <!-- Placements -->
     <div class="card overflow-hidden">
-        <div class="overflow-x-auto">
+
+        <!-- Mobile cards -->
+        <ul class="divide-y divide-light-sage md:hidden">
+            {% for placement in placements %}
+            <li class="list-card">
+                <div class="flex-1 min-w-0">
+                    <a href="{% url 'horse_detail' placement.horse.pk %}" class="list-card-link">
+                        <span class="list-card-title">{{ placement.horse.name }}</span>
+                    </a>
+                    <div class="list-card-meta truncate">{{ placement.owner.name }} &middot; {{ placement.location.name }}</div>
+                    <div class="list-card-meta">{{ placement.rate_type.name }} (&pound;{{ placement.rate_type.daily_rate }}/day)</div>
+                    <div class="list-card-meta tabular-nums mt-1">
+                        {{ placement.start_date|date:"d M Y" }} &rarr;
+                        {% if placement.end_date %}{{ placement.end_date|date:"d M Y" }}{% else %}<span class="badge-success ml-0.5">Current</span>{% endif %}
+                    </div>
+                </div>
+                <div class="list-card-actions self-center">
+                    {% if not placement.end_date %}
+                    <a href="{% url 'horse_move' placement.horse.pk %}" class="btn-icon" title="Move" aria-label="Move {{ placement.horse.name }}">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'placement_update' placement.pk %}" class="btn-icon" title="Edit" aria-label="Edit placement">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+                    </a>
+                </div>
+            </li>
+            {% empty %}
+            <li class="py-12 text-center">
+                <p class="text-sm font-medium text-sage">No movements found</p>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="data-table">
                 <thead>
                     <tr>
