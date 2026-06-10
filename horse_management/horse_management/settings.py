@@ -27,6 +27,10 @@ SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG', default=False)
+# Hard-off on Vercel regardless of env: DEBUG=True serves static files through
+# Django, renders full tracebacks, and accumulates query logs in memory.
+if os.environ.get('VERCEL'):
+    DEBUG = False
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', '.vercel.app'])
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[

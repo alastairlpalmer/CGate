@@ -12,8 +12,8 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <!-- Tailwind CSS (compiled) -->
     <link rel="stylesheet" href="{% static_v 'css/styles.css' %}">
-    <!-- Alpine.js + Collapse plugin -->
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3/dist/cdn.min.js"></script>
+    <!-- Alpine.js + Collapse plugin (vendored locally — no CDN round trip) -->
+    <script defer src="{% static_v 'js/alpine-collapse.min.js' %}"></script>
     <script defer src="{% static_v 'js/alpine.min.js' %}"></script>
     <!-- HTMX -->
     <script src="{% static_v 'js/htmx.min.js' %}"></script>

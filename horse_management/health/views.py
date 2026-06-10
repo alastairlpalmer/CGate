@@ -84,62 +84,62 @@ def health_dashboard(request):
         two_weeks = today + timedelta(days=14)
 
         # Overdue vaccinations
-        overdue_vaccinations = Vaccination.objects.select_related(
+        overdue_vaccinations = list(Vaccination.objects.select_related(
             'horse', 'vaccination_type'
-        ).filter(horse__is_active=True, next_due_date__lt=today).order_by('next_due_date')
+        ).filter(horse__is_active=True, next_due_date__lt=today).order_by('next_due_date'))
 
         # Due soon vaccinations
-        due_vaccinations = Vaccination.objects.select_related(
+        due_vaccinations = list(Vaccination.objects.select_related(
             'horse', 'vaccination_type'
         ).filter(
             horse__is_active=True,
             next_due_date__gte=today,
             next_due_date__lte=thirty_days,
-        ).order_by('next_due_date')
+        ).order_by('next_due_date'))
 
         # Overdue farrier
-        overdue_farrier = FarrierVisit.objects.select_related(
+        overdue_farrier = list(FarrierVisit.objects.select_related(
             'horse', 'service_provider'
         ).filter(
             horse__is_active=True,
             next_due_date__isnull=False,
             next_due_date__lt=today,
-        ).order_by('next_due_date')
+        ).order_by('next_due_date'))
 
         # Due soon farrier
-        due_farrier = FarrierVisit.objects.select_related(
+        due_farrier = list(FarrierVisit.objects.select_related(
             'horse', 'service_provider'
         ).filter(
             horse__is_active=True,
             next_due_date__gte=today,
             next_due_date__lte=two_weeks,
-        ).order_by('next_due_date')
+        ).order_by('next_due_date'))
 
         # Vet follow-ups (overdue)
-        overdue_vet = VetVisit.objects.select_related(
+        overdue_vet = list(VetVisit.objects.select_related(
             'horse', 'vet'
         ).filter(
             horse__is_active=True,
             follow_up_date__isnull=False,
             follow_up_date__lt=today,
-        ).order_by('follow_up_date')
+        ).order_by('follow_up_date'))
 
         # Vet follow-ups (upcoming)
-        due_vet = VetVisit.objects.select_related(
+        due_vet = list(VetVisit.objects.select_related(
             'horse', 'vet'
         ).filter(
             horse__is_active=True,
             follow_up_date__isnull=False,
             follow_up_date__gte=today,
             follow_up_date__lte=thirty_days,
-        ).order_by('follow_up_date')
+        ).order_by('follow_up_date'))
 
         # High egg counts (last 90 days)
-        high_egg_counts = WormEggCount.objects.select_related('horse').filter(
+        high_egg_counts = list(WormEggCount.objects.select_related('horse').filter(
             horse__is_active=True,
             date__gte=today - timedelta(days=90),
             count__gt=200,
-        ).order_by('-date')
+        ).order_by('-date'))
 
         # Active conditions
         active_conditions = MedicalCondition.objects.select_related('horse').filter(
@@ -214,10 +214,10 @@ def health_dashboard(request):
             'coming_up': coming_up,
             'high_egg_counts': high_egg_counts,
             'active_conditions': active_conditions,
-            'stat_overdue_vax': overdue_vaccinations.count(),
-            'stat_due_farrier': overdue_farrier.count() + due_farrier.count(),
-            'stat_vet_followups': overdue_vet.count() + due_vet.count(),
-            'stat_high_eggs': high_egg_counts.count(),
+            'stat_overdue_vax': len(overdue_vaccinations),
+            'stat_due_farrier': len(overdue_farrier) + len(due_farrier),
+            'stat_vet_followups': len(overdue_vet) + len(due_vet),
+            'stat_high_eggs': len(high_egg_counts),
         })
 
     elif tab == 'vaccinations':
@@ -240,7 +240,7 @@ def health_dashboard(request):
         context['vaccinations'] = page_obj
         context['page_obj'] = page_obj
         context['is_paginated'] = page_obj.has_other_pages()
-        context['horses'] = Horse.objects.filter(is_active=True)
+        context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
 
     elif tab == 'farrier':
         queryset = FarrierVisit.objects.select_related(
@@ -262,7 +262,7 @@ def health_dashboard(request):
         context['visits'] = page_obj
         context['page_obj'] = page_obj
         context['is_paginated'] = page_obj.has_other_pages()
-        context['horses'] = Horse.objects.filter(is_active=True)
+        context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
 
     elif tab == 'worming':
         queryset = WormingTreatment.objects.select_related('horse').filter(
@@ -276,7 +276,7 @@ def health_dashboard(request):
         context['treatments'] = page_obj
         context['page_obj'] = page_obj
         context['is_paginated'] = page_obj.has_other_pages()
-        context['horses'] = Horse.objects.filter(is_active=True)
+        context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
 
     elif tab == 'egg_counts':
         queryset = WormEggCount.objects.select_related('horse').filter(
@@ -290,7 +290,7 @@ def health_dashboard(request):
         context['egg_counts'] = page_obj
         context['page_obj'] = page_obj
         context['is_paginated'] = page_obj.has_other_pages()
-        context['horses'] = Horse.objects.filter(is_active=True)
+        context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
 
     elif tab == 'conditions':
         queryset = MedicalCondition.objects.select_related('horse').filter(
@@ -307,7 +307,7 @@ def health_dashboard(request):
         context['conditions'] = page_obj
         context['page_obj'] = page_obj
         context['is_paginated'] = page_obj.has_other_pages()
-        context['horses'] = Horse.objects.filter(is_active=True)
+        context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
 
     elif tab == 'vet_visits':
         queryset = VetVisit.objects.select_related('horse', 'vet').filter(
@@ -321,7 +321,7 @@ def health_dashboard(request):
         context['vet_visits'] = page_obj
         context['page_obj'] = page_obj
         context['is_paginated'] = page_obj.has_other_pages()
-        context['horses'] = Horse.objects.filter(is_active=True)
+        context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
 
     if is_htmx and htmx_target == 'health-table-area':
         template = f'health/partials/{tab}_content.html'
@@ -519,7 +519,7 @@ class VaccinationListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['horses'] = Horse.objects.filter(is_active=True)
+        context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
         context['today'] = timezone.now().date()
         return context
 
@@ -629,7 +629,7 @@ class FarrierListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['horses'] = Horse.objects.filter(is_active=True)
+        context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
         context['today'] = timezone.now().date()
         return context
 
@@ -718,7 +718,7 @@ class WormingListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['horses'] = Horse.objects.filter(is_active=True)
+        context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
         return context
 
 
@@ -771,7 +771,7 @@ class WormEggCountListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['horses'] = Horse.objects.filter(is_active=True)
+        context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
         return context
 
 
@@ -827,7 +827,7 @@ class MedicalConditionListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['horses'] = Horse.objects.filter(is_active=True)
+        context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
         return context
 
 
@@ -879,7 +879,7 @@ class VetVisitListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['horses'] = Horse.objects.filter(is_active=True)
+        context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
         return context
 
 

@@ -75,7 +75,7 @@ class LocationListView(LoginRequiredMixin, ListView):
             context['placements'] = placements.order_by('-start_date')[:50]
             context['current_status'] = status
             context['all_locations'] = Location.objects.order_by('site', 'name')
-            context['owners'] = Owner.objects.all()
+            context['owners'] = Owner.objects.only('pk', 'name')
 
         return context
 
