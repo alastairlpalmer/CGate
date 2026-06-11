@@ -35,6 +35,7 @@ from ..forms import (
 )
 from ..mixins import StaffRequiredMixin, staff_required
 from ..models import Horse, Location, Owner, OwnershipShare, Placement
+from ..search import fuzzy_horse_ids
 
 
 def _warn_if_incomplete_ownership(request, formset):
@@ -99,12 +100,17 @@ class HorseListView(LoginRequiredMixin, ListView):
             queryset = Horse.objects.all().prefetch_related(
                 active_placements, last_placements, ownership_shares_prefetch
             )
-            queryset = queryset.filter(
+            match = (
                 Q(name__icontains=search) |
                 Q(notes__icontains=search) |
                 Q(placements__owner__name__icontains=search) |
                 Q(placements__location__name__icontains=search)
-            ).distinct()
+            )
+            # Typo tolerance: "alihnter" should still find ALIHUNTER.
+            fuzzy_ids = fuzzy_horse_ids(search)
+            if fuzzy_ids:
+                match |= Q(pk__in=fuzzy_ids)
+            queryset = queryset.filter(match).distinct()
         elif self.status == 'departed':
             # Departed: inactive OR active with no current placement (limbo)
             queryset = Horse.objects.filter(
