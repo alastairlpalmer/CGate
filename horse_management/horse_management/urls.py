@@ -30,6 +30,21 @@ urlpatterns = [
     path('xero/', include('xero_integration.urls')),
 ]
 
+# Serve uploaded media through Django in production when SERVE_MEDIA=True
+# (e.g. Railway volume). WhiteNoise only covers static files, and the
+# static() helper below is a no-op unless DEBUG, so wire the view directly.
+if getattr(settings, 'SERVE_MEDIA', False) and not settings.DEBUG:
+    from django.urls import re_path
+    from django.views.static import serve as media_serve
+
+    urlpatterns += [
+        re_path(
+            r'^media/(?P<path>.*)$',
+            media_serve,
+            {'document_root': settings.MEDIA_ROOT},
+        ),
+    ]
+
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
