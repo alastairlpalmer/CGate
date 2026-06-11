@@ -15,7 +15,14 @@ from django.db.models import F
 
 def validate_file_size(value):
     """Reject uploads larger than 5MB."""
-    if value.size > 5 * 1024 * 1024:
+    try:
+        size = value.size
+    except (FileNotFoundError, OSError):
+        # Existing DB path whose file is gone from storage (e.g. uploads
+        # from the serverless era) — nothing new to validate, and raising
+        # here would make every save of the record a 500.
+        return
+    if size > 5 * 1024 * 1024:
         raise DjangoValidationError("File size must be under 5MB.")
 
 
@@ -154,7 +161,7 @@ class Horse(models.Model):
     photo = models.ImageField(
         upload_to='horses/', blank=True, null=True,
         validators=[
-            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp']),
+            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']),
             validate_file_size,
         ],
     )
@@ -595,7 +602,7 @@ class BusinessSettings(models.Model):
     logo = models.ImageField(
         upload_to='business/', blank=True, null=True,
         validators=[
-            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp']),
+            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']),
             validate_file_size,
         ],
     )

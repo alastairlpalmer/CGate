@@ -199,6 +199,12 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STORAGES = {
+    # Defining STORAGES replaces Django's built-in dict entirely, so the
+    # 'default' media storage must be declared too — without it every
+    # file upload save raises InvalidStorageError.
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
     'staticfiles': {
         'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
     },
@@ -328,7 +334,9 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 # Clickjacking protection
 X_FRAME_OPTIONS = 'DENY'
 
-# Logging — surface slow-request warnings in Vercel function logs
+# Logging — surface slow-request warnings AND unhandled-exception
+# tracebacks in the host's console logs. Django's default console handler
+# only fires when DEBUG=True, which leaves production 500s invisible.
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -338,9 +346,17 @@ LOGGING = {
         },
     },
     'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
         'performance': {
             'handlers': ['console'],
             'level': 'WARNING',
+        },
+        'core': {
+            'handlers': ['console'],
+            'level': 'INFO',
         },
     },
 }
