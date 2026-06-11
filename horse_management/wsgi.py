@@ -25,9 +25,12 @@ _boot_error = None
 try:
     from django.core.wsgi import get_wsgi_application
     _django_app = get_wsgi_application()
-    # Run pending migrations on serverless cold-start (Vercel)
-    from django.core.management import call_command
-    call_command('migrate', '--noinput')
+    # Run pending migrations on serverless cold-start — Vercel only.
+    # On Railway (and anywhere else) migrations belong in the deploy step
+    # (see railway/*.json preDeployCommand), never at import time.
+    if os.environ.get('VERCEL'):
+        from django.core.management import call_command
+        call_command('migrate', '--noinput')
 except Exception:
     import traceback
     _boot_error = traceback.format_exc()

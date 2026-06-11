@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 import environ
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -60,6 +61,18 @@ if os.environ.get('VERCEL'):
         ALLOWED_HOSTS.append('.vercel.app')
     if 'https://*.vercel.app' not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append('https://*.vercel.app')
+
+# Auto-add Railway deployment URLs (RAILWAY_* vars are injected by Railway)
+RAILWAY_PUBLIC_DOMAIN = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
+if RAILWAY_PUBLIC_DOMAIN:
+    if RAILWAY_PUBLIC_DOMAIN not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(RAILWAY_PUBLIC_DOMAIN)
+    CSRF_TRUSTED_ORIGINS.append(f'https://{RAILWAY_PUBLIC_DOMAIN}')
+
+# Railway's deployment healthcheck sends Host: healthcheck.railway.app
+if os.environ.get('RAILWAY_ENVIRONMENT'):
+    if 'healthcheck.railway.app' not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append('healthcheck.railway.app')
 
 # Application definition
 INSTALLED_APPS = [
@@ -141,9 +154,16 @@ if DATABASE_URL:
     DATABASES = {
         'default': env.db()
     }
-    DATABASES['default']['CONN_MAX_AGE'] = 0          # Close after each request (required for transaction pooling)
+    # Persistent connections are safe on always-on hosts (Railway) and save a
+    # TLS handshake per request. On serverless (Vercel) they must be 0 —
+    # connections can't be reused across invocations and would leak through
+    # the Supabase pooler.
+    CONN_MAX_AGE = env.int('CONN_MAX_AGE', default=600)
+    if os.environ.get('VERCEL'):
+        CONN_MAX_AGE = 0
+    DATABASES['default']['CONN_MAX_AGE'] = CONN_MAX_AGE
     DATABASES['default']['CONN_HEALTH_CHECKS'] = True
-    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True  # Required for Supabase pooler
+    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True  # Required for Supabase pooler (pgbouncer transaction mode)
 else:
     DATABASES = {
         'default': {
@@ -187,8 +207,17 @@ WHITENOISE_USE_FINDERS = True
 WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0  # 1 year in production, no cache in dev
 
 # Media files (uploads)
+# Point MEDIA_ROOT at a persistent disk in production (e.g. a Railway volume
+# mounted at /data — set MEDIA_ROOT=/data/media). Defaults to the local
+# media/ folder for development.
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = Path(env('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
+
+# Serve media files through Django even when DEBUG=False. WhiteNoise only
+# handles static files, so on hosts without an object store / CDN in front
+# (e.g. Railway with a volume) set SERVE_MEDIA=True. Off by default; never
+# needed on Vercel.
+SERVE_MEDIA = env.bool('SERVE_MEDIA', default=False)
 
 # Upload limits — 10MB max per file, 12MB max request body
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
@@ -224,6 +253,62 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# Celery Beat schedule
+# ---------------------
+# Times are in CELERY_TIMEZONE (Europe/London) and configurable via env vars
+# so they can be changed in the Railway dashboard without a deploy:
+#   REMINDER_HOUR / REMINDER_MINUTE   — when the reminder emails go out
+#   REMINDER_DAYS_OF_WEEK             — crontab day spec, e.g. 'mon-fri' or '*'
+#   INVOICE_STATUS_HOUR               — daily invoice status promotion
+# The reminder tasks are staggered 5 minutes apart from the base time.
+#
+# NOTE: django-celery-beat's DatabaseScheduler syncs these entries into the
+# database when beat starts. Entries named below are re-written from this
+# definition on every beat restart, so change the env vars (or this dict)
+# rather than editing these rows in the Django admin. Extra schedules added
+# in the admin under different names are untouched.
+REMINDER_HOUR = env.int('REMINDER_HOUR', default=7)
+REMINDER_MINUTE = env.int('REMINDER_MINUTE', default=0)
+REMINDER_DAYS_OF_WEEK = env('REMINDER_DAYS_OF_WEEK', default='mon-fri')
+INVOICE_STATUS_HOUR = env.int('INVOICE_STATUS_HOUR', default=6)
+
+CELERY_BEAT_SCHEDULE = {
+    # Promote SENT invoices past their due date to OVERDUE. Runs every day
+    # (including weekends) before the reminder window.
+    'check-invoice-status': {
+        'task': 'notifications.tasks.check_invoice_status',
+        'schedule': crontab(hour=INVOICE_STATUS_HOUR, minute=0),
+    },
+    'send-vaccination-reminders': {
+        'task': 'notifications.tasks.send_vaccination_reminders',
+        'schedule': crontab(
+            hour=REMINDER_HOUR, minute=REMINDER_MINUTE,
+            day_of_week=REMINDER_DAYS_OF_WEEK,
+        ),
+    },
+    'send-farrier-reminders': {
+        'task': 'notifications.tasks.send_farrier_reminders',
+        'schedule': crontab(
+            hour=REMINDER_HOUR, minute=(REMINDER_MINUTE + 5) % 60,
+            day_of_week=REMINDER_DAYS_OF_WEEK,
+        ),
+    },
+    'send-overdue-invoice-reminders': {
+        'task': 'notifications.tasks.send_overdue_invoice_reminders',
+        'schedule': crontab(
+            hour=REMINDER_HOUR, minute=(REMINDER_MINUTE + 10) % 60,
+            day_of_week=REMINDER_DAYS_OF_WEEK,
+        ),
+    },
+    'send-ehv-reminders': {
+        'task': 'notifications.tasks.send_ehv_reminders',
+        'schedule': crontab(
+            hour=REMINDER_HOUR, minute=(REMINDER_MINUTE + 15) % 60,
+            day_of_week=REMINDER_DAYS_OF_WEEK,
+        ),
+    },
+}
 
 # Login settings
 LOGIN_REDIRECT_URL = '/'
