@@ -99,7 +99,7 @@ class ExtraCharge(models.Model):
         upload_to='receipts/%Y/%m/',
         blank=True, null=True,
         validators=[
-            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'pdf']),
+            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'pdf', 'heic', 'heif']),
             validate_file_size,
         ],
     )
@@ -183,7 +183,7 @@ class YardCost(models.Model):
     receipt_image = models.ImageField(
         upload_to='receipts/yard/%Y/%m/', blank=True, null=True,
         validators=[
-            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'pdf']),
+            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'pdf', 'heic', 'heif']),
             validate_file_size,
         ],
     )
