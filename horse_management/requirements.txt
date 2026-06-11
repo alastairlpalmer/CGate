@@ -20,6 +20,7 @@ django-celery-results~=2.6.0
 
 # Image handling
 Pillow~=12.1.1
+pillow-heif~=1.4.0  # decode iPhone HEIC uploads (converted to JPEG on save)
 
 # Development
 django-debug-toolbar~=6.2.0

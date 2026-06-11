@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from django import forms
 
+from .images import heic_to_jpeg
 from .models import BusinessSettings, Horse, Location, Owner, OwnershipShare, Placement, RateType
 
 
@@ -83,6 +84,9 @@ class HorseForm(forms.ModelForm):
             'has_passport': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
         }
+
+    def clean_photo(self):
+        return heic_to_jpeg(self.cleaned_data.get('photo'))
 
 
 class PlacementForm(forms.ModelForm):

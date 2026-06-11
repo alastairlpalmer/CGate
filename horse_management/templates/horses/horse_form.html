@@ -18,6 +18,18 @@
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
 
+            {% if form.errors or ownership_formset.errors %}
+            <div class="m-4 sm:m-5 mb-0 p-3 bg-error-red-50 border border-error-red/20 rounded-lg" role="alert">
+                <p class="text-sm font-medium text-error-red">
+                    The horse wasn't saved — please fix the highlighted
+                    field{{ form.errors|length|pluralize }} below.
+                </p>
+                {% for error in form.non_field_errors %}
+                <p class="text-sm text-error-red">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
             <!-- Basic Info -->
             <fieldset class="p-4 sm:p-5 space-y-4 sm:space-y-5">
                 <legend class="text-base font-semibold text-charcoal mb-4">Basic Info</legend>
