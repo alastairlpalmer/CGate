@@ -4,6 +4,8 @@ Forms for billing app.
 
 from django import forms
 
+from core.images import heic_to_jpeg
+
 from .models import ExtraCharge, FeedOut, FeedStock, ServiceProvider, YardCost
 
 
@@ -28,6 +30,9 @@ class ExtraChargeForm(forms.ModelForm):
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
+    def clean_receipt_image(self):
+        return heic_to_jpeg(self.cleaned_data.get('receipt_image'))
+
 
 class YardCostForm(forms.ModelForm):
     class Meta:
@@ -50,6 +55,9 @@ class YardCostForm(forms.ModelForm):
             'receipt_image': forms.FileInput(attrs={'class': 'form-input'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
+
+    def clean_receipt_image(self):
+        return heic_to_jpeg(self.cleaned_data.get('receipt_image'))
 
 
 class FeedOutForm(forms.ModelForm):
