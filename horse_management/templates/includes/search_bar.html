@@ -24,8 +24,9 @@ Optional params: target (CSS selector), autofocus (truthy)
            hx-swap="outerHTML"
            hx-include="closest form"
            hx-push-url="true">
+    {# Clear the DOM value first: x-model flushes async, so setting q='' then dispatching 'input' re-captures the stale value into q #}
     <button type="button" x-show="q" x-cloak
-            @click="q = ''; $refs.searchInput.dispatchEvent(new Event('input', { bubbles: true })); $refs.searchInput.focus()"
+            @click="$refs.searchInput.value = ''; $refs.searchInput.dispatchEvent(new Event('input', { bubbles: true })); $refs.searchInput.focus()"
             class="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 inline-flex items-center justify-center text-sage/60 hover:text-charcoal rounded transition-colors"
             title="Clear search" aria-label="Clear search">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

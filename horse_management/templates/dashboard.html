@@ -20,25 +20,34 @@
 
     <!-- Quick Find -->
     <div class="relative max-w-xl"
-         x-data="{ open: false }"
+         x-data="{ open: false, q: '' }"
          @click.outside="open = false"
          @keydown.escape.window="open = false">
         <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sage/70 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
         </svg>
-        <input type="search" name="q" x-ref="input"
-               class="form-input pl-9 !mt-0" placeholder="Find a horse, owner or location&hellip;"
+        <input type="search" name="q" x-ref="input" x-model="q"
+               class="form-input pl-9 pr-10 !mt-0" placeholder="Find a horse, owner or location&hellip;"
                autocomplete="off" enterkeyhint="search"
                role="combobox" aria-label="Quick find" aria-controls="quick-find-results"
                :aria-expanded="open"
                hx-get="{% url 'quick_find' %}"
-               hx-trigger="input changed delay:300ms, search"
+               hx-trigger="input changed delay:150ms, search"
                hx-target="#quick-find-results"
                hx-swap="innerHTML"
+               hx-select="unset"
+               hx-sync="this:replace"
                hx-push-url="false"
                @input="open = $event.target.value.trim().length >= 2"
                @focus="open = $el.value.trim().length >= 2"
                @keydown.arrow-down.prevent="$refs.results.querySelector('a')?.focus()">
+        {# Clear the DOM value first: x-model flushes async, so setting q='' then dispatching 'input' re-captures the stale value into q #}
+        <button type="button" x-show="q" x-cloak
+                @click="$refs.input.value = ''; $refs.input.dispatchEvent(new Event('input', { bubbles: true })); open = false; $refs.input.focus()"
+                class="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 inline-flex items-center justify-center text-sage/60 hover:text-charcoal rounded transition-colors"
+                title="Clear search" aria-label="Clear search">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
         <div id="quick-find-results" x-ref="results" x-show="open" x-cloak
              class="absolute z-30 mt-1 w-full card shadow-lg max-h-80 overflow-y-auto"
              @keydown.arrow-down.prevent="(function(){ var as = Array.from($refs.results.querySelectorAll('a')); var i = as.indexOf(document.activeElement); if (as[i+1]) as[i+1].focus(); })()"
