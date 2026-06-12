@@ -1,17 +1,20 @@
 {% if ehv_due %}
-<div class="card border-l-4 border-blue-400">
+<div class="card">
     <div class="section-header">
-        <h2 class="section-title">EHV Vaccinations Due</h2>
+        <div class="flex items-center gap-2.5">
+            <h2 class="section-title">EHV Vaccinations Due</h2>
+            <span class="badge-neutral">{{ ehv_due|length }}</span>
+        </div>
     </div>
     <ul class="divide-y divide-light-sage">
         {% for br in ehv_due %}
         <li class="px-5 py-3">
-            <div class="flex items-center justify-between">
-                <div>
+            <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
                     <a href="{% url 'horse_detail' br.mare.pk %}" class="link text-sm">{{ br.mare.name }}</a>
-                    <p class="text-xs text-sage">x {{ br.stallion_name }}</p>
+                    <p class="text-xs text-sage truncate">x {{ br.stallion_name }}</p>
                 </div>
-                <span class="text-sm text-info-blue">
+                <span class="font-mono text-xs text-sage shrink-0">
                     Due: {{ br.date_foal_due|default:"TBC" }}
                 </span>
             </div>

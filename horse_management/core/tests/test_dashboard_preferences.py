@@ -49,13 +49,20 @@ class DashboardPreferenceModelTests(TestCase):
         self.assertEqual(pref.layout, {})
 
     def test_resolved_layout_uses_defaults_for_new_preference(self):
+        from core.dashboard_widgets import DEFAULT_HIDDEN
+
         user = make_user('defaultuser')
         pref = DashboardPreference.get_for(user)
         layout = pref.resolved_layout()
         self.assertEqual(set(layout.keys()), set(DEFAULT_LAYOUT.keys()))
         for key, meta in layout.items():
-            self.assertTrue(meta['visible'])
+            self.assertEqual(meta['visible'], key not in DEFAULT_HIDDEN)
             self.assertEqual(meta['order'], DEFAULT_LAYOUT[key]['order'])
+
+    def test_pending_departures_hidden_by_default(self):
+        user = make_user('pendinghidden')
+        pref = DashboardPreference.get_for(user)
+        self.assertFalse(pref.resolved_layout()['pending_departures']['visible'])
 
     def test_resolved_layout_merges_partial_stored(self):
         user = make_user('partialuser')
@@ -66,7 +73,16 @@ class DashboardPreferenceModelTests(TestCase):
         self.assertFalse(layout['kpi_total_horses']['visible'])
         self.assertEqual(layout['kpi_total_horses']['order'], 99)
         # Untouched key keeps its default.
-        self.assertTrue(layout['chart_revenue']['visible'])
+        self.assertTrue(layout['recent_activity']['visible'])
+
+    def test_explicit_pending_departures_pref_survives_default_change(self):
+        """Users who explicitly enabled Pending Departures keep it even though
+        the registry default flipped to hidden."""
+        user = make_user('pendingoptin')
+        pref = DashboardPreference.get_for(user)
+        pref.layout = {'pending_departures': {'visible': True, 'order': 4}}
+        pref.save()
+        self.assertTrue(pref.resolved_layout()['pending_departures']['visible'])
 
     def test_resolved_layout_ignores_stale_keys(self):
         user = make_user('staleuser')
@@ -89,7 +105,7 @@ class DashboardToggleCSRFTests(TestCase):
         client.force_login(user)
         resp = client.post(
             reverse('dashboard_toggle'),
-            {'key': 'chart_revenue', 'visible': 'false'},
+            {'key': 'recent_activity', 'visible': 'false'},
         )
         self.assertEqual(resp.status_code, 403)
 
@@ -102,7 +118,7 @@ class DashboardToggleCSRFTests(TestCase):
         token = get_resp.cookies['csrftoken'].value
         resp = client.post(
             reverse('dashboard_toggle'),
-            {'key': 'chart_revenue', 'visible': 'false'},
+            {'key': 'recent_activity', 'visible': 'false'},
             HTTP_X_CSRFTOKEN=token,
         )
         self.assertEqual(resp.status_code, 204)
@@ -115,39 +131,39 @@ class DashboardToggleEndpointTests(TestCase):
         self.url = reverse('dashboard_toggle')
 
     def test_toggle_saves_visibility(self):
-        resp = self.client.post(self.url, {'key': 'chart_revenue', 'visible': 'false'})
+        resp = self.client.post(self.url, {'key': 'recent_activity', 'visible': 'false'})
         self.assertEqual(resp.status_code, 204)
         pref = DashboardPreference.get_for(self.user)
-        self.assertFalse(pref.resolved_layout()['chart_revenue']['visible'])
+        self.assertFalse(pref.resolved_layout()['recent_activity']['visible'])
 
-        resp = self.client.post(self.url, {'key': 'chart_revenue', 'visible': 'true'})
+        resp = self.client.post(self.url, {'key': 'recent_activity', 'visible': 'true'})
         self.assertEqual(resp.status_code, 204)
         pref.refresh_from_db()
-        self.assertTrue(pref.resolved_layout()['chart_revenue']['visible'])
+        self.assertTrue(pref.resolved_layout()['recent_activity']['visible'])
 
     def test_toggle_rejects_unknown_widget(self):
         resp = self.client.post(self.url, {'key': 'not_a_widget', 'visible': 'true'})
         self.assertEqual(resp.status_code, 400)
 
     def test_toggle_rejects_bad_visible_value(self):
-        resp = self.client.post(self.url, {'key': 'chart_revenue', 'visible': 'maybe'})
+        resp = self.client.post(self.url, {'key': 'recent_activity', 'visible': 'maybe'})
         self.assertEqual(resp.status_code, 400)
 
     def test_toggle_requires_login(self):
         self.client.logout()
-        resp = self.client.post(self.url, {'key': 'chart_revenue', 'visible': 'true'})
+        resp = self.client.post(self.url, {'key': 'recent_activity', 'visible': 'true'})
         self.assertEqual(resp.status_code, 302)
 
     def test_toggle_only_touches_own_row(self):
         other = make_user('otheruser')
         other_pref = DashboardPreference.get_for(other)
-        other_pref.layout = {'chart_revenue': {'visible': True, 'order': 4}}
+        other_pref.layout = {'recent_activity': {'visible': True, 'order': 4}}
         other_pref.save()
 
-        self.client.post(self.url, {'key': 'chart_revenue', 'visible': 'false'})
+        self.client.post(self.url, {'key': 'recent_activity', 'visible': 'false'})
 
         other_pref.refresh_from_db()
-        self.assertEqual(other_pref.layout['chart_revenue']['visible'], True)
+        self.assertEqual(other_pref.layout['recent_activity']['visible'], True)
 
 
 class SettingsPagePermissionsTests(TestCase):
@@ -219,21 +235,19 @@ class TemplateRegressionTests(TestCase):
 
 
 class DashboardQueryGatingTests(TestCase):
-    def test_hidden_chart_widget_skips_chart_query(self):
+    def test_hidden_list_widget_not_rendered(self):
         user = make_user('gatinguser')
         self.client.force_login(user)
 
         pref = DashboardPreference.get_for(user)
         layout = pref.resolved_layout()
-        layout['chart_revenue']['visible'] = False
+        layout['recent_activity']['visible'] = False
         pref.layout = layout
         pref.save()
 
         resp = self.client.get(reverse('dashboard'))
         self.assertEqual(resp.status_code, 200)
-        body = resp.content.decode()
-        self.assertNotIn('id="revenueChart"', body)
-        self.assertNotIn('id="chart-data"', body)
+        self.assertNotIn('Recent Activity', resp.content.decode())
 
     def test_all_health_hidden_skips_lazy_loader(self):
         user = make_user('healthhideuser')
@@ -267,3 +281,197 @@ class DashboardQueryGatingTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertNotIn('EHV Vaccinations Due', resp.content.decode())
         self.assertNotIn('High Egg Counts', resp.content.decode())
+
+
+class FinancesChartRenderingTests(TestCase):
+    """Regression: the revenue-chart cost UNION crashed on SQLite because the
+    billing models' Meta.ordering leaked an ORDER BY into the compound
+    subqueries. The view's catch-all then served an empty fallback, so no
+    charts rendered at all. The query (and the regression) now lives in the
+    Finances view."""
+
+    def test_finances_renders_chart_canvases_and_data(self):
+        user = make_user('chartuser')
+        self.client.force_login(user)
+
+        resp = self.client.get(reverse('finances'))
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        self.assertIn('id="revenueChart"', body)
+        self.assertIn('id="capacityChart"', body)
+        self.assertIn('id="chart-data"', body)
+        self.assertIn('id="capacity-data"', body)
+
+    def test_finances_requires_login(self):
+        resp = self.client.get(reverse('finances'))
+        self.assertEqual(resp.status_code, 302)
+
+    def test_finances_renders_for_non_staff(self):
+        user = make_user('viewerfin', is_staff=False)
+        self.client.force_login(user)
+        resp = self.client.get(reverse('finances'))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_finances_nav_link_on_dashboard(self):
+        user = make_user('navuser')
+        self.client.force_login(user)
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('href="/finances/"', body)
+
+
+class DashboardRedesignTests(TestCase):
+    """The dashboard is operational-only: no charts, greeting header,
+    quick-find, hide-when-empty widgets, all-caught-up banner."""
+
+    def test_dashboard_has_no_charts(self):
+        user = make_user('nochartuser')
+        self.client.force_login(user)
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertNotIn('id="revenueChart"', body)
+        self.assertNotIn('id="capacityChart"', body)
+        self.assertNotIn('id="chart-data"', body)
+
+    def test_dashboard_header_and_quick_find(self):
+        user = make_user('headeruser')
+        user.first_name = 'Sam'
+        user.save()
+        self.client.force_login(user)
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('Sam', body)
+        self.assertRegex(body, r'Good (morning|afternoon|evening)')
+        self.assertIn('id="quick-find-results"', body)
+        self.assertNotIn('Your dashboard is empty', body)
+
+    def test_all_caught_up_banner_when_lists_empty(self):
+        user = make_user('caughtupuser')
+        self.client.force_login(user)
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('All caught up', body)
+        # Empty widgets emit nothing at all.
+        self.assertNotIn('Vaccinations Due</h2>', body)
+        self.assertNotIn('Farrier Due', body)
+
+    def test_all_hidden_shows_customize_card_not_banner(self):
+        user = make_user('allhiddenuser')
+        self.client.force_login(user)
+        pref = DashboardPreference.get_for(user)
+        layout = pref.resolved_layout()
+        for key in layout:
+            layout[key]['visible'] = False
+        pref.layout = layout
+        pref.save()
+
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('Your dashboard is empty', body)
+        self.assertNotIn('All caught up', body)
+
+    def test_stale_chart_pref_keys_still_render(self):
+        """Stored layouts predating the chart removal contain chart_* keys;
+        the dashboard must ignore them."""
+        user = make_user('stalechartuser')
+        pref = DashboardPreference.get_for(user)
+        pref.layout = {'chart_revenue': {'visible': True, 'order': 4}}
+        pref.save()
+        self.client.force_login(user)
+        resp = self.client.get(reverse('dashboard'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn('id="revenueChart"', resp.content.decode())
+
+    def test_toggle_rejects_removed_chart_key(self):
+        user = make_user('removedkeyuser')
+        self.client.force_login(user)
+        resp = self.client.post(
+            reverse('dashboard_toggle'),
+            {'key': 'chart_revenue', 'visible': 'true'},
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_overdue_items_stay_on_dashboard(self):
+        """Regression: the due lists filtered next_due_date >= today, so an
+        item silently vanished from the dashboard the day it became overdue.
+        Overdue is the most urgent state — it must render, with the header
+        attention summary counting it (matching the Health page semantics)."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from core.models import Horse
+        from health.models import Vaccination, VaccinationType
+
+        today = timezone.now().date()
+        horse = Horse.objects.create(name='Latebloomer')
+        vt = VaccinationType.objects.create(name='Flu')
+        Vaccination.objects.create(
+            horse=horse, vaccination_type=vt,
+            date_given=today - timedelta(days=300),
+            next_due_date=today - timedelta(days=3),
+        )
+
+        user = make_user('overdueuser')
+        self.client.force_login(user)
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('Latebloomer', body)
+        self.assertIn('days overdue', body)
+        self.assertIn('1 item needs attention', body)
+
+
+class QuickFindTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        from datetime import date
+
+        from core.models import Horse, Location, Owner, Placement, RateType
+
+        cls.owner = Owner.objects.create(
+            name='Sarah Mitchell', email='sarah@example.com', phone='07700111222'
+        )
+        cls.location = Location.objects.create(name='Rough Grounds', site='California Farm')
+        cls.rate = RateType.objects.create(name='Full livery', daily_rate=30)
+        cls.alihunter = Horse.objects.create(name='ALIHUNTER')
+        cls.departed = Horse.objects.create(name='ALIGONE', is_active=False)
+        Placement.objects.create(
+            horse=cls.alihunter, owner=cls.owner, location=cls.location,
+            rate_type=cls.rate, start_date=date(2026, 1, 1),
+        )
+
+    def setUp(self):
+        self.user = make_user('quickfinder')
+        self.client.force_login(self.user)
+
+    def _find(self, q):
+        resp = self.client.get(reverse('quick_find'), {'q': q})
+        self.assertEqual(resp.status_code, 200)
+        return resp.content.decode()
+
+    def test_requires_login(self):
+        self.client.logout()
+        resp = self.client.get(reverse('quick_find'), {'q': 'ali'})
+        self.assertEqual(resp.status_code, 302)
+
+    def test_short_query_returns_empty(self):
+        resp = self.client.get(reverse('quick_find'), {'q': 'a'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.content, b'')
+
+    def test_exact_match_finds_horse(self):
+        body = self._find('ALIHUNTER')
+        self.assertIn('ALIHUNTER', body)
+        self.assertIn(f'/horses/{self.alihunter.pk}/', body)
+
+    def test_typo_finds_horse(self):
+        self.assertIn('ALIHUNTER', self._find('alihnter'))
+
+    def test_finds_owner_and_location(self):
+        body = self._find('mitchel')
+        self.assertIn('Sarah Mitchell', body)
+        self.assertIn(f'/owners/{self.owner.pk}/', body)
+
+        body = self._find('rough gronds')
+        self.assertIn('Rough Grounds', body)
+        self.assertIn(f'/locations/{self.location.pk}/', body)
+
+    def test_inactive_horses_excluded(self):
+        self.assertNotIn('ALIGONE', self._find('aligone'))
+
+    def test_no_match_message(self):
+        self.assertIn('No matches', self._find('zzzqqq'))

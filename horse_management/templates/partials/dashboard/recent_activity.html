@@ -1,4 +1,5 @@
 {% load ui_extras %}
+{% if activity %}
 <div class="card">
     <div class="section-header">
         <h2 class="section-title">Recent Activity</h2>
@@ -18,12 +19,11 @@
                     {% else %}bg-sage{% endif %}"></div>
                 <a href="{{ event.link }}" class="block hover:bg-parchment rounded-lg px-2 py-1 -mx-2 transition-colors">
                     <p class="text-sm text-charcoal">{{ event.desc }}</p>
-                    <p class="text-xs text-sage">{{ event.date|ago_label }} &middot; {{ event.date|date:"d M Y" }}</p>
+                    <p class="text-xs text-sage">{{ event.date|ago_label }} &middot; <span class="font-mono">{{ event.date|date:"d M Y" }}</span></p>
                 </a>
             </div>
-            {% empty %}
-            <p class="text-sm text-sage py-4 pl-7">No recent activity</p>
             {% endfor %}
         </div>
     </div>
 </div>
+{% endif %}

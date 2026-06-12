@@ -6,20 +6,21 @@ view + template (for conditional rendering and reorder within a group).
 
 Groups map to the visual sections of the dashboard:
   - ``kpi``     : 4-column KPI card row
-  - ``chart``   : full-width charts (stacked)
   - ``list``    : two-column lists / tables / timeline
   - ``health``  : lazy-loaded three-column health alerts
+
+The Revenue/Capacity charts moved to the Finances page and are no longer
+dashboard widgets; ``DashboardPreference.resolved_layout()`` ignores their
+stale keys in stored layouts.
 """
 
-GROUPS = ("kpi", "chart", "list", "health")
+GROUPS = ("kpi", "list", "health")
 
 WIDGETS = [
     {"key": "kpi_total_horses",         "name": "Total Horses",                "group": "kpi"},
     {"key": "kpi_vaccinations_due",     "name": "Vaccinations Due (stat)",     "group": "kpi"},
     {"key": "kpi_unbilled_charges",     "name": "Unbilled Charges",            "group": "kpi"},
     {"key": "kpi_outstanding_invoices", "name": "Outstanding Invoices (stat)", "group": "kpi"},
-    {"key": "chart_revenue",            "name": "Revenue vs Costs",            "group": "chart"},
-    {"key": "chart_capacity",           "name": "Site Capacity",               "group": "chart"},
     {"key": "pending_departures",       "name": "Pending Departures",          "group": "list"},
     {"key": "recent_activity",          "name": "Recent Activity",             "group": "list"},
     {"key": "list_vaccinations_due",    "name": "Vaccinations Due (30 days)",  "group": "list"},
@@ -33,8 +34,13 @@ WIDGETS = [
 
 WIDGETS_BY_KEY = {w["key"]: w for w in WIDGETS}
 
+# Hidden unless a user opts in via settings. Expected-departure dates rarely
+# match the day horses are actually collected, so Pending Departures is noise
+# for most users; users who explicitly enabled it keep it (stored prefs win).
+DEFAULT_HIDDEN = {"pending_departures"}
+
 DEFAULT_LAYOUT = {
-    w["key"]: {"visible": True, "order": i}
+    w["key"]: {"visible": w["key"] not in DEFAULT_HIDDEN, "order": i}
     for i, w in enumerate(WIDGETS)
 }
 

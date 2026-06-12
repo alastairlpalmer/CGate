@@ -6,7 +6,8 @@ import logging
 from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q, Sum
+from django.db.models import Sum
+from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 
@@ -22,23 +23,37 @@ from health.models import (
 from invoicing.models import Invoice
 
 from ..dashboard_widgets import GROUPS, WIDGETS_BY_KEY
-from ..models import DashboardPreference, Horse, Location, Placement
+from ..models import DashboardPreference, Horse, Location, Owner, Placement
+from ..search import is_fuzzy_match
 
 logger = logging.getLogger(__name__)
+
+
+def _greeting():
+    """Time-of-day greeting for the dashboard header."""
+    hour = timezone.localtime().hour
+    if hour < 12:
+        return "Good morning"
+    if hour < 18:
+        return "Good afternoon"
+    return "Good evening"
 
 
 def _empty_context():
     """Safe zero-context used when the dashboard view errors out."""
     return {
+        'greeting': _greeting(),
+        'attention_count': 0,
+        'all_caught_up': False,
         'total_horses': 0,
+        'overdue_vax_count': 0,
+        'overdue_invoice_count': 0,
         'vaccinations_due_count': 0,
         'outstanding_invoices_count': 0,
         'vaccinations_due': [],
         'farrier_due': [],
         'outstanding_invoices': [],
         'unbilled_total': 0,
-        'chart_data': {'monthly': {'labels': [], 'revenue': [], 'costs': [], 'forecastStart': 0}},
-        'capacity_data': {'labels': [], 'horses': [], 'capacity': []},
         'activity': [],
         'pending_departures': [],
         'visible_widgets': {g: [] for g in GROUPS},
@@ -60,13 +75,7 @@ def dashboard(request):
 def _dashboard_inner(request):
     """Dashboard queries (health alerts loaded via HTMX). Queries are skipped
     for widgets the user has hidden via their DashboardPreference."""
-    import calendar
-    from datetime import date
-    from decimal import Decimal
-
-    from django.db.models.functions import TruncMonth
-
-    from billing.models import FeedOut, YardCost
+    from billing.models import FeedOut
 
     pref = DashboardPreference.get_for(request.user)
     visible_widgets = pref.visible_ordered_keys_by_group()
@@ -78,9 +87,11 @@ def _dashboard_inner(request):
 
     # Vaccinations: list used by both kpi_vaccinations_due (count) and list_vaccinations_due (rows).
     if 'kpi_vaccinations_due' in visible or 'list_vaccinations_due' in visible:
+        # Includes overdue (no lower bound): an overdue vaccination is the
+        # most urgent thing this list can show — it must not drop off the
+        # dashboard the day it expires. Oldest overdue sorts first.
         vaccinations_due = list(Vaccination.objects.filter(
             next_due_date__lte=thirty_days,
-            next_due_date__gte=today,
             horse__is_active=True,
         ).select_related('horse', 'vaccination_type').order_by('next_due_date')[:10])
     else:
@@ -108,129 +119,11 @@ def _dashboard_inner(request):
 
     farrier_due = []
     if 'list_farrier_due' in visible:
+        # Includes overdue, same as vaccinations above.
         farrier_due = list(FarrierVisit.objects.filter(
             next_due_date__lte=two_weeks,
-            next_due_date__gte=today,
             horse__is_active=True
         ).select_related('horse').order_by('next_due_date')[:10])
-
-    # ── Revenue vs Cost Chart Data ──────────────────────────────
-    chart_data = {'monthly': {'labels': [], 'revenue': [], 'costs': [], 'forecastStart': 0}}
-    if 'chart_revenue' in visible:
-        twelve_months_ago = today.replace(day=1) - timedelta(days=365)
-
-        revenue_qs = (
-            Invoice.objects.filter(
-                status__in=['paid', 'sent'],
-                period_end__gte=twelve_months_ago,
-            )
-            .annotate(month=TruncMonth('period_end'))
-            .values('month')
-            .annotate(total=Sum('total'))
-            .order_by('month')
-        )
-
-        def _to_date(val):
-            return val.date() if hasattr(val, 'date') and callable(val.date) else val
-
-        revenue_map = {_to_date(r['month']): float(r['total']) for r in revenue_qs}
-
-        charge_qs = (
-            ExtraCharge.objects.filter(date__gte=twelve_months_ago)
-            .annotate(month=TruncMonth('date'))
-            .values('month')
-            .annotate(total=Sum('amount'))
-        )
-        yard_qs = (
-            YardCost.objects.filter(date__gte=twelve_months_ago)
-            .annotate(month=TruncMonth('date'))
-            .values('month')
-            .annotate(total=Sum('amount'))
-        )
-        cost_map = {}
-        # Single round trip for both cost sources; months can repeat across the
-        # two arms (all=True), merged below.
-        for c in charge_qs.union(yard_qs, all=True):
-            d = _to_date(c['month'])
-            cost_map[d] = cost_map.get(d, 0) + float(c['total'])
-
-        month_labels = []
-        revenue_data = []
-        cost_data = []
-        for i in range(12):
-            m_offset = 11 - i
-            m = today.month - m_offset
-            y = today.year
-            while m <= 0:
-                m += 12
-                y -= 1
-            d = date(y, m, 1)
-            month_labels.append(d.strftime('%b %y'))
-            revenue_data.append(revenue_map.get(d, 0))
-            cost_data.append(cost_map.get(d, 0))
-
-        active_placements = list(Placement.objects.filter(
-            end_date__isnull=True
-        ).select_related('rate_type').only('expected_departure', 'rate_type__daily_rate'))
-        forecast_labels = []
-        forecast_revenue = []
-        forecast_cost = []
-        avg_cost = sum(cost_data[-3:]) / 3 if any(cost_data[-3:]) else 0
-        for i in range(1, 7):
-            m = today.month + i
-            y = today.year
-            while m > 12:
-                m -= 12
-                y += 1
-            d = date(y, m, 1)
-            days_in_month = calendar.monthrange(y, m)[1]
-            forecast_labels.append(d.strftime('%b %y'))
-            month_rev = Decimal('0')
-            for p in active_placements:
-                if p.expected_departure and p.expected_departure < d:
-                    continue
-                month_rev += p.rate_type.daily_rate * days_in_month
-            forecast_revenue.append(float(month_rev))
-            forecast_cost.append(round(avg_cost, 2))
-
-        chart_data = {
-            'monthly': {
-                'labels': month_labels + forecast_labels,
-                'revenue': revenue_data + forecast_revenue,
-                'costs': cost_data + forecast_cost,
-                'forecastStart': len(month_labels),
-            },
-        }
-
-    # ── Site Capacity Data ──────────────────────────────────────
-    capacity_data = {'labels': [], 'horses': [], 'capacity': []}
-    if 'chart_capacity' in visible:
-        # One query: per-location counts (correct under the placements join),
-        # then sum per site in Python. Annotating Sum(capacity) and the
-        # placement Count together would inflate capacity across joined rows.
-        location_rows = Location.objects.filter(
-            usage__in=[Location.Usage.HORSES, Location.Usage.MIXED],
-        ).annotate(
-            horse_count=Count(
-                'placements__horse',
-                filter=Q(
-                    placements__end_date__isnull=True,
-                    placements__horse__is_active=True,
-                ),
-                distinct=True,
-            ),
-        ).values('site', 'capacity', 'horse_count')
-        site_capacity = {}
-        site_horses = {}
-        for row in location_rows:
-            site_capacity[row['site']] = site_capacity.get(row['site'], 0) + (row['capacity'] or 0)
-            site_horses[row['site']] = site_horses.get(row['site'], 0) + row['horse_count']
-        sites = sorted(site_capacity.keys())
-        capacity_data = {
-            'labels': sites,
-            'horses': [site_horses.get(s, 0) for s in sites],
-            'capacity': [site_capacity.get(s, 0) for s in sites],
-        }
 
     # ── Recent Activity Timeline ────────────────────────────────
     activity = []
@@ -268,16 +161,39 @@ def _dashboard_inner(request):
             pending_groups[key]['horse_ids'].append(str(p.horse.pk))
         pending_departures = list(pending_groups.values())
 
+    # ── Header summary ──────────────────────────────────────────
+    # Derived from lists already fetched for visible widgets — no extra
+    # queries, and the count only reflects what's actually on the page.
+    overdue_vax_count = sum(
+        1 for v in vaccinations_due if v.next_due_date and v.next_due_date < today
+    )
+    overdue_invoice_count = sum(1 for i in outstanding_invoices if i.is_overdue)
+    attention_count = overdue_vax_count + overdue_invoice_count
+
+    # List widgets are enabled but every one of them is empty → "all caught
+    # up" banner instead of a blank stretch of page. Each term is gated on
+    # its own list widget because some lists are also fetched for KPIs.
+    all_caught_up = bool(visible_widgets.get('list')) and not (
+        ('pending_departures' in visible and pending_departures)
+        or ('list_vaccinations_due' in visible and vaccinations_due)
+        or ('list_farrier_due' in visible and farrier_due)
+        or ('table_outstanding' in visible and outstanding_invoices)
+        or ('recent_activity' in visible and activity)
+    )
+
     context = {
+        'greeting': _greeting(),
+        'attention_count': attention_count,
+        'all_caught_up': all_caught_up,
         'total_horses': total_horses,
+        'overdue_vax_count': overdue_vax_count,
+        'overdue_invoice_count': overdue_invoice_count,
         'vaccinations_due': vaccinations_due,
         'vaccinations_due_count': len(vaccinations_due),
         'farrier_due': farrier_due,
         'outstanding_invoices': outstanding_invoices,
         'outstanding_invoices_count': len(outstanding_invoices),
         'unbilled_total': unbilled_total,
-        'chart_data': chart_data,
-        'capacity_data': capacity_data,
         'activity': activity,
         'pending_departures': pending_departures,
         'visible_widgets': visible_widgets,
@@ -349,6 +265,55 @@ def dashboard_health_alerts(request):
         'high_egg_counts': high_egg_counts,
         'vet_follow_ups': vet_follow_ups,
         'upcoming_departures': upcoming_departures,
+        # Grid wrapper renders only when something is worth showing; an empty
+        # response lets the dashboard's outerHTML swap remove the loader.
+        'any_alerts': bool(
+            ehv_due or high_egg_counts or vet_follow_ups or upcoming_departures
+        ),
     }
 
     return render(request, 'partials/dashboard_health_alerts.html', context)
+
+
+# ── Quick find ──────────────────────────────────────────────────────────────
+
+QUICK_FIND_MIN_CHARS = 2
+QUICK_FIND_PER_GROUP = 4
+
+
+@login_required
+def quick_find(request):
+    """HTMX partial: typo-tolerant search across horses, owners and locations.
+
+    Same in-Python fuzzy matching as the list searches (core.search) — the
+    dataset is a few hundred rows, so three values_list queries are cheap.
+    """
+    query = request.GET.get('q', '').strip()
+    if len(query) < QUICK_FIND_MIN_CHARS:
+        return HttpResponse('')
+
+    horses = [
+        {'pk': pk, 'name': name}
+        for pk, name in Horse.objects.filter(is_active=True).values_list('pk', 'name')
+        if is_fuzzy_match(query, name)
+    ][:QUICK_FIND_PER_GROUP]
+
+    owners = [
+        {'pk': pk, 'name': name}
+        for pk, name in Owner.objects.values_list('pk', 'name')
+        if is_fuzzy_match(query, name)
+    ][:QUICK_FIND_PER_GROUP]
+
+    locations = [
+        {'pk': pk, 'name': name, 'site': site}
+        for pk, name, site in Location.objects.values_list('pk', 'name', 'site')
+        if is_fuzzy_match(query, name) or is_fuzzy_match(query, site)
+    ][:QUICK_FIND_PER_GROUP]
+
+    return render(request, 'partials/dashboard/quick_find_results.html', {
+        'query': query,
+        'horses': horses,
+        'owners': owners,
+        'locations': locations,
+        'has_results': bool(horses or owners or locations),
+    })

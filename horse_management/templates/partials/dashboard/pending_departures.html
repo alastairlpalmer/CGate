@@ -1,19 +1,20 @@
 {% if pending_departures %}
-<div class="card border-l-4 border-amber-500">
-    <div class="px-4 py-3 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-            <h2 class="text-sm font-semibold text-charcoal">Pending Departures</h2>
-            <span class="text-xs text-sage">Confirm horses have left</span>
+<div class="card">
+    <div class="section-header">
+        <div class="flex items-center gap-2.5">
+            <h2 class="section-title">Pending Departures</h2>
+            <span class="badge-warning">{{ pending_departures|length }}</span>
         </div>
+        <span class="text-xs text-sage">Confirm horses have left</span>
     </div>
-    <div class="px-4 pb-3 space-y-1.5">
+    <div class="px-5 py-3 space-y-1.5">
         {% for group in pending_departures %}
         <div class="bg-parchment rounded-lg px-3 py-2" x-data="{ editing: false }">
             <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-2 min-w-0">
                     <span class="text-sm font-medium text-charcoal">{{ group.owner_name }}</span>
-                    <span class="text-xs text-sage">&middot; {{ group.date|date:"d M Y" }}</span>
-                    <span class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">{{ group.horses|length }}</span>
+                    <span class="text-xs text-sage font-mono">&middot; {{ group.date|date:"d M Y" }}</span>
+                    <span class="badge-warning">{{ group.horses|length }}</span>
                 </div>
                 <div class="flex items-center gap-1.5 shrink-0">
                     <button @click="editing = !editing" class="text-xs text-sage hover:text-charcoal underline" x-text="editing ? 'Done' : 'Edit'"></button>

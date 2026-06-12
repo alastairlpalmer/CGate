@@ -1,4 +1,4 @@
-{% if health_keys %}
+{% if health_keys and any_alerts %}
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     {% for key in health_keys %}
     {% include "partials/dashboard/"|add:key|add:".html" %}

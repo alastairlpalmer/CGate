@@ -1,0 +1,32 @@
+{% if has_results %}
+{% if horses %}
+<p class="quick-find-group-label">Horses</p>
+{% for h in horses %}
+<a href="{% url 'horse_detail' h.pk %}" class="quick-find-item">
+    <span class="truncate">{{ h.name }}</span>
+    <span class="text-xs text-sage shrink-0">Horse</span>
+</a>
+{% endfor %}
+{% endif %}
+{% if owners %}
+<p class="quick-find-group-label">Owners</p>
+{% for o in owners %}
+<a href="{% url 'owner_detail' o.pk %}" class="quick-find-item">
+    <span class="truncate">{{ o.name }}</span>
+    <span class="text-xs text-sage shrink-0">Owner</span>
+</a>
+{% endfor %}
+{% endif %}
+{% if locations %}
+<p class="quick-find-group-label">Locations</p>
+{% for l in locations %}
+<a href="{% url 'location_detail' l.pk %}" class="quick-find-item">
+    <span class="truncate">{{ l.name }}</span>
+    <span class="text-xs text-sage shrink-0">{{ l.site }}</span>
+</a>
+{% endfor %}
+{% endif %}
+<div class="h-2"></div>
+{% else %}
+<p class="px-4 py-3 text-sm text-sage">No matches for &ldquo;{{ query }}&rdquo;</p>
+{% endif %}

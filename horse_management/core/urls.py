@@ -11,6 +11,10 @@ urlpatterns = [
     # Dashboard
     path('', views.dashboard, name='dashboard'),
     path('_partials/health-alerts/', views.dashboard_health_alerts, name='dashboard_health_alerts'),
+    path('_partials/quick-find/', views.quick_find, name='quick_find'),
+
+    # Finances overview
+    path('finances/', views.finances, name='finances'),
 
     # Horses
     path('horses/', views.HorseListView.as_view(), name='horse_list'),

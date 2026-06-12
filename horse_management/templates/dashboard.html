@@ -4,17 +4,45 @@
 {% block title %}Dashboard - CGate{% endblock %}
 
 {% block content %}
-{% if 'chart_revenue' in visible_keys or 'chart_capacity' in visible_keys %}
-<!-- Chart.js: loaded inside content so hx-boost navigation picks it up -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"
-        integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ"
-        crossorigin="anonymous"></script>
-{% endif %}
 <div class="space-y-8">
 
     <!-- Page Header -->
     <div class="page-header">
-        <h1 class="page-title">Dashboard</h1>
+        <div>
+            <h1 class="page-title">{{ greeting }}, {{ user.first_name|default:user.username }}</h1>
+            <p class="page-subtitle">
+                {% now "l j F Y" %}{% if attention_count %}
+                &middot; <span class="text-saddle font-medium">{{ attention_count }} item{{ attention_count|pluralize }} need{{ attention_count|pluralize:"s," }} attention</span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Quick Find -->
+    <div class="relative max-w-xl"
+         x-data="{ open: false }"
+         @click.outside="open = false"
+         @keydown.escape.window="open = false">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sage/70 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+        </svg>
+        <input type="search" name="q" x-ref="input"
+               class="form-input pl-9 !mt-0" placeholder="Find a horse, owner or location&hellip;"
+               autocomplete="off" enterkeyhint="search"
+               role="combobox" aria-label="Quick find" aria-controls="quick-find-results"
+               :aria-expanded="open"
+               hx-get="{% url 'quick_find' %}"
+               hx-trigger="input changed delay:300ms, search"
+               hx-target="#quick-find-results"
+               hx-swap="innerHTML"
+               hx-push-url="false"
+               @input="open = $event.target.value.trim().length >= 2"
+               @focus="open = $el.value.trim().length >= 2"
+               @keydown.arrow-down.prevent="$refs.results.querySelector('a')?.focus()">
+        <div id="quick-find-results" x-ref="results" x-show="open" x-cloak
+             class="absolute z-30 mt-1 w-full card shadow-lg max-h-80 overflow-y-auto"
+             @keydown.arrow-down.prevent="(function(){ var as = Array.from($refs.results.querySelectorAll('a')); var i = as.indexOf(document.activeElement); if (as[i+1]) as[i+1].focus(); })()"
+             @keydown.arrow-up.prevent="(function(){ var as = Array.from($refs.results.querySelectorAll('a')); var i = as.indexOf(document.activeElement); if (i > 0) { as[i-1].focus(); } else { $refs.input.focus(); } })()"></div>
     </div>
 
     {% if visible_widgets.kpi %}
@@ -25,11 +53,15 @@
     </div>
     {% endif %}
 
-    {% if visible_widgets.chart or visible_widgets.list %}
+    {% if all_caught_up %}
+    <div class="card px-5 py-6 flex items-center gap-3">
+        <svg class="w-5 h-5 text-sage shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-sm text-charcoal">All caught up &mdash; nothing needs your attention right now.</p>
+    </div>
+    {% elif visible_widgets.list %}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 grid-flow-row-dense">
-        {% for key in visible_widgets.chart %}
-        {% include "partials/dashboard/"|add:key|add:".html" %}
-        {% endfor %}
         {% for key in visible_widgets.list %}
         {% include "partials/dashboard/"|add:key|add:".html" %}
         {% endfor %}
@@ -37,7 +69,7 @@
     {% endif %}
 
     {% if any_health_visible %}
-    <div hx-get="{% url 'dashboard_health_alerts' %}" hx-trigger="load" hx-swap="innerHTML" hx-target="this" hx-select="unset" hx-push-url="false">
+    <div hx-get="{% url 'dashboard_health_alerts' %}" hx-trigger="load" hx-swap="outerHTML" hx-target="this" hx-select="unset" hx-push-url="false">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="skeleton-card"></div>
             <div class="skeleton-card"></div>
@@ -46,7 +78,7 @@
     </div>
     {% endif %}
 
-    {% if not visible_widgets.kpi and not visible_widgets.chart and not visible_widgets.list and not any_health_visible %}
+    {% if not visible_widgets.kpi and not visible_widgets.list and not any_health_visible %}
     <div class="card p-8 text-center">
         <p class="text-sm text-sage mb-3">Your dashboard is empty.</p>
         <a href="{% url 'app_settings' %}" class="btn-primary btn-xs">Customize Dashboard</a>
@@ -54,163 +86,4 @@
     {% endif %}
 
 </div>
-
-{% if 'chart_revenue' in visible_keys %}
-{{ chart_data|json_script:"chart-data" }}
-{% endif %}
-{% if 'chart_capacity' in visible_keys %}
-{{ capacity_data|json_script:"capacity-data" }}
-{% endif %}
-
-{% if 'chart_revenue' in visible_keys or 'chart_capacity' in visible_keys %}
-<!-- Chart.js Initialization -->
-<script>
-(function() {
-    if (typeof Chart === 'undefined') return; // Chart.js not loaded yet
-
-    // Colour palette
-    const colors = {
-        forest: '#1B3A2D',
-        sage: '#6B8F71',
-        sand: '#D4C5A9',
-        red: '#C0392B',
-        parchment: '#F7F5F0',
-        lightSage: '#E8EDE9',
-    };
-
-    // Destroy existing charts if re-navigating via HTMX
-    Chart.helpers.each(Chart.instances, function(instance) { instance.destroy(); });
-
-    // ── Revenue vs Cost Line Chart ──
-    const chartDataEl = document.getElementById('chart-data');
-    const revenueCtx = document.getElementById('revenueChart');
-    if (revenueCtx && chartDataEl) {
-        const chartData = JSON.parse(chartDataEl.textContent);
-        const m = chartData.monthly;
-        const forecastIdx = m.forecastStart;
-        new Chart(revenueCtx, {
-            type: 'line',
-            data: {
-                labels: m.labels,
-                datasets: [
-                    {
-                        label: 'Revenue',
-                        data: m.revenue,
-                        borderColor: colors.forest,
-                        backgroundColor: colors.forest + '18',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        segment: {
-                            borderDash: ctx => ctx.p0DataIndex >= forecastIdx - 1 ? [6, 4] : undefined,
-                        },
-                    },
-                    {
-                        label: 'Costs',
-                        data: m.costs,
-                        borderColor: colors.red,
-                        backgroundColor: colors.red + '12',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        segment: {
-                            borderDash: ctx => ctx.p0DataIndex >= forecastIdx - 1 ? [6, 4] : undefined,
-                        },
-                    },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { intersect: false, mode: 'index' },
-                plugins: {
-                    legend: { position: 'top', labels: { usePointStyle: true, padding: 20, font: { family: "'Source Sans 3', sans-serif", size: 12 } } },
-                    tooltip: {
-                        backgroundColor: '#2C2C2C',
-                        titleFont: { family: "'DM Sans', sans-serif" },
-                        bodyFont: { family: "'Source Sans 3', sans-serif" },
-                        callbacks: {
-                            label: function(ctx) {
-                                const suffix = ctx.dataIndex >= forecastIdx ? ' (forecast)' : '';
-                                return ctx.dataset.label + ': £' + ctx.parsed.y.toLocaleString('en-GB', {minimumFractionDigits: 2}) + suffix;
-                            }
-                        }
-                    },
-                    annotation: forecastIdx > 0 ? {
-                        annotations: {
-                            forecastLine: {
-                                type: 'line',
-                                xMin: forecastIdx - 0.5,
-                                xMax: forecastIdx - 0.5,
-                                borderColor: colors.sand,
-                                borderWidth: 1,
-                                borderDash: [4, 4],
-                                label: { display: true, content: 'Forecast', position: 'start', font: { size: 10 }, color: colors.sage }
-                            }
-                        }
-                    } : undefined,
-                },
-                scales: {
-                    x: { grid: { display: false }, ticks: { font: { family: "'Source Sans 3', sans-serif", size: 11 }, color: '#6B8F71' } },
-                    y: { grid: { color: colors.lightSage }, ticks: { font: { family: "'JetBrains Mono', monospace", size: 11 }, color: '#6B8F71', callback: v => '£' + v.toLocaleString() } },
-                },
-            },
-        });
-    }
-
-    // ── Site Capacity Horizontal Bar Chart ──
-    const capacityDataEl = document.getElementById('capacity-data');
-    const capCtx = document.getElementById('capacityChart');
-    if (capCtx && capacityDataEl) {
-        const capacityData = JSON.parse(capacityDataEl.textContent);
-        if (capacityData.labels.length > 0) {
-            const available = capacityData.capacity.map((cap, i) => Math.max(0, cap - capacityData.horses[i]));
-            new Chart(capCtx, {
-                type: 'bar',
-                data: {
-                    labels: capacityData.labels,
-                    datasets: [
-                        {
-                            label: 'Horses',
-                            data: capacityData.horses,
-                            backgroundColor: colors.sage,
-                            borderRadius: 4,
-                        },
-                        {
-                            label: 'Available',
-                            data: available,
-                            backgroundColor: colors.lightSage,
-                            borderRadius: 4,
-                        },
-                    ],
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
-                    plugins: {
-                        legend: { position: 'top', labels: { usePointStyle: true, padding: 20, font: { family: "'Source Sans 3', sans-serif", size: 12 } } },
-                        tooltip: {
-                            backgroundColor: '#2C2C2C',
-                            callbacks: {
-                                afterBody: function(ctx) {
-                                    const i = ctx[0].dataIndex;
-                                    return 'Total capacity: ' + capacityData.capacity[i];
-                                }
-                            }
-                        },
-                    },
-                    scales: {
-                        x: { stacked: true, grid: { color: colors.lightSage }, ticks: { font: { size: 11 }, color: '#6B8F71', stepSize: 1 } },
-                        y: { stacked: true, grid: { display: false }, ticks: { font: { family: "'DM Sans', sans-serif", size: 12, weight: '600' }, color: '#2C2C2C' } },
-                    },
-                },
-            });
-        }
-    }
-})();
-</script>
-{% endif %}
 {% endblock %}
