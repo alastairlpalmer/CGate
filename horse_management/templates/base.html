@@ -17,6 +17,10 @@
     <script defer src="{% static_v 'js/alpine.min.js' %}"></script>
     <!-- HTMX -->
     <script src="{% static_v 'js/htmx.min.js' %}"></script>
+    <!-- Chart.js (vendored locally — loaded in <head> so it survives hx-boost
+         partial swaps; a CDN <script> inside #main-content loads async after
+         the inline chart-init script has already run, leaving charts blank) -->
+    <script defer src="{% static_v 'js/chart.umd.min.js' %}"></script>
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-parchment font-body antialiased text-charcoal" x-data="{ moreSheetOpen: false }"
@@ -391,8 +395,9 @@
         try {
             if (window.Alpine) Alpine.initTree(main);
         } catch(err) { /* Alpine init errors are non-fatal */ }
-        // Re-run inline scripts (skip json_script type=application/json)
-        main.querySelectorAll('script:not([type])').forEach(function(old) {
+        // Re-run inline scripts (skip json_script type=application/json and
+        // external [src] scripts — cloning those via textContent empties them)
+        main.querySelectorAll('script:not([type]):not([src])').forEach(function(old) {
             var s = document.createElement('script');
             s.textContent = old.textContent;
             old.parentNode.replaceChild(s, old);

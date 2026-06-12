@@ -4,12 +4,6 @@
 {% block title %}Dashboard - CGate{% endblock %}
 
 {% block content %}
-{% if 'chart_revenue' in visible_keys or 'chart_capacity' in visible_keys %}
-<!-- Chart.js: loaded inside content so hx-boost navigation picks it up -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"
-        integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ"
-        crossorigin="anonymous"></script>
-{% endif %}
 <div class="space-y-8">
 
     <!-- Page Header -->
@@ -66,7 +60,8 @@
 <!-- Chart.js Initialization -->
 <script>
 (function() {
-    if (typeof Chart === 'undefined') return; // Chart.js not loaded yet
+    function initDashboardCharts() {
+    if (typeof Chart === 'undefined') return;
 
     // Colour palette
     const colors = {
@@ -209,6 +204,15 @@
                 },
             });
         }
+    }
+    }
+
+    if (window.Chart) {
+        // hx-boost navigation: Chart.js already loaded in <head>
+        initDashboardCharts();
+    } else {
+        // Full page load: chart.js is deferred, so wait for it
+        document.addEventListener('DOMContentLoaded', initDashboardCharts);
     }
 })();
 </script>

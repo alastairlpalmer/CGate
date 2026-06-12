@@ -267,3 +267,24 @@ class DashboardQueryGatingTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertNotIn('EHV Vaccinations Due', resp.content.decode())
         self.assertNotIn('High Egg Counts', resp.content.decode())
+
+
+class DashboardChartRenderingTests(TestCase):
+    """Regression: the revenue-chart cost UNION crashed on SQLite because the
+    billing models' Meta.ordering leaked an ORDER BY into the compound
+    subqueries. The view's catch-all then served the empty-dashboard fallback,
+    so no charts (or any widgets) rendered at all."""
+
+    def test_dashboard_renders_chart_canvases_and_data(self):
+        user = make_user('chartuser')
+        self.client.force_login(user)
+
+        resp = self.client.get(reverse('dashboard'))
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        # The empty-context fallback means the view raised; charts must render.
+        self.assertNotIn('Your dashboard is empty', body)
+        self.assertIn('id="revenueChart"', body)
+        self.assertIn('id="capacityChart"', body)
+        self.assertIn('id="chart-data"', body)
+        self.assertIn('id="capacity-data"', body)
