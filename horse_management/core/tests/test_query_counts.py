@@ -83,4 +83,11 @@ class QueryCountTestCase(TestCase):
         self.assertMaxQueries(reverse('horse_list'), 14)
 
     def test_dashboard_query_count(self):
-        self.assertMaxQueries(reverse('dashboard'), 22)
+        # Measured 17 after the chart queries moved to the Finances page;
+        # headroom of 2 for auth/session jitter.
+        self.assertMaxQueries(reverse('dashboard'), 19)
+
+    def test_finances_query_count(self):
+        # Measured 8 (revenue, costs union, placements, capacity, two
+        # aggregates + auth/session).
+        self.assertMaxQueries(reverse('finances'), 10)

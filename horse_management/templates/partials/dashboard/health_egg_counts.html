@@ -1,17 +1,21 @@
 {% if high_egg_counts %}
-<div class="card border-l-4 border-error-red">
+<div class="card">
     <div class="section-header">
-        <h2 class="section-title">High Egg Counts (&gt;200 EPG)</h2>
+        <div class="flex items-center gap-2.5">
+            <h2 class="section-title">High Egg Counts</h2>
+            <span class="badge-neutral">{{ high_egg_counts|length }}</span>
+        </div>
+        <span class="text-xs text-sage">&gt;200 EPG</span>
     </div>
     <ul class="divide-y divide-light-sage">
         {% for ec in high_egg_counts %}
         <li class="px-5 py-3">
-            <div class="flex items-center justify-between">
-                <div>
+            <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
                     <a href="{% url 'horse_detail' ec.horse.pk %}" class="link text-sm">{{ ec.horse.name }}</a>
-                    <p class="text-xs text-sage">{{ ec.date|date:"d M Y" }}</p>
+                    <p class="font-mono text-xs text-sage">{{ ec.date|date:"d M Y" }}</p>
                 </div>
-                <span class="badge-danger">{{ ec.count }} EPG</span>
+                <span class="badge-danger shrink-0">{{ ec.count }} EPG</span>
             </div>
         </li>
         {% endfor %}

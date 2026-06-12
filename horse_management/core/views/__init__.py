@@ -4,7 +4,8 @@ Views for core app — split by domain.
 All views are re-exported here so that urls.py imports remain unchanged.
 """
 
-from .dashboard import dashboard, dashboard_health_alerts  # noqa: F401
+from .dashboard import dashboard, dashboard_health_alerts, quick_find  # noqa: F401
+from .finances import finances  # noqa: F401
 from .horses import (  # noqa: F401
     HorseCreateView,
     HorseDetailView,
