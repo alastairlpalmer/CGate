@@ -6,7 +6,7 @@ import logging
 from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -55,6 +55,7 @@ def _empty_context():
         'outstanding_invoices': [],
         'unbilled_total': 0,
         'activity': [],
+        'field_rest': [],
         'pending_departures': [],
         'visible_widgets': {g: [] for g in GROUPS},
         'visible_keys': set(),
@@ -143,6 +144,40 @@ def _dashboard_inner(request):
         activity.sort(key=lambda x: x['date'], reverse=True)
         activity = activity[:12]
 
+    # ── Field rest this year ────────────────────────────────────
+    # Per-field days rested / with horses for the current calendar year, so the
+    # yard can see grazing rotation at a glance. Sorted by rest days desc.
+    # Two queries total (locations + their periods) — clip each period to the
+    # year in Python rather than one query per field.
+    field_rest = []
+    if 'list_field_rest' in visible:
+        from datetime import date
+        from collections import defaultdict
+        from ..models import LocationUsagePeriod
+
+        year = today.year
+        year_start, year_end = date(year, 1, 1), date(year, 12, 31)
+        periods_by_loc = defaultdict(list)
+        for p in LocationUsagePeriod.objects.filter(
+            start_date__lte=year_end,
+        ).filter(Q(end_date__isnull=True) | Q(end_date__gte=year_start)):
+            periods_by_loc[p.location_id].append(p)
+
+        for loc in Location.objects.order_by('site', 'name'):
+            rested = horses = 0
+            for p in periods_by_loc.get(loc.pk, []):
+                days = p.get_days_in_period(year_start, year_end)
+                if p.usage == Location.Usage.RESTED:
+                    rested += days
+                elif p.usage == Location.Usage.HORSES:
+                    horses += days
+            if rested or horses:
+                field_rest.append({
+                    'location': loc, 'rested': rested, 'horses': horses,
+                })
+        field_rest.sort(key=lambda r: r['rested'], reverse=True)
+        field_rest = field_rest[:8]
+
     # Pending departures (grouped by owner + date) for inline display
     pending_departures = []
     if 'pending_departures' in visible:
@@ -179,6 +214,7 @@ def _dashboard_inner(request):
         or ('list_farrier_due' in visible and farrier_due)
         or ('table_outstanding' in visible and outstanding_invoices)
         or ('recent_activity' in visible and activity)
+        or ('list_field_rest' in visible and field_rest)
     )
 
     context = {
@@ -195,6 +231,7 @@ def _dashboard_inner(request):
         'outstanding_invoices_count': len(outstanding_invoices),
         'unbilled_total': unbilled_total,
         'activity': activity,
+        'field_rest': field_rest,
         'pending_departures': pending_departures,
         'visible_widgets': visible_widgets,
         'visible_keys': visible,

@@ -26,6 +26,7 @@ WIDGETS = [
     {"key": "list_vaccinations_due",    "name": "Vaccinations Due (30 days)",  "group": "list"},
     {"key": "list_farrier_due",         "name": "Farrier Due (2 weeks)",       "group": "list"},
     {"key": "table_outstanding",        "name": "Outstanding Invoices (table)", "group": "list"},
+    {"key": "list_field_rest",          "name": "Field Rest (This Year)",      "group": "list"},
     {"key": "health_upcoming_dep",      "name": "Upcoming Departures",         "group": "health"},
     {"key": "health_ehv_due",           "name": "EHV Vaccinations Due",        "group": "health"},
     {"key": "health_egg_counts",        "name": "High Egg Counts",             "group": "health"},

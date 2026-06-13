@@ -4,11 +4,14 @@ Covers the LocationUsageService writer, the automatic transitions driven by
 horse arrivals/departures, and the usage_days_for_year analytics helper.
 """
 
-from datetime import date
+from datetime import date, datetime, timezone as dt_timezone
+from io import StringIO
 
 from django.core.exceptions import ValidationError
+from django.core.management import call_command
 from django.db import IntegrityError, transaction
 from django.test import TestCase
+from django.utils import timezone
 
 from core.models import (
     Horse, Location, LocationUsagePeriod, Owner, Placement, RateType,
@@ -143,3 +146,109 @@ class AutoTransitionTests(TestCase):
         )
         self.loc.refresh_from_db()
         self.assertEqual(self.loc.usage, Location.Usage.MIXED)
+
+
+class BackfillCommandTests(TestCase):
+    """Reconstructing usage history from placement records."""
+
+    def setUp(self):
+        self.owner = Owner.objects.create(name='Owner')
+        self.rate = RateType.objects.create(name='Grass', daily_rate=10)
+        self.today = timezone.now().date()
+
+    def _make_location(self, name, created):
+        loc = Location.objects.create(name=name, site='Main')
+        # created_at is auto_now_add; override via queryset update.
+        Location.objects.filter(pk=loc.pk).update(
+            created_at=datetime(created.year, created.month, created.day, tzinfo=dt_timezone.utc)
+        )
+        # Seed the open period the migration would have created.
+        LocationUsagePeriod.objects.create(
+            location=loc, usage=loc.usage, start_date=created, source='auto',
+        )
+        return Location.objects.get(pk=loc.pk)
+
+    def _place(self, loc, name, start, end):
+        horse = Horse.objects.create(name=name)
+        Placement.objects.create(
+            horse=horse, owner=self.owner, location=loc,
+            rate_type=self.rate, start_date=start, end_date=end,
+        )
+
+    def _run(self, *args):
+        call_command('backfill_location_usage', *args, stdout=StringIO())
+
+    def test_rebuilds_horses_and_rest_spans(self):
+        loc = self._make_location('Top', date(2024, 1, 1))
+        # Horses Mar–May 2024 (ended), then empty, then horses ongoing.
+        self._place(loc, 'A', date(2024, 3, 1), date(2024, 5, 31))
+        self._place(loc, 'B', date(2024, 9, 1), None)
+
+        self._run('--apply')
+        periods = list(loc.usage_periods.order_by('start_date'))
+        # rested(Jan1–Feb29) horses(Mar1–May31) rested(Jun1–Aug31) horses(Sep1–open)
+        self.assertEqual(len(periods), 4)
+        self.assertEqual(
+            [p.usage for p in periods],
+            ['rested', 'horses', 'rested', 'horses'],
+        )
+        self.assertEqual(periods[0].start_date, date(2024, 1, 1))
+        self.assertEqual(periods[1].start_date, date(2024, 3, 1))
+        self.assertEqual(periods[1].end_date, date(2024, 5, 31))
+        self.assertEqual(periods[2].start_date, date(2024, 6, 1))
+        self.assertIsNone(periods[-1].end_date)  # ongoing → open horses
+        loc.refresh_from_db()
+        self.assertEqual(loc.usage, Location.Usage.HORSES)
+
+    def test_one_day_gap_is_a_rest_day(self):
+        loc = self._make_location('Gap', date(2024, 1, 1))
+        self._place(loc, 'A', date(2024, 3, 1), date(2024, 3, 10))
+        # 2-day gap (11th, 12th empty), then horses again.
+        self._place(loc, 'B', date(2024, 3, 13), date(2024, 3, 20))
+        self._run('--apply')
+        rest = loc.usage_periods.filter(
+            usage='rested', start_date=date(2024, 3, 11)
+        ).first()
+        self.assertIsNotNone(rest)
+        self.assertEqual(rest.end_date, date(2024, 3, 12))
+
+    def test_contiguous_placements_merge(self):
+        loc = self._make_location('Merge', date(2024, 1, 1))
+        # End 10th, next starts 11th — no empty day, single horses span.
+        self._place(loc, 'A', date(2024, 3, 1), date(2024, 3, 10))
+        self._place(loc, 'B', date(2024, 3, 11), date(2024, 3, 20))
+        self._run('--apply')
+        horses = loc.usage_periods.filter(usage='horses')
+        self.assertEqual(horses.count(), 1)
+        self.assertEqual(horses.first().start_date, date(2024, 3, 1))
+        self.assertEqual(horses.first().end_date, date(2024, 3, 20))
+
+    def test_no_placements_left_untouched(self):
+        loc = self._make_location('Empty', date(2024, 1, 1))
+        loc.usage = Location.Usage.HAY
+        loc.save()
+        LocationUsagePeriod.objects.filter(location=loc).update(usage='hay')
+        self._run('--apply')
+        periods = list(loc.usage_periods.all())
+        self.assertEqual(len(periods), 1)
+        self.assertEqual(periods[0].usage, 'hay')
+
+    def test_manual_history_skipped_without_force(self):
+        loc = self._make_location('Manual', date(2024, 1, 1))
+        self._place(loc, 'A', date(2024, 3, 1), None)
+        LocationUsageService.set_usage(
+            loc, usage=Location.Usage.HAY, change_date=date(2024, 6, 1),
+        )
+        before = loc.usage_periods.count()
+        self._run('--apply')
+        self.assertEqual(loc.usage_periods.count(), before)
+        # With --force it rebuilds, dropping the manual period.
+        self._run('--apply', '--force')
+        self.assertFalse(loc.usage_periods.filter(source='manual').exists())
+
+    def test_dry_run_writes_nothing(self):
+        loc = self._make_location('Dry', date(2024, 1, 1))
+        self._place(loc, 'A', date(2024, 3, 1), date(2024, 5, 31))
+        before = loc.usage_periods.count()
+        self._run()  # no --apply
+        self.assertEqual(loc.usage_periods.count(), before)

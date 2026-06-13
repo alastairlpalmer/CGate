@@ -248,9 +248,35 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
             earliest = self.object.usage_periods.aggregate(
                 first=Min('start_date')
             )['first']
-            context['usage_year_choices'] = _usage_year_choices(
+            year_choices = _usage_year_choices(
                 earliest.year if earliest else None
             )
+            context['usage_year_choices'] = year_choices
+
+            # Multi-year comparison: up to the 5 most recent recorded years, in
+            # chronological order. Compute each year's totals once, then shape
+            # both a per-year table and a stacked-bar dataset (one bar per year).
+            compare_years = sorted(year_choices)[-5:]
+            year_totals = {cy: usage_days_for_year(self.object, cy)[0] for cy in compare_years}
+            context['usage_compare_rows'] = [
+                {
+                    'year': cy,
+                    'days': [year_totals[cy].get(value, 0) for value, _ in Location.Usage.choices],
+                    'total': sum(year_totals[cy].values()),
+                }
+                for cy in compare_years
+            ]
+            context['usage_compare_data'] = {
+                'years': compare_years,
+                'datasets': [
+                    {
+                        'label': label,
+                        'color': USAGE_COLORS.get(value, '#6B8F71'),
+                        'days': [year_totals[cy].get(value, 0) for cy in compare_years],
+                    }
+                    for value, label in Location.Usage.choices
+                ],
+            }
             context['usage_periods'] = self.object.usage_periods.order_by(
                 '-start_date'
             )[:50]
