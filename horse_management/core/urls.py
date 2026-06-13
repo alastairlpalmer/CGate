@@ -43,6 +43,7 @@ urlpatterns = [
     path('locations/<int:pk>/edit/', views.LocationUpdateView.as_view(), name='location_update'),
     path('locations/<int:pk>/arrive/', views.log_arrival, name='location_arrive'),
     path('locations/<int:pk>/depart/', views.log_departure, name='location_depart'),
+    path('locations/<int:pk>/set-usage/', views.set_location_usage, name='location_set_usage'),
 
     # Placements (create/edit still needed, list redirects to locations)
     path('placements/', RedirectView.as_view(url='/locations/?tab=history', permanent=False), name='placement_list'),

@@ -27,6 +27,7 @@ from .locations import (  # noqa: F401
     LocationUpdateView,
     log_arrival,
     log_departure,
+    set_location_usage,
 )
 from .owners import (  # noqa: F401
     OwnerCreateView,
