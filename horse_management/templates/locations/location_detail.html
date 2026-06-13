@@ -338,6 +338,49 @@
         </div>
     </div>
 
+    <!-- Multi-year comparison -->
+    {% if usage_compare_rows|length > 1 %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="card">
+            <div class="p-5">
+                <h3 class="text-sm font-semibold text-charcoal mb-4">Days by usage, year on year</h3>
+                <div style="position: relative; height: 220px;">
+                    <canvas id="usageCompareChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="card overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Year</th>
+                            {% for row in usage_summary %}
+                            <th class="text-right">
+                                <span class="inline-flex items-center gap-1.5">
+                                    <span class="inline-block w-2.5 h-2.5 rounded-sm" style="background: {{ row.color }}"></span>
+                                    {{ row.label }}
+                                </span>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for crow in usage_compare_rows reversed %}
+                        <tr>
+                            <td class="font-medium text-charcoal tabular-nums">{{ crow.year }}</td>
+                            {% for d in crow.days %}
+                            <td class="text-right tabular-nums {% if d %}text-charcoal{% else %}text-sage/50{% endif %}">{{ d }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Change usage form -->
     <div class="card">
         <div class="p-5">
@@ -409,6 +452,7 @@
     </div>
 
     {{ usage_chart_data|json_script:"usage-chart-data" }}
+    {{ usage_compare_data|json_script:"usage-compare-data" }}
     <script>
     (function() {
         function initUsageCharts() {
@@ -474,6 +518,34 @@
                             },
                         },
                         scales: baseScales,
+                    },
+                });
+            }
+
+            // Year-on-year comparison: one stacked bar per year.
+            const cmpEl = document.getElementById('usage-compare-data');
+            const cmpCtx = document.getElementById('usageCompareChart');
+            if (cmpEl && cmpCtx) {
+                const cmp = JSON.parse(cmpEl.textContent);
+                const datasets = cmp.datasets.map(ds => ({
+                    label: ds.label,
+                    data: ds.days,
+                    backgroundColor: ds.color,
+                    borderRadius: 4,
+                }));
+                new Chart(cmpCtx, {
+                    type: 'bar',
+                    data: { labels: cmp.years, datasets: datasets },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14, font: { family: "'Source Sans 3', sans-serif", size: 11 } } },
+                            tooltip: { backgroundColor: '#2C2C2C', callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y + ' days' } },
+                        },
+                        scales: {
+                            x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 }, color: '#6B8F71' } },
+                            y: { stacked: true, grid: { color: '#E8EDE9' }, ticks: { font: { size: 11 }, color: '#6B8F71' } },
+                        },
                     },
                 });
             }

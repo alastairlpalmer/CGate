@@ -85,8 +85,10 @@ class QueryCountTestCase(TestCase):
     def test_dashboard_query_count(self):
         # Measured 17 after the chart queries moved to the Finances page,
         # +1 for the per-request session write (SESSION_SAVE_EVERY_REQUEST,
-        # the rolling 30-day login); headroom for auth/session jitter.
-        self.assertMaxQueries(reverse('dashboard'), 20)
+        # the rolling 30-day login), +2 for the Field Rest widget (locations
+        # + their usage periods, a constant 2 regardless of field count);
+        # headroom for auth/session jitter.
+        self.assertMaxQueries(reverse('dashboard'), 22)
 
     def test_finances_query_count(self):
         # Measured 8 (revenue, costs union, placements, capacity, two
