@@ -14,6 +14,8 @@ Covers:
 - Regression: multi-line Django comments don't leak into rendered HTML.
 """
 
+import re
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -475,3 +477,14 @@ class QuickFindTests(TestCase):
 
     def test_no_match_message(self):
         self.assertIn('No matches', self._find('zzzqqq'))
+
+    def test_dashboard_input_disinherits_hx_select(self):
+        """The body's hx-boost defaults include hx-select="#main-content", which
+        htmx inherits. The quick-find partial contains no #main-content, so
+        without hx-select="unset" on the input every response swaps in empty
+        content and the dropdown never appears (endpoint tests can't catch this).
+        """
+        body = self.client.get(reverse('dashboard')).content.decode()
+        input_tag = re.search(r'<input[^>]*name="q"[^>]*>', body)
+        self.assertIsNotNone(input_tag, 'quick-find input not found on dashboard')
+        self.assertIn('hx-select="unset"', input_tag.group(0))
