@@ -55,6 +55,27 @@ class LocationForm(forms.ModelForm):
         }
 
 
+class LocationUsageForm(forms.Form):
+    """Log a usage change for a field, optionally backdated to an effective date."""
+
+    usage = forms.ChoiceField(
+        choices=Location.Usage.choices,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    change_date = forms.DateField(
+        label="Effective date",
+        input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(
+            format='%Y-%m-%d',
+            attrs={'class': 'form-input', 'type': 'date'},
+        ),
+    )
+    notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+    )
+
+
 class HorseForm(forms.ModelForm):
     # Override date_of_birth to disable localization so HTML5 date input gets YYYY-MM-DD
     date_of_birth = forms.DateField(

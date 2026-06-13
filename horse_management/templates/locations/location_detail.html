@@ -128,6 +128,10 @@
                class="pb-3 text-sm font-medium border-b-2 transition-colors duration-100 {% if current_tab == 'history' %}border-forest text-forest{% else %}border-transparent text-sage hover:text-charcoal hover:border-sage/50{% endif %}">
                 History
             </a>
+            <a href="{% url 'location_detail' location.pk %}?tab=usage"
+               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-100 {% if current_tab == 'usage' %}border-forest text-forest{% else %}border-transparent text-sage hover:text-charcoal hover:border-sage/50{% endif %}">
+                Usage
+            </a>
         </nav>
     </div>
 
@@ -265,6 +269,223 @@
             </table>
         </div>
     </div>
+
+    {% elif current_tab == 'usage' %}
+    <!-- ═══ Usage Analytics Tab ═══ -->
+
+    <!-- Year selector -->
+    <div class="card px-5 py-3 flex items-center justify-between flex-wrap gap-3">
+        <div class="inline-flex rounded-lg shadow-sm flex-wrap">
+            {% for y in usage_year_choices %}
+            <a href="{% url 'location_detail' location.pk %}?tab=usage&year={{ y }}"
+               class="px-4 py-2 text-sm font-medium border {% if y == usage_year_choices.0 %}rounded-l-lg{% endif %}{% if forloop.last %} rounded-r-lg{% endif %}
+                      {% if y == usage_year %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
+                {{ y }}
+            </a>
+            {% endfor %}
+        </div>
+        <span class="text-xs text-sage">{{ usage_total_days }} day{{ usage_total_days|pluralize }} tracked in {{ usage_year }}</span>
+    </div>
+
+    <!-- Day-count summary + chart -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="card">
+            <div class="p-5">
+                <h3 class="text-sm font-semibold text-charcoal mb-4">Days by usage in {{ usage_year }}</h3>
+                <div style="position: relative; height: 200px;">
+                    <canvas id="usageDaysChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="card overflow-hidden">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Usage</th>
+                        <th class="text-right">Days</th>
+                        <th class="text-right">% of year</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in usage_summary %}
+                    <tr>
+                        <td>
+                            <span class="inline-flex items-center gap-2">
+                                <span class="inline-block w-3 h-3 rounded-sm" style="background: {{ row.color }}"></span>
+                                {{ row.label }}
+                            </span>
+                        </td>
+                        <td class="text-right font-medium text-charcoal tabular-nums">{{ row.days }}</td>
+                        <td class="text-right text-sage tabular-nums">{{ row.pct }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="card">
+        <div class="p-5">
+            <h3 class="text-sm font-semibold text-charcoal mb-4">Usage timeline {{ usage_year }}</h3>
+            {% if usage_chart_data.segments %}
+            <div style="position: relative; height: 90px;">
+                <canvas id="usageTimelineChart"></canvas>
+            </div>
+            {% else %}
+            <p class="text-sm text-sage py-6 text-center">No usage recorded for {{ usage_year }}.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Change usage form -->
+    <div class="card">
+        <div class="p-5">
+            <h3 class="text-sm font-semibold text-charcoal mb-4">Change usage</h3>
+            <form method="post" action="{% url 'location_set_usage' location.pk %}" class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-xs font-medium text-sage mb-1">Usage</label>
+                    {{ usage_form.usage }}
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-sage mb-1">Effective date</label>
+                    {{ usage_form.change_date }}
+                </div>
+                <div class="sm:col-span-1">
+                    <label class="block text-xs font-medium text-sage mb-1">Notes (optional)</label>
+                    {{ usage_form.notes }}
+                </div>
+                <div>
+                    <button type="submit" class="btn-primary w-full justify-center">Save</button>
+                </div>
+            </form>
+            <p class="mt-2 text-xs text-sage">Set the effective date in the past to backdate a change. Empty fields automatically rest; horses arriving mark a field as in use.</p>
+        </div>
+    </div>
+
+    <!-- Period history -->
+    <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Usage</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Source</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for period in usage_periods %}
+                    <tr>
+                        <td class="font-medium text-charcoal">{{ period.get_usage_display }}</td>
+                        <td class="text-sage tabular-nums">{{ period.start_date|date:"d M Y" }}</td>
+                        <td>
+                            {% if period.end_date %}
+                                <span class="text-sage tabular-nums">{{ period.end_date|date:"d M Y" }}</span>
+                            {% else %}
+                                <span class="badge-success">Current</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if period.source == 'auto' %}
+                            <span class="badge-neutral">Automatic</span>
+                            {% else %}
+                            <span class="badge-info">Manual</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-sage">{{ period.notes|truncatewords:8|default:"—" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-sage py-8">No usage history recorded yet</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{ usage_chart_data|json_script:"usage-chart-data" }}
+    <script>
+    (function() {
+        function initUsageCharts() {
+            if (typeof Chart === 'undefined') return;
+            const el = document.getElementById('usage-chart-data');
+            if (!el) return;
+            const data = JSON.parse(el.textContent);
+            const baseScales = {
+                x: { stacked: true, grid: { color: '#E8EDE9' }, ticks: { font: { size: 11 }, color: '#6B8F71' } },
+                y: { stacked: true, grid: { display: false }, ticks: { display: false } },
+            };
+
+            // Days-by-usage: one stacked horizontal bar, one dataset per usage.
+            const daysCtx = document.getElementById('usageDaysChart');
+            if (daysCtx) {
+                const datasets = data.labels.map((label, i) => ({
+                    label: label,
+                    data: [data.days[i]],
+                    backgroundColor: data.colors[i],
+                    borderRadius: 4,
+                }));
+                new Chart(daysCtx, {
+                    type: 'bar',
+                    data: { labels: ['{{ usage_year }}'], datasets: datasets },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                        plugins: {
+                            legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14, font: { family: "'Source Sans 3', sans-serif", size: 11 } } },
+                            tooltip: { backgroundColor: '#2C2C2C', callbacks: { label: c => c.dataset.label + ': ' + c.parsed.x + ' days' } },
+                        },
+                        scales: baseScales,
+                    },
+                });
+            }
+
+            // Timeline: segments in calendar order, width = day count.
+            const tlCtx = document.getElementById('usageTimelineChart');
+            if (tlCtx && data.segments.length) {
+                const datasets = data.segments.map((seg, i) => ({
+                    label: seg.label + ' (' + seg.start + ' → ' + seg.end + ')',
+                    data: [seg.days],
+                    backgroundColor: seg.color,
+                    borderRadius: 0,
+                    stack: 'timeline',
+                    _seg: seg,
+                }));
+                new Chart(tlCtx, {
+                    type: 'bar',
+                    data: { labels: ['{{ usage_year }}'], datasets: datasets },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#2C2C2C',
+                                callbacks: {
+                                    title: () => '',
+                                    label: c => {
+                                        const s = c.dataset._seg;
+                                        return s.label + ': ' + s.days + ' days (' + s.start + ' → ' + s.end + ')';
+                                    },
+                                },
+                            },
+                        },
+                        scales: baseScales,
+                    },
+                });
+            }
+        }
+
+        if (window.Chart) {
+            initUsageCharts();
+        } else {
+            document.addEventListener('DOMContentLoaded', initUsageCharts);
+        }
+    })();
+    </script>
 
     {% else %}
     <!-- ═══ Current Horses Tab (default) ═══ -->

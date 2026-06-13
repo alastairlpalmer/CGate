@@ -14,6 +14,11 @@ class Migration(migrations.Migration):
     dependencies = [
         ('core', '0014_add_performance_indexes'),
         ('invoicing', '0001_move_invoice_models'),
+        # XeroInvoiceSync.invoice points at core.Invoice until xero_integration
+        # 0002 re-points it to invoicing.Invoice. Removing Invoice from core's
+        # state before that re-point leaves a dangling FK, so on a fresh
+        # database this migration must run after the xero FK has moved.
+        ('xero_integration', '0002_alter_xeroinvoicesync_invoice'),
     ]
 
     operations = [

@@ -122,6 +122,80 @@ class Location(models.Model):
         return None
 
 
+class LocationUsagePeriod(models.Model):
+    """A contiguous span of time during which a Location had a single usage.
+
+    Mirrors Placement: at most one open period (end_date null) per location.
+    Records the field-usage history so we can analyse how many days a field
+    was rested, held horses, was set for hay, etc. across a year.
+    """
+
+    class Source(models.TextChoices):
+        AUTO = 'auto', 'Automatic'
+        MANUAL = 'manual', 'Manual'
+
+    location = models.ForeignKey(
+        Location,
+        on_delete=models.CASCADE,
+        related_name='usage_periods'
+    )
+    usage = models.CharField(max_length=20, choices=Location.Usage.choices)
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    source = models.CharField(
+        max_length=10, choices=Source.choices, default=Source.MANUAL,
+        help_text="Whether this period was logged manually or set automatically "
+                  "by a horse arrival/departure."
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-start_date']
+        indexes = [
+            models.Index(fields=['location', 'end_date'], name='usageperiod_loc_enddate'),
+            models.Index(fields=['location', 'start_date'], name='usageperiod_loc_startdate'),
+        ]
+        constraints = [
+            # Only one open-ended usage period per location at a time
+            models.UniqueConstraint(
+                fields=['location'],
+                condition=models.Q(end_date__isnull=True),
+                name='unique_open_usage_period_per_location',
+            ),
+        ]
+
+    def __str__(self):
+        status = "current" if self.is_current else f"ended {self.end_date}"
+        return f"{self.location.name}: {self.get_usage_display()} ({status})"
+
+    def clean(self):
+        super().clean()
+        if self.end_date and self.start_date and self.end_date < self.start_date:
+            raise DjangoValidationError(
+                "Usage period end date cannot be before start date."
+            )
+
+    @property
+    def is_current(self):
+        return self.end_date is None
+
+    def get_effective_dates_in_period(self, period_start, period_end):
+        """Return (effective_start, effective_end) clipped to the given period."""
+        effective_start = max(self.start_date, period_start)
+        effective_end = min(self.end_date or period_end, period_end)
+        return (effective_start, effective_end)
+
+    def get_days_in_period(self, period_start, period_end):
+        """Inclusive count of days this period overlaps the given period."""
+        effective_start, effective_end = self.get_effective_dates_in_period(
+            period_start, period_end
+        )
+        if effective_start > effective_end:
+            return 0
+        return (effective_end - effective_start).days + 1
+
+
 class Horse(models.Model):
     """Individual horse record."""
 

@@ -11,7 +11,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Horse, OwnershipShare, Placement
+from .models import Horse, Location, LocationUsagePeriod, OwnershipShare, Placement
 
 
 class PlacementService:
@@ -97,12 +97,21 @@ class PlacementService:
             notes=notes,
         )
 
+        old_location = current_placement.location if current_placement else None
+        new_loc_was_empty = LocationUsageService._is_empty(new_location)
+
         # End current placement FIRST so overlap validation passes
         if current_placement:
             current_placement.end_date = move_date - timedelta(days=1)
             current_placement.save()
         new_placement.full_clean()
         new_placement.save()
+
+        # Field emptied by the move rests from the move date; the destination
+        # becomes a horses field if horses just arrived onto it.
+        if old_location and old_location != new_location:
+            LocationUsageService.rest_if_empty(old_location, move_date - timedelta(days=1))
+        LocationUsageService.horses_arrived(new_location, move_date, was_empty=new_loc_was_empty)
 
         return new_placement
 
@@ -115,6 +124,7 @@ class PlacementService:
         Returns the new placement.
         Raises ValidationError if the placement is invalid.
         """
+        was_empty = LocationUsageService._is_empty(location)
         placement = Placement(
             horse=horse,
             owner=owner,
@@ -126,6 +136,7 @@ class PlacementService:
         )
         placement.full_clean()
         placement.save()
+        LocationUsageService.horses_arrived(location, arrival_date, was_empty=was_empty)
         return placement
 
     @staticmethod
@@ -146,12 +157,15 @@ class PlacementService:
                 f"Departure date cannot be before arrival ({current_placement.start_date})."
             )
 
+        location = current_placement.location
         current_placement.end_date = departure_date
         current_placement.save()
 
         if departure_date <= timezone.now().date():
             horse.is_active = False
             horse.save(update_fields=['is_active'])
+
+        LocationUsageService.rest_if_empty(location, departure_date)
 
         return current_placement
 
@@ -191,6 +205,7 @@ class PlacementService:
 
         Returns (created_count, errors) tuple.
         """
+        was_empty = LocationUsageService._is_empty(location)
         created = 0
         errors = []
         for horse in horses:
@@ -209,6 +224,8 @@ class PlacementService:
                 created += 1
             except ValidationError as e:
                 errors.append(f"{horse.name}: {e}")
+        if created:
+            LocationUsageService.horses_arrived(location, arrival_date, was_empty=was_empty)
         return created, errors
 
     @staticmethod
@@ -245,4 +262,113 @@ class PlacementService:
                 placement.horse.save(update_fields=['is_active'])
             departed += 1
 
+        if departed:
+            LocationUsageService.rest_if_empty(location, departure_date)
+
         return departed, depart_errors
+
+
+class LocationUsageService:
+    """Service for recording field (Location) usage history over time.
+
+    Maintains a chain of LocationUsagePeriod rows — one open period per
+    location — and keeps Location.usage in sync. Usage changes are driven both
+    manually (staff log a change, optionally backdated) and automatically
+    (horses arriving onto an empty field, or a field emptying out).
+    """
+
+    @staticmethod
+    @transaction.atomic
+    def set_usage(location, *, usage, change_date,
+                  source=LocationUsagePeriod.Source.MANUAL, notes=''):
+        """Change a location's usage as of change_date.
+
+        Closes the current open period (end_date = change_date - 1 day),
+        opens a new one, and keeps Location.usage in sync. The single writer
+        of usage history.
+
+        Returns the new LocationUsagePeriod, or None if usage is unchanged.
+        Raises ValidationError if change_date is not after the current start.
+        """
+        current = location.usage_periods.filter(end_date__isnull=True).first()
+
+        # No-op: already in this usage state.
+        if current and current.usage == usage:
+            return None
+
+        if current and change_date <= current.start_date:
+            raise ValidationError(
+                f"Change date must be after the current usage period start "
+                f"({current.start_date})."
+            )
+
+        if current:
+            current.end_date = change_date - timedelta(days=1)
+            current.save()
+
+        new_period = LocationUsagePeriod(
+            location=location,
+            usage=usage,
+            start_date=change_date,
+            source=source,
+            notes=notes,
+        )
+        new_period.full_clean()
+        new_period.save()
+
+        if location.usage != usage:
+            location.usage = usage
+            location.save(update_fields=['usage'])
+
+        return new_period
+
+    @staticmethod
+    def _is_empty(location, exclude_horse_ids=None):
+        """True if the location has no active (open) placements."""
+        qs = Placement.objects.filter(location=location, end_date__isnull=True)
+        if exclude_horse_ids:
+            qs = qs.exclude(horse_id__in=exclude_horse_ids)
+        return not qs.exists()
+
+    @staticmethod
+    def _set_usage_auto(location, usage, change_date):
+        """Best-effort automatic usage transition.
+
+        Never breaks the calling placement operation — if the change can't be
+        recorded cleanly (e.g. backdated before the current period start), the
+        history is simply skipped.
+        """
+        try:
+            LocationUsageService.set_usage(
+                location,
+                usage=usage,
+                change_date=change_date,
+                source=LocationUsagePeriod.Source.AUTO,
+            )
+        except ValidationError:
+            pass
+
+    @staticmethod
+    def horses_arrived(location, arrival_date, *, was_empty):
+        """Auto-mark a field as holding horses when horses arrive onto it.
+
+        Only fires when the field was previously empty, so manual states such
+        as 'mixed' or 'hay' on an occupied field are preserved.
+        """
+        if was_empty:
+            LocationUsageService._set_usage_auto(
+                location, Location.Usage.HORSES, arrival_date
+            )
+
+    @staticmethod
+    def rest_if_empty(location, last_occupied_date):
+        """Auto-mark a field as rested once the last horse has left.
+
+        The field is empty from the day after the final occupied day, so the
+        rest period starts then.
+        """
+        if LocationUsageService._is_empty(location):
+            LocationUsageService._set_usage_auto(
+                location, Location.Usage.RESTED,
+                last_occupied_date + timedelta(days=1),
+            )
