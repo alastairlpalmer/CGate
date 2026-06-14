@@ -45,17 +45,28 @@
     {% if current_tab == 'usage' %}
     <!-- ═══ Usage Overview Tab ═══ -->
 
-    <!-- Year selector -->
-    <div class="card px-5 py-3">
+    <!-- Period selector -->
+    <div class="card px-5 py-3 space-y-3">
+        <div class="inline-flex rounded-lg shadow-sm">
+            <a href="{% url 'location_list' %}?tab=usage&range=3mo"
+               class="px-4 py-2 text-sm font-medium border rounded-l-lg {% if usage_range == '3mo' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">3 months</a>
+            <a href="{% url 'location_list' %}?tab=usage&range=6mo"
+               class="px-4 py-2 text-sm font-medium border-y {% if usage_range == '6mo' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">6 months</a>
+            <a href="{% url 'location_list' %}?tab=usage&range=year&year={{ usage_year }}"
+               class="px-4 py-2 text-sm font-medium border rounded-r-lg {% if usage_range == 'year' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">Year</a>
+        </div>
+        {% if usage_range == 'year' %}
         <div class="inline-flex rounded-lg shadow-sm flex-wrap">
             {% for y in usage_year_choices %}
-            <a href="{% url 'location_list' %}?tab=usage&year={{ y }}"
+            <a href="{% url 'location_list' %}?tab=usage&range=year&year={{ y }}"
                class="px-4 py-2 text-sm font-medium border {% if y == usage_year_choices.0 %}rounded-l-lg{% endif %}{% if forloop.last %} rounded-r-lg{% endif %}
                       {% if y == usage_year %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
                 {{ y }}
             </a>
             {% endfor %}
         </div>
+        {% endif %}
+        <p class="text-xs text-sage">Showing number of days per usage over the {{ usage_period_label }}.</p>
     </div>
 
     <!-- Legend -->
@@ -71,33 +82,36 @@
     {% for site, rows in usage_overview %}
     <div class="space-y-2">
         <h2 class="text-sm font-semibold text-charcoal">{{ site }}</h2>
-        <div class="card overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Field</th>
-                            {% for m in usage_meta %}
-                            <th class="text-right">{{ m.label }}</th>
-                            {% endfor %}
-                            <th class="text-right">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in rows %}
-                        <tr>
-                            <td>
-                                <a href="{% url 'location_detail' row.location.pk %}?tab=usage&year={{ usage_year }}" class="link font-medium">{{ row.location.name }}</a>
-                            </td>
-                            {% for d in row.days %}
-                            <td class="text-right tabular-nums {% if d %}text-charcoal{% else %}text-sage/40{% endif %}">{{ d }}</td>
-                            {% endfor %}
-                            <td class="text-right font-medium text-charcoal tabular-nums">{{ row.total }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <div class="card divide-y divide-light-sage">
+            {% for row in rows %}
+            <div class="p-4 sm:p-5">
+                <div class="flex items-baseline justify-between gap-3">
+                    <a href="{% url 'location_detail' row.location.pk %}?tab=usage&range={{ usage_range }}&year={{ usage_year }}" class="link font-medium">{{ row.location.name }}</a>
+                    <span class="text-xs text-sage tabular-nums shrink-0">{{ row.total }} day{{ row.total|pluralize }} tracked</span>
+                </div>
+                {% if row.segments %}
+                <!-- Proportion bar -->
+                <div class="mt-2.5 flex h-2.5 w-full overflow-hidden rounded-full bg-light-sage">
+                    {% for seg in row.segments %}
+                    <div class="h-full" style="width: {{ seg.pct }}%; background: {{ seg.color }}" title="{{ seg.label }}: {{ seg.days }} days"></div>
+                    {% endfor %}
+                </div>
+                <!-- Day chips -->
+                <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+                    {% for seg in row.segments %}
+                    <span class="inline-flex items-center gap-1.5 text-sm text-charcoal">
+                        <span class="inline-block w-2.5 h-2.5 rounded-sm shrink-0" style="background: {{ seg.color }}"></span>
+                        {{ seg.label }}
+                        <span class="font-semibold tabular-nums">{{ seg.days }}</span>
+                        <span class="text-sage">day{{ seg.days|pluralize }}</span>
+                    </span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="mt-2 text-sm text-sage/70">No usage recorded in this period.</p>
+                {% endif %}
             </div>
+            {% endfor %}
         </div>
     </div>
     {% empty %}

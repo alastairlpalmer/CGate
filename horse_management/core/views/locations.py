@@ -3,7 +3,7 @@ Location views — CRUD, detail tabs, arrival/departure logging.
 """
 
 import calendar
-from datetime import date
+from datetime import date, timedelta
 from itertools import groupby
 
 from django.contrib import messages
@@ -30,15 +30,13 @@ USAGE_COLORS = {
 }
 
 
-def usage_days_for_year(location, year):
-    """Compute usage day-counts and timeline segments for a location in a year.
+def usage_days_for_period(location, period_start, period_end):
+    """Compute usage day-counts and timeline segments for a location in a period.
 
     Returns (totals, segments) where ``totals`` maps each usage value to its
-    inclusive day count within the year, and ``segments`` is a date-ordered list
-    of dicts (usage, label, start, end, days) for the timeline view.
+    inclusive day count within the period, and ``segments`` is a date-ordered
+    list of dicts (usage, label, start, end, days) for the timeline view.
     """
-    period_start = date(year, 1, 1)
-    period_end = date(year, 12, 31)
     periods = location.usage_periods.filter(
         start_date__lte=period_end,
     ).filter(
@@ -64,12 +62,63 @@ def usage_days_for_year(location, year):
     return totals, segments
 
 
+def usage_days_for_year(location, year):
+    """Backwards-compatible wrapper computing usage for a whole calendar year."""
+    return usage_days_for_period(location, date(year, 1, 1), date(year, 12, 31))
+
+
+def _months_ago(d, n):
+    """Return the date ``n`` whole months before ``d`` (clamping the day).
+
+    Dependency-free month arithmetic (avoids requiring python-dateutil).
+    """
+    month_index = (d.year * 12 + (d.month - 1)) - n
+    year, month = divmod(month_index, 12)
+    month += 1
+    last_day = calendar.monthrange(year, month)[1]
+    return date(year, month, min(d.day, last_day))
+
+
 def _usage_year_choices(earliest_year):
     """Year selector range from the earliest recorded period to this year."""
     this_year = timezone.now().date().year
     if not earliest_year or earliest_year > this_year:
         earliest_year = this_year
     return list(range(this_year, earliest_year - 1, -1))
+
+
+def _resolve_usage_window(request):
+    """Resolve the selected Usage analytics window from query params.
+
+    Returns a dict: range ('3mo'|'6mo'|'year'), year, start, end (dates),
+    label, days (inclusive day count), is_year.
+    """
+    today = timezone.now().date()
+    range_key = request.GET.get('range', 'year')
+    if range_key not in ('3mo', '6mo', 'year'):
+        range_key = 'year'
+
+    if range_key in ('3mo', '6mo'):
+        months = 3 if range_key == '3mo' else 6
+        end = today
+        start = _months_ago(today, months) + timedelta(days=1)
+        label = f"last {months} months"
+        return {
+            'range': range_key, 'year': today.year,
+            'start': start, 'end': end, 'label': label,
+            'days': (end - start).days + 1, 'is_year': False,
+        }
+
+    try:
+        year = int(request.GET.get('year', today.year))
+    except (TypeError, ValueError):
+        year = today.year
+    start, end = date(year, 1, 1), date(year, 12, 31)
+    return {
+        'range': 'year', 'year': year,
+        'start': start, 'end': end, 'label': str(year),
+        'days': 366 if calendar.isleap(year) else 365, 'is_year': True,
+    }
 
 
 class LocationListView(LoginRequiredMixin, ListView):
@@ -111,32 +160,44 @@ class LocationListView(LoginRequiredMixin, ListView):
 
         # Usage analytics overview tab
         if context['current_tab'] == 'usage':
-            this_year = timezone.now().date().year
-            try:
-                year = int(self.request.GET.get('year', this_year))
-            except (TypeError, ValueError):
-                year = this_year
+            window = _resolve_usage_window(self.request)
 
             usage_meta = [
                 {'value': v, 'label': label, 'color': USAGE_COLORS.get(v, '#6B8F71')}
                 for v, label in Location.Usage.choices
             ]
+            label_for = {v: label for v, label in Location.Usage.choices}
             overview = []
             for site, locs in groupby(context['locations'], key=lambda l: l.site):
                 rows = []
                 for loc in locs:
-                    totals, _ = usage_days_for_year(loc, year)
+                    totals, _ = usage_days_for_period(loc, window['start'], window['end'])
+                    total = sum(totals.values())
+                    # Compact, mobile-friendly: only the non-zero usages, each
+                    # with its share of the field's tracked days for the bar.
+                    segments = [
+                        {
+                            'value': v,
+                            'label': label_for[v],
+                            'color': USAGE_COLORS.get(v, '#6B8F71'),
+                            'days': totals[v],
+                            'pct': round(totals[v] / total * 100, 1) if total else 0,
+                        }
+                        for v in totals if totals[v]
+                    ]
                     rows.append({
                         'location': loc,
-                        'days': [totals.get(m['value'], 0) for m in usage_meta],
-                        'total': sum(totals.values()),
+                        'segments': segments,
+                        'total': total,
                     })
                 overview.append((site, rows))
 
             earliest = LocationUsagePeriod.objects.aggregate(
                 first=Min('start_date')
             )['first']
-            context['usage_year'] = year
+            context['usage_range'] = window['range']
+            context['usage_year'] = window['year']
+            context['usage_period_label'] = window['label']
             context['usage_meta'] = usage_meta
             context['usage_overview'] = overview
             context['usage_year_choices'] = _usage_year_choices(
@@ -212,14 +273,11 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
 
         # Usage analytics tab data
         if context['current_tab'] == 'usage':
-            this_year = context['today'].year
-            try:
-                year = int(self.request.GET.get('year', this_year))
-            except (TypeError, ValueError):
-                year = this_year
+            window = _resolve_usage_window(self.request)
 
-            totals, segments = usage_days_for_year(self.object, year)
-            days_in_year = 366 if calendar.isleap(year) else 365
+            totals, segments = usage_days_for_period(
+                self.object, window['start'], window['end']
+            )
 
             usage_labels = dict(Location.Usage.choices)
             summary = [
@@ -228,12 +286,14 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
                     'label': usage_labels[value],
                     'color': USAGE_COLORS.get(value, '#6B8F71'),
                     'days': days,
-                    'pct': round(days / days_in_year * 100, 1) if days else 0,
+                    'pct': round(days / window['days'] * 100, 1) if days else 0,
                 }
                 for value, days in totals.items()
             ]
 
-            context['usage_year'] = year
+            context['usage_range'] = window['range']
+            context['usage_year'] = window['year']
+            context['usage_period_label'] = window['label']
             context['usage_summary'] = summary
             context['usage_total_days'] = sum(totals.values())
             context['usage_chart_data'] = {
@@ -253,30 +313,31 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
             )
             context['usage_year_choices'] = year_choices
 
-            # Multi-year comparison: up to the 5 most recent recorded years, in
-            # chronological order. Compute each year's totals once, then shape
-            # both a per-year table and a stacked-bar dataset (one bar per year).
-            compare_years = sorted(year_choices)[-5:]
-            year_totals = {cy: usage_days_for_year(self.object, cy)[0] for cy in compare_years}
-            context['usage_compare_rows'] = [
-                {
-                    'year': cy,
-                    'days': [year_totals[cy].get(value, 0) for value, _ in Location.Usage.choices],
-                    'total': sum(year_totals[cy].values()),
-                }
-                for cy in compare_years
-            ]
-            context['usage_compare_data'] = {
-                'years': compare_years,
-                'datasets': [
+            # Multi-year comparison only makes sense in Year mode: up to the 5
+            # most recent recorded years, chronological. Compute each year's
+            # totals once, then shape a per-year table and a stacked-bar dataset.
+            if window['is_year']:
+                compare_years = sorted(year_choices)[-5:]
+                year_totals = {cy: usage_days_for_year(self.object, cy)[0] for cy in compare_years}
+                context['usage_compare_rows'] = [
                     {
-                        'label': label,
-                        'color': USAGE_COLORS.get(value, '#6B8F71'),
-                        'days': [year_totals[cy].get(value, 0) for cy in compare_years],
+                        'year': cy,
+                        'days': [year_totals[cy].get(value, 0) for value, _ in Location.Usage.choices],
+                        'total': sum(year_totals[cy].values()),
                     }
-                    for value, label in Location.Usage.choices
-                ],
-            }
+                    for cy in compare_years
+                ]
+                context['usage_compare_data'] = {
+                    'years': compare_years,
+                    'datasets': [
+                        {
+                            'label': label,
+                            'color': USAGE_COLORS.get(value, '#6B8F71'),
+                            'days': [year_totals[cy].get(value, 0) for cy in compare_years],
+                        }
+                        for value, label in Location.Usage.choices
+                    ],
+                }
             context['usage_periods'] = self.object.usage_periods.order_by(
                 '-start_date'
             )[:50]

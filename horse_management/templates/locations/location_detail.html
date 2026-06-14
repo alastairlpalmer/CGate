@@ -273,25 +273,37 @@
     {% elif current_tab == 'usage' %}
     <!-- ═══ Usage Analytics Tab ═══ -->
 
-    <!-- Year selector -->
-    <div class="card px-5 py-3 flex items-center justify-between flex-wrap gap-3">
+    <!-- Period selector -->
+    <div class="card px-5 py-3 space-y-3">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+            <div class="inline-flex rounded-lg shadow-sm">
+                <a href="{% url 'location_detail' location.pk %}?tab=usage&range=3mo"
+                   class="px-4 py-2 text-sm font-medium border rounded-l-lg {% if usage_range == '3mo' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">3 months</a>
+                <a href="{% url 'location_detail' location.pk %}?tab=usage&range=6mo"
+                   class="px-4 py-2 text-sm font-medium border-y {% if usage_range == '6mo' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">6 months</a>
+                <a href="{% url 'location_detail' location.pk %}?tab=usage&range=year&year={{ usage_year }}"
+                   class="px-4 py-2 text-sm font-medium border rounded-r-lg {% if usage_range == 'year' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">Year</a>
+            </div>
+            <span class="text-xs text-sage">{{ usage_total_days }} day{{ usage_total_days|pluralize }} tracked in the {{ usage_period_label }}</span>
+        </div>
+        {% if usage_range == 'year' %}
         <div class="inline-flex rounded-lg shadow-sm flex-wrap">
             {% for y in usage_year_choices %}
-            <a href="{% url 'location_detail' location.pk %}?tab=usage&year={{ y }}"
+            <a href="{% url 'location_detail' location.pk %}?tab=usage&range=year&year={{ y }}"
                class="px-4 py-2 text-sm font-medium border {% if y == usage_year_choices.0 %}rounded-l-lg{% endif %}{% if forloop.last %} rounded-r-lg{% endif %}
                       {% if y == usage_year %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
                 {{ y }}
             </a>
             {% endfor %}
         </div>
-        <span class="text-xs text-sage">{{ usage_total_days }} day{{ usage_total_days|pluralize }} tracked in {{ usage_year }}</span>
+        {% endif %}
     </div>
 
     <!-- Day-count summary + chart -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="card">
             <div class="p-5">
-                <h3 class="text-sm font-semibold text-charcoal mb-4">Days by usage in {{ usage_year }}</h3>
+                <h3 class="text-sm font-semibold text-charcoal mb-4">Days by usage ({{ usage_period_label }})</h3>
                 <div style="position: relative; height: 200px;">
                     <canvas id="usageDaysChart"></canvas>
                 </div>
@@ -303,7 +315,7 @@
                     <tr>
                         <th>Usage</th>
                         <th class="text-right">Days</th>
-                        <th class="text-right">% of year</th>
+                        <th class="text-right">% of period</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -327,19 +339,19 @@
     <!-- Timeline -->
     <div class="card">
         <div class="p-5">
-            <h3 class="text-sm font-semibold text-charcoal mb-4">Usage timeline {{ usage_year }}</h3>
+            <h3 class="text-sm font-semibold text-charcoal mb-4">Usage timeline ({{ usage_period_label }})</h3>
             {% if usage_chart_data.segments %}
             <div style="position: relative; height: 90px;">
                 <canvas id="usageTimelineChart"></canvas>
             </div>
             {% else %}
-            <p class="text-sm text-sage py-6 text-center">No usage recorded for {{ usage_year }}.</p>
+            <p class="text-sm text-sage py-6 text-center">No usage recorded for the {{ usage_period_label }}.</p>
             {% endif %}
         </div>
     </div>
 
-    <!-- Multi-year comparison -->
-    {% if usage_compare_rows|length > 1 %}
+    <!-- Multi-year comparison (Year mode only) -->
+    {% if usage_range == 'year' and usage_compare_rows|length > 1 %}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="card">
             <div class="p-5">
@@ -452,7 +464,7 @@
     </div>
 
     {{ usage_chart_data|json_script:"usage-chart-data" }}
-    {{ usage_compare_data|json_script:"usage-compare-data" }}
+    {% if usage_range == 'year' %}{{ usage_compare_data|json_script:"usage-compare-data" }}{% endif %}
     <script>
     (function() {
         function initUsageCharts() {
@@ -476,7 +488,7 @@
                 }));
                 new Chart(daysCtx, {
                     type: 'bar',
-                    data: { labels: ['{{ usage_year }}'], datasets: datasets },
+                    data: { labels: ['{{ usage_period_label }}'], datasets: datasets },
                     options: {
                         responsive: true, maintainAspectRatio: false, indexAxis: 'y',
                         plugins: {
@@ -501,7 +513,7 @@
                 }));
                 new Chart(tlCtx, {
                     type: 'bar',
-                    data: { labels: ['{{ usage_year }}'], datasets: datasets },
+                    data: { labels: ['{{ usage_period_label }}'], datasets: datasets },
                     options: {
                         responsive: true, maintainAspectRatio: false, indexAxis: 'y',
                         plugins: {
