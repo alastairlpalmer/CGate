@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}Invoice Run #{{ run.display_number }} - CGate{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Invoice Summary for Run #{{ run.display_number }}</h1>
+            <p class="page-subtitle">
+                Period {{ run.period_start|date:"d/m/Y" }} &ndash; {{ run.period_end|date:"d/m/Y" }}
+                &middot;
+                {% if run.concatenate_invoices %}
+                    Concatenated (one invoice per owner)
+                {% else %}
+                    Per-horse (one invoice per horse)
+                {% endif %}
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'invoice_list' %}" class="btn-secondary">Back to invoices</a>
+        </div>
+    </div>
+
+    {% for group in owner_groups %}
+    <div class="card">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-light-sage">
+            <div>
+                <h2 class="text-lg font-semibold text-charcoal">{{ group.owner.name }}</h2>
+                <p class="text-sm text-muted">
+                    {{ group.invoices|length }} invoice{{ group.invoices|length|pluralize }}
+                    &middot; Total &pound;{{ group.total|floatformat:2 }}
+                </p>
+            </div>
+            {% if not run.concatenate_invoices %}
+            <a href="{% url 'invoice_run_bundle_pdf' run.id group.owner.id %}"
+               class="btn-primary">
+                Download bundle PDF
+            </a>
+            {% endif %}
+        </div>
+
+        <table class="w-full text-sm">
+            <thead class="bg-parchment">
+                <tr>
+                    <th class="text-left px-5 py-2 font-semibold">Inv No</th>
+                    <th class="text-left px-5 py-2 font-semibold">Horse / Ad hoc item</th>
+                    <th class="text-left px-5 py-2 font-semibold">Owner</th>
+                    <th class="text-right px-5 py-2 font-semibold">Net Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for invoice in group.invoices %}
+                <tr class="border-b border-light-sage">
+                    <td class="px-5 py-2">
+                        <a href="{% url 'invoice_detail' invoice.pk %}" class="text-forest underline">
+                            {{ invoice.invoice_number }}
+                        </a>
+                    </td>
+                    <td class="px-5 py-2">
+                        {% if invoice.horse %}
+                            {{ invoice.horse.name }}
+                        {% else %}
+                            &mdash;
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-2">{{ invoice.owner.name }}</td>
+                    <td class="px-5 py-2 text-right">&pound;{{ invoice.subtotal|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+                <tr class="bg-parchment">
+                    <td colspan="3" class="px-5 py-2 text-right font-semibold">Subtotal</td>
+                    <td class="px-5 py-2 text-right font-semibold">&pound;{{ group.subtotal|floatformat:2 }}</td>
+                </tr>
+                <tr class="bg-parchment">
+                    <td colspan="3" class="px-5 py-2 text-right font-semibold">VAT</td>
+                    <td class="px-5 py-2 text-right font-semibold">&pound;0.00</td>
+                </tr>
+                <tr class="bg-parchment">
+                    <td colspan="3" class="px-5 py-2 text-right font-bold">Amount due</td>
+                    <td class="px-5 py-2 text-right font-bold">&pound;{{ group.total|floatformat:2 }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {% empty %}
+    <div class="card p-5 text-muted">
+        This run produced no invoices.
+    </div>
+    {% endfor %}
+
+    {% if owner_groups %}
+    <div class="card p-5 flex justify-end gap-6 text-sm">
+        <div>Run subtotal: <strong>&pound;{{ run_subtotal|floatformat:2 }}</strong></div>
+        <div>Run total: <strong>&pound;{{ run_total|floatformat:2 }}</strong></div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

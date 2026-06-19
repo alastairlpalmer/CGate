@@ -7,9 +7,54 @@ Uses db_table to keep original table names, avoiding database migration changes.
 from datetime import timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.validators import MinValueValidator
-from django.db import models
+from django.db import models, transaction
+from django.db.models import F
 from django.utils import timezone
+
+
+class InvoiceRun(models.Model):
+    """A batch of invoices generated together for a billing period.
+
+    Each run has a stable, zero-padded display number (e.g. "0090") and a
+    flag governing whether each owner receives one combined invoice
+    (concatenate=True) or one invoice per horse (concatenate=False, with
+    compound numbering like "0090/0001").
+    """
+
+    run_number = models.PositiveIntegerField(unique=True)
+    period_start = models.DateField()
+    period_end = models.DateField()
+    concatenate_invoices = models.BooleanField(default=True)
+    next_sub_number = models.PositiveIntegerField(default=1)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='invoice_runs',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-run_number']
+
+    def __str__(self):
+        return f"Run #{self.display_number}"
+
+    @property
+    def display_number(self):
+        return f"{self.run_number:04d}"
+
+    def allocate_sub_number(self):
+        """Atomically allocate the next sub-invoice number for this run."""
+        with transaction.atomic():
+            number = InvoiceRun.objects.select_for_update().get(pk=self.pk).next_sub_number
+            InvoiceRun.objects.filter(pk=self.pk).update(
+                next_sub_number=F('next_sub_number') + 1
+            )
+        self.next_sub_number = number + 1
+        return number
 
 
 class Invoice(models.Model):
@@ -26,6 +71,20 @@ class Invoice(models.Model):
         'core.Owner',
         on_delete=models.PROTECT,
         related_name='invoices'
+    )
+    run = models.ForeignKey(
+        InvoiceRun,
+        on_delete=models.PROTECT,
+        null=True, blank=True,
+        related_name='invoices',
+    )
+    # Set only for per-horse sub-invoices (OFF mode). NULL for concatenated
+    # owner-level invoices where line items are the source of horse attribution.
+    horse = models.ForeignKey(
+        'core.Horse',
+        on_delete=models.PROTECT,
+        null=True, blank=True,
+        related_name='invoices',
     )
     invoice_number = models.CharField(max_length=50, unique=True)
     period_start = models.DateField()

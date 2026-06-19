@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Run {{ run.display_number }} — {{ owner.name }}</title>
+    <style>
+        @page {
+            margin: 1.5cm 2cm;
+            size: A4;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #333;
+            margin: 0;
+        }
+        h1 {
+            font-size: 20px;
+            margin: 0 0 15px;
+            color: #1B3A2D;
+        }
+        .meta {
+            margin-bottom: 20px;
+            color: #555;
+            font-size: 11px;
+        }
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .summary-table th {
+            background-color: #E8EDE9;
+            text-align: left;
+            padding: 8px 10px;
+            font-size: 10px;
+            border-bottom: 1px solid #6B8F71;
+        }
+        .summary-table th.amount,
+        .summary-table td.amount {
+            text-align: right;
+        }
+        .summary-table td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .totals-row td {
+            border: none;
+            padding: 4px 10px;
+        }
+        .totals-row .total-label {
+            text-align: right;
+            font-weight: bold;
+        }
+        .totals-row .grand {
+            border-top: 2px solid #1B3A2D;
+            font-size: 13px;
+            font-weight: bold;
+            padding-top: 6px;
+        }
+        .page-break {
+            page-break-before: always;
+        }
+        /* Invoice body styles (shared with invoice_pdf.html) */
+        .invoice-title {
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #1B3A2D;
+            margin: 15px 0 10px;
+        }
+        .invoice-meta { margin-bottom: 20px; }
+        .invoice-meta table { width: 100%; }
+        .invoice-meta td { vertical-align: top; }
+        .bill-to .owner-name { font-weight: bold; font-size: 12px; }
+        .invoice-box {
+            border: 1px solid #999;
+            padding: 8px 12px;
+            font-size: 10px;
+            width: 200px;
+            float: right;
+        }
+        .invoice-box table { width: 100%; }
+        .invoice-box td { padding: 2px 0; }
+        .invoice-box .label { color: #666; font-weight: bold; }
+        .invoice-box .value { text-align: right; }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .items-table th {
+            background-color: #E8EDE9;
+            padding: 6px 10px;
+            text-align: left;
+            font-size: 10px;
+            font-weight: bold;
+            border-bottom: 1px solid #6B8F71;
+        }
+        .items-table th.amount { text-align: right; }
+        .items-table td { padding: 4px 10px; vertical-align: top; }
+        .horse-header td {
+            font-weight: bold;
+            padding-top: 10px;
+            font-size: 11px;
+            background-color: #F7F5F0;
+        }
+        .livery-item td { padding-left: 20px; }
+        .extra-item td { padding-left: 30px; font-size: 10px; color: #555; }
+        .amount-col { text-align: right; white-space: nowrap; }
+        .totals-section {
+            width: 250px;
+            margin-left: auto;
+            margin-bottom: 20px;
+        }
+        .totals-section table { width: 100%; border-collapse: collapse; }
+        .totals-section td { padding: 3px 0; font-size: 11px; }
+        .totals-section .total-label { text-align: right; padding-right: 15px; }
+        .totals-section .total-value { text-align: right; font-weight: bold; }
+        .totals-section .amount-due {
+            border-top: 2px solid #1B3A2D;
+            font-size: 13px;
+            font-weight: bold;
+            padding-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Summary cover page -->
+    <h1>Invoice Summary for Run #{{ run.display_number }}</h1>
+    <div class="meta">
+        <strong>{{ owner.name }}</strong><br>
+        Period: {{ run.period_start|date:"d/m/Y" }} &ndash; {{ run.period_end|date:"d/m/Y" }}
+    </div>
+
+    <table class="summary-table">
+        <thead>
+            <tr>
+                <th>Inv No</th>
+                <th>Horse / Ad hoc item</th>
+                <th>Owner</th>
+                <th class="amount">Net Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for invoice in invoices %}
+            <tr>
+                <td>{{ invoice.invoice_number }}</td>
+                <td>{% if invoice.horse %}{{ invoice.horse.name }}{% else %}&mdash;{% endif %}</td>
+                <td>{{ invoice.owner.name }}</td>
+                <td class="amount">&pound;{{ invoice.subtotal|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="totals-row">
+                <td colspan="3" class="total-label">Subtotal</td>
+                <td class="amount">&pound;{{ subtotal|floatformat:2 }}</td>
+            </tr>
+            <tr class="totals-row">
+                <td colspan="3" class="total-label">VAT</td>
+                <td class="amount">&pound;0.00</td>
+            </tr>
+            <tr class="totals-row">
+                <td colspan="3" class="total-label grand">Amount due</td>
+                <td class="amount grand">&pound;{{ total|floatformat:2 }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    {% for page in invoice_pages %}
+    <div class="page-break"></div>
+    {% with invoice=page.invoice horse_groups=page.horse_groups line_items=page.line_items %}
+    {% include 'invoicing/partials/_invoice_body.html' %}
+    {% endwith %}
+    {% endfor %}
+</body>
+</html>
