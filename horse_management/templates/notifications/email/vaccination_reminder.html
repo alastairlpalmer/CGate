@@ -1,25 +1,6 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .header {
-            border-bottom: 2px solid #3D5A63;
-            padding-bottom: 20px;
-            margin-bottom: 20px;
-        }
-        .header h1 {
-            color: #3D5A63;
-            margin: 0;
-        }
+{% extends "notifications/email/_base.html" %}
+
+{% block extra_styles %}
         .alert {
             background-color: #FAF8F3;
             border: 1px solid #A0522D;
@@ -27,26 +8,9 @@
             border-radius: 5px;
             margin: 20px 0;
         }
-        .details {
-            background-color: #F5F2EA;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
-        .footer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-            color: #666;
-            font-size: 12px;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>{{ business.business_name }}</h1>
-    </div>
+{% endblock %}
 
+{% block content %}
     <p>Dear {{ owner.name }},</p>
 
     <div class="alert">
@@ -66,10 +30,4 @@
     <p>If you have any questions or need assistance arranging a vet visit, please contact us.</p>
 
     <p>Kind regards,<br>{{ business.business_name }}</p>
-
-    <div class="footer">
-        {% if business.phone %}Tel: {{ business.phone }}<br>{% endif %}
-        {% if business.email %}Email: {{ business.email }}{% endif %}
-    </div>
-</body>
-</html>
+{% endblock %}
