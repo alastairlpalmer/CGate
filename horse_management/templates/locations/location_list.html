@@ -216,10 +216,10 @@
                             <!-- Capacity ring -->
                             <div class="shrink-0 relative flex items-center justify-center" style="width:44px;height:44px">
                                 <svg viewBox="0 0 36 36" class="w-11 h-11 -rotate-90">
-                                    <circle cx="18" cy="18" r="15.5" fill="none" stroke="#E8EDE9" stroke-width="3"/>
+                                    <circle cx="18" cy="18" r="15.5" fill="none" stroke="#E4EAEB" stroke-width="3"/>
                                     {% if location.capacity %}
                                     <circle cx="18" cy="18" r="15.5" fill="none"
-                                        stroke="{% if location.availability <= 0 %}#C0392B{% elif location.availability <= 2 %}#1B3A2D{% else %}#6B8F71{% endif %}"
+                                        stroke="{% if location.availability <= 0 %}#C0392B{% elif location.availability <= 2 %}#3D5A63{% else %}#6A8990{% endif %}"
                                         stroke-width="3" stroke-linecap="round"
                                         stroke-dasharray="{% widthratio location.horse_count location.capacity 97 %} 97.4"
                                         class="transition-all duration-300"/>

@@ -70,12 +70,12 @@
 
     // Colour palette
     const colors = {
-        forest: '#1B3A2D',
-        sage: '#6B8F71',
-        sand: '#D4C5A9',
+        forest: '#3D5A63',
+        sage: '#6A8990',
+        sand: '#E6E1D1',
         red: '#C0392B',
-        parchment: '#F7F5F0',
-        lightSage: '#E8EDE9',
+        parchment: '#F5F2EA',
+        lightSage: '#E4EAEB',
     };
 
     // Destroy existing charts if re-navigating via HTMX
@@ -153,8 +153,8 @@
                     } : undefined,
                 },
                 scales: {
-                    x: { grid: { display: false }, ticks: { font: { family: "'Source Sans 3', sans-serif", size: 11 }, color: '#6B8F71' } },
-                    y: { grid: { color: colors.lightSage }, ticks: { font: { family: "'JetBrains Mono', monospace", size: 11 }, color: '#6B8F71', callback: v => '£' + v.toLocaleString() } },
+                    x: { grid: { display: false }, ticks: { font: { family: "'Source Sans 3', sans-serif", size: 11 }, color: '#6A8990' } },
+                    y: { grid: { color: colors.lightSage }, ticks: { font: { family: "'JetBrains Mono', monospace", size: 11 }, color: '#6A8990', callback: v => '£' + v.toLocaleString() } },
                 },
             },
         });
@@ -203,7 +203,7 @@
                         },
                     },
                     scales: {
-                        x: { stacked: true, grid: { color: colors.lightSage }, ticks: { font: { size: 11 }, color: '#6B8F71', stepSize: 1 } },
+                        x: { stacked: true, grid: { color: colors.lightSage }, ticks: { font: { size: 11 }, color: '#6A8990', stepSize: 1 } },
                         y: { stacked: true, grid: { display: false }, ticks: { font: { family: "'DM Sans', sans-serif", size: 12, weight: '600' }, color: '#2C2C2C' } },
                     },
                 },
