@@ -473,7 +473,7 @@
             if (!el) return;
             const data = JSON.parse(el.textContent);
             const baseScales = {
-                x: { stacked: true, grid: { color: '#E8EDE9' }, ticks: { font: { size: 11 }, color: '#6B8F71' } },
+                x: { stacked: true, grid: { color: '#E4EAEB' }, ticks: { font: { size: 11 }, color: '#6A8990' } },
                 y: { stacked: true, grid: { display: false }, ticks: { display: false } },
             };
 
@@ -555,8 +555,8 @@
                             tooltip: { backgroundColor: '#2C2C2C', callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y + ' days' } },
                         },
                         scales: {
-                            x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 }, color: '#6B8F71' } },
-                            y: { stacked: true, grid: { color: '#E8EDE9' }, ticks: { font: { size: 11 }, color: '#6B8F71' } },
+                            x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 }, color: '#6A8990' } },
+                            y: { stacked: true, grid: { color: '#E4EAEB' }, ticks: { font: { size: 11 }, color: '#6A8990' } },
                         },
                     },
                 });

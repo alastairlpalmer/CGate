@@ -342,13 +342,13 @@
             <div class="card" x-data="{
                 activeFilter: 'all',
                 pillColors: {
-                    all:         '#1B3A2D',
+                    all:         '#3D5A63',
                     placement:   '#2E86AB',
-                    vaccination: '#6B8F71',
+                    vaccination: '#6A8990',
                     farrier:     '#A0522D',
                     vet_visit:   '#C0392B',
-                    breeding:    '#1B3A2D',
-                    worming:     '#D4C5A9'
+                    breeding:    '#3D5A63',
+                    worming:     '#E6E1D1'
                 },
                 pillText: {
                     all: '#fff', placement: '#fff', vaccination: '#fff',
@@ -357,7 +357,7 @@
                 },
                 pillStyle(key) {
                     if (this.activeFilter === key) return `background-color:${this.pillColors[key]};color:${this.pillText[key]}`;
-                    return 'background-color:#E8EDE9;color:#2C2C2C';
+                    return 'background-color:#E4EAEB;color:#2C2C2C';
                 }
             }">
                 <div class="section-header">
