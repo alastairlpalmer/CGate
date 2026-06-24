@@ -1,0 +1,66 @@
+{% comment %}
+Shared base for notification emails. Email clients require inlined styles
+(no external/static stylesheet), so the Brim/Crown brand colours live here
+once: #3D5A63 (Brim) for the header rule + heading, #F5F2EA for the cream
+detail panel. Per-email semantic colours (alert/amount status) belong in the
+child's {% block extra_styles %}. Keep brand hex in sync with tailwind.config.js.
+{% endcomment %}<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            border-bottom: 2px solid #3D5A63;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #3D5A63;
+            margin: 0;
+        }
+        .details,
+        .invoice-details {
+            background-color: #F5F2EA;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .invoice-details table {
+            width: 100%;
+        }
+        .invoice-details td {
+            padding: 5px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 12px;
+        }
+        {% block extra_styles %}{% endblock %}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ business.business_name }}</h1>
+    </div>
+
+    {% block content %}{% endblock %}
+
+    <div class="footer">
+        {% block footer %}
+        {% if business.phone %}Tel: {{ business.phone }}<br>{% endif %}
+        {% if business.email %}Email: {{ business.email }}{% endif %}
+        {% endblock %}
+    </div>
+</body>
+</html>

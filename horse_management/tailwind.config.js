@@ -2,7 +2,6 @@
 module.exports = {
   content: [
     './templates/**/*.html',
-    './horse_management/templates/**/*.html',
   ],
   safelist: [
     // Classes used in Alpine.js :class bindings that Tailwind JIT can't detect
@@ -15,37 +14,51 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Brand primary — "Brim" (muted dark teal/slate blue-green).
+        // Token name kept as `forest` so existing bg-forest/text-forest usages repoint cleanly.
         forest: {
-          DEFAULT: '#1B3A2D',
-          light: '#2A5A45',
+          DEFAULT: '#3D5A63',
+          light: '#4F727D',
         },
+        // Brim alias for new/semantic usage.
+        brim: {
+          DEFAULT: '#3D5A63',
+          light: '#4F727D',
+        },
+        // Secondary — muted teal tint of Brim (re-derived from the old sage green).
         sage: {
-          DEFAULT: '#6B8F71',
-          50: '#F0F4F0',
-          100: '#DCE5DD',
-          200: '#B8CBB9',
-          300: '#93B096',
-          400: '#7FA084',
-          light: '#8BAF90',
+          DEFAULT: '#6A8990',
+          50: '#EFF3F4',
+          100: '#DBE4E6',
+          200: '#BCCCD0',
+          300: '#9CB2B8',
+          400: '#819DA4',
+          light: '#88A6AD',
         },
+        // Warm cream — "Crown" panels/accents (re-derived from the old sand tan).
         sand: {
-          DEFAULT: '#D4C5A9',
-          50: '#F5F1E8',
-          100: '#EBE4D3',
-          200: '#DFD5BC',
-          light: '#E2D6BE',
+          DEFAULT: '#E6E1D1',
+          50: '#FAF8F3',
+          100: '#F2EEE4',
+          200: '#ECE7DA',
+          light: '#EDE9DD',
+        },
+        // Crown alias for new/semantic usage.
+        crown: {
+          DEFAULT: '#E6E1D1',
+          light: '#EDE9DD',
         },
         charcoal: {
           DEFAULT: '#2C2C2C',
           light: '#4A4A4A',
         },
-        parchment: '#F7F5F0',
+        parchment: '#F5F2EA',
         saddle: {
           DEFAULT: '#A0522D',
           50: '#FDF5F0',
           100: '#F5E0D3',
         },
-        'light-sage': '#E8EDE9',
+        'light-sage': '#E4EAEB',
         'error-red': {
           DEFAULT: '#C0392B',
           50: '#FDF2F1',
