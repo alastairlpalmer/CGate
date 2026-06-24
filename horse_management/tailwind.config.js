@@ -2,7 +2,6 @@
 module.exports = {
   content: [
     './templates/**/*.html',
-    './horse_management/templates/**/*.html',
   ],
   safelist: [
     // Classes used in Alpine.js :class bindings that Tailwind JIT can't detect
