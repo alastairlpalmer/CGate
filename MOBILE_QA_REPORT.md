@@ -37,7 +37,7 @@ These held up well and are worth protecting against regression:
 ## T1 — Critical
 
 ### T1.1 — Interactive controls fall below the 44 px minimum touch target
-> **✅ Batch 1 (largely done, PR):** `.btn`, `.form-input`, `.form-select` now carry `min-h-[44px] sm:min-h-0` (44 px on mobile, natural height on desktop) and `.form-checkbox` went 13 → 20 px — via `static/css/input.css` (rebuilt `styles.css`). Row-action icons already use `.btn-icon` (44 px on mobile). Measured **sub-44 tap targets fell 228 → 104**; desktop verified unchanged. **Remaining (Batch 1b, per-template):** full 44 px *hit areas* for checkboxes (incl. the formset DELETE, which has no `.form-checkbox` class), the ad-hoc segmented **tab pills** (~32 px inline classes — candidate for a shared `.seg-tab`), and primary list-row links (T3.2). ~Half of the residual 104 are secondary `mailto:`/`tel:` links that need not be 44 px.
+> **✅ Batch 1 (largely done, PR):** `.btn`, `.form-input`, `.form-select` now carry `min-h-[44px] sm:min-h-0` (44 px on mobile, natural height on desktop) and `.form-checkbox` went 13 → 20 px — via `static/css/input.css` (rebuilt `styles.css`). Row-action icons already use `.btn-icon` (44 px on mobile). Measured **sub-44 tap targets fell 228 → 104**; desktop verified unchanged. **Batch 1b** then took the horse-list **tab pills** to 44 px and gave the ownership **Primary/Remove** checkboxes 44 px label hit-areas (see T2.3, T3.1). Still open (low priority): making every primary list-row *name* link fill its row (T3.2) and enlarging bulk-select checkbox hit-areas — noting ~half of the residual 104 were secondary `mailto:`/`tel:` links that need not be 44 px.
 
 **Where:** `static/css/input.css` — `.btn` (`@apply … px-4 py-2 text-sm …`) renders **~36–40 px tall**; `.form-checkbox` has no size (browser default **~13 px**). Confirmed on measurement across nearly every page (buttons: "Create Invoice" 144×**36**, "Download PDF" 150×**38**, "Add Horse" 100×**38**, form-footer Save/Cancel ~**40**; checkboxes: `has_passport`, `is_active`, `ownership_shares-*-is_primary`, `ownership_shares-*-DELETE`, and the bulk-select boxes all **13×13**).
 **Impact:** Apple HIG and Google both specify a 44 px (≈48 dp) minimum. Sub-40 px buttons and 13 px checkboxes are hard to hit accurately, especially the delete/primary checkboxes on the ownership formset and the row bulk-select boxes — the highest-consequence taps in the app.
@@ -83,7 +83,7 @@ These held up well and are worth protecting against regression:
 **Effort:** M (per-view template work; a shared "responsive table → cards" partial would cover several screens).
 
 ### T2.3 — Ownership & bulk-select checkboxes are 13 px (destructive actions included)
-> **◑ Partially addressed in Batch 1:** all `.form-checkbox` controls are now 20 px (was 13). Remaining for Batch 1b: 44 px label hit-areas, and the formset **DELETE** box still renders at 13 px (needs the `.form-checkbox` class / a labelled remove control).
+> **✅ Addressed (Batch 1 + 1b):** all `.form-checkbox` controls are 20 px (was 13), and the ownership formset's **Primary** and destructive **Remove/DELETE** controls are now wrapped in `min-h-[44px]` labels so the whole label is a 44 px tap target (the DELETE box itself stays small but its label click-area is full-height). Remaining: bulk-select checkboxes in list tables still rely on the 20 px box — low priority.
 
 **Where:** ownership formset (`has_passport`, `is_active`, `is_primary_contact`, row **DELETE**) and Horses-list bulk-select boxes. (Same root cause as T1.1 but called out separately because it gates data-entry and a *destructive* delete.)
 **Impact:** the 13 px DELETE checkbox next to a small trash icon is an easy mis-tap with irreversible intent; the "Primary" contact toggle drives billing.
@@ -96,18 +96,22 @@ These held up well and are worth protecting against regression:
 ## T3 — Medium
 
 ### T3.1 — KPI card layout is inconsistent and scroll-heavy
+> **✅ Fixed in Batch 1b/5 (PR):** Dashboard, Finances and Costs KPI rows changed from `grid-cols-1 sm:grid-cols-2` to `grid-cols-2 lg:grid-cols-4`, matching Health — a **2×2 grid on phones**, halving the scroll (e.g. the dashboard's "Recent Activity" is now above the fold). Verified, no overflow.
+
 **Where:** Dashboard, Finances, and Costs stack their 4 KPI cards **one per row** (full-width), forcing long scrolls before the actual content; Health uses a tidy **2×2 grid**.
 **Fix:** standardise KPI blocks to `grid grid-cols-2 gap-3` on mobile (single column only below ~340 px if needed). Halves the vertical scroll and unifies the look.
 **Effort:** S.
 
 ### T3.2 — Small tap height on list text-links
-> **Deferred to Batch 1b:** needs per-list template work (make the primary name link fill the row); left out of Batch 1 to keep it a low-risk CSS-only change.
+> **Partially addressed / still open.** The horse-list segmented **tab pills** (Active/Departed, group-by) are now 44 px (Batch 1b). Making every primary list-row *name* link fill its row is still open — it's per-list template work and many flagged links are secondary `mailto:`/`tel:` links that shouldn't be 44 px anyway. Lower priority; deferred.
 
 **Where:** horse/owner name links and "View all →" in dashboard lists, invoice numbers in the invoice list, location links in grouped lists — all ~16–24 px tall.
 **Fix:** make the whole list row/cell the tap target (`block py-3` / stretch a link over the row) rather than just the text glyph height.
 **Effort:** S–M.
 
 ### T3.3 — Health tab strip scrolls horizontally with no affordance
+> **Deferred (low value).** A right-edge fade needs JS to only show when actually scrollable; the tabs are usable (42–44 px, horizontally scrollable). Left for a later pass.
+
 **Where:** Health page tab bar (Overview / Vaccinations / Farrier / Worming / Egg Counts / Conditions / Vet Visits) overflows; the 7th tab is cut mid-word with no indication more exist.
 **Fix:** add a scroll affordance (right-edge fade, or `scroll-snap` with a partial next-tab peek), or collapse overflow tabs into a "More ▾".
 **Effort:** S.
@@ -119,7 +123,7 @@ These held up well and are worth protecting against regression:
 
 ## T4 — Low / polish
 
-- **T4.1 — Truncated input placeholders.** "Search by name, owner,…" / "Search by invoice # or owner…" cut off. Shorten placeholders for narrow widths.
+- **T4.1 — Truncated input placeholders.** ✅ *Fixed in Batch 1b/5* — shortened to "Search horses…" / "Search invoices…".
 - **T4.2 — Icon-only actions lack accessible labels.** Row edit/move/book icons are icon-only; add `aria-label`/`title` for screen readers and long-press tooltips.
 - **T4.3 — Paired date inputs on ≤320 px.** The side-by-side Period Start/End inputs are comfortable at 390 px but will tighten on iPhone SE; consider stacking below ~360 px.
 - **T4.4 — Native date-input locale.** Under the en-US test UA the date control shows `mm/dd/yyyy`; the app is `en-gb`. The native control follows the *device* locale, so a UK user's phone shows `dd/mm` — verify on a real UK device; likely a non-issue, noted for completeness.
