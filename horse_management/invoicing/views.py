@@ -110,6 +110,21 @@ def invoice_create(request):
             period_end = form.cleaned_data['period_end']
             notes = form.cleaned_data['notes']
 
+            # Don't create an empty invoice (and burn an invoice number) when
+            # there is nothing to bill — mirrors monthly generation (QA #7).
+            preview = InvoiceService.calculate_invoice_preview(
+                owner, period_start, period_end
+            )
+            if preview['total'] <= 0:
+                messages.error(
+                    request,
+                    f"{owner.name} has nothing to bill for "
+                    f"{period_start:%d/%m/%Y} – {period_end:%d/%m/%Y}.",
+                )
+                return render(request, 'invoicing/invoice_create.html', {
+                    'form': form, 'preview': preview,
+                })
+
             try:
                 invoice = InvoiceService.create_invoice(
                     owner, period_start, period_end, notes

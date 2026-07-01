@@ -6,7 +6,7 @@ import logging
 from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q, Sum
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -114,9 +114,7 @@ def _dashboard_inner(request):
 
     unbilled_total = 0
     if 'kpi_unbilled_charges' in visible:
-        unbilled_total = ExtraCharge.objects.filter(invoiced=False).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
+        unbilled_total = ExtraCharge.unbilled_total()
 
     farrier_due = []
     if 'list_farrier_due' in visible:

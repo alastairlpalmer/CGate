@@ -46,9 +46,11 @@ class InvoiceService:
 
     @staticmethod
     def _build_livery_charge(placement, period_start, period_end,
-                             *, share_fraction, share_percentage):
+                             *, share_percentage, amount=None):
         """Build a single livery charge dict for a placement, or None.
 
+        ``amount`` is this owner's already-reconciled share of the charge; if
+        omitted the owner is billed the full charge (single-owner case).
         Returns None when the placement has no billable days in the period.
         """
         days = placement.get_days_in_period(period_start, period_end)
@@ -56,7 +58,7 @@ class InvoiceService:
             return None
 
         full_amount = placement.calculate_charge(period_start, period_end)
-        owner_amount = (full_amount * share_fraction).quantize(Decimal('0.01'))
+        owner_amount = full_amount if amount is None else amount
         eff_start, eff_end = placement.get_effective_dates_in_period(
             period_start, period_end
         )
@@ -115,6 +117,34 @@ class InvoiceService:
                 pct += Decimal('100') - total
         return pct
 
+    @staticmethod
+    def _reconciled_amount(full_amount, owner_id, all_shares):
+        """This owner's monetary share of ``full_amount`` for a co-owned item.
+
+        Non-primary owners get their share rounded to the penny; the primary
+        contact gets the residual (full charge minus everyone else's rounded
+        amounts). This absorbs both the penny rounding remainder (QA #5) and any
+        sub-100% shortfall (QA #4) so the splits always sum exactly to the full
+        charge — nothing is lost or double-counted.
+        """
+        primary = next(
+            (s for s in all_shares if s.is_primary_contact), None
+        ) or max(all_shares, key=lambda s: s.share_percentage)
+
+        def rounded(s):
+            return (full_amount * (s.share_percentage / Decimal('100'))).quantize(
+                Decimal('0.01')
+            )
+
+        if owner_id == primary.owner_id:
+            others = sum(
+                (rounded(s) for s in all_shares if s.owner_id != primary.owner_id),
+                Decimal('0.00'),
+            )
+            return full_amount - others
+        share = next(s for s in all_shares if s.owner_id == owner_id)
+        return rounded(share)
+
     @classmethod
     def calculate_livery_charges(cls, owner, period_start, period_end):
         """Calculate livery charges for an owner, per placement.
@@ -153,10 +183,11 @@ class InvoiceService:
             for placement in overlapping(
                 Placement.objects.filter(horse_id=share.horse_id)
             ):
+                full = placement.calculate_charge(period_start, period_end)
                 charge = cls._build_livery_charge(
                     placement, period_start, period_end,
-                    share_fraction=pct / Decimal('100'),
                     share_percentage=pct,
+                    amount=cls._reconciled_amount(full, owner.id, all_shares),
                 )
                 if charge:
                     charges.append(charge)
@@ -167,7 +198,6 @@ class InvoiceService:
         ):
             charge = cls._build_livery_charge(
                 placement, period_start, period_end,
-                share_fraction=Decimal('1'),
                 share_percentage=Decimal('100.00'),
             )
             if charge:
@@ -175,13 +205,15 @@ class InvoiceService:
 
         return charges
 
-    @staticmethod
-    def get_unbilled_charges(owner, period_end):
+    @classmethod
+    def get_unbilled_charges(cls, owner, period_end):
         """Get extra charges for this owner, handling ownership splits.
 
         Two cases:
         - split_by_ownership=False: charge goes 100% to the specified owner
-        - split_by_ownership=True: charge is split among co-owners by share %
+        - split_by_ownership=True: charge is split among co-owners by share %,
+          with the rounding remainder / sub-100% shortfall billed to the
+          primary contact so the splits sum exactly to the charge (QA #4/#5)
         """
         charges = []
 
@@ -219,13 +251,20 @@ class InvoiceService:
                 split_by_ownership=True,
             ).select_related('horse', 'service_provider')
 
+            # All shares per involved horse, so the split can reconcile to 100%.
+            all_shares_by_horse = {}
+            for s in OwnershipShare.objects.filter(horse_id__in=horse_share_map.keys()):
+                all_shares_by_horse.setdefault(s.horse_id, []).append(s)
+
             for charge in split_charges:
                 share = horse_share_map[charge.horse_id]
-                owner_amount = (charge.amount * share.share_fraction).quantize(Decimal('0.01'))
+                all_shares = all_shares_by_horse.get(charge.horse_id, [share])
+                owner_amount = cls._reconciled_amount(charge.amount, owner.id, all_shares)
+                pct = cls._effective_share_percentage(share, all_shares)
 
                 share_note = ""
-                if share.share_percentage < Decimal('100'):
-                    share_note = f" ({share.share_percentage:g}% share)"
+                if pct < Decimal('100'):
+                    share_note = f" ({pct:g}% share)"
 
                 charges.append({
                     'horse': charge.horse,
@@ -236,7 +275,7 @@ class InvoiceService:
                     'daily_rate': charge.amount,
                     'full_amount': charge.amount,
                     'amount': owner_amount,
-                    'share_percentage': share.share_percentage,
+                    'share_percentage': pct,
                     'line_type': charge.charge_type,
                 })
 
