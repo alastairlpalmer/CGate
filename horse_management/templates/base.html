@@ -6,10 +6,19 @@
     <title>{% block title %}CGate{% endblock %}</title>
     {% load static %}
     {% load cache_bust %}
-    <!-- Brand Fonts: DM Sans (headings), Source Sans 3 (body), JetBrains Mono (data) -->
+    <!-- Brand Fonts: DM Sans (headings), Source Sans 3 (body), JetBrains Mono (data).
+         Loaded non-render-blocking so a slow or blocked Google Fonts CDN never
+         delays first paint — the local font stacks fall back to system
+         sans-serif/monospace until (and if) the web fonts arrive. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+          media="print" onload="this.media='all'">
+    <noscript>
+        <link rel="stylesheet"
+              href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+    </noscript>
     <!-- Tailwind CSS (compiled) -->
     <link rel="stylesheet" href="{% static_v 'css/styles.css' %}">
     <!-- Alpine.js + Collapse plugin (vendored locally — no CDN round trip) -->

@@ -321,3 +321,32 @@ class EmptyInvoiceGuardTests(TestCase):
         self.assertEqual(resp.status_code, 200)  # re-rendered, not redirected
         self.assertFalse(Invoice.objects.filter(owner=self.owner).exists())
         self.assertContains(resp, "nothing to bill")
+
+
+class ShareHeaderDisplayTests(TestCase):
+    """#8 — the invoice group header must show the share % to the same
+    precision as the line descriptions (e.g. 33.33%, not a rounded 33%)."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        get_user_model().objects.create_user("staff", password="pw", is_staff=True)
+        self.client.login(username="staff", password="pw")
+        self.loc = Location.objects.create(site="Colgate", name="Top Field")
+        self.rate = RateType.objects.create(name="Premium", daily_rate=Decimal("7.00"))
+        self.horse = Horse.objects.create(name="Trio")
+        self.a = Owner.objects.create(name="A")
+        self.b = Owner.objects.create(name="B")
+        self.c = Owner.objects.create(name="C")
+        OwnershipShare.objects.create(horse=self.horse, owner=self.a, share_percentage=Decimal("33.34"), is_primary_contact=True)
+        OwnershipShare.objects.create(horse=self.horse, owner=self.b, share_percentage=Decimal("33.33"))
+        OwnershipShare.objects.create(horse=self.horse, owner=self.c, share_percentage=Decimal("33.33"))
+        Placement.objects.create(
+            horse=self.horse, owner=self.a, location=self.loc,
+            rate_type=self.rate, start_date=date(2026, 5, 1),
+        )
+
+    def test_group_header_shows_two_decimal_share(self):
+        invoice = InvoiceService.create_invoice(self.b, *PERIOD)  # B holds 33.33%
+        html = self.client.get(f"/invoicing/{invoice.pk}/", HTTP_HOST="localhost").content.decode()
+        self.assertIn("(33.33% share)", html)
+        self.assertNotIn("(33% share)", html)
