@@ -153,8 +153,16 @@ def invoice_to_xero_rows(invoice, account_code='200'):
             row['Total'] = str(invoice.total)
 
         row['*Description'] = item.description
-        row['*Quantity'] = str(item.quantity)
-        row['*UnitAmount'] = str(item.unit_price)
+        # Xero derives each line's amount as Quantity x UnitAmount. For livery
+        # lines, quantity/unit_price are days/full-daily-rate, whose product is
+        # the FULL charge — not this owner's (possibly fractional) share. The
+        # correct amount owed is the already-split line_total, so export it as a
+        # single unit to guarantee the exported figure matches the invoice.
+        line_total = item.line_total
+        if line_total is None:
+            line_total = (item.quantity * item.unit_price).quantize(Decimal('0.01'))
+        row['*Quantity'] = '1'
+        row['*UnitAmount'] = str(line_total)
         row['*AccountCode'] = account_code
         row['*TaxType'] = tax_type
         row['Currency'] = 'GBP'

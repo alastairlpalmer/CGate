@@ -12,8 +12,8 @@
 
 | # | Severity | Title | Area |
 |---|----------|-------|------|
-| 1 | **Critical** | Xero CSV export overcharges fractional-ownership livery lines (exports full rate × days, not the owner's share) | Xero export |
-| 2 | **Critical** | Horses placed without an `OwnershipShare` are silently never billed for livery | Placement / invoicing |
+| 1 | **Critical** ✅ *fixed in this PR* | Xero CSV export overcharges fractional-ownership livery lines (exports full rate × days, not the owner's share) | Xero export |
+| 2 | **Critical** ✅ *fixed in this PR* | Horses placed without an `OwnershipShare` are silently never billed for livery | Placement / invoicing |
 | 3 | **Critical** | Moving a horse to a new owner bills the **old** owner for the whole period; new owner billed £0 | Placement / invoicing |
 | 4 | **Critical** | Ownership shares totalling < 100% silently under-bill the remainder | Ownership / invoicing |
 | 5 | **Medium** | Per-owner rounding makes split amounts not reconcile to the full charge (no remainder handling) | Invoicing |
@@ -50,6 +50,8 @@ Extra-charge and split-charge lines are **not** affected (their `unit_price` is 
 
 **Suggested fix:** For livery lines, export a share-adjusted unit amount (e.g. `UnitAmount = line_total / quantity`) or set `Quantity = 1, UnitAmount = line_total`. Simplest robust fix: emit `Quantity=1` and `UnitAmount=str(item.line_total)` for all lines.
 
+**✅ Fixed in this PR** (`invoicing/utils.py`): every CSV line now emits `Quantity=1, UnitAmount=line_total`, so Xero's `Quantity × UnitAmount` equals the invoice line exactly and line amounts sum to the invoice total. Covered by `invoicing/test_billing.py::XeroExportShareTests`.
+
 ---
 
 ## 2. Critical — Horses placed without an `OwnershipShare` are silently never billed
@@ -67,6 +69,10 @@ Extra-charge and split-charge lines are **not** affected (their `unit_price` is 
 **Evidence:** `verify_invoices.py` output; `invoicing/services.py:56-60, 300-317`; `core/services.py` (only `create_new_arrival` makes a share).
 
 **Suggested fix:** Either (a) auto-create a 100% `OwnershipShare` whenever a placement is created for a horse that has none, or (b) fall back to `Placement.owner` in `calculate_livery_charges`/`get_owners_for_billing` when no shares exist, or (c) block placement creation until the horse has ownership shares totalling 100%.
+
+**✅ Fixed in this PR** (`invoicing/services.py`, option b): `calculate_livery_charges` now also bills placements on horses with **no** ownership shares at 100% to their `Placement.owner`, and `get_owners_for_billing` includes those owners so monthly generation picks them up. This also repairs existing share-less data without a migration. Verified: Ghost/Emma now bills £150; horses that already have shares are unaffected (no double-billing). Covered by `invoicing/test_billing.py::SharelessPlacementBillingTests`.
+
+> Residual (out of scope for this PR): a **split** extra charge (`split_by_ownership=True`) on a share-less horse still won't be billed, and bugs #3 (move-to-new-owner) and #4 (sub-100% shares) are unchanged. All share the same root cause noted at the end of this report.
 
 ---
 

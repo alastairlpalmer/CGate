@@ -45,11 +45,57 @@ class InvoiceService:
         ).first()
 
     @staticmethod
-    def calculate_livery_charges(owner, period_start, period_end):
-        """Calculate livery charges for an owner based on ownership shares.
+    def _build_livery_charge(placement, period_start, period_end,
+                             *, share_fraction, share_percentage):
+        """Build a single livery charge dict for a placement, or None.
+
+        Returns None when the placement has no billable days in the period.
+        """
+        days = placement.get_days_in_period(period_start, period_end)
+        if days <= 0:
+            return None
+
+        full_amount = placement.calculate_charge(period_start, period_end)
+        owner_amount = (full_amount * share_fraction).quantize(Decimal('0.01'))
+        eff_start, eff_end = placement.get_effective_dates_in_period(
+            period_start, period_end
+        )
+
+        rate_str = f"£{placement.daily_rate:g}"
+        date_from = format_date_short(eff_start)
+        date_to = format_date_short_year(eff_end)
+
+        share_note = ""
+        if share_percentage < Decimal('100'):
+            share_note = f" ({share_percentage:g}% share)"
+
+        description = (
+            f"{placement.rate_type.name} {rate_str} per day "
+            f"- {days} days ({date_from} to {date_to}){share_note}"
+        )
+        return {
+            'horse': placement.horse,
+            'placement': placement,
+            'description': description,
+            'days': days,
+            'daily_rate': placement.daily_rate,
+            'full_amount': full_amount,
+            'amount': owner_amount,
+            'share_percentage': share_percentage,
+            'line_type': 'livery',
+        }
+
+    @classmethod
+    def calculate_livery_charges(cls, owner, period_start, period_end):
+        """Calculate livery charges for an owner.
 
         For each horse the owner has shares in, finds overlapping placements
         and calculates: days x daily_rate x share_fraction.
+
+        Fallback: horses with no ownership shares at all are billed 100% to
+        their placement owner. Without this, placements created outside the
+        "new arrival" flow (direct Add Placement, single/bulk arrivals) would
+        never be billed for livery, since billing is driven by OwnershipShare.
         """
         charges = []
 
@@ -67,37 +113,36 @@ class InvoiceService:
             ).select_related('horse', 'location', 'rate_type')
 
             for placement in placements:
-                days = placement.get_days_in_period(period_start, period_end)
-                if days > 0:
-                    full_amount = placement.calculate_charge(period_start, period_end)
-                    owner_amount = (full_amount * share.share_fraction).quantize(Decimal('0.01'))
-                    eff_start, eff_end = placement.get_effective_dates_in_period(
-                        period_start, period_end
-                    )
+                charge = cls._build_livery_charge(
+                    placement, period_start, period_end,
+                    share_fraction=share.share_fraction,
+                    share_percentage=share.share_percentage,
+                )
+                if charge:
+                    charges.append(charge)
 
-                    rate_str = f"£{placement.daily_rate:g}"
-                    date_from = format_date_short(eff_start)
-                    date_to = format_date_short_year(eff_end)
+        # Fallback for horses that have no ownership shares: bill their
+        # placement owner at 100%.
+        horses_with_shares = OwnershipShare.objects.values_list(
+            'horse_id', flat=True
+        )
+        shareless_placements = Placement.objects.filter(
+            owner=owner,
+            start_date__lte=period_end,
+        ).exclude(
+            end_date__lt=period_start
+        ).exclude(
+            horse_id__in=horses_with_shares
+        ).select_related('horse', 'location', 'rate_type')
 
-                    share_note = ""
-                    if share.share_percentage < Decimal('100'):
-                        share_note = f" ({share.share_percentage:g}% share)"
-
-                    description = (
-                        f"{placement.rate_type.name} {rate_str} per day "
-                        f"- {days} days ({date_from} to {date_to}){share_note}"
-                    )
-                    charges.append({
-                        'horse': placement.horse,
-                        'placement': placement,
-                        'description': description,
-                        'days': days,
-                        'daily_rate': placement.daily_rate,
-                        'full_amount': full_amount,
-                        'amount': owner_amount,
-                        'share_percentage': share.share_percentage,
-                        'line_type': 'livery',
-                    })
+        for placement in shareless_placements:
+            charge = cls._build_livery_charge(
+                placement, period_start, period_end,
+                share_fraction=Decimal('1'),
+                share_percentage=Decimal('100.00'),
+            )
+            if charge:
+                charges.append(charge)
 
         return charges
 
@@ -314,7 +359,28 @@ class InvoiceService:
             extra_charges__split_by_ownership=False,
         ).distinct()
 
-        return (owners_via_shares | owners_via_charges).distinct()
+        # Owners of placements on horses that have no ownership shares — these
+        # are billed via the calculate_livery_charges fallback and would
+        # otherwise be missed by monthly generation.
+        horses_with_shares = OwnershipShare.objects.values_list(
+            'horse_id', flat=True
+        )
+        shareless_placements = Placement.objects.filter(
+            start_date__lte=period_end,
+        ).exclude(
+            end_date__lt=period_start
+        ).exclude(
+            horse_id__in=horses_with_shares
+        )
+        owners_via_shareless_placements = Owner.objects.filter(
+            placements__in=shareless_placements
+        ).distinct()
+
+        return (
+            owners_via_shares
+            | owners_via_charges
+            | owners_via_shareless_placements
+        ).distinct()
 
     @staticmethod
     def generate_monthly_invoices(year, month):
