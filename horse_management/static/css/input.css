@@ -8,7 +8,7 @@
     .card-hover { @apply bg-white rounded-card border border-light-sage shadow-sm hover:shadow-md hover:border-sage/40 transition-all duration-150 hover:-translate-y-0.5; }
 
     /* Buttons */
-    .btn { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-btn transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 cursor-pointer active:scale-[0.97] touch-manipulation; }
+    .btn { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-btn transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 cursor-pointer active:scale-[0.97] touch-manipulation min-h-[44px] sm:min-h-0; }
     .btn-primary { @apply btn bg-forest text-white hover:bg-forest-light focus:ring-sage shadow-sm; }
     .btn-secondary { @apply btn bg-white text-charcoal border border-sage/30 hover:bg-light-sage focus:ring-sage; }
     .btn-danger { @apply btn bg-error-red text-white hover:bg-error-red/90 focus:ring-error-red shadow-sm; }
@@ -35,10 +35,10 @@
     .data-table tbody tr { @apply border-b border-light-sage transition-colors duration-150 hover:bg-sand-50/40; }
 
     /* Forms */
-    .form-input { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-sm focus:outline-none focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150; }
-    .form-select { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-sm focus:outline-none focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150; }
+    .form-input { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-sm focus:outline-none focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150 min-h-[44px] sm:min-h-0; }
+    .form-select { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-sm focus:outline-none focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150 min-h-[44px] sm:min-h-0; }
     .form-textarea { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-sm focus:outline-none focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150; }
-    .form-checkbox { @apply rounded-sm border-sage/30 text-forest focus:ring-sage; }
+    .form-checkbox { @apply h-5 w-5 rounded-sm border-sage/30 text-forest focus:ring-sage; }
 
     /* Toggle switch — pair with role="switch" + aria-checked for a11y */
     .form-toggle { @apply relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-sage/30 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sage focus:ring-offset-2; }
