@@ -50,6 +50,8 @@ These held up well and are worth protecting against regression:
 **Effort:** M (mostly a handful of shared component classes; verify the row-action templates).
 
 ### T1.2 — Sticky form footer collides with the fixed bottom nav on every create/edit form
+> **✅ Fixed in Batch 2 (PR):** `.form-footer` offset its bottom by `4rem + env(safe-area-inset-bottom)`, but the tab bar is `4rem + max(env(safe-area-inset-bottom), 8px)` tall — so whenever the safe-area inset was under 8px (emulators / most non-notch contexts) the footer overlapped the nav by ~8px, with zero gap even on notched devices. Now offset by `4rem + max(env(safe-area-inset-bottom, 0px), 8px) + 8px` (`static/css/input.css`, rebuilt). Verified: footer bottom now sits **7px above** the nav top (was ~9px overlap) across horse/placement/charge forms; the fix is in the shared class so it applies to every form uniformly (see T3.4).
+
 **Where:** `.form-footer` (sticky, 63 px, used by `horse_form.html`, `horse_new_arrival.html`, `horse_move.html`, `horse_arrive.html`, `horse_ownership.html`, `placement_form`, `location_form.html`, `location_arrive.html`, `invoice_form.html`, `vaccination`/`charge` forms, …) + the fixed bottom nav in `base.html:214` (`fixed bottom-0 … 73px`).
 **Impact:** On phones the two bars stack — the sticky footer's bottom edge (≈780 px) sits **on top of** the nav's top edge (≈771 px). The primary action ("Save Changes", "Create & Arrive", "Add Placement", …) is jammed against the nav's tap zone, inviting a mis-tap that navigates away mid-form, and the two bars eat ~136 px (16%) of an 844 px viewport. `invoice_create.html` conspicuously does **not** use the sticky footer (buttons are inline), so the behaviour is also inconsistent.
 **Evidence:** fixed/sticky-bar scan (`horse_edit`, `new_arrival`, `placement_add`, `vax_add`, `charge_add` all show both bars); `scratchpad/mob/c_horse_edit.png`.
@@ -107,9 +109,7 @@ These held up well and are worth protecting against regression:
 **Effort:** S.
 
 ### T3.4 — Inconsistent form-action pattern
-**Where:** most forms use the sticky `.form-footer`; `invoice_create.html` uses inline buttons.
-**Fix:** whichever resolution is chosen for T1.2, apply it uniformly so every form behaves the same.
-**Effort:** S (folds into T1.2).
+> **✅ Resolved with T1.2.** Correction to the original observation: `invoice_create.html` **does** use the shared `.form-footer` — it simply doesn't *stick* to the bottom because the live-preview card follows it in the flow (so the earlier runtime scan didn't detect a bottom bar there). All forms use the same class, so the Batch 2 fix applies uniformly; no separate work needed.
 
 ---
 
