@@ -2,6 +2,7 @@
 URL configuration for core app.
 """
 
+from django.contrib.auth.decorators import login_required
 from django.urls import path
 from django.views.generic import RedirectView
 
@@ -46,7 +47,7 @@ urlpatterns = [
     path('locations/<int:pk>/set-usage/', views.set_location_usage, name='location_set_usage'),
 
     # Placements (create/edit still needed, list redirects to locations)
-    path('placements/', RedirectView.as_view(url='/locations/?tab=history', permanent=False), name='placement_list'),
+    path('placements/', login_required(RedirectView.as_view(url='/locations/?tab=history', permanent=False)), name='placement_list'),
     path('placements/add/', views.PlacementCreateView.as_view(), name='placement_create'),
     path('placements/<int:pk>/edit/', views.PlacementUpdateView.as_view(), name='placement_update'),
 ]

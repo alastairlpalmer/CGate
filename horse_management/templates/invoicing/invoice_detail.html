@@ -193,7 +193,7 @@
                     <!-- Horse header -->
                     <tr class="bg-parchment/80">
                         <td colspan="2" class="font-bold text-charcoal">
-                            {{ group.horse_name }}{% with share=group.items.0.share_percentage %}{% if share < 100 %} ({{ share|floatformat:0 }}% share){% endif %}{% endwith %}
+                            {{ group.horse_name }}{% with share=group.items.0.share_percentage %}{% if share < 100 %} ({{ share|floatformat:2 }}% share){% endif %}{% endwith %}
                         </td>
                     </tr>
                     {% for item in group.items %}

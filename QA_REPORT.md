@@ -19,10 +19,10 @@
 | 5 | **Medium** ✅ *fixed in follow-up PR* | Per-owner rounding makes split amounts not reconcile to the full charge (no remainder handling) | Invoicing |
 | 6 | **Medium** ✅ *fixed in follow-up PR* | "Unbilled charges" KPI counts the full amount of already-partially-invoiced split charges | Dashboard / finances |
 | 7 | **Medium** ✅ *fixed in follow-up PR* | Manual invoice creation produces empty £0 invoices and burns an invoice number | Invoicing |
-| 8 | **Low** | Invoice horse-group header shows `33% share` while the line shows `33.34% share` | Invoicing UI |
-| 9 | **Low** | `get_unbilled_charges` has no lower date bound — stale charges sweep into any new invoice | Invoicing |
-| 10 | **Low** | App loads fonts from Google Fonts CDN in `<head>`; no local fallback family | Front-end |
-| 11 | **Low** | `/placements/` redirect is not itself login-gated (target is) | Access control |
+| 8 | **Low** ✅ *fixed in follow-up PR* | Invoice horse-group header shows `33% share` while the line shows `33.34% share` | Invoicing UI |
+| 9 | **Low** — *won't fix (working as intended)* | `get_unbilled_charges` has no lower date bound — stale charges sweep into any new invoice | Invoicing |
+| 10 | **Low** ✅ *hardened in follow-up PR* | App loads fonts from Google Fonts CDN in `<head>`; no local fallback family | Front-end |
+| 11 | **Low** ✅ *fixed in follow-up PR* | `/placements/` redirect is not itself login-gated (target is) | Access control |
 
 **Verified working (no defect):** login/logout and login-gating on every app URL; role-based access control (non-staff "viewer" gets **403** on all create/edit/generate/send actions); placement overlap prevention; end-date-before-start validation; duplicate/overlapping-invoice prevention; split-charge `invoiced` deferral until all co-owners billed; PDF totals match the on-screen invoice exactly; full-month and mid-month-move day counts (inclusive) are arithmetically correct; responsive layout has **no horizontal overflow** at 375px on dashboard, horses, invoices, invoice detail, finances, placements, health.
 
@@ -171,17 +171,25 @@ Extra-charge and split-charge lines are **not** affected (their `unit_price` is 
 
 Invoice detail template (`templates/invoicing/invoice_detail.html:196`) renders the horse-group header with `{{ share|floatformat:0 }}` → **"Trio (33% share)"**, while the line description shows the true **"(33.34% share)"**. Same mismatch appears in the PDF group header. Cosmetic but looks like a data error to owners. Fix: use `floatformat:"-2"` (or match the description precision).
 
+**✅ Fixed in follow-up PR** (`invoice_detail.html`, `partials/preview.html`): the group header now uses `floatformat:2`, which exactly matches the descriptions' `:g` formatting on 2-decimal shares (`60.00`, `33.33`, `33.34`). The PDF header was already correct (uses `:g`). Covered by `invoicing/test_billing.py::ShareHeaderDisplayTests`.
+
 ## 9. Low — `get_unbilled_charges` has no lower date bound
 
 `get_unbilled_charges` filters only `date__lte=period_end` (`invoicing/services.py:118, 144`). Any never-invoiced extra charge from *before* `period_start` is pulled into a new period-specific invoice. Fine as a catch-all for monthly runs, but surprising when creating a one-off invoice for a specific historical period. Consider bounding by `period_start` (or making "sweep older unbilled" an explicit option).
 
-## 10. Low — Google Fonts CDN dependency, no local fallback family
+**Resolution — won't fix (working as intended).** On review this is deliberate and correct: the "unbilled" sweep must pick up *any* not-yet-invoiced charge, including ones dated before the period, otherwise a charge missed in an earlier run would be **stranded** and never billed. Adding a lower bound would trade a minor cosmetic surprise for silent revenue loss. The `invoiced` flag already prevents double-billing. Left unchanged by design.
 
-`templates/base.html:9-12` loads DM Sans / Source Sans 3 / JetBrains Mono from `fonts.googleapis.com`. When outbound access is blocked the request fails (observed as `ERR_CONNECTION_CLOSED` console errors on every page in this sandbox) and the UI drops to the browser default because the Tailwind config's font stacks have no generic fallback shown. Layout survives, but consider self-hosting the fonts or adding `sans-serif`/`monospace` fallbacks.
+## 10. Low — Google Fonts CDN dependency
+
+`templates/base.html` loads DM Sans / Source Sans 3 / JetBrains Mono from `fonts.googleapis.com`. When outbound access is blocked the request fails (observed as `ERR_CONNECTION_CLOSED` console errors in this sandbox). *(Correction to the original note: the Tailwind font stacks **do** already include `sans-serif`/`monospace` fallbacks — confirmed in the compiled `styles.css` — so a blocked CDN degrades to system fonts rather than a serif default; layout is never broken.)*
+
+**✅ Hardened in follow-up PR** (`base.html`): the font stylesheet now loads **non-render-blocking** (`media="print"` + `onload` swap, with a `<noscript>` fallback), so a slow or blocked Google CDN can never delay first paint — the page renders immediately with the system-font fallback and swaps in the web fonts if/when they arrive. Fully self-hosting the fonts (to drop the external dependency entirely) would need the Tailwind build toolchain (`npm`/`npx tailwindcss`, absent here) and is left as a larger optional follow-up.
 
 ## 11. Low — `/placements/` redirect not login-gated
 
 `/placements/` is a `RedirectView` to `/locations/?tab=history` declared before auth (`core/urls.py:49`); logged-out users get the redirect rather than a login bounce. No data is exposed (the target is gated), so this is cosmetic.
+
+**✅ Fixed in follow-up PR** (`core/urls.py`): the redirect is now wrapped in `login_required`, so a logged-out request bounces to `/accounts/login/?next=/placements/` like every other app URL. Covered by `core/tests/test_url_gating.py`.
 
 ---
 
