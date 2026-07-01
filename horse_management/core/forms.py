@@ -355,12 +355,19 @@ class BaseOwnershipShareFormSet(forms.BaseInlineFormSet):
     def clean(self):
         super().clean()
         total = Decimal('0')
+        share_count = 0
         for form in self.forms:
             if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
-                total += form.cleaned_data.get('share_percentage') or Decimal('0')
-        if total > Decimal('100.00'):
+                pct = form.cleaned_data.get('share_percentage')
+                if pct is not None:
+                    total += pct
+                    share_count += 1
+        # A horse with no ownership shares is allowed — livery is then billed to
+        # the placement owner. But once any share exists the shares must total
+        # exactly 100%, otherwise the unallocated remainder would go unbilled.
+        if share_count and total != Decimal('100.00'):
             raise forms.ValidationError(
-                f"Total ownership is {total}%, which exceeds 100%."
+                f"Total ownership must be exactly 100%. It is currently {total}%."
             )
 
 

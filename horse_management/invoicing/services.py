@@ -85,57 +85,86 @@ class InvoiceService:
             'line_type': 'livery',
         }
 
+    @staticmethod
+    def _co_owned_horse_ids():
+        """IDs of horses with genuine fractional co-ownership (2+ shareholders)."""
+        return set(
+            OwnershipShare.objects
+            .values('horse')
+            .annotate(n=models.Count('id'))
+            .filter(n__gte=2)
+            .values_list('horse', flat=True)
+        )
+
+    @staticmethod
+    def _effective_share_percentage(share, all_shares):
+        """Owner's billable percentage for a co-owned horse.
+
+        Normally the share's own percentage. If the horse's shares total less
+        than 100% (a data gap — see QA #4), the unallocated remainder is billed
+        to the primary contact (largest share if none is flagged) so the full
+        charge is always invoiced rather than silently lost.
+        """
+        pct = share.share_percentage
+        total = sum(s.share_percentage for s in all_shares)
+        if total < Decimal('100'):
+            primary = next(
+                (s for s in all_shares if s.is_primary_contact), None
+            ) or max(all_shares, key=lambda s: s.share_percentage)
+            if share.pk == primary.pk:
+                pct += Decimal('100') - total
+        return pct
+
     @classmethod
     def calculate_livery_charges(cls, owner, period_start, period_end):
-        """Calculate livery charges for an owner.
+        """Calculate livery charges for an owner, per placement.
 
-        For each horse the owner has shares in, finds overlapping placements
-        and calculates: days x daily_rate x share_fraction.
+        Two ownership models coexist:
 
-        Fallback: horses with no ownership shares at all are billed 100% to
-        their placement owner. Without this, placements created outside the
-        "new arrival" flow (direct Add Placement, single/bulk arrivals) would
-        never be billed for livery, since billing is driven by OwnershipShare.
+        * **Co-owned** horses (2+ OwnershipShare rows) are split by share
+          percentage. Any shortfall below 100% is billed to the primary
+          contact so nothing is lost (QA #4).
+        * **Single-owner** horses (0 or 1 share) are billed 100% to each
+          placement's own ``owner``. This bills placements created outside the
+          "new arrival" flow that have no share (QA #2) and, crucially, follows
+          ownership changes over time — when a horse is moved to a new owner,
+          the pre-move placement is billed to the old owner and the post-move
+          placement to the new owner (QA #3).
         """
         charges = []
+        co_owned_ids = cls._co_owned_horse_ids()
 
-        shares = OwnershipShare.objects.filter(
-            owner=owner
-        ).select_related('horse')
-
-        for share in shares:
-            # Find placements for this horse overlapping the period
-            placements = Placement.objects.filter(
-                horse=share.horse,
+        def overlapping(qs):
+            return qs.filter(
                 start_date__lte=period_end,
             ).exclude(
                 end_date__lt=period_start
             ).select_related('horse', 'location', 'rate_type')
 
-            for placement in placements:
+        # --- Co-owned horses this owner has a share in: split by share % ---
+        owner_shares = OwnershipShare.objects.filter(
+            owner=owner
+        ).select_related('horse')
+        for share in owner_shares:
+            if share.horse_id not in co_owned_ids:
+                continue  # single/partial share handled as single-owner below
+            all_shares = list(share.horse.ownership_shares.all())
+            pct = cls._effective_share_percentage(share, all_shares)
+            for placement in overlapping(
+                Placement.objects.filter(horse_id=share.horse_id)
+            ):
                 charge = cls._build_livery_charge(
                     placement, period_start, period_end,
-                    share_fraction=share.share_fraction,
-                    share_percentage=share.share_percentage,
+                    share_fraction=pct / Decimal('100'),
+                    share_percentage=pct,
                 )
                 if charge:
                     charges.append(charge)
 
-        # Fallback for horses that have no ownership shares: bill their
-        # placement owner at 100%.
-        horses_with_shares = OwnershipShare.objects.values_list(
-            'horse_id', flat=True
-        )
-        shareless_placements = Placement.objects.filter(
-            owner=owner,
-            start_date__lte=period_end,
-        ).exclude(
-            end_date__lt=period_start
-        ).exclude(
-            horse_id__in=horses_with_shares
-        ).select_related('horse', 'location', 'rate_type')
-
-        for placement in shareless_placements:
+        # --- Single-owner horses: bill each placement's owner at 100% ---
+        for placement in overlapping(
+            Placement.objects.filter(owner=owner).exclude(horse_id__in=co_owned_ids)
+        ):
             charge = cls._build_livery_charge(
                 placement, period_start, period_end,
                 share_fraction=Decimal('1'),
@@ -337,19 +366,32 @@ class InvoiceService:
     def get_owners_for_billing(period_start, period_end):
         """Get all owners who should receive invoices for a period.
 
-        Returns owners who have:
-        - OwnershipShares on horses with placements overlapping the period, OR
-        - Direct (non-split) unbilled extra charges
+        A superset mirroring calculate_livery_charges; generate_monthly_invoices
+        filters out anyone whose preview total is zero. Returns owners who have:
+        - OwnershipShares on horses with placements overlapping the period
+          (co-owners), OR
+        - an overlapping placement they own directly (single-owner horses,
+          including ownership changes via a move), OR
+        - direct (non-split) unbilled extra charges.
         """
-        # Horses with overlapping placements
-        horses_with_placements = Horse.objects.filter(
-            placements__start_date__lte=period_end,
+        overlapping_placements = Placement.objects.filter(
+            start_date__lte=period_end,
         ).exclude(
-            placements__end_date__lt=period_start
-        ).distinct()
+            end_date__lt=period_start
+        )
+
+        horses_with_placements = Horse.objects.filter(
+            pk__in=overlapping_placements.values('horse')
+        )
 
         owners_via_shares = Owner.objects.filter(
             ownership_shares__horse__in=horses_with_placements
+        ).distinct()
+
+        # Owners named directly on an overlapping placement (covers single-owner
+        # horses and both sides of an ownership change).
+        owners_via_placements = Owner.objects.filter(
+            placements__in=overlapping_placements
         ).distinct()
 
         # Owners with direct (non-split) unbilled charges
@@ -359,27 +401,10 @@ class InvoiceService:
             extra_charges__split_by_ownership=False,
         ).distinct()
 
-        # Owners of placements on horses that have no ownership shares — these
-        # are billed via the calculate_livery_charges fallback and would
-        # otherwise be missed by monthly generation.
-        horses_with_shares = OwnershipShare.objects.values_list(
-            'horse_id', flat=True
-        )
-        shareless_placements = Placement.objects.filter(
-            start_date__lte=period_end,
-        ).exclude(
-            end_date__lt=period_start
-        ).exclude(
-            horse_id__in=horses_with_shares
-        )
-        owners_via_shareless_placements = Owner.objects.filter(
-            placements__in=shareless_placements
-        ).distinct()
-
         return (
             owners_via_shares
+            | owners_via_placements
             | owners_via_charges
-            | owners_via_shareless_placements
         ).distinct()
 
     @staticmethod

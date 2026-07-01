@@ -113,7 +113,27 @@ class PlacementService:
             LocationUsageService.rest_if_empty(old_location, move_date - timedelta(days=1))
         LocationUsageService.horses_arrived(new_location, move_date, was_empty=new_loc_was_empty)
 
+        # Keep ownership in sync with the new placement owner so current_owner,
+        # reminders and extra-charge defaults follow the horse. Only singly
+        # owned horses are auto-adjusted; genuine fractional co-ownership must
+        # be edited explicitly on the ownership screen.
+        PlacementService._sync_single_owner_share(horse, new_owner)
+
         return new_placement
+
+    @staticmethod
+    def _sync_single_owner_share(horse, owner):
+        """Point a singly-owned horse's ownership share at ``owner``.
+
+        No-op for horses with fractional co-ownership (2+ shares), horses with
+        no shares at all (billing falls back to the placement owner), or when
+        the single share already matches.
+        """
+        shares = list(horse.ownership_shares.all())
+        if len(shares) == 1 and shares[0].owner_id != owner.id:
+            share = shares[0]
+            share.owner = owner
+            share.save()
 
     @staticmethod
     @transaction.atomic

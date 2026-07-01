@@ -14,8 +14,8 @@
 |---|----------|-------|------|
 | 1 | **Critical** ✅ *fixed in this PR* | Xero CSV export overcharges fractional-ownership livery lines (exports full rate × days, not the owner's share) | Xero export |
 | 2 | **Critical** ✅ *fixed in this PR* | Horses placed without an `OwnershipShare` are silently never billed for livery | Placement / invoicing |
-| 3 | **Critical** | Moving a horse to a new owner bills the **old** owner for the whole period; new owner billed £0 | Placement / invoicing |
-| 4 | **Critical** | Ownership shares totalling < 100% silently under-bill the remainder | Ownership / invoicing |
+| 3 | **Critical** ✅ *fixed in follow-up PR* | Moving a horse to a new owner bills the **old** owner for the whole period; new owner billed £0 | Placement / invoicing |
+| 4 | **Critical** ✅ *fixed in follow-up PR* | Ownership shares totalling < 100% silently under-bill the remainder | Ownership / invoicing |
 | 5 | **Medium** | Per-owner rounding makes split amounts not reconcile to the full charge (no remainder handling) | Invoicing |
 | 6 | **Medium** | "Unbilled charges" KPI counts the full amount of already-partially-invoiced split charges | Dashboard / finances |
 | 7 | **Medium** | Manual invoice creation produces empty £0 invoices and burns an invoice number | Invoicing |
@@ -93,6 +93,8 @@ Extra-charge and split-charge lines are **not** affected (their `unit_price` is 
 
 **Suggested fix:** When `move_horse` is given a `new_owner`, close/adjust the `OwnershipShare` as of the move date and open one for the new owner (or make billing period-aware of `Placement.owner`).
 
+**✅ Fixed in follow-up PR** (`invoicing/services.py` + `core/services.py`): livery billing is now **per-placement** — single-owner horses (0–1 shares) are billed to each placement's own `owner`, so the pre-move placement bills the old owner and the post-move placement bills the new owner. `move_horse` also repoints a singly-owned horse's `OwnershipShare` to the new owner so `current_owner`/reminders follow. Verified: Old £75, New £75. Covered by `invoicing/test_billing.py::MoveToNewOwnerBillingTests`.
+
 ---
 
 ## 4. Critical — Ownership shares totalling < 100% silently under-bill
@@ -110,6 +112,8 @@ Extra-charge and split-charge lines are **not** affected (their `unit_price` is 
 **Evidence:** `verify_edge.py` TEST A.
 
 **Suggested fix:** Require shares to total exactly 100% before a horse can be billed (validate in the ownership formset), or bill the un-shared remainder to a primary owner.
+
+**✅ Fixed in follow-up PR** (both suggested fixes applied): the ownership formset (`core/forms.py`) now requires shares to total **exactly 100%** when any share exists (a horse with no shares is still allowed and billed to its placement owner). As a safety net for legacy/programmatic data, a co-owned horse whose shares fall short of 100% now bills the remainder to the primary contact, and a single sub-100% share is billed 100% to the placement owner — so nothing is silently lost. Verified: single 50% share → £150; 60%+30% co-owned → £105 + £45 = £150. Covered by `invoicing/test_billing.py::SubHundredPercentShareTests` and `OwnershipFormsetValidationTests`.
 
 ---
 
