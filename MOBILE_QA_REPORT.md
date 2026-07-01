@@ -64,6 +64,8 @@ These held up well and are worth protecting against regression:
 ## T2 — High
 
 ### T2.1 — Login inputs are 13 px → iOS auto-zooms on focus
+> **✅ Fixed in Batch 3 (PR) — and it turned out to be bigger than the font.** Root cause of the 13 px/21 px measurement: the auth pages loaded **Tailwind from the Play CDN** (`cdn.tailwindcss.com`) via `_auth_head.html`, not the compiled `styles.css` — so when that CDN is blocked/slow (as in this sandbox, and on many networks) the **entire login page rendered unstyled** (raw browser-default inputs). Fix: `_auth_head.html` now loads the compiled `styles.css` + vendored Alpine (no CDN; classes are already in the Tailwind content glob) with non-render-blocking fonts, and the auth inputs/buttons were bumped to `text-base` (16 px) + `min-h-[44px]`. Verified with the CDN blocked: the page renders fully styled, inputs are **16 px / 44 px**, submit button 44 px, and login still authenticates (302 → `/`). Applied to login + password-reset/confirm/change templates.
+
 **Where:** `templates/registration/login.html` (raw Django auth widgets, not the app's `.form-input`). Measured username/password at **13 px** font, input height **~21 px**.
 **Impact:** iOS Safari auto-zooms the page when a focused input's font is < 16 px, then leaves it zoomed — a jarring first impression on the very first screen every user sees, and the 21 px input height is also a poor tap target.
 **Fix:** apply the app input styling to the auth fields (`.form-input`, which is full-width and taller) and guarantee **≥ 16 px** font on inputs (`text-base` on mobile). Do the same for the password-reset/change templates for consistency.
