@@ -69,7 +69,7 @@
             <span class="badge-danger">{{ action_required|length }}</span>
         </div>
         <div class="overflow-x-auto">
-            <table class="data-table">
+            <table class="data-table data-table-cards">
                 <thead>
                     <tr>
                         <th>Horse</th>
@@ -82,16 +82,18 @@
                 <tbody>
                     {% for item in action_required %}
                     <tr>
-                        <td>
+                        <td data-label="Horse">
                             <a href="{% url 'horse_detail' item.horse.pk %}" class="link font-medium">{{ item.horse.name }}</a>
                         </td>
-                        <td>
+                        <td data-label="Type">
                             <span class="{% if item.type == 'Farrier' %}badge-warning{% else %}badge-danger{% endif %}">{{ item.type }}</span>
                         </td>
-                        <td class="text-charcoal">{{ item.detail }}</td>
-                        <td>
-                            <span class="text-error-red font-medium">{{ item.due_date|due_label }}</span>
-                            <p class="text-xs text-sage">{{ item.due_date|date:"d M Y" }}</p>
+                        <td class="text-charcoal" data-label="Detail">{{ item.detail }}</td>
+                        <td data-label="Due">
+                            <div class="text-right">
+                                <span class="text-error-red font-medium">{{ item.due_date|due_label }}</span>
+                                <p class="text-xs text-sage">{{ item.due_date|date:"d M Y" }}</p>
+                            </div>
                         </td>
                         <td class="text-right">
                             <a href="{{ item.url }}" class="btn-ghost btn-xs">{{ item.action_label }}</a>
@@ -112,7 +114,7 @@
             <span class="badge-info">{{ coming_up|length }}</span>
         </div>
         <div class="overflow-x-auto">
-            <table class="data-table">
+            <table class="data-table data-table-cards">
                 <thead>
                     <tr>
                         <th>Horse</th>
@@ -125,16 +127,18 @@
                 <tbody>
                     {% for item in coming_up %}
                     <tr>
-                        <td>
+                        <td data-label="Horse">
                             <a href="{% url 'horse_detail' item.horse.pk %}" class="link font-medium">{{ item.horse.name }}</a>
                         </td>
-                        <td>
+                        <td data-label="Type">
                             <span class="badge-success">{{ item.type }}</span>
                         </td>
-                        <td class="text-charcoal">{{ item.detail }}</td>
-                        <td>
-                            <span class="text-forest">{{ item.due_date|due_label }}</span>
-                            <p class="text-xs text-sage">{{ item.due_date|date:"d M Y" }}</p>
+                        <td class="text-charcoal" data-label="Detail">{{ item.detail }}</td>
+                        <td data-label="Due">
+                            <div class="text-right">
+                                <span class="text-forest">{{ item.due_date|due_label }}</span>
+                                <p class="text-xs text-sage">{{ item.due_date|date:"d M Y" }}</p>
+                            </div>
                         </td>
                         <td class="text-right">
                             <a href="{{ item.url }}" class="btn-ghost btn-xs">{{ item.action_label }}</a>

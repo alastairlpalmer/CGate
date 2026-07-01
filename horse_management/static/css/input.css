@@ -262,6 +262,24 @@ input[type="file"] { @apply block w-full text-sm text-sage file:mr-3 file:rounde
     .form-footer > a, .form-footer > button { flex: 1 1 0%; }
 }
 
+/* Responsive record tables — add `data-table-cards` to a `.data-table` so that
+   below `sm` each row stacks into a labelled card instead of a cramped,
+   right-clipped horizontal-scroll table. Give each <td> a `data-label="..."`;
+   cells left without one (action buttons, empty-state) render as plain blocks. */
+@media (max-width: 639px) {
+    .data-table-cards thead { display: none; }
+    .data-table-cards tbody tr { display: block; padding: 0.5rem 1rem; }
+    .data-table-cards tbody td { display: block; border: 0; padding: 0.25rem 0 !important; text-align: left; }
+    .data-table-cards tbody td[data-label] {
+        display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; text-align: right;
+    }
+    .data-table-cards tbody td[data-label]::before {
+        content: attr(data-label);
+        font-weight: 600; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em;
+        color: #6A8990; text-align: left; white-space: nowrap; flex-shrink: 0;
+    }
+}
+
 /* Invalid field highlight — applied by includes/form_field.html when bound with errors */
 .field-invalid input, .field-invalid select, .field-invalid textarea {
     @apply border-error-red focus:border-error-red focus:ring-error-red/20;

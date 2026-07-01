@@ -135,7 +135,7 @@
     <!-- Costs Table -->
     <div class="card overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="data-table">
+            <table class="data-table data-table-cards">
                 <thead>
                     <tr>
                         <th>Date</th>
@@ -151,23 +151,23 @@
                 <tbody>
                     {% for cost in costs %}
                     <tr>
-                        <td class="text-sage" title="{{ cost.date|date:"d M Y" }}">{{ cost.date|ago_label }}</td>
-                        <td>
+                        <td class="text-sage" data-label="Date" title="{{ cost.date|date:"d M Y" }}">{{ cost.date|ago_label }}</td>
+                        <td data-label="Category">
                             <span class="{% if cost.category_key == 'hay' or cost.category_key == 'straw' or cost.category_key == 'feed' %}badge-success{% elif cost.category_key == 'vet' %}badge-danger{% elif cost.category_key == 'farrier' %}badge-warning{% elif cost.category_key == 'staff' or cost.category_key == 'rent' %}badge-info{% else %}badge-neutral{% endif %}">
                                 {{ cost.category }}
                             </span>
                         </td>
-                        <td class="text-charcoal" title="{{ cost.description }}">{{ cost.description|truncatewords:10 }}</td>
-                        <td class="text-sage">{{ cost.supplier|default:"—" }}</td>
-                        <td class="text-right font-medium text-charcoal tabular-nums">&pound;{{ cost.amount|floatformat:2 }}</td>
-                        <td>
+                        <td class="text-charcoal" data-label="Description" title="{{ cost.description }}">{{ cost.description|truncatewords:10 }}</td>
+                        <td class="text-sage" data-label="Supplier">{{ cost.supplier|default:"—" }}</td>
+                        <td class="text-right font-medium text-charcoal tabular-nums" data-label="Amount">&pound;{{ cost.amount|floatformat:2 }}</td>
+                        <td data-label="Horse">
                             {% if cost.horse_pk %}
                             <a href="{% url 'horse_detail' cost.horse_pk %}" class="link">{{ cost.horse }}</a>
                             {% else %}
                             <span class="text-sage">—</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td data-label="Status">
                             {% if cost.source == 'charge' %}
                                 {% if cost.invoiced %}
                                 <span class="badge-success">Invoiced</span>
