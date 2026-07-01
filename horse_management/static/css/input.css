@@ -247,7 +247,12 @@ input[type="file"] { @apply block w-full text-sm text-sage file:mr-3 file:rounde
 .form-footer {
     @apply border-t border-light-sage px-4 py-3 sm:px-5 sm:py-4 bg-parchment rounded-b-xl flex justify-end gap-3 z-20;
     position: sticky;
-    bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+    /* Sit clear of the mobile tab bar. The bar is h-16 (4rem) plus its
+       .tab-bar-safe padding of max(safe-area, 8px), so we must offset by the
+       same amount — the previous `4rem + safe-area` was ~8px short whenever
+       the safe-area inset was under 8px, leaving the Save button overlapping
+       the nav. Extra 8px gives a breathing gap so Save isn't flush against it. */
+    bottom: calc(4rem + max(env(safe-area-inset-bottom, 0px), 8px) + 8px);
 }
 @media (min-width: 1024px) {
     .form-footer { position: static; }
