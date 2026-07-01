@@ -73,6 +73,8 @@ These held up well and are worth protecting against regression:
 **Effort:** S.
 
 ### T2.2 — Key data tables are cramped / clipped on narrow screens
+> **✅ Fixed in Batch 4 (PR):** added a reusable `.data-table-cards` modifier (`static/css/input.css`) that, below `sm`, stacks each row into a labelled card (label from `data-label`, value right-aligned; action/empty cells stay plain blocks). Applied to the Health **Action Required** & **Coming Up** tables and the 8-column **Costs** table (with `data-label`s per cell). Verified on mobile: the overdue status and due date are now fully readable ("181 days overdue / 01 Jan 2026", previously clipped to "overc…/01 Jar…"), long cost descriptions/horse names wrap, no horizontal scroll. The helper can be dropped onto other list tables the same way (Batch 1b/5).
+
 **Where:** Health "Action Required" & "Coming Up" tables (`health` dashboard) and the Costs table (`/billing/costs/`). At 390 px the right-most column is squeezed: the health **DUE** column wraps to "181 days overc…" and the date to "01 Jar…" (both clipped); the Costs table's `SUPPLIER` header and the empty-state text are cut off at the right edge inside their scroll container.
 **Impact:** The single most important datum in the health view — *how overdue* something is and *when* it's due — is truncated. Users can't read it without horizontal scrolling they may not realise is available.
 **Evidence:** `scratchpad/mob/f_health.png`, `scratchpad/mob/c_costs.png`.
