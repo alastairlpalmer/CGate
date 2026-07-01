@@ -173,9 +173,7 @@ def _finances_inner(request):
         status__in=[Invoice.Status.SENT, Invoice.Status.OVERDUE]
     ).aggregate(total=Sum('total'), count=Count('id'))
 
-    unbilled_total = ExtraCharge.objects.filter(invoiced=False).aggregate(
-        total=Sum('amount')
-    )['total'] or 0
+    unbilled_total = ExtraCharge.unbilled_total()
 
     # This month's actuals come straight out of the chart maps — no extra queries.
     this_month = today.replace(day=1)

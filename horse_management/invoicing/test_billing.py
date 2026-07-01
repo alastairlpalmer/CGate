@@ -220,3 +220,104 @@ class OwnershipFormsetValidationTests(TestCase):
 
     def test_no_shares_allowed(self):
         self.assertTrue(self._run([]).is_valid())
+
+
+class SplitReconciliationTests(TestCase):
+    """#5 — co-owned splits must sum exactly to the full charge."""
+
+    def setUp(self):
+        self.loc = Location.objects.create(site="Colgate", name="Top Field")
+        self.rate = RateType.objects.create(name="Premium", daily_rate=Decimal("7.00"))
+        self.horse = Horse.objects.create(name="Trio")
+        # 33.34 / 33.33 / 33.33 — independent rounding would lose a penny.
+        self.a = Owner.objects.create(name="A")
+        self.b = Owner.objects.create(name="B")
+        self.c = Owner.objects.create(name="C")
+        OwnershipShare.objects.create(horse=self.horse, owner=self.a, share_percentage=Decimal("33.34"), is_primary_contact=True)
+        OwnershipShare.objects.create(horse=self.horse, owner=self.b, share_percentage=Decimal("33.33"))
+        OwnershipShare.objects.create(horse=self.horse, owner=self.c, share_percentage=Decimal("33.33"))
+        Placement.objects.create(
+            horse=self.horse, owner=self.a, location=self.loc,
+            rate_type=self.rate, start_date=date(2026, 5, 1),
+        )
+
+    def _livery_amount(self, owner):
+        preview = InvoiceService.calculate_invoice_preview(owner, *PERIOD)
+        return sum(c["amount"] for c in preview["livery_charges"])
+
+    def test_livery_splits_sum_to_full_charge(self):
+        # 30 x £7 = £210. Splits must total exactly £210.00.
+        parts = [self._livery_amount(o) for o in (self.a, self.b, self.c)]
+        self.assertEqual(sum(parts), Decimal("210.00"))
+        # The primary absorbs the rounding remainder.
+        self.assertEqual(self._livery_amount(self.a), Decimal("70.02"))
+        self.assertEqual(self._livery_amount(self.b), Decimal("69.99"))
+
+    def test_split_extra_charge_sums_to_full(self):
+        ExtraCharge.objects.create(
+            horse=self.horse, owner=self.a, charge_type="vet",
+            date=date(2026, 6, 10), description="Odd split",
+            amount=Decimal("100.00"), split_by_ownership=True,
+        )
+
+        def extra_amount(owner):
+            preview = InvoiceService.calculate_invoice_preview(owner, *PERIOD)
+            return sum(c["amount"] for c in preview["extra_charges"])
+
+        parts = [extra_amount(o) for o in (self.a, self.b, self.c)]
+        self.assertEqual(sum(parts), Decimal("100.00"))
+
+
+class UnbilledTotalTests(TestCase):
+    """#6 — the unbilled KPI must exclude already-invoiced portions."""
+
+    def setUp(self):
+        self.loc = Location.objects.create(site="Somerford", name="Stable A")
+        self.rate = RateType.objects.create(name="Stabled", daily_rate=Decimal("24.00"))
+        self.carol = Owner.objects.create(name="Carol")
+        self.dave = Owner.objects.create(name="Dave")
+        self.horse = Horse.objects.create(name="Star")
+        OwnershipShare.objects.create(horse=self.horse, owner=self.carol, share_percentage=Decimal("60.00"), is_primary_contact=True)
+        OwnershipShare.objects.create(horse=self.horse, owner=self.dave, share_percentage=Decimal("40.00"))
+        Placement.objects.create(
+            horse=self.horse, owner=self.carol, location=self.loc,
+            rate_type=self.rate, start_date=date(2026, 5, 1),
+        )
+        self.charge = ExtraCharge.objects.create(
+            horse=self.horse, owner=self.carol, charge_type="farrier",
+            date=date(2026, 6, 12), description="Shoes",
+            amount=Decimal("81.00"), split_by_ownership=True,
+        )
+
+    def test_unbilled_excludes_billed_split_portion(self):
+        # Nothing billed yet: full charge is unbilled.
+        self.assertEqual(ExtraCharge.unbilled_total(), Decimal("81.00"))
+        # Bill Carol (60% => £48.60). The charge stays invoiced=False (Dave not
+        # billed), but only Dave's £32.40 remainder should now count.
+        InvoiceService.create_invoice(self.carol, *PERIOD)
+        self.charge.refresh_from_db()
+        self.assertFalse(self.charge.invoiced)
+        self.assertEqual(ExtraCharge.unbilled_total(), Decimal("32.40"))
+
+
+class EmptyInvoiceGuardTests(TestCase):
+    """#7 — the manual create view must not make empty £0 invoices."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        User.objects.create_user("staff", password="pw", is_staff=True)
+        self.client.login(username="staff", password="pw")
+        self.owner = Owner.objects.create(name="Idle Owner")  # no placements/charges
+
+    def test_zero_total_invoice_not_created(self):
+        from invoicing.models import Invoice
+        resp = self.client.post("/invoicing/create/", {
+            "owner": str(self.owner.pk),
+            "period_start": "2026-06-01",
+            "period_end": "2026-06-30",
+            "notes": "",
+        })
+        self.assertEqual(resp.status_code, 200)  # re-rendered, not redirected
+        self.assertFalse(Invoice.objects.filter(owner=self.owner).exists())
+        self.assertContains(resp, "nothing to bill")

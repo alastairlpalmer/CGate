@@ -16,9 +16,9 @@
 | 2 | **Critical** ✅ *fixed in this PR* | Horses placed without an `OwnershipShare` are silently never billed for livery | Placement / invoicing |
 | 3 | **Critical** ✅ *fixed in follow-up PR* | Moving a horse to a new owner bills the **old** owner for the whole period; new owner billed £0 | Placement / invoicing |
 | 4 | **Critical** ✅ *fixed in follow-up PR* | Ownership shares totalling < 100% silently under-bill the remainder | Ownership / invoicing |
-| 5 | **Medium** | Per-owner rounding makes split amounts not reconcile to the full charge (no remainder handling) | Invoicing |
-| 6 | **Medium** | "Unbilled charges" KPI counts the full amount of already-partially-invoiced split charges | Dashboard / finances |
-| 7 | **Medium** | Manual invoice creation produces empty £0 invoices and burns an invoice number | Invoicing |
+| 5 | **Medium** ✅ *fixed in follow-up PR* | Per-owner rounding makes split amounts not reconcile to the full charge (no remainder handling) | Invoicing |
+| 6 | **Medium** ✅ *fixed in follow-up PR* | "Unbilled charges" KPI counts the full amount of already-partially-invoiced split charges | Dashboard / finances |
+| 7 | **Medium** ✅ *fixed in follow-up PR* | Manual invoice creation produces empty £0 invoices and burns an invoice number | Invoicing |
 | 8 | **Low** | Invoice horse-group header shows `33% share` while the line shows `33.34% share` | Invoicing UI |
 | 9 | **Low** | `get_unbilled_charges` has no lower date bound — stale charges sweep into any new invoice | Invoicing |
 | 10 | **Low** | App loads fonts from Google Fonts CDN in `<head>`; no local fallback family | Front-end |
@@ -129,6 +129,8 @@ Extra-charge and split-charge lines are **not** affected (their `unit_price` is 
 
 **Suggested fix:** Allocate the rounding remainder to one owner (e.g. the primary/largest share) so the splits always sum to the full charge.
 
+**✅ Fixed in follow-up PR** (`invoicing/services.py`): a new `_reconciled_amount` helper bills non-primary co-owners their penny-rounded share and gives the **primary contact the residual** (full charge minus everyone else's rounded amounts), applied to both livery and split extra charges. This absorbs both the rounding remainder and any sub-100% shortfall, so splits always sum exactly to the charge. Verified: Trio £210 → £70.02 + £69.99 + £69.99 = £210.00. Covered by `invoicing/test_billing.py::SplitReconciliationTests`.
+
 ---
 
 ## 6. Medium — "Unbilled charges" KPI counts partially-invoiced split charges in full
@@ -142,6 +144,8 @@ Extra-charge and split-charge lines are **not** affected (their `unit_price` is 
 **Evidence:** `verify_final.py` TEST G; mobile dashboard screenshot ("Unbilled Charges £126.00").
 
 **Suggested fix:** Subtract already-invoiced line-item totals for split charges, or track a per-charge invoiced fraction.
+
+**✅ Fixed in follow-up PR** (`billing/models.py`, `core/views/dashboard.py`, `core/views/finances.py`): a new `ExtraCharge.unbilled_total()` sums each unbilled charge's amount **minus the line-item totals already invoiced**, and both KPIs now call it. Verified: after billing Carol's 60% of the £81 farrier, the KPI drops from £81 to Dave's £32.40 remainder. Covered by `invoicing/test_billing.py::UnbilledTotalTests`.
 
 ---
 
@@ -158,6 +162,8 @@ Extra-charge and split-charge lines are **not** affected (their `unit_price` is 
 **Evidence:** `verify_final.py` TEST F.
 
 **Suggested fix:** In `invoice_create`, preview first and refuse (or warn) when total ≤ 0, mirroring monthly generation.
+
+**✅ Fixed in follow-up PR** (`invoicing/views.py`): the manual create view now previews first and, when the total is ≤ 0, re-renders the form with a "nothing to bill" message instead of creating an empty invoice or consuming a number. Covered by `invoicing/test_billing.py::EmptyInvoiceGuardTests`.
 
 ---
 

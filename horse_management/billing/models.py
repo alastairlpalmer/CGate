@@ -135,6 +135,28 @@ class ExtraCharge(models.Model):
         self.invoice = invoice
         self.save(update_fields=['invoiced', 'invoice'])
 
+    @classmethod
+    def unbilled_total(cls):
+        """Total amount not yet billed to owners.
+
+        A split charge stays ``invoiced=False`` until *every* co-owner has been
+        billed, so summing ``amount`` over unbilled charges double-counts the
+        portions already on issued invoices. This subtracts the already-invoiced
+        line-item totals, returning only the genuinely outstanding remainder
+        (QA #6).
+        """
+        from django.db.models import DecimalField, Sum, Value
+        from django.db.models.functions import Coalesce
+
+        charges = cls.objects.filter(invoiced=False).annotate(
+            billed=Coalesce(
+                Sum('invoice_items__line_total'),
+                Value(Decimal('0.00')),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            )
+        )
+        return sum((c.amount - c.billed for c in charges), Decimal('0.00'))
+
 
 class YardCost(models.Model):
     """Yard-level costs not tied to a specific horse."""
