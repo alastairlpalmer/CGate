@@ -73,15 +73,18 @@ def send_farrier_reminders():
     two_weeks = today + timedelta(days=14)
     reminders_sent = 0
 
-    # Get horses with farrier visits due soon
-    # Only get the most recent visit per horse
+    # Consider each active horse's most recent farrier visit and remind when it
+    # is due within two weeks OR already overdue. We take the latest visit over
+    # ALL of a horse's visits (not just those in the due window) so a stale,
+    # superseded older visit can't trigger a reminder; and we deliberately
+    # include overdue visits (next_due_date < today) so a horse that has slipped
+    # past its farrier date still gets nudged — matching how vaccination
+    # reminders behave.
     from django.db.models import Max
 
     horses_needing_farrier = FarrierVisit.objects.filter(
-        next_due_date__lte=two_weeks,
-        next_due_date__gte=today,
         horse__is_active=True,
-        reminder_sent=False,
+        next_due_date__isnull=False,
     ).values('horse').annotate(
         latest_date=Max('date')
     )
@@ -92,9 +95,10 @@ def send_farrier_reminders():
                 horse_id=entry['horse'],
                 date=entry['latest_date'],
                 reminder_sent=False,
-            ).first()
+                next_due_date__isnull=False,
+            ).order_by('-pk').first()
 
-            if not visit:
+            if not visit or visit.next_due_date > two_weeks:
                 continue
 
             claimed = FarrierVisit.objects.filter(
