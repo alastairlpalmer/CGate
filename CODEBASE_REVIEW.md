@@ -7,6 +7,8 @@ All paths are relative to `horse_management/` unless noted.
 
 ---
 
+> **Update:** all 11 bugs in Part 1 are **✅ fixed on this branch**, with regression tests in `horse_management/invoicing/test_review_fixes.py` (20 tests; full suite 154 green). Workflow finding #2 (unreachable invoice Edit/Cancel) is also fixed, since it gates the recovery flow for bug 3. Parts 2–4 otherwise remain open backlog.
+
 ## Part 1 — Significant bugs requiring fixing
 
 ### 1. CRITICAL — Xero API push re-introduces the fractional-ownership overcharge that QA #1 fixed in the CSV path

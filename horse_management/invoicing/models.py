@@ -87,6 +87,30 @@ class Invoice(models.Model):
         self.paid_at = timezone.now()
         self.save(update_fields=['status', 'paid_at'])
 
+    def release_extra_charges(self):
+        """Un-invoice extra charges tied to this invoice so a replacement
+        invoice can bill them again.
+
+        Must be called when the invoice is cancelled — otherwise the charges
+        stay ``invoiced=True`` pointing at a dead invoice and silently drop
+        out of any replacement. Covers both charges whose ``invoice`` FK is
+        this invoice and split charges with a line item here but an FK set by
+        a co-owner's invoice. Re-billing co-owners already billed on live
+        invoices is prevented in ``InvoiceService.get_unbilled_charges``.
+
+        Returns the number of charges released.
+        """
+        from billing.models import ExtraCharge
+
+        charge_ids = set(
+            self.line_items.exclude(charge=None).values_list('charge_id', flat=True)
+        )
+        charge_ids |= set(self.extra_charges.values_list('id', flat=True))
+        released = ExtraCharge.objects.filter(
+            id__in=charge_ids, invoiced=True
+        ).update(invoiced=False, invoice=None)
+        return released
+
     @property
     def is_overdue(self):
         """Check if invoice is overdue."""

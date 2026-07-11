@@ -34,13 +34,16 @@ urlpatterns = [
 # (e.g. Railway volume). WhiteNoise only covers static files, and the
 # static() helper below is a no-op unless DEBUG, so wire the view directly.
 if getattr(settings, 'SERVE_MEDIA', False) and not settings.DEBUG:
+    from django.contrib.auth.decorators import login_required
     from django.urls import re_path
     from django.views.static import serve as media_serve
 
     urlpatterns += [
         re_path(
             r'^media/(?P<path>.*)$',
-            media_serve,
+            # Uploaded media includes receipts and other financial documents
+            # at predictable paths — never serve it unauthenticated.
+            login_required(media_serve),
             {'document_root': settings.MEDIA_ROOT},
         ),
     ]

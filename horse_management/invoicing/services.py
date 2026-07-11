@@ -214,15 +214,34 @@ class InvoiceService:
         - split_by_ownership=True: charge is split among co-owners by share %,
           with the rounding remainder / sub-100% shortfall billed to the
           primary contact so the splits sum exactly to the charge (QA #4/#5)
+
+        A split charge on a horse with NO OwnershipShare rows has no shares to
+        split across, so it falls back to Case 1 and bills 100% to the
+        charge's owner — otherwise it would never be billed at all.
         """
         charges = []
 
-        # Case 1: Direct charges (no split) — bill to specified owner
+        # Case 1: Direct charges (no split) — bill to specified owner.
+        # Includes split-flagged charges on horses without any ownership
+        # shares, which would otherwise match neither case.
+        shareless_split_ids = list(
+            ExtraCharge.objects.filter(
+                owner=owner,
+                invoiced=False,
+                date__lte=period_end,
+                split_by_ownership=True,
+            )
+            .exclude(horse__ownership_shares__isnull=False)
+            .values_list('id', flat=True)
+        )
         direct_charges = ExtraCharge.objects.filter(
-            owner=owner,
-            invoiced=False,
-            date__lte=period_end,
-            split_by_ownership=False,
+            models.Q(
+                owner=owner,
+                invoiced=False,
+                date__lte=period_end,
+                split_by_ownership=False,
+            )
+            | models.Q(id__in=shareless_split_ids)
         ).select_related('horse', 'service_provider')
 
         for charge in direct_charges:
@@ -244,11 +263,25 @@ class InvoiceService:
         horse_share_map = {s.horse_id: s for s in owner_shares}
 
         if horse_share_map:
+            # A split charge stays invoiced=False until every co-owner is
+            # billed, so exclude charges this owner already has a line item
+            # for on a live (non-cancelled) invoice — otherwise the same
+            # share would be billed to them again.
+            # charge__isnull excludes livery lines: their NULL charge_id would
+            # poison the NOT IN subquery and exclude every split charge.
+            already_billed_here = InvoiceLineItem.objects.filter(
+                invoice__owner=owner,
+                charge__isnull=False,
+            ).exclude(
+                invoice__status=Invoice.Status.CANCELLED,
+            ).values('charge_id')
             split_charges = ExtraCharge.objects.filter(
                 horse_id__in=horse_share_map.keys(),
                 invoiced=False,
                 date__lte=period_end,
                 split_by_ownership=True,
+            ).exclude(
+                id__in=already_billed_here,
             ).select_related('horse', 'service_provider')
 
             # All shares per involved horse, so the split can reconcile to 100%.
@@ -304,6 +337,10 @@ class InvoiceService:
     @transaction.atomic
     def create_invoice(cls, owner, period_start, period_end, notes=''):
         """Create an invoice for an owner."""
+        # Serialise concurrent invoice creation per owner: the overlap check
+        # below is check-then-act, so without this lock two simultaneous
+        # "generate" clicks can both pass it and double-bill the period.
+        owner = Owner.objects.select_for_update().get(pk=owner.pk)
         existing = cls.check_for_overlapping_invoices(owner, period_start, period_end)
         if existing:
             raise DuplicateInvoiceError(
@@ -390,9 +427,12 @@ class InvoiceService:
         all_owner_ids = set(s.owner_id for s in all_shares)
 
         # Find which owners already have invoice line items for this charge
+        # on live invoices — a cancelled invoice doesn't bill anyone.
         already_invoiced = set(
             InvoiceLineItem.objects.filter(
                 charge=extra_charge
+            ).exclude(
+                invoice__status=Invoice.Status.CANCELLED
             ).values_list('invoice__owner_id', flat=True)
         )
         # Include the current owner (their line item was just created)
@@ -433,11 +473,14 @@ class InvoiceService:
             placements__in=overlapping_placements
         ).distinct()
 
-        # Owners with direct (non-split) unbilled charges
+        # Owners with direct (non-split) unbilled charges, plus split charges
+        # on share-less horses (billed 100% to the charge owner — see
+        # get_unbilled_charges).
         owners_via_charges = Owner.objects.filter(
+            models.Q(extra_charges__split_by_ownership=False)
+            | models.Q(extra_charges__horse__ownership_shares__isnull=True),
             extra_charges__invoiced=False,
             extra_charges__date__lte=period_end,
-            extra_charges__split_by_ownership=False,
         ).distinct()
 
         return (

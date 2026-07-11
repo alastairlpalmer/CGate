@@ -5,6 +5,7 @@ Handles contact matching/creation and invoice push operations.
 """
 
 import logging
+from decimal import Decimal
 
 from django.utils import timezone
 
@@ -94,16 +95,27 @@ def build_xero_invoice_payload(invoice, xero_contact_id):
     else:
         tax_type = 'OUTPUT2'  # 20% VAT on Income
 
-    account_code = getattr(invoice.owner, 'account_code', '') or '200'
+    # The owner's account_code is a customer reference, not a GL code — it
+    # goes in Reference below. Revenue always posts to the sales account,
+    # matching the CSV export's *AccountCode.
+    account_code = '200'
 
     line_items = []
     for item in invoice.line_items.select_related('horse', 'charge').order_by(
         'line_type', 'description'
     ):
+        # Xero derives each line's amount as Quantity x UnitAmount. For livery
+        # lines, quantity/unit_price are days/full-daily-rate, whose product is
+        # the FULL charge — not this owner's (possibly fractional) share. The
+        # correct amount owed is the already-split line_total, so push it as a
+        # single unit to guarantee the Xero figure matches the invoice.
+        line_total = item.line_total
+        if line_total is None:
+            line_total = (item.quantity * item.unit_price).quantize(Decimal('0.01'))
         line_items.append({
             'Description': item.description,
-            'Quantity': str(item.quantity),
-            'UnitAmount': str(item.unit_price),
+            'Quantity': '1',
+            'UnitAmount': str(line_total),
             'AccountCode': account_code,
             'TaxType': tax_type,
         })
