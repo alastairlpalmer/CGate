@@ -6,7 +6,7 @@
             <h2 class="section-title">Vaccinations Due</h2>
             <span class="badge-neutral">{{ vaccinations_due|length }}</span>
         </div>
-        <a href="{% url 'vaccination_list' %}" class="text-xs link">View all &rarr;</a>
+        <a href="{% url 'health_dashboard' %}?type=vaccinations" class="text-xs link">View all &rarr;</a>
     </div>
     <ul class="divide-y divide-light-sage">
         {% for vax in vaccinations_due %}
@@ -24,6 +24,8 @@
                     {% endif %}
                     <p class="font-mono text-xs text-sage mt-1">{{ vax.next_due_date|date:"d M Y" }}</p>
                 </div>
+                <a href="{% url 'vaccination_create' %}?horse={{ vax.horse.pk }}&next={{ request.get_full_path|urlencode }}"
+                   class="btn-ghost btn-xs shrink-0">Record</a>
             </div>
         </li>
         {% endfor %}

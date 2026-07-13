@@ -472,8 +472,12 @@ class QuickFindTests(TestCase):
         self.assertIn('Rough Grounds', body)
         self.assertIn(f'/locations/{self.location.pk}/', body)
 
-    def test_inactive_horses_excluded(self):
-        self.assertNotIn('ALIGONE', self._find('aligone'))
+    def test_inactive_horses_included_and_labelled(self):
+        # Departed horses stay findable (their records matter after they
+        # leave) but are labelled so it's obvious they're no longer on site.
+        body = self._find('aligone')
+        self.assertIn('ALIGONE', body)
+        self.assertIn('Departed', body)
 
     def test_no_match_message(self):
         self.assertIn('No matches', self._find('zzzqqq'))

@@ -16,6 +16,7 @@
                     <th>Amount</th>
                     <th>Due Date</th>
                     <th>Status</th>
+                    {% if user.is_staff %}<th class="text-right">Actions</th>{% endif %}
                 </tr>
             </thead>
             <tbody>
@@ -41,6 +42,18 @@
                         <span class="badge-warning">{{ invoice.get_status_display }}</span>
                         {% endif %}
                     </td>
+                    {% if user.is_staff %}
+                    <td>
+                        <div class="flex items-center justify-end gap-1">
+                            <a href="{% url 'payment_create' invoice.pk %}" class="btn-ghost btn-xs">Record Payment</a>
+                            <form method="post" action="{% url 'invoice_mark_paid' invoice.pk %}" class="inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="btn-ghost btn-xs">Mark Paid</button>
+                            </form>
+                        </div>
+                    </td>
+                    {% endif %}
                 </tr>
                 {% endfor %}
             </tbody>
