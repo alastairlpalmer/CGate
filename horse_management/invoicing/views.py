@@ -3,6 +3,7 @@ Views for invoicing app.
 """
 
 import io
+import logging
 from datetime import timedelta
 
 from django.contrib import messages
@@ -25,6 +26,8 @@ from .forms import InvoiceCreateForm, InvoiceUpdateForm, MonthlyInvoiceForm, Pay
 from .pdf import generate_invoice_pdf
 from .services import DuplicateInvoiceError, InvoiceService
 from .utils import group_line_items_by_horse, write_xero_csv
+
+logger = logging.getLogger(__name__)
 
 
 class InvoiceListView(LoginRequiredMixin, ListView):
@@ -425,6 +428,64 @@ def invoice_bulk_action(request):
                 request,
                 f"Skipped {skipped} invoice{'s' if skipped != 1 else ''} "
                 "not in a payable state (only sent/overdue can be marked paid)."
+            )
+    elif action == 'push_xero':
+        from xero_integration.client import XeroAPIError, XeroTokenExpiredError
+        from xero_integration.models import XeroConnection, XeroInvoiceSync
+        from xero_integration.services import (
+            XeroNotConnectedError,
+            push_invoice_to_xero,
+        )
+
+        if not XeroConnection.get_connection().is_connected:
+            messages.error(
+                request, "Xero is not connected — connect it from Settings first."
+            )
+            return redirect(next_url)
+
+        pushed = skipped = failed = 0
+        for invoice in invoices:
+            if invoice.status == Invoice.Status.CANCELLED:
+                skipped += 1
+                continue
+            try:
+                already = invoice.xero_sync.sync_status in (
+                    XeroInvoiceSync.SyncStatus.PUSHED,
+                    XeroInvoiceSync.SyncStatus.PAID_IN_XERO,
+                )
+            except XeroInvoiceSync.DoesNotExist:
+                already = False
+            if already:
+                skipped += 1
+                continue
+            try:
+                push_invoice_to_xero(invoice)
+                pushed += 1
+            except (XeroNotConnectedError, XeroTokenExpiredError) as exc:
+                # Connection-level failure — every remaining push would fail too.
+                messages.error(request, f"Xero push stopped: {exc}")
+                break
+            except XeroAPIError as exc:
+                failed += 1
+                logger.warning(
+                    "Xero push failed for %s: %s", invoice.invoice_number, exc
+                )
+        if pushed:
+            messages.success(
+                request,
+                f"Pushed {pushed} invoice{'s' if pushed != 1 else ''} to Xero."
+            )
+        if failed:
+            messages.error(
+                request,
+                f"{failed} invoice{'s' if failed != 1 else ''} failed to push — "
+                "see the Xero status on each invoice for details."
+            )
+        if skipped:
+            messages.info(
+                request,
+                f"Skipped {skipped} invoice{'s' if skipped != 1 else ''} "
+                "already in Xero or cancelled."
             )
     else:
         messages.error(request, "Unknown bulk action.")

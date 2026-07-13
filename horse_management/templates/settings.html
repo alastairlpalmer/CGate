@@ -74,6 +74,14 @@
                     <label for="{{ biz_form.default_payment_terms.id_for_label }}" class="text-sm font-medium text-charcoal">Payment Terms (days)</label>
                     {{ biz_form.default_payment_terms }}
                 </div>
+
+                <div class="sm:col-span-2">
+                    <label class="inline-flex items-center gap-2 min-h-[44px] sm:min-h-0 cursor-pointer">
+                        {{ biz_form.auto_generate_invoices }}
+                        <span class="text-sm font-medium text-charcoal">Auto-generate monthly draft invoices</span>
+                    </label>
+                    <p class="text-xs text-sage mt-0.5">{{ biz_form.auto_generate_invoices.help_text }}</p>
+                </div>
             </div>
 
             <div class="mt-4 flex justify-end">

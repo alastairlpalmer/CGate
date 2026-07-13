@@ -399,7 +399,7 @@ class BusinessSettingsForm(forms.ModelForm):
         fields = [
             'business_name', 'address', 'phone', 'email', 'website',
             'vat_registration', 'bank_details', 'card_payment_url',
-            'default_payment_terms', 'invoice_prefix',
+            'default_payment_terms', 'invoice_prefix', 'auto_generate_invoices',
         ]
         widgets = {
             'business_name': forms.TextInput(attrs={'class': 'form-input'}),
@@ -412,4 +412,5 @@ class BusinessSettingsForm(forms.ModelForm):
             'card_payment_url': forms.URLInput(attrs={'class': 'form-input'}),
             'default_payment_terms': forms.NumberInput(attrs={'class': 'form-input'}),
             'invoice_prefix': forms.TextInput(attrs={'class': 'form-input', 'maxlength': 10}),
+            'auto_generate_invoices': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
         }

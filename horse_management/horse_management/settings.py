@@ -267,6 +267,8 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 #   REMINDER_HOUR / REMINDER_MINUTE   — when the reminder emails go out
 #   REMINDER_DAYS_OF_WEEK             — crontab day spec, e.g. 'mon-fri' or '*'
 #   INVOICE_STATUS_HOUR               — daily invoice status promotion
+#   XERO_SYNC_HOUR                    — nightly Xero payment-status sweep
+#   MONTHLY_INVOICE_HOUR              — draft generation on the 1st (at :30)
 # The reminder tasks are staggered 5 minutes apart from the base time.
 #
 # NOTE: django-celery-beat's DatabaseScheduler syncs these entries into the
@@ -278,8 +280,24 @@ REMINDER_HOUR = env.int('REMINDER_HOUR', default=7)
 REMINDER_MINUTE = env.int('REMINDER_MINUTE', default=0)
 REMINDER_DAYS_OF_WEEK = env('REMINDER_DAYS_OF_WEEK', default='mon-fri')
 INVOICE_STATUS_HOUR = env.int('INVOICE_STATUS_HOUR', default=6)
+XERO_SYNC_HOUR = env.int('XERO_SYNC_HOUR', default=5)
+MONTHLY_INVOICE_HOUR = env.int('MONTHLY_INVOICE_HOUR', default=5)
 
 CELERY_BEAT_SCHEDULE = {
+    # Poll Xero for payments on pushed invoices. Runs daily before the
+    # invoice-status promotion and reminder windows, so freshly-paid
+    # invoices are marked paid before any overdue email could go out.
+    'sync-xero-invoice-statuses': {
+        'task': 'xero_integration.tasks.sync_xero_invoice_statuses',
+        'schedule': crontab(hour=XERO_SYNC_HOUR, minute=0),
+    },
+    # Create draft invoices for the month just ended, on the 1st.
+    # Duplicate-safe (already-invoiced owners are skipped) and drafts-only;
+    # can be disabled in Settings (auto_generate_invoices).
+    'generate-monthly-invoices': {
+        'task': 'invoicing.tasks.generate_monthly_draft_invoices',
+        'schedule': crontab(day_of_month='1', hour=MONTHLY_INVOICE_HOUR, minute=30),
+    },
     # Promote SENT invoices past their due date to OVERDUE. Runs every day
     # (including weekends) before the reminder window.
     'check-invoice-status': {
