@@ -207,6 +207,11 @@ class BulkFarrierVisitForm(forms.ModelForm):
     class Meta:
         model = FarrierVisit
         fields = ['date', 'service_provider', 'work_done', 'next_due_date', 'cost', 'notes']
+        # The bulk action creates one record — and one charge — per selected
+        # horse, so an ambiguous "Cost" label invites entering the whole
+        # visit's total and billing it N times over.
+        labels = {'cost': 'Cost per horse (£)'}
+        help_texts = {'cost': 'Charged in full to each selected horse’s owner.'}
         widgets = {
             'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'service_provider': forms.Select(attrs={'class': 'form-select'}),
@@ -248,6 +253,9 @@ class BulkVetVisitForm(forms.ModelForm):
     class Meta:
         model = VetVisit
         fields = ['date', 'vet', 'reason', 'diagnosis', 'treatment', 'follow_up_date', 'cost', 'notes']
+        # See BulkFarrierVisitForm: one charge per selected horse.
+        labels = {'cost': 'Cost per horse (£)'}
+        help_texts = {'cost': 'Charged in full to each selected horse’s owner.'}
         widgets = {
             'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'vet': forms.Select(attrs={'class': 'form-select'}),

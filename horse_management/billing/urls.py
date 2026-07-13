@@ -26,6 +26,9 @@ urlpatterns = [
     # Supplier autocomplete
     path('api/suppliers/', views.supplier_autocomplete, name='supplier_autocomplete'),
 
+    # Current owner lookup for the charge form's Bill To prefill
+    path('api/horse-owner/', views.horse_owner, name='horse_owner'),
+
     # Extra charges
     path('charges/', views.ExtraChargeListView.as_view(), name='charge_list'),
     path('charges/add/', views.ExtraChargeCreateView.as_view(), name='charge_create'),

@@ -13,7 +13,7 @@
     </div>
 
     <div class="card">
-        <form method="post" enctype="multipart/form-data" class="divide-y divide-light-sage">
+        <form id="charge-form" method="post" enctype="multipart/form-data" class="divide-y divide-light-sage">
             {% csrf_token %}
 
             {% if form.non_field_errors %}
@@ -124,4 +124,24 @@
     </div>
 
 </div>
+
+<script>
+/* Picking a horse auto-selects its current owner in "Bill To" (still
+   overridable). Delegated + guarded so it survives hx-boost page swaps. */
+(function () {
+    if (window.__chargeOwnerSync) return;
+    window.__chargeOwnerSync = true;
+    document.addEventListener('change', function (e) {
+        if (!e.target.matches || !e.target.matches('#charge-form select[name="horse"]')) return;
+        var ownerSelect = document.querySelector('#charge-form select[name="owner"]');
+        if (!ownerSelect || !e.target.value) return;
+        fetch('{% url "horse_owner" %}?horse=' + encodeURIComponent(e.target.value))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.owner_id) ownerSelect.value = data.owner_id;
+            })
+            .catch(function () { /* leave the manual selection untouched */ });
+    });
+})();
+</script>
 {% endblock %}

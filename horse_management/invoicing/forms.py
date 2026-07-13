@@ -3,10 +3,21 @@ Forms for invoicing app.
 """
 
 from django import forms
+from django.urls import reverse_lazy
 from django.utils import timezone
 
 from core.models import Owner
 from invoicing.models import Invoice
+
+# Refresh the live preview panel whenever the owner or period changes — the
+# invoice_preview endpoint reads owner/period_start/period_end from the
+# included form fields.
+PREVIEW_HTMX_ATTRS = {
+    'hx-get': reverse_lazy('invoice_preview'),
+    'hx-trigger': 'change',
+    'hx-target': '#preview-content',
+    'hx-include': 'closest form',
+}
 
 
 class InvoiceCreateForm(forms.Form):
@@ -14,13 +25,19 @@ class InvoiceCreateForm(forms.Form):
 
     owner = forms.ModelChoiceField(
         queryset=Owner.objects.all(),
-        widget=forms.Select(attrs={'class': 'form-select'})
+        widget=forms.Select(attrs={'class': 'form-select', **PREVIEW_HTMX_ATTRS})
     )
     period_start = forms.DateField(
-        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'})
+        widget=forms.DateInput(
+            format='%Y-%m-%d',
+            attrs={'class': 'form-input', 'type': 'date', **PREVIEW_HTMX_ATTRS},
+        )
     )
     period_end = forms.DateField(
-        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'})
+        widget=forms.DateInput(
+            format='%Y-%m-%d',
+            attrs={'class': 'form-input', 'type': 'date', **PREVIEW_HTMX_ATTRS},
+        )
     )
     notes = forms.CharField(
         required=False,

@@ -7,7 +7,9 @@ All paths are relative to `horse_management/` unless noted.
 
 ---
 
-> **Update:** all 11 bugs in Part 1 are **✅ fixed on this branch**, with regression tests in `horse_management/invoicing/test_review_fixes.py` (20 tests; full suite 154 green). Workflow finding #2 (unreachable invoice Edit/Cancel) is also fixed, since it gates the recovery flow for bug 3. Parts 2–4 otherwise remain open backlog.
+> **Update (PR #32, merged):** all 11 bugs in Part 1 are **✅ fixed**, with regression tests in `horse_management/invoicing/test_review_fixes.py`. Workflow finding #2 (unreachable invoice Edit/Cancel) was fixed with them, and the CSV export now honours the search filter (part of workflow #9).
+>
+> **Update (workflow batch):** workflow findings **#1 (bulk send / bulk mark-paid), #4 (health records return to the horse page, plus "Save & add another"), #5 (live invoice preview wired up), #6 (charge form derives the owner from the horse, with a server-side mismatch warning), and #7 ("Cost per horse" labelling on bulk actions)** are ✅ fixed, with tests in `horse_management/invoicing/test_workflow_batch.py`. Remaining open: workflow #3 (payment recording — see feature gap #1), #8 (dashboard widget actions), the rest of #9 (period filter/totals on the invoice list), #10 nits, and Parts 3–4.
 
 ## Part 1 — Significant bugs requiring fixing
 

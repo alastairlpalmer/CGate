@@ -13,8 +13,9 @@ from core.mixins import StaffRequiredMixin, staff_required
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import DetailView, ListView, UpdateView
 
 from core.models import Owner
@@ -257,6 +258,94 @@ def invoice_mark_paid(request, pk):
     invoice.mark_as_paid()
     messages.success(request, f"Invoice {invoice.invoice_number} marked as paid.")
     return redirect('invoice_detail', pk=pk)
+
+
+@staff_required
+def invoice_bulk_action(request):
+    """Send or mark-paid a selection of invoices in one action.
+
+    Ineligible invoices in the selection are skipped and reported rather
+    than failing the whole batch, so "select all → send" after a monthly
+    generation run just works.
+    """
+    if request.method != 'POST':
+        return redirect('invoice_list')
+
+    action = request.POST.get('action')
+    ids = request.POST.getlist('invoice_ids')
+
+    next_url = request.POST.get('next') or ''
+    if not url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        next_url = reverse('invoice_list')
+
+    invoices = list(Invoice.objects.filter(pk__in=ids).select_related('owner'))
+    if not invoices:
+        messages.error(request, "No invoices selected.")
+        return redirect(next_url)
+
+    if action == 'send':
+        from notifications.emails import send_invoice_email
+
+        sent = failed = skipped = 0
+        no_email = []
+        for invoice in invoices:
+            if invoice.status != Invoice.Status.DRAFT:
+                skipped += 1
+                continue
+            if not invoice.owner.email:
+                no_email.append(invoice.invoice_number)
+                continue
+            if send_invoice_email(invoice):
+                invoice.mark_as_sent()
+                sent += 1
+            else:
+                failed += 1
+        if sent:
+            messages.success(request, f"Sent {sent} invoice{'s' if sent != 1 else ''}.")
+        if no_email:
+            messages.warning(
+                request,
+                f"Not sent (owner has no email address): {', '.join(no_email)}."
+            )
+        if failed:
+            messages.error(
+                request,
+                f"{failed} invoice{'s' if failed != 1 else ''} failed to send. "
+                "Check email configuration."
+            )
+        if skipped:
+            messages.info(
+                request,
+                f"Skipped {skipped} invoice{'s' if skipped != 1 else ''} "
+                "already sent, paid or cancelled."
+            )
+    elif action == 'mark_paid':
+        paid = skipped = 0
+        for invoice in invoices:
+            if invoice.status in (Invoice.Status.SENT, Invoice.Status.OVERDUE):
+                invoice.mark_as_paid()
+                paid += 1
+            else:
+                skipped += 1
+        if paid:
+            messages.success(
+                request,
+                f"Marked {paid} invoice{'s' if paid != 1 else ''} as paid."
+            )
+        if skipped:
+            messages.info(
+                request,
+                f"Skipped {skipped} invoice{'s' if skipped != 1 else ''} "
+                "not in a payable state (only sent/overdue can be marked paid)."
+            )
+    else:
+        messages.error(request, "Unknown bulk action.")
+
+    return redirect(next_url)
 
 
 @staff_required
