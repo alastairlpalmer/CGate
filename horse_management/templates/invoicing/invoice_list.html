@@ -266,6 +266,14 @@
                         class="text-xs text-sage hover:text-charcoal underline py-1.5">Clear</button>
             </div>
             <div class="flex items-center gap-2 sm:gap-3">
+                {% load xero_tags %}
+                {% xero_is_connected as xero_connected %}
+                {% if xero_connected %}
+                <button type="submit" form="bulk-invoice-form" name="action" value="push_xero"
+                        class="btn-secondary text-sm flex-1 sm:flex-none">
+                    Push to Xero
+                </button>
+                {% endif %}
                 <button type="submit" form="bulk-invoice-form" name="action" value="send"
                         class="btn-secondary text-sm flex-1 sm:flex-none">
                     Send Selected
