@@ -125,11 +125,10 @@ def invoice_to_xero_rows(invoice, account_code='200'):
     Returns a list of dicts, one per line item. Contact/invoice metadata
     appears on the first row only.
     """
-    from core.models import BusinessSettings
-    settings = BusinessSettings.get_settings()
-
-    vat_reg = getattr(settings, 'vat_registration', 'N/A') or 'N/A'
-    tax_type = 'No VAT' if vat_reg.upper() in ('N/A', '', 'NONE') else '20% (VAT on Income)'
+    # Tax type follows the invoice's snapshotted VAT rate, so what Xero adds
+    # on import always matches what the PDF/detail page showed the owner.
+    # Line totals are net; Xero applies the VAT itself.
+    tax_type = '20% (VAT on Income)' if invoice.vat_rate > 0 else 'No VAT'
 
     address_lines = _parse_address_lines(invoice.owner.address)
 

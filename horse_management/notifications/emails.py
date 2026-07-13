@@ -7,6 +7,7 @@ import logging
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
+from django.utils import timezone
 
 from core.models import BusinessSettings
 
@@ -204,4 +205,48 @@ def send_invoice_overdue_reminder(invoice):
         return True
     except Exception as e:
         logger.error(f"Failed to send email: {e}")
+        return False
+
+
+def send_owner_statement(owner):
+    """Send an owner their statement of account with PDF attachment."""
+    from invoicing.pdf import generate_owner_statement_pdf
+    from invoicing.services import StatementService
+
+    if not owner.email:
+        return False
+
+    business = BusinessSettings.get_settings()
+    statement = StatementService.build_owner_statement(owner)
+
+    subject = f"Statement of account from {business.business_name}"
+    html_content = render_to_string('notifications/email/statement.html', {
+        'owner': owner,
+        'statement': statement,
+        'business': business,
+    })
+
+    email = EmailMessage(
+        subject=subject,
+        body=html_content,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[owner.email],
+    )
+    email.content_subtype = 'html'
+
+    try:
+        pdf_file = generate_owner_statement_pdf(owner, statement)
+        email.attach(
+            f"statement-{timezone.now().date():%Y-%m-%d}.pdf",
+            pdf_file.read(),
+            'application/pdf',
+        )
+    except Exception:
+        logger.exception("Statement PDF generation failed; sending without attachment.")
+
+    try:
+        email.send()
+        return True
+    except Exception:
+        logger.exception("Failed to send statement email to %s", owner.email)
         return False

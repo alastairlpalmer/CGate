@@ -1,0 +1,48 @@
+{% extends "notifications/email/_base.html" %}
+
+{% block extra_styles %}
+        .balance {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .statement-table th, .statement-table td {
+            padding: 6px 10px;
+            text-align: left;
+        }
+        .statement-table th { border-bottom: 1px solid #ccc; }
+        .num { text-align: right; }
+{% endblock %}
+
+{% block content %}
+    <p>Dear {{ owner.name }},</p>
+
+    <p>Please find attached your statement of account from {{ business.business_name }}.</p>
+
+    <div class="invoice-details">
+        <table class="statement-table" width="100%">
+            <tr>
+                <th>Invoice</th>
+                <th class="num">Total</th>
+                <th class="num">Paid</th>
+                <th class="num">Balance</th>
+            </tr>
+            {% for row in statement.rows %}
+            <tr>
+                <td>{{ row.invoice.invoice_number }}</td>
+                <td class="num">£{{ row.invoice.total|floatformat:2 }}</td>
+                <td class="num">£{{ row.paid|floatformat:2 }}</td>
+                <td class="num">£{{ row.balance|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <p>Balance outstanding: <span class="balance">£{{ statement.totals.balance|floatformat:2 }}</span></p>
+
+    {% if business.bank_details %}
+    <p><strong>Payment details:</strong><br>{{ business.bank_details|linebreaksbr }}</p>
+    {% endif %}
+    {% if business.card_payment_url %}
+    <p><a href="{{ business.card_payment_url }}">Pay by card</a></p>
+    {% endif %}
+{% endblock %}

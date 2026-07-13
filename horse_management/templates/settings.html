@@ -54,6 +54,15 @@
                     {{ biz_form.vat_registration }}
                 </div>
 
+                <div>
+                    <label for="{{ biz_form.vat_rate.id_for_label }}" class="text-sm font-medium text-charcoal">VAT Rate (%)</label>
+                    {{ biz_form.vat_rate }}
+                    {% if biz_form.vat_rate.errors %}
+                    <p class="mt-1 text-sm text-error-red">{{ biz_form.vat_rate.errors.0 }}</p>
+                    {% endif %}
+                    <p class="text-xs text-sage mt-0.5">0 if not VAT-registered, 20 for the UK standard rate. Applies to new invoices only.</p>
+                </div>
+
                 <div class="sm:col-span-2">
                     <label for="{{ biz_form.bank_details.id_for_label }}" class="text-sm font-medium text-charcoal">Bank Details</label>
                     {{ biz_form.bank_details }}

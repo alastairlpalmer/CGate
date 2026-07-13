@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}Aged Debtors - CGate{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Aged Debtors</h1>
+            <p class="page-subtitle">Outstanding balances by how long they've been overdue</p>
+        </div>
+        <a href="{% url 'finances' %}" class="btn-secondary">Back to Finances</a>
+    </div>
+
+    {% if rows %}
+    <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="data-table data-table-cards">
+                <thead>
+                    <tr>
+                        <th>Owner</th>
+                        {% for key, label in buckets %}
+                        <th class="text-right">{{ label }}</th>
+                        {% endfor %}
+                        <th class="text-right">Total</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td data-label="Owner">
+                            <a href="{% url 'owner_detail' row.owner.pk %}" class="link">{{ row.owner.name }}</a>
+                        </td>
+                        <td class="text-right tabular-nums {% if row.current == 0 %}text-sage{% endif %}" data-label="Current">&pound;{{ row.current|floatformat:2 }}</td>
+                        <td class="text-right tabular-nums {% if row.b1_30 == 0 %}text-sage{% endif %}" data-label="1–30 days">&pound;{{ row.b1_30|floatformat:2 }}</td>
+                        <td class="text-right tabular-nums {% if row.b31_60 == 0 %}text-sage{% else %}text-saddle font-medium{% endif %}" data-label="31–60 days">&pound;{{ row.b31_60|floatformat:2 }}</td>
+                        <td class="text-right tabular-nums {% if row.b61_90 == 0 %}text-sage{% else %}text-error-red font-medium{% endif %}" data-label="61–90 days">&pound;{{ row.b61_90|floatformat:2 }}</td>
+                        <td class="text-right tabular-nums {% if row.b90_plus == 0 %}text-sage{% else %}text-error-red font-bold{% endif %}" data-label="90+ days">&pound;{{ row.b90_plus|floatformat:2 }}</td>
+                        <td class="text-right tabular-nums font-semibold" data-label="Total">&pound;{{ row.total|floatformat:2 }}</td>
+                        <td>
+                            <a href="{% url 'owner_statement' row.owner.pk %}" class="btn-ghost btn-xs">Statement</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="border-t-2 border-sage/30 font-semibold">
+                        <td data-label="">Totals</td>
+                        <td class="text-right tabular-nums" data-label="Current">&pound;{{ totals.current|floatformat:2 }}</td>
+                        <td class="text-right tabular-nums" data-label="1–30 days">&pound;{{ totals.b1_30|floatformat:2 }}</td>
+                        <td class="text-right tabular-nums" data-label="31–60 days">&pound;{{ totals.b31_60|floatformat:2 }}</td>
+                        <td class="text-right tabular-nums" data-label="61–90 days">&pound;{{ totals.b61_90|floatformat:2 }}</td>
+                        <td class="text-right tabular-nums" data-label="90+ days">&pound;{{ totals.b90_plus|floatformat:2 }}</td>
+                        <td class="text-right tabular-nums" data-label="Total">&pound;{{ totals.total|floatformat:2 }}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="card py-12 text-center">
+        <p class="text-sm font-medium text-sage">Nothing outstanding — every invoice is paid. 🎉</p>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

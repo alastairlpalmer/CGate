@@ -32,8 +32,8 @@
             <span>&pound;{{ preview.subtotal|floatformat:2 }}</span>
         </div>
         <div class="flex justify-between text-sm text-gray-600">
-            <span>VAT</span>
-            <span>&pound;0.00</span>
+            <span>VAT{% if preview.vat_rate > 0 %} ({{ preview.vat_rate|floatformat:"-2" }}%){% endif %}</span>
+            <span>&pound;{{ preview.vat_amount|floatformat:2 }}</span>
         </div>
         <div class="flex justify-between text-lg font-bold border-t pt-2">
             <span>Amount Due</span>

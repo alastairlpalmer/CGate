@@ -185,8 +185,8 @@
                         <span class="text-charcoal">&pound;{{ invoice.subtotal|floatformat:2 }}</span>
                     </div>
                     <div class="flex justify-between text-sm">
-                        <span class="text-sage">VAT</span>
-                        <span class="text-charcoal">&pound;0.00</span>
+                        <span class="text-sage">VAT{% if invoice.vat_rate > 0 %} ({{ invoice.vat_rate|floatformat:"-2" }}%){% endif %}</span>
+                        <span class="text-charcoal">&pound;{{ invoice.vat_amount|floatformat:2 }}</span>
                     </div>
                     {% if amount_paid > 0 %}
                     <div class="flex justify-between text-sm">
@@ -246,8 +246,8 @@
                         <td class="text-right text-sm font-medium text-charcoal">&pound;{{ invoice.subtotal|floatformat:2 }}</td>
                     </tr>
                     <tr>
-                        <td class="text-right text-sm font-medium text-charcoal-light">VAT:</td>
-                        <td class="text-right text-sm font-medium text-charcoal">&pound;0.00</td>
+                        <td class="text-right text-sm font-medium text-charcoal-light">VAT{% if invoice.vat_rate > 0 %} ({{ invoice.vat_rate|floatformat:"-2" }}%){% endif %}:</td>
+                        <td class="text-right text-sm font-medium text-charcoal">&pound;{{ invoice.vat_amount|floatformat:2 }}</td>
                     </tr>
                     {% if amount_paid > 0 %}
                     <tr class="border-t-2 border-sage/30">

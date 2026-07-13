@@ -324,13 +324,18 @@ class InvoiceService:
         subtotal = sum(c['amount'] for c in all_charges)
         horse_groups = group_preview_charges_by_horse(all_charges)
 
+        vat_rate = BusinessSettings.get_settings().vat_rate
+        vat_amount = (subtotal * vat_rate / Decimal('100')).quantize(Decimal('0.01'))
+
         return {
             'livery_charges': livery_charges,
             'extra_charges': extra_charges,
             'all_charges': all_charges,
             'horse_groups': horse_groups,
             'subtotal': subtotal,
-            'total': subtotal,  # No tax for now
+            'vat_rate': vat_rate,
+            'vat_amount': vat_amount,
+            'total': subtotal + vat_amount,
         }
 
     @classmethod
@@ -351,7 +356,8 @@ class InvoiceService:
 
         settings = BusinessSettings.get_settings()
 
-        # Create the invoice
+        # Create the invoice (VAT rate snapshotted so later settings changes
+        # don't rewrite this invoice's totals)
         invoice = Invoice.objects.create(
             owner=owner,
             invoice_number=settings.get_next_invoice_number(),
@@ -360,6 +366,7 @@ class InvoiceService:
             payment_terms_days=settings.default_payment_terms,
             due_date=period_end + timedelta(days=settings.default_payment_terms),
             notes=notes,
+            vat_rate=settings.vat_rate,
         )
 
         # Add livery line items
@@ -523,3 +530,101 @@ class InvoiceService:
             invoices.append(invoice)
 
         return invoices, skipped
+
+
+class StatementService:
+    """Aged-debtor and owner-statement reporting over the payment ledger."""
+
+    BUCKETS = [
+        ('current', 'Current'),
+        ('b1_30', '1–30 days'),
+        ('b31_60', '31–60 days'),
+        ('b61_90', '61–90 days'),
+        ('b90_plus', '90+ days'),
+    ]
+
+    @staticmethod
+    def _bucket_key(due_date, today):
+        days = (today - due_date).days if due_date else 0
+        if days <= 0:
+            return 'current'
+        if days <= 30:
+            return 'b1_30'
+        if days <= 60:
+            return 'b31_60'
+        if days <= 90:
+            return 'b61_90'
+        return 'b90_plus'
+
+    @classmethod
+    def aged_debtors(cls):
+        """Outstanding balance per owner, bucketed by days past due.
+
+        Open = SENT/OVERDUE invoices with a remaining balance after recorded
+        payments. Returns (rows, totals): rows sorted largest debt first,
+        each {'owner', buckets..., 'total'}; totals is the same shape summed.
+        """
+        from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Value
+        from django.db.models.functions import Coalesce
+
+        today = timezone.now().date()
+        open_invoices = Invoice.objects.filter(
+            status__in=[Invoice.Status.SENT, Invoice.Status.OVERDUE]
+        ).select_related('owner').annotate(
+            balance=ExpressionWrapper(
+                F('total') - Coalesce(
+                    Sum('payments__amount'), Value(Decimal('0.00'))
+                ),
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            )
+        )
+
+        zero_buckets = {key: Decimal('0.00') for key, _ in cls.BUCKETS}
+        by_owner = {}
+        for invoice in open_invoices:
+            if invoice.balance <= 0:
+                continue
+            row = by_owner.setdefault(invoice.owner, dict(zero_buckets, total=Decimal('0.00')))
+            key = cls._bucket_key(invoice.due_date, today)
+            row[key] += invoice.balance
+            row['total'] += invoice.balance
+
+        rows = [
+            {'owner': owner, **buckets}
+            for owner, buckets in sorted(
+                by_owner.items(), key=lambda kv: kv[1]['total'], reverse=True
+            )
+        ]
+        totals = dict(zero_buckets, total=Decimal('0.00'))
+        for row in rows:
+            for key in totals:
+                totals[key] += row[key]
+        return rows, totals
+
+    @staticmethod
+    def build_owner_statement(owner):
+        """Statement of account for one owner: every non-cancelled invoice
+        with its paid-to-date and balance, plus overall totals."""
+        invoices = list(
+            owner.invoices.exclude(status=Invoice.Status.CANCELLED)
+            .prefetch_related('payments')
+            .order_by('created_at')
+        )
+        rows = []
+        totals = {
+            'invoiced': Decimal('0.00'),
+            'paid': Decimal('0.00'),
+            'balance': Decimal('0.00'),
+        }
+        for invoice in invoices:
+            paid = sum((p.amount for p in invoice.payments.all()), Decimal('0.00'))
+            balance = invoice.total - paid
+            rows.append({
+                'invoice': invoice,
+                'paid': paid,
+                'balance': balance,
+            })
+            totals['invoiced'] += invoice.total
+            totals['paid'] += paid
+            totals['balance'] += balance
+        return {'owner': owner, 'rows': rows, 'totals': totals}

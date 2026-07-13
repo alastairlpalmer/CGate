@@ -673,6 +673,15 @@ class BusinessSettings(models.Model):
         default="N/A",
         help_text="VAT registration number, or N/A if not registered"
     )
+    vat_rate = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text=(
+            "VAT percentage added to invoices: 0 if not VAT-registered, "
+            "20 for the UK standard rate. Applies to newly created invoices."
+        ),
+    )
     logo = models.ImageField(
         upload_to='business/', blank=True, null=True,
         validators=[

@@ -9,7 +9,6 @@ from decimal import Decimal
 
 from django.utils import timezone
 
-from core.models import BusinessSettings
 from invoicing.utils import _parse_address_lines
 
 from .client import XeroClient, XeroAPIError, XeroTokenExpiredError
@@ -86,14 +85,9 @@ def build_xero_invoice_payload(invoice, xero_contact_id):
     Mirrors the field mapping from invoicing/utils.py:invoice_to_xero_rows
     but in Xero JSON API format instead of CSV.
     """
-    biz_settings = BusinessSettings.get_settings()
-    vat_reg = getattr(biz_settings, 'vat_registration', 'N/A') or 'N/A'
-
-    # Map CSV tax types to API tax types
-    if vat_reg.upper() in ('N/A', '', 'NONE'):
-        tax_type = 'NONE'
-    else:
-        tax_type = 'OUTPUT2'  # 20% VAT on Income
+    # Tax type follows the invoice's snapshotted VAT rate so Xero's computed
+    # total (net lines + VAT) always matches the invoice the owner saw.
+    tax_type = 'OUTPUT2' if invoice.vat_rate > 0 else 'NONE'
 
     # The owner's account_code is a customer reference, not a GL code — it
     # goes in Reference below. Revenue always posts to the sales account,

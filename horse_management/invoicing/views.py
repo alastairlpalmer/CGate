@@ -23,8 +23,8 @@ from core.models import Owner
 from invoicing.models import Invoice, Payment
 
 from .forms import InvoiceCreateForm, InvoiceUpdateForm, MonthlyInvoiceForm, PaymentForm
-from .pdf import generate_invoice_pdf
-from .services import DuplicateInvoiceError, InvoiceService
+from .pdf import generate_invoice_pdf, generate_owner_statement_pdf
+from .services import DuplicateInvoiceError, InvoiceService, StatementService
 from .utils import group_line_items_by_horse, write_xero_csv
 
 logger = logging.getLogger(__name__)
@@ -340,6 +340,61 @@ def invoice_mark_paid(request, pk):
     invoice.mark_as_paid(reference='Marked as paid')
     messages.success(request, f"Invoice {invoice.invoice_number} marked as paid.")
     return redirect(next_url)
+
+
+@login_required
+def aged_debtors(request):
+    """Aged debtors: who owes what, bucketed by how overdue it is."""
+    rows, totals = StatementService.aged_debtors()
+    return render(request, 'invoicing/aged_debtors.html', {
+        'rows': rows,
+        'totals': totals,
+        'buckets': StatementService.BUCKETS,
+    })
+
+
+@login_required
+def owner_statement(request, owner_pk):
+    """Statement of account for one owner."""
+    owner = get_object_or_404(Owner, pk=owner_pk)
+    statement = StatementService.build_owner_statement(owner)
+    return render(request, 'invoicing/owner_statement.html', {
+        'statement': statement,
+        'owner': owner,
+    })
+
+
+@login_required
+def owner_statement_pdf(request, owner_pk):
+    """Download an owner's statement of account as PDF."""
+    owner = get_object_or_404(Owner, pk=owner_pk)
+    statement = StatementService.build_owner_statement(owner)
+    pdf_file = generate_owner_statement_pdf(owner, statement)
+
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    filename = f"statement-{owner.name.replace(' ', '-').lower()}-{timezone.now():%Y-%m-%d}.pdf"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@staff_required
+def owner_statement_email(request, owner_pk):
+    """Email an owner their statement of account with PDF attached."""
+    if request.method != 'POST':
+        return redirect('owner_statement', owner_pk=owner_pk)
+
+    owner = get_object_or_404(Owner, pk=owner_pk)
+    if not owner.email:
+        messages.error(request, f"{owner.name} has no email address on file.")
+        return redirect('owner_statement', owner_pk=owner_pk)
+
+    from notifications.emails import send_owner_statement
+
+    if send_owner_statement(owner):
+        messages.success(request, f"Statement emailed to {owner.email}.")
+    else:
+        messages.error(request, "Failed to send statement. Check email configuration.")
+    return redirect('owner_statement', owner_pk=owner_pk)
 
 
 @staff_required
