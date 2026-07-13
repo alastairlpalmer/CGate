@@ -69,3 +69,42 @@ def heic_to_jpeg(upload):
         size=buffer.getbuffer().nbytes,
         charset=None,
     )
+
+
+# Avatar thumbnails are square cover-crops at this edge length — 320px covers
+# the largest avatar (96px) at 3x retina density with margin.
+THUMB_SIZE = 320
+
+
+def make_avatar_thumbnail(photo_file, size=THUMB_SIZE):
+    """Build a square JPEG thumbnail from a model ImageField file.
+
+    Returns a ``ContentFile`` ready to assign to an ImageField, or ``None``
+    when the source can't be read (missing file, corrupt image) — callers
+    treat that as "no thumbnail" rather than an error, so a bad photo never
+    blocks saving the record.
+    """
+    from django.core.files.base import ContentFile
+    from PIL import Image, ImageOps
+
+    try:
+        photo_file.open('rb')
+        image = Image.open(photo_file)
+        image = ImageOps.exif_transpose(image)
+        if image.mode not in ('RGB', 'L'):
+            image = image.convert('RGB')
+        # Cover-crop to square, then resize down.
+        image = ImageOps.fit(image, (size, size), Image.LANCZOS)
+        buffer = io.BytesIO()
+        image.save(buffer, format='JPEG', quality=80)
+        return ContentFile(buffer.getvalue())
+    except Exception:
+        logger.exception("Thumbnail generation failed for %r", getattr(photo_file, 'name', photo_file))
+        return None
+    finally:
+        # Rewind rather than close: for a fresh upload this same file object
+        # is about to be written to storage by the photo field's save.
+        try:
+            photo_file.seek(0)
+        except Exception:
+            pass
