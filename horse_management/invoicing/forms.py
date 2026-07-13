@@ -83,7 +83,7 @@ class InvoiceUpdateForm(forms.ModelForm):
         fields = ['status', 'payment_terms_days', 'due_date', 'notes']
         widgets = {
             'status': forms.Select(attrs={'class': 'form-select'}),
-            'payment_terms_days': forms.NumberInput(attrs={'class': 'form-input'}),
+            'payment_terms_days': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
             'due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
         }
@@ -142,7 +142,7 @@ class MonthlyInvoiceForm(forms.Form):
     year = forms.IntegerField(
         min_value=2020,
         max_value=2100,
-        widget=forms.NumberInput(attrs={'class': 'form-input'}),
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
     )
     month = forms.ChoiceField(
         choices=MONTH_CHOICES,

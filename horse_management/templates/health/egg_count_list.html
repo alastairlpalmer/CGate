@@ -43,7 +43,7 @@
     <!-- Egg Count Table -->
     <div class="card overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="data-table">
+            <table class="data-table data-table-cards">
                 <thead>
                     <tr>
                         <th>Horse</th>
@@ -58,16 +58,16 @@
                 <tbody>
                     {% for ec in egg_counts %}
                     <tr>
-                        <td>
+                        <td data-label="Horse">
                             <a href="{% url 'horse_detail' ec.horse.pk %}" class="link">{{ ec.horse.name }}</a>
                         </td>
-                        <td class="text-sage">{{ ec.date|date:"d M Y" }}</td>
-                        <td class="{% if ec.is_high %}text-error-red{% endif %} font-semibold">
+                        <td class="text-sage" data-label="Date">{{ ec.date|date:"d M Y" }}</td>
+                        <td class="{% if ec.is_high %}text-error-red{% endif %} font-semibold" data-label="Count EPG">
                             {{ ec.count }}
                         </td>
-                        <td class="text-sage">{{ ec.get_sample_type_display }}</td>
-                        <td class="text-sage">{{ ec.lab_name|default:"-" }}</td>
-                        <td>
+                        <td class="text-sage" data-label="Sample Type">{{ ec.get_sample_type_display }}</td>
+                        <td class="text-sage" data-label="Lab">{{ ec.lab_name|default:"-" }}</td>
+                        <td data-label="Level">
                             {% if ec.is_high %}
                             <span class="badge-danger">High</span>
                             {% else %}

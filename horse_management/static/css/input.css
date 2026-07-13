@@ -280,6 +280,15 @@ input[type="file"] { @apply block w-full text-sm text-sage file:mr-3 file:rounde
     }
 }
 
+/* Scrollable tab strips: fade the right edge on phones so it's obvious
+   there are more tabs off-screen (no JS, purely visual). */
+@media (max-width: 639px) {
+    .tab-strip-fade {
+        mask-image: linear-gradient(to right, black 90%, transparent);
+        -webkit-mask-image: linear-gradient(to right, black 90%, transparent);
+    }
+}
+
 /* Invalid field highlight — applied by includes/form_field.html when bound with errors */
 .field-invalid input, .field-invalid select, .field-invalid textarea {
     @apply border-error-red focus:border-error-red focus:ring-error-red/20;

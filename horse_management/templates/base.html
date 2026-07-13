@@ -6,6 +6,13 @@
     <title>{% block title %}CGate{% endblock %}</title>
     {% load static %}
     {% load cache_bust %}
+    <!-- PWA: installable, branded home-screen app -->
+    <meta name="theme-color" content="#3D5A63">
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/favicon-32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'icons/favicon-16.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+    <meta name="apple-mobile-web-app-title" content="CGate">
     <!-- Brand Fonts: DM Sans (headings), Source Sans 3 (body), JetBrains Mono (data).
          Loaded non-render-blocking so a slow or blocked Google Fonts CDN never
          delays first paint — the local font stacks fall back to system
@@ -26,10 +33,26 @@
     <script defer src="{% static_v 'js/alpine.min.js' %}"></script>
     <!-- HTMX -->
     <script src="{% static_v 'js/htmx.min.js' %}"></script>
-    <!-- Chart.js (vendored locally — loaded in <head> so it survives hx-boost
-         partial swaps; a CDN <script> inside #main-content loads async after
-         the inline chart-init script has already run, leaving charts blank) -->
-    <script defer src="{% static_v 'js/chart.umd.min.js' %}"></script>
+    <!-- Chart.js (vendored, 209 KB) is used on two pages only, so it loads
+         lazily: this loader stays in <head> (surviving hx-boost swaps) and
+         injects the script the first time a page with a <canvas> appears,
+         then announces readiness via the chartjs:ready window event that the
+         chart pages' init scripts listen for. -->
+    <script>
+    (function () {
+        function ensureChart() {
+            if (window.Chart || window.__chartLoading) return;
+            if (!document.querySelector('canvas')) return;
+            window.__chartLoading = true;
+            var s = document.createElement('script');
+            s.src = '{% static_v "js/chart.umd.min.js" %}';
+            s.onload = function () { window.dispatchEvent(new Event('chartjs:ready')); };
+            document.head.appendChild(s);
+        }
+        document.addEventListener('DOMContentLoaded', ensureChart);
+        document.addEventListener('htmx:afterSwap', ensureChart);
+    })();
+    </script>
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-parchment font-body antialiased text-charcoal" x-data="{ moreSheetOpen: false }"

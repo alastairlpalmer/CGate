@@ -98,8 +98,8 @@ class VaccinationTypeForm(forms.ModelForm):
         fields = ['name', 'interval_months', 'reminder_days_before', 'description', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
-            'interval_months': forms.NumberInput(attrs={'class': 'form-input'}),
-            'reminder_days_before': forms.NumberInput(attrs={'class': 'form-input'}),
+            'interval_months': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
+            'reminder_days_before': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
             'description': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
         }
@@ -130,7 +130,7 @@ class WormEggCountForm(ActiveHorseFormMixin, forms.ModelForm):
         widgets = {
             'horse': forms.Select(attrs={'class': 'form-select'}),
             'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
-            'count': forms.NumberInput(attrs={'class': 'form-input'}),
+            'count': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
             'lab_name': forms.TextInput(attrs={'class': 'form-input'}),
             'sample_type': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
@@ -242,7 +242,7 @@ class BulkWormEggCountForm(forms.ModelForm):
         fields = ['date', 'count', 'lab_name', 'sample_type', 'notes']
         widgets = {
             'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
-            'count': forms.NumberInput(attrs={'class': 'form-input'}),
+            'count': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
             'lab_name': forms.TextInput(attrs={'class': 'form-input'}),
             'sample_type': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),

@@ -81,11 +81,11 @@
                         Depart
                     </button>
                     <form x-show="showDate" x-cloak x-transition method="post" action="{% url 'horse_depart' horse.pk %}"
-                          class="flex items-center gap-1.5 bg-error-red-50 border border-error-red/20 rounded-btn p-1 pl-2.5">
+                          class="flex flex-wrap items-center gap-1.5 bg-error-red-50 border border-error-red/20 rounded-btn p-1 pl-2.5">
                         {% csrf_token %}
                         <label class="text-xs font-medium text-error-red">Depart on</label>
                         <input type="date" name="departure_date" class="form-input !mt-0 text-sm py-1 px-2 w-auto" value="{{ today|date:'Y-m-d' }}" required>
-                        <button type="submit" class="btn bg-error-red text-white hover:bg-error-red/90 text-xs px-2.5 py-1">Confirm</button>
+                        <button type="submit" class="btn bg-error-red text-white hover:bg-error-red/90 text-xs px-2.5 py-1 min-h-[44px] sm:min-h-0">Confirm</button>
                         <button type="button" @click="showDate = false" class="btn-ghost btn-xs" aria-label="Cancel">
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
@@ -362,7 +362,8 @@
             }">
                 <div class="section-header">
                     <h3 class="section-title">Timeline</h3>
-                    <div class="flex items-center gap-2">
+                    <!-- Hidden on phones: they cram at 390px and the Quick Actions grid below covers them -->
+                    <div class="hidden sm:flex items-center gap-2">
                         <a href="{% url 'vaccination_create' %}?horse={{ horse.pk }}" class="btn-ghost btn-xs">+ Vaccination</a>
                         <a href="{% url 'farrier_create' %}?horse={{ horse.pk }}" class="btn-ghost btn-xs">+ Farrier</a>
                         <a href="{% url 'worming_create' %}?horse={{ horse.pk }}" class="btn-ghost btn-xs">+ Worming</a>
@@ -373,21 +374,21 @@
                 <!-- Filter Pills -->
                 <div class="px-5 pt-4 pb-2 flex flex-wrap gap-2">
                     <button @click="activeFilter = 'all'" :style="pillStyle('all')"
-                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-150">All</button>
+                        class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">All</button>
                     <button @click="activeFilter = 'placement'" :style="pillStyle('placement')"
-                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-150">Placements</button>
+                        class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">Placements</button>
                     <button @click="activeFilter = 'vaccination'" :style="pillStyle('vaccination')"
-                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-150">Vaccinations</button>
+                        class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">Vaccinations</button>
                     <button @click="activeFilter = 'farrier'" :style="pillStyle('farrier')"
-                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-150">Farrier</button>
+                        class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">Farrier</button>
                     <button @click="activeFilter = 'vet_visit'" :style="pillStyle('vet_visit')"
-                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-150">Vet Visits</button>
+                        class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">Vet Visits</button>
                     {% if horse.is_mare %}
                     <button @click="activeFilter = 'breeding'" :style="pillStyle('breeding')"
-                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-150">Breeding</button>
+                        class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">Breeding</button>
                     {% endif %}
                     <button @click="activeFilter = 'worming'" :style="pillStyle('worming')"
-                        class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-150">Worming</button>
+                        class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">Worming</button>
                 </div>
 
                 <!-- Timeline Entries -->

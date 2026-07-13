@@ -8,7 +8,7 @@
         <a href="{% url 'invoice_list' %}" class="text-xs link">View all &rarr;</a>
     </div>
     <div class="overflow-x-auto">
-        <table class="data-table">
+        <table class="data-table data-table-cards">
             <thead>
                 <tr>
                     <th>Invoice</th>
@@ -22,20 +22,20 @@
             <tbody>
                 {% for invoice in outstanding_invoices %}
                 <tr>
-                    <td>
+                    <td data-label="Invoice">
                         <a href="{% url 'invoice_detail' invoice.pk %}" class="link">{{ invoice.invoice_number }}</a>
                     </td>
-                    <td>{{ invoice.owner.name }}</td>
-                    <td class="font-mono tabular-nums font-medium">
+                    <td data-label="Owner">{{ invoice.owner.name }}</td>
+                    <td class="font-mono tabular-nums font-medium" data-label="Amount">
                         &pound;{{ invoice.balance|floatformat:2 }}
                         {% if invoice.balance != invoice.total %}
                         <span class="block text-xs font-normal text-sage">of &pound;{{ invoice.total|floatformat:2 }}</span>
                         {% endif %}
                     </td>
-                    <td class="font-mono {% if invoice.is_overdue %}text-error-red font-medium{% else %}text-sage{% endif %}">
+                    <td class="font-mono {% if invoice.is_overdue %}text-error-red font-medium{% else %}text-sage{% endif %}" data-label="Due Date">
                         {{ invoice.due_date|date:"d M Y" }}
                     </td>
-                    <td>
+                    <td data-label="Status">
                         {% if invoice.is_overdue %}
                         <span class="badge-danger">Overdue</span>
                         {% else %}

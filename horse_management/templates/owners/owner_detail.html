@@ -84,7 +84,7 @@
             </div>
             {% if horses %}
             <div class="overflow-x-auto">
-                <table class="data-table">
+                <table class="data-table data-table-cards">
                     <thead>
                         <tr>
                             <th class="w-10">
@@ -106,18 +106,18 @@
                                        :checked="isSelected({{ horse.pk }})"
                                        class="form-checkbox rounded">
                             </td>
-                            <td>
+                            <td data-label="Name">
                                 <a href="{% url 'horse_detail' horse.pk %}" class="link text-sm font-medium">{{ horse.name }}</a>
                                 {% if horse.share_pct and horse.share_pct < 100 %}
                                 <span class="badge-info ml-1 text-xs">{{ horse.share_pct|floatformat:0 }}%</span>
                                 {% endif %}
                             </td>
-                            <td class="text-xs text-sage">
+                            <td class="text-xs text-sage" data-label="Details">
                                 {% if horse.age %}{{ horse.age }}yo{% endif %}
                                 {{ horse.get_color_display }}
                                 {{ horse.get_sex_display }}
                             </td>
-                            <td class="text-xs text-sage">
+                            <td class="text-xs text-sage" data-label="Location">
                                 {% with placement=horse.active_placements.0 %}
                                 {% if placement %}
                                 {{ placement.location.name }}
@@ -155,7 +155,7 @@
         </div>
         <div x-show="open" x-collapse x-cloak>
             <div class="overflow-x-auto">
-                <table class="data-table">
+                <table class="data-table data-table-cards">
                     <thead>
                         <tr>
                             <th>Name</th>
@@ -167,20 +167,20 @@
                     <tbody>
                         {% for horse in departed_horses %}
                         <tr class="opacity-60">
-                            <td>
+                            <td data-label="Name">
                                 <a href="{% url 'horse_detail' horse.pk %}" class="link text-sm font-medium">{{ horse.name }}</a>
                             </td>
-                            <td class="text-xs text-sage">
+                            <td class="text-xs text-sage" data-label="Details">
                                 {% if horse.age %}{{ horse.age }}yo{% endif %}
                                 {{ horse.get_color_display }}
                                 {{ horse.get_sex_display }}
                             </td>
-                            <td class="text-xs text-sage">
+                            <td class="text-xs text-sage" data-label="Last Location">
                                 {% with placement=horse.last_placements.0 %}
                                 {% if placement %}{{ placement.location.name }}{% endif %}
                                 {% endwith %}
                             </td>
-                            <td class="text-xs text-sage">
+                            <td class="text-xs text-sage" data-label="Departed">
                                 {% with placement=horse.last_placements.0 %}
                                 {% if placement and placement.end_date %}{{ placement.end_date|date:"d M Y" }}{% else %}&mdash;{% endif %}
                                 {% endwith %}
@@ -201,7 +201,7 @@
             <h2 class="section-title">Unbilled Charges</h2>
         </div>
         <div class="overflow-x-auto">
-            <table class="data-table">
+            <table class="data-table data-table-cards">
                 <thead>
                     <tr>
                         <th>Date</th>
@@ -214,11 +214,11 @@
                 <tbody>
                     {% for charge in extra_charges %}
                     <tr>
-                        <td class="text-sage">{{ charge.date|date:"d M Y" }}</td>
-                        <td class="text-charcoal font-medium">{{ charge.horse.name }}</td>
-                        <td class="text-sage">{{ charge.get_charge_type_display }}</td>
-                        <td class="text-sage">{{ charge.description }}</td>
-                        <td class="text-charcoal font-medium text-right">&pound;{{ charge.amount|floatformat:2 }}</td>
+                        <td class="text-sage" data-label="Date">{{ charge.date|date:"d M Y" }}</td>
+                        <td class="text-charcoal font-medium" data-label="Horse">{{ charge.horse.name }}</td>
+                        <td class="text-sage" data-label="Type">{{ charge.get_charge_type_display }}</td>
+                        <td class="text-sage" data-label="Description">{{ charge.description }}</td>
+                        <td class="text-charcoal font-medium text-right" data-label="Amount">&pound;{{ charge.amount|floatformat:2 }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -233,7 +233,7 @@
             <h2 class="section-title">Recent Invoices</h2>
         </div>
         <div class="overflow-x-auto">
-            <table class="data-table">
+            <table class="data-table data-table-cards">
                 <thead>
                     <tr>
                         <th>Invoice</th>
@@ -246,16 +246,16 @@
                 <tbody>
                     {% for invoice in invoices %}
                     <tr>
-                        <td>
+                        <td data-label="Invoice">
                             <a href="{% url 'invoice_detail' invoice.pk %}" class="link">
                                 {{ invoice.invoice_number }}
                             </a>
                         </td>
-                        <td class="text-sage">
+                        <td class="text-sage" data-label="Period">
                             {{ invoice.period_start }} - {{ invoice.period_end }}
                         </td>
-                        <td class="text-charcoal font-medium">&pound;{{ invoice.total|floatformat:2 }}</td>
-                        <td>
+                        <td class="text-charcoal font-medium" data-label="Total">&pound;{{ invoice.total|floatformat:2 }}</td>
+                        <td data-label="Status">
                             {% if invoice.status == 'paid' %}
                             <span class="badge-success">{{ invoice.get_status_display }}</span>
                             {% elif invoice.status == 'overdue' or invoice.is_overdue %}
@@ -266,7 +266,7 @@
                             <span class="badge-neutral">{{ invoice.get_status_display }}</span>
                             {% endif %}
                         </td>
-                        <td class="text-sage">{{ invoice.due_date|date:"d M Y" }}</td>
+                        <td class="text-sage" data-label="Due Date">{{ invoice.due_date|date:"d M Y" }}</td>
                     </tr>
                     {% empty %}
                     <tr>

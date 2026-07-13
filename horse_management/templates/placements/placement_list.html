@@ -25,15 +25,15 @@
         <div class="flex flex-wrap items-center gap-4">
             <div class="inline-flex rounded-lg shadow-sm">
                 <a href="?status=active{% if request.GET.location %}&location={{ request.GET.location }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner }}{% endif %}"
-                   class="px-4 py-2 text-sm font-medium rounded-l-lg border {% if current_status == 'active' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
+                   class="px-4 py-2 min-h-[44px] sm:min-h-0 inline-flex items-center text-sm font-medium rounded-l-lg border {% if current_status == 'active' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
                     Active
                 </a>
                 <a href="?status=ended{% if request.GET.location %}&location={{ request.GET.location }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner }}{% endif %}"
-                   class="px-4 py-2 text-sm font-medium border-t border-b {% if current_status == 'ended' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
+                   class="px-4 py-2 min-h-[44px] sm:min-h-0 inline-flex items-center text-sm font-medium border-t border-b {% if current_status == 'ended' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
                     Ended
                 </a>
                 <a href="?status=all{% if request.GET.location %}&location={{ request.GET.location }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner }}{% endif %}"
-                   class="px-4 py-2 text-sm font-medium rounded-r-lg border {% if current_status == 'all' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
+                   class="px-4 py-2 min-h-[44px] sm:min-h-0 inline-flex items-center text-sm font-medium rounded-r-lg border {% if current_status == 'all' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
                     All
                 </a>
             </div>
@@ -66,7 +66,7 @@
     <!-- Placements Table -->
     <div class="card overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="data-table">
+            <table class="data-table data-table-cards">
                 <thead>
                     <tr>
                         <th>Horse</th>
@@ -81,20 +81,20 @@
                 <tbody>
                     {% for placement in placements %}
                     <tr>
-                        <td>
+                        <td data-label="Horse">
                             <a href="{% url 'horse_detail' placement.horse.pk %}" class="link">{{ placement.horse.name }}</a>
                         </td>
-                        <td>
+                        <td data-label="Owner">
                             <a href="{% url 'owner_detail' placement.owner.pk %}" class="link">{{ placement.owner.name }}</a>
                         </td>
-                        <td>
+                        <td data-label="Location">
                             <a href="{% url 'location_detail' placement.location.pk %}" class="link">{{ placement.location.name }}</a>
                         </td>
-                        <td class="text-sage">
+                        <td class="text-sage" data-label="Rate">
                             {{ placement.rate_type.name }} (&pound;{{ placement.rate_type.daily_rate }}/day)
                         </td>
-                        <td class="text-sage">{{ placement.start_date|date:"d M Y" }}</td>
-                        <td>
+                        <td class="text-sage" data-label="Arrived">{{ placement.start_date|date:"d M Y" }}</td>
+                        <td data-label="Departed">
                             {% if placement.end_date %}
                                 <span class="text-sage">{{ placement.end_date|date:"d M Y" }}</span>
                             {% else %}
@@ -137,34 +137,7 @@
         </div>
     </div>
 
-    <!-- Pagination -->
-    {% if is_paginated %}
-    <div class="card px-5 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <p class="text-sm text-sage">
-            Showing <span class="font-medium text-charcoal">{{ page_obj.start_index }}</span>
-            to <span class="font-medium text-charcoal">{{ page_obj.end_index }}</span>
-            of <span class="font-medium text-charcoal">{{ paginator.count }}</span> placements
-        </p>
-        <div class="flex items-center gap-2">
-            {% if page_obj.has_previous %}
-            <a href="?status={{ current_status }}&page={{ page_obj.previous_page_number }}{% if request.GET.location %}&location={{ request.GET.location }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner }}{% endif %}" class="btn-secondary btn-xs">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
-                </svg>
-                Previous
-            </a>
-            {% endif %}
-            {% if page_obj.has_next %}
-            <a href="?status={{ current_status }}&page={{ page_obj.next_page_number }}{% if request.GET.location %}&location={{ request.GET.location }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner }}{% endif %}" class="btn-secondary btn-xs">
-                Next
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
-                </svg>
-            </a>
-            {% endif %}
-        </div>
-    </div>
-    {% endif %}
+    {% include 'includes/pagination.html' %}
 
 </div>
 {% endblock %}

@@ -51,7 +51,7 @@
     <!-- Vaccination Table -->
     <div class="card overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="data-table">
+            <table class="data-table data-table-cards">
                 <thead>
                     <tr>
                         <th>Horse</th>
@@ -65,15 +65,15 @@
                 <tbody>
                     {% for vax in vaccinations %}
                     <tr>
-                        <td>
+                        <td data-label="Horse">
                             <a href="{% url 'horse_detail' vax.horse.pk %}" class="link">{{ vax.horse.name }}</a>
                         </td>
-                        <td>{{ vax.vaccination_type.name }}</td>
-                        <td class="text-sage">{{ vax.date_given|date:"d M Y" }}</td>
-                        <td class="{% if vax.next_due_date < today %}text-error-red font-semibold{% elif vax.is_due_soon %}text-forest{% else %}text-sage{% endif %}">
+                        <td data-label="Type">{{ vax.vaccination_type.name }}</td>
+                        <td class="text-sage" data-label="Date Given">{{ vax.date_given|date:"d M Y" }}</td>
+                        <td class="{% if vax.next_due_date < today %}text-error-red font-semibold{% elif vax.is_due_soon %}text-forest{% else %}text-sage{% endif %}" data-label="Next Due">
                             {{ vax.next_due_date|date:"d M Y" }}
                         </td>
-                        <td>
+                        <td data-label="Status">
                             {% if vax.next_due_date < today %}
                             <span class="badge-danger">Overdue</span>
                             {% elif vax.is_due_soon %}
