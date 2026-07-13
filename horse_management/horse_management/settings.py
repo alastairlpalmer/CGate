@@ -332,6 +332,15 @@ CELERY_BEAT_SCHEDULE = {
             day_of_week=REMINDER_DAYS_OF_WEEK,
         ),
     },
+    # Documents (passports, insurance) expiring within 30 days — one summary
+    # email to the business address, one reminder per document.
+    'send-document-expiry-reminders': {
+        'task': 'notifications.tasks.send_document_expiry_reminders',
+        'schedule': crontab(
+            hour=REMINDER_HOUR, minute=(REMINDER_MINUTE + 20) % 60,
+            day_of_week=REMINDER_DAYS_OF_WEEK,
+        ),
+    },
 }
 
 # Login settings

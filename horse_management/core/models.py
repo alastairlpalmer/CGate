@@ -799,6 +799,98 @@ class DashboardPreference(models.Model):
         return grouped
 
 
+class Document(models.Model):
+    """A file attached to a horse or an owner: passport scan, insurance
+    certificate, registration papers, loan agreement, etc.
+
+    Documents with an expiry date are chased by the daily reminder task
+    (notifications.tasks.send_document_expiry_reminders) so an insurance
+    certificate can't lapse silently.
+    """
+
+    class DocType(models.TextChoices):
+        PASSPORT = 'passport', 'Passport'
+        INSURANCE = 'insurance', 'Insurance Certificate'
+        REGISTRATION = 'registration', 'Registration Papers'
+        LOAN_AGREEMENT = 'loan_agreement', 'Loan Agreement'
+        VET_REPORT = 'vet_report', 'Vet Report'
+        OTHER = 'other', 'Other'
+
+    horse = models.ForeignKey(
+        Horse,
+        on_delete=models.CASCADE,
+        related_name='documents',
+        null=True,
+        blank=True,
+    )
+    owner = models.ForeignKey(
+        Owner,
+        on_delete=models.CASCADE,
+        related_name='documents',
+        null=True,
+        blank=True,
+    )
+    doc_type = models.CharField(
+        max_length=20,
+        choices=DocType.choices,
+        default=DocType.OTHER,
+    )
+    title = models.CharField(max_length=200)
+    file = models.FileField(
+        upload_to='documents/%Y/%m/',
+        validators=[
+            FileExtensionValidator(allowed_extensions=[
+                'pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif',
+                'doc', 'docx',
+            ]),
+            validate_file_size,
+        ],
+    )
+    expiry_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Leave blank if the document doesn't expire",
+    )
+    expiry_reminder_sent = models.BooleanField(default=False)
+    notes = models.TextField(blank=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='uploaded_documents',
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        attached_to = self.horse or self.owner
+        return f"{self.get_doc_type_display()}: {self.title} ({attached_to})"
+
+    def clean(self):
+        if not self.horse and not self.owner:
+            raise DjangoValidationError(
+                "A document must be attached to a horse or an owner."
+            )
+
+    def save(self, *args, **kwargs):
+        # A changed expiry date re-arms the reminder.
+        if self.pk:
+            old = Document.objects.filter(pk=self.pk).values_list(
+                'expiry_date', flat=True
+            ).first()
+            if old != self.expiry_date:
+                self.expiry_reminder_sent = False
+        super().save(*args, **kwargs)
+
+    @property
+    def is_expired(self):
+        from django.utils import timezone
+        return bool(self.expiry_date) and self.expiry_date < timezone.now().date()
+
+
 # Invoice and InvoiceLineItem have been moved to invoicing.models.
 # Re-exported here for backward compatibility with existing imports.
 from invoicing.models import Invoice, InvoiceLineItem  # noqa: F401

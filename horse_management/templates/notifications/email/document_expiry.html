@@ -1,0 +1,37 @@
+{% extends "notifications/email/_base.html" %}
+
+{% block extra_styles %}
+        .doc-table th, .doc-table td {
+            padding: 6px 10px;
+            text-align: left;
+        }
+        .doc-table th { border-bottom: 1px solid #ccc; }
+        .expired { color: #ef4444; font-weight: bold; }
+{% endblock %}
+
+{% block content %}
+    <p>The following documents are expiring within 30 days (or have already expired):</p>
+
+    <div class="invoice-details">
+        <table class="doc-table" width="100%">
+            <tr>
+                <th>Document</th>
+                <th>Type</th>
+                <th>Attached To</th>
+                <th>Expires</th>
+            </tr>
+            {% for doc in documents %}
+            <tr>
+                <td>{{ doc.title }}</td>
+                <td>{{ doc.get_doc_type_display }}</td>
+                <td>{% if doc.horse %}{{ doc.horse.name }}{% else %}{{ doc.owner.name }}{% endif %}</td>
+                <td{% if doc.expiry_date < today %} class="expired"{% endif %}>
+                    {{ doc.expiry_date|date:"d M Y" }}{% if doc.expiry_date < today %} (expired){% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <p>Renew or replace these documents, then upload the new copies so the records stay current.</p>
+{% endblock %}

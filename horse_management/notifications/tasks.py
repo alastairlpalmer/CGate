@@ -238,3 +238,47 @@ def check_invoice_status():
     ).update(status=Invoice.Status.OVERDUE)
 
     return f"Updated {overdue} invoices to overdue status"
+
+
+@shared_task
+def send_document_expiry_reminders():
+    """Email the yard a summary of documents expiring within 30 days.
+
+    One reminder per document (the flag re-arms if its expiry date is
+    changed — see Document.save). Sent to the business email from Settings;
+    if none is configured the sweep is skipped and nothing is consumed.
+    Run daily via Celery Beat.
+    """
+    from core.models import BusinessSettings, Document
+
+    from .emails import send_document_expiry_summary
+
+    business = BusinessSettings.get_settings()
+    if not business.email:
+        logger.info(
+            "No business email configured — skipping document expiry reminders."
+        )
+        return "no_business_email"
+
+    today = timezone.now().date()
+    cutoff = today + timedelta(days=30)
+
+    documents = list(
+        Document.objects.filter(
+            expiry_date__isnull=False,
+            expiry_date__lte=cutoff,
+            expiry_reminder_sent=False,
+        ).select_related('horse', 'owner').order_by('expiry_date')
+    )
+    if not documents:
+        return "Sent 0 document expiry reminders"
+
+    # Claim first, roll back on failure — matches the other reminder tasks,
+    # so a transient send error doesn't consume the reminder.
+    ids = [d.pk for d in documents]
+    Document.objects.filter(pk__in=ids).update(expiry_reminder_sent=True)
+    if not send_document_expiry_summary(business.email, documents, today):
+        Document.objects.filter(pk__in=ids).update(expiry_reminder_sent=False)
+        return "Document expiry reminder send failed; rolled back"
+
+    return f"Sent expiry summary covering {len(documents)} document(s)"
