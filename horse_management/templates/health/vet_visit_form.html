@@ -106,7 +106,10 @@
             </fieldset>
 
             <footer class="form-footer">
-                <a href="{% url 'vet_visit_list' %}" class="btn-secondary">Cancel</a>
+                {% if from_horse_id %}<a href="{% url 'horse_detail' from_horse_id %}" class="btn-secondary">Cancel</a>{% else %}<a href="{% url 'vet_visit_list' %}" class="btn-secondary">Cancel</a>{% endif %}
+                {% if not object %}
+                <button type="submit" name="save_and_add" value="1" class="btn-secondary">Save &amp; Add Another</button>
+                {% endif %}
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% else %}Add Vet Visit{% endif %}
                 </button>

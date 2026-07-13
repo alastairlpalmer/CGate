@@ -96,7 +96,7 @@
                             </div>
                         </td>
                         <td class="text-right">
-                            <a href="{{ item.url }}" class="btn-ghost btn-xs">{{ item.action_label }}</a>
+                            <a href="{{ item.url }}&next={{ request.get_full_path|urlencode }}" class="btn-ghost btn-xs">{{ item.action_label }}</a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -141,7 +141,7 @@
                             </div>
                         </td>
                         <td class="text-right">
-                            <a href="{{ item.url }}" class="btn-ghost btn-xs">{{ item.action_label }}</a>
+                            <a href="{{ item.url }}&next={{ request.get_full_path|urlencode }}" class="btn-ghost btn-xs">{{ item.action_label }}</a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -191,7 +191,7 @@
                         <a href="{% url 'horse_detail' ec.horse.pk %}" class="link text-sm font-medium">{{ ec.horse.name }}</a>
                         <p class="text-xs text-sage mt-0.5">{{ ec.date|ago_label }} &middot; <span class="text-error-red font-semibold">{{ ec.count }} EPG</span></p>
                     </div>
-                    <a href="{% url 'worming_create' %}?horse={{ ec.horse.pk }}" class="btn-ghost btn-xs">Record Worming</a>
+                    <a href="{% url 'worming_create' %}?horse={{ ec.horse.pk }}&next={{ request.get_full_path|urlencode }}" class="btn-ghost btn-xs">Record Worming</a>
                 </li>
                 {% endfor %}
             </ul>

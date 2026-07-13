@@ -20,6 +20,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.html import format_html
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from billing.models import ExtraCharge
@@ -532,13 +533,47 @@ class VaccinationListView(LoginRequiredMixin, ListView):
         return context
 
 
-class VaccinationCreateView(LoginRequiredMixin, CreateView):
+class HealthRecordSuccessUrlMixin:
+    """Send the user back to where they started after saving a record.
+
+    Priority: "Save & add another" re-opens the same blank form with the same
+    context; an explicit safe ?next= URL wins next; then the horse page when
+    the form was opened via a ?horse= quick action (so recording three things
+    after a vet visit doesn't mean re-finding the horse three times); and
+    finally the relevant health dashboard tab.
+    """
+
+    dashboard_type = ''
+
+    def get_success_url(self):
+        if 'save_and_add' in self.request.POST:
+            query = self.request.GET.urlencode()
+            return self.request.path + (f'?{query}' if query else '')
+        next_url = self.request.GET.get('next')
+        if next_url and url_has_allowed_host_and_scheme(
+            next_url,
+            allowed_hosts={self.request.get_host()},
+            require_https=self.request.is_secure(),
+        ):
+            return next_url
+        horse_id = self.request.GET.get('horse', '')
+        if horse_id.isdigit():
+            return reverse('horse_detail', kwargs={'pk': horse_id})
+        return reverse('health_dashboard') + f'?type={self.dashboard_type}'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        horse_id = self.request.GET.get('horse', '')
+        # Validated here so templates can safely reverse horse_detail with it.
+        context['from_horse_id'] = horse_id if horse_id.isdigit() else ''
+        return context
+
+
+class VaccinationCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, CreateView):
     model = Vaccination
     form_class = VaccinationForm
     template_name = 'health/vaccination_form.html'
-
-    def get_success_url(self):
-        return reverse('health_dashboard') + '?type=vaccinations'
+    dashboard_type = 'vaccinations'
 
     def get_initial(self):
         initial = super().get_initial()
@@ -642,13 +677,11 @@ class FarrierListView(LoginRequiredMixin, ListView):
         return context
 
 
-class FarrierCreateView(LoginRequiredMixin, CreateView):
+class FarrierCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, CreateView):
     model = FarrierVisit
     form_class = FarrierVisitForm
     template_name = 'health/farrier_form.html'
-
-    def get_success_url(self):
-        return reverse('health_dashboard') + '?type=farrier'
+    dashboard_type = 'farrier'
 
     def get_initial(self):
         initial = super().get_initial()
@@ -730,13 +763,11 @@ class WormingListView(LoginRequiredMixin, ListView):
         return context
 
 
-class WormingCreateView(LoginRequiredMixin, CreateView):
+class WormingCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, CreateView):
     model = WormingTreatment
     form_class = WormingTreatmentForm
     template_name = 'health/worming_form.html'
-
-    def get_success_url(self):
-        return reverse('health_dashboard') + '?type=worming'
+    dashboard_type = 'worming'
 
     def get_initial(self):
         initial = super().get_initial()
@@ -783,13 +814,11 @@ class WormEggCountListView(LoginRequiredMixin, ListView):
         return context
 
 
-class WormEggCountCreateView(LoginRequiredMixin, CreateView):
+class WormEggCountCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, CreateView):
     model = WormEggCount
     form_class = WormEggCountForm
     template_name = 'health/egg_count_form.html'
-
-    def get_success_url(self):
-        return reverse('health_dashboard') + '?type=egg_counts'
+    dashboard_type = 'egg_counts'
 
     def get_initial(self):
         initial = super().get_initial()
@@ -839,13 +868,11 @@ class MedicalConditionListView(LoginRequiredMixin, ListView):
         return context
 
 
-class MedicalConditionCreateView(LoginRequiredMixin, CreateView):
+class MedicalConditionCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, CreateView):
     model = MedicalCondition
     form_class = MedicalConditionForm
     template_name = 'health/condition_form.html'
-
-    def get_success_url(self):
-        return reverse('health_dashboard') + '?type=conditions'
+    dashboard_type = 'conditions'
 
     def get_initial(self):
         initial = super().get_initial()
@@ -891,13 +918,11 @@ class VetVisitListView(LoginRequiredMixin, ListView):
         return context
 
 
-class VetVisitCreateView(LoginRequiredMixin, CreateView):
+class VetVisitCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, CreateView):
     model = VetVisit
     form_class = VetVisitForm
     template_name = 'health/vet_visit_form.html'
-
-    def get_success_url(self):
-        return reverse('health_dashboard') + '?type=vet_visits'
+    dashboard_type = 'vet_visits'
 
     def get_initial(self):
         initial = super().get_initial()

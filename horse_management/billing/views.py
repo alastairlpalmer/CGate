@@ -101,7 +101,40 @@ class ExtraChargeCreateView(StaffRequiredMixin, CreateView):
 
     def form_valid(self, form):
         messages.success(self.request, "Charge added successfully.")
+        _warn_if_owner_unrelated(self.request, form)
         return super().form_valid(form)
+
+
+@login_required
+def horse_owner(request):
+    """Return the current owner for a horse (used to prefill Bill To)."""
+    horse_id = request.GET.get('horse', '')
+    owner_id = None
+    if horse_id.isdigit():
+        horse = Horse.objects.filter(pk=horse_id).first()
+        if horse and horse.current_owner:
+            owner_id = horse.current_owner.pk
+    return JsonResponse({'owner_id': owner_id})
+
+
+def _warn_if_owner_unrelated(request, form):
+    """Warn (without blocking) when a charge bills someone who neither owns
+    nor part-owns the horse — usually a mis-picked dropdown."""
+    horse = form.cleaned_data.get('horse')
+    owner = form.cleaned_data.get('owner')
+    if not horse or not owner:
+        return
+    related_ids = set(
+        horse.ownership_shares.values_list('owner_id', flat=True)
+    )
+    if horse.current_owner:
+        related_ids.add(horse.current_owner.pk)
+    if owner.pk not in related_ids:
+        messages.warning(
+            request,
+            f"Heads up: {owner.name} is not recorded as an owner of "
+            f"{horse.name} — double-check the Bill To selection."
+        )
 
 
 class ExtraChargeUpdateView(StaffRequiredMixin, UpdateView):
@@ -119,6 +152,7 @@ class ExtraChargeUpdateView(StaffRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         messages.success(self.request, "Charge updated successfully.")
+        _warn_if_owner_unrelated(self.request, form)
         return super().form_valid(form)
 
 
