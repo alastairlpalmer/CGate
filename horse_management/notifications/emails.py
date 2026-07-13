@@ -250,3 +250,32 @@ def send_owner_statement(owner):
     except Exception:
         logger.exception("Failed to send statement email to %s", owner.email)
         return False
+
+
+def send_document_expiry_summary(to_email, documents, today):
+    """Send the yard one email listing documents expiring soon (or expired)."""
+    business = BusinessSettings.get_settings()
+
+    subject = (
+        f"{len(documents)} document{'s' if len(documents) != 1 else ''} "
+        "expiring soon"
+    )
+    html_content = render_to_string('notifications/email/document_expiry.html', {
+        'documents': documents,
+        'business': business,
+        'today': today,
+    })
+
+    email = EmailMessage(
+        subject=subject,
+        body=html_content,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[to_email],
+    )
+    email.content_subtype = 'html'
+    try:
+        email.send()
+        return True
+    except Exception:
+        logger.exception("Failed to send document expiry summary to %s", to_email)
+        return False

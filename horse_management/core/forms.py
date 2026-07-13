@@ -7,7 +7,7 @@ from decimal import Decimal
 from django import forms
 
 from .images import heic_to_jpeg
-from .models import BusinessSettings, Horse, Location, Owner, OwnershipShare, Placement, RateType
+from .models import BusinessSettings, Document, Horse, Location, Owner, OwnershipShare, Placement, RateType
 
 
 def get_grouped_location_choices():
@@ -426,3 +426,16 @@ class BusinessSettingsForm(forms.ModelForm):
                 "— other rates would disagree with the Xero tax code."
             )
         return rate
+
+
+class DocumentForm(forms.ModelForm):
+    class Meta:
+        model = Document
+        fields = ['doc_type', 'title', 'file', 'expiry_date', 'notes']
+        widgets = {
+            'doc_type': forms.Select(attrs={'class': 'form-select'}),
+            'title': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Passport — Weatherbys'}),
+            'file': forms.ClearableFileInput(attrs={'class': 'form-input', 'accept': 'image/*,.pdf,.doc,.docx'}),
+            'expiry_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+        }

@@ -145,6 +145,9 @@
             {% endif %}
         </div>
 
+        <!-- Documents (flows into the column under Contact) -->
+        {% include 'documents/_documents_card.html' with documents=owner.documents.all owner=owner %}
+
     </div>
 
     <!-- Other Horses (departed / inactive) -->

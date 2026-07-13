@@ -50,4 +50,8 @@ urlpatterns = [
     path('placements/', login_required(RedirectView.as_view(url='/locations/?tab=history', permanent=False)), name='placement_list'),
     path('placements/add/', views.PlacementCreateView.as_view(), name='placement_create'),
     path('placements/<int:pk>/edit/', views.PlacementUpdateView.as_view(), name='placement_update'),
+
+    # Documents (passport scans, insurance certs, …)
+    path('documents/add/', views.document_create, name='document_create'),
+    path('documents/<int:pk>/delete/', views.document_delete, name='document_delete'),
 ]
