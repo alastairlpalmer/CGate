@@ -12,8 +12,9 @@ from django.db import transaction
 from django.db.models import Count, Exists, OuterRef, Prefetch, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.utils.html import format_html
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from health.models import (
@@ -267,6 +268,8 @@ class HorseDetailView(LoginRequiredMixin, DetailView):
             'owner'
         ).all()[:10]
         context['ownership_shares'] = horse.ownership_shares.select_related('owner').all()
+        context['photos'] = horse.photos.all()[:12]
+        context['photo_count'] = horse.photos.count()
         # New sections
         context['worming_treatments'] = horse.worming_treatments.all()[:10]
         context['egg_counts'] = horse.worm_egg_counts.all()[:10]
@@ -443,7 +446,12 @@ def new_arrival(request):
                 expected_departure=form.cleaned_data.get('expected_departure'),
                 notes=form.cleaned_data.get('notes', ''),
             )
-            messages.success(request, f"{horse.name} created and arrived at {placement.location.name}.")
+            messages.success(request, format_html(
+                '{} created and arrived at {}. <a href="{}?category=arrival" class="underline font-semibold">Add photos</a>',
+                horse.name,
+                placement.location.name,
+                reverse('horse_photo_add', args=[horse.pk]),
+            ))
             return redirect('horse_detail', pk=horse.pk)
     else:
         initial = {'arrival_date': timezone.now().date()}
@@ -475,7 +483,12 @@ def horse_arrive(request, pk):
                     expected_departure=form.cleaned_data.get('expected_departure'),
                     notes=form.cleaned_data['notes'],
                 )
-                messages.success(request, f"{horse.name} arrived at {placement.location.name}.")
+                messages.success(request, format_html(
+                    '{} arrived at {}. <a href="{}?category=arrival" class="underline font-semibold">Add photos</a>',
+                    horse.name,
+                    placement.location.name,
+                    reverse('horse_photo_add', args=[horse.pk]),
+                ))
                 return redirect('horse_detail', pk=horse.pk)
             except ValidationError as e:
                 messages.error(request, str(e))
