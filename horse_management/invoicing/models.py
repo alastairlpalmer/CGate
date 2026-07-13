@@ -35,6 +35,18 @@ class Invoice(models.Model):
         decimal_places=2,
         default=Decimal('0.00')
     )
+    # VAT rate is snapshotted from BusinessSettings at creation so changing
+    # the setting never silently rewrites historical invoices.
+    vat_rate = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        default=Decimal('0.00'),
+    )
+    vat_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+    )
     total = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -70,10 +82,16 @@ class Invoice(models.Model):
         super().save(*args, **kwargs)
 
     def recalculate_totals(self):
-        """Recalculate invoice totals from line items."""
+        """Recalculate invoice totals from line items.
+
+        Line totals are net; VAT is added at the invoice's snapshotted rate.
+        """
         self.subtotal = sum(item.line_total for item in self.line_items.all())
-        self.total = self.subtotal  # No tax for now
-        self.save(update_fields=['subtotal', 'total'])
+        self.vat_amount = (
+            self.subtotal * self.vat_rate / Decimal('100')
+        ).quantize(Decimal('0.01'))
+        self.total = self.subtotal + self.vat_amount
+        self.save(update_fields=['subtotal', 'vat_amount', 'total'])
 
     def mark_as_sent(self):
         """Mark invoice as sent."""

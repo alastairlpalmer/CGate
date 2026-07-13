@@ -21,4 +21,8 @@ urlpatterns = [
     path('bulk-action/', views.invoice_bulk_action, name='invoice_bulk_action'),
     path('<int:pk>/payments/add/', views.payment_create, name='payment_create'),
     path('payments/<int:pk>/delete/', views.payment_delete, name='payment_delete'),
+    path('debtors/', views.aged_debtors, name='aged_debtors'),
+    path('statements/<int:owner_pk>/', views.owner_statement, name='owner_statement'),
+    path('statements/<int:owner_pk>/pdf/', views.owner_statement_pdf, name='owner_statement_pdf'),
+    path('statements/<int:owner_pk>/email/', views.owner_statement_email, name='owner_statement_email'),
 ]

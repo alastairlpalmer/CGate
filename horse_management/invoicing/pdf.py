@@ -7,6 +7,7 @@ import logging
 from decimal import Decimal
 
 from django.template.loader import render_to_string
+from django.utils import timezone
 
 from core.models import BusinessSettings
 
@@ -233,9 +234,10 @@ def generate_invoice_pdf_reportlab(invoice):
     # Totals \u2014 when part-paid, show the running balance so the PDF asks for
     # what's actually owed rather than the full face value.
     amount_paid = invoice.amount_paid
+    vat_label = 'VAT:' if invoice.vat_rate == 0 else f"VAT ({invoice.vat_rate:g}%):"
     totals_data = [
         ['Net Total:', f"\u00a3{invoice.subtotal:.2f}"],
-        ['VAT:', '\u00a30.00'],
+        [vat_label, f"\u00a3{invoice.vat_amount:.2f}"],
     ]
     if amount_paid > 0:
         totals_data.append(['Invoice Total:', f"\u00a3{invoice.total:.2f}"])
@@ -276,4 +278,101 @@ def generate_invoice_pdf_reportlab(invoice):
     doc.build(elements)
     buffer.seek(0)
 
+    return buffer
+
+
+def generate_owner_statement_pdf(owner, statement):
+    """Generate a statement-of-account PDF for an owner (ReportLab)."""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import (
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
+
+    settings = BusinessSettings.get_settings()
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        rightMargin=20*mm, leftMargin=20*mm, topMargin=15*mm, bottomMargin=15*mm,
+    )
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'StatementTitle', parent=styles['Heading1'], fontSize=20, spaceAfter=4,
+    )
+    normal_style = styles['Normal']
+    small_style = ParagraphStyle(
+        'Small', parent=normal_style, fontSize=9,
+        textColor=colors.Color(0.4, 0.4, 0.4),
+    )
+
+    elements = [
+        Paragraph('Statement of Account', title_style),
+        Paragraph(settings.business_name, normal_style),
+        Spacer(1, 4*mm),
+        Paragraph(f"<b>{owner.name}</b>", normal_style),
+    ]
+    if owner.address:
+        for line in owner.address.strip().split('\n'):
+            elements.append(Paragraph(line.strip(), small_style))
+    elements.append(Paragraph(
+        f"Issued {timezone.now().date():%d %B %Y}", small_style
+    ))
+    elements.append(Spacer(1, 8*mm))
+
+    table_data = [['Invoice', 'Issued', 'Period', 'Total', 'Paid', 'Balance']]
+    for row in statement['rows']:
+        invoice = row['invoice']
+        table_data.append([
+            invoice.invoice_number,
+            f"{invoice.created_at:%d/%m/%Y}",
+            f"{invoice.period_start:%d/%m/%y} – {invoice.period_end:%d/%m/%y}",
+            f"£{invoice.total:.2f}",
+            f"£{row['paid']:.2f}",
+            f"£{row['balance']:.2f}",
+        ])
+    totals = statement['totals']
+    table_data.append([
+        '', '', 'Totals:',
+        f"£{totals['invoiced']:.2f}",
+        f"£{totals['paid']:.2f}",
+        f"£{totals['balance']:.2f}",
+    ])
+
+    table = Table(
+        table_data,
+        colWidths=[28*mm, 24*mm, 46*mm, 24*mm, 24*mm, 24*mm],
+        repeatRows=1,
+    )
+    table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('LINEBELOW', (0, 0), (-1, 0), 1, colors.black),
+        ('ALIGN', (3, 0), (-1, -1), 'RIGHT'),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('LINEABOVE', (0, -1), (-1, -1), 1, colors.black),
+        ('TOPPADDING', (0, 1), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 3),
+    ]))
+    elements.append(table)
+    elements.append(Spacer(1, 8*mm))
+    elements.append(Paragraph(
+        f"<b>Balance outstanding: £{totals['balance']:.2f}</b>", normal_style
+    ))
+
+    if settings.bank_details:
+        elements.append(Spacer(1, 6*mm))
+        elements.append(Paragraph('<b>Payment Details:</b>', normal_style))
+        elements.append(Paragraph(
+            settings.bank_details.replace('\n', '<br/>'), small_style
+        ))
+
+    doc.build(elements)
+    buffer.seek(0)
     return buffer

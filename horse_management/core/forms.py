@@ -398,7 +398,7 @@ class BusinessSettingsForm(forms.ModelForm):
         model = BusinessSettings
         fields = [
             'business_name', 'address', 'phone', 'email', 'website',
-            'vat_registration', 'bank_details', 'card_payment_url',
+            'vat_registration', 'vat_rate', 'bank_details', 'card_payment_url',
             'default_payment_terms', 'invoice_prefix', 'auto_generate_invoices',
         ]
         widgets = {
@@ -413,4 +413,16 @@ class BusinessSettingsForm(forms.ModelForm):
             'default_payment_terms': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
             'invoice_prefix': forms.TextInput(attrs={'class': 'form-input', 'maxlength': 10}),
             'auto_generate_invoices': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+            'vat_rate': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
         }
+
+    def clean_vat_rate(self):
+        rate = self.cleaned_data['vat_rate']
+        # The Xero export/push maps any non-zero rate to the UK standard-rate
+        # tax code, so only 0 or 20 keep the books consistent end to end.
+        if rate not in (Decimal('0'), Decimal('0.00'), Decimal('20'), Decimal('20.00')):
+            raise forms.ValidationError(
+                "VAT rate must be 0 (not registered) or 20 (UK standard rate) "
+                "— other rates would disagree with the Xero tax code."
+            )
+        return rate
