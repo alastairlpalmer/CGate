@@ -5,6 +5,7 @@ Core models for horse management system.
 from datetime import date
 from decimal import Decimal
 from functools import cached_property
+from pathlib import Path
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.conf import settings
@@ -239,6 +240,12 @@ class Horse(models.Model):
             validate_file_size,
         ],
     )
+    # Square rendition generated from photo on save — avatars render this
+    # (~10-20 KB) instead of the full-resolution original (often several MB),
+    # which matters on a 30-row horse list over yard 4G.
+    photo_thumb = models.ImageField(
+        upload_to='horses/thumbs/', blank=True, null=True, editable=False,
+    )
     notes = models.TextField(blank=True, help_text="Special notes (e.g., first winter, lame, needs rug)")
     passport_number = models.CharField(max_length=100, blank=True)
     has_passport = models.BooleanField(default=True)
@@ -251,6 +258,50 @@ class Horse(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get('update_fields')
+        if update_fields is None or 'photo' in update_fields:
+            if self._sync_photo_thumb() and update_fields is not None:
+                kwargs['update_fields'] = list(update_fields) + ['photo_thumb']
+        super().save(*args, **kwargs)
+
+    def _sync_photo_thumb(self):
+        """Keep photo_thumb in step with photo.
+
+        Regenerates when the photo is new/changed (or a thumb is missing),
+        clears it when the photo is removed. Generation failures degrade to
+        "no thumbnail" — the avatar partial falls back to the original photo,
+        so a bad image never blocks saving the horse. Returns True when
+        photo_thumb was modified.
+        """
+        from .images import make_avatar_thumbnail
+
+        if not self.photo:
+            if self.photo_thumb:
+                self.photo_thumb.delete(save=False)
+                self.photo_thumb = None
+                return True
+            return False
+
+        old_photo_name = None
+        if self.pk:
+            old_photo_name = (
+                Horse.objects.filter(pk=self.pk)
+                .values_list('photo', flat=True)
+                .first()
+            )
+        if self.photo.name == old_photo_name and self.photo_thumb:
+            return False  # unchanged photo, thumb present
+
+        thumb = make_avatar_thumbnail(self.photo)
+        if thumb is None:
+            return False
+        if self.photo_thumb:
+            self.photo_thumb.delete(save=False)
+        base = Path(self.photo.name).stem if self.photo.name else 'horse'
+        self.photo_thumb.save(f"{base}-thumb.jpg", thumb, save=False)
+        return True
 
     @property
     def calculated_age(self):
