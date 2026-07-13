@@ -4,6 +4,23 @@ from decimal import Decimal
 from django.db import migrations, models
 
 
+def drop_orphaned_column(apps, schema_editor):
+    """Self-heal a crashed earlier deploy.
+
+    If a previous migrate attempt added the column but the container was
+    stopped before Django recorded this migration as applied (seen on
+    Railway), every restart then fails with DuplicateColumn. The column
+    cannot hold real data in that state — the app never boots while migrate
+    is crash-looping — so dropping it and letting AddField re-create it is
+    safe and makes the migration idempotent.
+    """
+    if schema_editor.connection.vendor != 'postgresql':
+        return
+    schema_editor.execute(
+        'ALTER TABLE core_businesssettings DROP COLUMN IF EXISTS vat_rate'
+    )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -11,6 +28,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(drop_orphaned_column, migrations.RunPython.noop),
         migrations.AddField(
             model_name="businesssettings",
             name="vat_rate",
