@@ -52,7 +52,7 @@
     <!-- Condition Table -->
     <div class="card overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="data-table">
+            <table class="data-table data-table-cards">
                 <thead>
                     <tr>
                         <th>Horse</th>
@@ -65,12 +65,12 @@
                 <tbody>
                     {% for c in conditions %}
                     <tr>
-                        <td>
+                        <td data-label="Horse">
                             <a href="{% url 'horse_detail' c.horse.pk %}" class="link">{{ c.horse.name }}</a>
                         </td>
-                        <td>{{ c.name }}</td>
-                        <td class="text-sage">{{ c.diagnosed_date|default:"-" }}</td>
-                        <td>
+                        <td data-label="Condition">{{ c.name }}</td>
+                        <td class="text-sage" data-label="Diagnosed">{{ c.diagnosed_date|default:"-" }}</td>
+                        <td data-label="Status">
                             {% if c.status == 'active' %}
                             <span class="badge-danger">Active</span>
                             {% elif c.status == 'monitoring' %}

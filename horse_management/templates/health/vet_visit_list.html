@@ -43,7 +43,7 @@
     <!-- Vet Visit Table -->
     <div class="card overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="data-table">
+            <table class="data-table data-table-cards">
                 <thead>
                     <tr>
                         <th>Horse</th>
@@ -58,16 +58,16 @@
                 <tbody>
                     {% for v in vet_visits %}
                     <tr>
-                        <td>
+                        <td data-label="Horse">
                             <a href="{% url 'horse_detail' v.horse.pk %}" class="link">{{ v.horse.name }}</a>
                         </td>
-                        <td class="text-sage">{{ v.date|date:"d M Y" }}</td>
-                        <td>{{ v.reason|truncatewords:10 }}</td>
-                        <td class="text-sage">{% if v.vet %}{{ v.vet.name }}{% else %}<span class="text-sage">-</span>{% endif %}</td>
-                        <td class="{% if v.follow_up_date %}text-forest{% else %}text-sage{% endif %}">
+                        <td class="text-sage" data-label="Date">{{ v.date|date:"d M Y" }}</td>
+                        <td data-label="Reason">{{ v.reason|truncatewords:10 }}</td>
+                        <td class="text-sage" data-label="Vet">{% if v.vet %}{{ v.vet.name }}{% else %}<span class="text-sage">-</span>{% endif %}</td>
+                        <td class="{% if v.follow_up_date %}text-forest{% else %}text-sage{% endif %}" data-label="Follow-up">
                             {% if v.follow_up_date %}{{ v.follow_up_date|date:"d M Y" }}{% else %}-{% endif %}
                         </td>
-                        <td class="text-right">
+                        <td class="text-right" data-label="Cost">
                             &pound;{{ v.cost|floatformat:2 }}
                         </td>
                         <td>

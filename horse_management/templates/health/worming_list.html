@@ -43,7 +43,7 @@
     <!-- Worming Treatment Table -->
     <div class="card overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="data-table">
+            <table class="data-table data-table-cards">
                 <thead>
                     <tr>
                         <th>Horse</th>
@@ -57,13 +57,13 @@
                 <tbody>
                     {% for t in treatments %}
                     <tr>
-                        <td>
+                        <td data-label="Horse">
                             <a href="{% url 'horse_detail' t.horse.pk %}" class="link">{{ t.horse.name }}</a>
                         </td>
-                        <td class="text-sage">{{ t.date|date:"d M Y" }}</td>
-                        <td>{{ t.product_name }}</td>
-                        <td class="text-sage">{{ t.active_ingredient|default:"-" }}</td>
-                        <td class="text-sage">{{ t.administered_by|default:"-" }}</td>
+                        <td class="text-sage" data-label="Date">{{ t.date|date:"d M Y" }}</td>
+                        <td data-label="Product">{{ t.product_name }}</td>
+                        <td class="text-sage" data-label="Active Ingredient">{{ t.active_ingredient|default:"-" }}</td>
+                        <td class="text-sage" data-label="Administered By">{{ t.administered_by|default:"-" }}</td>
                         <td>
                             <a href="{% url 'worming_update' t.pk %}" class="btn-ghost btn-xs">Edit</a>
                         </td>

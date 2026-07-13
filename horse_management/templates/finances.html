@@ -208,11 +208,11 @@
     }
 
     if (window.Chart) {
-        // hx-boost navigation: Chart.js already loaded in <head>
+        // hx-boost navigation: Chart.js already loaded by the lazy loader
         initFinanceCharts();
     } else {
-        // Full page load: chart.js is deferred, so wait for it
-        document.addEventListener('DOMContentLoaded', initFinanceCharts);
+        // First chart page this session: wait for the lazy loader in base.html
+        window.addEventListener('chartjs:ready', initFinanceCharts, { once: true });
     }
 })();
 </script>

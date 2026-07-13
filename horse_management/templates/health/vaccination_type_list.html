@@ -43,7 +43,7 @@
     <!-- Vaccination Types Table -->
     <div class="card overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="data-table">
+            <table class="data-table data-table-cards">
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -56,7 +56,7 @@
                 <tbody>
                     {% for vt in vaccination_types %}
                     <tr>
-                        <td>
+                        <td data-label="Name">
                             <div>
                                 <span class="font-medium text-charcoal">{{ vt.name }}</span>
                                 {% if vt.description %}
@@ -64,9 +64,9 @@
                                 {% endif %}
                             </div>
                         </td>
-                        <td class="text-sage">Every {{ vt.interval_months }} months</td>
-                        <td class="text-sage">{{ vt.reminder_days_before }} days before</td>
-                        <td>
+                        <td class="text-sage" data-label="Interval">Every {{ vt.interval_months }} months</td>
+                        <td class="text-sage" data-label="Reminder">{{ vt.reminder_days_before }} days before</td>
+                        <td data-label="Status">
                             {% if vt.is_active %}
                             <span class="badge-success">Active</span>
                             {% else %}

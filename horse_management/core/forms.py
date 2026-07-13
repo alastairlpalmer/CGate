@@ -51,7 +51,7 @@ class LocationForm(forms.ModelForm):
             'site': forms.TextInput(attrs={'class': 'form-input'}),
             'usage': forms.Select(attrs={'class': 'form-select'}),
             'description': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
-            'capacity': forms.NumberInput(attrs={'class': 'form-input'}),
+            'capacity': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
         }
 
 
@@ -93,7 +93,7 @@ class HorseForm(forms.ModelForm):
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
-            'age': forms.NumberInput(attrs={'class': 'form-input'}),
+            'age': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
             'sex': forms.Select(attrs={'class': 'form-select'}),
             'color': forms.Select(attrs={'class': 'form-select'}),
             'dam_name': forms.TextInput(attrs={'class': 'form-input'}),
@@ -410,7 +410,7 @@ class BusinessSettingsForm(forms.ModelForm):
             'vat_registration': forms.TextInput(attrs={'class': 'form-input'}),
             'bank_details': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
             'card_payment_url': forms.URLInput(attrs={'class': 'form-input'}),
-            'default_payment_terms': forms.NumberInput(attrs={'class': 'form-input'}),
+            'default_payment_terms': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
             'invoice_prefix': forms.TextInput(attrs={'class': 'form-input', 'maxlength': 10}),
             'auto_generate_invoices': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
         }
