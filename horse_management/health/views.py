@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 
 from core.mixins import StaffRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
@@ -18,6 +19,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.utils.html import format_html
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from billing.models import ExtraCharge
@@ -399,6 +401,12 @@ def bulk_health_apply(request):
 
     if not form_class or not horse_ids:
         return HttpResponseBadRequest('Invalid request')
+
+    # Departure actions end placements and deactivate horses — admin-only
+    # operations everywhere else (horse_depart, log_departure), so the
+    # viewer role must not reach them through the bulk endpoint either.
+    if action_type in ('expected_departure', 'actual_departure') and not request.user.is_staff:
+        raise PermissionDenied
 
     form = form_class(request.POST)
     if not form.is_valid():
@@ -1014,5 +1022,9 @@ def quick_add_vet(request):
         name=name,
         provider_type='vet',
     )
-    html = f'<option value="{provider.pk}" selected>{provider.name} (Veterinarian)</option>'
+    html = format_html(
+        '<option value="{}" selected>{} (Veterinarian)</option>',
+        provider.pk,
+        provider.name,
+    )
     return HttpResponse(html)

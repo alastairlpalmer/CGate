@@ -18,6 +18,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
 from core.models import Horse, Owner
@@ -297,7 +298,6 @@ class CostsListView(StaffRequiredMixin, ListView):
         charge_agg = ExtraCharge.objects.aggregate(
             month=Sum('amount', filter=Q(date__gte=month_start)),
             year=Sum('amount', filter=Q(date__gte=year_start)),
-            unbilled=Sum('amount', filter=Q(invoiced=False)),
         )
         yard_agg = YardCost.objects.aggregate(
             month=Sum('amount', filter=Q(date__gte=month_start)),
@@ -305,7 +305,10 @@ class CostsListView(StaffRequiredMixin, ListView):
         )
         context['month_total'] = (charge_agg['month'] or Decimal('0')) + (yard_agg['month'] or Decimal('0'))
         context['year_total'] = (charge_agg['year'] or Decimal('0')) + (yard_agg['year'] or Decimal('0'))
-        context['unbilled_total'] = charge_agg['unbilled'] or Decimal('0')
+        # unbilled_total() subtracts the portions of split charges already on
+        # live invoices — a plain Sum over invoiced=False double-counts them
+        # (QA #6, previously fixed on the dashboard and finances pages).
+        context['unbilled_total'] = ExtraCharge.unbilled_total()
         context['yard_month_total'] = yard_agg['month'] or Decimal('0')
 
         context['period_label'] = period_label
@@ -364,6 +367,7 @@ class YardCostDeleteView(StaffRequiredMixin, DeleteView):
 
 
 @staff_required
+@require_POST
 def yard_cost_duplicate(request, pk):
     """Duplicate a yard cost with today's date."""
     original = get_object_or_404(YardCost, pk=pk)

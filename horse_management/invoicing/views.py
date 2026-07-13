@@ -79,6 +79,24 @@ class InvoiceUpdateView(StaffRequiredMixin, UpdateView):
     form_class = InvoiceUpdateForm
     template_name = 'invoicing/invoice_form.html'
 
+    def form_valid(self, form):
+        was_cancelled = (
+            form.initial.get('status') == Invoice.Status.CANCELLED
+        )
+        response = super().form_valid(form)
+        # Cancelling must free the invoice's extra charges, or they stay
+        # invoiced=True against a dead invoice and drop out of any
+        # replacement invoice.
+        if self.object.status == Invoice.Status.CANCELLED and not was_cancelled:
+            released = self.object.release_extra_charges()
+            if released:
+                messages.info(
+                    self.request,
+                    f"{released} extra charge{'s' if released != 1 else ''} "
+                    "released for re-billing on a future invoice."
+                )
+        return response
+
     def get_success_url(self):
         return reverse_lazy('invoice_detail', kwargs={'pk': self.object.pk})
 
@@ -271,6 +289,14 @@ def invoice_csv(request, pk):
     """Download a single invoice as Xero-compatible CSV."""
     invoice = get_object_or_404(Invoice, pk=pk)
 
+    if invoice.status == Invoice.Status.CANCELLED:
+        messages.error(
+            request,
+            "Cancelled invoices cannot be exported — importing one into Xero "
+            "would raise a receivable that was voided here.",
+        )
+        return redirect('invoice_detail', pk=pk)
+
     output = io.StringIO()
     write_xero_csv(invoice, output)
 
@@ -281,16 +307,32 @@ def invoice_csv(request, pk):
 
 @login_required
 def invoice_export_csv(request):
-    """Bulk export invoices as Xero-compatible CSV."""
-    queryset = Invoice.objects.select_related('owner').order_by('-created_at')
+    """Bulk export invoices as Xero-compatible CSV.
+
+    Cancelled invoices are never exported (importing them into Xero would
+    raise receivables that were voided here); drafts are excluded unless
+    explicitly requested via ?status=draft.
+    """
+    queryset = Invoice.objects.select_related('owner').exclude(
+        status=Invoice.Status.CANCELLED
+    ).order_by('-created_at')
 
     status = request.GET.get('status')
-    if status:
+    if status and status != Invoice.Status.CANCELLED:
         queryset = queryset.filter(status=status)
+    else:
+        queryset = queryset.exclude(status=Invoice.Status.DRAFT)
 
     owner = request.GET.get('owner')
     if owner:
         queryset = queryset.filter(owner_id=owner)
+
+    search = request.GET.get('search', '').strip()
+    if search:
+        queryset = queryset.filter(
+            Q(invoice_number__icontains=search)
+            | Q(owner__name__icontains=search)
+        )
 
     date_from = request.GET.get('date_from')
     if date_from:

@@ -145,12 +145,17 @@ class ExtraCharge(models.Model):
         line-item totals, returning only the genuinely outstanding remainder
         (QA #6).
         """
-        from django.db.models import DecimalField, Sum, Value
+        from django.db.models import DecimalField, Q, Sum, Value
         from django.db.models.functions import Coalesce
 
         charges = cls.objects.filter(invoiced=False).annotate(
             billed=Coalesce(
-                Sum('invoice_items__line_total'),
+                Sum(
+                    'invoice_items__line_total',
+                    # A cancelled invoice doesn't bill anyone — its line
+                    # items must not reduce the outstanding remainder.
+                    filter=~Q(invoice_items__invoice__status='cancelled'),
+                ),
                 Value(Decimal('0.00')),
                 output_field=DecimalField(max_digits=12, decimal_places=2),
             )
