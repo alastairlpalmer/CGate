@@ -91,7 +91,8 @@ class QueryCountTestCase(TestCase):
         self.assertMaxQueries(reverse('dashboard'), 22)
 
     def test_finances_query_count(self):
-        # Measured 8 (revenue, costs union, placements, capacity, two
-        # aggregates + auth/session), +1 for the per-request session write
+        # Measured 9 (revenue, costs union, placements, capacity, two
+        # outstanding aggregates — invoice totals and part-payments — plus
+        # unbilled + auth/session), +1 for the per-request session write
         # (SESSION_SAVE_EVERY_REQUEST, the rolling 30-day login).
-        self.assertMaxQueries(reverse('finances'), 11)
+        self.assertMaxQueries(reverse('finances'), 12)

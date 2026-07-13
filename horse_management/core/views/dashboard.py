@@ -4,9 +4,11 @@ Dashboard views.
 
 import logging
 from datetime import timedelta
+from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import DecimalField, ExpressionWrapper, F, Q, Sum, Value
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -102,7 +104,15 @@ def _dashboard_inner(request):
     if 'kpi_outstanding_invoices' in visible or 'table_outstanding' in visible:
         outstanding_invoices = list(Invoice.objects.filter(
             status__in=[Invoice.Status.SENT, Invoice.Status.OVERDUE]
-        ).select_related('owner').order_by('due_date')[:10])
+        ).select_related('owner').annotate(
+            # Show what's still owed, not the face value — part-payments count.
+            balance=ExpressionWrapper(
+                F('total') - Coalesce(
+                    Sum('payments__amount'), Value(Decimal('0.00'))
+                ),
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            )
+        ).order_by('due_date')[:10])
     else:
         outstanding_invoices = []
 

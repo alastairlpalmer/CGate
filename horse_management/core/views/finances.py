@@ -16,7 +16,7 @@ from django.shortcuts import render
 from django.utils import timezone
 
 from billing.models import ExtraCharge, YardCost
-from invoicing.models import Invoice
+from invoicing.models import Invoice, Payment
 
 from ..models import Location, Placement
 
@@ -169,9 +169,15 @@ def _finances_inner(request):
     }
 
     # ── Headline KPIs ───────────────────────────────────────────
+    # Outstanding = invoice totals minus recorded part-payments, so the KPI
+    # stays honest the moment anyone pays half an invoice.
     outstanding = Invoice.objects.filter(
         status__in=[Invoice.Status.SENT, Invoice.Status.OVERDUE]
     ).aggregate(total=Sum('total'), count=Count('id'))
+    paid_against_open = Payment.objects.filter(
+        invoice__status__in=[Invoice.Status.SENT, Invoice.Status.OVERDUE]
+    ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    outstanding['total'] = (outstanding['total'] or Decimal('0.00')) - paid_against_open
 
     unbilled_total = ExtraCharge.unbilled_total()
 

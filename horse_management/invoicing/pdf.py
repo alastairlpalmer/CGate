@@ -230,12 +230,19 @@ def generate_invoice_pdf_reportlab(invoice):
 
     elements.append(Spacer(1, 8*mm))
 
-    # Totals
+    # Totals \u2014 when part-paid, show the running balance so the PDF asks for
+    # what's actually owed rather than the full face value.
+    amount_paid = invoice.amount_paid
     totals_data = [
         ['Net Total:', f"\u00a3{invoice.subtotal:.2f}"],
         ['VAT:', '\u00a30.00'],
-        ['Amount Due:', f"\u00a3{invoice.total:.2f}"],
     ]
+    if amount_paid > 0:
+        totals_data.append(['Invoice Total:', f"\u00a3{invoice.total:.2f}"])
+        totals_data.append(['Paid to Date:', f"-\u00a3{amount_paid:.2f}"])
+        totals_data.append(['Balance Due:', f"\u00a3{invoice.balance_due:.2f}"])
+    else:
+        totals_data.append(['Amount Due:', f"\u00a3{invoice.total:.2f}"])
     totals_table = Table(totals_data, colWidths=[30*mm, 30*mm])
     totals_table.setStyle(TableStyle([
         ('ALIGN', (0, 0), (0, -1), 'RIGHT'),

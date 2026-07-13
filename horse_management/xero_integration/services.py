@@ -217,7 +217,7 @@ def check_xero_invoice_status(sync):
         # Update local invoice if not already paid
         invoice = sync.invoice
         if invoice.status in (Invoice.Status.SENT, Invoice.Status.OVERDUE, Invoice.Status.DRAFT):
-            invoice.mark_as_paid()
+            invoice.mark_as_paid(method='xero', reference='Reported paid by Xero')
     elif xero_status == 'AUTHORISED':
         sync.sync_status = XeroInvoiceSync.SyncStatus.PUSHED
     elif xero_status == 'VOIDED':

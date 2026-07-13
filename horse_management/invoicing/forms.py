@@ -7,7 +7,7 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 
 from core.models import Owner
-from invoicing.models import Invoice
+from invoicing.models import Invoice, Payment
 
 # Refresh the live preview panel whenever the owner or period changes — the
 # invoice_preview endpoint reads owner/period_start/period_end from the
@@ -99,6 +99,35 @@ class InvoiceUpdateForm(forms.ModelForm):
                     f"to '{dict(Invoice.Status.choices).get(new_status, new_status)}'."
                 )
         return new_status
+
+
+class PaymentForm(forms.ModelForm):
+    """Form for recording a payment against an invoice."""
+
+    class Meta:
+        model = Payment
+        fields = ['date', 'amount', 'method', 'reference', 'notes']
+        widgets = {
+            'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
+            'method': forms.Select(attrs={'class': 'form-select'}),
+            'reference': forms.TextInput(attrs={'class': 'form-input'}),
+            'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+        }
+
+    def __init__(self, *args, invoice=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.invoice = invoice
+
+    def clean_amount(self):
+        amount = self.cleaned_data['amount']
+        if self.invoice is not None and amount > self.invoice.balance_due:
+            raise forms.ValidationError(
+                f"Amount exceeds the outstanding balance "
+                f"(£{self.invoice.balance_due:.2f}). Overpayments/credits "
+                "are not supported yet — record up to the balance."
+            )
+        return amount
 
 
 class MonthlyInvoiceForm(forms.Form):
