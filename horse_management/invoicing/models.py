@@ -81,11 +81,66 @@ class Invoice(models.Model):
         self.sent_at = timezone.now()
         self.save(update_fields=['status', 'sent_at'])
 
-    def mark_as_paid(self):
-        """Mark invoice as paid."""
+    @property
+    def amount_paid(self):
+        """Sum of recorded payments against this invoice."""
+        return (
+            self.payments.aggregate(total=models.Sum('amount'))['total']
+            or Decimal('0.00')
+        )
+
+    @property
+    def balance_due(self):
+        """What's still owed after recorded payments."""
+        return self.total - self.amount_paid
+
+    def mark_as_paid(self, method='other', reference=''):
+        """Mark invoice as paid, recording a balancing payment.
+
+        The balancing payment keeps the ledger complete when staff use the
+        one-click "Mark as Paid" instead of recording each payment — without
+        it, amount_paid would disagree with the PAID status.
+        """
+        balance = self.balance_due
+        if balance > 0:
+            Payment.objects.create(
+                invoice=self,
+                date=timezone.now().date(),
+                amount=balance,
+                method=method,
+                reference=reference,
+            )
         self.status = self.Status.PAID
         self.paid_at = timezone.now()
         self.save(update_fields=['status', 'paid_at'])
+
+    def refresh_payment_status(self):
+        """Sync status with the payment ledger after a payment is added,
+        edited, or deleted.
+
+        - Fully paid → PAID.
+        - A payment against a DRAFT promotes it to SENT (it has clearly been
+          issued, e.g. hand-delivered to a cash-paying owner).
+        - A PAID invoice whose payments no longer cover the total (payment
+          deleted) reverts to SENT/OVERDUE by due date.
+        """
+        if self.status == self.Status.CANCELLED:
+            return
+        if self.total > 0 and self.balance_due <= 0:
+            if self.status != self.Status.PAID:
+                self.status = self.Status.PAID
+                self.paid_at = self.paid_at or timezone.now()
+                self.save(update_fields=['status', 'paid_at'])
+        elif self.status == self.Status.PAID:
+            self.status = (
+                self.Status.OVERDUE
+                if self.due_date and timezone.now().date() > self.due_date
+                else self.Status.SENT
+            )
+            self.paid_at = None
+            self.save(update_fields=['status', 'paid_at'])
+        elif self.status == self.Status.DRAFT and self.amount_paid > 0:
+            self.mark_as_sent()
 
     def release_extra_charges(self):
         """Un-invoice extra charges tied to this invoice so a replacement
@@ -200,3 +255,45 @@ class InvoiceLineItem(models.Model):
         if self.line_total is None:
             self.line_total = (self.quantity * self.unit_price).quantize(Decimal('0.01'))
         super().save(*args, **kwargs)
+
+
+class Payment(models.Model):
+    """A payment (possibly partial) recorded against an invoice."""
+
+    class Method(models.TextChoices):
+        BANK_TRANSFER = 'bank_transfer', 'Bank Transfer'
+        CASH = 'cash', 'Cash'
+        CARD = 'card', 'Card'
+        CHEQUE = 'cheque', 'Cheque'
+        XERO = 'xero', 'Paid in Xero'
+        OTHER = 'other', 'Other'
+
+    invoice = models.ForeignKey(
+        Invoice,
+        on_delete=models.CASCADE,
+        related_name='payments'
+    )
+    date = models.DateField()
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
+    method = models.CharField(
+        max_length=20,
+        choices=Method.choices,
+        default=Method.BANK_TRANSFER,
+    )
+    reference = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="e.g. bank reference or cheque number"
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date', '-created_at']
+
+    def __str__(self):
+        return f"£{self.amount} against {self.invoice.invoice_number} on {self.date}"

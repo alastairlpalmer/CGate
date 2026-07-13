@@ -25,7 +25,12 @@
                         <a href="{% url 'invoice_detail' invoice.pk %}" class="link">{{ invoice.invoice_number }}</a>
                     </td>
                     <td>{{ invoice.owner.name }}</td>
-                    <td class="font-mono tabular-nums font-medium">&pound;{{ invoice.total|floatformat:2 }}</td>
+                    <td class="font-mono tabular-nums font-medium">
+                        &pound;{{ invoice.balance|floatformat:2 }}
+                        {% if invoice.balance != invoice.total %}
+                        <span class="block text-xs font-normal text-sage">of &pound;{{ invoice.total|floatformat:2 }}</span>
+                        {% endif %}
+                    </td>
                     <td class="font-mono {% if invoice.is_overdue %}text-error-red font-medium{% else %}text-sage{% endif %}">
                         {{ invoice.due_date|date:"d M Y" }}
                     </td>

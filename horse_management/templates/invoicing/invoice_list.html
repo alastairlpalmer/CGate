@@ -116,6 +116,9 @@
                 </div>
                 <div class="flex flex-col items-end gap-1 shrink-0">
                     <span class="font-semibold text-charcoal tabular-nums">&pound;{{ invoice.total|floatformat:2 }}</span>
+                    {% if invoice.status != 'paid' and invoice.status != 'cancelled' and invoice.balance != invoice.total %}
+                    <span class="text-xs text-saddle font-medium tabular-nums">&pound;{{ invoice.balance|floatformat:2 }} due</span>
+                    {% endif %}
                     <span class="text-xs {% if invoice.is_overdue and invoice.status != 'paid' %}text-error-red font-medium{% else %}text-sage{% endif %}">Due {{ invoice.due_date|date:"d M Y" }}</span>
                     <div class="list-card-actions mt-1">
                         <a href="{% url 'invoice_pdf' invoice.pk %}" class="btn-icon" hx-boost="false" title="Download PDF" aria-label="Download PDF of {{ invoice.invoice_number }}">
@@ -172,7 +175,12 @@
                             <a href="{% url 'owner_detail' invoice.owner.pk %}" class="link">{{ invoice.owner.name }}</a>
                         </td>
                         <td class="text-sage">{{ invoice.period_start }} - {{ invoice.period_end }}</td>
-                        <td class="text-right font-medium text-charcoal">&pound;{{ invoice.total|floatformat:2 }}</td>
+                        <td class="text-right font-medium text-charcoal">
+                            &pound;{{ invoice.total|floatformat:2 }}
+                            {% if invoice.status != 'paid' and invoice.status != 'cancelled' and invoice.balance != invoice.total %}
+                            <span class="block text-xs font-normal text-sage">&pound;{{ invoice.balance|floatformat:2 }} due</span>
+                            {% endif %}
+                        </td>
                         <td>
                             <span class="{% if invoice.status == 'paid' %}badge-success{% elif invoice.status == 'overdue' or invoice.is_overdue %}badge-danger{% elif invoice.status == 'sent' %}badge-warning{% elif invoice.status == 'cancelled' %}badge-neutral{% else %}badge-info{% endif %}">
                                 {% if invoice.is_overdue and invoice.status != 'paid' %}Overdue{% else %}{{ invoice.get_status_display }}{% endif %}

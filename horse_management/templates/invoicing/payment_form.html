@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Record Payment - {{ invoice.invoice_number }} - CGate{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Record Payment</h1>
+            <p class="page-subtitle">
+                Invoice {{ invoice.invoice_number }} &middot; {{ invoice.owner.name }} &middot;
+                &pound;{{ invoice.balance_due|floatformat:2 }} outstanding
+            </p>
+        </div>
+    </div>
+
+    <div class="card">
+        <form method="post" class="divide-y divide-light-sage">
+            {% csrf_token %}
+
+            <div class="p-5 space-y-5">
+                {% if form.non_field_errors %}
+                <div class="mb-4 p-3 bg-error-red-50 border border-error-red/20 rounded text-sm text-error-red">
+                    {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="grid grid-cols-1 min-[360px]:grid-cols-2 gap-4">
+                    <div>
+                        <label for="id_date" class="block text-sm font-medium text-charcoal">Date *</label>
+                        {{ form.date }}
+                        {% if form.date.errors %}
+                        <p class="mt-1 text-sm text-error-red">{{ form.date.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="id_amount" class="block text-sm font-medium text-charcoal">Amount (&pound;) *</label>
+                        {{ form.amount }}
+                        {% if form.amount.errors %}
+                        <p class="mt-1 text-sm text-error-red">{{ form.amount.errors.0 }}</p>
+                        {% endif %}
+                        <p class="mt-1 text-xs text-sage">Part payments are fine — the invoice stays open until the balance reaches zero.</p>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="id_method" class="block text-sm font-medium text-charcoal">Method *</label>
+                    {{ form.method }}
+                    {% if form.method.errors %}
+                    <p class="mt-1 text-sm text-error-red">{{ form.method.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="id_reference" class="block text-sm font-medium text-charcoal">Reference</label>
+                    {{ form.reference }}
+                    {% if form.reference.errors %}
+                    <p class="mt-1 text-sm text-error-red">{{ form.reference.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-sage">{{ form.reference.help_text }}</p>
+                </div>
+
+                <div>
+                    <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
+                    {{ form.notes }}
+                    {% if form.notes.errors %}
+                    <p class="mt-1 text-sm text-error-red">{{ form.notes.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-footer">
+                <a href="{% url 'invoice_detail' invoice.pk %}" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">Record Payment</button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

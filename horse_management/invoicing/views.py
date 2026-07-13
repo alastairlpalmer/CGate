@@ -21,7 +21,7 @@ from django.views.generic import DetailView, ListView, UpdateView
 from core.models import Owner
 from invoicing.models import Invoice
 
-from .forms import InvoiceCreateForm, InvoiceUpdateForm, MonthlyInvoiceForm
+from .forms import InvoiceCreateForm, InvoiceUpdateForm, MonthlyInvoiceForm, PaymentForm
 from .pdf import generate_invoice_pdf
 from .services import DuplicateInvoiceError, InvoiceService
 from .utils import group_line_items_by_horse, write_xero_csv
@@ -34,7 +34,19 @@ class InvoiceListView(LoginRequiredMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        queryset = Invoice.objects.select_related('owner', 'xero_sync')
+        from decimal import Decimal
+
+        from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Value
+        from django.db.models.functions import Coalesce
+
+        queryset = Invoice.objects.select_related('owner', 'xero_sync').annotate(
+            balance=ExpressionWrapper(
+                F('total') - Coalesce(
+                    Sum('payments__amount'), Value(Decimal('0.00'))
+                ),
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            )
+        )
 
         status = self.request.GET.get('status')
         if status:
@@ -72,6 +84,9 @@ class InvoiceDetailView(LoginRequiredMixin, DetailView):
         ).order_by('line_type', 'description')
         context['line_items'] = line_items
         context['horse_groups'] = group_line_items_by_horse(line_items)
+        context['payments'] = self.object.payments.all()
+        context['amount_paid'] = self.object.amount_paid
+        context['balance_due'] = self.object.balance_due
         return context
 
 
@@ -255,9 +270,78 @@ def invoice_mark_paid(request, pk):
     if invoice.status not in [Invoice.Status.SENT, Invoice.Status.OVERDUE]:
         messages.error(request, "Only sent or overdue invoices can be marked as paid.")
         return redirect('invoice_detail', pk=pk)
-    invoice.mark_as_paid()
+    invoice.mark_as_paid(reference='Marked as paid')
     messages.success(request, f"Invoice {invoice.invoice_number} marked as paid.")
     return redirect('invoice_detail', pk=pk)
+
+
+@staff_required
+def payment_create(request, pk):
+    """Record a payment (possibly partial) against an invoice."""
+    invoice = get_object_or_404(Invoice, pk=pk)
+
+    if invoice.status == Invoice.Status.CANCELLED:
+        messages.error(request, "Payments cannot be recorded against a cancelled invoice.")
+        return redirect('invoice_detail', pk=pk)
+    if invoice.balance_due <= 0:
+        messages.info(request, "This invoice is already fully paid.")
+        return redirect('invoice_detail', pk=pk)
+
+    if request.method == 'POST':
+        form = PaymentForm(request.POST, invoice=invoice)
+        if form.is_valid():
+            payment = form.save(commit=False)
+            payment.invoice = invoice
+            payment.save()
+            invoice.refresh_payment_status()
+            if invoice.balance_due <= 0:
+                messages.success(
+                    request,
+                    f"Payment of £{payment.amount:.2f} recorded — "
+                    f"invoice {invoice.invoice_number} is now fully paid."
+                )
+            else:
+                messages.success(
+                    request,
+                    f"Payment of £{payment.amount:.2f} recorded — "
+                    f"£{invoice.balance_due:.2f} still outstanding."
+                )
+            return redirect('invoice_detail', pk=pk)
+    else:
+        form = PaymentForm(
+            invoice=invoice,
+            initial={
+                'date': timezone.now().date(),
+                'amount': invoice.balance_due,
+            },
+        )
+
+    return render(request, 'invoicing/payment_form.html', {
+        'form': form,
+        'invoice': invoice,
+    })
+
+
+@staff_required
+def payment_delete(request, pk):
+    """Delete a mistakenly recorded payment and re-derive the invoice status."""
+    from invoicing.models import Payment
+
+    payment = get_object_or_404(Payment.objects.select_related('invoice'), pk=pk)
+    invoice = payment.invoice
+
+    if request.method != 'POST':
+        return redirect('invoice_detail', pk=invoice.pk)
+
+    amount = payment.amount
+    payment.delete()
+    invoice.refresh_payment_status()
+    messages.success(
+        request,
+        f"Payment of £{amount:.2f} removed — "
+        f"£{invoice.balance_due:.2f} now outstanding."
+    )
+    return redirect('invoice_detail', pk=invoice.pk)
 
 
 @staff_required
@@ -327,7 +411,7 @@ def invoice_bulk_action(request):
         paid = skipped = 0
         for invoice in invoices:
             if invoice.status in (Invoice.Status.SENT, Invoice.Status.OVERDUE):
-                invoice.mark_as_paid()
+                invoice.mark_as_paid(reference='Bulk marked as paid')
                 paid += 1
             else:
                 skipped += 1
