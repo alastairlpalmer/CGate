@@ -99,6 +99,13 @@
                     Log Arrival
                 </a>
                 {% endif %}
+                <a href="{% url 'horse_photo_add' horse.pk %}" class="btn-secondary" title="Quick add photos">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/>
+                    </svg>
+                    <span class="hidden sm:inline">Photo</span>
+                </a>
                 <a href="{% url 'horse_update' horse.pk %}" class="btn-secondary" title="Edit horse details">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
@@ -586,6 +593,9 @@
             <!-- Documents -->
             {% include 'documents/_documents_card.html' with documents=horse.documents.all horse=horse %}
 
+            <!-- Photos -->
+            {% include 'horses/_photo_grid_card.html' with photos=photos photo_count=photo_count horse=horse %}
+
             <!-- Quick Actions -->
             <div class="card">
                 <div class="section-header">
@@ -656,6 +666,18 @@
                                 </svg>
                             </div>
                             <span class="text-xs font-medium text-charcoal-light">Breeding</span>
+                        </a>
+                        {% endif %}
+                        {% if user.is_staff %}
+                        <a href="{% url 'horse_photo_add' horse.pk %}"
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-info-blue/30 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                            <div class="w-9 h-9 rounded-full bg-info-blue-50 flex items-center justify-center group-hover/qa:bg-info-blue-100 transition-colors">
+                                <svg class="w-4 h-4 text-info-blue" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs font-medium text-charcoal-light">Photo</span>
                         </a>
                         {% endif %}
                         <a href="{% url 'charge_create' %}?horse={{ horse.pk }}"

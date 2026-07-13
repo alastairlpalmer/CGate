@@ -22,8 +22,13 @@ _HEIF_FORMATS = {'HEIF', 'HEIC', 'AVIF'}
 _MAX_DIMENSION = 2560
 
 
-def heic_to_jpeg(upload):
-    """Return ``upload`` converted to JPEG if it is HEIC/HEIF, else unchanged.
+def _normalise_upload(upload, downscale_oversized):
+    """Re-encode ``upload`` to JPEG when it needs it, else return it as-is.
+
+    HEIC/HEIF/AVIF always converts (browsers can't display it). When
+    ``downscale_oversized`` is set, any raster image whose longest edge
+    exceeds ``_MAX_DIMENSION`` is also downscaled and re-encoded, so a
+    full-resolution phone JPEG can't bounce off the 5MB size validator.
 
     Only acts on freshly uploaded files. Anything else a form's
     ``clean_<field>`` may hand us — ``None`` (no file), ``False`` (the
@@ -42,7 +47,9 @@ def heic_to_jpeg(upload):
     try:
         upload.seek(0)
         image = Image.open(upload)
-        if (image.format or '').upper() not in _HEIF_FORMATS:
+        needs_convert = (image.format or '').upper() in _HEIF_FORMATS
+        needs_downscale = downscale_oversized and max(image.size) > _MAX_DIMENSION
+        if not needs_convert and not needs_downscale:
             upload.seek(0)
             return upload
 
@@ -56,7 +63,7 @@ def heic_to_jpeg(upload):
         buffer = io.BytesIO()
         image.save(buffer, format='JPEG', quality=90)
     except Exception:
-        logger.exception("HEIC conversion failed for upload %r", upload.name)
+        logger.exception("Photo normalisation failed for upload %r", upload.name)
         upload.seek(0)
         return upload
 
@@ -71,9 +78,30 @@ def heic_to_jpeg(upload):
     )
 
 
+def heic_to_jpeg(upload):
+    """Return ``upload`` converted to JPEG if it is HEIC/HEIF, else unchanged.
+
+    See ``_normalise_upload`` for the pass-through and failure semantics.
+    """
+    return _normalise_upload(upload, downscale_oversized=False)
+
+
+def normalise_photo(upload):
+    """Return ``upload`` converted to JPEG if it is HEIC/HEIF or oversized.
+
+    Superset of ``heic_to_jpeg`` used by the quick-add photo flow, where
+    downscaling must happen *before* size validation runs.
+    """
+    return _normalise_upload(upload, downscale_oversized=True)
+
+
 # Avatar thumbnails are square cover-crops at this edge length — 320px covers
 # the largest avatar (96px) at 3x retina density with margin.
 THUMB_SIZE = 320
+
+# Photo-grid tiles are roughly half a phone viewport wide; 480px covers that
+# at 2–3x retina density.
+GRID_THUMB_SIZE = 480
 
 
 def make_avatar_thumbnail(photo_file, size=THUMB_SIZE):

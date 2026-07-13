@@ -7,6 +7,7 @@ All views are re-exported here so that urls.py imports remain unchanged.
 from .dashboard import dashboard, dashboard_health_alerts, quick_find  # noqa: F401
 from .documents import document_create, document_delete  # noqa: F401
 from .finances import finances  # noqa: F401
+from .photos import horse_photo_add, horse_photo_delete  # noqa: F401
 from .horses import (  # noqa: F401
     HorseCreateView,
     HorseDetailView,

@@ -30,6 +30,8 @@ urlpatterns = [
     path('horses/<int:pk>/cancel-departure/', views.cancel_departure, name='cancel_departure'),
     path('horses/confirm-departures/', views.confirm_departures_bulk, name='confirm_departures_bulk'),
     path('horses/<int:pk>/ownership/', views.manage_ownership_shares, name='horse_ownership'),
+    path('horses/<int:pk>/photos/add/', views.horse_photo_add, name='horse_photo_add'),
+    path('horses/photos/<int:pk>/delete/', views.horse_photo_delete, name='horse_photo_delete'),
 
     # Owners
     path('owners/', views.OwnerListView.as_view(), name='owner_list'),

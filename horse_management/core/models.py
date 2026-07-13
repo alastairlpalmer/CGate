@@ -942,6 +942,79 @@ class Document(models.Model):
         return bool(self.expiry_date) and self.expiry_date < timezone.now().date()
 
 
+class HorsePhoto(models.Model):
+    """A quick-add photo on a horse's record: condition shots, markings,
+    injuries, arrival/check-in snaps.
+
+    Passport photos are deliberately not a category here — the quick-add
+    flow routes those to Document (doc_type=passport) so the documents card
+    and expiry reminders keep working.
+    """
+
+    class Category(models.TextChoices):
+        CONDITION = 'condition', 'Condition'
+        MARKINGS = 'markings', 'Markings'
+        INJURY = 'injury', 'Injury'
+        ARRIVAL = 'arrival', 'Arrival / check-in'
+        OTHER = 'other', 'Other'
+
+    horse = models.ForeignKey(
+        Horse,
+        on_delete=models.CASCADE,
+        related_name='photos',
+    )
+    image = models.ImageField(
+        upload_to='horse_photos/%Y/%m/',
+        validators=[
+            FileExtensionValidator(allowed_extensions=[
+                'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif',
+            ]),
+            validate_file_size,
+        ],
+    )
+    # Square rendition generated from image on save — the grid renders this
+    thumb = models.ImageField(
+        upload_to='horse_photos/thumbs/%Y/%m/',
+        null=True,
+        blank=True,
+        editable=False,
+    )
+    category = models.CharField(
+        max_length=20,
+        choices=Category.choices,
+        default=Category.CONDITION,
+    )
+    caption = models.CharField(max_length=200, blank=True)
+    taken_at = models.DateTimeField(null=True, blank=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='uploaded_horse_photos',
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"{self.get_category_display()} photo of {self.horse}"
+
+    def save(self, *args, **kwargs):
+        # Photos are immutable once uploaded, so unlike Horse.photo_thumb
+        # there is no change-diffing: generate the thumb once, on first save.
+        # Generation failures degrade to "no thumbnail" — the grid falls
+        # back to the original image.
+        if self.image and not self.thumb:
+            from .images import GRID_THUMB_SIZE, make_avatar_thumbnail
+            thumb = make_avatar_thumbnail(self.image, size=GRID_THUMB_SIZE)
+            if thumb is not None:
+                base = Path(self.image.name).stem if self.image.name else 'photo'
+                self.thumb.save(f"{base}-thumb.jpg", thumb, save=False)
+        super().save(*args, **kwargs)
+
+
 # Invoice and InvoiceLineItem have been moved to invoicing.models.
 # Re-exported here for backward compatibility with existing imports.
 from invoicing.models import Invoice, InvoiceLineItem  # noqa: F401

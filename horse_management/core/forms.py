@@ -7,7 +7,7 @@ from decimal import Decimal
 from django import forms
 
 from .images import heic_to_jpeg
-from .models import BusinessSettings, Document, Horse, Location, Owner, OwnershipShare, Placement, RateType
+from .models import BusinessSettings, Document, Horse, HorsePhoto, Location, Owner, OwnershipShare, Placement, RateType
 
 
 def get_grouped_location_choices():
@@ -439,3 +439,52 @@ class DocumentForm(forms.ModelForm):
             'expiry_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
+
+
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    """FileField that cleans a list of uploads (the Django ≥4.2 recipe)."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('widget', MultipleFileInput())
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        single_clean = super().clean
+        if isinstance(data, (list, tuple)):
+            return [single_clean(item, initial) for item in data]
+        return [single_clean(data, initial)]
+
+
+# Quick-add offers passport alongside the HorsePhoto categories; the view
+# routes passport uploads to Document so expiry reminders keep working.
+QUICK_PHOTO_PASSPORT = 'passport'
+QUICK_PHOTO_CATEGORY_CHOICES = list(HorsePhoto.Category.choices) + [
+    (QUICK_PHOTO_PASSPORT, 'Passport'),
+]
+
+
+class QuickPhotoForm(forms.Form):
+    """Minimal camera-first upload form: category chips + photos + note.
+
+    ``images`` carries no validators — each file is normalised and validated
+    individually in the view so one bad file doesn't abort the batch.
+    """
+
+    category = forms.ChoiceField(
+        choices=QUICK_PHOTO_CATEGORY_CHOICES,
+        initial=HorsePhoto.Category.CONDITION,
+        widget=forms.RadioSelect,
+    )
+    images = MultipleFileField(required=True)
+    caption = forms.CharField(
+        required=False,
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'Optional note (applies to all photos)',
+        }),
+    )
