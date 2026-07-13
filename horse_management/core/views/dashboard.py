@@ -337,11 +337,18 @@ def quick_find(request):
     if len(query) < QUICK_FIND_MIN_CHARS:
         return HttpResponse('')
 
-    horses = [
-        {'pk': pk, 'name': name}
-        for pk, name in Horse.objects.filter(is_active=True).values_list('pk', 'name')
-        if is_fuzzy_match(query, name)
-    ][:QUICK_FIND_PER_GROUP]
+    # Include departed horses (labelled) — searching by name for a horse
+    # that left last month should still find its record.
+    horses = sorted(
+        (
+            {'pk': pk, 'name': name, 'is_active': is_active}
+            for pk, name, is_active in Horse.objects.values_list(
+                'pk', 'name', 'is_active'
+            )
+            if is_fuzzy_match(query, name)
+        ),
+        key=lambda h: not h['is_active'],  # active horses first
+    )[:QUICK_FIND_PER_GROUP]
 
     owners = [
         {'pk': pk, 'name': name}

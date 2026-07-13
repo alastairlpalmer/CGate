@@ -4,7 +4,7 @@
 {% for h in horses %}
 <a href="{% url 'horse_detail' h.pk %}" class="quick-find-item">
     <span class="truncate">{{ h.name }}</span>
-    <span class="text-xs text-sage shrink-0">Horse</span>
+    <span class="text-xs text-sage shrink-0">{% if h.is_active %}Horse{% else %}Departed{% endif %}</span>
 </a>
 {% endfor %}
 {% endif %}

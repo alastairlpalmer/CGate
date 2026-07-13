@@ -312,7 +312,11 @@ class HorseCreateView(StaffRequiredMixin, CreateView):
     model = Horse
     form_class = HorseForm
     template_name = 'horses/horse_form.html'
-    success_url = reverse_lazy('horse_list')
+
+    def get_success_url(self):
+        # Land on the new horse's page — that's where the next step
+        # ("Log Arrival", quick actions) lives, not back on the list.
+        return reverse_lazy('horse_detail', kwargs={'pk': self.object.pk})
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

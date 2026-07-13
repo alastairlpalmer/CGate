@@ -72,11 +72,25 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-span-2 sm:col-span-2 flex items-end justify-end">
-                    {% if request.GET.search or request.GET.owner or request.GET.status %}
-                    <a href="{% url 'invoice_list' %}" class="btn-ghost text-xs">Clear filters</a>
-                    {% endif %}
+                <div>
+                    <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Period From</label>
+                    <input type="date" name="date_from" value="{{ request.GET.date_from }}" class="form-input"
+                           hx-get="{{ request.path }}" hx-trigger="change"
+                           hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
+                           hx-include="closest form" hx-push-url="true">
                 </div>
+                <div>
+                    <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Period To</label>
+                    <input type="date" name="date_to" value="{{ request.GET.date_to }}" class="form-input"
+                           hx-get="{{ request.path }}" hx-trigger="change"
+                           hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
+                           hx-include="closest form" hx-push-url="true">
+                </div>
+                {% if request.GET.search or request.GET.owner or request.GET.status or request.GET.date_from or request.GET.date_to %}
+                <div class="col-span-2 sm:col-span-4 flex justify-end">
+                    <a href="{% url 'invoice_list' %}" class="btn-ghost text-xs">Clear filters</a>
+                </div>
+                {% endif %}
             </div>
         </form>
     </div>
@@ -84,6 +98,15 @@
     <div id="list-results" class="space-y-6">
 
     {% if invoices %}
+    <!-- Filtered totals (whole result set, not just this page) -->
+    <div class="card px-4 py-3 sm:px-5 flex flex-wrap items-center gap-x-6 gap-y-1.5 text-sm">
+        <span class="text-sage">{{ summary_count }} invoice{{ summary_count|pluralize }}</span>
+        <span class="text-charcoal">Invoiced: <strong class="tabular-nums">&pound;{{ summary_invoiced|floatformat:2 }}</strong></span>
+        <span class="{% if summary_outstanding > 0 %}text-error-red{% else %}text-charcoal{% endif %}">
+            Outstanding: <strong class="tabular-nums">&pound;{{ summary_outstanding|floatformat:2 }}</strong>
+        </span>
+    </div>
+
     <div class="card overflow-hidden">
 
         <!-- Mobile cards -->

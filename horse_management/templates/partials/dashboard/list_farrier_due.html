@@ -6,7 +6,7 @@
             <h2 class="section-title">Farrier Due</h2>
             <span class="badge-neutral">{{ farrier_due|length }}</span>
         </div>
-        <a href="{% url 'farrier_list' %}" class="text-xs link">View all &rarr;</a>
+        <a href="{% url 'health_dashboard' %}?type=farrier" class="text-xs link">View all &rarr;</a>
     </div>
     <ul class="divide-y divide-light-sage">
         {% for visit in farrier_due %}
@@ -24,6 +24,8 @@
                     {% endif %}
                     <p class="font-mono text-xs text-sage mt-1">{{ visit.next_due_date|date:"d M Y" }}</p>
                 </div>
+                <a href="{% url 'farrier_create' %}?horse={{ visit.horse.pk }}&next={{ request.get_full_path|urlencode }}"
+                   class="btn-ghost btn-xs shrink-0">Record</a>
             </div>
         </li>
         {% endfor %}

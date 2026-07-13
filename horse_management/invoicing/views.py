@@ -20,7 +20,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import DetailView, ListView, UpdateView
 
 from core.models import Owner
-from invoicing.models import Invoice
+from invoicing.models import Invoice, Payment
 
 from .forms import InvoiceCreateForm, InvoiceUpdateForm, MonthlyInvoiceForm, PaymentForm
 from .pdf import generate_invoice_pdf
@@ -66,13 +66,67 @@ class InvoiceListView(LoginRequiredMixin, ListView):
                 | Q(owner__name__icontains=search)
             )
 
+        # Period filter — same semantics as invoice_export_csv, so the list
+        # and the "Export CSV" of that list always contain the same invoices.
+        queryset = _apply_period_filter(queryset, self.request)
+
         return queryset.order_by('-created_at')
 
     def get_context_data(self, **kwargs):
+        from decimal import Decimal
+
+        from django.db.models import Count, Sum
+
         context = super().get_context_data(**kwargs)
         context['owners'] = Owner.objects.only('pk', 'name')
         context['status_choices'] = Invoice.Status.choices
+
+        # Totals over the WHOLE filtered set (not just this page): what was
+        # invoiced, and what of it is still unpaid (part-payments deducted).
+        filtered = self.object_list
+        live = filtered.exclude(status=Invoice.Status.CANCELLED)
+        summary = live.aggregate(count=Count('id'), invoiced=Sum('total'))
+        open_invoices = live.exclude(status=Invoice.Status.PAID)
+        outstanding = (
+            (open_invoices.aggregate(t=Sum('total'))['t'] or Decimal('0.00'))
+            - (
+                Payment.objects.filter(invoice__in=open_invoices.values('pk'))
+                .aggregate(t=Sum('amount'))['t'] or Decimal('0.00')
+            )
+        )
+        context['summary_count'] = summary['count'] or 0
+        context['summary_invoiced'] = summary['invoiced'] or Decimal('0.00')
+        context['summary_outstanding'] = outstanding
         return context
+
+
+def _apply_period_filter(queryset, request):
+    """Filter invoices to a billing-period date range from GET params.
+
+    Shared by the list view and the CSV export so what you see is what you
+    export. Invalid dates are ignored rather than erroring.
+    """
+    from datetime import datetime
+
+    date_from = request.GET.get('date_from')
+    if date_from:
+        try:
+            queryset = queryset.filter(
+                period_start__gte=datetime.strptime(date_from, '%Y-%m-%d').date()
+            )
+        except ValueError:
+            pass
+
+    date_to = request.GET.get('date_to')
+    if date_to:
+        try:
+            queryset = queryset.filter(
+                period_end__lte=datetime.strptime(date_to, '%Y-%m-%d').date()
+            )
+        except ValueError:
+            pass
+
+    return queryset
 
 
 class InvoiceDetailView(LoginRequiredMixin, DetailView):
@@ -269,13 +323,23 @@ def invoice_mark_paid(request, pk):
     if request.method != 'POST':
         return redirect('invoice_detail', pk=pk)
 
+    # Callers embedded elsewhere (e.g. the dashboard widget) pass next so the
+    # user stays where they were; unsafe/missing values fall back to detail.
+    next_url = request.POST.get('next') or ''
+    if not url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        next_url = reverse('invoice_detail', kwargs={'pk': pk})
+
     invoice = get_object_or_404(Invoice, pk=pk)
     if invoice.status not in [Invoice.Status.SENT, Invoice.Status.OVERDUE]:
         messages.error(request, "Only sent or overdue invoices can be marked as paid.")
-        return redirect('invoice_detail', pk=pk)
+        return redirect(next_url)
     invoice.mark_as_paid(reference='Marked as paid')
     messages.success(request, f"Invoice {invoice.invoice_number} marked as paid.")
-    return redirect('invoice_detail', pk=pk)
+    return redirect(next_url)
 
 
 @staff_required
@@ -568,21 +632,7 @@ def invoice_export_csv(request):
             | Q(owner__name__icontains=search)
         )
 
-    date_from = request.GET.get('date_from')
-    if date_from:
-        from datetime import datetime
-        try:
-            queryset = queryset.filter(period_start__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
-        except ValueError:
-            pass
-
-    date_to = request.GET.get('date_to')
-    if date_to:
-        from datetime import datetime
-        try:
-            queryset = queryset.filter(period_end__lte=datetime.strptime(date_to, '%Y-%m-%d').date())
-        except ValueError:
-            pass
+    queryset = _apply_period_filter(queryset, request)
 
     output = io.StringIO()
     write_xero_csv(list(queryset), output)
