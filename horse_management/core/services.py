@@ -263,14 +263,24 @@ class PlacementService:
         horse.save(update_fields=['is_active'])
 
     @staticmethod
+    @transaction.atomic
     def cancel_departure(horse):
-        """Undo a pending departure by re-opening the most recent ended placement."""
+        """Undo a departure by re-opening the most recent ended placement.
+
+        Returns the re-opened placement, or None if the horse has none.
+        Refuses (returns None) when the horse already has an open placement —
+        re-opening an older one would double-place it.
+        """
+        if horse.placements.filter(end_date__isnull=True).exists():
+            return None
         placement = horse.placements.filter(
             end_date__isnull=False
         ).order_by('-end_date').first()
         if placement:
             placement.end_date = None
             placement.save()
+            # If the departure auto-rested the field, un-rest it too.
+            LocationUsageService.undo_auto_rest(placement.location)
             # If the departure had already been confirmed, re-opening the
             # placement alone would strand the horse as inactive-but-placed.
             PlacementService.reactivate(horse)
@@ -456,6 +466,38 @@ class LocationUsageService:
             LocationUsageService._set_usage_auto(
                 location, Location.Usage.HORSES, arrival_date
             )
+
+    @staticmethod
+    @transaction.atomic
+    def undo_auto_rest(location):
+        """Remove an automatic 'rested' period created by a departure that is
+        being undone, re-opening the usage period it had closed.
+
+        No-op unless the current open period is an AUTO rest — manual usage
+        changes are never touched.
+        """
+        current = location.usage_periods.filter(end_date__isnull=True).first()
+        if (
+            not current
+            or current.usage != Location.Usage.RESTED
+            or current.source != LocationUsagePeriod.Source.AUTO
+        ):
+            return
+        previous = location.usage_periods.filter(
+            end_date=current.start_date - timedelta(days=1)
+        ).order_by('-start_date').first()
+        current.delete()
+        if previous:
+            previous.end_date = None
+            previous.save()
+            restored_usage = previous.usage
+        else:
+            # The rest period had no predecessor to re-open; the field holds
+            # horses again, so at least keep the label truthful.
+            restored_usage = Location.Usage.HORSES
+        if location.usage != restored_usage:
+            location.usage = restored_usage
+            location.save(update_fields=['usage'])
 
     @staticmethod
     def rest_if_empty(location, last_occupied_date):

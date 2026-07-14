@@ -33,6 +33,7 @@ from .forms import (
     BulkFarrierVisitForm,
     BulkMedicalConditionForm,
     BulkMoveForm,
+    BulkRestoreForm,
     BulkVaccinationForm,
     BulkVetVisitForm,
     BulkWormEggCountForm,
@@ -346,6 +347,7 @@ BULK_FORM_MAP = {
     'expected_departure': BulkExpectedDepartureForm,
     'actual_departure': BulkActualDepartureForm,
     'move': BulkMoveForm,
+    'restore': BulkRestoreForm,
 }
 
 BULK_MODEL_MAP = {
@@ -367,6 +369,7 @@ BULK_LABELS = {
     'expected_departure': 'Expected Departure',
     'actual_departure': 'Departure Date',
     'move': 'Move to Location',
+    'restore': 'Undo Departure',
 }
 
 
@@ -408,10 +411,11 @@ def bulk_health_apply(request):
     if not form_class or not horse_ids:
         return HttpResponseBadRequest('Invalid request')
 
-    # Departure and move actions change placements — admin-only operations
-    # everywhere else (horse_depart, horse_move, log_departure), so the
-    # viewer role must not reach them through the bulk endpoint either.
-    if action_type in ('expected_departure', 'actual_departure', 'move') and not request.user.is_staff:
+    # Departure, move and restore actions change placements — admin-only
+    # operations everywhere else (horse_depart, horse_move, log_departure),
+    # so the viewer role must not reach them through the bulk endpoint either.
+    if action_type in ('expected_departure', 'actual_departure', 'move', 'restore') \
+            and not request.user.is_staff:
         raise PermissionDenied
 
     form = form_class(request.POST)
@@ -422,15 +426,29 @@ def bulk_health_apply(request):
             'action_label': BULK_LABELS.get(action_type, action_type),
         })
 
-    horses = Horse.objects.filter(pk__in=horse_ids, is_active=True)
+    if action_type == 'restore':
+        # Restore targets departed (inactive) horses — the one bulk action
+        # that must not be limited to active ones.
+        horses = Horse.objects.filter(pk__in=horse_ids)
+    else:
+        horses = Horse.objects.filter(pk__in=horse_ids, is_active=True)
     count = 0
     move_errors = []
+    restore_skipped = []
 
     with transaction.atomic():
         # Moves go through PlacementService so old placements are closed,
         # field-usage history stays correct and per-horse validation
         # (e.g. move date before arrival) is applied.
-        if action_type == 'move':
+        if action_type == 'restore':
+            from core.services import PlacementService
+            for horse in horses:
+                if PlacementService.cancel_departure(horse):
+                    count += 1
+                else:
+                    # Already placed somewhere, or has no placement history
+                    restore_skipped.append(horse.name)
+        elif action_type == 'move':
             from core.services import PlacementService
             for horse in horses:
                 try:
@@ -505,7 +523,20 @@ def bulk_health_apply(request):
                 count += 1
 
     label = BULK_LABELS.get(action_type, action_type)
-    if action_type == 'move':
+    if action_type == 'restore':
+        if count:
+            messages.success(
+                request,
+                f"{count} horse{'s' if count != 1 else ''} restored to "
+                f"{'their' if count != 1 else 'its'} last location."
+            )
+        if restore_skipped:
+            messages.warning(
+                request,
+                "Not restored (already placed or no placement history): "
+                + ", ".join(restore_skipped)
+            )
+    elif action_type == 'move':
         if count:
             messages.success(
                 request,

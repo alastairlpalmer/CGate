@@ -19,6 +19,9 @@
         <div class="flex items-center gap-2 sm:gap-3">
             <select x-model="actionType" class="form-select text-sm py-1.5 flex-1 sm:flex-none">
                 <option value="">Choose action...</option>
+                {% if status == 'departed' %}
+                <option value="restore">Undo Departure (restore)</option>
+                {% endif %}
                 <option value="vaccination">Record Vaccination</option>
                 <option value="farrier">Record Farrier Visit</option>
                 <option value="worming">Record Worming</option>
