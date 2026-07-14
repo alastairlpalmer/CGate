@@ -4,13 +4,13 @@ import io
 import shutil
 import tempfile
 
-from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from core.images import normalise_photo
 from core.models import Document, Horse, HorsePhoto
+from core.roles_testutils import make_admin, make_viewer
 
 TEMP_MEDIA = tempfile.mkdtemp(prefix='cgate-photo-tests-')
 
@@ -95,7 +95,7 @@ class QuickAddViewTests(TestCase):
         shutil.rmtree(TEMP_MEDIA, ignore_errors=True)
 
     def setUp(self):
-        self.staff = User.objects.create_user('admin', password='pw', is_staff=True)
+        self.staff = make_admin()
         self.horse = Horse.objects.create(name='Dobbin')
         self.url = reverse('horse_photo_add', args=[self.horse.pk])
         self.client.login(username='admin', password='pw')
@@ -183,7 +183,7 @@ class PhotoDeleteTests(TestCase):
         shutil.rmtree(TEMP_MEDIA, ignore_errors=True)
 
     def setUp(self):
-        self.staff = User.objects.create_user('admin', password='pw', is_staff=True)
+        self.staff = make_admin()
         self.horse = Horse.objects.create(name='Dobbin')
         self.photo = HorsePhoto.objects.create(horse=self.horse, image=_photo())
         self.url = reverse('horse_photo_delete', args=[self.photo.pk])
@@ -221,21 +221,26 @@ class PhotoGatingTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.assertIn('/accounts/login/', resp['Location'])
 
-    def test_non_staff_forbidden(self):
-        User.objects.create_user('viewer', password='pw')
+    def test_view_only_user_cannot_add_or_delete(self):
+        # Viewer role: 'horses' at view level — not the full access photos need.
+        make_viewer()
         self.client.login(username='viewer', password='pw')
-        self.assertEqual(
-            self.client.get(reverse('horse_photo_add', args=[self.horse.pk])).status_code,
-            403,
+        # Plain GET denial redirects to the dashboard with a message.
+        self.assertRedirects(
+            self.client.get(reverse('horse_photo_add', args=[self.horse.pk])),
+            reverse('dashboard'),
         )
+        self.assertEqual(HorsePhoto.objects.count(), 0)
         photo = HorsePhoto.objects.create(horse=self.horse, image=_photo())
+        # POST denial is a hard 403.
         self.assertEqual(
             self.client.post(reverse('horse_photo_delete', args=[photo.pk])).status_code,
             403,
         )
+        self.assertEqual(HorsePhoto.objects.count(), 1)
 
     def test_viewer_still_sees_photo_grid(self):
-        User.objects.create_user('viewer', password='pw')
+        make_viewer()
         HorsePhoto.objects.create(horse=self.horse, image=_photo())
         self.client.login(username='viewer', password='pw')
         resp = self.client.get(reverse('horse_detail', args=[self.horse.pk]))

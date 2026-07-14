@@ -626,7 +626,7 @@
                                     </svg>
                                     Move
                                 </a>
-                                {% if user.is_staff %}
+                                {% if feature_access.horses.full %}
                                 <a href="{% url 'horse_photo_add' horse.pk %}?category=arrival" class="btn-icon"
                                    title="Quick add photos" aria-label="Quick add photos of {{ horse.name }}">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

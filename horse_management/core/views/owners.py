@@ -2,17 +2,18 @@
 Owner views — CRUD and detail.
 """
 
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Prefetch, Q
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from ..forms import OwnerForm
-from ..mixins import StaffRequiredMixin
+from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Horse, Owner, OwnershipShare, Placement
 
 
-class OwnerListView(LoginRequiredMixin, ListView):
+class OwnerListView(FeatureAccessMixin, ListView):
+    feature = 'owners'
+    access_level = LEVEL_VIEW
     model = Owner
     template_name = 'owners/owner_list.html'
     context_object_name = 'owners'
@@ -38,7 +39,9 @@ class OwnerListView(LoginRequiredMixin, ListView):
         return queryset.order_by('name')
 
 
-class OwnerDetailView(LoginRequiredMixin, DetailView):
+class OwnerDetailView(FeatureAccessMixin, DetailView):
+    feature = 'owners'
+    access_level = LEVEL_VIEW
     model = Owner
     template_name = 'owners/owner_detail.html'
     context_object_name = 'owner'
@@ -85,14 +88,16 @@ class OwnerDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class OwnerCreateView(StaffRequiredMixin, CreateView):
+class OwnerCreateView(FeatureAccessMixin, CreateView):
+    feature = 'owners'
     model = Owner
     form_class = OwnerForm
     template_name = 'owners/owner_form.html'
     success_url = reverse_lazy('owner_list')
 
 
-class OwnerUpdateView(StaffRequiredMixin, UpdateView):
+class OwnerUpdateView(FeatureAccessMixin, UpdateView):
+    feature = 'owners'
     model = Owner
     form_class = OwnerForm
     template_name = 'owners/owner_form.html'

@@ -7,7 +7,6 @@ from datetime import date, timedelta
 from itertools import groupby
 
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, Exists, Min, OuterRef, Prefetch, Q
@@ -17,7 +16,7 @@ from django.utils import timezone
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from ..forms import ArrivalForm, LocationForm, LocationUsageForm
-from ..mixins import StaffRequiredMixin, staff_required
+from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Horse, Location, LocationUsagePeriod, Owner, Placement
 
 # Chart/legend colour per usage type — reuses the established design palette.
@@ -121,7 +120,9 @@ def _resolve_usage_window(request):
     }
 
 
-class LocationListView(LoginRequiredMixin, ListView):
+class LocationListView(FeatureAccessMixin, ListView):
+    feature = 'locations'
+    access_level = LEVEL_VIEW
     model = Location
     template_name = 'locations/location_list.html'
     context_object_name = 'locations'
@@ -228,7 +229,9 @@ class LocationListView(LoginRequiredMixin, ListView):
         return context
 
 
-class LocationDetailView(LoginRequiredMixin, DetailView):
+class LocationDetailView(FeatureAccessMixin, DetailView):
+    feature = 'locations'
+    access_level = LEVEL_VIEW
     model = Location
     template_name = 'locations/location_detail.html'
     context_object_name = 'location'
@@ -349,14 +352,16 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class LocationCreateView(StaffRequiredMixin, CreateView):
+class LocationCreateView(FeatureAccessMixin, CreateView):
+    feature = 'locations'
     model = Location
     form_class = LocationForm
     template_name = 'locations/location_form.html'
     success_url = reverse_lazy('location_list')
 
 
-class LocationUpdateView(StaffRequiredMixin, UpdateView):
+class LocationUpdateView(FeatureAccessMixin, UpdateView):
+    feature = 'locations'
     model = Location
     form_class = LocationForm
     template_name = 'locations/location_form.html'
@@ -390,7 +395,7 @@ class LocationUpdateView(StaffRequiredMixin, UpdateView):
         return response
 
 
-@staff_required
+@feature_required('locations')
 def log_arrival(request, pk):
     """Log one or more horses arriving at a location."""
     location = get_object_or_404(Location, pk=pk)
@@ -438,7 +443,7 @@ def log_arrival(request, pk):
     })
 
 
-@staff_required
+@feature_required('locations')
 def log_departure(request, pk):
     """Log departure of selected horses from a location (POST only)."""
     location = get_object_or_404(Location, pk=pk)
@@ -480,7 +485,7 @@ def log_departure(request, pk):
     return redirect('location_detail', pk=location.pk)
 
 
-@staff_required
+@feature_required('locations')
 def set_location_usage(request, pk):
     """Record a manual change to a field's usage, optionally backdated."""
     location = get_object_or_404(Location, pk=pk)

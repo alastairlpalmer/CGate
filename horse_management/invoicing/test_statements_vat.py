@@ -4,13 +4,13 @@ owner statements."""
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.contrib.auth.models import User
 from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from core.models import BusinessSettings, Horse, Location, Owner, Placement, RateType
+from core.roles_testutils import make_admin, make_viewer
 from invoicing.models import Invoice, Payment
 from invoicing.services import InvoiceService, StatementService
 from invoicing.utils import invoice_to_xero_rows
@@ -120,7 +120,7 @@ class VatTests(TestCase):
 class AgedDebtorsTests(TestCase):
 
     def setUp(self):
-        self.staff = User.objects.create_user("admin", password="pw", is_staff=True)
+        self.staff = make_admin()
         today = timezone.now().date()
         self.o1 = _placed_owner("Alice", "a@example.com", "Ghost")
         self.o2 = _placed_owner("Bob", "b@example.com", "Thunder")
@@ -163,7 +163,7 @@ class AgedDebtorsTests(TestCase):
 class OwnerStatementTests(TestCase):
 
     def setUp(self):
-        self.staff = User.objects.create_user("admin", password="pw", is_staff=True)
+        self.staff = make_admin()
         self.owner = _placed_owner()
         self.inv = InvoiceService.create_invoice(self.owner, *PERIOD)
         self.inv.mark_as_sent()
@@ -223,7 +223,7 @@ class OwnerStatementTests(TestCase):
         self.assertEqual(len(mail.outbox), 0)
 
     def test_viewer_cannot_email(self):
-        viewer = User.objects.create_user("viewer", password="pw")
+        viewer = make_viewer()  # invoices=view — no write access
         self.client.force_login(viewer)
         response = self.client.post(
             reverse("owner_statement_email", args=[self.owner.pk])

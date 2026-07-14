@@ -5,11 +5,11 @@ quick-find covering departed horses."""
 from datetime import date
 from decimal import Decimal
 
-from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
 from core.models import Horse, Location, Owner, Placement, RateType
+from core.roles_testutils import make_admin, make_viewer
 from invoicing.models import Invoice, Payment
 from invoicing.services import InvoiceService
 
@@ -21,7 +21,7 @@ def _invoice(owner, start, end):
 class InvoiceListFilterTotalsTests(TestCase):
 
     def setUp(self):
-        self.staff = User.objects.create_user("admin", password="pw", is_staff=True)
+        self.staff = make_admin()
         self.owner = Owner.objects.create(name="Alice", email="a@example.com")
         loc = Location.objects.create(site="Colgate", name="Top")
         rate = RateType.objects.create(name="Grass", daily_rate=Decimal("5.00"))
@@ -95,7 +95,7 @@ class InvoiceListFilterTotalsTests(TestCase):
 class MarkPaidNextRedirectTests(TestCase):
 
     def setUp(self):
-        self.staff = User.objects.create_user("admin", password="pw", is_staff=True)
+        self.staff = make_admin()
         owner = Owner.objects.create(name="Alice", email="a@example.com")
         loc = Location.objects.create(site="S", name="F")
         rate = RateType.objects.create(name="R", daily_rate=Decimal("5.00"))
@@ -129,7 +129,7 @@ class MarkPaidNextRedirectTests(TestCase):
 class HorseCreateRedirectTests(TestCase):
 
     def test_lands_on_new_horse_detail(self):
-        staff = User.objects.create_user("admin", password="pw", is_staff=True)
+        staff = make_admin()
         self.client.force_login(staff)
         response = self.client.post(reverse("horse_create"), {
             "name": "Dobbin",
@@ -147,7 +147,7 @@ class HorseCreateRedirectTests(TestCase):
 class QuickFindDepartedTests(TestCase):
 
     def test_departed_horse_found_and_labelled(self):
-        user = User.objects.create_user("viewer", password="pw")
+        user = make_viewer()
         self.client.force_login(user)
         Horse.objects.create(name="Vanished", is_active=False)
         response = self.client.get(reverse("quick_find"), {"q": "Vanished"})
@@ -156,7 +156,7 @@ class QuickFindDepartedTests(TestCase):
         self.assertIn("Departed", body)
 
     def test_active_horses_sort_before_departed(self):
-        user = User.objects.create_user("viewer", password="pw")
+        user = make_viewer()
         self.client.force_login(user)
         Horse.objects.create(name="Star One", is_active=False)
         Horse.objects.create(name="Star Two", is_active=True)

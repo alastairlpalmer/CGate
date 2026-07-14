@@ -6,7 +6,7 @@ import logging
 from datetime import timedelta
 from decimal import Decimal
 
-from django.contrib.auth.decorators import login_required
+from ..permissions import feature_required
 from django.db.models import DecimalField, ExpressionWrapper, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
@@ -65,7 +65,7 @@ def _empty_context():
     }
 
 
-@login_required
+@feature_required('dashboard')
 def dashboard(request):
     """Main dashboard view."""
     try:
@@ -249,7 +249,7 @@ def _dashboard_inner(request):
     return render(request, 'dashboard.html', context)
 
 
-@login_required
+@feature_required('dashboard')
 def dashboard_health_alerts(request):
     """HTMX partial: health alerts loaded after initial dashboard render.
 
@@ -326,7 +326,7 @@ QUICK_FIND_MIN_CHARS = 2
 QUICK_FIND_PER_GROUP = 4
 
 
-@login_required
+@feature_required('dashboard')
 def quick_find(request):
     """HTMX partial: typo-tolerant search across horses, owners and locations.
 
@@ -337,30 +337,39 @@ def quick_find(request):
     if len(query) < QUICK_FIND_MIN_CHARS:
         return HttpResponse('')
 
+    from ..permissions import has_feature_access
+
     # Include departed horses (labelled) — searching by name for a horse
-    # that left last month should still find its record.
-    horses = sorted(
-        (
-            {'pk': pk, 'name': name, 'is_active': is_active}
-            for pk, name, is_active in Horse.objects.values_list(
-                'pk', 'name', 'is_active'
-            )
+    # that left last month should still find its record. Groups the user's
+    # role can't view are skipped entirely so hidden areas don't leak here.
+    horses = []
+    if has_feature_access(request.user, 'horses'):
+        horses = sorted(
+            (
+                {'pk': pk, 'name': name, 'is_active': is_active}
+                for pk, name, is_active in Horse.objects.values_list(
+                    'pk', 'name', 'is_active'
+                )
+                if is_fuzzy_match(query, name)
+            ),
+            key=lambda h: not h['is_active'],  # active horses first
+        )[:QUICK_FIND_PER_GROUP]
+
+    owners = []
+    if has_feature_access(request.user, 'owners'):
+        owners = [
+            {'pk': pk, 'name': name}
+            for pk, name in Owner.objects.values_list('pk', 'name')
             if is_fuzzy_match(query, name)
-        ),
-        key=lambda h: not h['is_active'],  # active horses first
-    )[:QUICK_FIND_PER_GROUP]
+        ][:QUICK_FIND_PER_GROUP]
 
-    owners = [
-        {'pk': pk, 'name': name}
-        for pk, name in Owner.objects.values_list('pk', 'name')
-        if is_fuzzy_match(query, name)
-    ][:QUICK_FIND_PER_GROUP]
-
-    locations = [
-        {'pk': pk, 'name': name, 'site': site}
-        for pk, name, site in Location.objects.values_list('pk', 'name', 'site')
-        if is_fuzzy_match(query, name) or is_fuzzy_match(query, site)
-    ][:QUICK_FIND_PER_GROUP]
+    locations = []
+    if has_feature_access(request.user, 'locations'):
+        locations = [
+            {'pk': pk, 'name': name, 'site': site}
+            for pk, name, site in Location.objects.values_list('pk', 'name', 'site')
+            if is_fuzzy_match(query, name) or is_fuzzy_match(query, site)
+        ][:QUICK_FIND_PER_GROUP]
 
     return render(request, 'partials/dashboard/quick_find_results.html', {
         'query': query,

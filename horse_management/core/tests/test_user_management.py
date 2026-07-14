@@ -1,8 +1,11 @@
-"""Email sign-in backend and Settings → Users & Access tests."""
+"""Email sign-in backend and Settings → Users & Roles tests."""
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+
+from core.models import UserRole
+from core.roles_testutils import administrator_role, assign_role, viewer_role
 
 User = get_user_model()
 
@@ -10,13 +13,13 @@ PW = "horse-yard-2026"
 
 
 def make_admin(email="admin@example.com", **extra):
-    return User.objects.create_user(
-        username=email, email=email, password=PW, is_staff=True, **extra
-    )
+    user = User.objects.create_user(username=email, email=email, password=PW, **extra)
+    return assign_role(user, administrator_role())
 
 
 def make_viewer(email="viewer@example.com", **extra):
-    return User.objects.create_user(username=email, email=email, password=PW, **extra)
+    user = User.objects.create_user(username=email, email=email, password=PW, **extra)
+    return assign_role(user, viewer_role())
 
 
 class EmailLoginTests(TestCase):
@@ -63,8 +66,10 @@ class UserPagesAccessTests(TestCase):
         viewer = make_viewer()
         admin = make_admin()
         self.client.login(username=viewer.email, password=PW)
-        self.assertEqual(self.client.get(reverse("user_create")).status_code, 403)
-        self.assertEqual(self.client.get(reverse("user_update", args=[admin.pk])).status_code, 403)
+        # Insufficient GETs redirect away with a message; POSTs are 403.
+        self.assertEqual(self.client.get(reverse("user_create")).status_code, 302)
+        self.assertEqual(self.client.get(reverse("user_update", args=[admin.pk])).status_code, 302)
+        self.assertEqual(self.client.post(reverse("user_create"), {}).status_code, 403)
 
     def test_logged_out_redirected_to_login(self):
         resp = self.client.get(reverse("user_create"))
@@ -76,14 +81,14 @@ class UserPagesAccessTests(TestCase):
         make_viewer("jo@example.com")
         self.client.login(username=admin.email, password=PW)
         resp = self.client.get(reverse("app_settings"))
-        self.assertContains(resp, "Users &amp; Access")
+        self.assertContains(resp, "Users &amp; Roles")
         self.assertContains(resp, "jo@example.com")
 
     def test_viewer_settings_has_no_users_card(self):
         viewer = make_viewer()
         self.client.login(username=viewer.email, password=PW)
         resp = self.client.get(reverse("app_settings"))
-        self.assertNotContains(resp, "Users &amp; Access")
+        self.assertNotContains(resp, "Users &amp; Roles")
 
 
 class UserCreateTests(TestCase):
@@ -96,7 +101,7 @@ class UserCreateTests(TestCase):
             "first_name": "Jo",
             "last_name": "Bloggs",
             "email": "jo@example.com",
-            "role": "viewer",
+            "role": viewer_role().pk,
             "password1": PW,
             "password2": PW,
         }
@@ -108,12 +113,15 @@ class UserCreateTests(TestCase):
         self.assertRedirects(resp, reverse("app_settings"))
         user = User.objects.get(email="jo@example.com")
         self.assertEqual(user.username, "jo@example.com")
-        self.assertFalse(user.is_staff)
+        self.assertEqual(UserRole.objects.get(user=user).role, viewer_role())
+        self.assertFalse(user.is_staff)  # roles never touch is_staff
         self.assertTrue(self.client.login(username="jo@example.com", password=PW))
 
-    def test_creates_admin(self):
-        self._post(role="admin")
-        self.assertTrue(User.objects.get(email="jo@example.com").is_staff)
+    def test_creates_administrator(self):
+        self._post(role=administrator_role().pk)
+        user = User.objects.get(email="jo@example.com")
+        self.assertEqual(UserRole.objects.get(user=user).role, administrator_role())
+        self.assertFalse(user.is_staff)
 
     def test_email_is_normalised_to_lowercase(self):
         self._post(email="Jo@Example.COM")
@@ -153,15 +161,14 @@ class UserUpdateTests(TestCase):
             "first_name": target.first_name or "X",
             "last_name": target.last_name,
             "email": target.email,
-            "role": "admin" if target.is_staff else "viewer",
+            "role": UserRole.objects.get(user=target).role.pk,
         }
         data.update(overrides)
         return self.client.post(reverse("user_update", args=[target.pk]), data)
 
-    def test_promote_viewer_to_admin(self):
-        self._details(self.viewer, role="admin")
-        self.viewer.refresh_from_db()
-        self.assertTrue(self.viewer.is_staff)
+    def test_promote_viewer_to_administrator(self):
+        self._details(self.viewer, role=administrator_role().pk)
+        self.assertEqual(UserRole.objects.get(user=self.viewer).role, administrator_role())
 
     def test_email_change_updates_username_for_email_accounts(self):
         self._details(self.viewer, email="new@example.com")
@@ -174,28 +181,21 @@ class UserUpdateTests(TestCase):
         legacy = User.objects.create_user(
             username="alastair", email="old@example.com", password=PW
         )
+        assign_role(legacy, viewer_role())
         self._details(legacy, email="new@example.com")
         legacy.refresh_from_db()
         self.assertEqual(legacy.username, "alastair")
         self.assertEqual(legacy.email, "new@example.com")
 
     def test_cannot_demote_self(self):
-        self._details(self.admin, role="viewer")
-        self.admin.refresh_from_db()
-        self.assertTrue(self.admin.is_staff)
+        self._details(self.admin, role=viewer_role().pk)
+        self.assertEqual(UserRole.objects.get(user=self.admin).role, administrator_role())
 
     def test_demote_other_admin_requires_remaining_admin(self):
         other = make_admin("second@example.com")
         # self.admin still active, so demoting `other` is fine
-        self._details(other, role="viewer")
-        other.refresh_from_db()
-        self.assertFalse(other.is_staff)
-
-    def test_demoting_clears_superuser_flag(self):
-        other = make_admin("second@example.com", is_superuser=True)
-        self._details(other, role="viewer")
-        other.refresh_from_db()
-        self.assertFalse(other.is_superuser)
+        self._details(other, role=viewer_role().pk)
+        self.assertEqual(UserRole.objects.get(user=other).role, viewer_role())
 
     def test_admin_can_reset_password(self):
         resp = self.client.post(
@@ -230,12 +230,10 @@ class UserUpdateTests(TestCase):
         self.assertTrue(self.admin.is_active)
 
     def test_cannot_deactivate_only_admin(self):
-        # A second admin tries to deactivate the only *other* admin while
-        # being one themselves — allowed. But deactivating the last active
-        # admin must be blocked.
+        # A second admin deactivating the only *other* admin is allowed —
+        # `second` remains as a manager afterwards.
         second = make_admin("second@example.com")
         self.client.login(username=second.email, password=PW)
-        # Deactivate the first admin — fine, `second` remains.
         self.client.post(reverse("user_update", args=[self.admin.pk]), {"toggle_active": "1"})
         self.admin.refresh_from_db()
         self.assertFalse(self.admin.is_active)

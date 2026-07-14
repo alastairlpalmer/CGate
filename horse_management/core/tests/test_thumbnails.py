@@ -90,8 +90,8 @@ class ThumbnailTests(TestCase):
         self.assertIn("Thumbnails generated: 1", out.getvalue())
 
     def test_avatar_partial_prefers_thumb(self):
-        user = User.objects.create_user("viewer", password="pw")
-        self.client.force_login(user)
+        from core.roles_testutils import make_viewer
+        self.client.force_login(make_viewer())
         horse = Horse.objects.create(name="Dobbin", photo=_photo())
         response = self.client.get(reverse("horse_detail", args=[horse.pk]))
         horse.refresh_from_db()

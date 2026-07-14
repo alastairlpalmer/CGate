@@ -837,16 +837,24 @@ class DashboardPreference(models.Model):
         return {k: v for k, v in resolved.items() if k in WIDGETS_BY_KEY}
 
     def visible_ordered_keys_by_group(self):
-        """Return {group: [key, ...]} filtered to visible keys, sorted by order."""
+        """Return {group: [key, ...]} filtered to visible keys, sorted by order.
+
+        Widgets tied to a feature area the user's role can't view are
+        dropped regardless of stored preference.
+        """
         from .dashboard_widgets import GROUPS, WIDGETS_BY_KEY
+        from .permissions import access_map
+        levels = access_map(self.user)
         layout = self.resolved_layout()
         grouped = {g: [] for g in GROUPS}
         ordered = sorted(layout.items(), key=lambda kv: kv[1]["order"])
         for key, meta in ordered:
             if not meta["visible"]:
                 continue
-            group = WIDGETS_BY_KEY[key]["group"]
-            grouped[group].append(key)
+            widget = WIDGETS_BY_KEY[key]
+            if levels[widget["feature"]] == "hidden":
+                continue
+            grouped[widget["group"]].append(key)
         return grouped
 
 
@@ -1013,6 +1021,59 @@ class HorsePhoto(models.Model):
                 base = Path(self.image.name).stem if self.image.name else 'photo'
                 self.thumb.save(f"{base}-thumb.jpg", thumb, save=False)
         super().save(*args, **kwargs)
+
+
+class Role(models.Model):
+    """A named staff role with a per-feature access map (the Role Suite).
+
+    ``access`` stores ``{"horses": "full", "invoices": "view", ...}`` keyed
+    by ``core.features`` registry keys. Resolution merges it over registry
+    defaults so features added later appear automatically (hidden) without a
+    data migration — the same pattern as ``DashboardPreference.resolved_layout``.
+    """
+
+    name = models.CharField(max_length=100, unique=True)
+    description = models.CharField(max_length=255, blank=True)
+    # The seeded Administrator role: cannot be deleted and always resolves
+    # to full access everywhere, so a yard can never lock itself out.
+    is_system = models.BooleanField(default=False)
+    access = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    def resolved_access(self):
+        """Feature→level map covering every registry feature."""
+        from .features import ALL_FULL, DEFAULT_LEVELS, clamp_level
+        if self.is_system:
+            return dict(ALL_FULL)
+        resolved = dict(DEFAULT_LEVELS)
+        stored = self.access if isinstance(self.access, dict) else {}
+        for key in resolved:
+            if key in stored:
+                resolved[key] = clamp_level(key, stored[key])
+        return resolved
+
+
+class UserRole(models.Model):
+    """Assignment of a user to a role. Users without one see nothing."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='role_assignment',
+    )
+    # PROTECT: deleting a role with members requires reassigning them first.
+    role = models.ForeignKey(Role, on_delete=models.PROTECT, related_name='assignments')
+    assigned_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user} → {self.role}"
 
 
 # Invoice and InvoiceLineItem have been moved to invoicing.models.

@@ -7,10 +7,8 @@ import logging
 from datetime import timedelta
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
 
-from core.mixins import StaffRequiredMixin, staff_required
+from core.permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -30,7 +28,9 @@ from .utils import group_line_items_by_horse, write_xero_csv
 logger = logging.getLogger(__name__)
 
 
-class InvoiceListView(LoginRequiredMixin, ListView):
+class InvoiceListView(FeatureAccessMixin, ListView):
+    feature = 'invoices'
+    access_level = LEVEL_VIEW
     model = Invoice
     template_name = 'invoicing/invoice_list.html'
     context_object_name = 'invoices'
@@ -129,7 +129,9 @@ def _apply_period_filter(queryset, request):
     return queryset
 
 
-class InvoiceDetailView(LoginRequiredMixin, DetailView):
+class InvoiceDetailView(FeatureAccessMixin, DetailView):
+    feature = 'invoices'
+    access_level = LEVEL_VIEW
     model = Invoice
     template_name = 'invoicing/invoice_detail.html'
     context_object_name = 'invoice'
@@ -147,7 +149,8 @@ class InvoiceDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class InvoiceUpdateView(StaffRequiredMixin, UpdateView):
+class InvoiceUpdateView(FeatureAccessMixin, UpdateView):
+    feature = 'invoices'
     model = Invoice
     form_class = InvoiceUpdateForm
     template_name = 'invoicing/invoice_form.html'
@@ -174,7 +177,7 @@ class InvoiceUpdateView(StaffRequiredMixin, UpdateView):
         return reverse_lazy('invoice_detail', kwargs={'pk': self.object.pk})
 
 
-@staff_required
+@feature_required('invoices')
 def invoice_create(request):
     """Create a new invoice."""
     initial = {}
@@ -250,7 +253,7 @@ def invoice_create(request):
     })
 
 
-@login_required
+@feature_required('invoices', LEVEL_VIEW)
 def invoice_preview(request):
     """AJAX preview of invoice charges."""
     owner_id = request.GET.get('owner')
@@ -275,7 +278,7 @@ def invoice_preview(request):
     })
 
 
-@login_required
+@feature_required('invoices', LEVEL_VIEW)
 def invoice_pdf(request, pk):
     """Download invoice as PDF."""
     invoice = get_object_or_404(Invoice, pk=pk)
@@ -287,7 +290,7 @@ def invoice_pdf(request, pk):
     return response
 
 
-@staff_required
+@feature_required('invoices')
 def invoice_send(request, pk):
     """Send invoice via email."""
     if request.method != 'POST':
@@ -317,7 +320,7 @@ def invoice_send(request, pk):
     return redirect('invoice_detail', pk=pk)
 
 
-@staff_required
+@feature_required('invoices')
 def invoice_mark_paid(request, pk):
     """Mark invoice as paid."""
     if request.method != 'POST':
@@ -342,7 +345,7 @@ def invoice_mark_paid(request, pk):
     return redirect(next_url)
 
 
-@login_required
+@feature_required('invoices', LEVEL_VIEW)
 def aged_debtors(request):
     """Aged debtors: who owes what, bucketed by how overdue it is."""
     rows, totals = StatementService.aged_debtors()
@@ -353,7 +356,7 @@ def aged_debtors(request):
     })
 
 
-@login_required
+@feature_required('invoices', LEVEL_VIEW)
 def owner_statement(request, owner_pk):
     """Statement of account for one owner."""
     owner = get_object_or_404(Owner, pk=owner_pk)
@@ -364,7 +367,7 @@ def owner_statement(request, owner_pk):
     })
 
 
-@login_required
+@feature_required('invoices', LEVEL_VIEW)
 def owner_statement_pdf(request, owner_pk):
     """Download an owner's statement of account as PDF."""
     owner = get_object_or_404(Owner, pk=owner_pk)
@@ -377,7 +380,7 @@ def owner_statement_pdf(request, owner_pk):
     return response
 
 
-@staff_required
+@feature_required('invoices')
 def owner_statement_email(request, owner_pk):
     """Email an owner their statement of account with PDF attached."""
     if request.method != 'POST':
@@ -397,7 +400,7 @@ def owner_statement_email(request, owner_pk):
     return redirect('owner_statement', owner_pk=owner_pk)
 
 
-@staff_required
+@feature_required('invoices')
 def payment_create(request, pk):
     """Record a payment (possibly partial) against an invoice."""
     invoice = get_object_or_404(Invoice, pk=pk)
@@ -444,7 +447,7 @@ def payment_create(request, pk):
     })
 
 
-@staff_required
+@feature_required('invoices')
 def payment_delete(request, pk):
     """Delete a mistakenly recorded payment and re-derive the invoice status."""
     from invoicing.models import Payment
@@ -466,7 +469,7 @@ def payment_delete(request, pk):
     return redirect('invoice_detail', pk=invoice.pk)
 
 
-@staff_required
+@feature_required('invoices')
 def invoice_bulk_action(request):
     """Send or mark-paid a selection of invoices in one action.
 
@@ -612,7 +615,7 @@ def invoice_bulk_action(request):
     return redirect(next_url)
 
 
-@staff_required
+@feature_required('invoices')
 def invoice_generate_monthly(request):
     """Generate invoices for all owners for a month."""
     if request.method == 'POST':
@@ -637,7 +640,7 @@ def invoice_generate_monthly(request):
     })
 
 
-@login_required
+@feature_required('invoices', LEVEL_VIEW)
 def invoice_csv(request, pk):
     """Download a single invoice as Xero-compatible CSV."""
     invoice = get_object_or_404(Invoice, pk=pk)
@@ -658,7 +661,7 @@ def invoice_csv(request, pk):
     return response
 
 
-@login_required
+@feature_required('invoices', LEVEL_VIEW)
 def invoice_export_csv(request):
     """Bulk export invoices as Xero-compatible CSV.
 

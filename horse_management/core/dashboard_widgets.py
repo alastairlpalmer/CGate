@@ -16,21 +16,23 @@ stale keys in stored layouts.
 
 GROUPS = ("kpi", "list", "health")
 
+# ``feature`` ties a widget to a Role Suite feature area (core.features):
+# users whose role can't view that feature never see (or fetch) the widget.
 WIDGETS = [
-    {"key": "kpi_total_horses",         "name": "Total Horses",                "group": "kpi"},
-    {"key": "kpi_vaccinations_due",     "name": "Vaccinations Due (stat)",     "group": "kpi"},
-    {"key": "kpi_unbilled_charges",     "name": "Unbilled Charges",            "group": "kpi"},
-    {"key": "kpi_outstanding_invoices", "name": "Outstanding Invoices (stat)", "group": "kpi"},
-    {"key": "pending_departures",       "name": "Pending Departures",          "group": "list"},
-    {"key": "recent_activity",          "name": "Recent Activity",             "group": "list"},
-    {"key": "list_vaccinations_due",    "name": "Vaccinations Due (30 days)",  "group": "list"},
-    {"key": "list_farrier_due",         "name": "Farrier Due (2 weeks)",       "group": "list"},
-    {"key": "table_outstanding",        "name": "Outstanding Invoices (table)", "group": "list"},
-    {"key": "list_field_rest",          "name": "Field Rest (This Year)",      "group": "list"},
-    {"key": "health_upcoming_dep",      "name": "Upcoming Departures",         "group": "health"},
-    {"key": "health_ehv_due",           "name": "EHV Vaccinations Due",        "group": "health"},
-    {"key": "health_egg_counts",        "name": "High Egg Counts",             "group": "health"},
-    {"key": "health_vet_followups",     "name": "Vet Follow-ups",              "group": "health"},
+    {"key": "kpi_total_horses",         "name": "Total Horses",                "group": "kpi",    "feature": "horses"},
+    {"key": "kpi_vaccinations_due",     "name": "Vaccinations Due (stat)",     "group": "kpi",    "feature": "health"},
+    {"key": "kpi_unbilled_charges",     "name": "Unbilled Charges",            "group": "kpi",    "feature": "charges"},
+    {"key": "kpi_outstanding_invoices", "name": "Outstanding Invoices (stat)", "group": "kpi",    "feature": "invoices"},
+    {"key": "pending_departures",       "name": "Pending Departures",          "group": "list",   "feature": "horses"},
+    {"key": "recent_activity",          "name": "Recent Activity",             "group": "list",   "feature": "horses"},
+    {"key": "list_vaccinations_due",    "name": "Vaccinations Due (30 days)",  "group": "list",   "feature": "health"},
+    {"key": "list_farrier_due",         "name": "Farrier Due (2 weeks)",       "group": "list",   "feature": "health"},
+    {"key": "table_outstanding",        "name": "Outstanding Invoices (table)", "group": "list",  "feature": "invoices"},
+    {"key": "list_field_rest",          "name": "Field Rest (This Year)",      "group": "list",   "feature": "locations"},
+    {"key": "health_upcoming_dep",      "name": "Upcoming Departures",         "group": "health", "feature": "horses"},
+    {"key": "health_ehv_due",           "name": "EHV Vaccinations Due",        "group": "health", "feature": "health"},
+    {"key": "health_egg_counts",        "name": "High Egg Counts",             "group": "health", "feature": "health"},
+    {"key": "health_vet_followups",     "name": "Vet Follow-ups",              "group": "health", "feature": "health"},
 ]
 
 WIDGETS_BY_KEY = {w["key"]: w for w in WIDGETS}

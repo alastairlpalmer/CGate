@@ -9,7 +9,7 @@ import logging
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.contrib.auth.decorators import login_required
+from core.permissions import feature_required
 from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncMonth
 from django.shortcuts import render
@@ -36,7 +36,7 @@ def _empty_context():
     }
 
 
-@login_required
+@feature_required('finances')
 def finances(request):
     """Finances overview page."""
     try:

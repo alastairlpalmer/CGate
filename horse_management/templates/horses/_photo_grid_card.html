@@ -6,7 +6,7 @@ photos is a (sliced) queryset of HorsePhoto; photo_count the unsliced total.
 <div class="card">
     <div class="section-header">
         <h3 class="section-title">Photos</h3>
-        {% if user.is_staff %}
+        {% if feature_access.horses.full %}
         <a href="{% url 'horse_photo_add' horse.pk %}" class="btn-ghost btn-xs">+ Add</a>
         {% endif %}
     </div>
@@ -25,7 +25,7 @@ photos is a (sliced) queryset of HorsePhoto; photo_count the unsliced total.
                 <span class="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-charcoal/60 text-white pointer-events-none">
                     {{ photo.get_category_display }}
                 </span>
-                {% if user.is_staff %}
+                {% if feature_access.horses.full %}
                 <form method="post" action="{% url 'horse_photo_delete' photo.pk %}" class="absolute top-1 right-1"
                       onsubmit="return confirm('Delete this {{ photo.get_category_display|lower|escapejs }} photo?')">
                     {% csrf_token %}
@@ -46,6 +46,6 @@ photos is a (sliced) queryset of HorsePhoto; photo_count the unsliced total.
         {% endif %}
     </div>
     {% else %}
-    <div class="p-5 text-sm text-sage">No photos yet{% if user.is_staff %} — snap condition, markings or arrival shots with Quick Add{% endif %}.</div>
+    <div class="p-5 text-sm text-sage">No photos yet{% if feature_access.horses.full %} — snap condition, markings or arrival shots with Quick Add{% endif %}.</div>
     {% endif %}
 </div>

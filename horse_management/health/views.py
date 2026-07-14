@@ -6,10 +6,8 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
 
-from core.mixins import StaffRequiredMixin
+from core.permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required, has_feature_access
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -71,7 +69,7 @@ HEALTH_TABS = [
 ]
 
 
-@login_required
+@feature_required('health', LEVEL_VIEW)
 def health_dashboard(request):
     tab = request.GET.get('type', 'overview')
     today = timezone.now().date()
@@ -373,7 +371,7 @@ BULK_LABELS = {
 }
 
 
-@login_required
+@feature_required('health')
 def bulk_health_form(request):
     action_type = request.GET.get('action_type', '')
     form_class = BULK_FORM_MAP.get(action_type)
@@ -399,7 +397,7 @@ def bulk_health_form(request):
     })
 
 
-@login_required
+@feature_required('health')
 def bulk_health_apply(request):
     if request.method != 'POST':
         return HttpResponseBadRequest('POST required')
@@ -411,11 +409,11 @@ def bulk_health_apply(request):
     if not form_class or not horse_ids:
         return HttpResponseBadRequest('Invalid request')
 
-    # Departure, move and restore actions change placements — admin-only
-    # operations everywhere else (horse_depart, horse_move, log_departure),
-    # so the viewer role must not reach them through the bulk endpoint either.
+    # Departure, move and restore actions change placements — gated by the
+    # Locations feature everywhere else (horse_depart, horse_move,
+    # log_departure), so health access alone must not reach them here.
     if action_type in ('expected_departure', 'actual_departure', 'move', 'restore') \
-            and not request.user.is_staff:
+            and not has_feature_access(request.user, 'locations', 'full'):
         raise PermissionDenied
 
     form = form_class(request.POST)
@@ -574,7 +572,9 @@ def bulk_health_apply(request):
 
 # ─── Vaccination Views ───────────────────────────────────────────────
 
-class VaccinationListView(LoginRequiredMixin, ListView):
+class VaccinationListView(FeatureAccessMixin, ListView):
+    feature = 'health'
+    access_level = LEVEL_VIEW
     model = Vaccination
     template_name = 'health/vaccination_list.html'
     context_object_name = 'vaccinations'
@@ -648,7 +648,8 @@ class HealthRecordSuccessUrlMixin:
         return context
 
 
-class VaccinationCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, CreateView):
+class VaccinationCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    feature = 'health'
     model = Vaccination
     form_class = VaccinationForm
     template_name = 'health/vaccination_form.html'
@@ -667,7 +668,8 @@ class VaccinationCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, Cre
         return super().form_valid(form)
 
 
-class VaccinationUpdateView(LoginRequiredMixin, UpdateView):
+class VaccinationUpdateView(FeatureAccessMixin, UpdateView):
+    feature = 'health'
     model = Vaccination
     form_class = VaccinationForm
     template_name = 'health/vaccination_form.html'
@@ -678,7 +680,8 @@ class VaccinationUpdateView(LoginRequiredMixin, UpdateView):
 
 # ─── Vaccination Type Views ──────────────────────────────────────────
 
-class VaccinationTypeListView(LoginRequiredMixin, ListView):
+class VaccinationTypeListView(FeatureAccessMixin, ListView):
+    feature = 'settings'
     model = VaccinationType
     template_name = 'health/vaccination_type_list.html'
     context_object_name = 'vaccination_types'
@@ -694,7 +697,8 @@ class VaccinationTypeListView(LoginRequiredMixin, ListView):
         return queryset.order_by('name')
 
 
-class VaccinationTypeCreateView(StaffRequiredMixin, CreateView):
+class VaccinationTypeCreateView(FeatureAccessMixin, CreateView):
+    feature = 'settings'
     model = VaccinationType
     form_class = VaccinationTypeForm
     template_name = 'health/vaccination_type_form.html'
@@ -705,7 +709,8 @@ class VaccinationTypeCreateView(StaffRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class VaccinationTypeUpdateView(StaffRequiredMixin, UpdateView):
+class VaccinationTypeUpdateView(FeatureAccessMixin, UpdateView):
+    feature = 'settings'
     model = VaccinationType
     form_class = VaccinationTypeForm
     template_name = 'health/vaccination_type_form.html'
@@ -718,7 +723,9 @@ class VaccinationTypeUpdateView(StaffRequiredMixin, UpdateView):
 
 # ─── Farrier Views ───────────────────────────────────────────────────
 
-class FarrierListView(LoginRequiredMixin, ListView):
+class FarrierListView(FeatureAccessMixin, ListView):
+    feature = 'health'
+    access_level = LEVEL_VIEW
     model = FarrierVisit
     template_name = 'health/farrier_list.html'
     context_object_name = 'visits'
@@ -756,7 +763,8 @@ class FarrierListView(LoginRequiredMixin, ListView):
         return context
 
 
-class FarrierCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, CreateView):
+class FarrierCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    feature = 'health'
     model = FarrierVisit
     form_class = FarrierVisitForm
     template_name = 'health/farrier_form.html'
@@ -795,7 +803,8 @@ class FarrierCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, CreateV
         return response
 
 
-class FarrierUpdateView(LoginRequiredMixin, UpdateView):
+class FarrierUpdateView(FeatureAccessMixin, UpdateView):
+    feature = 'health'
     model = FarrierVisit
     form_class = FarrierVisitForm
     template_name = 'health/farrier_form.html'
@@ -821,7 +830,9 @@ class FarrierUpdateView(LoginRequiredMixin, UpdateView):
 
 # ─── Worming Treatment Views ─────────────────────────────────────────
 
-class WormingListView(LoginRequiredMixin, ListView):
+class WormingListView(FeatureAccessMixin, ListView):
+    feature = 'health'
+    access_level = LEVEL_VIEW
     model = WormingTreatment
     template_name = 'health/worming_list.html'
     context_object_name = 'treatments'
@@ -842,7 +853,8 @@ class WormingListView(LoginRequiredMixin, ListView):
         return context
 
 
-class WormingCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, CreateView):
+class WormingCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    feature = 'health'
     model = WormingTreatment
     form_class = WormingTreatmentForm
     template_name = 'health/worming_form.html'
@@ -861,7 +873,8 @@ class WormingCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, CreateV
         return super().form_valid(form)
 
 
-class WormingUpdateView(LoginRequiredMixin, UpdateView):
+class WormingUpdateView(FeatureAccessMixin, UpdateView):
+    feature = 'health'
     model = WormingTreatment
     form_class = WormingTreatmentForm
     template_name = 'health/worming_form.html'
@@ -872,7 +885,9 @@ class WormingUpdateView(LoginRequiredMixin, UpdateView):
 
 # ─── Worm Egg Count Views ────────────────────────────────────────────
 
-class WormEggCountListView(LoginRequiredMixin, ListView):
+class WormEggCountListView(FeatureAccessMixin, ListView):
+    feature = 'health'
+    access_level = LEVEL_VIEW
     model = WormEggCount
     template_name = 'health/egg_count_list.html'
     context_object_name = 'egg_counts'
@@ -893,7 +908,8 @@ class WormEggCountListView(LoginRequiredMixin, ListView):
         return context
 
 
-class WormEggCountCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, CreateView):
+class WormEggCountCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    feature = 'health'
     model = WormEggCount
     form_class = WormEggCountForm
     template_name = 'health/egg_count_form.html'
@@ -912,7 +928,8 @@ class WormEggCountCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, Cr
         return super().form_valid(form)
 
 
-class WormEggCountUpdateView(LoginRequiredMixin, UpdateView):
+class WormEggCountUpdateView(FeatureAccessMixin, UpdateView):
+    feature = 'health'
     model = WormEggCount
     form_class = WormEggCountForm
     template_name = 'health/egg_count_form.html'
@@ -923,7 +940,9 @@ class WormEggCountUpdateView(LoginRequiredMixin, UpdateView):
 
 # ─── Medical Condition Views ─────────────────────────────────────────
 
-class MedicalConditionListView(LoginRequiredMixin, ListView):
+class MedicalConditionListView(FeatureAccessMixin, ListView):
+    feature = 'health'
+    access_level = LEVEL_VIEW
     model = MedicalCondition
     template_name = 'health/condition_list.html'
     context_object_name = 'conditions'
@@ -947,7 +966,8 @@ class MedicalConditionListView(LoginRequiredMixin, ListView):
         return context
 
 
-class MedicalConditionCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, CreateView):
+class MedicalConditionCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    feature = 'health'
     model = MedicalCondition
     form_class = MedicalConditionForm
     template_name = 'health/condition_form.html'
@@ -965,7 +985,8 @@ class MedicalConditionCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin
         return super().form_valid(form)
 
 
-class MedicalConditionUpdateView(LoginRequiredMixin, UpdateView):
+class MedicalConditionUpdateView(FeatureAccessMixin, UpdateView):
+    feature = 'health'
     model = MedicalCondition
     form_class = MedicalConditionForm
     template_name = 'health/condition_form.html'
@@ -976,7 +997,9 @@ class MedicalConditionUpdateView(LoginRequiredMixin, UpdateView):
 
 # ─── Vet Visit Views ─────────────────────────────────────────────────
 
-class VetVisitListView(LoginRequiredMixin, ListView):
+class VetVisitListView(FeatureAccessMixin, ListView):
+    feature = 'health'
+    access_level = LEVEL_VIEW
     model = VetVisit
     template_name = 'health/vet_visit_list.html'
     context_object_name = 'vet_visits'
@@ -997,7 +1020,8 @@ class VetVisitListView(LoginRequiredMixin, ListView):
         return context
 
 
-class VetVisitCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, CreateView):
+class VetVisitCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    feature = 'health'
     model = VetVisit
     form_class = VetVisitForm
     template_name = 'health/vet_visit_form.html'
@@ -1036,7 +1060,8 @@ class VetVisitCreateView(HealthRecordSuccessUrlMixin, LoginRequiredMixin, Create
         return response
 
 
-class VetVisitUpdateView(LoginRequiredMixin, UpdateView):
+class VetVisitUpdateView(FeatureAccessMixin, UpdateView):
+    feature = 'health'
     model = VetVisit
     form_class = VetVisitForm
     template_name = 'health/vet_visit_form.html'
@@ -1062,7 +1087,9 @@ class VetVisitUpdateView(LoginRequiredMixin, UpdateView):
 
 # ─── Breeding Record Views ───────────────────────────────────────────
 
-class BreedingRecordListView(LoginRequiredMixin, ListView):
+class BreedingRecordListView(FeatureAccessMixin, ListView):
+    feature = 'breeding'
+    access_level = LEVEL_VIEW
     model = BreedingRecord
     template_name = 'health/breeding_list.html'
     context_object_name = 'breeding_records'
@@ -1086,7 +1113,8 @@ class BreedingRecordListView(LoginRequiredMixin, ListView):
         return context
 
 
-class BreedingRecordCreateView(LoginRequiredMixin, CreateView):
+class BreedingRecordCreateView(FeatureAccessMixin, CreateView):
+    feature = 'breeding'
     model = BreedingRecord
     form_class = BreedingRecordForm
     template_name = 'health/breeding_form.html'
@@ -1104,7 +1132,8 @@ class BreedingRecordCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class BreedingRecordUpdateView(LoginRequiredMixin, UpdateView):
+class BreedingRecordUpdateView(FeatureAccessMixin, UpdateView):
+    feature = 'breeding'
     model = BreedingRecord
     form_class = BreedingRecordForm
     template_name = 'health/breeding_form.html'
@@ -1113,7 +1142,7 @@ class BreedingRecordUpdateView(LoginRequiredMixin, UpdateView):
 
 # ─── Quick-add vet (HTMX) ───────────────────────────────────────────
 
-@login_required
+@feature_required('health')
 def quick_add_vet(request):
     """Create a ServiceProvider (vet) inline and return an <option> element."""
     if request.method != 'POST':

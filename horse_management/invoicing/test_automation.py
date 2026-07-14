@@ -5,12 +5,12 @@ from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
-from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from core.models import BusinessSettings, Horse, Location, Owner, Placement, RateType
+from core.roles_testutils import make_admin
 from invoicing.models import Invoice
 from invoicing.services import InvoiceService
 from invoicing.tasks import generate_monthly_draft_invoices
@@ -151,7 +151,7 @@ class XeroSyncTaskTests(TestCase):
 class BulkPushToXeroTests(TestCase):
 
     def setUp(self):
-        self.staff = User.objects.create_user("admin", password="pw", is_staff=True)
+        self.staff = make_admin()
         self.owner = _placed_owner()
         last_month_end = timezone.now().date().replace(day=1) - timedelta(days=1)
         self.invoice = InvoiceService.create_invoice(

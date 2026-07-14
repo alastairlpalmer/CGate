@@ -17,12 +17,12 @@ Covers (numbering matches CODEBASE_REVIEW.md, Part 1):
 from datetime import date
 from decimal import Decimal
 
-from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
 from billing.models import ExtraCharge, YardCost
 from core.models import Horse, Location, Owner, OwnershipShare, Placement, RateType
+from core.roles_testutils import make_admin, make_viewer
 from invoicing.models import Invoice
 from invoicing.services import InvoiceService
 from xero_integration.services import build_xero_invoice_payload
@@ -148,7 +148,7 @@ class CancelReleasesChargesTests(TestCase):
     """#3 — cancelling an invoice frees its charges for re-billing."""
 
     def setUp(self):
-        self.staff = User.objects.create_user("admin", password="pw", is_staff=True)
+        self.staff = make_admin()
         self.owner = Owner.objects.create(name="Emma", email="e@example.com")
         self.horse = _make_livery(self.owner, "Ghost", "5.00", shares=[])
         self.charge = ExtraCharge.objects.create(
@@ -249,8 +249,10 @@ class ViewerPermissionTests(TestCase):
     """#4 — viewers must not end placements via the bulk endpoint."""
 
     def setUp(self):
-        self.viewer = User.objects.create_user("viewer", password="pw", is_staff=False)
-        self.staff = User.objects.create_user("admin", password="pw", is_staff=True)
+        # The Viewer role has health=full but locations=view, so it can use
+        # the bulk health endpoint yet must not reach placement-ending actions.
+        self.viewer = make_viewer()
+        self.staff = make_admin()
         self.owner = Owner.objects.create(name="Emma", email="e@example.com")
         self.horse = _make_livery(self.owner, "Ghost", "5.00", shares=[])
 
@@ -284,7 +286,7 @@ class QuickAddVetEscapingTests(TestCase):
     """#5 — provider names must be HTML-escaped in the HTMX fragment."""
 
     def test_malicious_name_is_escaped(self):
-        user = User.objects.create_user("viewer", password="pw")
+        user = make_viewer()  # health=full — may use the quick-add endpoint
         self.client.force_login(user)
         payload = '</option><img src=x onerror=alert(1)>'
         response = self.client.post(reverse("quick_add_vet"), {"vet_name": payload})
@@ -298,7 +300,7 @@ class CostsUnbilledKpiTests(TestCase):
     """#6 — the Costs page KPI must use the reconciled unbilled total."""
 
     def test_partially_invoiced_split_charge_not_double_counted(self):
-        staff = User.objects.create_user("admin", password="pw", is_staff=True)
+        staff = make_admin()
         o1 = Owner.objects.create(name="Alice", email="a@example.com")
         o2 = Owner.objects.create(name="Bob", email="b@example.com")
         horse = _make_livery(o1, "Duo", "6.00", shares=[(o1, "50.00"), (o2, "50.00")])
@@ -319,7 +321,7 @@ class YardCostDuplicateMethodTests(TestCase):
     """#7 — duplication must require POST."""
 
     def setUp(self):
-        self.staff = User.objects.create_user("admin", password="pw", is_staff=True)
+        self.staff = make_admin()
         self.cost = YardCost.objects.create(
             category="hay", date=date(2026, 6, 1),
             description="Hay bales", amount=Decimal("200.00"),
@@ -342,7 +344,7 @@ class CsvExportStatusTests(TestCase):
     """#10 — cancelled/draft invoices must not leak into Xero CSV exports."""
 
     def setUp(self):
-        self.staff = User.objects.create_user("admin", password="pw", is_staff=True)
+        self.staff = make_admin()
         self.owner = Owner.objects.create(name="Emma", email="e@example.com")
         _make_livery(self.owner, "Ghost", "5.00", shares=[])
         self.invoice = InvoiceService.create_invoice(self.owner, *PERIOD)

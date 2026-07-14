@@ -46,7 +46,7 @@
                     {{ form.role }}
                     {% if form.role.errors %}<p class="mt-1 text-sm text-error-red">{{ form.role.errors.0 }}</p>{% endif %}
                     <p class="text-xs text-sage mt-0.5">{{ form.role.help_text }}</p>
-                    {% if is_self %}<p class="text-xs text-warning-amber mt-0.5">You can't remove your own admin access — ask another admin.</p>{% endif %}
+                    {% if is_self %}<p class="text-xs text-amber-800 mt-0.5">You can't remove your own access to Users &amp; Roles — ask another administrator.</p>{% endif %}
                 </div>
                 {% if not object %}
                 <div>

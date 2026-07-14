@@ -54,3 +54,8 @@ from .users import (  # noqa: F401
     user_create,
     user_update,
 )
+from .roles import (  # noqa: F401
+    role_create,
+    role_delete,
+    role_update,
+)

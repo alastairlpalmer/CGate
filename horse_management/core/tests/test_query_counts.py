@@ -23,15 +23,16 @@ User = get_user_model()
 class QueryCountTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
+        from core.roles_testutils import administrator_role, assign_role
         cls.user = User(
             username='perfuser',
             last_login=timezone.now(),
             date_joined=timezone.now(),
             is_active=True,
-            is_staff=True,
         )
         cls.user.set_password('x')
         cls.user.save()
+        assign_role(cls.user, administrator_role())
 
         today = timezone.now().date()
         rate = RateType.objects.create(name='Grass', daily_rate=10)
@@ -70,17 +71,20 @@ class QueryCountTestCase(TestCase):
             + "\n".join(q['sql'][:120] for q in ctx.captured_queries),
         )
 
+    # All budgets are +1 vs the pre-Role-Suite numbers: each request now
+    # fetches the user's UserRole->Role once (memoized for the request).
+
     def test_health_overview_query_count(self):
         # 8 data queries + auth/session; the old .count() round trips would
         # push this past the limit.
-        self.assertMaxQueries(reverse('health_dashboard'), 14)
+        self.assertMaxQueries(reverse('health_dashboard'), 15)
 
     def test_health_tab_query_count(self):
-        self.assertMaxQueries(reverse('health_dashboard') + '?type=vaccinations', 10)
+        self.assertMaxQueries(reverse('health_dashboard') + '?type=vaccinations', 11)
 
     def test_horse_list_query_count(self):
         # Constant queries regardless of horse count (prefetches, no N+1)
-        self.assertMaxQueries(reverse('horse_list'), 14)
+        self.assertMaxQueries(reverse('horse_list'), 15)
 
     def test_dashboard_query_count(self):
         # Measured 17 after the chart queries moved to the Finances page,
@@ -88,11 +92,11 @@ class QueryCountTestCase(TestCase):
         # the rolling 30-day login), +2 for the Field Rest widget (locations
         # + their usage periods, a constant 2 regardless of field count);
         # headroom for auth/session jitter.
-        self.assertMaxQueries(reverse('dashboard'), 22)
+        self.assertMaxQueries(reverse('dashboard'), 23)
 
     def test_finances_query_count(self):
         # Measured 9 (revenue, costs union, placements, capacity, two
         # outstanding aggregates — invoice totals and part-payments — plus
         # unbilled + auth/session), +1 for the per-request session write
         # (SESSION_SAVE_EVERY_REQUEST, the rolling 30-day login).
-        self.assertMaxQueries(reverse('finances'), 12)
+        self.assertMaxQueries(reverse('finances'), 13)

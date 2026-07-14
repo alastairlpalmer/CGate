@@ -63,7 +63,7 @@
                     {% endif %}
                 </div>
             </div>
-            {% if user.is_staff %}
+            {% if feature_access.horses.full %}
             <div class="flex items-center gap-2 shrink-0 flex-wrap">
                 {% if current_placement %}
                 <a href="{% url 'horse_move' horse.pk %}" class="btn-success" title="Move to a different location">
@@ -117,7 +117,7 @@
         </div>
     </div>
 
-    {% if user.is_staff and current_placement and not horse.is_active %}
+    {% if feature_access.horses.full and current_placement and not horse.is_active %}
     <!-- Stranded state: flagged departed but a placement is still open -->
     <div class="card p-4 border-l-[3px] border-l-saddle bg-sand-50">
         <p class="text-sm font-medium text-charcoal">
@@ -686,7 +686,7 @@
                             <span class="text-xs font-medium text-charcoal-light">Breeding</span>
                         </a>
                         {% endif %}
-                        {% if user.is_staff %}
+                        {% if feature_access.horses.full %}
                         <a href="{% url 'horse_photo_add' horse.pk %}"
                            class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-info-blue/30 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-info-blue-50 flex items-center justify-center group-hover/qa:bg-info-blue-100 transition-colors">
