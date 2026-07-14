@@ -265,14 +265,18 @@ class PlacementService:
     @staticmethod
     @transaction.atomic
     def cancel_departure(horse):
-        """Undo a departure by re-opening the most recent ended placement.
+        """Undo a departure.
 
-        Returns the re-opened placement, or None if the horse has none.
-        Refuses (returns None) when the horse already has an open placement —
-        re-opening an older one would double-place it.
+        A stranded horse (flagged departed while its placement is still open)
+        just needs the flag cleared — never re-open an older placement on top
+        of the current one. Otherwise the most recent ended placement is
+        re-opened. Returns the open placement, or None if the horse has no
+        placement history.
         """
-        if horse.placements.filter(end_date__isnull=True).exists():
-            return None
+        open_placement = horse.placements.filter(end_date__isnull=True).first()
+        if open_placement:
+            PlacementService.reactivate(horse)
+            return open_placement
         placement = horse.placements.filter(
             end_date__isnull=False
         ).order_by('-end_date').first()

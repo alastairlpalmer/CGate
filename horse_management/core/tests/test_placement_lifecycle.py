@@ -201,19 +201,32 @@ class DepartureConfirmTests(LifecycleTestCase):
             self.horse.placements.filter(end_date__isnull=True).exists()
         )
 
-    def test_cancel_departure_refuses_horse_already_placed(self):
+    def test_cancel_departure_never_reopens_older_placement_when_placed(self):
         # An open placement means re-opening an older one would double-place
-        Placement.objects.create(
+        old = Placement.objects.create(
             horse=self.horse, owner=self.owner, location=self.location,
             rate_type=self.rate,
             start_date=self.today - timedelta(days=90),
             end_date=self.today - timedelta(days=60),
         )
-        Placement.objects.create(
+        current = Placement.objects.create(
             horse=self.horse, owner=self.owner, location=self.other_location,
             rate_type=self.rate, start_date=self.today - timedelta(days=30),
         )
-        self.assertIsNone(PlacementService.cancel_departure(self.horse))
+        result = PlacementService.cancel_departure(self.horse)
+        self.assertEqual(result.pk, current.pk)
+        old.refresh_from_db()
+        self.assertEqual(old.end_date, self.today - timedelta(days=60))
+
+    def test_cancel_departure_repairs_stranded_horse(self):
+        # Pridie's case: flagged departed while her placement is still open —
+        # undoing the departure just clears the flag.
+        horse = self._stranded_horse()
+        result = PlacementService.cancel_departure(horse)
+        horse.refresh_from_db()
+        self.assertTrue(horse.is_active)
+        self.assertEqual(result.location, self.location)
+        self.assertEqual(horse.placements.count(), 1)
 
     def test_cancel_departure_undoes_auto_rest(self):
         from core.models import LocationUsagePeriod
@@ -448,6 +461,17 @@ class ArriveMoveViewTests(LifecycleTestCase):
             )
         # The correctly-placed horse is untouched
         self.assertEqual(placed.placements.count(), 1)
+
+    def test_bulk_restore_repairs_stranded_horse(self):
+        stranded = self._stranded_horse()
+        response = self.client.post(
+            reverse('bulk_health_apply'),
+            {'action_type': 'restore', 'horse_ids': [stranded.pk]},
+        )
+        self.assertEqual(response.status_code, 204)
+        stranded.refresh_from_db()
+        self.assertTrue(stranded.is_active)
+        self.assertEqual(stranded.placements.count(), 1)
 
     def test_bulk_restore_forbidden_for_viewers(self):
         viewer = get_user_model().objects.create_user(
