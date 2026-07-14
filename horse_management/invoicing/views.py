@@ -8,7 +8,14 @@ from datetime import timedelta
 
 from django.contrib import messages
 
-from core.permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
+from core.permissions import (
+    LEVEL_FULL,
+    LEVEL_VIEW,
+    FeatureAccessMixin,
+    feature_required,
+    has_feature_access,
+)
+from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -482,6 +489,12 @@ def invoice_bulk_action(request):
 
     action = request.POST.get('action')
     ids = request.POST.getlist('invoice_ids')
+
+    # Pushing to Xero is gated by the Xero feature on the single-invoice
+    # endpoint (xero_push_invoice); the bulk path must enforce the same
+    # gate or an invoices-only role could reach the external system.
+    if action == 'push_xero' and not has_feature_access(request.user, 'xero', LEVEL_FULL):
+        raise PermissionDenied
 
     next_url = request.POST.get('next') or ''
     if not url_has_allowed_host_and_scheme(

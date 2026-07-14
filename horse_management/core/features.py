@@ -113,8 +113,9 @@ FEATURES = [
         "key": "xero",
         "label": "Xero integration",
         "group": "Finance",
-        "supports_view": False,
-        "description": "Connect/disconnect Xero and push invoices to it.",
+        "supports_view": True,
+        "description": "View gives read-only sync status on invoices; "
+                       "full also connects/disconnects Xero and pushes invoices.",
     },
     {
         "key": "settings",
