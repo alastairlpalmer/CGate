@@ -284,6 +284,44 @@ class BulkActualDepartureForm(forms.Form):
     )
 
 
+class BulkMoveForm(forms.Form):
+    """Bulk action: move the selected horses to a new location.
+
+    Each horse keeps its current owner; the rate can optionally be changed
+    for all of them at once (left empty, every horse keeps its own rate).
+    """
+
+    new_location = forms.ModelChoiceField(
+        label='New Location',
+        queryset=None,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    move_date = forms.DateField(
+        label='Move Date',
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+    )
+    new_rate_type = forms.ModelChoiceField(
+        label='New Rate',
+        queryset=None,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text="Leave empty to keep each horse's current rate",
+    )
+    notes = forms.CharField(
+        label='Notes',
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from core.forms import get_grouped_location_choices
+        from core.models import Location, RateType
+        self.fields['new_location'].queryset = Location.objects.all()
+        self.fields['new_location'].choices = get_grouped_location_choices()
+        self.fields['new_rate_type'].queryset = RateType.objects.filter(is_active=True)
+
+
 class BulkMedicalConditionForm(forms.ModelForm):
     class Meta:
         model = MedicalCondition
