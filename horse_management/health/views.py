@@ -443,10 +443,16 @@ def bulk_health_apply(request):
         if action_type == 'restore':
             from core.services import PlacementService
             for horse in horses:
+                if horse.is_active and horse.placements.filter(
+                    end_date__isnull=True
+                ).exists():
+                    # Active and placed — nothing to undo
+                    restore_skipped.append(horse.name)
+                    continue
                 if PlacementService.cancel_departure(horse):
                     count += 1
                 else:
-                    # Already placed somewhere, or has no placement history
+                    # No placement history to re-open
                     restore_skipped.append(horse.name)
         elif action_type == 'move':
             from core.services import PlacementService
@@ -533,7 +539,7 @@ def bulk_health_apply(request):
         if restore_skipped:
             messages.warning(
                 request,
-                "Not restored (already placed or no placement history): "
+                "Not restored (already active, or no placement history): "
                 + ", ".join(restore_skipped)
             )
     elif action_type == 'move':
