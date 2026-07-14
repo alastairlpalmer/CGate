@@ -201,6 +201,48 @@ class DepartureConfirmTests(LifecycleTestCase):
             self.horse.placements.filter(end_date__isnull=True).exists()
         )
 
+    def test_cancel_departure_refuses_horse_already_placed(self):
+        # An open placement means re-opening an older one would double-place
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate,
+            start_date=self.today - timedelta(days=90),
+            end_date=self.today - timedelta(days=60),
+        )
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.other_location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=30),
+        )
+        self.assertIsNone(PlacementService.cancel_departure(self.horse))
+
+    def test_cancel_departure_undoes_auto_rest(self):
+        from core.models import LocationUsagePeriod
+        LocationUsagePeriod.objects.create(
+            location=self.location, usage=Location.Usage.HORSES,
+            start_date=self.today - timedelta(days=60), source='auto',
+        )
+        self.location.usage = Location.Usage.HORSES
+        self.location.save(update_fields=['usage'])
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=30),
+        )
+        PlacementService.depart_horse(self.horse, self.today - timedelta(days=2))
+        self.location.refresh_from_db()
+        self.assertEqual(self.location.usage, Location.Usage.RESTED)
+
+        PlacementService.cancel_departure(self.horse)
+        self.location.refresh_from_db()
+        self.assertEqual(self.location.usage, Location.Usage.HORSES)
+        # The auto rest period is gone; the horses period is open again
+        open_period = self.location.usage_periods.get(end_date__isnull=True)
+        self.assertEqual(open_period.usage, Location.Usage.HORSES)
+        self.assertFalse(
+            self.location.usage_periods.filter(
+                usage=Location.Usage.RESTED
+            ).exists()
+        )
+
     def test_cancel_departure_reactivates_horse(self):
         placement = Placement.objects.create(
             horse=self.horse, owner=self.owner, location=self.location,
@@ -369,6 +411,54 @@ class ArriveMoveViewTests(LifecycleTestCase):
             horse2.placements.get(end_date__isnull=True).location,
             self.location,
         )
+
+    def test_bulk_restore_reopens_wrongly_departed_horses(self):
+        # The mass-departure accident: two horses departed together by
+        # mistake, one horse still correctly placed.
+        horse2 = Horse.objects.create(name='SNOWY')
+        placed = Horse.objects.create(name='STAYS')
+        for h in (self.horse, horse2):
+            Placement.objects.create(
+                horse=h, owner=self.owner, location=self.location,
+                rate_type=self.rate,
+                start_date=self.today - timedelta(days=30),
+                end_date=self.today,
+            )
+        Horse.objects.filter(pk__in=[self.horse.pk, horse2.pk]).update(is_active=False)
+        Placement.objects.create(
+            horse=placed, owner=self.owner, location=self.other_location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=30),
+        )
+
+        response = self.client.post(
+            reverse('bulk_health_apply'),
+            {
+                'action_type': 'restore',
+                'horse_ids': [self.horse.pk, horse2.pk, placed.pk],
+            },
+        )
+        self.assertEqual(response.status_code, 204)
+        for h in (self.horse, horse2):
+            h.refresh_from_db()
+            self.assertTrue(h.is_active)
+            open_placement = h.placements.get(end_date__isnull=True)
+            self.assertEqual(open_placement.location, self.location)
+            self.assertEqual(
+                open_placement.start_date, self.today - timedelta(days=30)
+            )
+        # The correctly-placed horse is untouched
+        self.assertEqual(placed.placements.count(), 1)
+
+    def test_bulk_restore_forbidden_for_viewers(self):
+        viewer = get_user_model().objects.create_user(
+            username='viewer2', password='pw', is_staff=False,
+        )
+        self.client.force_login(viewer)
+        response = self.client.post(
+            reverse('bulk_health_apply'),
+            {'action_type': 'restore', 'horse_ids': [self.horse.pk]},
+        )
+        self.assertEqual(response.status_code, 403)
 
     def test_bulk_move_forbidden_for_viewers(self):
         viewer = get_user_model().objects.create_user(

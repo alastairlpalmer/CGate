@@ -322,6 +322,14 @@ class BulkMoveForm(forms.Form):
         self.fields['new_rate_type'].queryset = RateType.objects.filter(is_active=True)
 
 
+class BulkRestoreForm(forms.Form):
+    """Bulk action: undo departures logged by mistake.
+
+    No inputs — each selected horse's most recent stay is re-opened exactly
+    as it was; the confirmation text in the modal is the whole UI.
+    """
+
+
 class BulkMedicalConditionForm(forms.ModelForm):
     class Meta:
         model = MedicalCondition

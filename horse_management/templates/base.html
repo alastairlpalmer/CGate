@@ -505,16 +505,22 @@ document.addEventListener('alpine:init', function() {
             },
 
             toggleAll(event) {
-                var checkboxes = document.querySelectorAll('input[data-horse-checkbox]');
-                if (event.target.checked) {
-                    var ids = [];
-                    checkboxes.forEach(function(cb) {
-                        cb.checked = true;
-                        ids.push(parseInt(cb.value));
-                    });
+                // Scope to the containing card so a group header's
+                // select-all only affects that group's horses — never the
+                // whole page (a global sweep once departed an entire yard).
+                var scope = event.target.closest('.card') || document;
+                var checkboxes = scope.querySelectorAll('input[data-horse-checkbox]');
+                var ids = [];
+                var checked = event.target.checked;
+                checkboxes.forEach(function(cb) {
+                    cb.checked = checked;
+                    ids.push(parseInt(cb.value));
+                });
+                if (checked) {
                     this.selectAll(ids);
                 } else {
-                    this.clearAll();
+                    ids.forEach(id => this.selectedHorses.delete(id));
+                    this.selectedHorses = new Set(this.selectedHorses);
                 }
             },
 
@@ -529,6 +535,7 @@ document.addEventListener('alpine:init', function() {
                     vet_visit: 'Record Vet Visit',
                     condition: 'Record Medical Condition',
                     move: 'Move to Location',
+                    restore: 'Undo Departure',
                     expected_departure: 'Set Expected Departure',
                     actual_departure: 'Set Departure Date'
                 };
