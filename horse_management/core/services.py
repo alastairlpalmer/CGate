@@ -104,6 +104,10 @@ class PlacementService:
         if current_placement:
             current_placement.end_date = move_date - timedelta(days=1)
             current_placement.save()
+        else:
+            # A departed horse being moved back on/before its recorded
+            # departure date: the return supersedes that departure.
+            PlacementService._supersede_recorded_departure(horse, move_date)
         new_placement.full_clean()
         new_placement.save()
 
@@ -125,6 +129,33 @@ class PlacementService:
         PlacementService._sync_single_owner_share(horse, new_owner)
 
         return new_placement
+
+    @staticmethod
+    def _supersede_recorded_departure(horse, arrival_date):
+        """Let a departed horse arrive back on or before its recorded departure.
+
+        Yard reality: a horse is departed (often dated today, or even a future
+        date) and later logged as arriving back, backdated to when it really
+        returned. The recorded departure is superseded by the return — trim
+        the most recent ended placement to the day before the new arrival so
+        the overlap check passes and no day is billed twice.
+
+        Raises ValidationError when trimming is impossible because the return
+        date is on or before that placement's start.
+        """
+        last = horse.placements.filter(
+            end_date__isnull=False
+        ).order_by('-end_date').first()
+        if not last or last.end_date < arrival_date:
+            return
+        if arrival_date <= last.start_date:
+            raise ValidationError(
+                f"{horse.name}'s previous stay at {last.location.name} only "
+                f"started on {last.start_date}, so an arrival on {arrival_date} "
+                f"would predate it. Edit that placement's dates instead."
+            )
+        last.end_date = arrival_date - timedelta(days=1)
+        last.save()
 
     @staticmethod
     def reactivate(horse):
@@ -162,6 +193,7 @@ class PlacementService:
         Returns the new placement.
         Raises ValidationError if the placement is invalid.
         """
+        PlacementService._supersede_recorded_departure(horse, arrival_date)
         was_empty = LocationUsageService._is_empty(location)
         placement = Placement(
             horse=horse,
@@ -279,9 +311,13 @@ class PlacementService:
                 notes=notes,
             )
             try:
-                placement.full_clean()
-                placement.save()
-                PlacementService.reactivate(horse)
+                # Per-horse savepoint so a rejected arrival doesn't leave the
+                # superseded-departure trim behind for that horse.
+                with transaction.atomic():
+                    PlacementService._supersede_recorded_departure(horse, arrival_date)
+                    placement.full_clean()
+                    placement.save()
+                    PlacementService.reactivate(horse)
                 created += 1
             except ValidationError as e:
                 errors.append(f"{horse.name}: {e}")
