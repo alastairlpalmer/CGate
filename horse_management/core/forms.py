@@ -109,6 +109,30 @@ class HorseForm(forms.ModelForm):
     def clean_photo(self):
         return heic_to_jpeg(self.cleaned_data.get('photo'))
 
+    def clean(self):
+        cleaned_data = super().clean()
+        # Unticking Active while the horse still occupies a field would strand
+        # the record: it shows as Departed in lists and search, yet the record
+        # page only offers Move/Depart (no Log Arrival) because the placement
+        # is still open. Departures must go through the Depart flow, which
+        # closes the placement too. Horses already in the stranded state are
+        # left editable so other fields can still be corrected.
+        if self.instance.pk and not cleaned_data.get('is_active'):
+            was_active = Horse.objects.filter(
+                pk=self.instance.pk, is_active=True
+            ).exists()
+            has_open_placement = self.instance.placements.filter(
+                end_date__isnull=True
+            ).exists()
+            if was_active and has_open_placement:
+                self.add_error(
+                    'is_active',
+                    "This horse still has an open placement. Use the Depart "
+                    "button on the horse's page to log the departure instead "
+                    "of unticking Active.",
+                )
+        return cleaned_data
+
 
 class PlacementForm(forms.ModelForm):
     class Meta:

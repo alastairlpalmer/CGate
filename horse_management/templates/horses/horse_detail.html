@@ -117,6 +117,19 @@
         </div>
     </div>
 
+    {% if user.is_staff and current_placement and not horse.is_active %}
+    <!-- Stranded state: flagged departed but a placement is still open -->
+    <div class="card p-4 border-l-[3px] border-l-saddle bg-sand-50">
+        <p class="text-sm font-medium text-charcoal">
+            {{ horse.name }} is marked as departed but still has an open placement at {{ current_placement.location.name }}.
+        </p>
+        <p class="text-xs text-charcoal-light mt-1">
+            Use <strong>Depart</strong> to close the placement (the horse then gets a Log Arrival button),
+            or <strong>Move</strong> to place it at the right location and return it to the current list.
+        </p>
+    </div>
+    {% endif %}
+
     <!-- Grid Layout -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
