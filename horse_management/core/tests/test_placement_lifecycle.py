@@ -473,6 +473,80 @@ class ArriveMoveViewTests(LifecycleTestCase):
         self.assertTrue(stranded.is_active)
         self.assertEqual(stranded.placements.count(), 1)
 
+    def test_bulk_departure_before_arrival_reports_error_instead_of_500(self):
+        # Bella's case: placement started after the chosen departure date.
+        # The bulk endpoint must report it by name, not crash with a 500.
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=2),
+        )
+        response = self.client.post(
+            reverse('bulk_health_apply'),
+            {
+                'action_type': 'actual_departure',
+                'horse_ids': [self.horse.pk],
+                'date': (self.today - timedelta(days=4)).isoformat(),
+            },
+        )
+        self.assertEqual(response.status_code, 204)
+        self.horse.refresh_from_db()
+        self.assertTrue(self.horse.is_active)
+        self.assertTrue(
+            self.horse.placements.filter(end_date__isnull=True).exists()
+        )
+
+    def test_bulk_departure_departs_valid_horses_and_reports_invalid(self):
+        late_arrival = Horse.objects.create(name='BELLA')
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=30),
+        )
+        Placement.objects.create(
+            horse=late_arrival, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today,
+        )
+        departure = self.today - timedelta(days=4)
+        response = self.client.post(
+            reverse('bulk_health_apply'),
+            {
+                'action_type': 'actual_departure',
+                'horse_ids': [self.horse.pk, late_arrival.pk],
+                'date': departure.isoformat(),
+            },
+        )
+        self.assertEqual(response.status_code, 204)
+        self.horse.refresh_from_db()
+        late_arrival.refresh_from_db()
+        # Valid horse departed and deactivated
+        self.assertFalse(self.horse.is_active)
+        self.assertEqual(
+            self.horse.placements.get().end_date, departure
+        )
+        # Invalid horse untouched
+        self.assertTrue(late_arrival.is_active)
+        self.assertTrue(
+            late_arrival.placements.filter(end_date__isnull=True).exists()
+        )
+
+    def test_bulk_expected_departure_still_works(self):
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=30),
+        )
+        future = self.today + timedelta(days=14)
+        response = self.client.post(
+            reverse('bulk_health_apply'),
+            {
+                'action_type': 'expected_departure',
+                'horse_ids': [self.horse.pk],
+                'date': future.isoformat(),
+            },
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(
+            self.horse.placements.get().expected_departure, future
+        )
+
     def test_bulk_restore_forbidden_for_viewers(self):
         viewer = get_user_model().objects.create_user(
             username='viewer2', password='pw', is_staff=False,
