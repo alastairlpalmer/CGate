@@ -149,9 +149,15 @@
                         Current Placement
                     </h3>
                     {% if current_placement %}
-                    <span class="text-xs text-sage tabular-nums" title="Days since arrival">
-                        {{ current_placement.start_date|timesince|cut:"," }} on site
-                    </span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-sage tabular-nums" title="Days since arrival">
+                            {{ current_placement.start_date|timesince|cut:"," }} on site
+                        </span>
+                        {% if feature_access.locations.full %}
+                        <a href="{% url 'placement_update' current_placement.pk %}?next={{ request.path|urlencode }}"
+                           class="btn-ghost btn-xs" title="Correct dates, rate or owner">Edit</a>
+                        {% endif %}
+                    </div>
                     {% endif %}
                 </div>
                 <div class="p-5">
@@ -489,7 +495,13 @@
                                         <span class="text-xs font-semibold uppercase tracking-wider text-saddle">Egg Count</span>
                                         {% endif %}
                                     </div>
-                                    <span class="text-xs text-sage shrink-0" title="{{ event.date|date:"d M Y" }}">{{ event.date|ago_label }}</span>
+                                    <span class="flex items-center gap-2 shrink-0">
+                                        {% if event.type == 'placement' and feature_access.locations.full %}
+                                        <a href="{% url 'placement_update' event.obj.pk %}?next={{ request.path|urlencode }}"
+                                           class="link text-xs" title="Correct dates, rate or owner">Edit</a>
+                                        {% endif %}
+                                        <span class="text-xs text-sage" title="{{ event.date|date:"d M Y" }}">{{ event.date|ago_label }}</span>
+                                    </span>
                                 </div>
 
                                 <!-- Type-specific details -->

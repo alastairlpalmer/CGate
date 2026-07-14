@@ -162,14 +162,10 @@ class PlacementForm(forms.ModelForm):
             raise forms.ValidationError("End date cannot be before start date.")
         return cleaned_data
 
-    def validate_unique(self):
-        super().validate_unique()
-        try:
-            self.instance.clean()
-        except forms.ValidationError:
-            raise
-        except Exception as e:
-            raise forms.ValidationError(str(e))
+    # Note: no validate_unique override. Django's ModelForm._post_clean
+    # already runs Placement.clean() (overlap validation) via
+    # instance.full_clean and records failures as form errors; re-raising
+    # here instead turned any overlapping dates into a 500.
 
 
 class MoveHorseForm(forms.Form):

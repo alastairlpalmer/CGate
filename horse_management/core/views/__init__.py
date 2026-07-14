@@ -42,6 +42,7 @@ from .placements import (  # noqa: F401
     PlacementCreateView,
     PlacementListView,
     PlacementUpdateView,
+    placement_delete,
 )
 from .settings import (  # noqa: F401
     app_settings,

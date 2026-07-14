@@ -589,3 +589,90 @@ class ArriveMoveViewTests(LifecycleTestCase):
         self.assertEqual(response.status_code, 200)
         messages = [m.message for m in response.context['messages']]
         self.assertTrue(any('already has a placement' in m for m in messages))
+
+
+class PlacementEditDeleteTests(LifecycleTestCase):
+    """Timeline corrections: editing and deleting placement history rows."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(make_admin())
+        self.placement = Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=2),
+        )
+
+    def _form_data(self, **overrides):
+        data = {
+            'horse': self.horse.pk,
+            'owner': self.owner.pk,
+            'location': self.location.pk,
+            'rate_type': self.rate.pk,
+            'start_date': self.placement.start_date.isoformat(),
+            'end_date': '',
+            'expected_departure': '',
+            'notes': '',
+        }
+        data.update(overrides)
+        return data
+
+    def test_edit_returns_to_next_url(self):
+        next_url = reverse('horse_detail', args=[self.horse.pk])
+        corrected_start = self.today - timedelta(days=6)
+        response = self.client.post(
+            reverse('placement_update', args=[self.placement.pk])
+            + f'?next={next_url}',
+            self._form_data(start_date=corrected_start.isoformat()),
+        )
+        self.assertRedirects(response, next_url)
+        self.placement.refresh_from_db()
+        self.assertEqual(self.placement.start_date, corrected_start)
+
+    def test_edit_ignores_offsite_next_url(self):
+        response = self.client.post(
+            reverse('placement_update', args=[self.placement.pk])
+            + '?next=https://evil.example/',
+            self._form_data(),
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response['Location'], reverse('location_list') + '?tab=history'
+        )
+
+    def test_edit_overlap_shows_error_not_500(self):
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.other_location,
+            rate_type=self.rate,
+            start_date=self.today - timedelta(days=30),
+            end_date=self.today - timedelta(days=10),
+        )
+        # Stretch the current stay back over the older one
+        response = self.client.post(
+            reverse('placement_update', args=[self.placement.pk]),
+            self._form_data(
+                start_date=(self.today - timedelta(days=20)).isoformat()
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'already has a placement')
+
+    def test_delete_removes_placement_and_returns_to_horse(self):
+        next_url = reverse('horse_detail', args=[self.horse.pk])
+        response = self.client.post(
+            reverse('placement_delete', args=[self.placement.pk])
+            + f'?next={next_url}',
+        )
+        self.assertRedirects(response, next_url)
+        self.assertFalse(
+            Placement.objects.filter(pk=self.placement.pk).exists()
+        )
+
+    def test_delete_forbidden_for_viewers(self):
+        self.client.force_login(make_viewer())
+        response = self.client.post(
+            reverse('placement_delete', args=[self.placement.pk]),
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(
+            Placement.objects.filter(pk=self.placement.pk).exists()
+        )

@@ -2,12 +2,28 @@
 Placement views — CRUD and list.
 """
 
-from django.urls import reverse_lazy
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import CreateView, ListView, UpdateView
 
 from ..forms import PlacementForm
 from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Location, Owner, Placement
+
+
+def _safe_next_url(request):
+    """Validated ?next= target so edits can return to the page they came
+    from (e.g. a horse's timeline) without becoming an open redirect."""
+    next_url = request.POST.get('next') or request.GET.get('next')
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return next_url
+    return None
 
 
 class PlacementListView(FeatureAccessMixin, ListView):
@@ -58,7 +74,9 @@ class PlacementCreateView(FeatureAccessMixin, CreateView):
     template_name = 'placements/placement_form.html'
 
     def get_success_url(self):
-        return reverse_lazy('location_list') + '?tab=history'
+        return _safe_next_url(self.request) or (
+            reverse('location_list') + '?tab=history'
+        )
 
 
 class PlacementUpdateView(FeatureAccessMixin, UpdateView):
@@ -68,4 +86,31 @@ class PlacementUpdateView(FeatureAccessMixin, UpdateView):
     template_name = 'placements/placement_form.html'
 
     def get_success_url(self):
-        return reverse_lazy('location_list') + '?tab=history'
+        return _safe_next_url(self.request) or (
+            reverse('location_list') + '?tab=history'
+        )
+
+
+@feature_required('locations')
+def placement_delete(request, pk):
+    """Delete a placement outright (POST only).
+
+    For rows that should never have existed — e.g. a stay created by a
+    mis-click — where editing the dates can't express "this never happened".
+    Removing the stay also removes its days from billing.
+    """
+    placement = get_object_or_404(
+        Placement.objects.select_related('horse', 'location'), pk=pk
+    )
+    horse = placement.horse
+    if request.method == 'POST':
+        location_name = placement.location.name
+        placement.delete()
+        messages.success(
+            request,
+            f"Placement of {horse.name} at {location_name} "
+            f"({placement.start_date} – {placement.end_date or 'present'}) deleted."
+        )
+    return redirect(
+        _safe_next_url(request) or reverse('horse_detail', args=[horse.pk])
+    )

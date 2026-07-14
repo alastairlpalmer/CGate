@@ -16,6 +16,17 @@
         <form method="post" class="divide-y divide-light-sage">
             {% csrf_token %}
 
+            {% if form.non_field_errors %}
+            <div class="p-4 sm:p-5">
+                <div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3">
+                    <p class="text-sm font-medium text-error-red">The placement wasn't saved:</p>
+                    {% for error in form.non_field_errors %}
+                    <p class="text-sm text-error-red mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Horse & Owner -->
             <fieldset class="p-4 sm:p-5 space-y-4">
                 <legend class="section-title">Horse &amp; Owner</legend>
@@ -98,13 +109,30 @@
 
             <!-- Footer -->
             <div class="form-footer">
-                <a href="{% url 'placement_list' %}" class="btn-secondary">Cancel</a>
+                <a href="{% if request.GET.next %}{{ request.GET.next }}{% else %}{% url 'placement_list' %}{% endif %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% else %}Add Placement{% endif %}
                 </button>
             </div>
         </form>
     </div>
+
+    {% if object %}
+    <div class="card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <p class="text-xs text-sage">
+            Entry shouldn't exist at all? Deleting removes this stay from the
+            horse's history <strong class="text-charcoal-light">and its days from billing</strong>.
+        </p>
+        <form method="post"
+              action="{% url 'placement_delete' object.pk %}{% if request.GET.next %}?next={{ request.GET.next|urlencode }}{% endif %}"
+              onsubmit="return confirm('Delete this placement of {{ object.horse.name }} at {{ object.location.name }}? This cannot be undone.');">
+            {% csrf_token %}
+            <button type="submit" class="btn-secondary text-error-red border-error-red/30 hover:bg-error-red-50 shrink-0">
+                Delete Placement
+            </button>
+        </form>
+    </div>
+    {% endif %}
 
 </div>
 {% endblock %}
