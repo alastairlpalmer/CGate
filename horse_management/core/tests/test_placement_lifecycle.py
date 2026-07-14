@@ -216,6 +216,22 @@ class ArriveMoveViewTests(LifecycleTestCase):
         )
         self.assertRedirects(response, reverse('horse_list'))
 
+    def test_reactivate_repairs_stranded_horse(self):
+        horse = self._stranded_horse()
+        response = self.client.post(reverse('horse_reactivate', args=[horse.pk]))
+        self.assertRedirects(response, reverse('horse_detail', args=[horse.pk]))
+        horse.refresh_from_db()
+        self.assertTrue(horse.is_active)
+        # The existing open placement is untouched — no new rows, no new dates
+        self.assertEqual(horse.placements.count(), 1)
+        self.assertTrue(horse.placements.filter(end_date__isnull=True).exists())
+
+    def test_reactivate_refuses_horse_without_placement(self):
+        horse = self._departed_horse()
+        self.client.post(reverse('horse_reactivate', args=[horse.pk]))
+        horse.refresh_from_db()
+        self.assertFalse(horse.is_active)
+
     def test_failed_arrival_rerenders_with_visible_error(self):
         # Overlapping arrival: the horse is still openly placed elsewhere.
         Placement.objects.create(
