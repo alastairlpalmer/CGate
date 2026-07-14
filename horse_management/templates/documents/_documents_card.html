@@ -6,7 +6,7 @@ and documents=<queryset>:
 <div class="card">
     <div class="section-header">
         <h3 class="section-title">Documents</h3>
-        {% if user.is_staff %}
+        {% if feature_access.horses.full %}
         <a href="{% url 'document_create' %}?{% if horse %}horse={{ horse.pk }}{% else %}owner={{ owner.pk }}{% endif %}"
            class="btn-ghost btn-xs">+ Add</a>
         {% endif %}
@@ -30,7 +30,7 @@ and documents=<queryset>:
                     &middot; Added {{ doc.uploaded_at|date:"d M Y" }}
                 </p>
             </div>
-            {% if user.is_staff %}
+            {% if feature_access.horses.full %}
             <form method="post" action="{% url 'document_delete' doc.pk %}" class="inline shrink-0"
                   onsubmit="return confirm('Delete “{{ doc.title|escapejs }}”?')">
                 {% csrf_token %}
@@ -46,6 +46,6 @@ and documents=<queryset>:
         {% endfor %}
     </ul>
     {% else %}
-    <div class="p-5 text-sm text-sage">No documents yet{% if user.is_staff %} — add a passport scan or insurance certificate{% endif %}.</div>
+    <div class="p-5 text-sm text-sage">No documents yet{% if feature_access.horses.full %} — add a passport scan or insurance certificate{% endif %}.</div>
     {% endif %}
 </div>

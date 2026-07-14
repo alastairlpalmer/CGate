@@ -116,14 +116,20 @@ def rate_type_update(request, pk):
 
 
 def _flat_prefs_items(user):
-    """Ordered list of {key, name, visible} for all registered widgets.
+    """Ordered list of {key, name, visible} for the widgets this user can see.
 
     Order follows each widget's stored ``order`` (default = registry order).
+    Widgets for feature areas the user's role hides are omitted — there's no
+    point toggling a widget that can never render.
     """
+    from ..permissions import access_map
+    levels = access_map(user)
     pref = DashboardPreference.get_for(user)
     layout = pref.resolved_layout()
     items = []
     for w in WIDGETS:
+        if levels[w['feature']] == 'hidden':
+            continue
         meta = layout.get(w['key']) or {}
         items.append({
             'key': w['key'],

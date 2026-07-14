@@ -837,16 +837,24 @@ class DashboardPreference(models.Model):
         return {k: v for k, v in resolved.items() if k in WIDGETS_BY_KEY}
 
     def visible_ordered_keys_by_group(self):
-        """Return {group: [key, ...]} filtered to visible keys, sorted by order."""
+        """Return {group: [key, ...]} filtered to visible keys, sorted by order.
+
+        Widgets tied to a feature area the user's role can't view are
+        dropped regardless of stored preference.
+        """
         from .dashboard_widgets import GROUPS, WIDGETS_BY_KEY
+        from .permissions import access_map
+        levels = access_map(self.user)
         layout = self.resolved_layout()
         grouped = {g: [] for g in GROUPS}
         ordered = sorted(layout.items(), key=lambda kv: kv[1]["order"])
         for key, meta in ordered:
             if not meta["visible"]:
                 continue
-            group = WIDGETS_BY_KEY[key]["group"]
-            grouped[group].append(key)
+            widget = WIDGETS_BY_KEY[key]
+            if levels[widget["feature"]] == "hidden":
+                continue
+            grouped[widget["group"]].append(key)
         return grouped
 
 

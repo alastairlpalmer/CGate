@@ -9,11 +9,11 @@
     <div class="page-header">
         <div>
             <h1 class="page-title">Settings</h1>
-            <p class="page-subtitle">{% if user.is_staff %}Manage your business, rates, providers, and integrations{% else %}Your account and dashboard preferences{% endif %}</p>
+            <p class="page-subtitle">{% if feature_access.settings.full %}Manage your business, rates, providers, and integrations{% else %}Your account and dashboard preferences{% endif %}</p>
         </div>
     </div>
 
-    {% if user.is_staff %}
+    {% if feature_access.settings.full %}
     <!-- ── Business Details ── -->
     <div class="card">
         <div class="section-header">
@@ -99,10 +99,13 @@
         </form>
     </div>
 
-    <!-- ── Users & Access ── -->
+    {% endif %}
+
+    {% if feature_access.users.full %}
+    <!-- ── Users & Roles ── -->
     <div class="card">
         <div class="section-header flex items-center justify-between">
-            <h3 class="section-title">Users &amp; Access</h3>
+            <h3 class="section-title">Users &amp; Roles</h3>
             <a href="{% url 'user_create' %}" class="btn-primary btn-sm">
                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
@@ -128,20 +131,52 @@
                     <div class="flex items-center gap-3 shrink-0">
                         {% if not u.is_active %}
                         <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-sage border border-sage/20">Inactive</span>
-                        {% elif u.is_staff %}
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-sage-50 text-forest border border-sage/20">Admin</span>
+                        {% elif u.is_superuser %}
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-sage-50 text-forest border border-sage/20">Superuser</span>
+                        {% elif u.role_assignment %}
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-sage-50 text-forest border border-sage/20">{{ u.role_assignment.role.name }}</span>
                         {% else %}
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-info-blue-50 text-info-blue border border-info-blue/20">Viewer</span>
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-sage border border-sage/20">No role</span>
                         {% endif %}
                         <a href="{% url 'user_update' u.pk %}" class="text-xs text-sage hover:text-forest transition-colors">Edit</a>
                     </div>
                 </div>
                 {% endfor %}
             </div>
-            <p class="text-xs text-sage mt-4">Users sign in with their email address. Admins have full access; Viewers get read-only access plus health recording.</p>
+            <p class="text-xs text-sage mt-4">Users sign in with their email address. Each user's role controls which areas they can see and change.</p>
+
+            <!-- Roles -->
+            <div class="border-t border-light-sage mt-5 pt-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-sm font-semibold text-charcoal">Roles</h4>
+                    <a href="{% url 'role_create' %}" class="btn-secondary btn-sm">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                        </svg>
+                        New Role
+                    </a>
+                </div>
+                <div class="space-y-3">
+                    {% for role in roles %}
+                    <div class="flex items-center justify-between">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-charcoal truncate">
+                                {{ role.name }}
+                                {% if role.is_system %}<span class="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-sage-50 text-forest border border-sage/20">System</span>{% endif %}
+                            </p>
+                            <p class="text-xs text-sage truncate">{{ role.description|default:"No description" }} &middot; {{ role.member_count }} member{{ role.member_count|pluralize }}</p>
+                        </div>
+                        <a href="{% url 'role_update' role.pk %}" class="text-xs text-sage hover:text-forest transition-colors shrink-0">Edit</a>
+                    </div>
+                    {% endfor %}
+                </div>
+                <p class="text-xs text-sage mt-4">Each role sets an access level per area: Hidden, View only, or Full access.</p>
+            </div>
         </div>
     </div>
+    {% endif %}
 
+    {% if feature_access.settings.full %}
     <!-- ── Rate Types ── -->
     <div class="card">
         <div class="section-header flex items-center justify-between">

@@ -337,30 +337,39 @@ def quick_find(request):
     if len(query) < QUICK_FIND_MIN_CHARS:
         return HttpResponse('')
 
+    from ..permissions import has_feature_access
+
     # Include departed horses (labelled) — searching by name for a horse
-    # that left last month should still find its record.
-    horses = sorted(
-        (
-            {'pk': pk, 'name': name, 'is_active': is_active}
-            for pk, name, is_active in Horse.objects.values_list(
-                'pk', 'name', 'is_active'
-            )
+    # that left last month should still find its record. Groups the user's
+    # role can't view are skipped entirely so hidden areas don't leak here.
+    horses = []
+    if has_feature_access(request.user, 'horses'):
+        horses = sorted(
+            (
+                {'pk': pk, 'name': name, 'is_active': is_active}
+                for pk, name, is_active in Horse.objects.values_list(
+                    'pk', 'name', 'is_active'
+                )
+                if is_fuzzy_match(query, name)
+            ),
+            key=lambda h: not h['is_active'],  # active horses first
+        )[:QUICK_FIND_PER_GROUP]
+
+    owners = []
+    if has_feature_access(request.user, 'owners'):
+        owners = [
+            {'pk': pk, 'name': name}
+            for pk, name in Owner.objects.values_list('pk', 'name')
             if is_fuzzy_match(query, name)
-        ),
-        key=lambda h: not h['is_active'],  # active horses first
-    )[:QUICK_FIND_PER_GROUP]
+        ][:QUICK_FIND_PER_GROUP]
 
-    owners = [
-        {'pk': pk, 'name': name}
-        for pk, name in Owner.objects.values_list('pk', 'name')
-        if is_fuzzy_match(query, name)
-    ][:QUICK_FIND_PER_GROUP]
-
-    locations = [
-        {'pk': pk, 'name': name, 'site': site}
-        for pk, name, site in Location.objects.values_list('pk', 'name', 'site')
-        if is_fuzzy_match(query, name) or is_fuzzy_match(query, site)
-    ][:QUICK_FIND_PER_GROUP]
+    locations = []
+    if has_feature_access(request.user, 'locations'):
+        locations = [
+            {'pk': pk, 'name': name, 'site': site}
+            for pk, name, site in Location.objects.values_list('pk', 'name', 'site')
+            if is_fuzzy_match(query, name) or is_fuzzy_match(query, site)
+        ][:QUICK_FIND_PER_GROUP]
 
     return render(request, 'partials/dashboard/quick_find_results.html', {
         'query': query,

@@ -661,3 +661,94 @@ class AdminSetPasswordForm(forms.Form):
         self.user.set_password(self.cleaned_data['password1'])
         self.user.save(update_fields=['password'])
         return self.user
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Role Suite (Settings → Users & Roles)
+# ──────────────────────────────────────────────────────────────────────────
+
+class RoleForm(forms.Form):
+    """Create/edit a role: name, description, and the per-feature matrix.
+
+    One ChoiceField per registry feature, built dynamically so new features
+    appear in the editor without touching this form. System roles keep an
+    editable name/description but a locked (disabled, ignored) matrix.
+    """
+
+    name = forms.CharField(
+        max_length=100,
+        widget=forms.TextInput(attrs={'class': 'form-input'}),
+    )
+    description = forms.CharField(
+        max_length=255,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-input'}),
+        help_text="Shown in the role list — e.g. who this role is for.",
+    )
+
+    def __init__(self, *args, instance=None, **kwargs):
+        from .features import FEATURES, LEVEL_LABELS, LEVELS
+        self.instance = instance
+        super().__init__(*args, **kwargs)
+
+        locked = bool(instance and instance.is_system)
+        current = instance.resolved_access() if instance else {}
+        for feature in FEATURES:
+            key = feature['key']
+            levels = LEVELS if feature['supports_view'] else ('hidden', 'full')
+            self.fields[f'access_{key}'] = forms.ChoiceField(
+                choices=[(lv, LEVEL_LABELS[lv]) for lv in levels],
+                initial=current.get(key, 'hidden'),
+                disabled=locked,
+                required=not locked,
+                widget=forms.RadioSelect,
+            )
+
+    def clean_name(self):
+        from .models import Role
+        name = self.cleaned_data['name'].strip()
+        clashes = Role.objects.filter(name__iexact=name)
+        if self.instance:
+            clashes = clashes.exclude(pk=self.instance.pk)
+        if clashes.exists():
+            raise forms.ValidationError("A role with this name already exists.")
+        return name
+
+    def access_value(self):
+        """The access map this form describes (empty for locked system roles)."""
+        from .features import FEATURES
+        if self.instance and self.instance.is_system:
+            return self.instance.access
+        return {
+            f['key']: self.cleaned_data[f"access_{f['key']}"]
+            for f in FEATURES
+        }
+
+    def grouped_fields(self):
+        """[(group, [(feature_dict, bound_field), ...]), ...] for the template."""
+        from .features import FEATURES, GROUPS
+        out = []
+        for group in GROUPS:
+            rows = [
+                (f, self[f"access_{f['key']}"])
+                for f in FEATURES if f['group'] == group
+            ]
+            if rows:
+                out.append((group, rows))
+        return out
+
+    def save(self):
+        from .models import Role
+        data = self.cleaned_data
+        if self.instance:
+            self.instance.name = data['name']
+            self.instance.description = data['description']
+            if not self.instance.is_system:
+                self.instance.access = self.access_value()
+            self.instance.save()
+            return self.instance
+        return Role.objects.create(
+            name=data['name'],
+            description=data['description'],
+            access=self.access_value(),
+        )

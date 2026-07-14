@@ -16,7 +16,7 @@
                     <th>Amount</th>
                     <th>Due Date</th>
                     <th>Status</th>
-                    {% if user.is_staff %}<th class="text-right">Actions</th>{% endif %}
+                    {% if feature_access.invoices.full %}<th class="text-right">Actions</th>{% endif %}
                 </tr>
             </thead>
             <tbody>
@@ -42,7 +42,7 @@
                         <span class="badge-warning">{{ invoice.get_status_display }}</span>
                         {% endif %}
                     </td>
-                    {% if user.is_staff %}
+                    {% if feature_access.invoices.full %}
                     <td>
                         <div class="flex items-center justify-end gap-1">
                             <a href="{% url 'payment_create' invoice.pk %}" class="btn-ghost btn-xs">Record Payment</a>

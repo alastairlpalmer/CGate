@@ -19,7 +19,7 @@
                 </svg>
                 Download PDF
             </a>
-            {% if user.is_staff and owner.email %}
+            {% if feature_access.invoices.full and owner.email %}
             <form method="post" action="{% url 'owner_statement_email' owner.pk %}" class="inline">
                 {% csrf_token %}
                 <button type="submit" class="btn-primary">
