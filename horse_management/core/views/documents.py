@@ -5,7 +5,7 @@ Document upload/management views (passport scans, insurance certs, etc.).
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 
-from core.mixins import staff_required
+from core.permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 
 from ..forms import DocumentForm
 from ..models import Document, Horse, Owner
@@ -26,7 +26,7 @@ def _back_to(horse, owner):
     return redirect('owner_detail', pk=owner.pk)
 
 
-@staff_required
+@feature_required('horses')
 def document_create(request):
     """Upload a document against a horse or an owner (?horse= / ?owner=)."""
     horse, owner = _attachment_target(request)
@@ -55,7 +55,7 @@ def document_create(request):
     })
 
 
-@staff_required
+@feature_required('horses')
 def document_delete(request, pk):
     """Delete a document (POST only, confirmed client-side)."""
     document = get_object_or_404(Document, pk=pk)

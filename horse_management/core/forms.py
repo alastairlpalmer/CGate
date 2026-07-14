@@ -516,13 +516,8 @@ class QuickPhotoForm(forms.Form):
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# User management (Settings → Users & Access)
+# User management (Settings → Users & Roles)
 # ──────────────────────────────────────────────────────────────────────────
-
-USER_ROLE_CHOICES = (
-    ('admin', 'Admin'),
-    ('viewer', 'Viewer'),
-)
 
 
 class UserAccountForm(forms.Form):
@@ -545,16 +540,19 @@ class UserAccountForm(forms.Form):
     email = forms.EmailField(
         widget=forms.EmailInput(attrs={'class': 'form-input', 'autocomplete': 'email'}),
     )
-    role = forms.ChoiceField(
-        choices=USER_ROLE_CHOICES,
-        initial='viewer',
+    role = forms.ModelChoiceField(
+        queryset=None,
+        empty_label=None,
         widget=forms.Select(attrs={'class': 'form-select'}),
-        help_text="Admins have full access. Viewers get read-only access plus health recording.",
+        help_text="The role controls which areas this user can see and change "
+                  "(Settings → Users & Roles).",
     )
 
     def __init__(self, *args, instance=None, **kwargs):
+        from .models import Role
         self.instance = instance
         super().__init__(*args, **kwargs)
+        self.fields['role'].queryset = Role.objects.order_by('-is_system', 'name')
 
     def clean_email(self):
         from django.contrib.auth import get_user_model
@@ -600,15 +598,17 @@ class UserCreateForm(UserAccountForm):
 
     def save(self):
         from django.contrib.auth import get_user_model
+        from .models import UserRole
         data = self.cleaned_data
-        return get_user_model().objects.create_user(
+        user = get_user_model().objects.create_user(
             username=data['email'],
             email=data['email'],
             password=data['password1'],
             first_name=data['first_name'],
             last_name=data['last_name'],
-            is_staff=(data['role'] == 'admin'),
         )
+        UserRole.objects.create(user=user, role=data['role'])
+        return user
 
 
 class UserUpdateForm(UserAccountForm):
@@ -622,12 +622,9 @@ class UserUpdateForm(UserAccountForm):
         user.first_name = data['first_name']
         user.last_name = data['last_name']
         user.email = data['email']
-        if data['role'] == 'admin':
-            user.is_staff = True
-        else:
-            user.is_staff = False
-            user.is_superuser = False
         user.save()
+        from .models import UserRole
+        UserRole.objects.update_or_create(user=user, defaults={'role': data['role']})
         return user
 
 

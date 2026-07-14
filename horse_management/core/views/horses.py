@@ -6,7 +6,6 @@ from datetime import timedelta
 from itertools import groupby
 
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, Exists, OuterRef, Prefetch, Q
@@ -34,7 +33,7 @@ from ..forms import (
     OwnershipShareFormSet,
     SingleArrivalForm,
 )
-from ..mixins import StaffRequiredMixin, staff_required
+from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Horse, Location, Owner, OwnershipShare, Placement
 from ..search import fuzzy_horse_ids
 
@@ -54,7 +53,9 @@ def _warn_if_incomplete_ownership(request, formset):
         )
 
 
-class HorseListView(LoginRequiredMixin, ListView):
+class HorseListView(FeatureAccessMixin, ListView):
+    feature = 'horses'
+    access_level = LEVEL_VIEW
     model = Horse
     template_name = 'horses/horse_list.html'
     context_object_name = 'horses'
@@ -242,7 +243,9 @@ class HorseListView(LoginRequiredMixin, ListView):
         return context
 
 
-class HorseDetailView(LoginRequiredMixin, DetailView):
+class HorseDetailView(FeatureAccessMixin, DetailView):
+    feature = 'horses'
+    access_level = LEVEL_VIEW
     model = Horse
     template_name = 'horses/horse_detail.html'
     context_object_name = 'horse'
@@ -311,7 +314,8 @@ class HorseDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class HorseCreateView(StaffRequiredMixin, CreateView):
+class HorseCreateView(FeatureAccessMixin, CreateView):
+    feature = 'horses'
     model = Horse
     form_class = HorseForm
     template_name = 'horses/horse_form.html'
@@ -345,7 +349,8 @@ class HorseCreateView(StaffRequiredMixin, CreateView):
         return redirect(self.get_success_url())
 
 
-class HorseUpdateView(StaffRequiredMixin, UpdateView):
+class HorseUpdateView(FeatureAccessMixin, UpdateView):
+    feature = 'horses'
     model = Horse
     form_class = HorseForm
     template_name = 'horses/horse_form.html'
@@ -381,7 +386,7 @@ class HorseUpdateView(StaffRequiredMixin, UpdateView):
         return redirect(self.get_success_url())
 
 
-@staff_required
+@feature_required('horses')
 def horse_move(request, pk):
     """Move a horse to a new location."""
     from ..services import PlacementService
@@ -422,7 +427,7 @@ def horse_move(request, pk):
     })
 
 
-@staff_required
+@feature_required('horses')
 def new_arrival(request):
     """Create a new horse and place it at a location in one step."""
     from ..forms import NewArrivalForm
@@ -463,7 +468,7 @@ def new_arrival(request):
     return render(request, 'horses/horse_new_arrival.html', {'form': form})
 
 
-@staff_required
+@feature_required('horses')
 def horse_arrive(request, pk):
     """Log a single horse arriving at a location (from Horse Detail)."""
     from ..services import PlacementService
@@ -505,7 +510,7 @@ def horse_arrive(request, pk):
     })
 
 
-@staff_required
+@feature_required('horses')
 def horse_depart(request, pk):
     """Log a single horse departing (from Horse Detail, POST only)."""
     from ..services import PlacementService
@@ -534,7 +539,7 @@ def horse_depart(request, pk):
     return redirect('horse_detail', pk=horse.pk)
 
 
-@staff_required
+@feature_required('horses')
 def horse_reactivate(request, pk):
     """Repair action: mark a horse active again while its placement is open.
 
@@ -560,7 +565,7 @@ def horse_reactivate(request, pk):
     return redirect('horse_detail', pk=horse.pk)
 
 
-@staff_required
+@feature_required('horses')
 def confirm_departure(request, pk):
     """Confirm a horse has departed and deactivate it (HTMX endpoint)."""
     from ..services import PlacementService
@@ -574,7 +579,7 @@ def confirm_departure(request, pk):
     return redirect('dashboard')
 
 
-@staff_required
+@feature_required('horses')
 def cancel_departure(request, pk):
     """Undo a pending departure - clear placement end_date (HTMX endpoint)."""
     from ..services import PlacementService
@@ -588,7 +593,7 @@ def cancel_departure(request, pk):
     return redirect('dashboard')
 
 
-@staff_required
+@feature_required('horses')
 def confirm_departures_bulk(request):
     """Confirm multiple horses as departed in one action (HTMX endpoint)."""
     from ..services import PlacementService
@@ -603,7 +608,7 @@ def confirm_departures_bulk(request):
     return redirect('dashboard')
 
 
-@staff_required
+@feature_required('horses')
 def manage_ownership_shares(request, pk):
     """Manage fractional ownership shares for a horse."""
     horse = get_object_or_404(Horse, pk=pk)

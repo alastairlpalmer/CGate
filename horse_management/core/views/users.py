@@ -1,26 +1,48 @@
 """
-User management views (Settings → Users & Access).
+User management views (Settings → Users & Roles).
 
-Admins (is_staff) create accounts, assign the Admin/Viewer role, reset
-passwords, and deactivate accounts — no Django admin or CLI needed.
+Users with Full access on the "Users & Roles" feature create accounts,
+assign roles, reset passwords, and deactivate accounts — no Django admin
+or CLI needed.
 """
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from ..forms import AdminSetPasswordForm, UserCreateForm, UserUpdateForm
-from ..mixins import staff_required
+from ..permissions import LEVEL_FULL, LEVEL_ORDER, feature_required
 
 User = get_user_model()
 
 
-def _other_active_admins(user):
-    """Active admins other than ``user`` — guards the last-admin lockout."""
-    return User.objects.filter(is_staff=True, is_active=True).exclude(pk=user.pk)
+def _grants_user_management(role):
+    return LEVEL_ORDER[role.resolved_access()['users']] >= LEVEL_ORDER[LEVEL_FULL]
 
 
-@staff_required
+def _other_role_managers(user):
+    """Active users other than ``user`` who can manage users & roles.
+
+    Guards the last-manager lockout. Superusers count; so does anyone whose
+    role resolves to Full on the ``users`` feature. The roles table is tiny,
+    so resolving each role in Python is fine.
+    """
+    from ..models import Role
+
+    manager_role_ids = [r.pk for r in Role.objects.all() if _grants_user_management(r)]
+    return User.objects.filter(is_active=True).exclude(pk=user.pk).filter(
+        Q(is_superuser=True) | Q(role_assignment__role_id__in=manager_role_ids)
+    )
+
+
+def _is_manager(user):
+    return user.is_superuser or (
+        hasattr(user, 'role_assignment') and _grants_user_management(user.role_assignment.role)
+    )
+
+
+@feature_required('users')
 def user_create(request):
     """Create a login account. The email address is the sign-in identifier."""
     if request.method == 'POST':
@@ -34,21 +56,24 @@ def user_create(request):
     return render(request, 'settings/user_form.html', {'form': form})
 
 
-@staff_required
+@feature_required('users')
 def user_update(request, pk):
     """Edit name/email/role, reset the password, or (de)activate an account.
 
     The three forms on the page are distinguished by a hidden POST key,
     mirroring the business-settings pattern on the settings page.
     """
-    target = get_object_or_404(User, pk=pk)
+    target = get_object_or_404(
+        User.objects.select_related('role_assignment__role'), pk=pk
+    )
     is_self = target.pk == request.user.pk
+    current_role = getattr(getattr(target, 'role_assignment', None), 'role', None)
 
     form = UserUpdateForm(instance=target, initial={
         'first_name': target.first_name,
         'last_name': target.last_name,
         'email': target.email,
-        'role': 'admin' if target.is_staff else 'viewer',
+        'role': current_role,
     })
     password_form = AdminSetPasswordForm(user=target)
 
@@ -56,11 +81,16 @@ def user_update(request, pk):
         if 'save_details' in request.POST:
             form = UserUpdateForm(request.POST, instance=target)
             if form.is_valid():
-                demoting = target.is_staff and form.cleaned_data['role'] != 'admin'
+                new_role = form.cleaned_data['role']
+                demoting = (
+                    _is_manager(target)
+                    and not target.is_superuser
+                    and not _grants_user_management(new_role)
+                )
                 if demoting and is_self:
-                    messages.error(request, "You can't remove your own admin access. Ask another admin to change your role.")
-                elif demoting and not _other_active_admins(target).exists():
-                    messages.error(request, "You can't demote the only admin. Promote someone else first.")
+                    messages.error(request, "You can't remove your own user-management access. Ask another administrator to change your role.")
+                elif demoting and not _other_role_managers(target).exists():
+                    messages.error(request, "You can't demote the only user with access to Users & Roles. Give someone else a role with that access first.")
                 else:
                     form.save()
                     messages.success(request, "User details saved.")
@@ -76,8 +106,8 @@ def user_update(request, pk):
         elif 'toggle_active' in request.POST:
             if is_self:
                 messages.error(request, "You can't deactivate your own account.")
-            elif target.is_active and target.is_staff and not _other_active_admins(target).exists():
-                messages.error(request, "You can't deactivate the only admin.")
+            elif target.is_active and _is_manager(target) and not _other_role_managers(target).exists():
+                messages.error(request, "You can't deactivate the only user with access to Users & Roles.")
             else:
                 target.is_active = not target.is_active
                 target.save(update_fields=['is_active'])

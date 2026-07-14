@@ -6,9 +6,8 @@ import logging
 import secrets
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 
-from core.mixins import staff_required
+from core.permissions import feature_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -26,13 +25,13 @@ from .services import (
 logger = logging.getLogger(__name__)
 
 
-@login_required
+@feature_required('xero')
 def xero_settings(request):
     """Redirect to unified settings page."""
     return redirect('app_settings')
 
 
-@staff_required
+@feature_required('xero')
 def xero_connect(request):
     """Initiate OAuth flow by redirecting to Xero."""
     state = secrets.token_urlsafe(32)
@@ -44,7 +43,7 @@ def xero_connect(request):
     return redirect(auth_url)
 
 
-@staff_required
+@feature_required('xero')
 def xero_callback(request):
     """Handle OAuth callback from Xero."""
     error = request.GET.get('error')
@@ -107,7 +106,7 @@ def xero_callback(request):
     return redirect('app_settings')
 
 
-@staff_required
+@feature_required('xero')
 @require_POST
 def xero_disconnect(request):
     """Disconnect from Xero."""
@@ -126,7 +125,7 @@ def xero_disconnect(request):
     return redirect('app_settings')
 
 
-@staff_required
+@feature_required('xero')
 @require_POST
 def xero_push_invoice(request, pk):
     """Push an invoice to Xero."""
@@ -159,7 +158,7 @@ def xero_push_invoice(request, pk):
     return redirect('invoice_detail', pk=pk)
 
 
-@login_required
+@feature_required('xero')
 def xero_invoice_status(request, pk):
     """HTMX endpoint: check and return current Xero status for an invoice."""
     sync = get_object_or_404(XeroInvoiceSync, invoice_id=pk)

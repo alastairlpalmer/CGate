@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.formats import date_format
 
-from core.mixins import staff_required
+from core.permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 
 from ..forms import QUICK_PHOTO_PASSPORT, QuickPhotoForm
 from ..images import normalise_photo
@@ -30,7 +30,7 @@ def _passport_title(index, total):
     return title
 
 
-@staff_required
+@feature_required('horses')
 def horse_photo_add(request, pk):
     """Quick-add one or more photos to a horse (?category= preselects).
 
@@ -101,7 +101,7 @@ def horse_photo_add(request, pk):
     })
 
 
-@staff_required
+@feature_required('horses')
 def horse_photo_delete(request, pk):
     """Delete a horse photo (POST only, confirmed client-side)."""
     photo = get_object_or_404(HorsePhoto, pk=pk)

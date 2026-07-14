@@ -14,10 +14,12 @@ if not User.objects.filter(username='admin').exists():
     User.objects.create_superuser('admin', 'admin@example.com', 'AdminPass123!')
     print("created superuser admin / AdminPass123!")
 if not User.objects.filter(username='viewer').exists():
+    from core.models import Role, UserRole
     v = User.objects.create_user('viewer', 'viewer@example.com', 'ViewPass123!')
-    v.is_staff = False
-    v.save()
-    print("created viewer viewer / ViewPass123! (non-staff)")
+    viewer_role = Role.objects.filter(name='Viewer').first()
+    if viewer_role:
+        UserRole.objects.get_or_create(user=v, defaults={'role': viewer_role})
+    print("created viewer viewer / ViewPass123! (Viewer role)")
 
 # --- Business settings ---
 bs = BusinessSettings.get_settings()

@@ -4,13 +4,13 @@ Settings, rate types, and health check views.
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import connection
+from django.db import connection, models
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from ..dashboard_widgets import WIDGETS, WIDGETS_BY_KEY
-from ..mixins import staff_required
+from ..permissions import feature_required, has_feature_access
 from ..models import DashboardPreference, Location
 
 
@@ -25,15 +25,16 @@ def health_check(request):
 def app_settings(request):
     """Unified settings page.
 
-    Non-staff users see only their dashboard preferences and account card.
-    Staff users additionally see business config, rates, locations, providers,
-    integrations, etc. — gated in the template via ``{% if user.is_staff %}``.
+    Every user gets the dashboard-preferences and account cards. The admin
+    cards are assembled per feature: business config/rates/locations/
+    providers/integrations need Business settings access; the Users & Roles
+    card needs Users & Roles access. Templates hide the cards, but the POST
+    branch re-checks — hiding isn't enforcement.
     """
     ctx = {'flat_items': _flat_prefs_items(request.user)}
 
-    if request.user.is_staff:
+    if has_feature_access(request.user, 'settings', 'full'):
         from billing.models import ServiceProvider
-        from django.contrib.auth import get_user_model
         from health.models import VaccinationType
         from xero_integration.models import XeroConnection
 
@@ -51,7 +52,6 @@ def app_settings(request):
             biz_form = BusinessSettingsForm(instance=business)
 
         ctx.update({
-            'app_users': get_user_model().objects.order_by('-is_active', 'first_name', 'username'),
             'xero_connection': XeroConnection.get_connection(),
             'providers': ServiceProvider.objects.filter(is_active=True).order_by('name'),
             'biz_form': biz_form,
@@ -60,10 +60,25 @@ def app_settings(request):
             'locations': Location.objects.order_by('site', 'name'),
         })
 
+    if has_feature_access(request.user, 'users', 'full'):
+        from django.contrib.auth import get_user_model
+        from ..models import Role
+
+        ctx.update({
+            'app_users': (
+                get_user_model().objects
+                .select_related('role_assignment__role')
+                .order_by('-is_active', 'first_name', 'username')
+            ),
+            'roles': Role.objects.annotate(
+                member_count=models.Count('assignments')
+            ).order_by('-is_system', 'name'),
+        })
+
     return render(request, 'settings.html', ctx)
 
 
-@staff_required
+@feature_required('settings')
 def rate_type_create(request):
     """Create a new rate type."""
     from ..forms import RateTypeForm
@@ -78,7 +93,7 @@ def rate_type_create(request):
     return render(request, 'settings/rate_type_form.html', {'form': form})
 
 
-@staff_required
+@feature_required('settings')
 def rate_type_update(request, pk):
     """Edit a rate type."""
     from ..forms import RateTypeForm

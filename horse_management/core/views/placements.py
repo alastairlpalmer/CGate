@@ -2,16 +2,17 @@
 Placement views — CRUD and list.
 """
 
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView
 
 from ..forms import PlacementForm
-from ..mixins import StaffRequiredMixin
+from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Location, Owner, Placement
 
 
-class PlacementListView(LoginRequiredMixin, ListView):
+class PlacementListView(FeatureAccessMixin, ListView):
+    feature = 'locations'
+    access_level = LEVEL_VIEW
     model = Placement
     template_name = 'placements/placement_list.html'
     context_object_name = 'placements'
@@ -50,7 +51,8 @@ class PlacementListView(LoginRequiredMixin, ListView):
         return context
 
 
-class PlacementCreateView(StaffRequiredMixin, CreateView):
+class PlacementCreateView(FeatureAccessMixin, CreateView):
+    feature = 'locations'
     model = Placement
     form_class = PlacementForm
     template_name = 'placements/placement_form.html'
@@ -59,7 +61,8 @@ class PlacementCreateView(StaffRequiredMixin, CreateView):
         return reverse_lazy('location_list') + '?tab=history'
 
 
-class PlacementUpdateView(StaffRequiredMixin, UpdateView):
+class PlacementUpdateView(FeatureAccessMixin, UpdateView):
+    feature = 'locations'
     model = Placement
     form_class = PlacementForm
     template_name = 'placements/placement_form.html'

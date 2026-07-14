@@ -8,10 +8,8 @@ from itertools import chain
 from operator import attrgetter
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
 
-from core.mixins import StaffRequiredMixin, staff_required
+from core.permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum
 from django.http import JsonResponse
@@ -27,7 +25,9 @@ from .forms import ExtraChargeForm, FeedOutForm, FeedStockForm, ServiceProviderF
 from .models import ExtraCharge, FeedOut, FeedStock, ServiceProvider, YardCost
 
 
-class ExtraChargeListView(LoginRequiredMixin, ListView):
+class ExtraChargeListView(FeatureAccessMixin, ListView):
+    feature = 'charges'
+    access_level = LEVEL_VIEW
     model = ExtraCharge
     template_name = 'billing/charge_list.html'
     context_object_name = 'charges'
@@ -79,7 +79,8 @@ class ExtraChargeListView(LoginRequiredMixin, ListView):
         return context
 
 
-class ExtraChargeCreateView(StaffRequiredMixin, CreateView):
+class ExtraChargeCreateView(FeatureAccessMixin, CreateView):
+    feature = 'charges'
     model = ExtraCharge
     form_class = ExtraChargeForm
     template_name = 'billing/charge_form.html'
@@ -105,7 +106,7 @@ class ExtraChargeCreateView(StaffRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-@login_required
+@feature_required('charges', LEVEL_VIEW)
 def horse_owner(request):
     """Return the current owner for a horse (used to prefill Bill To)."""
     horse_id = request.GET.get('horse', '')
@@ -137,7 +138,8 @@ def _warn_if_owner_unrelated(request, form):
         )
 
 
-class ExtraChargeUpdateView(StaffRequiredMixin, UpdateView):
+class ExtraChargeUpdateView(FeatureAccessMixin, UpdateView):
+    feature = 'charges'
     model = ExtraCharge
     form_class = ExtraChargeForm
     template_name = 'billing/charge_form.html'
@@ -156,7 +158,8 @@ class ExtraChargeUpdateView(StaffRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class ExtraChargeDeleteView(StaffRequiredMixin, DeleteView):
+class ExtraChargeDeleteView(FeatureAccessMixin, DeleteView):
+    feature = 'charges'
     model = ExtraCharge
     template_name = 'billing/charge_confirm_delete.html'
     success_url = reverse_lazy('charge_list')
@@ -173,7 +176,8 @@ class ExtraChargeDeleteView(StaffRequiredMixin, DeleteView):
         return super().form_valid(form)
 
 
-class ServiceProviderListView(LoginRequiredMixin, ListView):
+class ServiceProviderListView(FeatureAccessMixin, ListView):
+    feature = 'settings'
     model = ServiceProvider
     template_name = 'billing/provider_list.html'
     context_object_name = 'providers'
@@ -193,14 +197,16 @@ class ServiceProviderListView(LoginRequiredMixin, ListView):
         return context
 
 
-class ServiceProviderCreateView(StaffRequiredMixin, CreateView):
+class ServiceProviderCreateView(FeatureAccessMixin, CreateView):
+    feature = 'settings'
     model = ServiceProvider
     form_class = ServiceProviderForm
     template_name = 'billing/provider_form.html'
     success_url = reverse_lazy('provider_list')
 
 
-class ServiceProviderUpdateView(StaffRequiredMixin, UpdateView):
+class ServiceProviderUpdateView(FeatureAccessMixin, UpdateView):
+    feature = 'settings'
     model = ServiceProvider
     form_class = ServiceProviderForm
     template_name = 'billing/provider_form.html'
@@ -209,7 +215,9 @@ class ServiceProviderUpdateView(StaffRequiredMixin, UpdateView):
 
 # ── Unified Costs View ──────────────────────────────────────────
 
-class CostsListView(StaffRequiredMixin, ListView):
+class CostsListView(FeatureAccessMixin, ListView):
+    feature = 'costs'
+    access_level = LEVEL_VIEW
     template_name = 'billing/costs_list.html'
     context_object_name = 'costs'
     paginate_by = 50
@@ -363,7 +371,8 @@ class CostsListView(StaffRequiredMixin, ListView):
 
 # ── YardCost CRUD ────────────────────────────────────────────────
 
-class YardCostCreateView(StaffRequiredMixin, CreateView):
+class YardCostCreateView(FeatureAccessMixin, CreateView):
+    feature = 'costs'
     model = YardCost
     form_class = YardCostForm
     template_name = 'billing/yard_cost_form.html'
@@ -379,7 +388,8 @@ class YardCostCreateView(StaffRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class YardCostUpdateView(StaffRequiredMixin, UpdateView):
+class YardCostUpdateView(FeatureAccessMixin, UpdateView):
+    feature = 'costs'
     model = YardCost
     form_class = YardCostForm
     template_name = 'billing/yard_cost_form.html'
@@ -390,7 +400,8 @@ class YardCostUpdateView(StaffRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class YardCostDeleteView(StaffRequiredMixin, DeleteView):
+class YardCostDeleteView(FeatureAccessMixin, DeleteView):
+    feature = 'costs'
     model = YardCost
     template_name = 'billing/yard_cost_confirm_delete.html'
     success_url = reverse_lazy('costs_list')
@@ -400,7 +411,7 @@ class YardCostDeleteView(StaffRequiredMixin, DeleteView):
         return super().form_valid(form)
 
 
-@staff_required
+@feature_required('costs')
 @require_POST
 def yard_cost_duplicate(request, pk):
     """Duplicate a yard cost with today's date."""
@@ -421,7 +432,7 @@ def yard_cost_duplicate(request, pk):
     return redirect('costs_list')
 
 
-@login_required
+@feature_required('feed', LEVEL_VIEW)
 def feed_dashboard(request):
     """Standalone feed store dashboard."""
     from core.models import Location
@@ -499,7 +510,8 @@ def feed_dashboard(request):
     })
 
 
-class FeedStockCreateView(StaffRequiredMixin, CreateView):
+class FeedStockCreateView(FeatureAccessMixin, CreateView):
+    feature = 'feed'
     model = FeedStock
     form_class = FeedStockForm
     template_name = 'billing/feed_stock_form.html'
@@ -530,7 +542,7 @@ class FeedStockCreateView(StaffRequiredMixin, CreateView):
         return response
 
 
-@staff_required
+@feature_required('feed')
 def feed_stock_adjust(request):
     """Manually adjust feed stock (reduce/increase without a feed-out)."""
     from .forms import FeedStockForm
@@ -555,7 +567,7 @@ def feed_stock_adjust(request):
     return render(request, 'billing/feed_stock_adjust.html', {'form': form})
 
 
-@staff_required
+@feature_required('feed')
 def feed_stock_clear(request):
     """Clear all feed stock records to start fresh."""
     if request.method == 'POST':
@@ -568,7 +580,7 @@ def feed_stock_clear(request):
     })
 
 
-@login_required
+@feature_required('costs', LEVEL_VIEW)
 def supplier_autocomplete(request):
     """Return distinct supplier names for autocomplete."""
     q = request.GET.get('q', '')
@@ -585,7 +597,7 @@ def supplier_autocomplete(request):
 
 # ── Feed Out ─────────────────────────────────────────────────────
 
-@staff_required
+@feature_required('feed')
 def feed_out_create(request, location_pk):
     """Record feed delivered to a location, optionally recharging to horse owners."""
     from django.db import transaction

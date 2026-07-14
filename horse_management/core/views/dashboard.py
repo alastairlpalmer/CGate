@@ -6,7 +6,7 @@ import logging
 from datetime import timedelta
 from decimal import Decimal
 
-from django.contrib.auth.decorators import login_required
+from ..permissions import feature_required
 from django.db.models import DecimalField, ExpressionWrapper, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
@@ -65,7 +65,7 @@ def _empty_context():
     }
 
 
-@login_required
+@feature_required('dashboard')
 def dashboard(request):
     """Main dashboard view."""
     try:
@@ -249,7 +249,7 @@ def _dashboard_inner(request):
     return render(request, 'dashboard.html', context)
 
 
-@login_required
+@feature_required('dashboard')
 def dashboard_health_alerts(request):
     """HTMX partial: health alerts loaded after initial dashboard render.
 
@@ -326,7 +326,7 @@ QUICK_FIND_MIN_CHARS = 2
 QUICK_FIND_PER_GROUP = 4
 
 
-@login_required
+@feature_required('dashboard')
 def quick_find(request):
     """HTMX partial: typo-tolerant search across horses, owners and locations.
 
