@@ -63,6 +63,81 @@ class ArriveHorseTests(LifecycleTestCase):
         self.assertTrue(horse.is_active)
         self.assertIsNone(placement.end_date)
 
+    def test_arrival_backdated_before_recorded_departure_supersedes_it(self):
+        # Snowy's case: departed dated today (or later), then logged as
+        # arriving back on an earlier date. The return supersedes the
+        # recorded departure instead of being rejected as an overlap.
+        old = Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate,
+            start_date=self.today - timedelta(days=60),
+            end_date=self.today,  # departure recorded today
+        )
+        self.horse.is_active = False
+        self.horse.save(update_fields=['is_active'])
+
+        arrival = self.today - timedelta(days=4)  # e.g. back on 10/7
+        placement = PlacementService.arrive_horse(
+            self.horse, owner=self.owner, location=self.other_location,
+            rate_type=self.rate, arrival_date=arrival,
+        )
+        old.refresh_from_db()
+        self.horse.refresh_from_db()
+        # Old stay now ends the day before the return — no double billing
+        self.assertEqual(old.end_date, arrival - timedelta(days=1))
+        self.assertEqual(placement.start_date, arrival)
+        self.assertIsNone(placement.end_date)
+        self.assertTrue(self.horse.is_active)
+
+    def test_arrival_same_day_as_departure_supersedes_it(self):
+        old = Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate,
+            start_date=self.today - timedelta(days=60),
+            end_date=self.today,
+        )
+        PlacementService.arrive_horse(
+            self.horse, owner=self.owner, location=self.other_location,
+            rate_type=self.rate, arrival_date=self.today,
+        )
+        old.refresh_from_db()
+        self.assertEqual(old.end_date, self.today - timedelta(days=1))
+
+    def test_arrival_before_previous_stay_started_is_rejected(self):
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate,
+            start_date=self.today - timedelta(days=5),
+            end_date=self.today,
+        )
+        from django.core.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            PlacementService.arrive_horse(
+                self.horse, owner=self.owner, location=self.other_location,
+                rate_type=self.rate,
+                arrival_date=self.today - timedelta(days=10),
+            )
+
+    def test_move_back_supersedes_recorded_departure(self):
+        old = Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate,
+            start_date=self.today - timedelta(days=60),
+            end_date=self.today,
+        )
+        Horse.objects.filter(pk=self.horse.pk).update(is_active=False)
+        self.horse.refresh_from_db()
+
+        arrival = self.today - timedelta(days=4)
+        PlacementService.move_horse(
+            self.horse, new_location=self.other_location, move_date=arrival,
+            new_owner=self.owner, new_rate_type=self.rate,
+        )
+        old.refresh_from_db()
+        self.horse.refresh_from_db()
+        self.assertEqual(old.end_date, arrival - timedelta(days=1))
+        self.assertTrue(self.horse.is_active)
+
     def test_arrived_horse_returns_to_current_list(self):
         horse = self._departed_horse()
         PlacementService.arrive_horse(
