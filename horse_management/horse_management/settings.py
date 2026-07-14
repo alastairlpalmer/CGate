@@ -344,6 +344,8 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 # Login settings
+# Users can sign in with their email address (or legacy username).
+AUTHENTICATION_BACKENDS = ['core.auth_backends.EmailOrUsernameBackend']
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 LOGIN_URL = '/accounts/login/'

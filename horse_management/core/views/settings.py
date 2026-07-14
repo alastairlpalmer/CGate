@@ -33,6 +33,7 @@ def app_settings(request):
 
     if request.user.is_staff:
         from billing.models import ServiceProvider
+        from django.contrib.auth import get_user_model
         from health.models import VaccinationType
         from xero_integration.models import XeroConnection
 
@@ -50,6 +51,7 @@ def app_settings(request):
             biz_form = BusinessSettingsForm(instance=business)
 
         ctx.update({
+            'app_users': get_user_model().objects.order_by('-is_active', 'first_name', 'username'),
             'xero_connection': XeroConnection.get_connection(),
             'providers': ServiceProvider.objects.filter(is_active=True).order_by('name'),
             'biz_form': biz_form,

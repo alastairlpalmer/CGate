@@ -83,7 +83,7 @@
                     <svg class="h-5 w-5 text-red-500 mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
                     </svg>
-                    <p class="text-sm text-red-700 font-medium">Invalid username or password. Please try again.</p>
+                    <p class="text-sm text-red-700 font-medium">Invalid email or password. Please try again.</p>
                 </div>
                 {% endif %}
 
@@ -92,16 +92,18 @@
                     {% csrf_token %}
 
                     <div>
-                        <label for="id_username" class="block text-sm font-medium text-charcoal mb-1.5">Username</label>
+                        <label for="id_username" class="block text-sm font-medium text-charcoal mb-1.5">Email</label>
                         <input
                             type="text"
                             name="username"
                             id="id_username"
-                            autocomplete="username"
+                            autocomplete="username email"
+                            inputmode="email"
+                            autocapitalize="none"
                             required
                             autofocus
                             class="block w-full rounded-lg border-sage/30 focus:border-sage focus:ring-sage text-base px-3 py-2.5 border shadow-sm placeholder-sage/60 min-h-[44px]"
-                            placeholder="Enter your username"
+                            placeholder="you@example.com"
                         >
                     </div>
 

@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Edit User{% else %}Add User{% endif %} - CGate{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto space-y-6">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{% if object %}Edit User{% else %}Add User{% endif %}</h1>
+            {% if object %}<p class="page-subtitle">{{ object.email|default:object.username }}</p>{% endif %}
+        </div>
+    </div>
+
+    <!-- ── Details ── -->
+    <div class="card">
+        {% if object %}
+        <div class="section-header">
+            <h3 class="section-title">Details</h3>
+        </div>
+        {% endif %}
+        <form method="post">
+            {% csrf_token %}
+            {% if object %}<input type="hidden" name="save_details" value="1">{% endif %}
+            <fieldset class="p-4 sm:p-5 space-y-4">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label for="{{ form.first_name.id_for_label }}" class="text-sm font-medium text-charcoal">First Name</label>
+                        {{ form.first_name }}
+                        {% if form.first_name.errors %}<p class="mt-1 text-sm text-error-red">{{ form.first_name.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.last_name.id_for_label }}" class="text-sm font-medium text-charcoal">Last Name</label>
+                        {{ form.last_name }}
+                        {% if form.last_name.errors %}<p class="mt-1 text-sm text-error-red">{{ form.last_name.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+                <div>
+                    <label for="{{ form.email.id_for_label }}" class="text-sm font-medium text-charcoal">Email</label>
+                    {{ form.email }}
+                    {% if form.email.errors %}<p class="mt-1 text-sm text-error-red">{{ form.email.errors.0 }}</p>{% endif %}
+                    <p class="text-xs text-sage mt-0.5">Used to sign in.</p>
+                </div>
+                <div>
+                    <label for="{{ form.role.id_for_label }}" class="text-sm font-medium text-charcoal">Role</label>
+                    {{ form.role }}
+                    {% if form.role.errors %}<p class="mt-1 text-sm text-error-red">{{ form.role.errors.0 }}</p>{% endif %}
+                    <p class="text-xs text-sage mt-0.5">{{ form.role.help_text }}</p>
+                    {% if is_self %}<p class="text-xs text-warning-amber mt-0.5">You can't remove your own admin access — ask another admin.</p>{% endif %}
+                </div>
+                {% if not object %}
+                <div>
+                    <label for="{{ form.password1.id_for_label }}" class="text-sm font-medium text-charcoal">Password</label>
+                    {{ form.password1 }}
+                    {% if form.password1.errors %}<p class="mt-1 text-sm text-error-red">{{ form.password1.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.password2.id_for_label }}" class="text-sm font-medium text-charcoal">Confirm Password</label>
+                    {{ form.password2 }}
+                    {% if form.password2.errors %}<p class="mt-1 text-sm text-error-red">{{ form.password2.errors.0 }}</p>{% endif %}
+                </div>
+                {% endif %}
+                {% if form.non_field_errors %}<p class="text-sm text-error-red">{{ form.non_field_errors.0 }}</p>{% endif %}
+            </fieldset>
+            <footer class="form-footer">
+                <a href="{% url 'app_settings' %}" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">{% if object %}Save Changes{% else %}Add User{% endif %}</button>
+            </footer>
+        </form>
+    </div>
+
+    {% if object %}
+    <!-- ── Reset Password ── -->
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">Reset Password</h3>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="set_password" value="1">
+            <fieldset class="p-4 sm:p-5 space-y-4">
+                <div>
+                    <label for="{{ password_form.password1.id_for_label }}" class="text-sm font-medium text-charcoal">New Password</label>
+                    {{ password_form.password1 }}
+                    {% if password_form.password1.errors %}<p class="mt-1 text-sm text-error-red">{{ password_form.password1.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ password_form.password2.id_for_label }}" class="text-sm font-medium text-charcoal">Confirm New Password</label>
+                    {{ password_form.password2 }}
+                    {% if password_form.password2.errors %}<p class="mt-1 text-sm text-error-red">{{ password_form.password2.errors.0 }}</p>{% endif %}
+                </div>
+                {% if password_form.non_field_errors %}<p class="text-sm text-error-red">{{ password_form.non_field_errors.0 }}</p>{% endif %}
+                <p class="text-xs text-sage">The user will need to sign in again with the new password.</p>
+            </fieldset>
+            <footer class="form-footer">
+                <button type="submit" class="btn-primary">Set Password</button>
+            </footer>
+        </form>
+    </div>
+
+    {% if not is_self %}
+    <!-- ── Account Status ── -->
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">Account Status</h3>
+        </div>
+        <div class="p-4 sm:p-5 flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-charcoal">{% if object.is_active %}Active{% else %}Deactivated{% endif %}</p>
+                <p class="text-xs text-sage">{% if object.is_active %}Deactivated users can no longer sign in. Their history is kept.{% else %}This user cannot sign in.{% endif %}</p>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="toggle_active" value="1">
+                {% if object.is_active %}
+                <button type="submit" class="btn-secondary btn-sm text-error-red border-error-red/30 hover:bg-error-red-50"
+                        onclick="return confirm('Deactivate {{ object.email|default:object.username }}? They will no longer be able to sign in.')">
+                    Deactivate
+                </button>
+                {% else %}
+                <button type="submit" class="btn-secondary btn-sm">Reactivate</button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+</div>
+{% endblock %}

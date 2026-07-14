@@ -99,6 +99,49 @@
         </form>
     </div>
 
+    <!-- ── Users & Access ── -->
+    <div class="card">
+        <div class="section-header flex items-center justify-between">
+            <h3 class="section-title">Users &amp; Access</h3>
+            <a href="{% url 'user_create' %}" class="btn-primary btn-sm">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                </svg>
+                Add User
+            </a>
+        </div>
+        <div class="p-5">
+            <div class="space-y-3">
+                {% for u in app_users %}
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-8 h-8 rounded-full bg-light-sage text-forest flex items-center justify-center text-xs font-semibold shrink-0">
+                            {{ u.first_name|default:u.username|make_list|first|upper }}
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-charcoal truncate">
+                                {{ u.get_full_name|default:u.username }}{% if u == user %} <span class="text-xs text-sage font-normal">(you)</span>{% endif %}
+                            </p>
+                            <p class="text-xs text-sage truncate">{{ u.email|default:u.username }}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 shrink-0">
+                        {% if not u.is_active %}
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-sage border border-sage/20">Inactive</span>
+                        {% elif u.is_staff %}
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-sage-50 text-forest border border-sage/20">Admin</span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-info-blue-50 text-info-blue border border-info-blue/20">Viewer</span>
+                        {% endif %}
+                        <a href="{% url 'user_update' u.pk %}" class="text-xs text-sage hover:text-forest transition-colors">Edit</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="text-xs text-sage mt-4">Users sign in with their email address. Admins have full access; Viewers get read-only access plus health recording.</p>
+        </div>
+    </div>
+
     <!-- ── Rate Types ── -->
     <div class="card">
         <div class="section-header flex items-center justify-between">
@@ -329,7 +372,7 @@
         <div class="p-5 space-y-3">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-charcoal">{{ user.username }}</p>
+                    <p class="text-sm font-medium text-charcoal">{{ user.get_full_name|default:user.username }}</p>
                     <p class="text-xs text-sage">{{ user.email|default:"No email set" }}</p>
                 </div>
                 <a href="{% url 'password_change' %}" class="btn-secondary btn-sm">Change Password</a>
