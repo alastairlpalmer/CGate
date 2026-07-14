@@ -13,6 +13,8 @@ from core.views import (
     health_check,
     rate_type_create,
     rate_type_update,
+    user_create,
+    user_update,
 )
 
 urlpatterns = [
@@ -20,6 +22,8 @@ urlpatterns = [
     path('settings/', app_settings, name='app_settings'),
     path('settings/rates/add/', rate_type_create, name='rate_type_create'),
     path('settings/rates/<int:pk>/edit/', rate_type_update, name='rate_type_update'),
+    path('settings/users/add/', user_create, name='user_create'),
+    path('settings/users/<int:pk>/edit/', user_update, name='user_update'),
     path('settings/dashboard/toggle/', dashboard_toggle, name='dashboard_toggle'),
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),

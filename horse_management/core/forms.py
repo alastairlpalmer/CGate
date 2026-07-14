@@ -5,6 +5,7 @@ Forms for core app.
 from decimal import Decimal
 
 from django import forms
+from django.db.models import Q
 
 from .images import heic_to_jpeg
 from .models import BusinessSettings, Document, Horse, HorsePhoto, Location, Owner, OwnershipShare, Placement, RateType
@@ -512,3 +513,154 @@ class QuickPhotoForm(forms.Form):
             'placeholder': 'Optional note (applies to all photos)',
         }),
     )
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# User management (Settings → Users & Access)
+# ──────────────────────────────────────────────────────────────────────────
+
+USER_ROLE_CHOICES = (
+    ('admin', 'Admin'),
+    ('viewer', 'Viewer'),
+)
+
+
+class UserAccountForm(forms.Form):
+    """Shared fields for creating/editing a login account.
+
+    The email address doubles as the sign-in identifier, so it must be
+    unique across both the email and username columns (legacy accounts may
+    have a plain username).
+    """
+
+    first_name = forms.CharField(
+        max_length=150,
+        widget=forms.TextInput(attrs={'class': 'form-input', 'autocomplete': 'given-name'}),
+    )
+    last_name = forms.CharField(
+        max_length=150,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-input', 'autocomplete': 'family-name'}),
+    )
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={'class': 'form-input', 'autocomplete': 'email'}),
+    )
+    role = forms.ChoiceField(
+        choices=USER_ROLE_CHOICES,
+        initial='viewer',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text="Admins have full access. Viewers get read-only access plus health recording.",
+    )
+
+    def __init__(self, *args, instance=None, **kwargs):
+        self.instance = instance
+        super().__init__(*args, **kwargs)
+
+    def clean_email(self):
+        from django.contrib.auth import get_user_model
+        email = self.cleaned_data['email'].strip().lower()
+        clashes = get_user_model().objects.filter(
+            Q(email__iexact=email) | Q(username__iexact=email)
+        )
+        if self.instance is not None:
+            clashes = clashes.exclude(pk=self.instance.pk)
+        if clashes.exists():
+            raise forms.ValidationError("A user with this email address already exists.")
+        return email
+
+
+class UserCreateForm(UserAccountForm):
+    password1 = forms.CharField(
+        label="Password",
+        widget=forms.PasswordInput(attrs={'class': 'form-input', 'autocomplete': 'new-password'}),
+    )
+    password2 = forms.CharField(
+        label="Confirm password",
+        widget=forms.PasswordInput(attrs={'class': 'form-input', 'autocomplete': 'new-password'}),
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        p1, p2 = cleaned.get('password1'), cleaned.get('password2')
+        if p1 and p2 and p1 != p2:
+            self.add_error('password2', "Passwords don't match.")
+        elif p1:
+            from django.contrib.auth import get_user_model, password_validation
+            probe = get_user_model()(
+                username=cleaned.get('email', ''),
+                email=cleaned.get('email', ''),
+                first_name=cleaned.get('first_name', ''),
+                last_name=cleaned.get('last_name', ''),
+            )
+            try:
+                password_validation.validate_password(p1, user=probe)
+            except forms.ValidationError as e:
+                self.add_error('password1', e)
+        return cleaned
+
+    def save(self):
+        from django.contrib.auth import get_user_model
+        data = self.cleaned_data
+        return get_user_model().objects.create_user(
+            username=data['email'],
+            email=data['email'],
+            password=data['password1'],
+            first_name=data['first_name'],
+            last_name=data['last_name'],
+            is_staff=(data['role'] == 'admin'),
+        )
+
+
+class UserUpdateForm(UserAccountForm):
+    def save(self):
+        data = self.cleaned_data
+        user = self.instance
+        # Keep the sign-in identifier in step when the username is the email
+        # (accounts created here). Legacy usernames are left untouched.
+        if user.username.lower() == (user.email or '').lower() or not user.email:
+            user.username = data['email']
+        user.first_name = data['first_name']
+        user.last_name = data['last_name']
+        user.email = data['email']
+        if data['role'] == 'admin':
+            user.is_staff = True
+        else:
+            user.is_staff = False
+            user.is_superuser = False
+        user.save()
+        return user
+
+
+class AdminSetPasswordForm(forms.Form):
+    """Set a new password for another user (no old password required)."""
+
+    password1 = forms.CharField(
+        label="New password",
+        widget=forms.PasswordInput(attrs={'class': 'form-input', 'autocomplete': 'new-password'}),
+    )
+    password2 = forms.CharField(
+        label="Confirm new password",
+        widget=forms.PasswordInput(attrs={'class': 'form-input', 'autocomplete': 'new-password'}),
+    )
+
+    def __init__(self, *args, user, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        cleaned = super().clean()
+        p1, p2 = cleaned.get('password1'), cleaned.get('password2')
+        if p1 and p2 and p1 != p2:
+            self.add_error('password2', "Passwords don't match.")
+        elif p1:
+            from django.contrib.auth import password_validation
+            try:
+                password_validation.validate_password(p1, user=self.user)
+            except forms.ValidationError as e:
+                self.add_error('password1', e)
+        return cleaned
+
+    def save(self):
+        self.user.set_password(self.cleaned_data['password1'])
+        self.user.save(update_fields=['password'])
+        return self.user

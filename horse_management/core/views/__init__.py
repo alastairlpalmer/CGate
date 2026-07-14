@@ -50,3 +50,7 @@ from .settings import (  # noqa: F401
     rate_type_create,
     rate_type_update,
 )
+from .users import (  # noqa: F401
+    user_create,
+    user_update,
+)
