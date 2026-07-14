@@ -535,6 +535,32 @@ def horse_depart(request, pk):
 
 
 @staff_required
+def horse_reactivate(request, pk):
+    """Repair action: mark a horse active again while its placement is open.
+
+    Used by the stranded-record banner on the horse page — the horse is
+    flagged departed but the placement below is correct, so flipping the
+    flag is all that's needed (no new placement, no date changes).
+    """
+    from ..services import PlacementService
+
+    horse = get_object_or_404(Horse, pk=pk)
+    if request.method == 'POST':
+        if horse.current_placement:
+            PlacementService.reactivate(horse)
+            messages.success(
+                request,
+                f"{horse.name} is active again at {horse.current_placement.location.name}.",
+            )
+        else:
+            messages.error(
+                request,
+                f"{horse.name} has no current placement — use Log Arrival instead.",
+            )
+    return redirect('horse_detail', pk=horse.pk)
+
+
+@staff_required
 def confirm_departure(request, pk):
     """Confirm a horse has departed and deactivate it (HTMX endpoint)."""
     from ..services import PlacementService

@@ -116,7 +116,7 @@ class PlacementService:
         # A horse being moved between fields is on site — if it was flagged
         # departed (e.g. moved back after a stint away), reactivate it so it
         # returns to the Current list rather than staying under Departed.
-        PlacementService._reactivate(horse)
+        PlacementService.reactivate(horse)
 
         # Keep ownership in sync with the new placement owner so current_owner,
         # reminders and extra-charge defaults follow the horse. Only singly
@@ -127,7 +127,7 @@ class PlacementService:
         return new_placement
 
     @staticmethod
-    def _reactivate(horse):
+    def reactivate(horse):
         """Bring a departed horse back onto the Current lists.
 
         Horse.is_active drives the Current/Departed split (lists, search
@@ -177,7 +177,7 @@ class PlacementService:
         LocationUsageService.horses_arrived(location, arrival_date, was_empty=was_empty)
         # A departed horse arriving back must also flip is_active, otherwise
         # the placement saves but the horse stays in the Departed list.
-        PlacementService._reactivate(horse)
+        PlacementService.reactivate(horse)
         return placement
 
     @staticmethod
@@ -241,7 +241,7 @@ class PlacementService:
             placement.save()
             # If the departure had already been confirmed, re-opening the
             # placement alone would strand the horse as inactive-but-placed.
-            PlacementService._reactivate(horse)
+            PlacementService.reactivate(horse)
             return placement
         return None
 
@@ -281,7 +281,7 @@ class PlacementService:
             try:
                 placement.full_clean()
                 placement.save()
-                PlacementService._reactivate(horse)
+                PlacementService.reactivate(horse)
                 created += 1
             except ValidationError as e:
                 errors.append(f"{horse.name}: {e}")

@@ -26,6 +26,7 @@ urlpatterns = [
     path('horses/<int:pk>/move/', views.horse_move, name='horse_move'),
     path('horses/<int:pk>/arrive/', views.horse_arrive, name='horse_arrive'),
     path('horses/<int:pk>/depart/', views.horse_depart, name='horse_depart'),
+    path('horses/<int:pk>/reactivate/', views.horse_reactivate, name='horse_reactivate'),
     path('horses/<int:pk>/confirm-departure/', views.confirm_departure, name='confirm_departure'),
     path('horses/<int:pk>/cancel-departure/', views.cancel_departure, name='cancel_departure'),
     path('horses/confirm-departures/', views.confirm_departures_bulk, name='confirm_departures_bulk'),

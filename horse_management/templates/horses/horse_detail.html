@@ -124,9 +124,14 @@
             {{ horse.name }} is marked as departed but still has an open placement at {{ current_placement.location.name }}.
         </p>
         <p class="text-xs text-charcoal-light mt-1">
-            Use <strong>Depart</strong> to close the placement (the horse then gets a Log Arrival button),
-            or <strong>Move</strong> to place it at the right location and return it to the current list.
+            If the placement shown below is correct, mark the horse as active.
+            Otherwise use <strong>Depart</strong> to close the placement (the horse then gets a Log Arrival button),
+            or <strong>Move</strong> to place it at the right location.
         </p>
+        <form method="post" action="{% url 'horse_reactivate' horse.pk %}" class="mt-3">
+            {% csrf_token %}
+            <button type="submit" class="btn-primary text-xs">Mark as active</button>
+        </form>
     </div>
     {% endif %}
 
