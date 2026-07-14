@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 
 from core.mixins import StaffRequiredMixin
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
@@ -32,6 +32,7 @@ from .forms import (
     BulkExpectedDepartureForm,
     BulkFarrierVisitForm,
     BulkMedicalConditionForm,
+    BulkMoveForm,
     BulkVaccinationForm,
     BulkVetVisitForm,
     BulkWormEggCountForm,
@@ -344,6 +345,7 @@ BULK_FORM_MAP = {
     'condition': BulkMedicalConditionForm,
     'expected_departure': BulkExpectedDepartureForm,
     'actual_departure': BulkActualDepartureForm,
+    'move': BulkMoveForm,
 }
 
 BULK_MODEL_MAP = {
@@ -364,6 +366,7 @@ BULK_LABELS = {
     'condition': 'Medical Condition',
     'expected_departure': 'Expected Departure',
     'actual_departure': 'Departure Date',
+    'move': 'Move to Location',
 }
 
 
@@ -379,6 +382,8 @@ def bulk_health_form(request):
         form = form_class(initial={'date_given': timezone.now().date()})
     elif action_type in ('expected_departure', 'actual_departure'):
         form = form_class(initial={'date': timezone.now().date()})
+    elif action_type == 'move':
+        form = form_class(initial={'move_date': timezone.now().date()})
     elif hasattr(form_class, 'Meta') and hasattr(form_class.Meta, 'model') and 'date' in [f.name for f in form_class.Meta.model._meta.get_fields()]:
         form = form_class(initial={'date': timezone.now().date()})
     else:
@@ -403,10 +408,10 @@ def bulk_health_apply(request):
     if not form_class or not horse_ids:
         return HttpResponseBadRequest('Invalid request')
 
-    # Departure actions end placements and deactivate horses — admin-only
-    # operations everywhere else (horse_depart, log_departure), so the
+    # Departure and move actions change placements — admin-only operations
+    # everywhere else (horse_depart, horse_move, log_departure), so the
     # viewer role must not reach them through the bulk endpoint either.
-    if action_type in ('expected_departure', 'actual_departure') and not request.user.is_staff:
+    if action_type in ('expected_departure', 'actual_departure', 'move') and not request.user.is_staff:
         raise PermissionDenied
 
     form = form_class(request.POST)
@@ -419,10 +424,28 @@ def bulk_health_apply(request):
 
     horses = Horse.objects.filter(pk__in=horse_ids, is_active=True)
     count = 0
+    move_errors = []
 
     with transaction.atomic():
+        # Moves go through PlacementService so old placements are closed,
+        # field-usage history stays correct and per-horse validation
+        # (e.g. move date before arrival) is applied.
+        if action_type == 'move':
+            from core.services import PlacementService
+            for horse in horses:
+                try:
+                    PlacementService.move_horse(
+                        horse,
+                        new_location=form.cleaned_data['new_location'],
+                        move_date=form.cleaned_data['move_date'],
+                        new_rate_type=form.cleaned_data.get('new_rate_type'),
+                        notes=form.cleaned_data.get('notes', ''),
+                    )
+                    count += 1
+                except ValidationError as e:
+                    move_errors.append(f"{horse.name}: {'; '.join(e.messages)}")
         # Departure date actions update placements, not health records
-        if action_type in ('expected_departure', 'actual_departure'):
+        elif action_type in ('expected_departure', 'actual_departure'):
             date_val = form.cleaned_data['date']
             for horse in horses:
                 placement = Placement.objects.filter(
@@ -482,7 +505,16 @@ def bulk_health_apply(request):
                 count += 1
 
     label = BULK_LABELS.get(action_type, action_type)
-    if action_type in ('expected_departure', 'actual_departure'):
+    if action_type == 'move':
+        if count:
+            messages.success(
+                request,
+                f"{count} horse{'s' if count != 1 else ''} moved to "
+                f"{form.cleaned_data['new_location'].name}."
+            )
+        for err in move_errors:
+            messages.error(request, f"Not moved — {err}")
+    elif action_type in ('expected_departure', 'actual_departure'):
         messages.success(request, f"{label} set for {count} horse{'s' if count != 1 else ''}.")
     else:
         messages.success(request, f"{label} recorded for {count} horse{'s' if count != 1 else ''}.")

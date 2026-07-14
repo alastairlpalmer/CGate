@@ -232,6 +232,85 @@ class ArriveMoveViewTests(LifecycleTestCase):
         horse.refresh_from_db()
         self.assertFalse(horse.is_active)
 
+    def test_bulk_move_moves_selected_horses(self):
+        horse2 = Horse.objects.create(name='SNOWY')
+        for h in (self.horse, horse2):
+            Placement.objects.create(
+                horse=h, owner=self.owner, location=self.location,
+                rate_type=self.rate, start_date=self.today - timedelta(days=30),
+            )
+        response = self.client.post(
+            reverse('bulk_health_apply'),
+            {
+                'action_type': 'move',
+                'horse_ids': [self.horse.pk, horse2.pk],
+                'new_location': self.other_location.pk,
+                'move_date': self.today.isoformat(),
+                'notes': '',
+            },
+        )
+        self.assertEqual(response.status_code, 204)
+        for h in (self.horse, horse2):
+            open_placement = h.placements.get(end_date__isnull=True)
+            self.assertEqual(open_placement.location, self.other_location)
+            self.assertEqual(open_placement.start_date, self.today)
+            # Old placement closed the day before the move
+            self.assertTrue(
+                h.placements.filter(
+                    location=self.location,
+                    end_date=self.today - timedelta(days=1),
+                ).exists()
+            )
+
+    def test_bulk_move_reports_per_horse_failures(self):
+        # First horse can move; second arrived today so a same-day move is invalid.
+        horse2 = Horse.objects.create(name='SNOWY')
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=30),
+        )
+        Placement.objects.create(
+            horse=horse2, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today,
+        )
+        response = self.client.post(
+            reverse('bulk_health_apply'),
+            {
+                'action_type': 'move',
+                'horse_ids': [self.horse.pk, horse2.pk],
+                'new_location': self.other_location.pk,
+                'move_date': self.today.isoformat(),
+                'notes': '',
+            },
+            follow=False,
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(
+            self.horse.placements.get(end_date__isnull=True).location,
+            self.other_location,
+        )
+        # The failed horse keeps its original placement
+        self.assertEqual(
+            horse2.placements.get(end_date__isnull=True).location,
+            self.location,
+        )
+
+    def test_bulk_move_forbidden_for_viewers(self):
+        viewer = get_user_model().objects.create_user(
+            username='viewer', password='pw', is_staff=False,
+        )
+        self.client.force_login(viewer)
+        response = self.client.post(
+            reverse('bulk_health_apply'),
+            {
+                'action_type': 'move',
+                'horse_ids': [self.horse.pk],
+                'new_location': self.other_location.pk,
+                'move_date': self.today.isoformat(),
+            },
+        )
+        self.assertEqual(response.status_code, 403)
+
     def test_failed_arrival_rerenders_with_visible_error(self):
         # Overlapping arrival: the horse is still openly placed elsewhere.
         Placement.objects.create(
