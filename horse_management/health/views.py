@@ -433,7 +433,7 @@ def bulk_health_apply(request):
     else:
         horses = Horse.objects.filter(pk__in=horse_ids, is_active=True)
     count = 0
-    move_errors = []
+    action_errors = []
     restore_skipped = []
 
     with transaction.atomic():
@@ -467,9 +467,13 @@ def bulk_health_apply(request):
                     )
                     count += 1
                 except ValidationError as e:
-                    move_errors.append(f"{horse.name}: {'; '.join(e.messages)}")
-        # Departure date actions update placements, not health records
+                    action_errors.append(f"{horse.name}: {'; '.join(e.messages)}")
+        # Departure date actions update placements, not health records.
+        # Placement saves re-validate dates (e.g. departure before arrival),
+        # so each horse gets its own savepoint and failures are reported by
+        # name instead of 500-ing the whole batch.
         elif action_type in ('expected_departure', 'actual_departure'):
+            from core.services import PlacementService
             date_val = form.cleaned_data['date']
             for horse in horses:
                 placement = Placement.objects.filter(
@@ -477,16 +481,19 @@ def bulk_health_apply(request):
                 ).first()
                 if not placement:
                     continue
-                if action_type == 'expected_departure':
-                    placement.expected_departure = date_val
-                else:
-                    placement.end_date = date_val
-                    # Deactivate horse when departure date is today or past
-                    if date_val <= timezone.now().date():
-                        horse.is_active = False
-                        horse.save()
-                placement.save()
-                count += 1
+                try:
+                    with transaction.atomic():
+                        if action_type == 'expected_departure':
+                            placement.expected_departure = date_val
+                            placement.save()
+                        else:
+                            # Same path as the single-horse Depart button:
+                            # validates dates, deactivates when due, and
+                            # rests the field if it empties out.
+                            PlacementService.depart_horse(horse, date_val)
+                    count += 1
+                except ValidationError as e:
+                    action_errors.append(f"{horse.name}: {'; '.join(e.messages)}")
         else:
             for horse in horses:
                 obj = form.save(commit=False)
@@ -549,10 +556,13 @@ def bulk_health_apply(request):
                 f"{count} horse{'s' if count != 1 else ''} moved to "
                 f"{form.cleaned_data['new_location'].name}."
             )
-        for err in move_errors:
+        for err in action_errors:
             messages.error(request, f"Not moved — {err}")
     elif action_type in ('expected_departure', 'actual_departure'):
-        messages.success(request, f"{label} set for {count} horse{'s' if count != 1 else ''}.")
+        if count:
+            messages.success(request, f"{label} set for {count} horse{'s' if count != 1 else ''}.")
+        for err in action_errors:
+            messages.error(request, f"Not set — {err}")
     else:
         messages.success(request, f"{label} recorded for {count} horse{'s' if count != 1 else ''}.")
 
