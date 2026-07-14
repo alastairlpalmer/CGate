@@ -7,7 +7,7 @@ import secrets
 
 from django.contrib import messages
 
-from core.permissions import feature_required
+from core.permissions import LEVEL_VIEW, feature_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -158,9 +158,13 @@ def xero_push_invoice(request, pk):
     return redirect('invoice_detail', pk=pk)
 
 
-@feature_required('xero')
+@feature_required('xero', LEVEL_VIEW)
 def xero_invoice_status(request, pk):
-    """HTMX endpoint: check and return current Xero status for an invoice."""
+    """HTMX endpoint: check and return current Xero status for an invoice.
+
+    Read-only (was login-only before the Role Suite), so view level is
+    enough — connect/disconnect/push stay at full.
+    """
     sync = get_object_or_404(XeroInvoiceSync, invoice_id=pk)
 
     # Throttle: only check Xero if last check was > 5 minutes ago

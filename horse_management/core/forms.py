@@ -612,8 +612,11 @@ class UserUpdateForm(UserAccountForm):
         data = self.cleaned_data
         user = self.instance
         # Keep the sign-in identifier in step when the username is the email
-        # (accounts created here). Legacy usernames are left untouched.
-        if user.username.lower() == (user.email or '').lower() or not user.email:
+        # (accounts created here). Legacy usernames — including email-less
+        # accounts like the createsuperuser admin — are left untouched, so
+        # their existing login name keeps working; they can sign in with the
+        # new email as well via EmailOrUsernameBackend.
+        if user.email and user.username.lower() == user.email.lower():
             user.username = data['email']
         user.first_name = data['first_name']
         user.last_name = data['last_name']

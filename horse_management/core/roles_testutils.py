@@ -10,7 +10,8 @@ from django.contrib.auth import get_user_model
 from .features import DEFAULT_LEVELS
 from .models import Role, UserRole
 
-# Mirrors core/migrations/0026_seed_roles.py
+# Mirrors core/migrations/0026_seed_roles.py as amended by
+# 0027_viewer_restore_read_access (charges/xero readable again).
 VIEWER_ACCESS = {
     "dashboard": "full",
     "horses": "view",
@@ -22,8 +23,8 @@ VIEWER_ACCESS = {
     "finances": "full",
     "invoices": "view",
     "costs": "hidden",
-    "charges": "hidden",
-    "xero": "hidden",
+    "charges": "view",
+    "xero": "view",
     "settings": "hidden",
     "users": "hidden",
 }
