@@ -47,6 +47,15 @@
             <fieldset class="p-4 sm:p-5 space-y-4 sm:space-y-5">
                 <legend class="text-base font-semibold text-charcoal mb-4">New Placement</legend>
 
+                {% if form.non_field_errors %}
+                <div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3">
+                    <p class="text-sm font-medium text-error-red">The move wasn't saved:</p>
+                    {% for error in form.non_field_errors %}
+                    <p class="text-sm text-error-red mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
                 <div>
                     <label for="id_new_location" class="block text-sm font-medium text-charcoal">New Location *</label>
                     {{ form.new_location }}

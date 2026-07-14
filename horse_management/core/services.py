@@ -113,6 +113,11 @@ class PlacementService:
             LocationUsageService.rest_if_empty(old_location, move_date - timedelta(days=1))
         LocationUsageService.horses_arrived(new_location, move_date, was_empty=new_loc_was_empty)
 
+        # A horse being moved between fields is on site — if it was flagged
+        # departed (e.g. moved back after a stint away), reactivate it so it
+        # returns to the Current list rather than staying under Departed.
+        PlacementService._reactivate(horse)
+
         # Keep ownership in sync with the new placement owner so current_owner,
         # reminders and extra-charge defaults follow the horse. Only singly
         # owned horses are auto-adjusted; genuine fractional co-ownership must
@@ -120,6 +125,19 @@ class PlacementService:
         PlacementService._sync_single_owner_share(horse, new_owner)
 
         return new_placement
+
+    @staticmethod
+    def _reactivate(horse):
+        """Bring a departed horse back onto the Current lists.
+
+        Horse.is_active drives the Current/Departed split (lists, search
+        dropdown) while the open placement drives the record-page buttons.
+        Any operation that puts a horse back on site must set both, or the
+        horse stays labelled Departed despite having a live placement.
+        """
+        if not horse.is_active:
+            horse.is_active = True
+            horse.save(update_fields=['is_active'])
 
     @staticmethod
     def _sync_single_owner_share(horse, owner):
@@ -157,6 +175,9 @@ class PlacementService:
         placement.full_clean()
         placement.save()
         LocationUsageService.horses_arrived(location, arrival_date, was_empty=was_empty)
+        # A departed horse arriving back must also flip is_active, otherwise
+        # the placement saves but the horse stays in the Departed list.
+        PlacementService._reactivate(horse)
         return placement
 
     @staticmethod
@@ -190,8 +211,22 @@ class PlacementService:
         return current_placement
 
     @staticmethod
+    @transaction.atomic
     def confirm_departure(horse):
-        """Mark a horse as departed (deactivate). Used for pending departures."""
+        """Mark a horse as departed (deactivate). Used for pending departures.
+
+        Defensively closes any still-open placement so the horse can't end up
+        deactivated while apparently occupying a field — that stranded state
+        hides the Log Arrival button while the search dropdown says Departed.
+        """
+        open_placement = horse.placements.filter(end_date__isnull=True).first()
+        if open_placement:
+            today = timezone.now().date()
+            open_placement.end_date = max(today, open_placement.start_date)
+            open_placement.save()
+            LocationUsageService.rest_if_empty(
+                open_placement.location, open_placement.end_date
+            )
         horse.is_active = False
         horse.save(update_fields=['is_active'])
 
@@ -204,18 +239,23 @@ class PlacementService:
         if placement:
             placement.end_date = None
             placement.save()
+            # If the departure had already been confirmed, re-opening the
+            # placement alone would strand the horse as inactive-but-placed.
+            PlacementService._reactivate(horse)
             return placement
         return None
 
     @staticmethod
+    @transaction.atomic
     def confirm_departures_bulk(horse_ids):
         """Confirm multiple horses as departed in one action.
 
         Returns the count of horses deactivated.
         """
-        return Horse.objects.filter(
-            pk__in=horse_ids, is_active=True
-        ).update(is_active=False)
+        horses = list(Horse.objects.filter(pk__in=horse_ids, is_active=True))
+        for horse in horses:
+            PlacementService.confirm_departure(horse)
+        return len(horses)
 
     @staticmethod
     @transaction.atomic
@@ -241,6 +281,7 @@ class PlacementService:
             try:
                 placement.full_clean()
                 placement.save()
+                PlacementService._reactivate(horse)
                 created += 1
             except ValidationError as e:
                 errors.append(f"{horse.name}: {e}")

@@ -403,13 +403,13 @@ def horse_move(request, pk):
                     notes=form.cleaned_data['notes'],
                 )
             except ValidationError as e:
-                messages.error(request, str(e))
+                messages.error(request, '; '.join(e.messages))
                 return render(request, 'horses/horse_move.html', {
                     'horse': horse, 'form': form, 'current_placement': current_placement
                 })
 
             messages.success(request, f"{horse.name} moved successfully.")
-            return redirect('horse_detail', pk=horse.pk)
+            return redirect('horse_list')
     else:
         form = MoveHorseForm(initial={
             'move_date': timezone.now().date()
@@ -489,9 +489,9 @@ def horse_arrive(request, pk):
                     placement.location.name,
                     reverse('horse_photo_add', args=[horse.pk]),
                 ))
-                return redirect('horse_detail', pk=horse.pk)
+                return redirect('horse_list')
             except ValidationError as e:
-                messages.error(request, str(e))
+                messages.error(request, '; '.join(e.messages))
     else:
         initial = {'arrival_date': timezone.now().date()}
         primary_owner = horse.primary_owner
