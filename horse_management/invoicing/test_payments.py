@@ -3,12 +3,12 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from core.models import Horse, Location, Owner, Placement, RateType
+from core.roles_testutils import make_admin, make_viewer
 from invoicing.models import Invoice, Payment
 from invoicing.services import InvoiceService
 
@@ -106,8 +106,8 @@ class PaymentLedgerModelTests(TestCase):
 class PaymentViewTests(TestCase):
 
     def setUp(self):
-        self.staff = User.objects.create_user("admin", password="pw", is_staff=True)
-        self.viewer = User.objects.create_user("viewer", password="pw")
+        self.staff = make_admin()
+        self.viewer = make_viewer()  # invoices=view — no write access
         self.invoice = _invoice()
         self.invoice.mark_as_sent()
         self.url = reverse("payment_create", args=[self.invoice.pk])
@@ -152,7 +152,15 @@ class PaymentViewTests(TestCase):
 
     def test_viewer_forbidden(self):
         self.client.force_login(self.viewer)
-        self.assertEqual(self.client.get(self.url).status_code, 403)
+        # Insufficient access on a plain GET redirects to the dashboard...
+        self.assertRedirects(self.client.get(self.url), "/")
+        # ...and an attempted write is rejected outright.
+        response = self.client.post(self.url, {
+            "date": "2026-07-01", "amount": "60.00",
+            "method": "cash", "reference": "", "notes": "",
+        })
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(self.invoice.payments.count(), 0)
 
     def test_delete_payment(self):
         payment = Payment.objects.create(
@@ -178,7 +186,7 @@ class PaymentViewTests(TestCase):
 class OutstandingKpiTests(TestCase):
 
     def test_finances_outstanding_subtracts_part_payments(self):
-        staff = User.objects.create_user("admin", password="pw", is_staff=True)
+        staff = make_admin()
         invoice = _invoice()
         invoice.mark_as_sent()
         Payment.objects.create(
@@ -189,7 +197,7 @@ class OutstandingKpiTests(TestCase):
         self.assertEqual(response.context["outstanding_total"], Decimal("100.00"))
 
     def test_dashboard_outstanding_shows_balance(self):
-        staff = User.objects.create_user("admin", password="pw", is_staff=True)
+        staff = make_admin()
         invoice = _invoice()
         invoice.mark_as_sent()
         Payment.objects.create(

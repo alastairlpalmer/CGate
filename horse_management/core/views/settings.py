@@ -36,7 +36,6 @@ def app_settings(request):
     if has_feature_access(request.user, 'settings', 'full'):
         from billing.models import ServiceProvider
         from health.models import VaccinationType
-        from xero_integration.models import XeroConnection
 
         from ..forms import BusinessSettingsForm
         from ..models import BusinessSettings, RateType
@@ -52,13 +51,16 @@ def app_settings(request):
             biz_form = BusinessSettingsForm(instance=business)
 
         ctx.update({
-            'xero_connection': XeroConnection.get_connection(),
             'providers': ServiceProvider.objects.filter(is_active=True).order_by('name'),
             'biz_form': biz_form,
             'rate_types': RateType.objects.all(),
             'vaccination_types': VaccinationType.objects.all(),
             'locations': Location.objects.order_by('site', 'name'),
         })
+
+    if has_feature_access(request.user, 'xero', 'full'):
+        from xero_integration.models import XeroConnection
+        ctx['xero_connection'] = XeroConnection.get_connection()
 
     if has_feature_access(request.user, 'users', 'full'):
         from django.contrib.auth import get_user_model

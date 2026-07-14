@@ -11,12 +11,12 @@ Covers:
 from datetime import date
 from decimal import Decimal
 
-from django.contrib.auth.models import User
 from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from core.models import Horse, Location, Owner, Placement, RateType
+from core.roles_testutils import make_admin, make_user_with_access, make_viewer
 from invoicing.models import Invoice
 from invoicing.services import InvoiceService
 
@@ -39,8 +39,8 @@ def _make_billed_owner(name, email, horse_name):
 class InvoiceBulkActionTests(TestCase):
 
     def setUp(self):
-        self.staff = User.objects.create_user("admin", password="pw", is_staff=True)
-        self.viewer = User.objects.create_user("viewer", password="pw", is_staff=False)
+        self.staff = make_admin()
+        self.viewer = make_viewer()  # invoices=view — no write access
         self.o1, _ = _make_billed_owner("Alice", "a@example.com", "Ghost")
         self.o2, _ = _make_billed_owner("Bob", "", "Thunder")  # no email
         self.inv1 = InvoiceService.create_invoice(self.o1, *PERIOD)
@@ -105,7 +105,7 @@ class InvoiceBulkActionTests(TestCase):
 class HealthCreateRedirectTests(TestCase):
 
     def setUp(self):
-        self.user = User.objects.create_user("admin", password="pw", is_staff=True)
+        self.user = make_admin()
         self.client.force_login(self.user)
         self.owner, self.horse = _make_billed_owner("Alice", "a@example.com", "Ghost")
 
@@ -155,7 +155,9 @@ class HealthCreateRedirectTests(TestCase):
 class HorseOwnerLookupTests(TestCase):
 
     def test_returns_current_owner(self):
-        user = User.objects.create_user("viewer", password="pw")
+        # The lookup backs the charge form — it needs charges view access
+        # (which the seeded Viewer role does not include).
+        user = make_user_with_access("charge-viewer", charges="view")
         self.client.force_login(user)
         owner, horse = _make_billed_owner("Alice", "a@example.com", "Ghost")
         response = self.client.get(reverse("horse_owner"), {"horse": horse.pk})

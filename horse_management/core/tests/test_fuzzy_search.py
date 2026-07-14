@@ -56,6 +56,8 @@ class HorseFuzzySearchTests(TestCase):
         )
         cls.user.set_password('x')
         cls.user.save()
+        from core.roles_testutils import administrator_role, assign_role
+        assign_role(cls.user, administrator_role())
 
         cls.owner = Owner.objects.create(
             name='Sarah Mitchell', email='sarah@example.com', phone='07700111222'

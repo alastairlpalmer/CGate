@@ -9,8 +9,9 @@ Covers:
 - Dashboard view skips queries for hidden widgets.
 - ``dashboard_health_alerts`` returns an empty body when no health widget is
   visible.
-- Settings page permissions: non-staff can view their dashboard toggles;
-  staff still see the business-config sections.
+- Settings page permissions: non-admin roles can view their dashboard
+  toggles; roles with Business-settings access still see the business-config
+  sections.
 - Regression: multi-line Django comments don't leak into rendered HTML.
 """
 
@@ -19,26 +20,28 @@ import re
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
-from django.utils import timezone
 
 from core.dashboard_widgets import DEFAULT_LAYOUT, WIDGETS
 from core.models import DashboardPreference
+from core.roles_testutils import make_admin, make_user_with_access, make_viewer
 
 User = get_user_model()
 
 
-def make_user(username='testuser', is_staff=False):
-    u = User(
-        username=username,
-        last_login=timezone.now(),
-        date_joined=timezone.now(),
-        is_staff=is_staff,
-        is_active=True,
-        is_superuser=False,
+def make_user(username='testuser'):
+    """A non-admin user whose role can see the dashboard and every widget's
+    feature area, but none of the admin areas (settings, users)."""
+    return make_user_with_access(
+        username,
+        dashboard='full',
+        horses='view',
+        owners='view',
+        locations='view',
+        health='full',
+        finances='full',
+        invoices='view',
+        charges='view',
     )
-    u.set_password('x')
-    u.save()
-    return u
 
 
 class DashboardPreferenceModelTests(TestCase):
@@ -173,7 +176,7 @@ class SettingsPagePermissionsTests(TestCase):
     don't see the business-config cards."""
 
     def test_non_staff_sees_dashboard_widgets_but_not_business_sections(self):
-        user = make_user('nonstaff', is_staff=False)
+        user = make_user('nonstaff')
         self.client.force_login(user)
         resp = self.client.get(reverse('app_settings'))
         self.assertEqual(resp.status_code, 200)
@@ -189,7 +192,8 @@ class SettingsPagePermissionsTests(TestCase):
         self.assertNotIn('Integrations', body)
 
     def test_staff_sees_both_business_and_dashboard_sections(self):
-        user = make_user('staffuser', is_staff=True)
+        from core.roles_testutils import make_admin
+        user = make_admin('staffuser')
         self.client.force_login(user)
         resp = self.client.get(reverse('app_settings'))
         self.assertEqual(resp.status_code, 200)
@@ -200,7 +204,7 @@ class SettingsPagePermissionsTests(TestCase):
     def test_standalone_prefs_page_is_gone(self):
         """The old /settings/dashboard/ URL was removed; no named route exists
         and the path 404s."""
-        user = make_user('urlcheck', is_staff=False)
+        user = make_user('urlcheck')
         self.client.force_login(user)
         resp = self.client.get('/settings/dashboard/')
         self.assertEqual(resp.status_code, 404)
@@ -309,7 +313,7 @@ class FinancesChartRenderingTests(TestCase):
         self.assertEqual(resp.status_code, 302)
 
     def test_finances_renders_for_non_staff(self):
-        user = make_user('viewerfin', is_staff=False)
+        user = make_user('viewerfin')
         self.client.force_login(user)
         resp = self.client.get(reverse('finances'))
         self.assertEqual(resp.status_code, 200)

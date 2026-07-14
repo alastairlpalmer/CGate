@@ -30,6 +30,8 @@ class ListSearchTestCase(TestCase):
         )
         cls.user.set_password('x')
         cls.user.save()
+        from core.roles_testutils import administrator_role, assign_role
+        assign_role(cls.user, administrator_role())
 
         cls.alice = Owner.objects.create(name='Alice Appleby', email='alice@example.com', phone='07700111222')
         cls.bob = Owner.objects.create(name='Bob Bramble', email='bob@stables.net', phone='07700999888')

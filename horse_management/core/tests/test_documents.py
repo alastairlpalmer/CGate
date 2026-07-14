@@ -2,7 +2,6 @@
 
 from datetime import timedelta
 
-from django.contrib.auth.models import User
 from django.core import mail
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -11,6 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.models import BusinessSettings, Document, Horse, Owner
+from core.roles_testutils import make_admin, make_viewer
 from notifications.tasks import send_document_expiry_reminders
 
 PDF_BYTES = b"%PDF-1.4 test"
@@ -63,8 +63,8 @@ class DocumentModelTests(TestCase):
 class DocumentViewTests(TestCase):
 
     def setUp(self):
-        self.staff = User.objects.create_user("admin", password="pw", is_staff=True)
-        self.viewer = User.objects.create_user("viewer", password="pw")
+        self.staff = make_admin()
+        self.viewer = make_viewer()
         self.horse = Horse.objects.create(name="Ghost")
         self.owner = Owner.objects.create(name="Alice", email="a@example.com")
 
@@ -105,16 +105,21 @@ class DocumentViewTests(TestCase):
         self.assertEqual(Document.objects.count(), 0)
 
     def test_viewer_cannot_upload_or_delete(self):
+        # Documents need 'horses' full; the Viewer role only has view.
         self.client.force_login(self.viewer)
         response = self.client.get(
             reverse("document_create") + f"?horse={self.horse.pk}"
         )
-        self.assertEqual(response.status_code, 403)
+        # Plain GET denial redirects to the dashboard with a message.
+        self.assertRedirects(response, reverse("dashboard"))
+        self.assertEqual(Document.objects.count(), 0)
         doc = Document.objects.create(
             horse=self.horse, doc_type="passport", title="P", file=_pdf()
         )
+        # POST denial is a hard 403.
         response = self.client.post(reverse("document_delete", args=[doc.pk]))
         self.assertEqual(response.status_code, 403)
+        self.assertTrue(Document.objects.filter(pk=doc.pk).exists())
 
     def test_delete(self):
         self.client.force_login(self.staff)

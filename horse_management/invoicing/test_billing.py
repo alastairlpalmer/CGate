@@ -304,9 +304,8 @@ class EmptyInvoiceGuardTests(TestCase):
     """#7 — the manual create view must not make empty £0 invoices."""
 
     def setUp(self):
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        User.objects.create_user("staff", password="pw", is_staff=True)
+        from core.roles_testutils import make_admin
+        make_admin("staff")
         self.client.login(username="staff", password="pw")
         self.owner = Owner.objects.create(name="Idle Owner")  # no placements/charges
 
@@ -328,8 +327,8 @@ class ShareHeaderDisplayTests(TestCase):
     precision as the line descriptions (e.g. 33.33%, not a rounded 33%)."""
 
     def setUp(self):
-        from django.contrib.auth import get_user_model
-        get_user_model().objects.create_user("staff", password="pw", is_staff=True)
+        from core.roles_testutils import make_admin
+        make_admin("staff")
         self.client.login(username="staff", password="pw")
         self.loc = Location.objects.create(site="Colgate", name="Top Field")
         self.rate = RateType.objects.create(name="Premium", daily_rate=Decimal("7.00"))

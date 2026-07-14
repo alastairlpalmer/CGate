@@ -9,13 +9,13 @@ Depart buttons on the record page while the search dropdown said Departed.
 
 from datetime import timedelta
 
-from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from core.forms import HorseForm
 from core.models import Horse, Location, Owner, Placement, RateType
+from core.roles_testutils import make_admin, make_viewer
 from core.services import PlacementService
 
 
@@ -309,9 +309,7 @@ class HorseFormDeactivationGuardTests(LifecycleTestCase):
 class ArriveMoveViewTests(LifecycleTestCase):
     def setUp(self):
         super().setUp()
-        self.staff = get_user_model().objects.create_user(
-            username='admin', password='pw', is_staff=True,
-        )
+        self.staff = make_admin()
         self.client.force_login(self.staff)
 
     def test_arrive_view_saves_reactivates_and_returns_to_list(self):
@@ -548,9 +546,9 @@ class ArriveMoveViewTests(LifecycleTestCase):
         )
 
     def test_bulk_restore_forbidden_for_viewers(self):
-        viewer = get_user_model().objects.create_user(
-            username='viewer2', password='pw', is_staff=False,
-        )
+        # Viewer has full health access but only view on locations — placement
+        # actions through the bulk endpoint must still be denied.
+        viewer = make_viewer(username='viewer2')
         self.client.force_login(viewer)
         response = self.client.post(
             reverse('bulk_health_apply'),
@@ -559,9 +557,7 @@ class ArriveMoveViewTests(LifecycleTestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_bulk_move_forbidden_for_viewers(self):
-        viewer = get_user_model().objects.create_user(
-            username='viewer', password='pw', is_staff=False,
-        )
+        viewer = make_viewer(username='viewer')
         self.client.force_login(viewer)
         response = self.client.post(
             reverse('bulk_health_apply'),
