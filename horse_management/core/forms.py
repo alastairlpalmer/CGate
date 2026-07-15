@@ -543,6 +543,20 @@ class UserAccountForm(forms.Form):
         return email
 
 
+def _clean_password_pair(form, cleaned, user):
+    """Shared match + strength validation for the create and reset forms —
+    one definition so the two flows can't drift on what they accept."""
+    p1, p2 = cleaned.get('password1'), cleaned.get('password2')
+    if p1 and p2 and p1 != p2:
+        form.add_error('password2', "Passwords don't match.")
+    elif p1:
+        from django.contrib.auth import password_validation
+        try:
+            password_validation.validate_password(p1, user=user)
+        except forms.ValidationError as e:
+            form.add_error('password1', e)
+
+
 class UserCreateForm(UserAccountForm):
     password1 = forms.CharField(
         label="Password",
@@ -555,21 +569,15 @@ class UserCreateForm(UserAccountForm):
 
     def clean(self):
         cleaned = super().clean()
-        p1, p2 = cleaned.get('password1'), cleaned.get('password2')
-        if p1 and p2 and p1 != p2:
-            self.add_error('password2', "Passwords don't match.")
-        elif p1:
-            from django.contrib.auth import get_user_model, password_validation
-            probe = get_user_model()(
-                username=cleaned.get('email', ''),
-                email=cleaned.get('email', ''),
-                first_name=cleaned.get('first_name', ''),
-                last_name=cleaned.get('last_name', ''),
-            )
-            try:
-                password_validation.validate_password(p1, user=probe)
-            except forms.ValidationError as e:
-                self.add_error('password1', e)
+        from django.contrib.auth import get_user_model
+        # Unsaved probe so similarity validators can see the name/email.
+        probe = get_user_model()(
+            username=cleaned.get('email', ''),
+            email=cleaned.get('email', ''),
+            first_name=cleaned.get('first_name', ''),
+            last_name=cleaned.get('last_name', ''),
+        )
+        _clean_password_pair(self, cleaned, probe)
         return cleaned
 
     def save(self):
@@ -625,15 +633,7 @@ class AdminSetPasswordForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
-        p1, p2 = cleaned.get('password1'), cleaned.get('password2')
-        if p1 and p2 and p1 != p2:
-            self.add_error('password2', "Passwords don't match.")
-        elif p1:
-            from django.contrib.auth import password_validation
-            try:
-                password_validation.validate_password(p1, user=self.user)
-            except forms.ValidationError as e:
-                self.add_error('password1', e)
+        _clean_password_pair(self, cleaned, self.user)
         return cleaned
 
     def save(self):

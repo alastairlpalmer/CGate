@@ -1,11 +1,28 @@
 {% if pending_departures %}
-<div class="card">
+<div class="card" id="pending-departures-card">
     <div class="section-header">
         <div class="flex items-center gap-2.5">
             <h2 class="section-title">Pending Departures</h2>
-            <span class="badge-warning">{{ pending_departures|length }}</span>
+            <span class="badge-warning">{{ pending_departure_ids|length }}</span>
         </div>
+        {% if pending_departure_ids|length > 1 %}
+        <form method="post" action="{% url 'confirm_departures_bulk' %}"
+              hx-post="{% url 'confirm_departures_bulk' %}"
+              hx-target="#pending-departures-card"
+              hx-swap="outerHTML"
+              hx-select="unset"
+              hx-confirm="Confirm all {{ pending_departure_ids|length }} horses as departed? They'll move to the Departed list.">
+            {% csrf_token %}
+            {% for id in pending_departure_ids %}
+            <input type="hidden" name="horse_ids" value="{{ id }}">
+            {% endfor %}
+            <button type="submit" class="btn-primary btn-xs" title="Confirm every pending departure below">
+                Confirm all {{ pending_departure_ids|length }}
+            </button>
+        </form>
+        {% else %}
         <span class="text-xs text-sage">Confirm horses have left</span>
+        {% endif %}
     </div>
     <div class="px-5 py-3 space-y-1.5">
         {% for group in pending_departures %}
@@ -27,7 +44,9 @@
                         {% for id in group.horse_ids %}
                         <input type="hidden" name="horse_ids" value="{{ id }}">
                         {% endfor %}
-                        <button type="submit" class="btn-primary btn-xs">Confirm All</button>
+                        <button type="submit" class="btn-primary btn-xs">
+                            {% if group.horses|length > 1 %}Confirm {{ group.horses|length }}{% else %}Confirm{% endif %}
+                        </button>
                     </form>
                 </div>
             </div>

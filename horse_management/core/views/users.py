@@ -12,7 +12,12 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from ..forms import AdminSetPasswordForm, UserCreateForm, UserUpdateForm
-from ..permissions import LEVEL_FULL, LEVEL_ORDER, feature_required
+from ..permissions import (
+    LEVEL_FULL,
+    LEVEL_ORDER,
+    feature_required,
+    has_feature_access,
+)
 
 User = get_user_model()
 
@@ -21,25 +26,30 @@ def _grants_user_management(role):
     return LEVEL_ORDER[role.resolved_access()['users']] >= LEVEL_ORDER[LEVEL_FULL]
 
 
-def _other_role_managers(user):
-    """Active users other than ``user`` who can manage users & roles.
+def _managers_excluding(user_pks):
+    """Active users outside ``user_pks`` who can manage users & roles.
 
-    Guards the last-manager lockout. Superusers count; so does anyone whose
-    role resolves to Full on the ``users`` feature. The roles table is tiny,
-    so resolving each role in Python is fine.
+    The single definition of "manager" behind every last-manager lockout
+    guard (user demotion/deactivation here, role demotion/deletion in
+    roles.py). Superusers count; so does anyone whose role resolves to Full
+    on the ``users`` feature. The roles table is tiny, so resolving each
+    role in Python is fine.
     """
     from ..models import Role
 
     manager_role_ids = [r.pk for r in Role.objects.all() if _grants_user_management(r)]
-    return User.objects.filter(is_active=True).exclude(pk=user.pk).filter(
+    return User.objects.filter(is_active=True).exclude(pk__in=user_pks).filter(
         Q(is_superuser=True) | Q(role_assignment__role_id__in=manager_role_ids)
     )
 
 
+def _other_role_managers(user):
+    return _managers_excluding([user.pk])
+
+
 def _is_manager(user):
-    return user.is_superuser or (
-        hasattr(user, 'role_assignment') and _grants_user_management(user.role_assignment.role)
-    )
+    # Same resolution the permission layer uses everywhere else.
+    return has_feature_access(user, 'users', LEVEL_FULL)
 
 
 @feature_required('users')

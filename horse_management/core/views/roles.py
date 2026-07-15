@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST
 from ..forms import RoleForm
 from ..models import Role, UserRole
 from ..permissions import feature_required
-from .users import _grants_user_management, _other_role_managers
+from .users import _grants_user_management, _managers_excluding
 
 
 def _demotion_locks_out(role, new_access_grants_users):
@@ -24,14 +24,7 @@ def _demotion_locks_out(role, new_access_grants_users):
     members = list(role.assignments.filter(user__is_active=True).values_list('user_id', flat=True))
     if not members:
         return False
-    from django.contrib.auth import get_user_model
-    from django.db.models import Q
-    other_manager_role_ids = [
-        r.pk for r in Role.objects.exclude(pk=role.pk) if _grants_user_management(r)
-    ]
-    return not get_user_model().objects.filter(is_active=True).exclude(pk__in=members).filter(
-        Q(is_superuser=True) | Q(role_assignment__role_id__in=other_manager_role_ids)
-    ).exists()
+    return not _managers_excluding(members).exists()
 
 
 @feature_required('users')
