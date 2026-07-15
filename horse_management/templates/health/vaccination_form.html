@@ -112,6 +112,15 @@
                         {% endif %}
                     </div>
 
+                    <div>
+                        <label for="{{ form.cost.id_for_label }}" class="text-sm font-medium text-charcoal">Cost (&pound;)</label>
+                        {{ form.cost }}
+                        <p class="mt-1 text-xs text-sage">A cost above 0 adds a charge to the owner's next invoice.</p>
+                        {% if form.cost.errors %}
+                          <p class="mt-1 text-sm text-error-red">{{ form.cost.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
                     <div class="sm:col-span-2">
                         <label for="{{ form.notes.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.notes.label }}</label>
                         {{ form.notes }}

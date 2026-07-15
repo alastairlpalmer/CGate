@@ -377,6 +377,62 @@ BULK_LABELS = {
     'restore': 'Undo Departure',
 }
 
+def _charge_details(record):
+    """ExtraCharge fields derived from a billable health record, or None
+    for record types that don't bill (conditions, egg counts)."""
+    if isinstance(record, FarrierVisit):
+        return {'charge_type': 'farrier', 'service_provider': record.service_provider,
+                'description': f"Farrier - {record.get_work_done_display()}",
+                'date': record.date}
+    if isinstance(record, VetVisit):
+        return {'charge_type': 'vet', 'service_provider': record.vet,
+                'description': f"Vet - {record.reason[:200]}",
+                'date': record.date}
+    if isinstance(record, Vaccination):
+        return {'charge_type': 'vaccination', 'service_provider': record.vet,
+                'description': f"Vaccination - {record.vaccination_type.name}",
+                'date': record.date_given}
+    if isinstance(record, WormingTreatment):
+        return {'charge_type': 'medication', 'service_provider': None,
+                'description': f"Worming - {record.product_name}",
+                'date': record.date}
+    return None
+
+
+def sync_record_charge(record):
+    """Create or update the ExtraCharge behind a billable health record.
+
+    The single definition of record→charge billing, shared by the create,
+    update and bulk flows for farrier, vet, vaccination and worming records:
+    cost > 0 with no charge yet → create one for the horse's current owner;
+    an existing uninvoiced charge → resync amount/date/description/provider.
+    Invoiced charges are never touched.
+    """
+    details = _charge_details(record)
+    if details is None:
+        return
+    charge = record.extra_charge
+    if charge is None:
+        if not record.cost or record.cost <= 0:
+            return
+        owner = record.horse.current_owner
+        if not owner:
+            return
+        record.extra_charge = ExtraCharge.objects.create(
+            horse=record.horse,
+            owner=owner,
+            amount=record.cost,
+            **details,
+        )
+        record.save(update_fields=['extra_charge'])
+    elif not charge.invoiced:
+        charge.amount = record.cost
+        charge.date = details['date']
+        charge.description = details['description']
+        charge.service_provider = details['service_provider']
+        charge.save(update_fields=['amount', 'date', 'description', 'service_provider'])
+
+
 # Placement-lifecycle bulk actions are gated on the same feature as their
 # single-horse equivalents (horse_move, horse_depart, horse_reactivate,
 # confirm/cancel_departure all require horses=full); everything else in the
@@ -532,39 +588,16 @@ def bulk_health_apply(request):
                 obj = form.save(commit=False)
                 obj.pk = None
                 obj.horse = horse
+                if hasattr(obj, 'extra_charge'):
+                    # form.save reuses one instance across the loop — without
+                    # this, horse #2 inherits horse #1's charge FK and hits
+                    # the one-to-one constraint.
+                    obj.extra_charge = None
                 obj.save()
 
-                # Create ExtraCharge for farrier visits with cost > 0
-                if action_type == 'farrier' and form.cleaned_data.get('cost', 0) > 0:
-                    owner = horse.current_owner
-                    if owner:
-                        charge = ExtraCharge.objects.create(
-                            horse=horse,
-                            owner=owner,
-                            service_provider=obj.service_provider,
-                            charge_type='farrier',
-                            date=obj.date,
-                            description=f"Farrier - {obj.get_work_done_display()}",
-                            amount=obj.cost,
-                        )
-                        obj.extra_charge = charge
-                        obj.save()
-
-                # Create ExtraCharge for vet visits with cost > 0
-                if action_type == 'vet_visit' and form.cleaned_data.get('cost', 0) > 0:
-                    owner = horse.current_owner
-                    if owner:
-                        charge = ExtraCharge.objects.create(
-                            horse=horse,
-                            owner=owner,
-                            service_provider=obj.vet,
-                            charge_type='vet',
-                            date=obj.date,
-                            description=f"Vet - {obj.reason[:200]}",
-                            amount=obj.cost,
-                        )
-                        obj.extra_charge = charge
-                        obj.save()
+                # Farrier/vet/vaccination/worming records with a cost bill
+                # the horse's owner — same helper as the single-record views.
+                sync_record_charge(obj)
 
                 count += 1
 
@@ -697,8 +730,10 @@ class VaccinationCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, Cre
         return initial
 
     def form_valid(self, form):
+        response = super().form_valid(form)
+        sync_record_charge(form.instance)
         messages.success(self.request, "Vaccination record added successfully.")
-        return super().form_valid(form)
+        return response
 
 
 class VaccinationUpdateView(FeatureAccessMixin, UpdateView):
@@ -709,6 +744,11 @@ class VaccinationUpdateView(FeatureAccessMixin, UpdateView):
 
     def get_success_url(self):
         return reverse('health_dashboard') + '?type=vaccinations'
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        sync_record_charge(form.instance)
+        return response
 
 
 # ─── Vaccination Type Views ──────────────────────────────────────────
@@ -813,25 +853,7 @@ class FarrierCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateV
 
     def form_valid(self, form):
         response = super().form_valid(form)
-
-        # Optionally create an extra charge for the farrier visit
-        if form.cleaned_data['cost'] > 0:
-            horse = form.instance.horse
-            owner = horse.current_owner
-
-            if owner:
-                charge = ExtraCharge.objects.create(
-                    horse=horse,
-                    owner=owner,
-                    service_provider=form.instance.service_provider,
-                    charge_type='farrier',
-                    date=form.instance.date,
-                    description=f"Farrier - {form.instance.get_work_done_display()}",
-                    amount=form.instance.cost,
-                )
-                form.instance.extra_charge = charge
-                form.instance.save()
-
+        sync_record_charge(form.instance)
         messages.success(self.request, "Farrier visit recorded successfully.")
         return response
 
@@ -847,16 +869,7 @@ class FarrierUpdateView(FeatureAccessMixin, UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-
-        # Sync linked ExtraCharge if it exists and hasn't been invoiced
-        if form.instance.extra_charge and not form.instance.extra_charge.invoiced:
-            charge = form.instance.extra_charge
-            charge.amount = form.instance.cost
-            charge.date = form.instance.date
-            charge.description = f"Farrier - {form.instance.get_work_done_display()}"
-            charge.service_provider = form.instance.service_provider
-            charge.save(update_fields=['amount', 'date', 'description', 'service_provider'])
-
+        sync_record_charge(form.instance)
         messages.success(self.request, "Farrier visit updated successfully.")
         return response
 
@@ -902,8 +915,10 @@ class WormingCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateV
         return initial
 
     def form_valid(self, form):
+        response = super().form_valid(form)
+        sync_record_charge(form.instance)
         messages.success(self.request, "Worming treatment recorded successfully.")
-        return super().form_valid(form)
+        return response
 
 
 class WormingUpdateView(FeatureAccessMixin, UpdateView):
@@ -914,6 +929,11 @@ class WormingUpdateView(FeatureAccessMixin, UpdateView):
 
     def get_success_url(self):
         return reverse('health_dashboard') + '?type=worming'
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        sync_record_charge(form.instance)
+        return response
 
 
 # ─── Worm Egg Count Views ────────────────────────────────────────────
@@ -1070,25 +1090,7 @@ class VetVisitCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, Create
 
     def form_valid(self, form):
         response = super().form_valid(form)
-
-        # Auto-create ExtraCharge if cost > 0 (same pattern as FarrierCreateView)
-        if form.cleaned_data['cost'] > 0:
-            horse = form.instance.horse
-            owner = horse.current_owner
-
-            if owner:
-                charge = ExtraCharge.objects.create(
-                    horse=horse,
-                    owner=owner,
-                    service_provider=form.instance.vet,
-                    charge_type='vet',
-                    date=form.instance.date,
-                    description=f"Vet - {form.instance.reason[:200]}",
-                    amount=form.instance.cost,
-                )
-                form.instance.extra_charge = charge
-                form.instance.save()
-
+        sync_record_charge(form.instance)
         messages.success(self.request, "Vet visit recorded successfully.")
         return response
 
@@ -1104,16 +1106,7 @@ class VetVisitUpdateView(FeatureAccessMixin, UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-
-        # Sync linked ExtraCharge if it exists and hasn't been invoiced
-        if form.instance.extra_charge and not form.instance.extra_charge.invoiced:
-            charge = form.instance.extra_charge
-            charge.amount = form.instance.cost
-            charge.date = form.instance.date
-            charge.description = f"Vet - {form.instance.reason[:200]}"
-            charge.service_provider = form.instance.vet
-            charge.save(update_fields=['amount', 'date', 'description', 'service_provider'])
-
+        sync_record_charge(form.instance)
         messages.success(self.request, "Vet visit updated successfully.")
         return response
 

@@ -20,6 +20,18 @@ from .models import (
 )
 
 
+class OptionalCostMixin:
+    """Make the cost field optional: blank or omitted means 0 (not billable)."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['cost'].required = False
+
+    def clean_cost(self):
+        from decimal import Decimal
+        return self.cleaned_data.get('cost') or Decimal('0.00')
+
+
 class ActiveHorseFormMixin:
     """Mixin to restrict horse/mare dropdown to active horses only."""
     def __init__(self, *args, **kwargs):
@@ -30,12 +42,12 @@ class ActiveHorseFormMixin:
             self.fields['mare'].queryset = Horse.objects.filter(is_active=True)
 
 
-class VaccinationForm(ActiveHorseFormMixin, forms.ModelForm):
+class VaccinationForm(OptionalCostMixin, ActiveHorseFormMixin, forms.ModelForm):
     class Meta:
         model = Vaccination
         fields = [
             'horse', 'vaccination_type', 'date_given', 'next_due_date',
-            'vet', 'batch_number', 'notes'
+            'vet', 'batch_number', 'cost', 'notes'
         ]
         widgets = {
             'horse': forms.Select(attrs={'class': 'form-select'}),
@@ -44,6 +56,7 @@ class VaccinationForm(ActiveHorseFormMixin, forms.ModelForm):
             'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'vet': forms.Select(attrs={'class': 'form-select'}),
             'batch_number': forms.TextInput(attrs={'class': 'form-input'}),
+            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -106,12 +119,12 @@ class VaccinationTypeForm(forms.ModelForm):
         }
 
 
-class WormingTreatmentForm(ActiveHorseFormMixin, forms.ModelForm):
+class WormingTreatmentForm(OptionalCostMixin, ActiveHorseFormMixin, forms.ModelForm):
     class Meta:
         model = WormingTreatment
         fields = [
             'horse', 'date', 'product_name', 'active_ingredient',
-            'dose', 'administered_by', 'notes'
+            'dose', 'administered_by', 'cost', 'notes'
         ]
         widgets = {
             'horse': forms.Select(attrs={'class': 'form-select'}),
@@ -120,6 +133,7 @@ class WormingTreatmentForm(ActiveHorseFormMixin, forms.ModelForm):
             'active_ingredient': forms.TextInput(attrs={'class': 'form-input'}),
             'dose': forms.TextInput(attrs={'class': 'form-input'}),
             'administered_by': forms.TextInput(attrs={'class': 'form-input'}),
+            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -181,16 +195,19 @@ class VetVisitForm(ActiveHorseFormMixin, forms.ModelForm):
 
 # ─── Bulk Forms (no horse field) ──────────────────────────────────────
 
-class BulkVaccinationForm(forms.ModelForm):
+class BulkVaccinationForm(OptionalCostMixin, forms.ModelForm):
     class Meta:
         model = Vaccination
-        fields = ['vaccination_type', 'date_given', 'next_due_date', 'vet', 'batch_number', 'notes']
+        fields = ['vaccination_type', 'date_given', 'next_due_date', 'vet', 'batch_number', 'cost', 'notes']
+        labels = {'cost': 'Cost per horse (£)'}
+        help_texts = {'cost': 'Charged in full to each selected horse’s owner.'}
         widgets = {
             'vaccination_type': forms.Select(attrs={'class': 'form-select'}),
             'date_given': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'vet': forms.Select(attrs={'class': 'form-select'}),
             'batch_number': forms.TextInput(attrs={'class': 'form-input'}),
+            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -223,16 +240,19 @@ class BulkFarrierVisitForm(forms.ModelForm):
         }
 
 
-class BulkWormingTreatmentForm(forms.ModelForm):
+class BulkWormingTreatmentForm(OptionalCostMixin, forms.ModelForm):
     class Meta:
         model = WormingTreatment
-        fields = ['date', 'product_name', 'active_ingredient', 'dose', 'administered_by', 'notes']
+        fields = ['date', 'product_name', 'active_ingredient', 'dose', 'administered_by', 'cost', 'notes']
+        labels = {'cost': 'Cost per horse (£)'}
+        help_texts = {'cost': 'Charged in full to each selected horse’s owner.'}
         widgets = {
             'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'product_name': forms.TextInput(attrs={'class': 'form-input'}),
             'active_ingredient': forms.TextInput(attrs={'class': 'form-input'}),
             'dose': forms.TextInput(attrs={'class': 'form-input'}),
             'administered_by': forms.TextInput(attrs={'class': 'form-input'}),
+            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 

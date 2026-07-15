@@ -58,7 +58,20 @@ class Vaccination(models.Model):
         limit_choices_to={'provider_type': 'vet'},
     )
     batch_number = models.CharField(max_length=100, blank=True)
+    cost = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Leave 0 if not billable; a cost creates a charge for the owner",
+    )
     notes = models.TextField(blank=True)
+    extra_charge = models.OneToOneField(
+        'billing.ExtraCharge',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='vaccination'
+    )
     reminder_sent = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -198,7 +211,20 @@ class WormingTreatment(models.Model):
     active_ingredient = models.CharField(max_length=200, blank=True)
     dose = models.CharField(max_length=100, blank=True)
     administered_by = models.CharField(max_length=200, blank=True)
+    cost = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Leave 0 if not billable; a cost creates a charge for the owner",
+    )
     notes = models.TextField(blank=True)
+    extra_charge = models.OneToOneField(
+        'billing.ExtraCharge',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='worming_treatment'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
