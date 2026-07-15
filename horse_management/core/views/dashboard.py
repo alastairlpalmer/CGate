@@ -203,6 +203,10 @@ def _dashboard_inner(request):
             pending_groups[key]['horses'].append(p.horse)
             pending_groups[key]['horse_ids'].append(str(p.horse.pk))
         pending_departures = list(pending_groups.values())
+    # Flat id list so the widget can offer one confirm-everything button
+    pending_departure_ids = [
+        pk for group in pending_departures for pk in group['horse_ids']
+    ]
 
     # ── Header summary ──────────────────────────────────────────
     # Derived from lists already fetched for visible widgets — no extra
@@ -241,6 +245,7 @@ def _dashboard_inner(request):
         'activity': activity,
         'field_rest': field_rest,
         'pending_departures': pending_departures,
+        'pending_departure_ids': pending_departure_ids,
         'visible_widgets': visible_widgets,
         'visible_keys': visible,
         'any_health_visible': bool(visible_widgets.get('health')),

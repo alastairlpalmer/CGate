@@ -898,3 +898,53 @@ class ModelChokePointTests(LifecycleTestCase):
         horse.refresh_from_db()
         self.assertTrue(horse.is_active)
         self.assertTrue(horse.placements.filter(end_date__isnull=True).exists())
+
+
+class PendingDeparturesWidgetTests(LifecycleTestCase):
+    """The widget offers one confirm-everything button and honest per-group
+    labels ('Confirm' / 'Confirm N', never 'Confirm All' on one horse)."""
+
+    def setUp(self):
+        super().setUp()
+        from core.models import DashboardPreference
+        self.admin = make_admin(username='dash-admin')
+        pref = DashboardPreference.get_for(self.admin)
+        pref.layout = {'pending_departures': {'visible': True, 'order': 0}}
+        pref.save()
+        self.client.force_login(self.admin)
+
+    def _pending(self, horse, days_ago_end):
+        Placement.objects.create(
+            horse=horse, owner=self.owner, location=self.location,
+            rate_type=self.rate,
+            start_date=self.today - timedelta(days=60),
+            end_date=self.today - timedelta(days=days_ago_end),
+        )
+
+    def test_single_horse_group_says_confirm_not_confirm_all(self):
+        self._pending(self.horse, 1)
+        response = self.client.get(reverse('dashboard'))
+        self.assertNotContains(response, 'Confirm All')
+        self.assertContains(response, 'Confirm')
+
+    def test_confirm_everything_button_lists_all_pending_horses(self):
+        horse2 = Horse.objects.create(name='SNOWY')
+        self._pending(self.horse, 1)
+        self._pending(horse2, 2)  # different date → different group
+        response = self.client.get(reverse('dashboard'))
+        self.assertContains(response, 'Confirm all 2')
+
+        response = self.client.post(
+            reverse('confirm_departures_bulk'),
+            {'horse_ids': [self.horse.pk, horse2.pk]},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.horse.refresh_from_db()
+        horse2.refresh_from_db()
+        self.assertFalse(self.horse.is_active)
+        self.assertFalse(horse2.is_active)
+
+    def test_no_confirm_everything_button_for_single_pending_horse(self):
+        self._pending(self.horse, 1)
+        response = self.client.get(reverse('dashboard'))
+        self.assertNotContains(response, 'Confirm all 1')
