@@ -91,7 +91,11 @@ def role_delete(request, pk):
     members = role.assignments.count()
     target = None
     if members:
-        target = Role.objects.exclude(pk=role.pk).filter(pk=request.POST.get('reassign_to') or 0).first()
+        try:
+            reassign_pk = int(request.POST.get('reassign_to') or 0)
+        except (TypeError, ValueError):
+            reassign_pk = 0
+        target = Role.objects.exclude(pk=role.pk).filter(pk=reassign_pk).first()
         if target is None:
             messages.error(request, "Choose a role to move this role's members to.")
             return redirect('role_update', pk=pk)

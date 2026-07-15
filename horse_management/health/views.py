@@ -6,8 +6,15 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 
-from core.permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required, has_feature_access
+from core.permissions import (
+    LEVEL_FULL,
+    LEVEL_VIEW,
+    FeatureAccessMixin,
+    feature_required,
+    has_feature_access,
+)
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -370,13 +377,28 @@ BULK_LABELS = {
     'restore': 'Undo Departure',
 }
 
+# Placement-lifecycle bulk actions are gated on the same feature as their
+# single-horse equivalents (horse_move, horse_depart, horse_reactivate,
+# confirm/cancel_departure all require horses=full); everything else in the
+# bulk bar is a health record and requires health=full. The bar template
+# mirrors these gates so users are never offered an action they'd 403 on.
+PLACEMENT_BULK_ACTIONS = ('move', 'restore', 'expected_departure', 'actual_departure')
 
-@feature_required('health')
+
+def _bulk_action_allowed(user, action_type):
+    if action_type in PLACEMENT_BULK_ACTIONS:
+        return has_feature_access(user, 'horses', LEVEL_FULL)
+    return has_feature_access(user, 'health', LEVEL_FULL)
+
+
+@login_required
 def bulk_health_form(request):
     action_type = request.GET.get('action_type', '')
     form_class = BULK_FORM_MAP.get(action_type)
     if not form_class:
         return HttpResponseBadRequest('Invalid action type')
+    if not _bulk_action_allowed(request.user, action_type):
+        raise PermissionDenied
 
     # Determine initial date value
     if action_type == 'vaccination':
@@ -397,7 +419,7 @@ def bulk_health_form(request):
     })
 
 
-@feature_required('health')
+@login_required
 def bulk_health_apply(request):
     if request.method != 'POST':
         return HttpResponseBadRequest('POST required')
@@ -409,11 +431,7 @@ def bulk_health_apply(request):
     if not form_class or not horse_ids:
         return HttpResponseBadRequest('Invalid request')
 
-    # Departure, move and restore actions change placements — gated by the
-    # Locations feature everywhere else (horse_depart, horse_move,
-    # log_departure), so health access alone must not reach them here.
-    if action_type in ('expected_departure', 'actual_departure', 'move', 'restore') \
-            and not has_feature_access(request.user, 'locations', 'full'):
+    if not _bulk_action_allowed(request.user, action_type):
         raise PermissionDenied
 
     form = form_class(request.POST)

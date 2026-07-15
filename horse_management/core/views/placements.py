@@ -67,28 +67,36 @@ class PlacementListView(FeatureAccessMixin, ListView):
         return context
 
 
-class PlacementCreateView(FeatureAccessMixin, CreateView):
-    feature = 'locations'
-    model = Placement
-    form_class = PlacementForm
-    template_name = 'placements/placement_form.html'
+class _PlacementFormViewMixin:
+    """Shared next-URL handling: the validated target is used for both the
+    post-save redirect and the template's Cancel link, so an off-site or
+    javascript: ?next= can never end up in a rendered href."""
 
     def get_success_url(self):
         return _safe_next_url(self.request) or (
             reverse('location_list') + '?tab=history'
         )
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['back_url'] = (
+            _safe_next_url(self.request) or reverse('placement_list')
+        )
+        return context
 
-class PlacementUpdateView(FeatureAccessMixin, UpdateView):
+
+class PlacementCreateView(_PlacementFormViewMixin, FeatureAccessMixin, CreateView):
     feature = 'locations'
     model = Placement
     form_class = PlacementForm
     template_name = 'placements/placement_form.html'
 
-    def get_success_url(self):
-        return _safe_next_url(self.request) or (
-            reverse('location_list') + '?tab=history'
-        )
+
+class PlacementUpdateView(_PlacementFormViewMixin, FeatureAccessMixin, UpdateView):
+    feature = 'locations'
+    model = Placement
+    form_class = PlacementForm
+    template_name = 'placements/placement_form.html'
 
 
 @feature_required('locations')
