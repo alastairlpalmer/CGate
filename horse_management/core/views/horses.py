@@ -386,6 +386,21 @@ class HorseUpdateView(FeatureAccessMixin, UpdateView):
         return redirect(self.get_success_url())
 
 
+def _flash_superseded_trim(request, horse, placement):
+    """Tell the user when logging a return shortened the previous stay —
+    the trim changes recorded (potentially invoiced) dates, so it must
+    never happen silently."""
+    trimmed = getattr(placement, 'superseded_trim', None)
+    if trimmed is not None:
+        messages.info(
+            request,
+            f"{horse.name}'s previous stay at {trimmed.location.name} now "
+            f"ends {trimmed.end_date:%d %b %Y} (was recorded as "
+            f"{trimmed.superseded_from:%d %b %Y}) so it doesn't overlap "
+            f"this return."
+        )
+
+
 @feature_required('horses')
 def horse_move(request, pk):
     """Move a horse to a new location."""
@@ -398,7 +413,7 @@ def horse_move(request, pk):
         form = MoveHorseForm(request.POST)
         if form.is_valid():
             try:
-                PlacementService.move_horse(
+                new_placement = PlacementService.move_horse(
                     horse,
                     new_location=form.cleaned_data['new_location'],
                     move_date=form.cleaned_data['move_date'],
@@ -414,6 +429,7 @@ def horse_move(request, pk):
                 })
 
             messages.success(request, f"{horse.name} moved successfully.")
+            _flash_superseded_trim(request, horse, new_placement)
             return redirect('horse_list')
     else:
         form = MoveHorseForm(initial={
@@ -494,6 +510,7 @@ def horse_arrive(request, pk):
                     placement.location.name,
                     reverse('horse_photo_add', args=[horse.pk]),
                 ))
+                _flash_superseded_trim(request, horse, placement)
                 return redirect('horse_list')
             except ValidationError as e:
                 messages.error(request, '; '.join(e.messages))

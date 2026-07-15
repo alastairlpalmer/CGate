@@ -676,3 +676,225 @@ class PlacementEditDeleteTests(LifecycleTestCase):
         self.assertTrue(
             Placement.objects.filter(pk=self.placement.pk).exists()
         )
+
+
+class SupersedeTrimLimitTests(LifecycleTestCase):
+    """Batch 2: superseding a departure must never silently rewrite weeks
+    of recorded (potentially invoiced) history."""
+
+    def test_large_history_rewrite_refused(self):
+        from django.core.exceptions import ValidationError
+        end = self.today - timedelta(days=5)
+        old = Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate,
+            start_date=self.today - timedelta(days=200),
+            end_date=end,
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            PlacementService.arrive_horse(
+                self.horse, owner=self.owner, location=self.other_location,
+                rate_type=self.rate,
+                arrival_date=end - timedelta(days=60),
+            )
+        self.assertIn('rewrite', str(ctx.exception))
+        old.refresh_from_db()
+        self.assertEqual(old.end_date, end)
+
+    def test_small_trim_allowed_and_reported(self):
+        old = Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate,
+            start_date=self.today - timedelta(days=60),
+            end_date=self.today,
+        )
+        arrival = self.today - timedelta(days=4)
+        placement = PlacementService.arrive_horse(
+            self.horse, owner=self.owner, location=self.other_location,
+            rate_type=self.rate, arrival_date=arrival,
+        )
+        trimmed = placement.superseded_trim
+        self.assertIsNotNone(trimmed)
+        self.assertEqual(trimmed.pk, old.pk)
+        self.assertEqual(trimmed.superseded_from, self.today)
+        self.assertEqual(trimmed.end_date, arrival - timedelta(days=1))
+
+    def test_future_departure_days_do_not_count_as_history(self):
+        # 60 planned (future) days being trimmed is fine — only elapsed
+        # days count towards the rewrite limit.
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate,
+            start_date=self.today - timedelta(days=60),
+            end_date=self.today + timedelta(days=60),
+        )
+        placement = PlacementService.arrive_horse(
+            self.horse, owner=self.owner, location=self.other_location,
+            rate_type=self.rate, arrival_date=self.today,
+        )
+        self.assertIsNotNone(placement.superseded_trim)
+
+
+class SupersedeUsageRepairTests(LifecycleTestCase):
+    """Batch 2: superseding a departure repairs the old field's usage chain."""
+
+    def _occupied_location(self, location, start):
+        from core.models import LocationUsagePeriod
+        LocationUsagePeriod.objects.create(
+            location=location, usage=Location.Usage.HORSES,
+            start_date=start, source='auto',
+        )
+        location.usage = Location.Usage.HORSES
+        location.save(update_fields=['usage'])
+
+    def test_same_field_return_unrests_field(self):
+        self._occupied_location(self.location, self.today - timedelta(days=60))
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=30),
+        )
+        PlacementService.depart_horse(self.horse, self.today)
+        self.location.refresh_from_db()
+        self.assertEqual(self.location.usage, Location.Usage.RESTED)
+
+        PlacementService.arrive_horse(
+            self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, arrival_date=self.today,
+        )
+        self.location.refresh_from_db()
+        self.assertEqual(self.location.usage, Location.Usage.HORSES)
+        self.assertFalse(
+            self.location.usage_periods.filter(
+                usage=Location.Usage.RESTED
+            ).exists()
+        )
+
+    def test_different_field_return_backdates_rest(self):
+        self._occupied_location(self.location, self.today - timedelta(days=60))
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=30),
+        )
+        PlacementService.depart_horse(self.horse, self.today)
+
+        arrival = self.today - timedelta(days=3)
+        PlacementService.arrive_horse(
+            self.horse, owner=self.owner, location=self.other_location,
+            rate_type=self.rate, arrival_date=arrival,
+        )
+        rest = self.location.usage_periods.get(end_date__isnull=True)
+        self.assertEqual(rest.usage, Location.Usage.RESTED)
+        # Field actually emptied when the trimmed stay ended (arrival - 1),
+        # so the rest starts the day after that: the arrival date itself.
+        self.assertEqual(rest.start_date, arrival)
+        previous = self.location.usage_periods.get(
+            usage=Location.Usage.HORSES
+        )
+        self.assertEqual(previous.end_date, arrival - timedelta(days=1))
+
+
+class ModelChokePointTests(LifecycleTestCase):
+    """Batch 2: Placement.save/delete and Horse.clean enforce the lifecycle
+    invariant for every write path (forms, admin, future code)."""
+
+    def test_creating_open_placement_reactivates_horse(self):
+        horse = self._departed_horse()
+        Placement.objects.create(
+            horse=horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today,
+        )
+        horse.refresh_from_db()
+        self.assertTrue(horse.is_active)
+
+    def test_reopening_placement_reactivates_horse(self):
+        horse = self._departed_horse()
+        placement = horse.placements.get()
+        placement.end_date = None
+        placement.save()
+        horse.refresh_from_db()
+        self.assertTrue(horse.is_active)
+
+    def test_closing_placement_rests_emptied_field(self):
+        from core.models import LocationUsagePeriod
+        LocationUsagePeriod.objects.create(
+            location=self.location, usage=Location.Usage.HORSES,
+            start_date=self.today - timedelta(days=60), source='auto',
+        )
+        self.location.usage = Location.Usage.HORSES
+        self.location.save(update_fields=['usage'])
+        placement = Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=30),
+        )
+        placement.end_date = self.today
+        placement.save()
+        self.location.refresh_from_db()
+        self.assertEqual(self.location.usage, Location.Usage.RESTED)
+
+    def test_deleting_open_placement_rests_emptied_field(self):
+        from core.models import LocationUsagePeriod
+        LocationUsagePeriod.objects.create(
+            location=self.location, usage=Location.Usage.HORSES,
+            start_date=self.today - timedelta(days=60), source='auto',
+        )
+        self.location.usage = Location.Usage.HORSES
+        self.location.save(update_fields=['usage'])
+        placement = Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=30),
+        )
+        placement.delete()
+        self.location.refresh_from_db()
+        self.assertEqual(self.location.usage, Location.Usage.RESTED)
+
+    def test_same_location_move_keeps_field_on_horses(self):
+        from core.models import LocationUsagePeriod
+        LocationUsagePeriod.objects.create(
+            location=self.location, usage=Location.Usage.HORSES,
+            start_date=self.today - timedelta(days=60), source='auto',
+        )
+        self.location.usage = Location.Usage.HORSES
+        self.location.save(update_fields=['usage'])
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=30),
+        )
+        PlacementService.move_horse(
+            self.horse, new_location=self.location, move_date=self.today,
+        )
+        self.location.refresh_from_db()
+        self.assertEqual(self.location.usage, Location.Usage.HORSES)
+
+    def test_horse_full_clean_blocks_deactivation_when_placed(self):
+        from django.core.exceptions import ValidationError
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=30),
+        )
+        self.horse.is_active = False
+        with self.assertRaises(ValidationError) as ctx:
+            self.horse.full_clean()
+        self.assertIn('is_active', ctx.exception.message_dict)
+
+    def test_placement_update_view_reopen_reactivates_horse(self):
+        from django.contrib.auth import get_user_model
+        self.client.force_login(make_admin(username='choke-admin'))
+        horse = self._departed_horse()
+        placement = horse.placements.get()
+        response = self.client.post(
+            reverse('placement_update', args=[placement.pk]),
+            {
+                'horse': horse.pk,
+                'owner': self.owner.pk,
+                'location': self.location.pk,
+                'rate_type': self.rate.pk,
+                'start_date': placement.start_date.isoformat(),
+                'end_date': '',
+                'expected_departure': '',
+                'notes': '',
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        horse.refresh_from_db()
+        self.assertTrue(horse.is_active)
+        self.assertTrue(horse.placements.filter(end_date__isnull=True).exists())

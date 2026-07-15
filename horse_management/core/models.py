@@ -259,6 +259,29 @@ class Horse(models.Model):
     def __str__(self):
         return self.name
 
+    def clean(self):
+        super().clean()
+        # Deactivating a horse that still has an open placement strands the
+        # record: Departed in lists/search but still occupying a field.
+        # Runs for every form built on this model — including the Django
+        # admin, which bypasses the app's own forms. Departures must go
+        # through the Depart flow, which closes the placement too.
+        if self.pk and not self.is_active:
+            was_active = Horse.objects.filter(
+                pk=self.pk, is_active=True
+            ).exists()
+            has_open_placement = self.placements.filter(
+                end_date__isnull=True
+            ).exists()
+            if was_active and has_open_placement:
+                raise DjangoValidationError({
+                    'is_active': (
+                        "This horse still has an open placement. Use the "
+                        "Depart button on the horse's page to log the "
+                        "departure instead of unticking Active."
+                    ),
+                })
+
     def save(self, *args, **kwargs):
         update_fields = kwargs.get('update_fields')
         if update_fields is None or 'photo' in update_fields:
@@ -502,7 +525,65 @@ class Placement(models.Model):
     def save(self, *args, **kwargs):
         # Always validate overlaps, even when clean() isn't called
         self.full_clean()
+
+        # Lifecycle choke point. Horse.is_active and the field-usage history
+        # must stay in step with placements no matter which path writes them
+        # (services, placement forms, Django admin, future code) — patching
+        # each caller individually is how horses ended up stranded as
+        # "departed but placed" in production. Detect the transition here.
+        was_open = None
+        creating = self.pk is None
+        if not creating:
+            was_open = Placement.objects.filter(
+                pk=self.pk
+            ).values_list('end_date', flat=True).first() is None
+
+        from .services import LocationUsageService
+        newly_open = self.end_date is None and (creating or not was_open)
+        opening_was_empty = (
+            LocationUsageService._is_empty(
+                self.location, exclude_horse_ids=[self.horse_id]
+            )
+            if newly_open else False
+        )
+
         super().save(*args, **kwargs)
+
+        if self.end_date is None:
+            # An open placement means the horse is on site — never let it
+            # sit flagged departed while occupying a field.
+            if not self.horse.is_active:
+                self.horse.is_active = True
+                self.horse.save(update_fields=['is_active'])
+            if not creating and was_open is False:
+                # Re-opened (departure undone): remove the automatic rest
+                # the departure created, if any.
+                LocationUsageService.undo_auto_rest(self.location)
+            elif newly_open:
+                # An auto-rest starting on/after this occupancy is bogus —
+                # e.g. the close half of a same-field move created it a
+                # moment ago.
+                LocationUsageService.clear_auto_rest_from(
+                    self.location, self.start_date
+                )
+                LocationUsageService.horses_arrived(
+                    self.location, self.start_date, was_empty=opening_was_empty
+                )
+        elif was_open and self.end_date is not None:
+            # Closed: rest the field if this was its last occupant.
+            LocationUsageService.rest_if_empty(self.location, self.end_date)
+
+    def delete(self, *args, **kwargs):
+        # Same choke point for deletion: removing a field's last open
+        # placement must still rest the field. (Queryset bulk deletes bypass
+        # this, as they bypass any model delete.)
+        was_open = self.end_date is None
+        location = self.location
+        super().delete(*args, **kwargs)
+        if was_open:
+            from django.utils import timezone
+            from .services import LocationUsageService
+            LocationUsageService.rest_if_empty(location, timezone.now().date())
 
     @property
     def is_current(self):

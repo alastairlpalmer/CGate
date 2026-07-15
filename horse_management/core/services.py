@@ -13,6 +13,14 @@ from django.utils import timezone
 
 from .models import Horse, Location, LocationUsagePeriod, OwnershipShare, Placement
 
+# A superseding return may shorten the previous stay by at most this many
+# already-elapsed days. Small trims are the yard-reality case (departed
+# dated today/future, return backdated a few days); anything larger is
+# almost certainly a typo'd date, and silently rewriting weeks of recorded
+# — often already invoiced — history is worse than asking the user to edit
+# the placement deliberately.
+MAX_SUPERSEDE_TRIM_DAYS = 30
+
 
 class PlacementService:
     """Service for managing horse placement lifecycle."""
@@ -101,13 +109,16 @@ class PlacementService:
         new_loc_was_empty = LocationUsageService._is_empty(new_location)
 
         # End current placement FIRST so overlap validation passes
+        trimmed = None
         if current_placement:
             current_placement.end_date = move_date - timedelta(days=1)
             current_placement.save()
         else:
             # A departed horse being moved back on/before its recorded
             # departure date: the return supersedes that departure.
-            PlacementService._supersede_recorded_departure(horse, move_date)
+            trimmed = PlacementService._supersede_recorded_departure(
+                horse, move_date, destination=new_location
+            )
         new_placement.full_clean()
         new_placement.save()
 
@@ -128,10 +139,12 @@ class PlacementService:
         # be edited explicitly on the ownership screen.
         PlacementService._sync_single_owner_share(horse, new_owner)
 
+        # Views surface this so a trimmed departure is never silent.
+        new_placement.superseded_trim = trimmed
         return new_placement
 
     @staticmethod
-    def _supersede_recorded_departure(horse, arrival_date):
+    def _supersede_recorded_departure(horse, arrival_date, destination=None):
         """Let a departed horse arrive back on or before its recorded departure.
 
         Yard reality: a horse is departed (often dated today, or even a future
@@ -140,22 +153,57 @@ class PlacementService:
         the most recent ended placement to the day before the new arrival so
         the overlap check passes and no day is billed twice.
 
-        Raises ValidationError when trimming is impossible because the return
-        date is on or before that placement's start.
+        Also repairs the old field's usage history: the departure may have
+        auto-rested it from the wrong date (or the horse never really left,
+        when the return is to the same field).
+
+        Returns the trimmed placement (with ``superseded_from`` set to the
+        old end date) or None if nothing needed trimming. Raises
+        ValidationError when the return predates the previous stay's start,
+        or when the trim would erase more than MAX_SUPERSEDE_TRIM_DAYS of
+        already-elapsed history.
         """
         last = horse.placements.filter(
             end_date__isnull=False
-        ).order_by('-end_date').first()
+        ).order_by('-end_date').select_related('location').first()
         if not last or last.end_date < arrival_date:
-            return
+            return None
         if arrival_date <= last.start_date:
             raise ValidationError(
                 f"{horse.name}'s previous stay at {last.location.name} only "
                 f"started on {last.start_date}, so an arrival on {arrival_date} "
                 f"would predate it. Edit that placement's dates instead."
             )
+
+        # Only days that have already elapsed count as history being erased —
+        # trimming a future-dated (planned) departure is always fine.
+        today = timezone.now().date()
+        erased_until = min(last.end_date, today)
+        erased_days = (erased_until - arrival_date).days + 1
+        if erased_days > MAX_SUPERSEDE_TRIM_DAYS:
+            raise ValidationError(
+                f"This arrival would rewrite {erased_days} days of "
+                f"{horse.name}'s recorded stay at {last.location.name} "
+                f"({last.start_date} – {last.end_date}), which may already be "
+                f"invoiced. If the dates really are wrong, edit that "
+                f"placement directly instead."
+            )
+
+        old_end = last.end_date
         last.end_date = arrival_date - timedelta(days=1)
         last.save()
+        last.superseded_from = old_end
+
+        # Usage-history repair for the old field: returning to the same field
+        # means it never actually emptied, so the departure's auto-rest is
+        # bogus; returning elsewhere means it emptied earlier than recorded.
+        if destination is not None and last.location_id == destination.pk:
+            LocationUsageService.undo_auto_rest(last.location)
+        else:
+            LocationUsageService.align_auto_rest_start(
+                last.location, last.end_date + timedelta(days=1)
+            )
+        return last
 
     @staticmethod
     def reactivate(horse):
@@ -193,7 +241,9 @@ class PlacementService:
         Returns the new placement.
         Raises ValidationError if the placement is invalid.
         """
-        PlacementService._supersede_recorded_departure(horse, arrival_date)
+        trimmed = PlacementService._supersede_recorded_departure(
+            horse, arrival_date, destination=location
+        )
         was_empty = LocationUsageService._is_empty(location)
         placement = Placement(
             horse=horse,
@@ -210,6 +260,8 @@ class PlacementService:
         # A departed horse arriving back must also flip is_active, otherwise
         # the placement saves but the horse stays in the Departed list.
         PlacementService.reactivate(horse)
+        # Views surface this so a trimmed departure is never silent.
+        placement.superseded_trim = trimmed
         return placement
 
     @staticmethod
@@ -328,7 +380,9 @@ class PlacementService:
                 # Per-horse savepoint so a rejected arrival doesn't leave the
                 # superseded-departure trim behind for that horse.
                 with transaction.atomic():
-                    PlacementService._supersede_recorded_departure(horse, arrival_date)
+                    PlacementService._supersede_recorded_departure(
+                        horse, arrival_date, destination=location
+                    )
                     placement.full_clean()
                     placement.save()
                     PlacementService.reactivate(horse)
@@ -427,9 +481,11 @@ class LocationUsageService:
         new_period.full_clean()
         new_period.save()
 
-        if location.usage != usage:
-            location.usage = usage
-            location.save(update_fields=['usage'])
+        # Write through a queryset: the caller's instance may hold a stale
+        # usage value (placement FKs cache their own Location objects), and
+        # comparing against it can wrongly skip the DB update.
+        Location.objects.filter(pk=location.pk).update(usage=usage)
+        location.usage = usage
 
         return new_period
 
@@ -472,6 +528,55 @@ class LocationUsageService:
             )
 
     @staticmethod
+    def clear_auto_rest_from(location, occupied_from):
+        """Remove an automatic rest period contradicted by an occupancy.
+
+        A field occupied from ``occupied_from`` cannot have an automatic rest
+        period starting on or after that date — such a period is left over
+        from a departure that a new arrival has just superseded (or from the
+        close half of a same-field move). Manual usage states are never
+        touched.
+        """
+        current = location.usage_periods.filter(end_date__isnull=True).first()
+        if (
+            current
+            and current.usage == Location.Usage.RESTED
+            and current.source == LocationUsagePeriod.Source.AUTO
+            and current.start_date >= occupied_from
+        ):
+            LocationUsageService.undo_auto_rest(location)
+
+    @staticmethod
+    @transaction.atomic
+    def align_auto_rest_start(location, empty_from):
+        """Move an automatic rest period's start back to ``empty_from``.
+
+        Used when a superseded departure reveals the field actually emptied
+        earlier than recorded. Only touches an open AUTO rest period, and
+        only to backdate it; the preceding period's end moves with it.
+        """
+        current = location.usage_periods.filter(end_date__isnull=True).first()
+        if (
+            not current
+            or current.usage != Location.Usage.RESTED
+            or current.source != LocationUsagePeriod.Source.AUTO
+            or current.start_date <= empty_from
+        ):
+            return
+        previous = location.usage_periods.filter(
+            end_date=current.start_date - timedelta(days=1)
+        ).order_by('-start_date').first()
+        if previous:
+            if empty_from <= previous.start_date:
+                # Backdating this far would invert the previous period —
+                # leave the history alone rather than corrupt it.
+                return
+            previous.end_date = empty_from - timedelta(days=1)
+            previous.save()
+        current.start_date = empty_from
+        current.save()
+
+    @staticmethod
     @transaction.atomic
     def undo_auto_rest(location):
         """Remove an automatic 'rested' period created by a departure that is
@@ -499,9 +604,9 @@ class LocationUsageService:
             # The rest period had no predecessor to re-open; the field holds
             # horses again, so at least keep the label truthful.
             restored_usage = Location.Usage.HORSES
-        if location.usage != restored_usage:
-            location.usage = restored_usage
-            location.save(update_fields=['usage'])
+        # Queryset write — see set_usage: instance state can be stale.
+        Location.objects.filter(pk=location.pk).update(usage=restored_usage)
+        location.usage = restored_usage
 
     @staticmethod
     def rest_if_empty(location, last_occupied_date):
