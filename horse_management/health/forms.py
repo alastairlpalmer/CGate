@@ -6,6 +6,7 @@ from datetime import timedelta
 
 from django import forms
 
+from core.forms import MoveHorseForm
 from core.models import Horse
 from .models import (
     BreedingRecord,
@@ -284,42 +285,22 @@ class BulkActualDepartureForm(forms.Form):
     )
 
 
-class BulkMoveForm(forms.Form):
+class BulkMoveForm(MoveHorseForm):
     """Bulk action: move the selected horses to a new location.
 
-    Each horse keeps its current owner; the rate can optionally be changed
-    for all of them at once (left empty, every horse keeps its own rate).
+    The single-horse move form minus the per-horse fields: every horse
+    keeps its own owner, and the rate applies to all of them (left empty,
+    each keeps its current rate). Subclassing keeps single and bulk move
+    semantics from drifting apart.
     """
-
-    new_location = forms.ModelChoiceField(
-        label='New Location',
-        queryset=None,
-        widget=forms.Select(attrs={'class': 'form-select'}),
-    )
-    move_date = forms.DateField(
-        label='Move Date',
-        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
-    )
-    new_rate_type = forms.ModelChoiceField(
-        label='New Rate',
-        queryset=None,
-        required=False,
-        widget=forms.Select(attrs={'class': 'form-select'}),
-        help_text="Leave empty to keep each horse's current rate",
-    )
-    notes = forms.CharField(
-        label='Notes',
-        required=False,
-        widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
-    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        from core.forms import get_grouped_location_choices
-        from core.models import Location, RateType
-        self.fields['new_location'].queryset = Location.objects.all()
-        self.fields['new_location'].choices = get_grouped_location_choices()
-        self.fields['new_rate_type'].queryset = RateType.objects.filter(is_active=True)
+        del self.fields['new_owner']
+        del self.fields['expected_departure']
+        self.fields['new_rate_type'].help_text = (
+            "Leave empty to keep each horse's current rate"
+        )
 
 
 class BulkRestoreForm(forms.Form):

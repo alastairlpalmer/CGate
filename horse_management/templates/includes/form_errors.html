@@ -1,0 +1,12 @@
+{% comment %}
+Non-field error panel shared by the arrival/move/placement forms.
+Usage: {% include 'includes/form_errors.html' with form=form intro="The move wasn't saved:" %}
+{% endcomment %}
+{% if form.non_field_errors %}
+<div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3" role="alert">
+    <p class="text-sm font-medium text-error-red">{{ intro|default:"This wasn't saved:" }}</p>
+    {% for error in form.non_field_errors %}
+    <p class="text-sm text-error-red mt-1">{{ error }}</p>
+    {% endfor %}
+</div>
+{% endif %}

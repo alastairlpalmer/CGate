@@ -442,26 +442,34 @@ def bulk_health_apply(request):
             'action_label': BULK_LABELS.get(action_type, action_type),
         })
 
+    from core.services import PlacementService
+    from django.db.models import Exists, OuterRef
+
+    open_placements = Placement.objects.filter(
+        horse=OuterRef('pk'), end_date__isnull=True
+    )
     if action_type == 'restore':
         # Restore targets departed (inactive) horses — the one bulk action
-        # that must not be limited to active ones.
-        horses = Horse.objects.filter(pk__in=horse_ids)
+        # that must not be limited to active ones. The annotation replaces a
+        # per-horse open-placement query in the skip check below.
+        horses = Horse.objects.filter(pk__in=horse_ids).annotate(
+            has_open_placement=Exists(open_placements)
+        )
     else:
         horses = Horse.objects.filter(pk__in=horse_ids, is_active=True)
     count = 0
+    # Failures are appended with their message prefix baked in, so one shared
+    # loop below reports them for every action type.
     action_errors = []
     restore_skipped = []
 
     with transaction.atomic():
-        # Moves go through PlacementService so old placements are closed,
-        # field-usage history stays correct and per-horse validation
-        # (e.g. move date before arrival) is applied.
+        # Placement actions go through PlacementService so per-horse
+        # validation applies and the model-level lifecycle hooks keep
+        # is_active and field-usage history correct.
         if action_type == 'restore':
-            from core.services import PlacementService
             for horse in horses:
-                if horse.is_active and horse.placements.filter(
-                    end_date__isnull=True
-                ).exists():
+                if horse.is_active and horse.has_open_placement:
                     # Active and placed — nothing to undo
                     restore_skipped.append(horse.name)
                     continue
@@ -471,7 +479,6 @@ def bulk_health_apply(request):
                     # No placement history to re-open
                     restore_skipped.append(horse.name)
         elif action_type == 'move':
-            from core.services import PlacementService
             for horse in horses:
                 try:
                     PlacementService.move_horse(
@@ -483,18 +490,25 @@ def bulk_health_apply(request):
                     )
                     count += 1
                 except ValidationError as e:
-                    action_errors.append(f"{horse.name}: {'; '.join(e.messages)}")
+                    action_errors.append(
+                        f"Not moved — {horse.name}: {'; '.join(e.messages)}"
+                    )
         # Departure date actions update placements, not health records.
         # Placement saves re-validate dates (e.g. departure before arrival),
         # so each horse gets its own savepoint and failures are reported by
         # name instead of 500-ing the whole batch.
         elif action_type in ('expected_departure', 'actual_departure'):
-            from core.services import PlacementService
             date_val = form.cleaned_data['date']
+            # One query for every open placement in the batch; priming
+            # current_placement stops depart_horse re-fetching it per horse.
+            placements_by_horse = {
+                p.horse_id: p
+                for p in Placement.objects.filter(
+                    horse__in=horses, end_date__isnull=True
+                )
+            }
             for horse in horses:
-                placement = Placement.objects.filter(
-                    horse=horse, end_date__isnull=True
-                ).first()
+                placement = placements_by_horse.get(horse.pk)
                 if not placement:
                     continue
                 try:
@@ -506,10 +520,13 @@ def bulk_health_apply(request):
                             # Same path as the single-horse Depart button:
                             # validates dates, deactivates when due, and
                             # rests the field if it empties out.
+                            horse.current_placement = placement
                             PlacementService.depart_horse(horse, date_val)
                     count += 1
                 except ValidationError as e:
-                    action_errors.append(f"{horse.name}: {'; '.join(e.messages)}")
+                    action_errors.append(
+                        f"Not set — {horse.name}: {'; '.join(e.messages)}"
+                    )
         else:
             for horse in horses:
                 obj = form.save(commit=False)
@@ -551,36 +568,34 @@ def bulk_health_apply(request):
 
                 count += 1
 
+    # One shared reporting tail: branches only pick the success wording;
+    # errors carry their prefix from where they were appended.
     label = BULK_LABELS.get(action_type, action_type)
+    plural = 's' if count != 1 else ''
     if action_type == 'restore':
-        if count:
-            messages.success(
-                request,
-                f"{count} horse{'s' if count != 1 else ''} restored to "
-                f"{'their' if count != 1 else 'its'} last location."
-            )
-        if restore_skipped:
-            messages.warning(
-                request,
-                "Not restored (already active, or no placement history): "
-                + ", ".join(restore_skipped)
-            )
+        success_msg = (
+            f"{count} horse{plural} restored to "
+            f"{'their' if count != 1 else 'its'} last location."
+        )
     elif action_type == 'move':
-        if count:
-            messages.success(
-                request,
-                f"{count} horse{'s' if count != 1 else ''} moved to "
-                f"{form.cleaned_data['new_location'].name}."
-            )
-        for err in action_errors:
-            messages.error(request, f"Not moved — {err}")
+        success_msg = (
+            f"{count} horse{plural} moved to "
+            f"{form.cleaned_data['new_location'].name}."
+        )
     elif action_type in ('expected_departure', 'actual_departure'):
-        if count:
-            messages.success(request, f"{label} set for {count} horse{'s' if count != 1 else ''}.")
-        for err in action_errors:
-            messages.error(request, f"Not set — {err}")
+        success_msg = f"{label} set for {count} horse{plural}."
     else:
-        messages.success(request, f"{label} recorded for {count} horse{'s' if count != 1 else ''}.")
+        success_msg = f"{label} recorded for {count} horse{plural}."
+    if count or not (action_errors or restore_skipped):
+        messages.success(request, success_msg)
+    for err in action_errors:
+        messages.error(request, err)
+    if restore_skipped:
+        messages.warning(
+            request,
+            "Not restored (already active, or no placement history): "
+            + ", ".join(restore_skipped)
+        )
 
     # Return HX-Trigger to close modal and refresh page
     response = HttpResponse(status=204)

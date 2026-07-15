@@ -105,10 +105,10 @@ class PlacementService:
             notes=notes,
         )
 
-        old_location = current_placement.location if current_placement else None
-        new_loc_was_empty = LocationUsageService._is_empty(new_location)
-
-        # End current placement FIRST so overlap validation passes
+        # End current placement FIRST so overlap validation passes. All
+        # is_active and field-usage bookkeeping (resting the emptied field,
+        # recording the arrival, reactivating a departed horse) happens in
+        # Placement.save's lifecycle hooks — no per-caller patching here.
         trimmed = None
         if current_placement:
             current_placement.end_date = move_date - timedelta(days=1)
@@ -121,17 +121,6 @@ class PlacementService:
             )
         new_placement.full_clean()
         new_placement.save()
-
-        # Field emptied by the move rests from the move date; the destination
-        # becomes a horses field if horses just arrived onto it.
-        if old_location and old_location != new_location:
-            LocationUsageService.rest_if_empty(old_location, move_date - timedelta(days=1))
-        LocationUsageService.horses_arrived(new_location, move_date, was_empty=new_loc_was_empty)
-
-        # A horse being moved between fields is on site — if it was flagged
-        # departed (e.g. moved back after a stint away), reactivate it so it
-        # returns to the Current list rather than staying under Departed.
-        PlacementService.reactivate(horse)
 
         # Keep ownership in sync with the new placement owner so current_owner,
         # reminders and extra-charge defaults follow the horse. Only singly
@@ -233,18 +222,19 @@ class PlacementService:
             share.save()
 
     @staticmethod
-    @transaction.atomic
-    def arrive_horse(horse, *, owner, location, rate_type, arrival_date,
-                     expected_departure=None, notes=''):
-        """Log a single horse arriving at a location.
+    def _place(horse, *, owner, location, rate_type, arrival_date,
+               expected_departure=None, notes=''):
+        """Create the open placement for one arriving horse.
 
-        Returns the new placement.
-        Raises ValidationError if the placement is invalid.
+        Shared by single and bulk arrivals so a fix to one can't miss the
+        other. Supersedes a conflicting recorded departure first; reactivation
+        and field-usage bookkeeping happen in Placement.save's lifecycle
+        hooks. Returns the placement with ``superseded_trim`` attached so
+        views can surface any trim.
         """
         trimmed = PlacementService._supersede_recorded_departure(
             horse, arrival_date, destination=location
         )
-        was_empty = LocationUsageService._is_empty(location)
         placement = Placement(
             horse=horse,
             owner=owner,
@@ -256,13 +246,23 @@ class PlacementService:
         )
         placement.full_clean()
         placement.save()
-        LocationUsageService.horses_arrived(location, arrival_date, was_empty=was_empty)
-        # A departed horse arriving back must also flip is_active, otherwise
-        # the placement saves but the horse stays in the Departed list.
-        PlacementService.reactivate(horse)
-        # Views surface this so a trimmed departure is never silent.
         placement.superseded_trim = trimmed
         return placement
+
+    @staticmethod
+    @transaction.atomic
+    def arrive_horse(horse, *, owner, location, rate_type, arrival_date,
+                     expected_departure=None, notes=''):
+        """Log a single horse arriving at a location.
+
+        Returns the new placement.
+        Raises ValidationError if the placement is invalid.
+        """
+        return PlacementService._place(
+            horse, owner=owner, location=location, rate_type=rate_type,
+            arrival_date=arrival_date, expected_departure=expected_departure,
+            notes=notes,
+        )
 
     @staticmethod
     @transaction.atomic
@@ -282,15 +282,14 @@ class PlacementService:
                 f"Departure date cannot be before arrival ({current_placement.start_date})."
             )
 
-        location = current_placement.location
+        # Closing the placement rests the field if it empties — that lives
+        # in Placement.save's lifecycle hook.
         current_placement.end_date = departure_date
         current_placement.save()
 
         if departure_date <= timezone.now().date():
             horse.is_active = False
             horse.save(update_fields=['is_active'])
-
-        LocationUsageService.rest_if_empty(location, departure_date)
 
         return current_placement
 
@@ -307,10 +306,7 @@ class PlacementService:
         if open_placement:
             today = timezone.now().date()
             open_placement.end_date = max(today, open_placement.start_date)
-            open_placement.save()
-            LocationUsageService.rest_if_empty(
-                open_placement.location, open_placement.end_date
-            )
+            open_placement.save()  # save hook rests the field if emptied
         horse.is_active = False
         horse.save(update_fields=['is_active'])
 
@@ -333,13 +329,10 @@ class PlacementService:
             end_date__isnull=False
         ).order_by('-end_date').first()
         if placement:
+            # Re-opening reactivates the horse and undoes the departure's
+            # auto-rest via Placement.save's lifecycle hook.
             placement.end_date = None
             placement.save()
-            # If the departure auto-rested the field, un-rest it too.
-            LocationUsageService.undo_auto_rest(placement.location)
-            # If the departure had already been confirmed, re-opening the
-            # placement alone would strand the horse as inactive-but-placed.
-            PlacementService.reactivate(horse)
             return placement
         return None
 
@@ -363,34 +356,22 @@ class PlacementService:
 
         Returns (created_count, errors) tuple.
         """
-        was_empty = LocationUsageService._is_empty(location)
         created = 0
         errors = []
         for horse in horses:
-            placement = Placement(
-                horse=horse,
-                owner=owner,
-                location=location,
-                rate_type=rate_type,
-                start_date=arrival_date,
-                expected_departure=expected_departure,
-                notes=notes,
-            )
             try:
                 # Per-horse savepoint so a rejected arrival doesn't leave the
-                # superseded-departure trim behind for that horse.
+                # superseded-departure trim behind for that horse. _place is
+                # the same path as single arrivals.
                 with transaction.atomic():
-                    PlacementService._supersede_recorded_departure(
-                        horse, arrival_date, destination=location
+                    PlacementService._place(
+                        horse, owner=owner, location=location,
+                        rate_type=rate_type, arrival_date=arrival_date,
+                        expected_departure=expected_departure, notes=notes,
                     )
-                    placement.full_clean()
-                    placement.save()
-                    PlacementService.reactivate(horse)
                 created += 1
             except ValidationError as e:
                 errors.append(f"{horse.name}: {e}")
-        if created:
-            LocationUsageService.horses_arrived(location, arrival_date, was_empty=was_empty)
         return created, errors
 
     @staticmethod
@@ -421,14 +402,11 @@ class PlacementService:
                     (placement.notes or '') + f"\nDeparted: {notes}"
                     if placement.notes else notes
                 )
-            placement.save()
+            placement.save()  # save hook rests the field once it empties
             if departure_date <= timezone.now().date():
                 placement.horse.is_active = False
                 placement.horse.save(update_fields=['is_active'])
             departed += 1
-
-        if departed:
-            LocationUsageService.rest_if_empty(location, departure_date)
 
         return departed, depart_errors
 

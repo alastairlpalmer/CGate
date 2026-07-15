@@ -18,12 +18,7 @@
 
             {% if form.non_field_errors %}
             <div class="p-4 sm:p-5">
-                <div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3">
-                    <p class="text-sm font-medium text-error-red">The placement wasn't saved:</p>
-                    {% for error in form.non_field_errors %}
-                    <p class="text-sm text-error-red mt-1">{{ error }}</p>
-                    {% endfor %}
-                </div>
+                {% include 'includes/form_errors.html' with form=form intro="The placement wasn't saved:" %}
             </div>
             {% endif %}
 
