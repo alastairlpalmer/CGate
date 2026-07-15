@@ -90,7 +90,7 @@
                     {% if password_form.password2.errors %}<p class="mt-1 text-sm text-error-red">{{ password_form.password2.errors.0 }}</p>{% endif %}
                 </div>
                 {% if password_form.non_field_errors %}<p class="text-sm text-error-red">{{ password_form.non_field_errors.0 }}</p>{% endif %}
-                <p class="text-xs text-sage">The user will need to sign in again with the new password.</p>
+                <p class="text-xs text-sage">{% if is_self %}You'll stay signed in here; other devices will need the new password.{% else %}The user will need to sign in again with the new password.{% endif %}</p>
             </fieldset>
             <footer class="form-footer">
                 <button type="submit" class="btn-primary">Set Password</button>

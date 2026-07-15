@@ -100,6 +100,12 @@ def user_update(request, pk):
             password_form = AdminSetPasswordForm(request.POST, user=target)
             if password_form.is_valid():
                 password_form.save()
+                if is_self:
+                    # Changing one's own password invalidates the session
+                    # auth hash — refresh it or the redirect bounces the
+                    # admin to the login screen mid-save.
+                    from django.contrib.auth import update_session_auth_hash
+                    update_session_auth_hash(request, target)
                 messages.success(request, f"Password updated for {target.email or target.username}.")
                 return redirect('app_settings')
 

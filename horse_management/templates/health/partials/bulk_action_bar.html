@@ -17,20 +17,26 @@
             <button @click="clearAll()" class="text-xs text-sage hover:text-charcoal underline py-1.5">Clear</button>
         </div>
         <div class="flex items-center gap-2 sm:gap-3">
+            <!-- Options mirror the server-side gates in health.views:
+                 placement actions need horses=full, records need health=full -->
             <select x-model="actionType" class="form-select text-sm py-1.5 flex-1 sm:flex-none">
                 <option value="">Choose action...</option>
-                {% if status == 'departed' %}
+                {% if status == 'departed' and feature_access.horses.full %}
                 <option value="restore">Undo Departure (restore)</option>
                 {% endif %}
+                {% if feature_access.health.full %}
                 <option value="vaccination">Record Vaccination</option>
                 <option value="farrier">Record Farrier Visit</option>
                 <option value="worming">Record Worming</option>
                 <option value="egg_count">Record Egg Count</option>
                 <option value="vet_visit">Record Vet Visit</option>
                 <option value="condition">Record Condition</option>
+                {% endif %}
+                {% if feature_access.horses.full %}
                 <option value="move">Move to Location</option>
                 <option value="expected_departure">Set Expected Departure</option>
                 <option value="actual_departure">Set Departure Date</option>
+                {% endif %}
             </select>
             <button @click="openModal()"
                     :disabled="!actionType"

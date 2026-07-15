@@ -109,7 +109,7 @@
 
             <!-- Footer -->
             <div class="form-footer">
-                <a href="{% if request.GET.next %}{{ request.GET.next }}{% else %}{% url 'placement_list' %}{% endif %}" class="btn-secondary">Cancel</a>
+                <a href="{{ back_url }}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% else %}Add Placement{% endif %}
                 </button>
