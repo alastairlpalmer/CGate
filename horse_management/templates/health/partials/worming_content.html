@@ -89,7 +89,7 @@
                 {% for t in treatments %}
                 <tr>
                     <td>
-                        <a href="{% url 'horse_detail' t.horse.pk %}" class="link">{{ t.horse.name }}</a>
+                        <a href="{% url 'horse_detail' t.horse.pk %}" class="link tap-pad">{{ t.horse.name }}</a>
                     </td>
                     <td class="text-sage">{{ t.date|date:"d M Y" }}</td>
                     <td>{{ t.product_name }}</td>

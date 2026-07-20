@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Worm Egg Counts - CGate{% endblock %}
+{% block title %}Worm Egg Counts - Yardway{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -59,7 +59,7 @@
                     {% for ec in egg_counts %}
                     <tr>
                         <td data-label="Horse">
-                            <a href="{% url 'horse_detail' ec.horse.pk %}" class="link">{{ ec.horse.name }}</a>
+                            <a href="{% url 'horse_detail' ec.horse.pk %}" class="link tap-pad">{{ ec.horse.name }}</a>
                         </td>
                         <td class="text-sage" data-label="Date">{{ ec.date|date:"d M Y" }}</td>
                         <td class="{% if ec.is_high %}text-error-red{% endif %} font-semibold" data-label="Count EPG">

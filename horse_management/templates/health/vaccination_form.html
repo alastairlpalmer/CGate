@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if object %}Edit Vaccination{% else %}Add Vaccination{% endif %} - CGate{% endblock %}
+{% block title %}{% if object %}Edit Vaccination{% else %}Add Vaccination{% endif %} - Yardway{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
@@ -71,8 +71,9 @@
                             </div>
                             <button type="button"
                                     @click="adding = !adding"
-                                    class="btn-secondary px-2 py-1.5 text-sm"
-                                    title="Add new vet">
+                                    class="btn-secondary min-w-[44px] px-2 py-1.5 text-sm"
+                                    title="Add new vet"
+                                    :aria-label="adding ? 'Cancel adding vet' : 'Add new vet'">
                                 <span x-text="adding ? '✕' : '+'"></span>
                             </button>
                         </div>

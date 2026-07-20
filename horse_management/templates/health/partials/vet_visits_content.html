@@ -93,7 +93,7 @@
                 {% for v in vet_visits %}
                 <tr>
                     <td>
-                        <a href="{% url 'horse_detail' v.horse.pk %}" class="link">{{ v.horse.name }}</a>
+                        <a href="{% url 'horse_detail' v.horse.pk %}" class="link tap-pad">{{ v.horse.name }}</a>
                     </td>
                     <td class="text-sage">{{ v.date|date:"d M Y" }}</td>
                     <td>{{ v.reason|truncatewords:10 }}</td>

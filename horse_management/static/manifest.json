@@ -1,6 +1,6 @@
 {
-    "name": "CGate Horse Management",
-    "short_name": "CGate",
+    "name": "Yardway",
+    "short_name": "Yardway",
     "description": "Horse livery management: horses, placements, health records and invoicing.",
     "start_url": "/",
     "scope": "/",

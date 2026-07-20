@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Breeding Records - CGate{% endblock %}
+{% block title %}Breeding Records - Yardway{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -121,7 +121,7 @@
                     {% for br in breeding_records %}
                     <tr>
                         <td>
-                            <a href="{% url 'horse_detail' br.mare.pk %}" class="link">{{ br.mare.name }}</a>
+                            <a href="{% url 'horse_detail' br.mare.pk %}" class="link tap-pad">{{ br.mare.name }}</a>
                         </td>
                         <td>{{ br.stallion_name }}</td>
                         <td class="text-sage">{{ br.date_covered|date:"d M Y" }}</td>
@@ -141,7 +141,7 @@
                         </td>
                         <td>
                             {% if br.foal %}
-                            <a href="{% url 'horse_detail' br.foal.pk %}" class="link">{{ br.foal.name }}</a>
+                            <a href="{% url 'horse_detail' br.foal.pk %}" class="link tap-pad">{{ br.foal.name }}</a>
                             {% else %}<span class="text-sage">-</span>{% endif %}
                         </td>
                         <td>

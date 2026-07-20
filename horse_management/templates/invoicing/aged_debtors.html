@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Aged Debtors - CGate{% endblock %}
+{% block title %}Aged Debtors - Yardway{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -32,7 +32,7 @@
                     {% for row in rows %}
                     <tr>
                         <td data-label="Owner">
-                            <a href="{% url 'owner_detail' row.owner.pk %}" class="link">{{ row.owner.name }}</a>
+                            <a href="{% url 'owner_detail' row.owner.pk %}" class="link tap-pad">{{ row.owner.name }}</a>
                         </td>
                         <td class="text-right tabular-nums {% if row.current == 0 %}text-sage{% endif %}" data-label="Current">&pound;{{ row.current|floatformat:2 }}</td>
                         <td class="text-right tabular-nums {% if row.b1_30 == 0 %}text-sage{% endif %}" data-label="1–30 days">&pound;{{ row.b1_30|floatformat:2 }}</td>

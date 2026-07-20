@@ -1,4 +1,8 @@
-# CGate — Mobile Experience QA Report
+# Yardway (formerly CGate) — Mobile Experience QA Report
+
+> **✅ 2026-07-20 follow-up pass (Yardway rebrand + tap-target close-out).**
+> The app was renamed **Yardway** across every user-facing surface (page titles, headers, login/auth pages, PWA manifest & home-screen name, footer, Xero copy, README, default from-address). A fresh end-to-end mobile sweep (390×844, all core workflows driven: new arrival, move, vaccination, charge, invoice create/payment, feed, departure, More-sheet nav) confirmed all workflows complete correctly; the full Django suite (413 tests) passes.
+> Fixes shipped in this pass: sub-44px tap targets cut **94 → 51** (remainder are stretched-card links, ≥44px-tall short words, or checkboxes with 44px label hit-areas — i.e. no real offenders left): a shared `.tap-pad` utility now pads inline text links (row names, "View all →", back links, settings Edit, mailto/tel) to ≥44px hit boxes on touch layouts with zero layout shift; unclassed checkboxes (ownership **DELETE** was still 13px — T1.1 residual) are globally 20px; the `.form-toggle` switch gained a 44px overlay hit-area; location-detail tabs use new `tab-underline` components (44px tall, scrollable with edge fade — closes T3.3 for this screen); Costs period pills are 44px on mobile; the location-detail stat block is a 3-across row (T3.1 pattern); file inputs are 16px on mobile (no iOS zoom); the "+ add vet" button is ≥44px wide with a dynamic aria-label (T3.2/T4.2 close-out).
 
 **Focus:** Mobile usability of the core user workflows (not billing correctness — see `QA_REPORT.md` for that).
 **Date:** 2026-07-01 · **Build:** `main` (all `QA_REPORT.md` fixes merged).

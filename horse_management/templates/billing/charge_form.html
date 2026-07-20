@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if object %}Edit Charge{% else %}Add Charge{% endif %} - CGate{% endblock %}
+{% block title %}{% if object %}Edit Charge{% else %}Add Charge{% endif %} - Yardway{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
@@ -106,7 +106,7 @@
                         {% endif %}
                         {% if object.receipt_image %}
                         <p class="mt-1 text-sm text-sage">
-                            Current: <a href="{{ object.receipt_image.url }}" target="_blank" class="link">View receipt</a>
+                            Current: <a href="{{ object.receipt_image.url }}" target="_blank" class="link tap-pad">View receipt</a>
                         </p>
                         {% endif %}
                     </div>

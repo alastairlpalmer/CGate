@@ -83,7 +83,7 @@
                     {% for item in action_required %}
                     <tr>
                         <td data-label="Horse">
-                            <a href="{% url 'horse_detail' item.horse.pk %}" class="link font-medium">{{ item.horse.name }}</a>
+                            <a href="{% url 'horse_detail' item.horse.pk %}" class="link font-medium tap-pad">{{ item.horse.name }}</a>
                         </td>
                         <td data-label="Type">
                             <span class="{% if item.type == 'Farrier' %}badge-warning{% else %}badge-danger{% endif %}">{{ item.type }}</span>
@@ -128,7 +128,7 @@
                     {% for item in coming_up %}
                     <tr>
                         <td data-label="Horse">
-                            <a href="{% url 'horse_detail' item.horse.pk %}" class="link font-medium">{{ item.horse.name }}</a>
+                            <a href="{% url 'horse_detail' item.horse.pk %}" class="link font-medium tap-pad">{{ item.horse.name }}</a>
                         </td>
                         <td data-label="Type">
                             <span class="badge-success">{{ item.type }}</span>
@@ -165,7 +165,7 @@
                 {% for c in active_conditions %}
                 <li class="px-5 py-3 flex items-center justify-between">
                     <div>
-                        <a href="{% url 'horse_detail' c.horse.pk %}" class="link text-sm font-medium">{{ c.horse.name }}</a>
+                        <a href="{% url 'horse_detail' c.horse.pk %}" class="link text-sm font-medium tap-pad">{{ c.horse.name }}</a>
                         <p class="text-xs text-sage mt-0.5">{{ c.name }}</p>
                     </div>
                     <a href="{% url 'condition_update' c.pk %}" class="btn-ghost btn-xs">Edit</a>
@@ -188,7 +188,7 @@
                 {% for ec in high_egg_counts %}
                 <li class="px-5 py-3 flex items-center justify-between">
                     <div>
-                        <a href="{% url 'horse_detail' ec.horse.pk %}" class="link text-sm font-medium">{{ ec.horse.name }}</a>
+                        <a href="{% url 'horse_detail' ec.horse.pk %}" class="link text-sm font-medium tap-pad">{{ ec.horse.name }}</a>
                         <p class="text-xs text-sage mt-0.5">{{ ec.date|ago_label }} &middot; <span class="text-error-red font-semibold">{{ ec.count }} EPG</span></p>
                     </div>
                     <a href="{% url 'worming_create' %}?horse={{ ec.horse.pk }}&next={{ request.get_full_path|urlencode }}" class="btn-ghost btn-xs">Record Worming</a>

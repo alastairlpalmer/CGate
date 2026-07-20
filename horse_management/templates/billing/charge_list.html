@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Extra Charges - CGate{% endblock %}
+{% block title %}Extra Charges - Yardway{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -148,10 +148,10 @@
                     <tr>
                         <td class="text-sage">{{ charge.date|date:"d M Y" }}</td>
                         <td>
-                            <a href="{% url 'horse_detail' charge.horse.pk %}" class="link">{{ charge.horse.name }}</a>
+                            <a href="{% url 'horse_detail' charge.horse.pk %}" class="link tap-pad">{{ charge.horse.name }}</a>
                         </td>
                         <td>
-                            <a href="{% url 'owner_detail' charge.owner.pk %}" class="link">{{ charge.owner.name }}</a>
+                            <a href="{% url 'owner_detail' charge.owner.pk %}" class="link tap-pad">{{ charge.owner.name }}</a>
                         </td>
                         <td>
                             <span class="{% if charge.charge_type == 'vet' %}badge-danger{% elif charge.charge_type == 'farrier' %}badge-warning{% elif charge.charge_type == 'feed' %}badge-success{% else %}badge-neutral{% endif %}">

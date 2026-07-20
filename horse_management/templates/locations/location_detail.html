@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ location.name }} - CGate{% endblock %}
+{% block title %}{{ location.name }} - Yardway{% endblock %}
 
 {% block content %}
 <div class="space-y-6" x-data="bulkActions">
@@ -8,7 +8,7 @@
     <!-- Page Header -->
     <div class="page-header">
         <div>
-            <a href="{% url 'location_list' %}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest transition-colors duration-100 mb-1 group">
+            <a href="{% url 'location_list' %}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest transition-colors duration-100 mb-1 group tap-pad">
                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
                 </svg>
@@ -71,7 +71,7 @@
     <!-- Info Card -->
     <div class="card">
         <div class="p-5">
-            <dl class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <dl class="grid grid-cols-3 gap-4 sm:gap-6">
                 <div>
                     <dt class="text-xs font-medium text-sage uppercase tracking-wide">Current Horses</dt>
                     <dd class="mt-1 text-3xl font-bold text-charcoal">{{ horses|length }}</dd>
@@ -81,7 +81,7 @@
                     {% if location.capacity %}
                     <dd class="mt-1 text-3xl font-bold text-charcoal">{{ location.capacity }}</dd>
                     {% else %}
-                    <dd class="mt-1 text-sm text-sage">Not set &middot; <a href="{% url 'location_update' location.pk %}" class="link text-sm">Edit</a></dd>
+                    <dd class="mt-1 text-sm text-sage">Not set &middot; <a href="{% url 'location_update' location.pk %}" class="link text-sm tap-pad">Edit</a></dd>
                     {% endif %}
                 </div>
                 <div>
@@ -115,21 +115,21 @@
 
     <!-- Tabs -->
     <div class="border-b border-light-sage">
-        <nav class="flex gap-6">
+        <nav class="flex gap-6 overflow-x-auto tab-strip-fade">
             <a href="{% url 'location_detail' location.pk %}"
-               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-100 {% if current_tab == 'current' %}border-forest text-forest{% else %}border-transparent text-sage hover:text-charcoal hover:border-sage/50{% endif %}">
+               class="{% if current_tab == 'current' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}">
                 Current Horses
             </a>
             <a href="{% url 'location_detail' location.pk %}?tab=feed"
-               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-100 {% if current_tab == 'feed' %}border-forest text-forest{% else %}border-transparent text-sage hover:text-charcoal hover:border-sage/50{% endif %}">
+               class="{% if current_tab == 'feed' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}">
                 Feed History
             </a>
             <a href="{% url 'location_detail' location.pk %}?tab=history"
-               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-100 {% if current_tab == 'history' %}border-forest text-forest{% else %}border-transparent text-sage hover:text-charcoal hover:border-sage/50{% endif %}">
+               class="{% if current_tab == 'history' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}">
                 History
             </a>
             <a href="{% url 'location_detail' location.pk %}?tab=usage"
-               class="pb-3 text-sm font-medium border-b-2 transition-colors duration-100 {% if current_tab == 'usage' %}border-forest text-forest{% else %}border-transparent text-sage hover:text-charcoal hover:border-sage/50{% endif %}">
+               class="{% if current_tab == 'usage' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}">
                 Usage
             </a>
         </nav>
@@ -173,10 +173,10 @@
                     {% for placement in history_placements %}
                     <tr>
                         <td data-label="Horse">
-                            <a href="{% url 'horse_detail' placement.horse.pk %}" class="link">{{ placement.horse.name }}</a>
+                            <a href="{% url 'horse_detail' placement.horse.pk %}" class="link tap-pad">{{ placement.horse.name }}</a>
                         </td>
                         <td data-label="Owner">
-                            <a href="{% url 'owner_detail' placement.owner.pk %}" class="link">{{ placement.owner.name }}</a>
+                            <a href="{% url 'owner_detail' placement.owner.pk %}" class="link tap-pad">{{ placement.owner.name }}</a>
                         </td>
                         <td class="text-sage" data-label="Rate">
                             {{ placement.rate_type.name }} (&pound;{{ placement.rate_type.daily_rate }}/day)
@@ -600,7 +600,7 @@
                                    class="form-checkbox rounded">
                         </td>
                         <td data-label="Name">
-                            <a href="{% url 'horse_detail' horse.pk %}" class="link font-medium">
+                            <a href="{% url 'horse_detail' horse.pk %}" class="link font-medium tap-pad">
                                 {{ horse.name }}
                             </a>
                         </td>
@@ -612,7 +612,7 @@
                         <td data-label="Owner">
                             {% with placement=horse.active_placements.0 %}
                             {% if placement %}
-                            <a href="{% url 'owner_detail' placement.owner.pk %}" class="link">
+                            <a href="{% url 'owner_detail' placement.owner.pk %}" class="link tap-pad">
                                 {{ placement.owner.name }}
                             </a>
                             {% endif %}

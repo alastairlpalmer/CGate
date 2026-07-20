@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Statement - {{ owner.name }} - CGate{% endblock %}
+{% block title %}Statement - {{ owner.name }} - Yardway{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -68,7 +68,7 @@
                     {% for row in statement.rows %}
                     <tr>
                         <td data-label="Invoice">
-                            <a href="{% url 'invoice_detail' row.invoice.pk %}" class="link">{{ row.invoice.invoice_number }}</a>
+                            <a href="{% url 'invoice_detail' row.invoice.pk %}" class="link tap-pad">{{ row.invoice.invoice_number }}</a>
                         </td>
                         <td class="text-sage" data-label="Issued">{{ row.invoice.created_at|date:"d M Y" }}</td>
                         <td class="text-sage" data-label="Period">{{ row.invoice.period_start|date:"d M" }} &ndash; {{ row.invoice.period_end|date:"d M Y" }}</td>

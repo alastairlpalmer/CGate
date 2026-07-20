@@ -40,8 +40,11 @@
     .form-textarea { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-sm focus:outline-none focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150; }
     .form-checkbox { @apply h-5 w-5 rounded-sm border-sage/30 text-forest focus:ring-sage; }
 
-    /* Toggle switch — pair with role="switch" + aria-checked for a11y */
+    /* Toggle switch — pair with role="switch" + aria-checked for a11y.
+       The ::after overlay grows the tap box to ~44px without changing the
+       20x36 visual (the control itself is too small a touch target alone). */
     .form-toggle { @apply relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-sage/30 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sage focus:ring-offset-2; }
+    .form-toggle::after { content: ''; @apply absolute -inset-3; }
     .form-toggle[aria-checked="true"] { @apply bg-forest; }
     .form-toggle-thumb { @apply pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out translate-x-0; }
     .form-toggle[aria-checked="true"] .form-toggle-thumb { @apply translate-x-4; }
@@ -171,8 +174,14 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
 @media (max-width: 639px) {
     .form-input, .form-select, .form-textarea { font-size: 16px; }
 }
-input[type="checkbox"] { @apply rounded-sm border-sage/30 text-forest focus:ring-sage; }
+/* h-5 w-5 here (not just on .form-checkbox) so checkboxes Django renders
+   without a class — formset DELETE boxes, admin-ish widgets — never fall
+   back to the ~13px browser default. */
+input[type="checkbox"] { @apply h-5 w-5 rounded-sm border-sage/30 text-forest focus:ring-sage; }
 input[type="file"] { @apply block w-full text-sm text-sage file:mr-3 file:rounded-btn file:border-0 file:bg-light-sage file:px-3 file:py-2 file:text-sm file:font-medium file:text-forest hover:file:bg-sage-100 cursor-pointer; }
+@media (max-width: 639px) {
+    input[type="file"] { font-size: 16px; } /* match text inputs: no iOS zoom */
+}
 
 /* Progress bar glow */
 #htmx-progress { box-shadow: 0 0 8px rgba(61, 90, 99, 0.6); }
@@ -278,6 +287,25 @@ input[type="file"] { @apply block w-full text-sm text-sage file:mr-3 file:rounde
         font-weight: 600; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em;
         color: #6A8990; text-align: left; white-space: nowrap; flex-shrink: 0;
     }
+}
+
+/* Inline-link tap target: on touch layouts, pad the link's hit box out to
+   ~44px tall with padding cancelled by negative margin, so small text links
+   (row names, "View all →", mailto/tel) are comfortably tappable without
+   moving a pixel of layout. No-op on desktop. */
+@media (max-width: 1023px) {
+    /* Works on inline links too: vertical padding on an inline box doesn't
+       move surrounding layout but does extend its hit box. No display
+       override — flex/inline-flex links keep their own layout. */
+    .tap-pad { padding-top: 0.875rem; padding-bottom: 0.875rem; margin-top: -0.875rem; margin-bottom: -0.875rem; position: relative; z-index: 1; }
+}
+
+/* Underline tabs (location detail, etc.) — 44px-tall tap boxes on phones,
+   text stays bottom-aligned so the active underline still hugs the label. */
+@layer components {
+    .tab-underline { @apply inline-flex items-end pb-3 text-sm font-medium border-b-2 transition-colors duration-100 min-h-[44px] sm:min-h-0 whitespace-nowrap; }
+    .tab-underline-active { @apply tab-underline border-forest text-forest; }
+    .tab-underline-inactive { @apply tab-underline border-transparent text-sage hover:text-charcoal hover:border-sage/50; }
 }
 
 /* Scrollable tab strips: fade the right edge on phones so it's obvious

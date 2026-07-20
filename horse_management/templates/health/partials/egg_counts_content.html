@@ -90,7 +90,7 @@
                 {% for ec in egg_counts %}
                 <tr>
                     <td>
-                        <a href="{% url 'horse_detail' ec.horse.pk %}" class="link">{{ ec.horse.name }}</a>
+                        <a href="{% url 'horse_detail' ec.horse.pk %}" class="link tap-pad">{{ ec.horse.name }}</a>
                     </td>
                     <td class="text-sage">{{ ec.date|date:"d M Y" }}</td>
                     <td class="{% if ec.is_high %}text-error-red{% endif %} font-semibold">

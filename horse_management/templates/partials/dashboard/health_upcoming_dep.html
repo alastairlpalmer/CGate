@@ -12,7 +12,7 @@
         <li class="px-5 py-3">
             <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0">
-                    <a href="{% url 'horse_detail' p.horse.pk %}" class="link text-sm">{{ p.horse.name }}</a>
+                    <a href="{% url 'horse_detail' p.horse.pk %}" class="link text-sm tap-pad">{{ p.horse.name }}</a>
                     <p class="text-xs text-sage truncate">{{ p.owner.name }} &middot; {{ p.location.name }}</p>
                 </div>
                 <span class="font-mono text-xs text-sage shrink-0">{{ p.expected_departure|date:"d M Y" }}</span>

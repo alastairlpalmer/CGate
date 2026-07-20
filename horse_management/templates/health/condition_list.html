@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Medical Conditions - CGate{% endblock %}
+{% block title %}Medical Conditions - Yardway{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -66,7 +66,7 @@
                     {% for c in conditions %}
                     <tr>
                         <td data-label="Horse">
-                            <a href="{% url 'horse_detail' c.horse.pk %}" class="link">{{ c.horse.name }}</a>
+                            <a href="{% url 'horse_detail' c.horse.pk %}" class="link tap-pad">{{ c.horse.name }}</a>
                         </td>
                         <td data-label="Condition">{{ c.name }}</td>
                         <td class="text-sage" data-label="Diagnosed">{{ c.diagnosed_date|default:"-" }}</td>

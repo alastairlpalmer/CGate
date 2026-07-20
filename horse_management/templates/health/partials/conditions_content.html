@@ -102,7 +102,7 @@
                 {% for c in conditions %}
                 <tr>
                     <td>
-                        <a href="{% url 'horse_detail' c.horse.pk %}" class="link">{{ c.horse.name }}</a>
+                        <a href="{% url 'horse_detail' c.horse.pk %}" class="link tap-pad">{{ c.horse.name }}</a>
                     </td>
                     <td>{{ c.name }}</td>
                     <td class="text-sage">{{ c.diagnosed_date|default:"-" }}</td>

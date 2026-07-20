@@ -16,7 +16,7 @@ and documents=<queryset>:
         {% for doc in documents %}
         <li class="flex items-center justify-between gap-3 px-5 py-3">
             <div class="min-w-0">
-                <a href="{{ doc.file.url }}" target="_blank" rel="noopener" class="link text-sm font-medium" hx-boost="false">{{ doc.title }}</a>
+                <a href="{{ doc.file.url }}" target="_blank" rel="noopener" class="link text-sm font-medium tap-pad" hx-boost="false">{{ doc.title }}</a>
                 <p class="text-xs text-sage mt-0.5">
                     {{ doc.get_doc_type_display }}
                     {% if doc.expiry_date %}

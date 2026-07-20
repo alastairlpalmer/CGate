@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Log Arrival at {{ location.name }} - CGate{% endblock %}
+{% block title %}Log Arrival at {{ location.name }} - Yardway{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
@@ -38,7 +38,7 @@
                     {% endfor %}
                 </div>
                 <p class="mt-2 text-xs text-sage">
-                    New horse? <a href="{% url 'horse_new_arrival' %}?location={{ location.pk }}" class="link text-xs">Create and arrive in one step &rarr;</a>
+                    New horse? <a href="{% url 'horse_new_arrival' %}?location={{ location.pk }}" class="link text-xs tap-pad">Create and arrive in one step &rarr;</a>
                 </p>
             </fieldset>
 

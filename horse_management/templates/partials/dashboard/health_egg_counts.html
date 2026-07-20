@@ -12,7 +12,7 @@
         <li class="px-5 py-3">
             <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0">
-                    <a href="{% url 'horse_detail' ec.horse.pk %}" class="link text-sm">{{ ec.horse.name }}</a>
+                    <a href="{% url 'horse_detail' ec.horse.pk %}" class="link text-sm tap-pad">{{ ec.horse.name }}</a>
                     <p class="font-mono text-xs text-sage">{{ ec.date|date:"d M Y" }}</p>
                 </div>
                 <span class="badge-danger shrink-0">{{ ec.count }} EPG</span>

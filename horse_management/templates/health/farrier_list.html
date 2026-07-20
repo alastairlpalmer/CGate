@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Farrier Visits - CGate{% endblock %}
+{% block title %}Farrier Visits - Yardway{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -67,7 +67,7 @@
                     {% for visit in visits %}
                     <tr>
                         <td data-label="Horse">
-                            <a href="{% url 'horse_detail' visit.horse.pk %}" class="link">{{ visit.horse.name }}</a>
+                            <a href="{% url 'horse_detail' visit.horse.pk %}" class="link tap-pad">{{ visit.horse.name }}</a>
                         </td>
                         <td class="text-sage" data-label="Date">{{ visit.date|date:"d M Y" }}</td>
                         <td data-label="Work Done">{{ visit.get_work_done_display }}</td>

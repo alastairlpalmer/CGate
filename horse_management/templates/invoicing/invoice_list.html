@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Invoices - CGate{% endblock %}
+{% block title %}Invoices - Yardway{% endblock %}
 
 {% block content %}
 <div class="space-y-6"
@@ -192,10 +192,10 @@
                         </td>
                         {% endif %}
                         <td>
-                            <a href="{% url 'invoice_detail' invoice.pk %}" class="link">{{ invoice.invoice_number }}</a>
+                            <a href="{% url 'invoice_detail' invoice.pk %}" class="link tap-pad">{{ invoice.invoice_number }}</a>
                         </td>
                         <td>
-                            <a href="{% url 'owner_detail' invoice.owner.pk %}" class="link">{{ invoice.owner.name }}</a>
+                            <a href="{% url 'owner_detail' invoice.owner.pk %}" class="link tap-pad">{{ invoice.owner.name }}</a>
                         </td>
                         <td class="text-sage">{{ invoice.period_start }} - {{ invoice.period_end }}</td>
                         <td class="text-right font-medium text-charcoal">
