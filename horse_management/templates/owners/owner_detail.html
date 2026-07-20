@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ owner.name }} - CGate{% endblock %}
+{% block title %}{{ owner.name }} - Yardway{% endblock %}
 
 {% block content %}
 <div class="space-y-6" x-data="bulkActions">
@@ -51,7 +51,7 @@
                     <div>
                         <dt class="text-xs font-medium text-sage uppercase tracking-wider">Email</dt>
                         <dd class="mt-1 text-sm text-charcoal">
-                            <a href="mailto:{{ owner.email }}" class="link">{{ owner.email }}</a>
+                            <a href="mailto:{{ owner.email }}" class="link tap-pad">{{ owner.email }}</a>
                         </dd>
                     </div>
                     {% endif %}
@@ -59,7 +59,7 @@
                     <div>
                         <dt class="text-xs font-medium text-sage uppercase tracking-wider">Phone</dt>
                         <dd class="mt-1 text-sm text-charcoal">
-                            <a href="tel:{{ owner.phone }}" class="link">{{ owner.phone }}</a>
+                            <a href="tel:{{ owner.phone }}" class="link tap-pad">{{ owner.phone }}</a>
                         </dd>
                     </div>
                     {% endif %}
@@ -113,7 +113,7 @@
                                        class="form-checkbox rounded">
                             </td>
                             <td data-label="Name">
-                                <a href="{% url 'horse_detail' horse.pk %}" class="link text-sm font-medium">{{ horse.name }}</a>
+                                <a href="{% url 'horse_detail' horse.pk %}" class="link text-sm font-medium tap-pad">{{ horse.name }}</a>
                                 {% if horse.share_pct and horse.share_pct < 100 %}
                                 <span class="badge-info ml-1 text-xs">{{ horse.share_pct|floatformat:0 }}%</span>
                                 {% endif %}
@@ -177,7 +177,7 @@
                         {% for horse in departed_horses %}
                         <tr class="opacity-60">
                             <td data-label="Name">
-                                <a href="{% url 'horse_detail' horse.pk %}" class="link text-sm font-medium">{{ horse.name }}</a>
+                                <a href="{% url 'horse_detail' horse.pk %}" class="link text-sm font-medium tap-pad">{{ horse.name }}</a>
                             </td>
                             <td class="text-xs text-sage" data-label="Details">
                                 {% if horse.age %}{{ horse.age }}yo{% endif %}
@@ -256,7 +256,7 @@
                     {% for invoice in invoices %}
                     <tr>
                         <td data-label="Invoice">
-                            <a href="{% url 'invoice_detail' invoice.pk %}" class="link">
+                            <a href="{% url 'invoice_detail' invoice.pk %}" class="link tap-pad">
                                 {{ invoice.invoice_number }}
                             </a>
                         </td>

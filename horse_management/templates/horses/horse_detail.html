@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ horse.name }} - CGate{% endblock %}
+{% block title %}{{ horse.name }} - Yardway{% endblock %}
 
 {% load ui_extras %}
 
@@ -8,7 +8,7 @@
 <div class="space-y-6">
 
     <!-- Back link -->
-    <a href="{% url 'horse_list' %}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest transition-colors group">
+    <a href="{% url 'horse_list' %}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest transition-colors group tap-pad">
         <svg class="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
         </svg>
@@ -50,7 +50,7 @@
                     {% if horse.current_owner %}
                     <p class="mt-2 text-sm text-charcoal-light flex items-center gap-1.5">
                         <svg class="w-3.5 h-3.5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
-                        <a href="{% url 'owner_detail' horse.current_owner.pk %}" class="link">{{ horse.current_owner.name }}</a>
+                        <a href="{% url 'owner_detail' horse.current_owner.pk %}" class="link tap-pad">{{ horse.current_owner.name }}</a>
                     </p>
                     {% endif %}
                     {% if horse.dam_name or horse.dam or horse.sire_name %}
@@ -58,7 +58,7 @@
                         <svg class="w-3 h-3 text-sage/70" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 13.5V3.75m0 9.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 3.75V16.5m12-3V3.75m0 9.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 3.75V16.5m-6-13.5V1.5m0 1.5v9.75m0 0a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 3.75V16.5"/></svg>
                         {% if horse.sire_name %}<span><span class="text-sage/70">Sire:</span> {{ horse.sire_name }}</span>{% endif %}
                         {% if horse.sire_name and horse.dam_name or horse.sire_name and horse.dam %}<span class="text-sage/40">·</span>{% endif %}
-                        {% if horse.dam %}<span><span class="text-sage/70">Dam:</span> <a href="{% url 'horse_detail' horse.dam.pk %}" class="link text-xs">{{ horse.dam.name }}</a></span>{% elif horse.dam_name %}<span><span class="text-sage/70">Dam:</span> {{ horse.dam_name }}</span>{% endif %}
+                        {% if horse.dam %}<span><span class="text-sage/70">Dam:</span> <a href="{% url 'horse_detail' horse.dam.pk %}" class="link text-xs tap-pad">{{ horse.dam.name }}</a></span>{% elif horse.dam_name %}<span><span class="text-sage/70">Dam:</span> {{ horse.dam_name }}</span>{% endif %}
                     </p>
                     {% endif %}
                 </div>
@@ -169,7 +169,7 @@
                                 Location
                             </dt>
                             <dd class="mt-1 text-sm text-charcoal">
-                                <a href="{% url 'location_detail' current_placement.location.pk %}" class="link">{{ current_placement.location.name }}</a>
+                                <a href="{% url 'location_detail' current_placement.location.pk %}" class="link tap-pad">{{ current_placement.location.name }}</a>
                             </dd>
                         </div>
                         <div>
@@ -178,7 +178,7 @@
                                 Owner
                             </dt>
                             <dd class="mt-1 text-sm text-charcoal">
-                                <a href="{% url 'owner_detail' current_placement.owner.pk %}" class="link">{{ current_placement.owner.name }}</a>
+                                <a href="{% url 'owner_detail' current_placement.owner.pk %}" class="link tap-pad">{{ current_placement.owner.name }}</a>
                             </dd>
                         </div>
                         <div>
@@ -356,7 +356,7 @@
                             <tbody>
                                 {% for foal in foals %}
                                 <tr>
-                                    <td><a href="{% url 'horse_detail' foal.pk %}" class="link">{{ foal.name }}</a></td>
+                                    <td><a href="{% url 'horse_detail' foal.pk %}" class="link tap-pad">{{ foal.name }}</a></td>
                                     <td class="text-sage">{{ foal.date_of_birth|default:"-" }}</td>
                                     <td class="text-sage">{{ foal.get_sex_display }}</td>
                                     <td class="text-sage">{{ foal.get_color_display }}</td>
@@ -498,7 +498,7 @@
                                     <span class="flex items-center gap-2 shrink-0">
                                         {% if event.type == 'placement' and feature_access.locations.full %}
                                         <a href="{% url 'placement_update' event.obj.pk %}?next={{ request.path|urlencode }}"
-                                           class="link text-xs" title="Correct dates, rate or owner">Edit</a>
+                                           class="link text-xs tap-pad" title="Correct dates, rate or owner">Edit</a>
                                         {% endif %}
                                         <span class="text-xs text-sage" title="{{ event.date|date:"d M Y" }}">{{ event.date|ago_label }}</span>
                                     </span>
@@ -558,7 +558,7 @@
                                         {% else %}
                                         <span class="badge-neutral">{{ event.obj.get_status_display }}</span>
                                         {% endif %}
-                                        {% if event.obj.foal %}&middot; <a href="{% url 'horse_detail' event.obj.foal.pk %}" class="link text-xs">{{ event.obj.foal.name }}</a>{% endif %}
+                                        {% if event.obj.foal %}&middot; <a href="{% url 'horse_detail' event.obj.foal.pk %}" class="link text-xs tap-pad">{{ event.obj.foal.name }}</a>{% endif %}
                                     </p>
 
                                     {% elif event.type == 'worming' %}
@@ -601,7 +601,7 @@
                     {% for share in ownership_shares %}
                     <li class="px-5 py-3 flex items-center justify-between">
                         <div>
-                            <a href="{% url 'owner_detail' share.owner.pk %}" class="link text-sm">{{ share.owner.name }}</a>
+                            <a href="{% url 'owner_detail' share.owner.pk %}" class="link text-sm tap-pad">{{ share.owner.name }}</a>
                             {% if share.is_primary_contact %}
                             <span class="ml-1 text-xs text-forest font-medium">Primary</span>
                             {% endif %}

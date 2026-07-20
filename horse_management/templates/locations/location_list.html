@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Locations - CGate{% endblock %}
+{% block title %}Locations - Yardway{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -86,7 +86,7 @@
             {% for row in rows %}
             <div class="p-4 sm:p-5">
                 <div class="flex items-baseline justify-between gap-3">
-                    <a href="{% url 'location_detail' row.location.pk %}?tab=usage&range={{ usage_range }}&year={{ usage_year }}" class="link font-medium">{{ row.location.name }}</a>
+                    <a href="{% url 'location_detail' row.location.pk %}?tab=usage&range={{ usage_range }}&year={{ usage_year }}" class="link font-medium tap-pad">{{ row.location.name }}</a>
                     <span class="text-xs text-sage tabular-nums shrink-0">{{ row.total }} day{{ row.total|pluralize }} tracked</span>
                 </div>
                 {% if row.segments %}
@@ -218,13 +218,13 @@
                     {% for placement in placements %}
                     <tr>
                         <td>
-                            <a href="{% url 'horse_detail' placement.horse.pk %}" class="link">{{ placement.horse.name }}</a>
+                            <a href="{% url 'horse_detail' placement.horse.pk %}" class="link tap-pad">{{ placement.horse.name }}</a>
                         </td>
                         <td>
-                            <a href="{% url 'owner_detail' placement.owner.pk %}" class="link">{{ placement.owner.name }}</a>
+                            <a href="{% url 'owner_detail' placement.owner.pk %}" class="link tap-pad">{{ placement.owner.name }}</a>
                         </td>
                         <td>
-                            <a href="{% url 'location_detail' placement.location.pk %}" class="link">{{ placement.location.name }}</a>
+                            <a href="{% url 'location_detail' placement.location.pk %}" class="link tap-pad">{{ placement.location.name }}</a>
                         </td>
                         <td class="text-sage">
                             {{ placement.rate_type.name }} (&pound;{{ placement.rate_type.daily_rate }}/day)
@@ -310,7 +310,7 @@
                         <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
                                 <h3>
-                                    <a href="{% url 'location_detail' location.pk %}" class="font-semibold text-charcoal hover:text-forest transition-colors duration-100">
+                                    <a href="{% url 'location_detail' location.pk %}" class="font-semibold text-charcoal hover:text-forest transition-colors duration-100 tap-pad">
                                         {{ location.name }}
                                     </a>
                                 </h3>
@@ -360,10 +360,10 @@
                     </div>
                     <div class="border-t border-light-sage px-5 py-3 flex justify-between items-center">
                         <div class="flex items-center gap-4">
-                            <a href="{% url 'location_detail' location.pk %}" class="link text-sm">View horses &rarr;</a>
-                            <a href="{% url 'feed_out_create' location_pk=location.pk %}" class="text-sm text-sage hover:text-forest transition-colors duration-100">Feed Out</a>
+                            <a href="{% url 'location_detail' location.pk %}" class="link text-sm tap-pad">View horses &rarr;</a>
+                            <a href="{% url 'feed_out_create' location_pk=location.pk %}" class="text-sm text-sage hover:text-forest transition-colors duration-100 tap-pad">Feed Out</a>
                         </div>
-                        <a href="{% url 'location_update' location.pk %}" class="text-sm text-sage hover:text-charcoal-light transition-colors duration-100">Edit</a>
+                        <a href="{% url 'location_update' location.pk %}" class="text-sm text-sage hover:text-charcoal-light transition-colors duration-100 tap-pad">Edit</a>
                     </div>
                 </div>
                 {% endfor %}

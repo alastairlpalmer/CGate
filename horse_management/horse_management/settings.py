@@ -244,7 +244,7 @@ EMAIL_PORT = env.int('EMAIL_PORT', default=587)
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@horsemanagement.local')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@yardway.local')
 
 # Xero OAuth2
 XERO_CLIENT_ID = env('XERO_CLIENT_ID', default='')
@@ -410,3 +410,7 @@ if DEBUG:
     INSTALLED_APPS += ['debug_toolbar']
     MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
     INTERNAL_IPS = ['127.0.0.1']
+# QA runs: keep DEBUG on but drop the toolbar so it can't intercept clicks.
+if DEBUG and os.environ.get('QA_NO_TOOLBAR'):
+    INSTALLED_APPS = [a for a in INSTALLED_APPS if a != 'debug_toolbar']
+    MIDDLEWARE = [m for m in MIDDLEWARE if 'debug_toolbar' not in m]

@@ -11,7 +11,7 @@
         <li class="px-5 py-3">
             <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0">
-                    <a href="{% url 'horse_detail' v.horse.pk %}" class="link text-sm">{{ v.horse.name }}</a>
+                    <a href="{% url 'horse_detail' v.horse.pk %}" class="link text-sm tap-pad">{{ v.horse.name }}</a>
                     <p class="text-xs text-sage truncate">{{ v.reason|truncatewords:6 }}</p>
                 </div>
                 <span class="font-mono text-xs text-sage shrink-0">

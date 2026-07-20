@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load ui_extras %}
 
-{% block title %}Costs - CGate{% endblock %}
+{% block title %}Costs - Yardway{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -76,15 +76,15 @@
                 <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Period</label>
                 <div class="inline-flex rounded-lg shadow-sm">
                     <a href="?period=month{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source }}{% endif %}"
-                       class="px-3 py-2 text-xs font-medium rounded-l-lg border {% if current_period == 'month' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
+                       class="px-3 py-2 min-h-[44px] sm:min-h-0 inline-flex items-center text-xs font-medium rounded-l-lg border {% if current_period == 'month' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
                         Month
                     </a>
                     <a href="?period=quarter{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source }}{% endif %}"
-                       class="px-3 py-2 text-xs font-medium border-t border-b {% if current_period == 'quarter' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
+                       class="px-3 py-2 min-h-[44px] sm:min-h-0 inline-flex items-center text-xs font-medium border-t border-b {% if current_period == 'quarter' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
                         Quarter
                     </a>
                     <a href="?period=year{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source }}{% endif %}"
-                       class="px-3 py-2 text-xs font-medium rounded-r-lg border {% if current_period == 'year' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
+                       class="px-3 py-2 min-h-[44px] sm:min-h-0 inline-flex items-center text-xs font-medium rounded-r-lg border {% if current_period == 'year' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
                         Year
                     </a>
                 </div>
@@ -162,7 +162,7 @@
                         <td class="text-right font-medium text-charcoal tabular-nums" data-label="Amount">&pound;{{ cost.amount|floatformat:2 }}</td>
                         <td data-label="Horse">
                             {% if cost.horse_pk %}
-                            <a href="{% url 'horse_detail' cost.horse_pk %}" class="link">{{ cost.horse }}</a>
+                            <a href="{% url 'horse_detail' cost.horse_pk %}" class="link tap-pad">{{ cost.horse }}</a>
                             {% else %}
                             <span class="text-sage">—</span>
                             {% endif %}

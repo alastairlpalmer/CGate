@@ -101,7 +101,7 @@
                 {% for visit in visits %}
                 <tr>
                     <td>
-                        <a href="{% url 'horse_detail' visit.horse.pk %}" class="link">{{ visit.horse.name }}</a>
+                        <a href="{% url 'horse_detail' visit.horse.pk %}" class="link tap-pad">{{ visit.horse.name }}</a>
                     </td>
                     <td class="text-sage">{{ visit.date|date:"d M Y" }}</td>
                     <td>{{ visit.get_work_done_display }}</td>

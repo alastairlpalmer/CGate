@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if current_status == 'ended' %}Ended{% elif current_status == 'all' %}All{% else %}Active{% endif %} Placements - CGate{% endblock %}
+{% block title %}{% if current_status == 'ended' %}Ended{% elif current_status == 'all' %}All{% else %}Active{% endif %} Placements - Yardway{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -82,13 +82,13 @@
                     {% for placement in placements %}
                     <tr>
                         <td data-label="Horse">
-                            <a href="{% url 'horse_detail' placement.horse.pk %}" class="link">{{ placement.horse.name }}</a>
+                            <a href="{% url 'horse_detail' placement.horse.pk %}" class="link tap-pad">{{ placement.horse.name }}</a>
                         </td>
                         <td data-label="Owner">
-                            <a href="{% url 'owner_detail' placement.owner.pk %}" class="link">{{ placement.owner.name }}</a>
+                            <a href="{% url 'owner_detail' placement.owner.pk %}" class="link tap-pad">{{ placement.owner.name }}</a>
                         </td>
                         <td data-label="Location">
-                            <a href="{% url 'location_detail' placement.location.pk %}" class="link">{{ placement.location.name }}</a>
+                            <a href="{% url 'location_detail' placement.location.pk %}" class="link tap-pad">{{ placement.location.name }}</a>
                         </td>
                         <td class="text-sage" data-label="Rate">
                             {{ placement.rate_type.name }} (&pound;{{ placement.rate_type.daily_rate }}/day)

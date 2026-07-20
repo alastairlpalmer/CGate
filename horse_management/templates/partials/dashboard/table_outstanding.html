@@ -5,7 +5,7 @@
             <h2 class="section-title">Outstanding Invoices</h2>
             <span class="badge-neutral">{{ outstanding_invoices|length }}</span>
         </div>
-        <a href="{% url 'invoice_list' %}" class="text-xs link">View all &rarr;</a>
+        <a href="{% url 'invoice_list' %}" class="text-xs link tap-pad">View all &rarr;</a>
     </div>
     <div class="overflow-x-auto">
         <table class="data-table data-table-cards">
@@ -23,7 +23,7 @@
                 {% for invoice in outstanding_invoices %}
                 <tr>
                     <td data-label="Invoice">
-                        <a href="{% url 'invoice_detail' invoice.pk %}" class="link">{{ invoice.invoice_number }}</a>
+                        <a href="{% url 'invoice_detail' invoice.pk %}" class="link tap-pad">{{ invoice.invoice_number }}</a>
                     </td>
                     <td data-label="Owner">{{ invoice.owner.name }}</td>
                     <td class="font-mono tabular-nums font-medium" data-label="Amount">

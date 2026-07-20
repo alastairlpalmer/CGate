@@ -108,7 +108,7 @@
                 {% for vax in vaccinations %}
                 <tr>
                     <td>
-                        <a href="{% url 'horse_detail' vax.horse.pk %}" class="link">{{ vax.horse.name }}</a>
+                        <a href="{% url 'horse_detail' vax.horse.pk %}" class="link tap-pad">{{ vax.horse.name }}</a>
                     </td>
                     <td>{{ vax.vaccination_type.name }}</td>
                     <td class="text-sage">{{ vax.date_given|date:"d M Y" }}</td>
