@@ -497,10 +497,44 @@ class InvoiceService:
         ).distinct()
 
     @staticmethod
+    def uncovered_periods(owner, period_start, period_end):
+        """Sub-ranges of [period_start, period_end] no live invoice covers.
+
+        Livery has no per-day "billed" marker — coverage is the invoice
+        period itself. A partial-period invoice (e.g. settling up a horse
+        that left on the 10th) must therefore not suppress the rest of the
+        month: the remainder is still billable and is returned here as one
+        or more (start, end) gaps. Returns [(period_start, period_end)]
+        when nothing overlaps, [] when the period is fully covered.
+        """
+        existing = Invoice.objects.filter(
+            owner=owner,
+            period_start__lte=period_end,
+            period_end__gte=period_start,
+        ).exclude(
+            status=Invoice.Status.CANCELLED,
+        ).order_by('period_start')
+
+        gaps = []
+        cursor = period_start
+        for inv in existing:
+            if inv.period_start > cursor:
+                gaps.append((cursor, inv.period_start - timedelta(days=1)))
+            cursor = max(cursor, inv.period_end + timedelta(days=1))
+            if cursor > period_end:
+                break
+        if cursor <= period_end:
+            gaps.append((cursor, period_end))
+        return gaps
+
+    @staticmethod
     def generate_monthly_invoices(year, month):
         """Generate invoices for all owners for a given month.
 
-        Includes both direct placement owners and fractional owners.
+        Includes both direct placement owners and fractional owners. Owners
+        with an invoice already covering part of the month are billed for
+        the uncovered remainder; only owners whose whole month is covered
+        are skipped.
         """
         from calendar import monthrange
 
@@ -514,20 +548,31 @@ class InvoiceService:
         invoices = []
         skipped = []
         for owner in owners:
-            existing = InvoiceService.check_for_overlapping_invoices(
-                owner, first_day, last_day
-            )
-            if existing:
+            gaps = InvoiceService.uncovered_periods(owner, first_day, last_day)
+            if not gaps:
                 skipped.append(owner)
                 continue
 
-            # Preview charges first to avoid consuming an invoice number for zero totals
-            preview = InvoiceService.calculate_invoice_preview(owner, first_day, last_day)
-            if preview['total'] <= 0:
-                continue
+            for gap_start, gap_end in gaps:
+                # Preview charges first to avoid consuming an invoice number
+                # for zero totals
+                preview = InvoiceService.calculate_invoice_preview(
+                    owner, gap_start, gap_end
+                )
+                if preview['total'] <= 0:
+                    continue
 
-            invoice = InvoiceService.create_invoice(owner, first_day, last_day)
-            invoices.append(invoice)
+                try:
+                    invoice = InvoiceService.create_invoice(
+                        owner, gap_start, gap_end
+                    )
+                except DuplicateInvoiceError:
+                    # A concurrent run (beat task vs manual click) got there
+                    # first — treat as already covered rather than aborting
+                    # the whole batch.
+                    skipped.append(owner)
+                    continue
+                invoices.append(invoice)
 
         return invoices, skipped
 

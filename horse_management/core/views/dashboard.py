@@ -22,6 +22,8 @@ from health.models import (
     Vaccination,
     VetVisit,
     WormEggCount,
+    current_farrier_visits,
+    current_vaccinations,
 )
 
 from invoicing.models import Invoice
@@ -95,10 +97,12 @@ def _dashboard_inner(request):
         # Includes overdue (no lower bound): an overdue vaccination is the
         # most urgent thing this list can show — it must not drop off the
         # dashboard the day it expires. Oldest overdue sorts first.
-        vaccinations_due = list(Vaccination.objects.filter(
+        # Latest record per (horse, type) only — superseded records keep a
+        # past next_due_date forever and would show as permanently overdue.
+        vaccinations_due = list(current_vaccinations(Vaccination.objects.filter(
             next_due_date__lte=thirty_days,
             horse__is_active=True,
-        ).select_related('horse', 'vaccination_type').order_by('next_due_date')[:10])
+        )).select_related('horse', 'vaccination_type').order_by('next_due_date')[:10])
     else:
         vaccinations_due = []
 
@@ -131,10 +135,10 @@ def _dashboard_inner(request):
     farrier_due = []
     if 'list_farrier_due' in visible:
         # Includes overdue, same as vaccinations above.
-        farrier_due = list(FarrierVisit.objects.filter(
+        farrier_due = list(current_farrier_visits(FarrierVisit.objects.filter(
             next_due_date__lte=two_weeks,
             horse__is_active=True
-        ).select_related('horse').order_by('next_due_date')[:10])
+        )).select_related('horse').order_by('next_due_date')[:10])
 
     # ── Recent Activity Timeline ────────────────────────────────
     activity = []

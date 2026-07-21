@@ -242,3 +242,63 @@ class CheckInvoiceStatusTests(TestCase):
         inv.refresh_from_db(); paid.refresh_from_db()
         self.assertEqual(inv.status, Invoice.Status.OVERDUE)
         self.assertEqual(paid.status, Invoice.Status.PAID)
+
+
+class VaccinationSupersededGuardTests(TestCase):
+    """Latest-record-only guard (same rule as farrier): a superseded
+    vaccination must never fire a reminder, and a backfilled history must
+    not flood one email per old record."""
+
+    def setUp(self):
+        self.vt = VaccinationType.objects.create(
+            name="Flu", interval_months=12, reminder_days_before=30
+        )
+        self.owner = _owner("Sue", "sue@example.com")
+        self.horse = _horse("Dobbin", self.owner)
+
+    def test_superseded_record_does_not_fire(self):
+        # Last year's record: due date passed, never reminded.
+        Vaccination.objects.create(
+            horse=self.horse, vaccination_type=self.vt,
+            date_given=TODAY - timedelta(days=400),
+            next_due_date=TODAY - timedelta(days=35),
+        )
+        # Horse re-vaccinated early, three weeks before the old due date.
+        Vaccination.objects.create(
+            horse=self.horse, vaccination_type=self.vt,
+            date_given=TODAY - timedelta(days=56),
+            next_due_date=TODAY + timedelta(days=309),
+        )
+        send_vaccination_reminders()
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_backfilled_history_fires_at_most_once(self):
+        # Onboarding: three years of history entered, all with past due dates
+        # except the latest.
+        for years_ago in (3, 2, 1):
+            Vaccination.objects.create(
+                horse=self.horse, vaccination_type=self.vt,
+                date_given=TODAY - timedelta(days=365 * years_ago),
+                next_due_date=TODAY - timedelta(days=365 * (years_ago - 1)),
+            )
+        send_vaccination_reminders()
+        # Only the latest record (due today) fires; historical rows are
+        # superseded and silent.
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_different_types_remind_independently(self):
+        tetanus = VaccinationType.objects.create(
+            name="Tetanus", interval_months=24, reminder_days_before=30
+        )
+        Vaccination.objects.create(
+            horse=self.horse, vaccination_type=self.vt,
+            date_given=TODAY - timedelta(days=360),
+            next_due_date=TODAY + timedelta(days=5),
+        )
+        Vaccination.objects.create(
+            horse=self.horse, vaccination_type=tetanus,
+            date_given=TODAY - timedelta(days=700),
+            next_due_date=TODAY + timedelta(days=10),
+        )
+        send_vaccination_reminders()
+        self.assertEqual(len(mail.outbox), 2)

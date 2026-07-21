@@ -60,6 +60,8 @@ from .models import (
     VetVisit,
     WormEggCount,
     WormingTreatment,
+    current_farrier_visits,
+    current_vaccinations,
 )
 
 
@@ -93,23 +95,25 @@ def health_dashboard(request):
         thirty_days = today + timedelta(days=30)
         two_weeks = today + timedelta(days=14)
 
-        # Overdue vaccinations
-        overdue_vaccinations = list(Vaccination.objects.select_related(
-            'horse', 'vaccination_type'
+        # Overdue vaccinations — latest record per (horse, type) only, or a
+        # horse looks permanently overdue the day after its annual booster
+        # (last year's record keeps a past next_due_date forever).
+        overdue_vaccinations = list(current_vaccinations(
+            Vaccination.objects.select_related('horse', 'vaccination_type')
         ).filter(horse__is_active=True, next_due_date__lt=today).order_by('next_due_date'))
 
         # Due soon vaccinations
-        due_vaccinations = list(Vaccination.objects.select_related(
-            'horse', 'vaccination_type'
+        due_vaccinations = list(current_vaccinations(
+            Vaccination.objects.select_related('horse', 'vaccination_type')
         ).filter(
             horse__is_active=True,
             next_due_date__gte=today,
             next_due_date__lte=thirty_days,
         ).order_by('next_due_date'))
 
-        # Overdue farrier
-        overdue_farrier = list(FarrierVisit.objects.select_related(
-            'horse', 'service_provider'
+        # Overdue farrier — latest visit per horse only
+        overdue_farrier = list(current_farrier_visits(
+            FarrierVisit.objects.select_related('horse', 'service_provider')
         ).filter(
             horse__is_active=True,
             next_due_date__isnull=False,
@@ -117,8 +121,8 @@ def health_dashboard(request):
         ).order_by('next_due_date'))
 
         # Due soon farrier
-        due_farrier = list(FarrierVisit.objects.select_related(
-            'horse', 'service_provider'
+        due_farrier = list(current_farrier_visits(
+            FarrierVisit.objects.select_related('horse', 'service_provider')
         ).filter(
             horse__is_active=True,
             next_due_date__gte=today,
@@ -236,12 +240,14 @@ def health_dashboard(request):
         ).filter(horse__is_active=True)
         status = request.GET.get('status')
         if status == 'due':
-            queryset = queryset.filter(
+            queryset = current_vaccinations(queryset).filter(
                 next_due_date__lte=today + timedelta(days=30),
                 next_due_date__gte=today,
             )
         elif status == 'overdue':
-            queryset = queryset.filter(next_due_date__lt=today)
+            queryset = current_vaccinations(queryset).filter(
+                next_due_date__lt=today,
+            )
         horse = request.GET.get('horse')
         if horse:
             queryset = queryset.filter(horse_id=horse)
@@ -258,12 +264,14 @@ def health_dashboard(request):
         ).filter(horse__is_active=True)
         status = request.GET.get('status')
         if status == 'due':
-            queryset = queryset.filter(
+            queryset = current_farrier_visits(queryset).filter(
                 next_due_date__lte=today + timedelta(days=14),
                 next_due_date__gte=today,
             )
         elif status == 'overdue':
-            queryset = queryset.filter(next_due_date__lt=today)
+            queryset = current_farrier_visits(queryset).filter(
+                next_due_date__lt=today,
+            )
         horse = request.GET.get('horse')
         if horse:
             queryset = queryset.filter(horse_id=horse)
@@ -657,12 +665,14 @@ class VaccinationListView(FeatureAccessMixin, ListView):
 
         if status == 'due':
             thirty_days = today + timedelta(days=30)
-            queryset = queryset.filter(
+            queryset = current_vaccinations(queryset).filter(
                 next_due_date__lte=thirty_days,
                 next_due_date__gte=today
             )
         elif status == 'overdue':
-            queryset = queryset.filter(next_due_date__lt=today)
+            queryset = current_vaccinations(queryset).filter(
+                next_due_date__lt=today,
+            )
 
         # Filter by horse
         horse = self.request.GET.get('horse')
@@ -815,12 +825,14 @@ class FarrierListView(FeatureAccessMixin, ListView):
 
         if status == 'due':
             two_weeks = today + timedelta(days=14)
-            queryset = queryset.filter(
+            queryset = current_farrier_visits(queryset).filter(
                 next_due_date__lte=two_weeks,
                 next_due_date__gte=today
             )
         elif status == 'overdue':
-            queryset = queryset.filter(next_due_date__lt=today)
+            queryset = current_farrier_visits(queryset).filter(
+                next_due_date__lt=today,
+            )
 
         # Filter by horse
         horse = self.request.GET.get('horse')

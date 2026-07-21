@@ -7,7 +7,45 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db import models
+from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
+
+
+def exclude_superseded(queryset, *, date_field, group_fields):
+    """Keep only each group's most recent record.
+
+    Due/overdue logic must consider only the latest record per horse (and
+    per vaccination type) — an annual booster's year-old predecessor has a
+    next_due_date in the past *forever*, so without this every historical
+    record shows as permanently overdue the day after a horse is re-treated.
+    Ties on the date fall back to highest pk (the later entry).
+    """
+    model = queryset.model
+    newer = model.objects.filter(
+        **{field: OuterRef(field) for field in group_fields}
+    ).filter(
+        Q(**{f'{date_field}__gt': OuterRef(date_field)})
+        | Q(**{date_field: OuterRef(date_field), 'pk__gt': OuterRef('pk')})
+    )
+    return queryset.annotate(
+        _superseded=Exists(newer),
+    ).filter(_superseded=False)
+
+
+def current_vaccinations(queryset):
+    """Latest vaccination per (horse, type) — the only records whose
+    next_due_date is meaningful for due/overdue purposes."""
+    return exclude_superseded(
+        queryset, date_field='date_given',
+        group_fields=('horse', 'vaccination_type'),
+    )
+
+
+def current_farrier_visits(queryset):
+    """Latest farrier visit per horse."""
+    return exclude_superseded(
+        queryset, date_field='date', group_fields=('horse',),
+    )
 
 
 class VaccinationType(models.Model):

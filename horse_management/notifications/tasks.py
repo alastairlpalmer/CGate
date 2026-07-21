@@ -11,7 +11,12 @@ from django.db.models import Q
 from django.utils import timezone
 
 from invoicing.models import Invoice
-from health.models import BreedingRecord, FarrierVisit, Vaccination
+from health.models import (
+    BreedingRecord,
+    FarrierVisit,
+    Vaccination,
+    current_vaccinations,
+)
 
 from .emails import (
     send_ehv_reminder,
@@ -32,12 +37,16 @@ def send_vaccination_reminders():
     today = timezone.now().date()
     reminders_sent = 0
 
-    # Get vaccinations due within their reminder period that haven't been notified
-    vaccinations = Vaccination.objects.filter(
+    # Get vaccinations due within their reminder period that haven't been
+    # notified. Only each horse's latest record per vaccination type counts
+    # (same rule as the farrier task): a superseded record's reminder window
+    # opening after the horse was re-vaccinated must not email the owner,
+    # and backfilled history must not flood one reminder per old record.
+    vaccinations = current_vaccinations(Vaccination.objects.filter(
         reminder_sent=False,
         next_due_date__isnull=False,
         horse__is_active=True,
-    ).select_related('horse', 'vaccination_type')
+    )).select_related('horse', 'vaccination_type')
 
     for vaccination in vaccinations:
         try:
