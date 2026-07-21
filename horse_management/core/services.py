@@ -298,17 +298,18 @@ class PlacementService:
     def confirm_departure(horse):
         """Mark a horse as departed (deactivate). Used for pending departures.
 
-        Defensively closes any still-open placement so the horse can't end up
-        deactivated while apparently occupying a field — that stranded state
-        hides the Log Arrival button while the search dropdown says Departed.
+        A horse with an open placement is still on the yard — it is not a
+        pending departure, and silently closing its live placement here would
+        depart a horse that never left (a stale dashboard or a race with Log
+        Arrival can submit one). Refuse instead: the caller should use
+        depart_horse with a real date. Returns True if the horse was
+        deactivated, False if it was skipped.
         """
-        open_placement = horse.placements.filter(end_date__isnull=True).first()
-        if open_placement:
-            today = timezone.now().date()
-            open_placement.end_date = max(today, open_placement.start_date)
-            open_placement.save()  # save hook rests the field if emptied
+        if horse.placements.filter(end_date__isnull=True).exists():
+            return False
         horse.is_active = False
         horse.save(update_fields=['is_active'])
+        return True
 
     @staticmethod
     @transaction.atomic
@@ -341,12 +342,15 @@ class PlacementService:
     def confirm_departures_bulk(horse_ids):
         """Confirm multiple horses as departed in one action.
 
-        Returns the count of horses deactivated.
+        Horses that still have an open placement are skipped (see
+        confirm_departure). Returns the count of horses actually deactivated.
         """
         horses = list(Horse.objects.filter(pk__in=horse_ids, is_active=True))
+        confirmed = 0
         for horse in horses:
-            PlacementService.confirm_departure(horse)
-        return len(horses)
+            if PlacementService.confirm_departure(horse):
+                confirmed += 1
+        return confirmed
 
     @staticmethod
     @transaction.atomic

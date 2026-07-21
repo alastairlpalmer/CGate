@@ -120,7 +120,7 @@
         </p>
         <form method="post"
               action="{% url 'placement_delete' object.pk %}{% if request.GET.next %}?next={{ request.GET.next|urlencode }}{% endif %}"
-              onsubmit="return confirm('Delete this placement of {{ object.horse.name }} at {{ object.location.name }}? This cannot be undone.');">
+              hx-confirm="Delete this placement of {{ object.horse.name }} at {{ object.location.name }}? This cannot be undone.">
             {% csrf_token %}
             <button type="submit" class="btn-secondary text-error-red border-error-red/30 hover:bg-error-red-50 shrink-0">
                 Delete Placement

@@ -195,7 +195,7 @@
                                 </form>
                                 {% endif %}
                                 {% if cost.source == 'yard' or not cost.invoiced %}
-                                <a href="{{ cost.delete_url }}" class="btn-ghost btn-xs text-error-red hover:text-error-red hover:bg-error-red-50" onclick="return confirm('Delete this cost?')">Delete</a>
+                                <a href="{{ cost.delete_url }}" class="btn-ghost btn-xs text-error-red hover:text-error-red hover:bg-error-red-50">Delete</a>
                                 {% endif %}
                             </div>
                         </td>

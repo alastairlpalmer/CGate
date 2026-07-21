@@ -589,8 +589,13 @@ def confirm_departure(request, pk):
 
     horse = get_object_or_404(Horse, pk=pk)
     if request.method == 'POST':
-        PlacementService.confirm_departure(horse)
-        messages.success(request, f"{horse.name} confirmed as departed.")
+        if PlacementService.confirm_departure(horse):
+            messages.success(request, f"{horse.name} confirmed as departed.")
+        else:
+            messages.warning(
+                request,
+                f"{horse.name} is still placed in a field — use Log Departure instead.",
+            )
     if request.headers.get('HX-Request'):
         return HttpResponse('')
     return redirect('dashboard')
@@ -619,7 +624,11 @@ def confirm_departures_bulk(request):
         horse_ids = request.POST.getlist('horse_ids')
         if horse_ids:
             count = PlacementService.confirm_departures_bulk(horse_ids)
-            messages.success(request, f"{count} horse{'s' if count != 1 else ''} confirmed as departed.")
+            skipped = len(set(horse_ids)) - count
+            msg = f"{count} horse{'s' if count != 1 else ''} confirmed as departed."
+            if skipped > 0:
+                msg += f" {skipped} skipped (already departed or still placed in a field)."
+            messages.success(request, msg)
     if request.headers.get('HX-Request'):
         return HttpResponse('')
     return redirect('dashboard')

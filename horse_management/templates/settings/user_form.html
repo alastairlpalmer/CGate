@@ -109,12 +109,12 @@
                 <p class="text-sm font-medium text-charcoal">{% if object.is_active %}Active{% else %}Deactivated{% endif %}</p>
                 <p class="text-xs text-sage">{% if object.is_active %}Deactivated users can no longer sign in. Their history is kept.{% else %}This user cannot sign in.{% endif %}</p>
             </div>
-            <form method="post">
+            <form method="post"
+                  {% if object.is_active %}hx-confirm="Deactivate {{ object.email|default:object.username }}? They will no longer be able to sign in."{% endif %}>
                 {% csrf_token %}
                 <input type="hidden" name="toggle_active" value="1">
                 {% if object.is_active %}
-                <button type="submit" class="btn-secondary btn-sm text-error-red border-error-red/30 hover:bg-error-red-50"
-                        onclick="return confirm('Deactivate {{ object.email|default:object.username }}? They will no longer be able to sign in.')">
+                <button type="submit" class="btn-secondary btn-sm text-error-red border-error-red/30 hover:bg-error-red-50">
                     Deactivate
                 </button>
                 {% else %}
