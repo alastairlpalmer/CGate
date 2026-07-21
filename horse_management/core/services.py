@@ -246,6 +246,12 @@ class PlacementService:
         )
         placement.full_clean()
         placement.save()
+        # Same rule as move_horse: a singly-owned horse arriving under a
+        # different owner (e.g. sold and returning) must have its ownership
+        # share follow, or Horse.current_owner keeps pointing at the old
+        # owner and every subsequent health/billing cost is invoiced to the
+        # previous owner. Fractional co-ownership is never touched.
+        PlacementService._sync_single_owner_share(horse, owner)
         placement.superseded_trim = trimmed
         return placement
 
@@ -269,9 +275,17 @@ class PlacementService:
     def depart_horse(horse, departure_date):
         """Log a single horse departing.
 
-        Sets end_date on current placement and deactivates horse if departure
-        is today or in the past.
-        Raises ValidationError if invalid.
+        A departure dated today or earlier closes the placement and
+        deactivates the horse. A future date is a *scheduled* departure:
+        closing the placement early would make the horse vanish from every
+        current view (its field, the active list, capacity counts) while it
+        is still standing on the yard — so the date is recorded as
+        expected_departure instead and the placement stays open. The horse
+        shows in Upcoming Departures, and the departure is logged for real
+        on the day.
+
+        Returns the placement; callers can tell a scheduled departure by
+        end_date still being None. Raises ValidationError if invalid.
         """
         current_placement = horse.current_placement
         if not current_placement:
@@ -282,14 +296,18 @@ class PlacementService:
                 f"Departure date cannot be before arrival ({current_placement.start_date})."
             )
 
+        if departure_date > timezone.now().date():
+            current_placement.expected_departure = departure_date
+            current_placement.save()
+            return current_placement
+
         # Closing the placement rests the field if it empties — that lives
         # in Placement.save's lifecycle hook.
         current_placement.end_date = departure_date
         current_placement.save()
 
-        if departure_date <= timezone.now().date():
-            horse.is_active = False
-            horse.save(update_fields=['is_active'])
+        horse.is_active = False
+        horse.save(update_fields=['is_active'])
 
         return current_placement
 

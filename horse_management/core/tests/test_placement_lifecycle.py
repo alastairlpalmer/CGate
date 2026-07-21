@@ -1070,3 +1070,121 @@ class LogoutMethodTests(TestCase):
         content = response.content.decode()
         self.assertIn(f'action="{reverse("logout")}"', content)
         self.assertNotIn(f'href="{reverse("logout")}"', content)
+
+
+class FutureDepartureTests(LifecycleTestCase):
+    """A future-dated departure must not close the live placement — that made
+    the horse vanish from its field, the active list and capacity counts for
+    days while it was still standing on the yard. It becomes a scheduled
+    departure (expected_departure) instead."""
+
+    def _placed_horse(self):
+        return Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=30),
+        )
+
+    def test_future_departure_schedules_instead_of_closing(self):
+        self._placed_horse()
+        friday = self.today + timedelta(days=4)
+        placement = PlacementService.depart_horse(self.horse, friday)
+        self.assertIsNone(placement.end_date)
+        self.assertEqual(placement.expected_departure, friday)
+        self.horse.refresh_from_db()
+        self.assertTrue(self.horse.is_active)
+        # Still current everywhere: open placement intact
+        self.assertTrue(
+            self.horse.placements.filter(end_date__isnull=True).exists()
+        )
+
+    def test_today_departure_still_closes_and_deactivates(self):
+        self._placed_horse()
+        placement = PlacementService.depart_horse(self.horse, self.today)
+        self.assertEqual(placement.end_date, self.today)
+        self.horse.refresh_from_db()
+        self.assertFalse(self.horse.is_active)
+
+
+class ArrivalOwnerShareSyncTests(LifecycleTestCase):
+    """Arriving under a different owner must move a singly-owned horse's
+    ownership share (like move_horse already did) — otherwise
+    Horse.current_owner keeps pointing at the old owner and later health/
+    billing costs are invoiced to whoever owned the horse before it was
+    sold."""
+
+    def test_arrival_moves_single_ownership_share_to_new_owner(self):
+        from core.models import OwnershipShare
+        from decimal import Decimal
+        OwnershipShare.objects.create(
+            horse=self.horse, owner=self.owner,
+            share_percentage=Decimal('100.00'), is_primary_contact=True,
+        )
+        new_owner = Owner.objects.create(name='New Owner')
+        PlacementService.arrive_horse(
+            self.horse, owner=new_owner, location=self.location,
+            rate_type=self.rate, arrival_date=self.today,
+        )
+        share = self.horse.ownership_shares.get()
+        self.assertEqual(share.owner, new_owner)
+        self.assertEqual(self.horse.current_owner, new_owner)
+
+    def test_arrival_never_touches_fractional_co_ownership(self):
+        from core.models import OwnershipShare
+        from decimal import Decimal
+        co_owner = Owner.objects.create(name='Co Owner')
+        OwnershipShare.objects.create(
+            horse=self.horse, owner=self.owner,
+            share_percentage=Decimal('50.00'), is_primary_contact=True,
+        )
+        OwnershipShare.objects.create(
+            horse=self.horse, owner=co_owner,
+            share_percentage=Decimal('50.00'),
+        )
+        new_owner = Owner.objects.create(name='Buyer')
+        PlacementService.arrive_horse(
+            self.horse, owner=new_owner, location=self.location,
+            rate_type=self.rate, arrival_date=self.today,
+        )
+        owners = set(
+            self.horse.ownership_shares.values_list('owner__name', flat=True)
+        )
+        self.assertEqual(owners, {'Jo Bloggs', 'Co Owner'})
+
+
+class HorseListCountTests(LifecycleTestCase):
+    """The Current/Departed tab badges must use NOT EXISTS(open placement)
+    semantics — the old aggregate counted every horse that had ever moved
+    fields as departed."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(make_admin(username='count-admin'))
+
+    def test_moved_horse_counts_as_current_not_departed(self):
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=30),
+        )
+        PlacementService.move_horse(
+            self.horse, new_location=self.other_location, move_date=self.today,
+        )
+        response = self.client.get(reverse('horse_list'))
+        self.assertEqual(response.context['total_current'], 1)
+        self.assertEqual(response.context['total_departed'], 0)
+
+    def test_unplaced_active_horse_counts_as_departed_limbo(self):
+        # Never placed: shows on the Departed tab, so it must count there too.
+        response = self.client.get(reverse('horse_list'))
+        self.assertEqual(response.context['total_current'], 0)
+        self.assertEqual(response.context['total_departed'], 1)
+
+
+class ToastContainerTests(TestCase):
+    """The toast container must always render (with its stable id) so the
+    boosted-navigation handler can lift fresh messages out of the full
+    response — hx-select only swaps #main-content."""
+
+    def test_toast_container_present_without_messages(self):
+        self.client.force_login(make_admin(username='toast-admin'))
+        response = self.client.get(reverse('dashboard'))
+        self.assertContains(response, 'id="toast-container"')

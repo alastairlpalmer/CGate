@@ -160,15 +160,21 @@ class HorseListView(FeatureAccessMixin, ListView):
         context['locations'] = Location.objects.order_by('site', 'name')
         context['owners'] = Owner.objects.values('pk', 'name').order_by('name')
         context['is_searching'] = self.is_searching
-        # Single query for both counts
-        counts = Horse.objects.aggregate(
+        # Single query for both counts. The departed test must be
+        # NOT EXISTS(open placement) — a negated multi-valued Q inside an
+        # aggregate filter compiles per-joined-row, which counted every
+        # horse that had ever moved fields as departed.
+        has_open_placement = Exists(Placement.objects.filter(
+            horse=OuterRef('pk'), end_date__isnull=True,
+        ))
+        counts = Horse.objects.annotate(
+            has_open_placement=has_open_placement,
+        ).aggregate(
             total_current=Count(
-                'pk', filter=Q(is_active=True, placements__end_date__isnull=True),
-                distinct=True,
+                'pk', filter=Q(is_active=True, has_open_placement=True),
             ),
             total_departed=Count(
-                'pk', filter=Q(is_active=False) | ~Q(placements__end_date__isnull=True),
-                distinct=True,
+                'pk', filter=Q(is_active=False) | Q(has_open_placement=False),
             ),
         )
         context['total_current'] = counts['total_current']
@@ -549,7 +555,15 @@ def horse_depart(request, pk):
 
         try:
             placement = PlacementService.depart_horse(horse, departure_date)
-            messages.success(request, f"{horse.name} departed from {placement.location.name}.")
+            if placement.end_date is None:
+                messages.success(
+                    request,
+                    f"{horse.name} scheduled to depart {placement.location.name} "
+                    f"on {departure_date.strftime('%d %b %Y')} — log the departure "
+                    f"on the day to close the placement.",
+                )
+            else:
+                messages.success(request, f"{horse.name} departed from {placement.location.name}.")
         except ValidationError as e:
             messages.error(request, str(e))
 
