@@ -34,7 +34,7 @@ def send_vaccination_reminders():
     Send reminders for vaccinations due soon.
     Run daily via Celery Beat.
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
     reminders_sent = 0
 
     # Get vaccinations due within their reminder period that haven't been
@@ -78,7 +78,7 @@ def send_farrier_reminders():
     Send reminders for farrier visits due within 2 weeks.
     Run daily via Celery Beat.
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
     two_weeks = today + timedelta(days=14)
     reminders_sent = 0
 
@@ -184,7 +184,7 @@ def send_ehv_reminders():
     Sends reminder 14 days before each due date.
     Run daily via Celery Beat.
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
     reminders_sent = 0
 
     # Get active breeding records that are confirmed in-foal
@@ -237,7 +237,7 @@ def check_invoice_status():
     Check and update invoice statuses.
     Run daily via Celery Beat.
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
     updated = 0
 
     # Mark sent invoices as overdue if past due date
@@ -269,7 +269,7 @@ def send_document_expiry_reminders():
         )
         return "no_business_email"
 
-    today = timezone.now().date()
+    today = timezone.localdate()
     cutoff = today + timedelta(days=30)
 
     documents = list(

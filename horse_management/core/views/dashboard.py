@@ -88,7 +88,7 @@ def _dashboard_inner(request):
     visible_widgets = pref.visible_ordered_keys_by_group()
     visible = {k for keys in visible_widgets.values() for k in keys}
 
-    today = timezone.now().date()
+    today = timezone.localdate()
     thirty_days = today + timedelta(days=30)
     two_weeks = today + timedelta(days=14)
 
@@ -301,7 +301,7 @@ def dashboard_health_alerts(request):
             'upcoming_departures': [],
         })
 
-    today = timezone.now().date()
+    today = timezone.localdate()
     thirty_days = today + timedelta(days=30)
     seven_days = today + timedelta(days=7)
 

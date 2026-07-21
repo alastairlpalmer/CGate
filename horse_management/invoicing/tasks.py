@@ -31,7 +31,7 @@ def generate_monthly_draft_invoices():
         logger.info("Monthly invoice auto-generation is disabled in settings.")
         return "disabled"
 
-    today = timezone.now().date()
+    today = timezone.localdate()
     last_month_end = today.replace(day=1) - timedelta(days=1)
 
     invoices, skipped = InvoiceService.generate_monthly_invoices(

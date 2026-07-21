@@ -195,7 +195,7 @@ def invoice_create(request):
         initial['owner'] = owner_id
 
     # Default to last month
-    today = timezone.now().date()
+    today = timezone.localdate()
     first_of_month = today.replace(day=1)
     last_month_end = first_of_month - timedelta(days=1)
     last_month_start = last_month_end.replace(day=1)
@@ -443,7 +443,7 @@ def payment_create(request, pk):
         form = PaymentForm(
             invoice=invoice,
             initial={
-                'date': timezone.now().date(),
+                'date': timezone.localdate(),
                 'amount': invoice.balance_due,
             },
         )

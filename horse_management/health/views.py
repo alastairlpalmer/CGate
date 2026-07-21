@@ -81,7 +81,7 @@ HEALTH_TABS = [
 @feature_required('health', LEVEL_VIEW)
 def health_dashboard(request):
     tab = request.GET.get('type', 'overview')
-    today = timezone.now().date()
+    today = timezone.localdate()
     is_htmx = request.headers.get('HX-Request') == 'true'
     htmx_target = request.headers.get('HX-Target', '')
 
@@ -466,13 +466,13 @@ def bulk_health_form(request):
 
     # Determine initial date value
     if action_type == 'vaccination':
-        form = form_class(initial={'date_given': timezone.now().date()})
+        form = form_class(initial={'date_given': timezone.localdate()})
     elif action_type in ('expected_departure', 'actual_departure'):
-        form = form_class(initial={'date': timezone.now().date()})
+        form = form_class(initial={'date': timezone.localdate()})
     elif action_type == 'move':
-        form = form_class(initial={'move_date': timezone.now().date()})
+        form = form_class(initial={'move_date': timezone.localdate()})
     elif hasattr(form_class, 'Meta') and hasattr(form_class.Meta, 'model') and 'date' in [f.name for f in form_class.Meta.model._meta.get_fields()]:
-        form = form_class(initial={'date': timezone.now().date()})
+        form = form_class(initial={'date': timezone.localdate()})
     else:
         form = form_class()
 
@@ -661,7 +661,7 @@ class VaccinationListView(FeatureAccessMixin, ListView):
 
         # Filter by status
         status = self.request.GET.get('status')
-        today = timezone.now().date()
+        today = timezone.localdate()
 
         if status == 'due':
             thirty_days = today + timedelta(days=30)
@@ -684,7 +684,7 @@ class VaccinationListView(FeatureAccessMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
-        context['today'] = timezone.now().date()
+        context['today'] = timezone.localdate()
         return context
 
 
@@ -736,7 +736,7 @@ class VaccinationCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, Cre
         horse_id = self.request.GET.get('horse')
         if horse_id:
             initial['horse'] = horse_id
-        initial['date_given'] = timezone.now().date()
+        initial['date_given'] = timezone.localdate()
         return initial
 
     def form_valid(self, form):
@@ -821,7 +821,7 @@ class FarrierListView(FeatureAccessMixin, ListView):
 
         # Filter by status
         status = self.request.GET.get('status')
-        today = timezone.now().date()
+        today = timezone.localdate()
 
         if status == 'due':
             two_weeks = today + timedelta(days=14)
@@ -844,7 +844,7 @@ class FarrierListView(FeatureAccessMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
-        context['today'] = timezone.now().date()
+        context['today'] = timezone.localdate()
         return context
 
 
@@ -860,7 +860,7 @@ class FarrierCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateV
         horse_id = self.request.GET.get('horse')
         if horse_id:
             initial['horse'] = horse_id
-        initial['date'] = timezone.now().date()
+        initial['date'] = timezone.localdate()
         return initial
 
     def form_valid(self, form):
@@ -923,7 +923,7 @@ class WormingCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateV
         horse_id = self.request.GET.get('horse')
         if horse_id:
             initial['horse'] = horse_id
-        initial['date'] = timezone.now().date()
+        initial['date'] = timezone.localdate()
         return initial
 
     def form_valid(self, form):
@@ -985,7 +985,7 @@ class WormEggCountCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, Cr
         horse_id = self.request.GET.get('horse')
         if horse_id:
             initial['horse'] = horse_id
-        initial['date'] = timezone.now().date()
+        initial['date'] = timezone.localdate()
         return initial
 
     def form_valid(self, form):
@@ -1097,7 +1097,7 @@ class VetVisitCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, Create
         horse_id = self.request.GET.get('horse')
         if horse_id:
             initial['horse'] = horse_id
-        initial['date'] = timezone.now().date()
+        initial['date'] = timezone.localdate()
         return initial
 
     def form_valid(self, form):

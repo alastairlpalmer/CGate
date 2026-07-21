@@ -69,8 +69,11 @@ class HorseListView(FeatureAccessMixin, ListView):
         return bool(self.request.GET.get('search'))
 
     def get_paginate_by(self, queryset):
-        # Only paginate departed tab (current tab shows all, grouped)
-        if self.status == 'departed':
+        # Only paginate the departed tab (current tab shows all, grouped).
+        # Search results are never paginated: the search branch renders a
+        # flat list with no pager, so paginating silently capped a departed
+        # -tab search at its first 25 matches.
+        if self.status == 'departed' and not self.is_searching:
             return 25
         return None
 
@@ -263,7 +266,7 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
         context['current_placement'] = horse.placements.filter(
             end_date__isnull=True
         ).select_related('owner', 'location', 'rate_type').first()
-        context['today'] = timezone.now().date()
+        context['today'] = timezone.localdate()
         context['placements'] = horse.placements.select_related(
             'owner', 'location', 'rate_type'
         ).all()[:10]
@@ -439,7 +442,7 @@ def horse_move(request, pk):
             return redirect('horse_list')
     else:
         form = MoveHorseForm(initial={
-            'move_date': timezone.now().date()
+            'move_date': timezone.localdate()
         })
 
     return render(request, 'horses/horse_move.html', {
@@ -481,7 +484,7 @@ def new_arrival(request):
             ))
             return redirect('horse_detail', pk=horse.pk)
     else:
-        initial = {'arrival_date': timezone.now().date()}
+        initial = {'arrival_date': timezone.localdate()}
         location_id = request.GET.get('location')
         if location_id:
             initial['location'] = location_id
@@ -521,7 +524,7 @@ def horse_arrive(request, pk):
             except ValidationError as e:
                 messages.error(request, '; '.join(e.messages))
     else:
-        initial = {'arrival_date': timezone.now().date()}
+        initial = {'arrival_date': timezone.localdate()}
         primary_owner = horse.primary_owner
         if primary_owner:
             initial['owner'] = primary_owner.pk

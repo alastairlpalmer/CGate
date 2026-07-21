@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="space-y-6"
-     x-data="{ invCount: 0, refreshInv() { this.invCount = document.querySelectorAll('input[data-invoice-cb]:checked').length } }"
+     x-data="{ invCount: 0, refreshInv() { this.invCount = new Set(Array.from(document.querySelectorAll('input[data-invoice-cb]:checked'), cb => cb.value).filter(Boolean)).size } }"
      @htmx:after-swap.camel.window="refreshInv()">
 
     {% if feature_access.invoices.full %}
@@ -116,7 +116,8 @@
                 {% if feature_access.invoices.full %}
                 <label class="relative z-10 inline-flex items-center justify-center w-11 h-11 -ml-2 -my-1.5 shrink-0 cursor-pointer">
                     <input type="checkbox" data-invoice-cb form="bulk-invoice-form"
-                           name="invoice_ids" value="{{ invoice.pk }}" @change="refreshInv()"
+                           name="invoice_ids" value="{{ invoice.pk }}"
+                           @change="document.querySelectorAll('input[data-invoice-cb][value=\'{{ invoice.pk }}\']').forEach(cb => cb.checked = $event.target.checked); refreshInv()"
                            class="form-checkbox rounded" aria-label="Select {{ invoice.invoice_number }}">
                 </label>
                 {% endif %}
@@ -187,7 +188,8 @@
                         {% if feature_access.invoices.full %}
                         <td class="w-10">
                             <input type="checkbox" data-invoice-cb form="bulk-invoice-form"
-                                   name="invoice_ids" value="{{ invoice.pk }}" @change="refreshInv()"
+                                   name="invoice_ids" value="{{ invoice.pk }}"
+                           @change="document.querySelectorAll('input[data-invoice-cb][value=\'{{ invoice.pk }}\']').forEach(cb => cb.checked = $event.target.checked); refreshInv()"
                                    class="form-checkbox rounded" aria-label="Select {{ invoice.invoice_number }}">
                         </td>
                         {% endif %}

@@ -612,7 +612,7 @@ class StatementService:
         from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Value
         from django.db.models.functions import Coalesce
 
-        today = timezone.now().date()
+        today = timezone.localdate()
         open_invoices = Invoice.objects.filter(
             status__in=[Invoice.Status.SENT, Invoice.Status.OVERDUE]
         ).select_related('owner').annotate(

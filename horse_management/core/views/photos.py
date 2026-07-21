@@ -24,7 +24,7 @@ _image_extension_validator = FileExtensionValidator(
 
 def _passport_title(index, total):
     """Auto-title for a passport Document, unique within one batch."""
-    title = f"Passport photo — {date_format(timezone.now().date(), 'j M Y')}"
+    title = f"Passport photo — {date_format(timezone.localdate(), 'j M Y')}"
     if total > 1:
         title += f" ({index + 1})"
     return title

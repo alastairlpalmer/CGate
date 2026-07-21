@@ -123,7 +123,7 @@ class Invoice(models.Model):
         if balance > 0:
             Payment.objects.create(
                 invoice=self,
-                date=timezone.now().date(),
+                date=timezone.localdate(),
                 amount=balance,
                 method=method,
                 reference=reference,
@@ -152,7 +152,7 @@ class Invoice(models.Model):
         elif self.status == self.Status.PAID:
             self.status = (
                 self.Status.OVERDUE
-                if self.due_date and timezone.now().date() > self.due_date
+                if self.due_date and timezone.localdate() > self.due_date
                 else self.Status.SENT
             )
             self.paid_at = None
@@ -191,7 +191,7 @@ class Invoice(models.Model):
             return False
         if not self.due_date:
             return False
-        return timezone.now().date() > self.due_date
+        return timezone.localdate() > self.due_date
 
 
 class InvoiceLineItem(models.Model):

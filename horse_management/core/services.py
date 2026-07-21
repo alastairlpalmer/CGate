@@ -166,7 +166,7 @@ class PlacementService:
 
         # Only days that have already elapsed count as history being erased —
         # trimming a future-dated (planned) departure is always fine.
-        today = timezone.now().date()
+        today = timezone.localdate()
         erased_until = min(last.end_date, today)
         erased_days = (erased_until - arrival_date).days + 1
         if erased_days > MAX_SUPERSEDE_TRIM_DAYS:
@@ -296,7 +296,7 @@ class PlacementService:
                 f"Departure date cannot be before arrival ({current_placement.start_date})."
             )
 
-        if departure_date > timezone.now().date():
+        if departure_date > timezone.localdate():
             current_placement.expected_departure = departure_date
             current_placement.save()
             return current_placement
@@ -425,7 +425,7 @@ class PlacementService:
                     if placement.notes else notes
                 )
             placement.save()  # save hook rests the field once it empties
-            if departure_date <= timezone.now().date():
+            if departure_date <= timezone.localdate():
                 placement.horse.is_active = False
                 placement.horse.save(update_fields=['is_active'])
             departed += 1

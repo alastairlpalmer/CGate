@@ -127,21 +127,21 @@
     <div class="card px-5 py-3">
         <div class="flex flex-wrap items-center gap-4">
             <div class="inline-flex rounded-lg shadow-sm">
-                <a href="?tab=history&status=active{% if request.GET.location %}&location={{ request.GET.location }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner }}{% endif %}"
+                <a href="?tab=history&status=active{% if request.GET.location %}&location={{ request.GET.location|urlencode }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner|urlencode }}{% endif %}"
                    class="px-4 py-2 text-sm font-medium rounded-l-lg border {% if current_status == 'active' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
                     Active
                 </a>
-                <a href="?tab=history&status=ended{% if request.GET.location %}&location={{ request.GET.location }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner }}{% endif %}"
+                <a href="?tab=history&status=ended{% if request.GET.location %}&location={{ request.GET.location|urlencode }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner|urlencode }}{% endif %}"
                    class="px-4 py-2 text-sm font-medium border-t border-b {% if current_status == 'ended' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
                     Ended
                 </a>
-                <a href="?tab=history&status=all{% if request.GET.location %}&location={{ request.GET.location }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner }}{% endif %}"
+                <a href="?tab=history&status=all{% if request.GET.location %}&location={{ request.GET.location|urlencode }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner|urlencode }}{% endif %}"
                    class="px-4 py-2 text-sm font-medium rounded-r-lg border {% if current_status == 'all' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
                     All
                 </a>
             </div>
 
-            <select onchange="window.location.href='?tab=history&status={{ current_status }}&location='+this.value+'{% if request.GET.owner %}&owner={{ request.GET.owner }}{% endif %}'"
+            <select onchange="window.location.href='?tab=history&status={{ current_status }}&location='+this.value+'{% if request.GET.owner %}&owner={{ request.GET.owner|urlencode }}{% endif %}'"
                     class="form-select w-auto">
                 <option value="">All Locations</option>
                 {% regroup all_locations by site as site_list %}
@@ -154,7 +154,7 @@
                 {% endfor %}
             </select>
 
-            <select onchange="window.location.href='?tab=history&status={{ current_status }}&owner='+this.value+'{% if request.GET.location %}&location={{ request.GET.location }}{% endif %}'"
+            <select onchange="window.location.href='?tab=history&status={{ current_status }}&owner='+this.value+'{% if request.GET.location %}&location={{ request.GET.location|urlencode }}{% endif %}'"
                     class="form-select w-auto">
                 <option value="">All Owners</option>
                 {% for own in owners %}

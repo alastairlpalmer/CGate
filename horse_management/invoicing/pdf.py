@@ -322,7 +322,7 @@ def generate_owner_statement_pdf(owner, statement):
         for line in owner.address.strip().split('\n'):
             elements.append(Paragraph(line.strip(), small_style))
     elements.append(Paragraph(
-        f"Issued {timezone.now().date():%d %B %Y}", small_style
+        f"Issued {timezone.localdate():%d %B %Y}", small_style
     ))
     elements.append(Spacer(1, 8*mm))
 

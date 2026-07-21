@@ -146,7 +146,7 @@ class Vaccination(models.Model):
         from django.utils import timezone
         if not self.next_due_date:
             return False
-        days_until = (self.next_due_date - timezone.now().date()).days
+        days_until = (self.next_due_date - timezone.localdate()).days
         return 0 <= days_until <= self.vaccination_type.reminder_days_before
 
     @property
@@ -155,7 +155,7 @@ class Vaccination(models.Model):
         if not self.next_due_date:
             return False
         from django.utils import timezone
-        return timezone.now().date() > self.next_due_date
+        return timezone.localdate() > self.next_due_date
 
 
 class FarrierVisit(models.Model):
@@ -226,7 +226,7 @@ class FarrierVisit(models.Model):
         from django.utils import timezone
         if not self.next_due_date:
             return False
-        days_until = (self.next_due_date - timezone.now().date()).days
+        days_until = (self.next_due_date - timezone.localdate()).days
         return 0 <= days_until <= 14
 
     @property
@@ -235,7 +235,7 @@ class FarrierVisit(models.Model):
         from django.utils import timezone
         if not self.next_due_date:
             return False
-        return timezone.now().date() > self.next_due_date
+        return timezone.localdate() > self.next_due_date
 
 
 class WormingTreatment(models.Model):

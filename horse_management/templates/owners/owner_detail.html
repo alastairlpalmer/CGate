@@ -203,8 +203,8 @@
     </div>
     {% endif %}
 
-    <!-- Unbilled Charges -->
-    {% if extra_charges %}
+    <!-- Unbilled Charges — Finance data: only for roles with charges access -->
+    {% if extra_charges and feature_access.charges.view %}
     <div class="card overflow-hidden">
         <div class="section-header">
             <h2 class="section-title">Unbilled Charges</h2>
@@ -236,7 +236,8 @@
     </div>
     {% endif %}
 
-    <!-- Recent Invoices -->
+    <!-- Recent Invoices — Finance data: only for roles with invoices access -->
+    {% if feature_access.invoices.view %}
     <div class="card overflow-hidden">
         <div class="section-header">
             <h2 class="section-title">Recent Invoices</h2>
@@ -286,6 +287,7 @@
             </table>
         </div>
     </div>
+    {% endif %}
 
     <!-- Bulk Action Bar -->
     {% include 'health/partials/bulk_action_bar.html' %}

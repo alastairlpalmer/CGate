@@ -97,7 +97,7 @@ class ExtraChargeCreateView(FeatureAccessMixin, CreateView):
                     initial['owner'] = horse.current_owner.pk
             except Horse.DoesNotExist:
                 pass
-        initial['date'] = timezone.now().date()
+        initial['date'] = timezone.localdate()
         return initial
 
     def form_valid(self, form):
@@ -224,7 +224,7 @@ class CostsListView(FeatureAccessMixin, ListView):
 
     def _date_range(self):
         """Return (start_date, end_date, period_label) based on GET params."""
-        today = date.today()
+        today = timezone.localdate()
         period = self.request.GET.get('period', 'month')
         if period == 'quarter':
             q_start_month = ((today.month - 1) // 3) * 3 + 1
@@ -254,7 +254,7 @@ class CostsListView(FeatureAccessMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        today = date.today()
+        today = timezone.localdate()
         start_date, end_date, period_label = self._date_range()
 
         # Base querysets
@@ -380,7 +380,7 @@ class YardCostCreateView(FeatureAccessMixin, CreateView):
 
     def get_initial(self):
         initial = super().get_initial()
-        initial['date'] = timezone.now().date()
+        initial['date'] = timezone.localdate()
         return initial
 
     def form_valid(self, form):
@@ -418,7 +418,7 @@ def yard_cost_duplicate(request, pk):
     original = get_object_or_404(YardCost, pk=pk)
     YardCost.objects.create(
         category=original.category,
-        date=timezone.now().date(),
+        date=timezone.localdate(),
         supplier=original.supplier,
         description=original.description,
         amount=original.amount,
@@ -519,7 +519,7 @@ class FeedStockCreateView(FeatureAccessMixin, CreateView):
 
     def get_initial(self):
         initial = super().get_initial()
-        initial['date'] = timezone.now().date()
+        initial['date'] = timezone.localdate()
         return initial
 
     def get_success_url(self):
@@ -560,7 +560,7 @@ def feed_stock_adjust(request):
             return redirect('feed_dashboard')
     else:
         form = FeedStockForm(initial={
-            'date': timezone.now().date(),
+            'date': timezone.localdate(),
             'entry_type': 'adjustment',
         })
 
@@ -685,7 +685,7 @@ def feed_out_create(request, location_pk):
             messages.success(request, f"Feed out recorded for {location.name}.")
             return redirect('location_detail', pk=location.pk)
     else:
-        form = FeedOutForm(initial={'date': timezone.now().date()})
+        form = FeedOutForm(initial={'date': timezone.localdate()})
 
     return render(request, 'billing/feed_out_form.html', {
         'form': form,
