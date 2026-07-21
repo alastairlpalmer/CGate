@@ -60,26 +60,32 @@ def send_invoice_email(invoice):
         return False
 
 
-def send_vaccination_reminder(vaccination):
-    """Send vaccination due reminder email."""
-    horse = vaccination.horse
-    owner = horse.current_owner
+def send_vaccination_digest(owner, vaccinations):
+    """Send ONE email covering all of an owner's due vaccinations.
 
-    if not owner or not owner.email:
+    An owner with several horses due used to get one email per record —
+    a backfill or a busy spring morning meant a stack of near-identical
+    emails. The digest lists them all in a single message.
+    """
+    if not owner or not owner.email or not vaccinations:
         return False
 
     business = BusinessSettings.get_settings()
 
-    subject = f"Vaccination Due: {horse.name} - {vaccination.vaccination_type.name}"
+    if len(vaccinations) == 1:
+        v = vaccinations[0]
+        subject = f"Vaccination Due: {v.horse.name} - {v.vaccination_type.name}"
+    else:
+        subject = f"Vaccinations Due: {len(vaccinations)} reminders"
 
-    context = {
-        'vaccination': vaccination,
-        'horse': horse,
-        'owner': owner,
-        'business': business,
-    }
-
-    html_content = render_to_string('notifications/email/vaccination_reminder.html', context)
+    html_content = render_to_string(
+        'notifications/email/vaccination_digest.html',
+        {
+            'vaccinations': vaccinations,
+            'owner': owner,
+            'business': business,
+        },
+    )
 
     email = EmailMessage(
         subject=subject,
@@ -97,26 +103,26 @@ def send_vaccination_reminder(vaccination):
         return False
 
 
-def send_farrier_reminder(farrier_visit):
-    """Send farrier due reminder email."""
-    horse = farrier_visit.horse
-    owner = horse.current_owner
-
-    if not owner or not owner.email:
+def send_farrier_digest(owner, visits):
+    """Send ONE email covering all of an owner's due farrier visits."""
+    if not owner or not owner.email or not visits:
         return False
 
     business = BusinessSettings.get_settings()
 
-    subject = f"Farrier Due: {horse.name}"
+    if len(visits) == 1:
+        subject = f"Farrier Due: {visits[0].horse.name}"
+    else:
+        subject = f"Farrier Due: {len(visits)} horses"
 
-    context = {
-        'visit': farrier_visit,
-        'horse': horse,
-        'owner': owner,
-        'business': business,
-    }
-
-    html_content = render_to_string('notifications/email/farrier_reminder.html', context)
+    html_content = render_to_string(
+        'notifications/email/farrier_digest.html',
+        {
+            'visits': visits,
+            'owner': owner,
+            'business': business,
+        },
+    )
 
     email = EmailMessage(
         subject=subject,

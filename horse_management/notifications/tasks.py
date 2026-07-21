@@ -20,9 +20,9 @@ from health.models import (
 
 from .emails import (
     send_ehv_reminder,
-    send_farrier_reminder,
+    send_farrier_digest,
     send_invoice_overdue_reminder,
-    send_vaccination_reminder,
+    send_vaccination_digest,
 )
 
 logger = logging.getLogger(__name__)
@@ -48,36 +48,49 @@ def send_vaccination_reminders():
         horse__is_active=True,
     )).select_related('horse', 'vaccination_type')
 
+    # One digest email per owner instead of one email per record — an owner
+    # with several horses due used to get a separate 07:00 email for each.
+    by_owner = {}
     for vaccination in vaccinations:
-        try:
-            reminder_days = vaccination.vaccination_type.reminder_days_before
-            reminder_date = vaccination.next_due_date - timedelta(days=reminder_days)
+        reminder_days = vaccination.vaccination_type.reminder_days_before
+        reminder_date = vaccination.next_due_date - timedelta(days=reminder_days)
+        if today < reminder_date:
+            continue
+        owner = vaccination.horse.current_owner
+        if not owner or not owner.email:
+            # Left unclaimed: retried daily and picked up once an email
+            # address exists (same semantics as the old per-record path).
+            continue
+        by_owner.setdefault(owner.pk, (owner, []))[1].append(vaccination)
 
-            if today >= reminder_date:
-                # Atomic claim: only one worker wins the race to send.
-                claimed = Vaccination.objects.filter(
-                    pk=vaccination.pk, reminder_sent=False
-                ).update(reminder_sent=True)
-                if not claimed:
-                    continue
-                try:
-                    sent = send_vaccination_reminder(vaccination)
-                except Exception:
-                    # The claim must not leak: an exception in the send path
-                    # (template error, DB blip) used to consume the reminder
-                    # silently with no email ever going out.
-                    Vaccination.objects.filter(pk=vaccination.pk).update(
-                        reminder_sent=False
-                    )
-                    raise
-                if sent:
-                    reminders_sent += 1
-                else:
-                    Vaccination.objects.filter(pk=vaccination.pk).update(
-                        reminder_sent=False
-                    )
+    for owner, records in by_owner.values():
+        pks = [r.pk for r in records]
+        try:
+            # Atomic claim: only one worker wins the race to send.
+            claimed = Vaccination.objects.filter(
+                pk__in=pks, reminder_sent=False
+            ).update(reminder_sent=True)
+            if not claimed:
+                continue
+            try:
+                sent = send_vaccination_digest(owner, records)
+            except Exception:
+                # The claim must not leak: an exception in the send path
+                # would consume the reminders silently with no email.
+                Vaccination.objects.filter(pk__in=pks).update(
+                    reminder_sent=False
+                )
+                raise
+            if sent:
+                reminders_sent += len(records)
+            else:
+                Vaccination.objects.filter(pk__in=pks).update(
+                    reminder_sent=False
+                )
         except Exception:
-            logger.exception("Error processing vaccination reminder for pk=%s", vaccination.pk)
+            logger.exception(
+                "Error processing vaccination digest for owner=%s", owner.pk
+            )
 
     return f"Sent {reminders_sent} vaccination reminders"
 
@@ -108,38 +121,50 @@ def send_farrier_reminders():
         latest_date=Max('date')
     )
 
+    # One digest email per owner instead of one per horse.
+    by_owner = {}
     for entry in horses_needing_farrier:
+        visit = FarrierVisit.objects.filter(
+            horse_id=entry['horse'],
+            date=entry['latest_date'],
+            reminder_sent=False,
+            next_due_date__isnull=False,
+        ).select_related('horse').order_by('-pk').first()
+
+        if not visit or visit.next_due_date > two_weeks:
+            continue
+        owner = visit.horse.current_owner
+        if not owner or not owner.email:
+            continue  # unclaimed; retried once an email address exists
+        by_owner.setdefault(owner.pk, (owner, []))[1].append(visit)
+
+    for owner, visits in by_owner.values():
+        pks = [v.pk for v in visits]
         try:
-            visit = FarrierVisit.objects.filter(
-                horse_id=entry['horse'],
-                date=entry['latest_date'],
-                reminder_sent=False,
-                next_due_date__isnull=False,
-            ).order_by('-pk').first()
-
-            if not visit or visit.next_due_date > two_weeks:
-                continue
-
             claimed = FarrierVisit.objects.filter(
-                pk=visit.pk, reminder_sent=False
+                pk__in=pks, reminder_sent=False
             ).update(reminder_sent=True)
             if not claimed:
                 continue
             try:
-                sent = send_farrier_reminder(visit)
+                sent = send_farrier_digest(owner, visits)
             except Exception:
                 # Roll the claim back on any exception — see the
                 # vaccination task.
-                FarrierVisit.objects.filter(pk=visit.pk).update(
+                FarrierVisit.objects.filter(pk__in=pks).update(
                     reminder_sent=False
                 )
                 raise
             if sent:
-                reminders_sent += 1
+                reminders_sent += len(visits)
             else:
-                FarrierVisit.objects.filter(pk=visit.pk).update(reminder_sent=False)
+                FarrierVisit.objects.filter(pk__in=pks).update(
+                    reminder_sent=False
+                )
         except Exception:
-            logger.exception("Error processing farrier reminder for horse_id=%s", entry['horse'])
+            logger.exception(
+                "Error processing farrier digest for owner=%s", owner.pk
+            )
 
     return f"Sent {reminders_sent} farrier reminders"
 

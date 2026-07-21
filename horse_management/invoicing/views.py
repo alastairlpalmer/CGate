@@ -29,7 +29,12 @@ from invoicing.models import Invoice, Payment
 
 from .forms import InvoiceCreateForm, InvoiceUpdateForm, MonthlyInvoiceForm, PaymentForm
 from .pdf import generate_invoice_pdf, generate_owner_statement_pdf
-from .services import DuplicateInvoiceError, InvoiceService, StatementService
+from .services import (
+    DuplicateInvoiceError,
+    InvoiceService,
+    NothingToInvoiceError,
+    StatementService,
+)
 from .utils import group_line_items_by_horse, write_xero_csv
 
 logger = logging.getLogger(__name__)
@@ -245,7 +250,7 @@ def invoice_create(request):
                 invoice = InvoiceService.create_invoice(
                     owner, period_start, period_end, notes
                 )
-            except DuplicateInvoiceError as e:
+            except (DuplicateInvoiceError, NothingToInvoiceError) as e:
                 messages.error(request, str(e))
                 return render(request, 'invoicing/invoice_create.html', {
                     'form': form, 'preview': None,

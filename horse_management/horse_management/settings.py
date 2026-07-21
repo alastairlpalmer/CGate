@@ -261,6 +261,9 @@ if not DEBUG and EMAIL_BACKEND == 'django.core.mail.backends.console.EmailBacken
     )
 EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+# Without a timeout a wedged SMTP connection blocks the reminder loop (and
+# its Celery worker slot) until the task time limit kills it.
+EMAIL_TIMEOUT = env.int('EMAIL_TIMEOUT', default=30)
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
@@ -280,6 +283,13 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+# Runaway-task backstop: the longest legitimate task is the nightly Xero
+# sweep, which paces itself at ~1 call/second plus up to three 60s
+# rate-limit waits — 30 minutes is generous headroom for a large yard while
+# still killing a genuinely hung task (e.g. stuck SMTP/HTTP socket) the
+# same night instead of stalling the worker indefinitely.
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60
+CELERY_TASK_TIME_LIMIT = 30 * 60
 
 # Celery Beat schedule
 # ---------------------
