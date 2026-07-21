@@ -7,6 +7,8 @@ import io
 from collections import OrderedDict
 from decimal import Decimal
 
+from django.utils import timezone
+
 
 def _format_date_win(d, include_year=False):
     """Windows-compatible date formatting (no %-d support)."""
@@ -168,7 +170,7 @@ def invoice_to_xero_rows(invoice, account_code='200'):
             row['POAddressLine4'] = address_lines[3]
             row['*InvoiceNumber'] = invoice.invoice_number
             row['Reference'] = getattr(invoice.owner, 'account_code', '') or ''
-            row['*InvoiceDate'] = invoice.created_at.strftime('%d/%m/%Y')
+            row['*InvoiceDate'] = timezone.localtime(invoice.created_at).strftime('%d/%m/%Y')
             row['*DueDate'] = invoice.due_date.strftime('%d/%m/%Y')
             row['Total'] = str(invoice.total)
 

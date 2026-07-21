@@ -42,6 +42,20 @@ class XeroContactService:
         # 2. Search Xero by name
         existing = client.find_contact_by_name(owner.name)
         if existing:
+            # Two local owners with the same name would map to the same Xero
+            # contact — the unique constraint on xero_contact_id turns that
+            # into an IntegrityError mid-push. Fail with a message that says
+            # what to actually do about it.
+            clash = XeroContactMapping.objects.filter(
+                xero_contact_id=existing['ContactID'],
+            ).exclude(owner=owner).select_related('owner').first()
+            if clash:
+                raise XeroAPIError(
+                    f"Xero contact '{existing['Name']}' is already mapped to "
+                    f"owner '{clash.owner.name}'. Two owners share this name "
+                    "— rename one (e.g. add an initial) in both systems, "
+                    "then push again."
+                )
             XeroContactMapping.objects.create(
                 owner=owner,
                 xero_contact_id=existing['ContactID'],
@@ -143,7 +157,9 @@ def build_xero_invoice_payload(invoice, xero_contact_id):
         'Contact': {'ContactID': xero_contact_id},
         'InvoiceNumber': invoice.invoice_number,
         'Reference': getattr(invoice.owner, 'account_code', '') or '',
-        'Date': invoice.created_at.strftime('%Y-%m-%d'),
+        # London date, not UTC — an invoice created 00:30 BST on the 1st must
+        # not land in the previous month's VAT period in Xero.
+        'Date': timezone.localtime(invoice.created_at).strftime('%Y-%m-%d'),
         'DueDate': invoice.due_date.strftime('%Y-%m-%d'),
         'LineItems': line_items,
         'CurrencyCode': 'GBP',

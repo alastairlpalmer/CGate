@@ -60,7 +60,17 @@ def send_vaccination_reminders():
                 ).update(reminder_sent=True)
                 if not claimed:
                     continue
-                if send_vaccination_reminder(vaccination):
+                try:
+                    sent = send_vaccination_reminder(vaccination)
+                except Exception:
+                    # The claim must not leak: an exception in the send path
+                    # (template error, DB blip) used to consume the reminder
+                    # silently with no email ever going out.
+                    Vaccination.objects.filter(pk=vaccination.pk).update(
+                        reminder_sent=False
+                    )
+                    raise
+                if sent:
                     reminders_sent += 1
                 else:
                     Vaccination.objects.filter(pk=vaccination.pk).update(
@@ -115,7 +125,16 @@ def send_farrier_reminders():
             ).update(reminder_sent=True)
             if not claimed:
                 continue
-            if send_farrier_reminder(visit):
+            try:
+                sent = send_farrier_reminder(visit)
+            except Exception:
+                # Roll the claim back on any exception — see the
+                # vaccination task.
+                FarrierVisit.objects.filter(pk=visit.pk).update(
+                    reminder_sent=False
+                )
+                raise
+            if sent:
                 reminders_sent += 1
             else:
                 FarrierVisit.objects.filter(pk=visit.pk).update(reminder_sent=False)

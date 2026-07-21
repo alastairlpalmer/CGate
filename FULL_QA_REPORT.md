@@ -1,5 +1,16 @@
 # Yardway — Full Codebase QA Review (21 July 2026)
 
+> **Resolution status (same day):** every critical (C1–C3), high (H1–H10)
+> and medium (M1–M19) finding below has been fixed on this branch, along
+> with the vast majority of the low-severity list — see the commit history
+> following this report. Not addressed (product-level decisions):
+> per-owner reminder digests, a credit-note/overpayment mechanism, Celery
+> task time limits/EMAIL_TIMEOUT, pagination of the Active horses tab,
+> moving monthly invoice generation out of the web request, the
+> `*.vercel.app` CSRF wildcard (required for preview deploys), and the
+> PDF group-header share % cosmetic. Vercel's ephemeral media (M10) is
+> infrastructure — documented as a rollback-window warning in CUTOVER.md.
+
 Scope: entire application — core lifecycle, invoicing/billing, health/notifications,
 roles/permissions, Xero integration, deployment config, and all 126 templates/UI
 workflows. Method: six parallel deep code reviews plus dynamic testing (full test

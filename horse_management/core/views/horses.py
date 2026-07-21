@@ -7,7 +7,7 @@ from itertools import groupby
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Exists, OuterRef, Prefetch, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -133,14 +133,20 @@ class HorseListView(FeatureAccessMixin, ListView):
                 active_placements, ownership_shares_prefetch,
             )
 
-        # Advanced filters (location/owner dropdowns)
+        # Advanced filters (location/owner dropdowns). Departed horses have
+        # no open placement by definition, so the departed tab matches on
+        # placement history — requiring end_date__isnull=True there returned
+        # nothing by construction.
+        placement_filter = (
+            {} if self.status == 'departed' else {'end_date__isnull': True}
+        )
         location = self.request.GET.get('location')
         if location:
             queryset = queryset.filter(
                 Exists(Placement.objects.filter(
                     horse=OuterRef('pk'),
                     location_id=location,
-                    end_date__isnull=True,
+                    **placement_filter,
                 ))
             )
 
@@ -150,7 +156,7 @@ class HorseListView(FeatureAccessMixin, ListView):
                 Exists(Placement.objects.filter(
                     horse=OuterRef('pk'),
                     owner_id=owner,
-                    end_date__isnull=True,
+                    **placement_filter,
                 ))
             )
 
@@ -433,6 +439,13 @@ def horse_move(request, pk):
                 )
             except ValidationError as e:
                 messages.error(request, '; '.join(e.messages))
+            except IntegrityError:
+                messages.error(
+                    request,
+                    "That change clashed with another update to the same "
+                    "horse (it may already be placed) — refresh and check "
+                    "the current placement before retrying.",
+                )
                 return render(request, 'horses/horse_move.html', {
                     'horse': horse, 'form': form, 'current_placement': current_placement
                 })
@@ -523,6 +536,13 @@ def horse_arrive(request, pk):
                 return redirect('horse_list')
             except ValidationError as e:
                 messages.error(request, '; '.join(e.messages))
+            except IntegrityError:
+                messages.error(
+                    request,
+                    "That change clashed with another update to the same "
+                    "horse (it may already be placed) — refresh and check "
+                    "the current placement before retrying.",
+                )
     else:
         initial = {'arrival_date': timezone.localdate()}
         primary_owner = horse.primary_owner
@@ -569,6 +589,12 @@ def horse_depart(request, pk):
                 messages.success(request, f"{horse.name} departed from {placement.location.name}.")
         except ValidationError as e:
             messages.error(request, str(e))
+        except IntegrityError:
+            messages.error(
+                request,
+                "That change clashed with another update to the same horse "
+                "— refresh and check the current placement before retrying.",
+            )
 
     return redirect('horse_detail', pk=horse.pk)
 

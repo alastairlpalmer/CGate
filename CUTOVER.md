@@ -203,6 +203,13 @@ DNS is the only thing that moved, so rollback is one step:
 3. Optionally pause/scale-down the `beat` + `worker` services if you don't
    want reminder emails going out while you're back on Vercel.
 
+> **Warning — uploads while on Vercel are lost.** Vercel's filesystem is
+> ephemeral and nothing serves `/media/` there, so any horse photo,
+> passport, or receipt uploaded while Vercel is serving will error or
+> vanish on the next cold start. Treat a rollback window as read-only for
+> uploads, and re-add any files uploaded during it once back on Railway
+> (persistent `/data` volume).
+
 Decommission Vercel only after Railway has been stable for a comfortable
 period (suggest ≥1 week, including one full weekday-morning reminder cycle).
 

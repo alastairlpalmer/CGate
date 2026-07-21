@@ -469,6 +469,9 @@ class Placement(models.Model):
             models.Index(fields=['horse', 'location', 'end_date'], name='placement_horse_loc_end'),
             models.Index(fields=['horse', 'owner', 'end_date'], name='placement_horse_owner_end'),
             models.Index(fields=['end_date'], name='placement_enddate_solo'),
+            # Location detail / capacity / emptiness checks all filter
+            # location + open placement; the horse-led indexes can't serve them.
+            models.Index(fields=['location', 'end_date'], name='placement_loc_enddate'),
         ]
         constraints = [
             # Prevent a horse from having more than one open-ended placement

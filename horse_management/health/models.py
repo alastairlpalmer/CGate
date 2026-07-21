@@ -138,6 +138,15 @@ class Vaccination(models.Model):
         if not self.next_due_date:
             months = self.vaccination_type.interval_months
             self.next_due_date = self._add_months(self.date_given, months)
+        # Re-arm the reminder when the due date moves (same rule as
+        # Document expiry) — a pushed-out due date used to keep
+        # reminder_sent=True and pass silently with no email, ever.
+        if self.pk and self.reminder_sent:
+            old_due = type(self).objects.filter(pk=self.pk).values_list(
+                'next_due_date', flat=True
+            ).first()
+            if old_due != self.next_due_date:
+                self.reminder_sent = False
         super().save(*args, **kwargs)
 
     @property
@@ -218,6 +227,13 @@ class FarrierVisit(models.Model):
         # Auto-calculate next due date (typically 6-8 weeks)
         if not self.next_due_date:
             self.next_due_date = self.date + timedelta(weeks=6)
+        # Re-arm the reminder when the due date moves — see Vaccination.save.
+        if self.pk and self.reminder_sent:
+            old_due = type(self).objects.filter(pk=self.pk).values_list(
+                'next_due_date', flat=True
+            ).first()
+            if old_due != self.next_due_date:
+                self.reminder_sent = False
         super().save(*args, **kwargs)
 
     @property

@@ -70,6 +70,16 @@ class VaccinationForm(OptionalCostMixin, ActiveHorseFormMixin, forms.ModelForm):
             provider_type='vet', is_active=True
         )
         self.fields['vet'].empty_label = "Select vet..."
+        # Deactivated vaccination types stay out of new records but remain
+        # selectable on records that already use them.
+        if 'vaccination_type' in self.fields:
+            from django.db.models import Q
+            keep = Q(is_active=True)
+            if self.instance.pk and self.instance.vaccination_type_id:
+                keep |= Q(pk=self.instance.vaccination_type_id)
+            self.fields['vaccination_type'].queryset = (
+                self.fields['vaccination_type'].queryset.filter(keep)
+            )
 
     def clean(self):
         cleaned_data = super().clean()
@@ -77,6 +87,25 @@ class VaccinationForm(OptionalCostMixin, ActiveHorseFormMixin, forms.ModelForm):
         next_due = cleaned_data.get('next_due_date')
         if date_given and next_due and next_due <= date_given:
             self.add_error('next_due_date', "Next due date must be after the date given.")
+        from django.utils import timezone
+        if date_given and date_given > timezone.localdate():
+            self.add_error(
+                'date_given',
+                "Date given cannot be in the future — a typo here silently "
+                "delays the whole booster schedule.",
+            )
+        # Editing the date given or type without touching the stored due
+        # date means the user wants it recalculated — clearing it lets
+        # model.save() recompute from the (new) type interval, instead of
+        # keeping a due date derived from the old values.
+        if (
+            self.instance.pk
+            and ('date_given' in self.changed_data
+                 or 'vaccination_type' in self.changed_data)
+            and 'next_due_date' not in self.changed_data
+        ):
+            cleaned_data['next_due_date'] = None
+            self.instance.next_due_date = None
         return cleaned_data
 
 
@@ -112,11 +141,18 @@ class VaccinationTypeForm(forms.ModelForm):
         fields = ['name', 'interval_months', 'reminder_days_before', 'description', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
-            'interval_months': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
-            'reminder_days_before': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
+            'interval_months': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric', 'min': '1'}),
+            'reminder_days_before': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric', 'min': '0'}),
             'description': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
         }
+
+    def clean_interval_months(self):
+        interval = self.cleaned_data['interval_months']
+        if interval is not None and interval < 1:
+            # interval 0 makes every record instantly overdue on creation.
+            raise forms.ValidationError("Interval must be at least 1 month.")
+        return interval
 
 
 class WormingTreatmentForm(OptionalCostMixin, ActiveHorseFormMixin, forms.ModelForm):

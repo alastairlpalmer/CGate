@@ -524,7 +524,12 @@
 
     // ── Form submission feedback — loading spinner on submit buttons ──
     document.addEventListener('submit', function (e) {
-        var btn = e.target.querySelector('button[type="submit"]');
+        // Spin the button that was actually clicked — forms with two submits
+        // (e.g. "Save & Add Another" before the primary button) used to
+        // always spin the first one.
+        var btn = e.submitter && e.submitter.matches('button[type="submit"]')
+            ? e.submitter
+            : e.target.querySelector('button[type="submit"]');
         if (!btn) return;
         btn.classList.add('btn-loading');
         btn.disabled = true;

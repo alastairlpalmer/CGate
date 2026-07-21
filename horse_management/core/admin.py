@@ -11,7 +11,6 @@ from invoicing.models import Invoice, InvoiceLineItem
 from .models import (
     BusinessSettings,
     Horse,
-    HorseOwnership,
     Location,
     Owner,
     OwnershipShare,
@@ -74,13 +73,6 @@ class PlacementInline(admin.TabularInline):
     model = Placement
     extra = 0
     readonly_fields = ['created_at']
-
-
-class HorseOwnershipInline(admin.TabularInline):
-    model = HorseOwnership
-    extra = 0
-    readonly_fields = ['created_at']
-    fields = ['owner', 'share_percentage', 'effective_from', 'effective_to', 'is_billing_contact', 'notes']
 
 
 class OwnershipShareInline(admin.TabularInline):
@@ -207,19 +199,7 @@ class InvoiceLineItemAdmin(admin.ModelAdmin):
     raw_id_fields = ['invoice', 'horse', 'placement', 'charge']
 
 
-@admin.register(HorseOwnership)
-class HorseOwnershipAdmin(admin.ModelAdmin):
-    list_display = [
-        'horse', 'owner', 'share_percentage', 'effective_from',
-        'effective_to', 'is_current', 'is_billing_contact'
-    ]
-    list_filter = ['is_billing_contact', 'effective_from', 'owner']
-    search_fields = ['horse__name', 'owner__name']
-    date_hierarchy = 'effective_from'
-    raw_id_fields = ['horse', 'owner']
-    readonly_fields = ['created_at', 'updated_at']
-
-    def is_current(self, obj):
-        return obj.is_current
-    is_current.boolean = True
-    is_current.short_description = 'Current'
+# HorseOwnership is a legacy model: billing, reminders and every view use
+# OwnershipShare exclusively. It is deliberately NOT registered in the admin —
+# data entered there silently did nothing, which is a trap for admin users.
+# The model remains only so historical rows stay readable via the ORM.
