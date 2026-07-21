@@ -102,41 +102,92 @@ class XeroClient:
     # ── Token management ──
 
     def _refresh_access_token(self):
-        """Refresh the access token using the stored refresh token."""
-        if not self.connection.refresh_token:
-            raise XeroTokenExpiredError('No refresh token available. Please reconnect.')
+        """Refresh the access token using the stored refresh token.
 
-        response = requests.post(
-            XERO_TOKEN_URL,
-            data={
-                'grant_type': 'refresh_token',
-                'refresh_token': self.connection.refresh_token,
-                'client_id': settings.XERO_CLIENT_ID,
-                'client_secret': settings.XERO_CLIENT_SECRET,
-            },
-            headers={'Content-Type': 'application/x-www-form-urlencoded'},
-            timeout=15,
-        )
+        Refresh tokens rotate on every use, and gunicorn workers, the Celery
+        worker and beat can all hold this singleton at once — so the refresh
+        is serialised on the connection row and re-read under the lock: if
+        another process already refreshed, adopt its token instead of
+        burning the rotated refresh token again.
 
-        if response.status_code != 200:
-            # Refresh token likely expired — mark connection inactive
-            self.connection.is_active = False
-            self.connection.save(update_fields=['is_active'])
-            raise XeroTokenExpiredError(
-                'Refresh token expired. Please reconnect to Xero.'
+        Only a definitive ``invalid_grant`` deactivates the connection. Any
+        other failure (Xero 429/5xx, network blip) is transient — treating
+        it as "refresh token expired" used to permanently kill the
+        integration on the first identity-endpoint hiccup.
+        """
+        from django.db import transaction
+
+        from .models import XeroConnection
+
+        with transaction.atomic():
+            conn = XeroConnection.objects.select_for_update().get(
+                pk=self.connection.pk
             )
+            # Someone else refreshed while we waited for the lock.
+            if (
+                conn.access_token != self.connection.access_token
+                and not conn.is_token_expired
+            ):
+                self.connection = conn
+                return
 
-        data = response.json()
-        now = timezone.now()
-        self.connection.access_token = data['access_token']
-        self.connection.refresh_token = data['refresh_token']
-        self.connection.token_expires_at = now + timezone.timedelta(
-            seconds=data.get('expires_in', 1800)
-        )
-        self.connection.last_refreshed_at = now
-        self.connection.save(update_fields=[
-            'access_token', 'refresh_token', 'token_expires_at', 'last_refreshed_at',
-        ])
+            if not conn.refresh_token:
+                raise XeroTokenExpiredError(
+                    'No refresh token available. Please reconnect.'
+                )
+
+            try:
+                response = requests.post(
+                    XERO_TOKEN_URL,
+                    data={
+                        'grant_type': 'refresh_token',
+                        'refresh_token': conn.refresh_token,
+                        'client_id': settings.XERO_CLIENT_ID,
+                        'client_secret': settings.XERO_CLIENT_SECRET,
+                    },
+                    headers={'Content-Type': 'application/x-www-form-urlencoded'},
+                    timeout=15,
+                )
+            except requests.RequestException as exc:
+                raise XeroAuthError(
+                    f'Could not reach Xero to refresh the token: {exc}'
+                ) from exc
+
+            if response.status_code != 200:
+                body = response.text or ''
+                is_invalid_grant = (
+                    response.status_code in (400, 401)
+                    and 'invalid_grant' in body
+                )
+                if is_invalid_grant:
+                    conn.is_active = False
+                    conn.save(update_fields=['is_active'])
+                    self.connection = conn
+                    raise XeroTokenExpiredError(
+                        'Refresh token expired. Please reconnect to Xero.'
+                    )
+                logger.warning(
+                    'Transient Xero token refresh failure: %s %s',
+                    response.status_code, body[:500],
+                )
+                raise XeroAuthError(
+                    f'Xero token refresh failed ({response.status_code}); '
+                    'connection kept — will retry.'
+                )
+
+            data = response.json()
+            now = timezone.now()
+            conn.access_token = data['access_token']
+            conn.refresh_token = data['refresh_token']
+            conn.token_expires_at = now + timezone.timedelta(
+                seconds=data.get('expires_in', 1800)
+            )
+            conn.last_refreshed_at = now
+            conn.save(update_fields=[
+                'access_token', 'refresh_token', 'token_expires_at',
+                'last_refreshed_at',
+            ])
+            self.connection = conn
         logger.info('Xero access token refreshed successfully')
 
     def _ensure_valid_token(self):
@@ -148,8 +199,18 @@ class XeroClient:
 
     # ── API requests ──
 
-    def _api_request(self, method, endpoint, json_data=None, params=None):
-        """Make an authenticated request to the Xero API."""
+    def _api_request(self, method, endpoint, json_data=None, params=None,
+                     idempotency_key=None):
+        """Make an authenticated request to the Xero API.
+
+        Network failures surface as XeroAPIError so every caller's
+        record-the-error path handles them — a raw requests exception used
+        to escape push_invoice_to_xero without writing a sync record at
+        all, leaving the app claiming a push failed that Xero had actually
+        accepted. ``idempotency_key`` (Xero's Idempotency-Key header) makes
+        retried POSTs safe: a repeat within 24h returns the original result
+        instead of creating a duplicate.
+        """
         self._ensure_valid_token()
 
         url = f'{XERO_API_BASE}/{endpoint}'
@@ -159,19 +220,10 @@ class XeroClient:
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         }
+        if idempotency_key:
+            headers['Idempotency-Key'] = idempotency_key
 
-        response = requests.request(
-            method, url,
-            headers=headers,
-            json=json_data,
-            params=params,
-            timeout=20,
-        )
-
-        if response.status_code == 401:
-            # Token may have expired between check and request — try once more
-            self._refresh_access_token()
-            headers['Authorization'] = f'Bearer {self.connection.access_token}'
+        try:
             response = requests.request(
                 method, url,
                 headers=headers,
@@ -179,6 +231,22 @@ class XeroClient:
                 params=params,
                 timeout=20,
             )
+
+            if response.status_code == 401:
+                # Token may have expired between check and request — try once more
+                self._refresh_access_token()
+                headers['Authorization'] = f'Bearer {self.connection.access_token}'
+                response = requests.request(
+                    method, url,
+                    headers=headers,
+                    json=json_data,
+                    params=params,
+                    timeout=20,
+                )
+        except requests.RequestException as exc:
+            raise XeroAPIError(
+                f'Network error talking to Xero: {exc}',
+            ) from exc
 
         if response.status_code >= 400:
             raise XeroAPIError(
@@ -216,13 +284,16 @@ class XeroClient:
 
     # ── Invoices ──
 
-    def create_invoice(self, invoice_data):
+    def create_invoice(self, invoice_data, idempotency_key=None):
         """Create an invoice in Xero.
 
         invoice_data should be a Xero-compatible invoice dict.
         Returns the created invoice dict.
         """
-        data = self._api_request('POST', 'Invoices', json_data=invoice_data)
+        data = self._api_request(
+            'POST', 'Invoices', json_data=invoice_data,
+            idempotency_key=idempotency_key,
+        )
         invoices = data.get('Invoices', [])
         if not invoices:
             raise XeroAPIError('No invoice returned from Xero after creation')

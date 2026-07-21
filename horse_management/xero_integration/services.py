@@ -131,64 +131,83 @@ def build_xero_invoice_payload(invoice, xero_contact_id):
 def push_invoice_to_xero(invoice):
     """Push a single invoice to Xero.
 
+    Concurrency-safe: the invoice row is locked for the duration of the
+    push, so a double-click (or a manual push racing the nightly task)
+    serialises — the loser re-reads the sync record and returns it instead
+    of POSTing a duplicate. The POST itself carries a stable Idempotency-Key
+    per invoice, so a retry after a network timeout returns Xero's original
+    result instead of failing on a duplicate invoice number.
+
     Returns the XeroInvoiceSync record.
     Raises XeroNotConnectedError, XeroTokenExpiredError, or XeroAPIError.
     """
+    from django.db import transaction
+
+    from invoicing.models import Invoice
+
     conn = XeroConnection.get_connection()
     if not conn.is_connected:
         raise XeroNotConnectedError('Xero is not connected. Please connect first.')
 
-    # Check if already pushed
+    error = None
+    existing_sync = None
     try:
-        existing_sync = XeroInvoiceSync.objects.get(invoice=invoice)
-        if existing_sync.sync_status == XeroInvoiceSync.SyncStatus.PUSHED:
-            return existing_sync
-    except XeroInvoiceSync.DoesNotExist:
-        existing_sync = None
+        with transaction.atomic():
+            # Serialise concurrent pushes of the same invoice.
+            invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
 
-    try:
-        # 1. Ensure contact exists
-        contact_id = XeroContactService.ensure_contact_exists(invoice.owner)
+            existing_sync = XeroInvoiceSync.objects.filter(invoice=invoice).first()
+            if existing_sync and existing_sync.sync_status == XeroInvoiceSync.SyncStatus.PUSHED:
+                return existing_sync
 
-        # 2. Build payload
-        payload = build_xero_invoice_payload(invoice, contact_id)
+            # 1. Ensure contact exists
+            contact_id = XeroContactService.ensure_contact_exists(invoice.owner)
 
-        # 3. Push to Xero
-        client = XeroClient()
-        xero_invoice = client.create_invoice(payload)
+            # 2. Build payload
+            payload = build_xero_invoice_payload(invoice, contact_id)
 
-        # 4. Record sync state
-        now = timezone.now()
-        if existing_sync:
-            existing_sync.xero_invoice_id = xero_invoice['InvoiceID']
-            existing_sync.xero_invoice_number = xero_invoice.get('InvoiceNumber', '')
-            existing_sync.sync_status = XeroInvoiceSync.SyncStatus.PUSHED
-            existing_sync.last_pushed_at = now
-            existing_sync.error_message = ''
-            existing_sync.save()
-            return existing_sync
-
-        return XeroInvoiceSync.objects.create(
-            invoice=invoice,
-            xero_invoice_id=xero_invoice['InvoiceID'],
-            xero_invoice_number=xero_invoice.get('InvoiceNumber', ''),
-            sync_status=XeroInvoiceSync.SyncStatus.PUSHED,
-            last_pushed_at=now,
-        )
-
-    except (XeroAPIError, XeroTokenExpiredError) as e:
-        # Record the error
-        if existing_sync:
-            existing_sync.sync_status = XeroInvoiceSync.SyncStatus.ERROR
-            existing_sync.error_message = str(e)
-            existing_sync.save()
-        else:
-            XeroInvoiceSync.objects.create(
-                invoice=invoice,
-                sync_status=XeroInvoiceSync.SyncStatus.ERROR,
-                error_message=str(e),
+            # 3. Push to Xero (idempotent per invoice)
+            client = XeroClient()
+            xero_invoice = client.create_invoice(
+                payload, idempotency_key=f'yardway-invoice-{invoice.pk}',
             )
-        raise
+
+            # 4. Record sync state
+            now = timezone.now()
+            if existing_sync:
+                existing_sync.xero_invoice_id = xero_invoice['InvoiceID']
+                existing_sync.xero_invoice_number = xero_invoice.get('InvoiceNumber', '')
+                existing_sync.sync_status = XeroInvoiceSync.SyncStatus.PUSHED
+                existing_sync.last_pushed_at = now
+                existing_sync.error_message = ''
+                existing_sync.save()
+                return existing_sync
+
+            return XeroInvoiceSync.objects.create(
+                invoice=invoice,
+                xero_invoice_id=xero_invoice['InvoiceID'],
+                xero_invoice_number=xero_invoice.get('InvoiceNumber', ''),
+                sync_status=XeroInvoiceSync.SyncStatus.PUSHED,
+                last_pushed_at=now,
+            )
+    except (XeroAPIError, XeroTokenExpiredError) as e:
+        error = e
+
+    # Record the error outside the atomic block — an exception raised inside
+    # would roll the sync record back with everything else.
+    if existing_sync:
+        existing_sync.sync_status = XeroInvoiceSync.SyncStatus.ERROR
+        existing_sync.error_message = str(error)
+        existing_sync.save()
+    else:
+        XeroInvoiceSync.objects.get_or_create(
+            invoice=invoice,
+            defaults={
+                'sync_status': XeroInvoiceSync.SyncStatus.ERROR,
+                'error_message': str(error),
+            },
+        )
+    raise error
 
 
 def check_xero_invoice_status(sync):
