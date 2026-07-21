@@ -65,6 +65,14 @@ def group_line_items_by_horse(line_items):
         # Sort extras by charge date if available
         extras.sort(key=lambda i: i.charge.date if i.charge else i.pk)
         group['items'] = livery + extras
+        # Group-level share label only when every line carries the same
+        # fractional share — mixed groups (50% livery + 100% direct charge)
+        # rely on per-line share notes instead of a misleading header.
+        shares = {i.share_percentage for i in group['items']}
+        group['share_label'] = (
+            f"({next(iter(shares)):g}% share)"
+            if len(shares) == 1 and next(iter(shares)) < 100 else ''
+        )
 
     return list(groups.values())
 

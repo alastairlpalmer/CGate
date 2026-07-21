@@ -27,6 +27,15 @@ class DuplicateInvoiceError(Exception):
     pass
 
 
+class NothingToInvoiceError(Exception):
+    """Raised when a period has no billable livery or charges.
+
+    Lets create_invoice bail before consuming an invoice number, so callers
+    don't need a separate full preview pass just to guard zero totals.
+    """
+    pass
+
+
 class InvoiceService:
     """Service for generating and managing invoices."""
 
@@ -356,6 +365,18 @@ class InvoiceService:
 
         settings = BusinessSettings.get_settings()
 
+        # Price the period ONCE, under the owner lock, before consuming an
+        # invoice number. The monthly run used to do a full preview pass and
+        # then recompute everything here — twice the query fan-out per owner
+        # on the one day the whole yard gets billed.
+        livery_charges = cls.calculate_livery_charges(owner, period_start, period_end)
+        extra_charges = cls.get_unbilled_charges(owner, period_end)
+        if sum(c['amount'] for c in livery_charges + extra_charges) <= 0:
+            raise NothingToInvoiceError(
+                f"{owner.name} has nothing billable for "
+                f"{period_start} to {period_end}."
+            )
+
         # Create the invoice (VAT rate snapshotted so later settings changes
         # don't rewrite this invoice's totals)
         invoice = Invoice.objects.create(
@@ -370,7 +391,6 @@ class InvoiceService:
         )
 
         # Add livery line items
-        livery_charges = cls.calculate_livery_charges(owner, period_start, period_end)
         for charge in livery_charges:
             InvoiceLineItem.objects.create(
                 invoice=invoice,
@@ -384,8 +404,7 @@ class InvoiceService:
                 share_percentage=charge['share_percentage'],
             )
 
-        # Add extra charge line items
-        extra_charges = cls.get_unbilled_charges(owner, period_end)
+        # Add extra charge line items (priced above, same pass)
         for charge in extra_charges:
             line_type_map = {
                 'vet': InvoiceLineItem.LineType.VET,
@@ -565,18 +584,13 @@ class InvoiceService:
                 continue
 
             for gap_start, gap_end in gaps:
-                # Preview charges first to avoid consuming an invoice number
-                # for zero totals
-                preview = InvoiceService.calculate_invoice_preview(
-                    owner, gap_start, gap_end
-                )
-                if preview['total'] <= 0:
-                    continue
-
                 try:
                     invoice = InvoiceService.create_invoice(
                         owner, gap_start, gap_end
                     )
+                except NothingToInvoiceError:
+                    # Zero total for this gap — no invoice number consumed.
+                    continue
                 except DuplicateInvoiceError:
                     # A concurrent run (beat task vs manual click) got there
                     # first — treat as already covered rather than aborting

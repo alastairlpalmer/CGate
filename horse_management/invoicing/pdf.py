@@ -182,9 +182,17 @@ def generate_invoice_pdf_reportlab(invoice):
     row_styles = []
 
     for group in horse_groups:
-        # Determine ownership % from first line item's share_percentage
-        share_pct = group['items'][0].share_percentage if group['items'] else Decimal('100')
-        share_label = f" ({share_pct:g}% share)" if share_pct < 100 else ""
+        # Only label the group with a share % when every line in it carries
+        # the same fractional share. A 50%-share livery line plus a direct
+        # (100%-billed) vet charge used to render the whole group as
+        # "(50% share)", implying the vet line was half of a larger bill —
+        # mixed groups rely on the per-line share notes instead.
+        shares = {item.share_percentage for item in group['items']}
+        share_label = ""
+        if len(shares) == 1:
+            share_pct = shares.pop()
+            if share_pct < 100:
+                share_label = f" ({share_pct:g}% share)"
         # Horse header row
         table_data.append([
             Paragraph(f"<b>{group['horse_name']}{share_label}</b>", item_style),

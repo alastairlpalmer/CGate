@@ -286,7 +286,9 @@ class VaccinationSupersededGuardTests(TestCase):
         # superseded and silent.
         self.assertEqual(len(mail.outbox), 1)
 
-    def test_different_types_remind_independently(self):
+    def test_different_types_combine_into_one_digest(self):
+        # Both types are due, but the owner gets ONE email listing both —
+        # not one email per record.
         tetanus = VaccinationType.objects.create(
             name="Tetanus", interval_months=24, reminder_days_before=30
         )
@@ -301,4 +303,61 @@ class VaccinationSupersededGuardTests(TestCase):
             next_due_date=TODAY + timedelta(days=10),
         )
         send_vaccination_reminders()
-        self.assertEqual(len(mail.outbox), 2)
+        self.assertEqual(len(mail.outbox), 1)
+        body = mail.outbox[0].body
+        self.assertIn('Flu', body)
+        self.assertIn('Tetanus', body)
+        # Both records claimed
+        self.assertEqual(
+            Vaccination.objects.filter(reminder_sent=True).count(), 2
+        )
+
+
+class DigestGroupingTests(TestCase):
+    """One reminder email per owner per run, not one per record."""
+
+    def setUp(self):
+        self.vt = VaccinationType.objects.create(
+            name="Flu", interval_months=12, reminder_days_before=30
+        )
+
+    def _due_vax(self, horse):
+        return Vaccination.objects.create(
+            horse=horse, vaccination_type=self.vt,
+            date_given=TODAY - timedelta(days=360),
+            next_due_date=TODAY + timedelta(days=5),
+        )
+
+    def test_multi_horse_owner_gets_one_email(self):
+        owner = _owner("Multi", "multi@example.com")
+        for name in ("A", "B", "C"):
+            self._due_vax(_horse(name, owner))
+        send_vaccination_reminders()
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["multi@example.com"])
+        for name in ("A", "B", "C"):
+            self.assertIn(name, mail.outbox[0].body)
+
+    def test_separate_owners_get_separate_emails(self):
+        o1 = _owner("One", "one@example.com")
+        o2 = _owner("Two", "two@example.com")
+        self._due_vax(_horse("H1", o1))
+        self._due_vax(_horse("H2", o2))
+        send_vaccination_reminders()
+        self.assertEqual(_recipients(), ["one@example.com", "two@example.com"])
+
+    def test_farrier_digest_groups_by_owner(self):
+        owner = _owner("Farrier", "farrier@example.com")
+        for name in ("X", "Y"):
+            h = _horse(name, owner)
+            FarrierVisit.objects.create(
+                horse=h, date=TODAY - timedelta(days=40),
+                next_due_date=TODAY + timedelta(days=3),
+            )
+        send_farrier_reminders()
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('X', mail.outbox[0].body)
+        self.assertIn('Y', mail.outbox[0].body)
+        self.assertEqual(
+            FarrierVisit.objects.filter(reminder_sent=True).count(), 2
+        )
