@@ -80,7 +80,7 @@ def _months_ago(d, n):
 
 def _usage_year_choices(earliest_year):
     """Year selector range from the earliest recorded period to this year."""
-    this_year = timezone.now().date().year
+    this_year = timezone.localdate().year
     if not earliest_year or earliest_year > this_year:
         earliest_year = this_year
     return list(range(this_year, earliest_year - 1, -1))
@@ -92,7 +92,7 @@ def _resolve_usage_window(request):
     Returns a dict: range ('3mo'|'6mo'|'year'), year, start, end (dates),
     label, days (inclusive day count), is_year.
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
     range_key = request.GET.get('range', 'year')
     if range_key not in ('3mo', '6mo', 'year'):
         range_key = 'year'
@@ -157,6 +157,17 @@ class LocationListView(FeatureAccessMixin, ListView):
                 site_locs = list(locs)
                 site_horse_count = sum(l.horse_count for l in site_locs)
                 grouped.append((site, site_locs, site_horse_count))
+                # Prime the cached properties from the annotation so the
+                # template's availability ring doesn't run one COUNT query
+                # per card — and so the ring and the n/capacity number can't
+                # disagree (the property counted stranded inactive horses,
+                # the annotation doesn't).
+                for loc in site_locs:
+                    loc.__dict__['current_horse_count'] = loc.horse_count
+                    loc.__dict__['availability'] = (
+                        loc.capacity - loc.horse_count
+                        if loc.capacity is not None else None
+                    )
             context['grouped_locations'] = grouped
 
         # Usage analytics overview tab
@@ -239,7 +250,7 @@ class LocationDetailView(FeatureAccessMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['current_tab'] = self.request.GET.get('tab', 'current')
-        context['today'] = timezone.now().date()
+        context['today'] = timezone.localdate()
 
         # Current horses (always needed for the info card counts)
         active_placements = Prefetch(
@@ -385,13 +396,24 @@ class LocationUpdateView(FeatureAccessMixin, UpdateView):
         response = super().form_valid(form)
 
         if old_usage is not None and new_usage != old_usage:
-            LocationUsageService.set_usage(
-                self.object,
-                usage=new_usage,
-                change_date=timezone.now().date(),
-                source=LocationUsagePeriod.Source.MANUAL,
-                notes='Changed via location edit form.',
-            )
+            try:
+                LocationUsageService.set_usage(
+                    self.object,
+                    usage=new_usage,
+                    change_date=timezone.localdate(),
+                    source=LocationUsagePeriod.Source.MANUAL,
+                    notes='Changed via location edit form.',
+                )
+            except ValidationError as e:
+                # e.g. the current usage period also started today (horses
+                # arrived onto an empty field this morning). The other
+                # fields saved fine — surface why the usage didn't change
+                # instead of 500ing on a half-applied edit.
+                messages.warning(
+                    self.request,
+                    "Location saved, but the usage wasn't changed: "
+                    + '; '.join(e.messages),
+                )
         return response
 
 
@@ -434,7 +456,7 @@ def log_arrival(request, pk):
                 messages.error(request, err)
             return redirect('location_detail', pk=location.pk)
     else:
-        form = ArrivalForm(initial={'arrival_date': timezone.now().date()})
+        form = ArrivalForm(initial={'arrival_date': timezone.localdate()})
         form.fields['horses'].queryset = available_horses
 
     return render(request, 'locations/location_arrive.html', {

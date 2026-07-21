@@ -7,7 +7,45 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db import models
+from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
+
+
+def exclude_superseded(queryset, *, date_field, group_fields):
+    """Keep only each group's most recent record.
+
+    Due/overdue logic must consider only the latest record per horse (and
+    per vaccination type) — an annual booster's year-old predecessor has a
+    next_due_date in the past *forever*, so without this every historical
+    record shows as permanently overdue the day after a horse is re-treated.
+    Ties on the date fall back to highest pk (the later entry).
+    """
+    model = queryset.model
+    newer = model.objects.filter(
+        **{field: OuterRef(field) for field in group_fields}
+    ).filter(
+        Q(**{f'{date_field}__gt': OuterRef(date_field)})
+        | Q(**{date_field: OuterRef(date_field), 'pk__gt': OuterRef('pk')})
+    )
+    return queryset.annotate(
+        _superseded=Exists(newer),
+    ).filter(_superseded=False)
+
+
+def current_vaccinations(queryset):
+    """Latest vaccination per (horse, type) — the only records whose
+    next_due_date is meaningful for due/overdue purposes."""
+    return exclude_superseded(
+        queryset, date_field='date_given',
+        group_fields=('horse', 'vaccination_type'),
+    )
+
+
+def current_farrier_visits(queryset):
+    """Latest farrier visit per horse."""
+    return exclude_superseded(
+        queryset, date_field='date', group_fields=('horse',),
+    )
 
 
 class VaccinationType(models.Model):
@@ -100,6 +138,15 @@ class Vaccination(models.Model):
         if not self.next_due_date:
             months = self.vaccination_type.interval_months
             self.next_due_date = self._add_months(self.date_given, months)
+        # Re-arm the reminder when the due date moves (same rule as
+        # Document expiry) — a pushed-out due date used to keep
+        # reminder_sent=True and pass silently with no email, ever.
+        if self.pk and self.reminder_sent:
+            old_due = type(self).objects.filter(pk=self.pk).values_list(
+                'next_due_date', flat=True
+            ).first()
+            if old_due != self.next_due_date:
+                self.reminder_sent = False
         super().save(*args, **kwargs)
 
     @property
@@ -108,7 +155,7 @@ class Vaccination(models.Model):
         from django.utils import timezone
         if not self.next_due_date:
             return False
-        days_until = (self.next_due_date - timezone.now().date()).days
+        days_until = (self.next_due_date - timezone.localdate()).days
         return 0 <= days_until <= self.vaccination_type.reminder_days_before
 
     @property
@@ -117,7 +164,7 @@ class Vaccination(models.Model):
         if not self.next_due_date:
             return False
         from django.utils import timezone
-        return timezone.now().date() > self.next_due_date
+        return timezone.localdate() > self.next_due_date
 
 
 class FarrierVisit(models.Model):
@@ -180,6 +227,13 @@ class FarrierVisit(models.Model):
         # Auto-calculate next due date (typically 6-8 weeks)
         if not self.next_due_date:
             self.next_due_date = self.date + timedelta(weeks=6)
+        # Re-arm the reminder when the due date moves — see Vaccination.save.
+        if self.pk and self.reminder_sent:
+            old_due = type(self).objects.filter(pk=self.pk).values_list(
+                'next_due_date', flat=True
+            ).first()
+            if old_due != self.next_due_date:
+                self.reminder_sent = False
         super().save(*args, **kwargs)
 
     @property
@@ -188,7 +242,7 @@ class FarrierVisit(models.Model):
         from django.utils import timezone
         if not self.next_due_date:
             return False
-        days_until = (self.next_due_date - timezone.now().date()).days
+        days_until = (self.next_due_date - timezone.localdate()).days
         return 0 <= days_until <= 14
 
     @property
@@ -197,7 +251,7 @@ class FarrierVisit(models.Model):
         from django.utils import timezone
         if not self.next_due_date:
             return False
-        return timezone.now().date() > self.next_due_date
+        return timezone.localdate() > self.next_due_date
 
 
 class WormingTreatment(models.Model):

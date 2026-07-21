@@ -27,7 +27,7 @@ photos is a (sliced) queryset of HorsePhoto; photo_count the unsliced total.
                 </span>
                 {% if feature_access.horses.full %}
                 <form method="post" action="{% url 'horse_photo_delete' photo.pk %}" class="absolute top-1 right-1"
-                      onsubmit="return confirm('Delete this {{ photo.get_category_display|lower|escapejs }} photo?')">
+                      hx-confirm="Delete this {{ photo.get_category_display|lower }} photo?">
                     {% csrf_token %}
                     <button type="submit"
                             class="w-7 h-7 rounded-full bg-charcoal/60 text-white flex items-center justify-center hover:bg-error-red transition-colors"

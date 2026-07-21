@@ -15,7 +15,7 @@ from core.permissions import (
     feature_required,
     has_feature_access,
 )
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -178,6 +178,21 @@ class InvoiceUpdateView(FeatureAccessMixin, UpdateView):
                     f"{released} extra charge{'s' if released != 1 else ''} "
                     "released for re-billing on a future invoice."
                 )
+            # Cancelling locally does not touch Xero, and cancelled invoices
+            # drop out of the nightly status sweep — warn so the accountant
+            # voids the Xero copy before it gets approved and chased there.
+            try:
+                sync = self.object.xero_sync
+            except ObjectDoesNotExist:
+                sync = None
+            if sync and sync.xero_invoice_id:
+                messages.warning(
+                    self.request,
+                    "This invoice was pushed to Xero "
+                    f"({sync.xero_invoice_number or sync.xero_invoice_id}). "
+                    "Cancelling here does not void it in Xero — void it "
+                    "there too, or it may still be approved and chased.",
+                )
         return response
 
     def get_success_url(self):
@@ -195,7 +210,7 @@ def invoice_create(request):
         initial['owner'] = owner_id
 
     # Default to last month
-    today = timezone.now().date()
+    today = timezone.localdate()
     first_of_month = today.replace(day=1)
     last_month_end = first_of_month - timedelta(days=1)
     last_month_start = last_month_end.replace(day=1)
@@ -443,7 +458,7 @@ def payment_create(request, pk):
         form = PaymentForm(
             invoice=invoice,
             initial={
-                'date': timezone.now().date(),
+                'date': timezone.localdate(),
                 'amount': invoice.balance_due,
             },
         )

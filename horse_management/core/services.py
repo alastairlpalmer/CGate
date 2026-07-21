@@ -166,7 +166,7 @@ class PlacementService:
 
         # Only days that have already elapsed count as history being erased —
         # trimming a future-dated (planned) departure is always fine.
-        today = timezone.now().date()
+        today = timezone.localdate()
         erased_until = min(last.end_date, today)
         erased_days = (erased_until - arrival_date).days + 1
         if erased_days > MAX_SUPERSEDE_TRIM_DAYS:
@@ -246,6 +246,12 @@ class PlacementService:
         )
         placement.full_clean()
         placement.save()
+        # Same rule as move_horse: a singly-owned horse arriving under a
+        # different owner (e.g. sold and returning) must have its ownership
+        # share follow, or Horse.current_owner keeps pointing at the old
+        # owner and every subsequent health/billing cost is invoiced to the
+        # previous owner. Fractional co-ownership is never touched.
+        PlacementService._sync_single_owner_share(horse, owner)
         placement.superseded_trim = trimmed
         return placement
 
@@ -269,9 +275,17 @@ class PlacementService:
     def depart_horse(horse, departure_date):
         """Log a single horse departing.
 
-        Sets end_date on current placement and deactivates horse if departure
-        is today or in the past.
-        Raises ValidationError if invalid.
+        A departure dated today or earlier closes the placement and
+        deactivates the horse. A future date is a *scheduled* departure:
+        closing the placement early would make the horse vanish from every
+        current view (its field, the active list, capacity counts) while it
+        is still standing on the yard — so the date is recorded as
+        expected_departure instead and the placement stays open. The horse
+        shows in Upcoming Departures, and the departure is logged for real
+        on the day.
+
+        Returns the placement; callers can tell a scheduled departure by
+        end_date still being None. Raises ValidationError if invalid.
         """
         current_placement = horse.current_placement
         if not current_placement:
@@ -282,14 +296,18 @@ class PlacementService:
                 f"Departure date cannot be before arrival ({current_placement.start_date})."
             )
 
+        if departure_date > timezone.localdate():
+            current_placement.expected_departure = departure_date
+            current_placement.save()
+            return current_placement
+
         # Closing the placement rests the field if it empties — that lives
         # in Placement.save's lifecycle hook.
         current_placement.end_date = departure_date
         current_placement.save()
 
-        if departure_date <= timezone.now().date():
-            horse.is_active = False
-            horse.save(update_fields=['is_active'])
+        horse.is_active = False
+        horse.save(update_fields=['is_active'])
 
         return current_placement
 
@@ -298,17 +316,18 @@ class PlacementService:
     def confirm_departure(horse):
         """Mark a horse as departed (deactivate). Used for pending departures.
 
-        Defensively closes any still-open placement so the horse can't end up
-        deactivated while apparently occupying a field — that stranded state
-        hides the Log Arrival button while the search dropdown says Departed.
+        A horse with an open placement is still on the yard — it is not a
+        pending departure, and silently closing its live placement here would
+        depart a horse that never left (a stale dashboard or a race with Log
+        Arrival can submit one). Refuse instead: the caller should use
+        depart_horse with a real date. Returns True if the horse was
+        deactivated, False if it was skipped.
         """
-        open_placement = horse.placements.filter(end_date__isnull=True).first()
-        if open_placement:
-            today = timezone.now().date()
-            open_placement.end_date = max(today, open_placement.start_date)
-            open_placement.save()  # save hook rests the field if emptied
+        if horse.placements.filter(end_date__isnull=True).exists():
+            return False
         horse.is_active = False
         horse.save(update_fields=['is_active'])
+        return True
 
     @staticmethod
     @transaction.atomic
@@ -341,12 +360,15 @@ class PlacementService:
     def confirm_departures_bulk(horse_ids):
         """Confirm multiple horses as departed in one action.
 
-        Returns the count of horses deactivated.
+        Horses that still have an open placement are skipped (see
+        confirm_departure). Returns the count of horses actually deactivated.
         """
         horses = list(Horse.objects.filter(pk__in=horse_ids, is_active=True))
+        confirmed = 0
         for horse in horses:
-            PlacementService.confirm_departure(horse)
-        return len(horses)
+            if PlacementService.confirm_departure(horse):
+                confirmed += 1
+        return confirmed
 
     @staticmethod
     @transaction.atomic
@@ -403,7 +425,7 @@ class PlacementService:
                     if placement.notes else notes
                 )
             placement.save()  # save hook rests the field once it empties
-            if departure_date <= timezone.now().date():
+            if departure_date <= timezone.localdate():
                 placement.horse.is_active = False
                 placement.horse.save(update_fields=['is_active'])
             departed += 1

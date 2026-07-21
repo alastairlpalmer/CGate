@@ -11,7 +11,12 @@ from django.db.models import Q
 from django.utils import timezone
 
 from invoicing.models import Invoice
-from health.models import BreedingRecord, FarrierVisit, Vaccination
+from health.models import (
+    BreedingRecord,
+    FarrierVisit,
+    Vaccination,
+    current_vaccinations,
+)
 
 from .emails import (
     send_ehv_reminder,
@@ -29,15 +34,19 @@ def send_vaccination_reminders():
     Send reminders for vaccinations due soon.
     Run daily via Celery Beat.
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
     reminders_sent = 0
 
-    # Get vaccinations due within their reminder period that haven't been notified
-    vaccinations = Vaccination.objects.filter(
+    # Get vaccinations due within their reminder period that haven't been
+    # notified. Only each horse's latest record per vaccination type counts
+    # (same rule as the farrier task): a superseded record's reminder window
+    # opening after the horse was re-vaccinated must not email the owner,
+    # and backfilled history must not flood one reminder per old record.
+    vaccinations = current_vaccinations(Vaccination.objects.filter(
         reminder_sent=False,
         next_due_date__isnull=False,
         horse__is_active=True,
-    ).select_related('horse', 'vaccination_type')
+    )).select_related('horse', 'vaccination_type')
 
     for vaccination in vaccinations:
         try:
@@ -51,7 +60,17 @@ def send_vaccination_reminders():
                 ).update(reminder_sent=True)
                 if not claimed:
                     continue
-                if send_vaccination_reminder(vaccination):
+                try:
+                    sent = send_vaccination_reminder(vaccination)
+                except Exception:
+                    # The claim must not leak: an exception in the send path
+                    # (template error, DB blip) used to consume the reminder
+                    # silently with no email ever going out.
+                    Vaccination.objects.filter(pk=vaccination.pk).update(
+                        reminder_sent=False
+                    )
+                    raise
+                if sent:
                     reminders_sent += 1
                 else:
                     Vaccination.objects.filter(pk=vaccination.pk).update(
@@ -69,7 +88,7 @@ def send_farrier_reminders():
     Send reminders for farrier visits due within 2 weeks.
     Run daily via Celery Beat.
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
     two_weeks = today + timedelta(days=14)
     reminders_sent = 0
 
@@ -106,7 +125,16 @@ def send_farrier_reminders():
             ).update(reminder_sent=True)
             if not claimed:
                 continue
-            if send_farrier_reminder(visit):
+            try:
+                sent = send_farrier_reminder(visit)
+            except Exception:
+                # Roll the claim back on any exception — see the
+                # vaccination task.
+                FarrierVisit.objects.filter(pk=visit.pk).update(
+                    reminder_sent=False
+                )
+                raise
+            if sent:
                 reminders_sent += 1
             else:
                 FarrierVisit.objects.filter(pk=visit.pk).update(reminder_sent=False)
@@ -175,7 +203,7 @@ def send_ehv_reminders():
     Sends reminder 14 days before each due date.
     Run daily via Celery Beat.
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
     reminders_sent = 0
 
     # Get active breeding records that are confirmed in-foal
@@ -228,7 +256,7 @@ def check_invoice_status():
     Check and update invoice statuses.
     Run daily via Celery Beat.
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
     updated = 0
 
     # Mark sent invoices as overdue if past due date
@@ -260,7 +288,7 @@ def send_document_expiry_reminders():
         )
         return "no_business_email"
 
-    today = timezone.now().date()
+    today = timezone.localdate()
     cutoff = today + timedelta(days=30)
 
     documents = list(

@@ -166,6 +166,16 @@ if DATABASE_URL:
     DATABASES['default']['CONN_HEALTH_CHECKS'] = True
     DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True  # Required for Supabase pooler (pgbouncer transaction mode)
 else:
+    if not DEBUG:
+        # A missing/typo'd DATABASE_URL on a real host must fail loudly.
+        # The old silent SQLite fallback booted "successfully" against a
+        # fresh ephemeral file — the app accepted data and lost all of it
+        # on the next redeploy.
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured(
+            'DATABASE_URL is not set. Production runs (DEBUG=False) must '
+            'point at a real database — the SQLite fallback is dev-only.'
+        )
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -239,6 +249,16 @@ CRISPY_TEMPLATE_PACK = 'tailwind'
 
 # Email settings
 EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+if not DEBUG and EMAIL_BACKEND == 'django.core.mail.backends.console.EmailBackend':
+    # The console backend "succeeds" into worker logs: invoices get marked
+    # SENT and reminders count as delivered while nobody receives anything.
+    # Keep booting (some deploys genuinely run email-less) but say so loudly.
+    import logging as _logging
+    _logging.getLogger(__name__).warning(
+        'EMAIL_BACKEND is the console backend with DEBUG=False — outgoing '
+        'email (invoices, reminders) is NOT being delivered. Set '
+        'EMAIL_BACKEND/EMAIL_HOST for real delivery.'
+    )
 EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = env.int('EMAIL_PORT', default=587)
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
@@ -279,6 +299,16 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 # in the admin under different names are untouched.
 REMINDER_HOUR = env.int('REMINDER_HOUR', default=7)
 REMINDER_MINUTE = env.int('REMINDER_MINUTE', default=0)
+
+
+def _staggered(offset_minutes):
+    """Reminder-task stagger with hour carry.
+
+    A plain (minute + offset) % 60 wraps: REMINDER_MINUTE=56 would run the
+    'later' tasks up to 55 minutes *earlier* than the vaccination task.
+    """
+    total = REMINDER_HOUR * 60 + REMINDER_MINUTE + offset_minutes
+    return {'hour': (total // 60) % 24, 'minute': total % 60}
 REMINDER_DAYS_OF_WEEK = env('REMINDER_DAYS_OF_WEEK', default='mon-fri')
 INVOICE_STATUS_HOUR = env.int('INVOICE_STATUS_HOUR', default=6)
 XERO_SYNC_HOUR = env.int('XERO_SYNC_HOUR', default=5)
@@ -315,21 +345,21 @@ CELERY_BEAT_SCHEDULE = {
     'send-farrier-reminders': {
         'task': 'notifications.tasks.send_farrier_reminders',
         'schedule': crontab(
-            hour=REMINDER_HOUR, minute=(REMINDER_MINUTE + 5) % 60,
+            **_staggered(5),
             day_of_week=REMINDER_DAYS_OF_WEEK,
         ),
     },
     'send-overdue-invoice-reminders': {
         'task': 'notifications.tasks.send_overdue_invoice_reminders',
         'schedule': crontab(
-            hour=REMINDER_HOUR, minute=(REMINDER_MINUTE + 10) % 60,
+            **_staggered(10),
             day_of_week=REMINDER_DAYS_OF_WEEK,
         ),
     },
     'send-ehv-reminders': {
         'task': 'notifications.tasks.send_ehv_reminders',
         'schedule': crontab(
-            hour=REMINDER_HOUR, minute=(REMINDER_MINUTE + 15) % 60,
+            **_staggered(15),
             day_of_week=REMINDER_DAYS_OF_WEEK,
         ),
     },
@@ -338,7 +368,7 @@ CELERY_BEAT_SCHEDULE = {
     'send-document-expiry-reminders': {
         'task': 'notifications.tasks.send_document_expiry_reminders',
         'schedule': crontab(
-            hour=REMINDER_HOUR, minute=(REMINDER_MINUTE + 20) % 60,
+            **_staggered(20),
             day_of_week=REMINDER_DAYS_OF_WEEK,
         ),
     },

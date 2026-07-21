@@ -7,7 +7,7 @@ from itertools import groupby
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Exists, OuterRef, Prefetch, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -69,8 +69,11 @@ class HorseListView(FeatureAccessMixin, ListView):
         return bool(self.request.GET.get('search'))
 
     def get_paginate_by(self, queryset):
-        # Only paginate departed tab (current tab shows all, grouped)
-        if self.status == 'departed':
+        # Only paginate the departed tab (current tab shows all, grouped).
+        # Search results are never paginated: the search branch renders a
+        # flat list with no pager, so paginating silently capped a departed
+        # -tab search at its first 25 matches.
+        if self.status == 'departed' and not self.is_searching:
             return 25
         return None
 
@@ -130,14 +133,20 @@ class HorseListView(FeatureAccessMixin, ListView):
                 active_placements, ownership_shares_prefetch,
             )
 
-        # Advanced filters (location/owner dropdowns)
+        # Advanced filters (location/owner dropdowns). Departed horses have
+        # no open placement by definition, so the departed tab matches on
+        # placement history — requiring end_date__isnull=True there returned
+        # nothing by construction.
+        placement_filter = (
+            {} if self.status == 'departed' else {'end_date__isnull': True}
+        )
         location = self.request.GET.get('location')
         if location:
             queryset = queryset.filter(
                 Exists(Placement.objects.filter(
                     horse=OuterRef('pk'),
                     location_id=location,
-                    end_date__isnull=True,
+                    **placement_filter,
                 ))
             )
 
@@ -147,7 +156,7 @@ class HorseListView(FeatureAccessMixin, ListView):
                 Exists(Placement.objects.filter(
                     horse=OuterRef('pk'),
                     owner_id=owner,
-                    end_date__isnull=True,
+                    **placement_filter,
                 ))
             )
 
@@ -160,15 +169,21 @@ class HorseListView(FeatureAccessMixin, ListView):
         context['locations'] = Location.objects.order_by('site', 'name')
         context['owners'] = Owner.objects.values('pk', 'name').order_by('name')
         context['is_searching'] = self.is_searching
-        # Single query for both counts
-        counts = Horse.objects.aggregate(
+        # Single query for both counts. The departed test must be
+        # NOT EXISTS(open placement) — a negated multi-valued Q inside an
+        # aggregate filter compiles per-joined-row, which counted every
+        # horse that had ever moved fields as departed.
+        has_open_placement = Exists(Placement.objects.filter(
+            horse=OuterRef('pk'), end_date__isnull=True,
+        ))
+        counts = Horse.objects.annotate(
+            has_open_placement=has_open_placement,
+        ).aggregate(
             total_current=Count(
-                'pk', filter=Q(is_active=True, placements__end_date__isnull=True),
-                distinct=True,
+                'pk', filter=Q(is_active=True, has_open_placement=True),
             ),
             total_departed=Count(
-                'pk', filter=Q(is_active=False) | ~Q(placements__end_date__isnull=True),
-                distinct=True,
+                'pk', filter=Q(is_active=False) | Q(has_open_placement=False),
             ),
         )
         context['total_current'] = counts['total_current']
@@ -257,7 +272,7 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
         context['current_placement'] = horse.placements.filter(
             end_date__isnull=True
         ).select_related('owner', 'location', 'rate_type').first()
-        context['today'] = timezone.now().date()
+        context['today'] = timezone.localdate()
         context['placements'] = horse.placements.select_related(
             'owner', 'location', 'rate_type'
         ).all()[:10]
@@ -424,6 +439,13 @@ def horse_move(request, pk):
                 )
             except ValidationError as e:
                 messages.error(request, '; '.join(e.messages))
+            except IntegrityError:
+                messages.error(
+                    request,
+                    "That change clashed with another update to the same "
+                    "horse (it may already be placed) — refresh and check "
+                    "the current placement before retrying.",
+                )
                 return render(request, 'horses/horse_move.html', {
                     'horse': horse, 'form': form, 'current_placement': current_placement
                 })
@@ -433,7 +455,7 @@ def horse_move(request, pk):
             return redirect('horse_list')
     else:
         form = MoveHorseForm(initial={
-            'move_date': timezone.now().date()
+            'move_date': timezone.localdate()
         })
 
     return render(request, 'horses/horse_move.html', {
@@ -475,7 +497,7 @@ def new_arrival(request):
             ))
             return redirect('horse_detail', pk=horse.pk)
     else:
-        initial = {'arrival_date': timezone.now().date()}
+        initial = {'arrival_date': timezone.localdate()}
         location_id = request.GET.get('location')
         if location_id:
             initial['location'] = location_id
@@ -514,8 +536,15 @@ def horse_arrive(request, pk):
                 return redirect('horse_list')
             except ValidationError as e:
                 messages.error(request, '; '.join(e.messages))
+            except IntegrityError:
+                messages.error(
+                    request,
+                    "That change clashed with another update to the same "
+                    "horse (it may already be placed) — refresh and check "
+                    "the current placement before retrying.",
+                )
     else:
-        initial = {'arrival_date': timezone.now().date()}
+        initial = {'arrival_date': timezone.localdate()}
         primary_owner = horse.primary_owner
         if primary_owner:
             initial['owner'] = primary_owner.pk
@@ -549,9 +578,23 @@ def horse_depart(request, pk):
 
         try:
             placement = PlacementService.depart_horse(horse, departure_date)
-            messages.success(request, f"{horse.name} departed from {placement.location.name}.")
+            if placement.end_date is None:
+                messages.success(
+                    request,
+                    f"{horse.name} scheduled to depart {placement.location.name} "
+                    f"on {departure_date.strftime('%d %b %Y')} — log the departure "
+                    f"on the day to close the placement.",
+                )
+            else:
+                messages.success(request, f"{horse.name} departed from {placement.location.name}.")
         except ValidationError as e:
             messages.error(request, str(e))
+        except IntegrityError:
+            messages.error(
+                request,
+                "That change clashed with another update to the same horse "
+                "— refresh and check the current placement before retrying.",
+            )
 
     return redirect('horse_detail', pk=horse.pk)
 
@@ -589,8 +632,13 @@ def confirm_departure(request, pk):
 
     horse = get_object_or_404(Horse, pk=pk)
     if request.method == 'POST':
-        PlacementService.confirm_departure(horse)
-        messages.success(request, f"{horse.name} confirmed as departed.")
+        if PlacementService.confirm_departure(horse):
+            messages.success(request, f"{horse.name} confirmed as departed.")
+        else:
+            messages.warning(
+                request,
+                f"{horse.name} is still placed in a field — use Log Departure instead.",
+            )
     if request.headers.get('HX-Request'):
         return HttpResponse('')
     return redirect('dashboard')
@@ -619,7 +667,11 @@ def confirm_departures_bulk(request):
         horse_ids = request.POST.getlist('horse_ids')
         if horse_ids:
             count = PlacementService.confirm_departures_bulk(horse_ids)
-            messages.success(request, f"{count} horse{'s' if count != 1 else ''} confirmed as departed.")
+            skipped = len(set(horse_ids)) - count
+            msg = f"{count} horse{'s' if count != 1 else ''} confirmed as departed."
+            if skipped > 0:
+                msg += f" {skipped} skipped (already departed or still placed in a field)."
+            messages.success(request, msg)
     if request.headers.get('HX-Request'):
         return HttpResponse('')
     return redirect('dashboard')

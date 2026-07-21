@@ -111,7 +111,7 @@
             <h3 class="section-title">Delete Role</h3>
         </div>
         <form method="post" action="{% url 'role_delete' object.pk %}" class="p-4 sm:p-5 space-y-4"
-              onsubmit="return confirm('Delete the {{ object.name }} role?{% if member_count %} Its {{ member_count }} member{{ member_count|pluralize }} will be moved to the role you chose.{% endif %}')">
+              hx-confirm="Delete the {{ object.name }} role?{% if member_count %} Its {{ member_count }} member{{ member_count|pluralize }} will be moved to the role you chose.{% endif %}">
             {% csrf_token %}
             {% if member_count %}
             <div>

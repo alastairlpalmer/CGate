@@ -113,12 +113,23 @@ def placement_delete(request, pk):
     horse = placement.horse
     if request.method == 'POST':
         location_name = placement.location.name
+        invoiced_lines = placement.invoice_items.exclude(
+            invoice__status='cancelled',
+        ).count()
         placement.delete()
         messages.success(
             request,
             f"Placement of {horse.name} at {location_name} "
             f"({placement.start_date} – {placement.end_date or 'present'}) deleted."
         )
+        if invoiced_lines:
+            messages.warning(
+                request,
+                f"This stay was billed on {invoiced_lines} invoice line"
+                f"{'s' if invoiced_lines != 1 else ''} — those invoices keep "
+                "their amounts, but the placement record behind them is gone. "
+                "Raise a credit/adjustment if the stay shouldn't have been billed.",
+            )
     return redirect(
         _safe_next_url(request) or reverse('horse_detail', args=[horse.pk])
     )

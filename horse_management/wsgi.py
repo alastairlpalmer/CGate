@@ -33,16 +33,19 @@ try:
         call_command('migrate', '--noinput')
 except Exception:
     import traceback
+    # Log the full traceback server-side only — it must never reach a
+    # visitor (it exposes file paths, settings internals and env-var names).
     _boot_error = traceback.format_exc()
+    print(_boot_error, file=sys.stderr)
 
 
 def application(environ, start_response):
     """WSGI entrypoint."""
-    # If Django failed to boot, return a generic error (no internals leaked)
+    # If Django failed to boot, return a generic error (no internals leaked —
+    # the traceback goes to the server log above, not the response body).
     if _django_app is None:
         body = json.dumps({
-            'error': 'Application failed to start.',
-            'detail': _boot_error or 'Unknown error',
+            'error': 'Application failed to start. Check the server logs.',
         }).encode()
         start_response('500 Internal Server Error', [
             ('Content-Type', 'application/json'),

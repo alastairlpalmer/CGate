@@ -1,9 +1,9 @@
 """Test-only settings.
 
 Skips migrations entirely and builds tables directly from model state via
-syncdb. This avoids a pre-existing migration-graph issue (billing/0002
-referencing the ``core.Invoice`` model that was later moved to the
-``invoicing`` app) that blocks fresh ``migrate`` runs from an empty DB.
+syncdb — much faster than replaying the migration history for every test
+run. (A historical migration-graph issue that blocked fresh ``migrate``
+runs has since been fixed; ``migrate`` from an empty DB works.)
 
 Usage:
     DJANGO_SETTINGS_MODULE=horse_management.test_settings python manage.py test

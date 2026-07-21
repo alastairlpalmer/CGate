@@ -47,7 +47,7 @@ def finances(request):
 
 
 def _finances_inner(request):
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     # ── Revenue vs Cost Chart Data ──────────────────────────────
     twelve_months_ago = today.replace(day=1) - timedelta(days=365)

@@ -83,7 +83,32 @@
         const chartData = JSON.parse(chartDataEl.textContent);
         const m = chartData.monthly;
         const forecastIdx = m.forecastStart;
+        // Dashed "Forecast" divider — drawn by hand: the vendored Chart.js
+        // build has no annotation plugin, so the old plugin config was
+        // silently ignored and the divider never rendered.
+        const forecastDivider = {
+            id: 'forecastDivider',
+            afterDraw(chart) {
+                if (!(forecastIdx > 0)) return;
+                const x = chart.scales.x.getPixelForValue(forecastIdx - 0.5);
+                const { top, bottom } = chart.chartArea;
+                const ctx = chart.ctx;
+                ctx.save();
+                ctx.strokeStyle = colors.sand;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(x, top);
+                ctx.lineTo(x, bottom);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = colors.sage;
+                ctx.font = "10px 'Source Sans 3', sans-serif";
+                ctx.fillText('Forecast', x + 4, top + 10);
+                ctx.restore();
+            },
+        };
         new Chart(revenueCtx, {
+            plugins: [forecastDivider],
             type: 'line',
             data: {
                 labels: m.labels,
@@ -133,19 +158,6 @@
                             }
                         }
                     },
-                    annotation: forecastIdx > 0 ? {
-                        annotations: {
-                            forecastLine: {
-                                type: 'line',
-                                xMin: forecastIdx - 0.5,
-                                xMax: forecastIdx - 0.5,
-                                borderColor: colors.sand,
-                                borderWidth: 1,
-                                borderDash: [4, 4],
-                                label: { display: true, content: 'Forecast', position: 'start', font: { size: 10 }, color: colors.sage }
-                            }
-                        }
-                    } : undefined,
                 },
                 scales: {
                     x: { grid: { display: false }, ticks: { font: { family: "'Source Sans 3', sans-serif", size: 11 }, color: '#6A8990' } },

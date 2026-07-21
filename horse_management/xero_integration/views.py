@@ -181,8 +181,11 @@ def xero_invoice_status(request, pk):
         try:
             sync = check_xero_invoice_status(sync)
         except Exception:
-            # Silently fail — just show stale status
-            pass
+            # Show the stale status rather than erroring the page, but leave
+            # a trace — a dead connection was previously invisible here.
+            logger.warning(
+                'Xero status check failed for sync %s', sync.pk, exc_info=True,
+            )
 
     return render(request, 'xero_integration/partials/invoice_xero_status.html', {
         'sync': sync,

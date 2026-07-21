@@ -13,9 +13,8 @@ def days_until(value):
     """Return days until a date. Negative = overdue."""
     if not value:
         return None
-    today = timezone.now().date() if not isinstance(value, date) else date.today()
     if isinstance(value, date):
-        return (value - date.today()).days
+        return (value - timezone.localdate()).days
     return None
 
 
@@ -24,7 +23,7 @@ def due_label(value):
     """Return a human-readable label for a due date: 'Today', 'Tomorrow', 'in 5 days', '3 days overdue'."""
     if not value:
         return ''
-    today = date.today()
+    today = timezone.localdate()
     delta = (value - today).days
     if delta < -1:
         return f'{abs(delta)} days overdue'
@@ -49,7 +48,7 @@ def ago_label(value):
     """Return a human-readable label for a past date: 'Today', 'Yesterday', '5 days ago'."""
     if not value:
         return ''
-    today = date.today()
+    today = timezone.localdate()
     delta = (today - value).days
     if delta == 0:
         return 'Today'

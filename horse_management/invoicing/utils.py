@@ -7,6 +7,8 @@ import io
 from collections import OrderedDict
 from decimal import Decimal
 
+from django.utils import timezone
+
 
 def _format_date_win(d, include_year=False):
     """Windows-compatible date formatting (no %-d support)."""
@@ -132,7 +134,28 @@ def invoice_to_xero_rows(invoice, account_code='200'):
 
     address_lines = _parse_address_lines(invoice.owner.address)
 
-    line_items = invoice.line_items.select_related('horse', 'charge').order_by('line_type', 'description')
+    line_items = list(
+        invoice.line_items.select_related('horse', 'charge')
+        .order_by('line_type', 'description')
+    )
+
+    # Xero rounds VAT per line on import; the app computes it once on the
+    # subtotal, so multi-line invoices with odd pennies can disagree with the
+    # stated Total by 1p (and Xero flags the row). Export explicit per-line
+    # TaxAmounts that sum exactly to the invoice's VAT.
+    tax_amounts = {}
+    if invoice.vat_rate > 0 and line_items:
+        rate = invoice.vat_rate / Decimal('100')
+        allocated = Decimal('0.00')
+        for item in line_items[:-1]:
+            net = item.line_total
+            if net is None:
+                net = (item.quantity * item.unit_price).quantize(Decimal('0.01'))
+            tax = (net * rate).quantize(Decimal('0.01'))
+            tax_amounts[item.pk] = tax
+            allocated += tax
+        tax_amounts[line_items[-1].pk] = invoice.vat_amount - allocated
+
     rows = []
 
     for idx, item in enumerate(line_items):
@@ -147,7 +170,7 @@ def invoice_to_xero_rows(invoice, account_code='200'):
             row['POAddressLine4'] = address_lines[3]
             row['*InvoiceNumber'] = invoice.invoice_number
             row['Reference'] = getattr(invoice.owner, 'account_code', '') or ''
-            row['*InvoiceDate'] = invoice.created_at.strftime('%d/%m/%Y')
+            row['*InvoiceDate'] = timezone.localtime(invoice.created_at).strftime('%d/%m/%Y')
             row['*DueDate'] = invoice.due_date.strftime('%d/%m/%Y')
             row['Total'] = str(invoice.total)
 
@@ -164,6 +187,8 @@ def invoice_to_xero_rows(invoice, account_code='200'):
         row['*UnitAmount'] = str(line_total)
         row['*AccountCode'] = account_code
         row['*TaxType'] = tax_type
+        if item.pk in tax_amounts:
+            row['TaxAmount'] = str(tax_amounts[item.pk])
         row['Currency'] = 'GBP'
 
         rows.append(row)

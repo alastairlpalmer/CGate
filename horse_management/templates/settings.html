@@ -352,11 +352,11 @@
                                 <span class="w-1.5 h-1.5 rounded-full bg-forest"></span>
                                 Connected
                             </span>
-                            <form method="post" action="{% url 'xero_disconnect' %}" class="inline">
+                            <form method="post" action="{% url 'xero_disconnect' %}" class="inline"
+                                  hx-confirm="Are you sure you want to disconnect from Xero?">
                                 {% csrf_token %}
                                 <button type="submit"
-                                        class="text-xs text-sage hover:text-error-red transition-colors"
-                                        onclick="return confirm('Are you sure you want to disconnect from Xero?')">
+                                        class="text-xs text-sage hover:text-error-red transition-colors">
                                     Disconnect
                                 </button>
                             </form>

@@ -298,7 +298,7 @@
                 </div>
                 {% if feature_access.invoices.full %}
                 <form method="post" action="{% url 'payment_delete' payment.pk %}" class="inline shrink-0"
-                      onsubmit="return confirm('Remove this payment of £{{ payment.amount|floatformat:2 }}?')">
+                      hx-confirm="Remove this payment of £{{ payment.amount|floatformat:2 }}?">
                     {% csrf_token %}
                     <button type="submit" class="btn-icon text-error-red hover:text-error-red hover:bg-error-red-50"
                             title="Remove payment" aria-label="Remove payment of £{{ payment.amount|floatformat:2 }}">

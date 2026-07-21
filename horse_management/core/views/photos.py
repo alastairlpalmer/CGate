@@ -22,9 +22,27 @@ _image_extension_validator = FileExtensionValidator(
 )
 
 
+def _validate_decodes_as_image(upload):
+    """Reject files that only look like images by extension.
+
+    objects.create() skips field validation entirely, so the ImageField's
+    Pillow check never ran on this path — a renamed non-image was stored
+    as a broken asset.
+    """
+    from PIL import Image, UnidentifiedImageError
+    try:
+        upload.seek(0)
+        with Image.open(upload) as img:
+            img.verify()
+    except (UnidentifiedImageError, OSError):
+        raise ValidationError("File is not a valid image.")
+    finally:
+        upload.seek(0)
+
+
 def _passport_title(index, total):
     """Auto-title for a passport Document, unique within one batch."""
-    title = f"Passport photo — {date_format(timezone.now().date(), 'j M Y')}"
+    title = f"Passport photo — {date_format(timezone.localdate(), 'j M Y')}"
     if total > 1:
         title += f" ({index + 1})"
     return title
@@ -55,6 +73,7 @@ def horse_photo_add(request, pk):
                 try:
                     _image_extension_validator(upload)
                     validate_file_size(upload)
+                    _validate_decodes_as_image(upload)
                 except ValidationError as e:
                     skipped.append((upload.name, '; '.join(e.messages)))
                     continue

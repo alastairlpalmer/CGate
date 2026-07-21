@@ -33,11 +33,11 @@
                         &middot; Last refreshed {{ connection.last_refreshed_at|timesince }} ago
                     {% endif %}
                 </div>
-                <form method="post" action="{% url 'xero_disconnect' %}">
+                <form method="post" action="{% url 'xero_disconnect' %}"
+                      hx-confirm="Are you sure you want to disconnect from Xero? Existing sync records will be preserved.">
                     {% csrf_token %}
                     <button type="submit"
-                            class="btn-secondary text-error-red hover:text-error-red hover:border-red-300"
-                            onclick="return confirm('Are you sure you want to disconnect from Xero? Existing sync records will be preserved.')">
+                            class="btn-secondary text-error-red hover:text-error-red hover:border-red-300">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M13.181 8.68a4.503 4.503 0 011.903 6.405m-9.768-2.782L3.56 14.06a4.5 4.5 0 006.364 6.365l.768-.769m5.455-9.702L17.904 8.2a4.5 4.5 0 00-6.364-6.365l-.768.77M12 12l-4.243 4.243"/>
                         </svg>

@@ -7,7 +7,9 @@ from datetime import timedelta
 from decimal import Decimal
 
 from ..permissions import feature_required
-from django.db.models import DecimalField, ExpressionWrapper, F, Q, Sum, Value
+from django.db.models import (
+    DecimalField, Exists, ExpressionWrapper, F, OuterRef, Q, Sum, Value,
+)
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import render
@@ -20,6 +22,8 @@ from health.models import (
     Vaccination,
     VetVisit,
     WormEggCount,
+    current_farrier_visits,
+    current_vaccinations,
 )
 
 from invoicing.models import Invoice
@@ -84,7 +88,7 @@ def _dashboard_inner(request):
     visible_widgets = pref.visible_ordered_keys_by_group()
     visible = {k for keys in visible_widgets.values() for k in keys}
 
-    today = timezone.now().date()
+    today = timezone.localdate()
     thirty_days = today + timedelta(days=30)
     two_weeks = today + timedelta(days=14)
 
@@ -93,10 +97,12 @@ def _dashboard_inner(request):
         # Includes overdue (no lower bound): an overdue vaccination is the
         # most urgent thing this list can show — it must not drop off the
         # dashboard the day it expires. Oldest overdue sorts first.
-        vaccinations_due = list(Vaccination.objects.filter(
+        # Latest record per (horse, type) only — superseded records keep a
+        # past next_due_date forever and would show as permanently overdue.
+        vaccinations_due = list(current_vaccinations(Vaccination.objects.filter(
             next_due_date__lte=thirty_days,
             horse__is_active=True,
-        ).select_related('horse', 'vaccination_type').order_by('next_due_date')[:10])
+        )).select_related('horse', 'vaccination_type').order_by('next_due_date')[:10])
     else:
         vaccinations_due = []
 
@@ -129,10 +135,10 @@ def _dashboard_inner(request):
     farrier_due = []
     if 'list_farrier_due' in visible:
         # Includes overdue, same as vaccinations above.
-        farrier_due = list(FarrierVisit.objects.filter(
+        farrier_due = list(current_farrier_visits(FarrierVisit.objects.filter(
             next_due_date__lte=two_weeks,
             horse__is_active=True
-        ).select_related('horse').order_by('next_due_date')[:10])
+        )).select_related('horse').order_by('next_due_date')[:10])
 
     # ── Recent Activity Timeline ────────────────────────────────
     activity = []
@@ -189,14 +195,35 @@ def _dashboard_inner(request):
     # Pending departures (grouped by owner + date) for inline display
     pending_departures = []
     if 'pending_departures' in visible:
+        # A horse is pending departure only when it is still flagged active
+        # but no longer placed anywhere. Horses with an open placement must
+        # never appear here: every past field move leaves a closed placement
+        # behind, and confirming those rows would depart horses that are
+        # still on the yard.
+        has_open_placement = Placement.objects.filter(
+            horse=OuterRef('horse'), end_date__isnull=True,
+        )
         pending_placements = Placement.objects.filter(
             end_date__lte=today,
             horse__is_active=True,
         ).exclude(
             end_date__isnull=True,
-        ).select_related('horse', 'owner', 'location').order_by('owner__name', 'end_date')
-        pending_groups = {}
+        ).annotate(
+            horse_is_placed=Exists(has_open_placement),
+        ).filter(
+            horse_is_placed=False,
+        ).select_related('horse', 'owner', 'location').order_by('-end_date')
+        # Keep only each horse's most recent closed placement — older ones
+        # (from moves) are history, not separate departures.
+        latest_by_horse = {}
         for p in pending_placements:
+            latest_by_horse.setdefault(p.horse_id, p)
+        pending_groups = {}
+        ordered = sorted(
+            latest_by_horse.values(),
+            key=lambda p: (p.owner.name if p.owner else '', p.end_date),
+        )
+        for p in ordered:
             key = (p.owner_id, p.owner.name if p.owner else 'Unknown', p.end_date)
             if key not in pending_groups:
                 pending_groups[key] = {'owner_name': key[1], 'date': p.end_date, 'horses': [], 'horse_ids': []}
@@ -274,7 +301,7 @@ def dashboard_health_alerts(request):
             'upcoming_departures': [],
         })
 
-    today = timezone.now().date()
+    today = timezone.localdate()
     thirty_days = today + timedelta(days=30)
     seven_days = today + timedelta(days=7)
 

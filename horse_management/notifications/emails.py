@@ -237,7 +237,7 @@ def send_owner_statement(owner):
     try:
         pdf_file = generate_owner_statement_pdf(owner, statement)
         email.attach(
-            f"statement-{timezone.now().date():%Y-%m-%d}.pdf",
+            f"statement-{timezone.localdate():%Y-%m-%d}.pdf",
             pdf_file.read(),
             'application/pdf',
         )

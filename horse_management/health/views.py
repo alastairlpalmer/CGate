@@ -60,6 +60,8 @@ from .models import (
     VetVisit,
     WormEggCount,
     WormingTreatment,
+    current_farrier_visits,
+    current_vaccinations,
 )
 
 
@@ -79,7 +81,7 @@ HEALTH_TABS = [
 @feature_required('health', LEVEL_VIEW)
 def health_dashboard(request):
     tab = request.GET.get('type', 'overview')
-    today = timezone.now().date()
+    today = timezone.localdate()
     is_htmx = request.headers.get('HX-Request') == 'true'
     htmx_target = request.headers.get('HX-Target', '')
 
@@ -93,23 +95,25 @@ def health_dashboard(request):
         thirty_days = today + timedelta(days=30)
         two_weeks = today + timedelta(days=14)
 
-        # Overdue vaccinations
-        overdue_vaccinations = list(Vaccination.objects.select_related(
-            'horse', 'vaccination_type'
+        # Overdue vaccinations — latest record per (horse, type) only, or a
+        # horse looks permanently overdue the day after its annual booster
+        # (last year's record keeps a past next_due_date forever).
+        overdue_vaccinations = list(current_vaccinations(
+            Vaccination.objects.select_related('horse', 'vaccination_type')
         ).filter(horse__is_active=True, next_due_date__lt=today).order_by('next_due_date'))
 
         # Due soon vaccinations
-        due_vaccinations = list(Vaccination.objects.select_related(
-            'horse', 'vaccination_type'
+        due_vaccinations = list(current_vaccinations(
+            Vaccination.objects.select_related('horse', 'vaccination_type')
         ).filter(
             horse__is_active=True,
             next_due_date__gte=today,
             next_due_date__lte=thirty_days,
         ).order_by('next_due_date'))
 
-        # Overdue farrier
-        overdue_farrier = list(FarrierVisit.objects.select_related(
-            'horse', 'service_provider'
+        # Overdue farrier — latest visit per horse only
+        overdue_farrier = list(current_farrier_visits(
+            FarrierVisit.objects.select_related('horse', 'service_provider')
         ).filter(
             horse__is_active=True,
             next_due_date__isnull=False,
@@ -117,8 +121,8 @@ def health_dashboard(request):
         ).order_by('next_due_date'))
 
         # Due soon farrier
-        due_farrier = list(FarrierVisit.objects.select_related(
-            'horse', 'service_provider'
+        due_farrier = list(current_farrier_visits(
+            FarrierVisit.objects.select_related('horse', 'service_provider')
         ).filter(
             horse__is_active=True,
             next_due_date__gte=today,
@@ -236,12 +240,14 @@ def health_dashboard(request):
         ).filter(horse__is_active=True)
         status = request.GET.get('status')
         if status == 'due':
-            queryset = queryset.filter(
+            queryset = current_vaccinations(queryset).filter(
                 next_due_date__lte=today + timedelta(days=30),
                 next_due_date__gte=today,
             )
         elif status == 'overdue':
-            queryset = queryset.filter(next_due_date__lt=today)
+            queryset = current_vaccinations(queryset).filter(
+                next_due_date__lt=today,
+            )
         horse = request.GET.get('horse')
         if horse:
             queryset = queryset.filter(horse_id=horse)
@@ -258,12 +264,14 @@ def health_dashboard(request):
         ).filter(horse__is_active=True)
         status = request.GET.get('status')
         if status == 'due':
-            queryset = queryset.filter(
+            queryset = current_farrier_visits(queryset).filter(
                 next_due_date__lte=today + timedelta(days=14),
                 next_due_date__gte=today,
             )
         elif status == 'overdue':
-            queryset = queryset.filter(next_due_date__lt=today)
+            queryset = current_farrier_visits(queryset).filter(
+                next_due_date__lt=today,
+            )
         horse = request.GET.get('horse')
         if horse:
             queryset = queryset.filter(horse_id=horse)
@@ -405,19 +413,25 @@ def sync_record_charge(record):
     The single definition of record→charge billing, shared by the create,
     update and bulk flows for farrier, vet, vaccination and worming records:
     cost > 0 with no charge yet → create one for the horse's current owner;
-    an existing uninvoiced charge → resync amount/date/description/provider.
-    Invoiced charges are never touched.
+    an existing uninvoiced charge → resync amount/date/description/provider;
+    cost cleared/zeroed → delete the uninvoiced charge (no £0.00 invoice
+    lines). Invoiced charges are never touched.
+
+    Returns a status string so views can give honest feedback:
+    'created' | 'updated' | 'deleted' | 'no_owner' (cost recorded but not
+    billable — nobody to invoice) | 'invoiced' (charge already invoiced;
+    the edit does NOT change what was billed) | None (nothing to do).
     """
     details = _charge_details(record)
     if details is None:
-        return
+        return None
     charge = record.extra_charge
     if charge is None:
         if not record.cost or record.cost <= 0:
-            return
+            return None
         owner = record.horse.current_owner
         if not owner:
-            return
+            return 'no_owner'
         record.extra_charge = ExtraCharge.objects.create(
             horse=record.horse,
             owner=owner,
@@ -425,12 +439,45 @@ def sync_record_charge(record):
             **details,
         )
         record.save(update_fields=['extra_charge'])
-    elif not charge.invoiced:
-        charge.amount = record.cost
-        charge.date = details['date']
-        charge.description = details['description']
-        charge.service_provider = details['service_provider']
-        charge.save(update_fields=['amount', 'date', 'description', 'service_provider'])
+        return 'created'
+    if charge.invoiced:
+        # The bill is already on an invoice; silently diverging would lose
+        # money — callers surface this so staff know to raise an adjustment.
+        return 'invoiced' if record.cost != charge.amount else None
+    if not record.cost or record.cost <= 0:
+        # Cost cleared: remove the pending charge rather than letting a
+        # £0.00 line land on the next invoice.
+        record.extra_charge = None
+        record.save(update_fields=['extra_charge'])
+        charge.delete()
+        return 'deleted'
+    charge.amount = record.cost
+    charge.date = details['date']
+    charge.description = details['description']
+    charge.service_provider = details['service_provider']
+    charge.save(update_fields=['amount', 'date', 'description', 'service_provider'])
+    return 'updated'
+
+
+CHARGE_SYNC_MESSAGES = {
+    'no_owner': (
+        "Cost recorded, but no charge was raised — {horse} has no current "
+        "owner to bill. Assign an owner and re-save the record to bill it."
+    ),
+    'invoiced': (
+        "The charge for this record is already on an invoice — the amount "
+        "billed has NOT changed. Raise a separate charge for any difference."
+    ),
+}
+
+
+def _report_charge_sync(request, record, status):
+    """Surface non-silent sync outcomes to the user."""
+    template = CHARGE_SYNC_MESSAGES.get(status)
+    if template:
+        messages.warning(
+            request, template.format(horse=record.horse.name),
+        )
 
 
 # Placement-lifecycle bulk actions are gated on the same feature as their
@@ -458,13 +505,13 @@ def bulk_health_form(request):
 
     # Determine initial date value
     if action_type == 'vaccination':
-        form = form_class(initial={'date_given': timezone.now().date()})
+        form = form_class(initial={'date_given': timezone.localdate()})
     elif action_type in ('expected_departure', 'actual_departure'):
-        form = form_class(initial={'date': timezone.now().date()})
+        form = form_class(initial={'date': timezone.localdate()})
     elif action_type == 'move':
-        form = form_class(initial={'move_date': timezone.now().date()})
+        form = form_class(initial={'move_date': timezone.localdate()})
     elif hasattr(form_class, 'Meta') and hasattr(form_class.Meta, 'model') and 'date' in [f.name for f in form_class.Meta.model._meta.get_fields()]:
-        form = form_class(initial={'date': timezone.now().date()})
+        form = form_class(initial={'date': timezone.localdate()})
     else:
         form = form_class()
 
@@ -597,7 +644,7 @@ def bulk_health_apply(request):
 
                 # Farrier/vet/vaccination/worming records with a cost bill
                 # the horse's owner — same helper as the single-record views.
-                sync_record_charge(obj)
+                _report_charge_sync(request, obj, sync_record_charge(obj))
 
                 count += 1
 
@@ -653,16 +700,18 @@ class VaccinationListView(FeatureAccessMixin, ListView):
 
         # Filter by status
         status = self.request.GET.get('status')
-        today = timezone.now().date()
+        today = timezone.localdate()
 
         if status == 'due':
             thirty_days = today + timedelta(days=30)
-            queryset = queryset.filter(
+            queryset = current_vaccinations(queryset).filter(
                 next_due_date__lte=thirty_days,
                 next_due_date__gte=today
             )
         elif status == 'overdue':
-            queryset = queryset.filter(next_due_date__lt=today)
+            queryset = current_vaccinations(queryset).filter(
+                next_due_date__lt=today,
+            )
 
         # Filter by horse
         horse = self.request.GET.get('horse')
@@ -674,7 +723,7 @@ class VaccinationListView(FeatureAccessMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
-        context['today'] = timezone.now().date()
+        context['today'] = timezone.localdate()
         return context
 
 
@@ -726,12 +775,15 @@ class VaccinationCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, Cre
         horse_id = self.request.GET.get('horse')
         if horse_id:
             initial['horse'] = horse_id
-        initial['date_given'] = timezone.now().date()
+        initial['date_given'] = timezone.localdate()
         return initial
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        sync_record_charge(form.instance)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         messages.success(self.request, "Vaccination record added successfully.")
         return response
 
@@ -747,7 +799,10 @@ class VaccinationUpdateView(FeatureAccessMixin, UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        sync_record_charge(form.instance)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         return response
 
 
@@ -811,16 +866,18 @@ class FarrierListView(FeatureAccessMixin, ListView):
 
         # Filter by status
         status = self.request.GET.get('status')
-        today = timezone.now().date()
+        today = timezone.localdate()
 
         if status == 'due':
             two_weeks = today + timedelta(days=14)
-            queryset = queryset.filter(
+            queryset = current_farrier_visits(queryset).filter(
                 next_due_date__lte=two_weeks,
                 next_due_date__gte=today
             )
         elif status == 'overdue':
-            queryset = queryset.filter(next_due_date__lt=today)
+            queryset = current_farrier_visits(queryset).filter(
+                next_due_date__lt=today,
+            )
 
         # Filter by horse
         horse = self.request.GET.get('horse')
@@ -832,7 +889,7 @@ class FarrierListView(FeatureAccessMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
-        context['today'] = timezone.now().date()
+        context['today'] = timezone.localdate()
         return context
 
 
@@ -848,12 +905,15 @@ class FarrierCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateV
         horse_id = self.request.GET.get('horse')
         if horse_id:
             initial['horse'] = horse_id
-        initial['date'] = timezone.now().date()
+        initial['date'] = timezone.localdate()
         return initial
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        sync_record_charge(form.instance)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         messages.success(self.request, "Farrier visit recorded successfully.")
         return response
 
@@ -869,7 +929,10 @@ class FarrierUpdateView(FeatureAccessMixin, UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        sync_record_charge(form.instance)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         messages.success(self.request, "Farrier visit updated successfully.")
         return response
 
@@ -911,12 +974,15 @@ class WormingCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateV
         horse_id = self.request.GET.get('horse')
         if horse_id:
             initial['horse'] = horse_id
-        initial['date'] = timezone.now().date()
+        initial['date'] = timezone.localdate()
         return initial
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        sync_record_charge(form.instance)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         messages.success(self.request, "Worming treatment recorded successfully.")
         return response
 
@@ -932,7 +998,10 @@ class WormingUpdateView(FeatureAccessMixin, UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        sync_record_charge(form.instance)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         return response
 
 
@@ -973,7 +1042,7 @@ class WormEggCountCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, Cr
         horse_id = self.request.GET.get('horse')
         if horse_id:
             initial['horse'] = horse_id
-        initial['date'] = timezone.now().date()
+        initial['date'] = timezone.localdate()
         return initial
 
     def form_valid(self, form):
@@ -1085,12 +1154,15 @@ class VetVisitCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, Create
         horse_id = self.request.GET.get('horse')
         if horse_id:
             initial['horse'] = horse_id
-        initial['date'] = timezone.now().date()
+        initial['date'] = timezone.localdate()
         return initial
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        sync_record_charge(form.instance)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         messages.success(self.request, "Vet visit recorded successfully.")
         return response
 
@@ -1106,7 +1178,10 @@ class VetVisitUpdateView(FeatureAccessMixin, UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        sync_record_charge(form.instance)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         messages.success(self.request, "Vet visit updated successfully.")
         return response
 

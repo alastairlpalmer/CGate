@@ -32,7 +32,7 @@ and documents=<queryset>:
             </div>
             {% if feature_access.horses.full %}
             <form method="post" action="{% url 'document_delete' doc.pk %}" class="inline shrink-0"
-                  onsubmit="return confirm('Delete “{{ doc.title|escapejs }}”?')">
+                  hx-confirm="Delete “{{ doc.title }}”?">
                 {% csrf_token %}
                 <button type="submit" class="btn-icon text-error-red hover:text-error-red hover:bg-error-red-50"
                         title="Delete document" aria-label="Delete {{ doc.title }}">

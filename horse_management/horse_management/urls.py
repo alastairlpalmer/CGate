@@ -45,15 +45,43 @@ urlpatterns = [
 # static() helper below is a no-op unless DEBUG, so wire the view directly.
 if getattr(settings, 'SERVE_MEDIA', False) and not settings.DEBUG:
     from django.contrib.auth.decorators import login_required
+    from django.core.exceptions import PermissionDenied
     from django.urls import re_path
     from django.views.static import serve as media_serve
+
+    from core.permissions import LEVEL_VIEW, has_feature_access
+
+    # Login alone isn't authorization: passports, insurance documents and
+    # supplier receipts live at guessable /media/ paths, and a role built
+    # to hide Finance/Horses must not be able to fetch them directly.
+    MEDIA_FEATURE_BY_PREFIX = (
+        ('documents/', 'horses'),
+        ('horses/', 'horses'),
+        ('horse_photos/', 'horses'),
+        ('receipts/yard/', 'costs'),
+        ('receipts/', 'charges'),
+        ('business/', None),  # logo — any signed-in user (renders app-wide)
+    )
+
+    @login_required
+    def _gated_media_serve(request, path, document_root=None):
+        for prefix, feature in MEDIA_FEATURE_BY_PREFIX:
+            if path.startswith(prefix):
+                if feature and not has_feature_access(
+                    request.user, feature, LEVEL_VIEW
+                ):
+                    raise PermissionDenied
+                break
+        else:
+            # Unknown prefix: superusers only, fail closed.
+            if not request.user.is_superuser:
+                raise PermissionDenied
+        return media_serve(request, path, document_root=document_root)
 
     urlpatterns += [
         re_path(
             r'^media/(?P<path>.*)$',
-            # Uploaded media includes receipts and other financial documents
-            # at predictable paths — never serve it unauthenticated.
-            login_required(media_serve),
+            _gated_media_serve,
             {'document_root': settings.MEDIA_ROOT},
         ),
     ]

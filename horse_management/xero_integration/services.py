@@ -42,6 +42,20 @@ class XeroContactService:
         # 2. Search Xero by name
         existing = client.find_contact_by_name(owner.name)
         if existing:
+            # Two local owners with the same name would map to the same Xero
+            # contact — the unique constraint on xero_contact_id turns that
+            # into an IntegrityError mid-push. Fail with a message that says
+            # what to actually do about it.
+            clash = XeroContactMapping.objects.filter(
+                xero_contact_id=existing['ContactID'],
+            ).exclude(owner=owner).select_related('owner').first()
+            if clash:
+                raise XeroAPIError(
+                    f"Xero contact '{existing['Name']}' is already mapped to "
+                    f"owner '{clash.owner.name}'. Two owners share this name "
+                    "— rename one (e.g. add an initial) in both systems, "
+                    "then push again."
+                )
             XeroContactMapping.objects.create(
                 owner=owner,
                 xero_contact_id=existing['ContactID'],
@@ -87,6 +101,13 @@ def build_xero_invoice_payload(invoice, xero_contact_id):
     """
     # Tax type follows the invoice's snapshotted VAT rate so Xero's computed
     # total (net lines + VAT) always matches the invoice the owner saw.
+    # OUTPUT2 is Xero's 20% code — refuse any other non-zero rate rather
+    # than push a total that disagrees with what the owner was invoiced.
+    if invoice.vat_rate > 0 and invoice.vat_rate != Decimal('20'):
+        raise XeroAPIError(
+            f'Invoice {invoice.invoice_number} has VAT rate '
+            f'{invoice.vat_rate}% — only 0% and 20% map to Xero tax codes.'
+        )
     tax_type = 'OUTPUT2' if invoice.vat_rate > 0 else 'NONE'
 
     # The owner's account_code is a customer reference, not a GL code — it
@@ -112,14 +133,33 @@ def build_xero_invoice_payload(invoice, xero_contact_id):
             'UnitAmount': str(line_total),
             'AccountCode': account_code,
             'TaxType': tax_type,
+            '_net': line_total,
         })
+
+    # Xero rounds VAT per line; the app computes it once on the subtotal.
+    # Three £33.33 lines → £20.01 in Xero vs £20.00 locally, and the totals
+    # disagree by a penny. Distribute the invoice's actual VAT across the
+    # lines (rounded per line, remainder on the last line) and send explicit
+    # TaxAmounts so Xero's total always equals the invoice the owner saw.
+    if tax_type != 'NONE' and line_items:
+        rate = invoice.vat_rate / Decimal('100')
+        allocated = Decimal('0.00')
+        for item in line_items[:-1]:
+            tax = (item['_net'] * rate).quantize(Decimal('0.01'))
+            item['TaxAmount'] = str(tax)
+            allocated += tax
+        line_items[-1]['TaxAmount'] = str(invoice.vat_amount - allocated)
+    for item in line_items:
+        del item['_net']
 
     return {
         'Type': 'ACCREC',
         'Contact': {'ContactID': xero_contact_id},
         'InvoiceNumber': invoice.invoice_number,
         'Reference': getattr(invoice.owner, 'account_code', '') or '',
-        'Date': invoice.created_at.strftime('%Y-%m-%d'),
+        # London date, not UTC — an invoice created 00:30 BST on the 1st must
+        # not land in the previous month's VAT period in Xero.
+        'Date': timezone.localtime(invoice.created_at).strftime('%Y-%m-%d'),
         'DueDate': invoice.due_date.strftime('%Y-%m-%d'),
         'LineItems': line_items,
         'CurrencyCode': 'GBP',
@@ -131,64 +171,83 @@ def build_xero_invoice_payload(invoice, xero_contact_id):
 def push_invoice_to_xero(invoice):
     """Push a single invoice to Xero.
 
+    Concurrency-safe: the invoice row is locked for the duration of the
+    push, so a double-click (or a manual push racing the nightly task)
+    serialises — the loser re-reads the sync record and returns it instead
+    of POSTing a duplicate. The POST itself carries a stable Idempotency-Key
+    per invoice, so a retry after a network timeout returns Xero's original
+    result instead of failing on a duplicate invoice number.
+
     Returns the XeroInvoiceSync record.
     Raises XeroNotConnectedError, XeroTokenExpiredError, or XeroAPIError.
     """
+    from django.db import transaction
+
+    from invoicing.models import Invoice
+
     conn = XeroConnection.get_connection()
     if not conn.is_connected:
         raise XeroNotConnectedError('Xero is not connected. Please connect first.')
 
-    # Check if already pushed
+    error = None
+    existing_sync = None
     try:
-        existing_sync = XeroInvoiceSync.objects.get(invoice=invoice)
-        if existing_sync.sync_status == XeroInvoiceSync.SyncStatus.PUSHED:
-            return existing_sync
-    except XeroInvoiceSync.DoesNotExist:
-        existing_sync = None
+        with transaction.atomic():
+            # Serialise concurrent pushes of the same invoice.
+            invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
 
-    try:
-        # 1. Ensure contact exists
-        contact_id = XeroContactService.ensure_contact_exists(invoice.owner)
+            existing_sync = XeroInvoiceSync.objects.filter(invoice=invoice).first()
+            if existing_sync and existing_sync.sync_status == XeroInvoiceSync.SyncStatus.PUSHED:
+                return existing_sync
 
-        # 2. Build payload
-        payload = build_xero_invoice_payload(invoice, contact_id)
+            # 1. Ensure contact exists
+            contact_id = XeroContactService.ensure_contact_exists(invoice.owner)
 
-        # 3. Push to Xero
-        client = XeroClient()
-        xero_invoice = client.create_invoice(payload)
+            # 2. Build payload
+            payload = build_xero_invoice_payload(invoice, contact_id)
 
-        # 4. Record sync state
-        now = timezone.now()
-        if existing_sync:
-            existing_sync.xero_invoice_id = xero_invoice['InvoiceID']
-            existing_sync.xero_invoice_number = xero_invoice.get('InvoiceNumber', '')
-            existing_sync.sync_status = XeroInvoiceSync.SyncStatus.PUSHED
-            existing_sync.last_pushed_at = now
-            existing_sync.error_message = ''
-            existing_sync.save()
-            return existing_sync
-
-        return XeroInvoiceSync.objects.create(
-            invoice=invoice,
-            xero_invoice_id=xero_invoice['InvoiceID'],
-            xero_invoice_number=xero_invoice.get('InvoiceNumber', ''),
-            sync_status=XeroInvoiceSync.SyncStatus.PUSHED,
-            last_pushed_at=now,
-        )
-
-    except (XeroAPIError, XeroTokenExpiredError) as e:
-        # Record the error
-        if existing_sync:
-            existing_sync.sync_status = XeroInvoiceSync.SyncStatus.ERROR
-            existing_sync.error_message = str(e)
-            existing_sync.save()
-        else:
-            XeroInvoiceSync.objects.create(
-                invoice=invoice,
-                sync_status=XeroInvoiceSync.SyncStatus.ERROR,
-                error_message=str(e),
+            # 3. Push to Xero (idempotent per invoice)
+            client = XeroClient()
+            xero_invoice = client.create_invoice(
+                payload, idempotency_key=f'yardway-invoice-{invoice.pk}',
             )
-        raise
+
+            # 4. Record sync state
+            now = timezone.now()
+            if existing_sync:
+                existing_sync.xero_invoice_id = xero_invoice['InvoiceID']
+                existing_sync.xero_invoice_number = xero_invoice.get('InvoiceNumber', '')
+                existing_sync.sync_status = XeroInvoiceSync.SyncStatus.PUSHED
+                existing_sync.last_pushed_at = now
+                existing_sync.error_message = ''
+                existing_sync.save()
+                return existing_sync
+
+            return XeroInvoiceSync.objects.create(
+                invoice=invoice,
+                xero_invoice_id=xero_invoice['InvoiceID'],
+                xero_invoice_number=xero_invoice.get('InvoiceNumber', ''),
+                sync_status=XeroInvoiceSync.SyncStatus.PUSHED,
+                last_pushed_at=now,
+            )
+    except (XeroAPIError, XeroTokenExpiredError) as e:
+        error = e
+
+    # Record the error outside the atomic block — an exception raised inside
+    # would roll the sync record back with everything else.
+    if existing_sync:
+        existing_sync.sync_status = XeroInvoiceSync.SyncStatus.ERROR
+        existing_sync.error_message = str(error)
+        existing_sync.save()
+    else:
+        XeroInvoiceSync.objects.get_or_create(
+            invoice=invoice,
+            defaults={
+                'sync_status': XeroInvoiceSync.SyncStatus.ERROR,
+                'error_message': str(error),
+            },
+        )
+    raise error
 
 
 def check_xero_invoice_status(sync):
@@ -217,6 +276,28 @@ def check_xero_invoice_status(sync):
     elif xero_status == 'VOIDED':
         sync.sync_status = XeroInvoiceSync.SyncStatus.ERROR
         sync.error_message = 'Invoice voided in Xero'
+        # Mirror the void locally — a SENT/OVERDUE local copy of a voided
+        # Xero invoice keeps emailing the owner overdue reminders forever.
+        invoice = sync.invoice
+        if invoice.status in (
+            Invoice.Status.DRAFT, Invoice.Status.SENT, Invoice.Status.OVERDUE,
+        ):
+            invoice.status = Invoice.Status.CANCELLED
+            invoice.save(update_fields=['status'])
+            released = invoice.release_extra_charges()
+            sync.error_message = (
+                'Invoice voided in Xero — local invoice cancelled to match'
+                + (f'; {released} charge(s) released for re-billing'
+                   if released else '')
+            )
+    elif xero_status == 'DELETED':
+        # A deleted Xero draft: the push no longer exists on their side.
+        # Without this branch the badge said "Pushed to Xero" forever and
+        # the nightly sweep polled a ghost.
+        sync.sync_status = XeroInvoiceSync.SyncStatus.ERROR
+        sync.error_message = (
+            'Invoice draft deleted in Xero — push again if it should exist'
+        )
 
     sync.save()
     return sync

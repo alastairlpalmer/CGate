@@ -12,6 +12,7 @@ from django.conf import settings
 from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
 from django.db import models, transaction
 from django.db.models import F
+from django.utils import timezone
 
 
 def validate_file_size(value):
@@ -330,7 +331,7 @@ class Horse(models.Model):
     def calculated_age(self):
         """Return age from DOB if set, else fall back to age field."""
         if self.date_of_birth:
-            today = date.today()
+            today = timezone.localdate()
             return today.year - self.date_of_birth.year - (
                 (today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day)
             )
@@ -468,6 +469,9 @@ class Placement(models.Model):
             models.Index(fields=['horse', 'location', 'end_date'], name='placement_horse_loc_end'),
             models.Index(fields=['horse', 'owner', 'end_date'], name='placement_horse_owner_end'),
             models.Index(fields=['end_date'], name='placement_enddate_solo'),
+            # Location detail / capacity / emptiness checks all filter
+            # location + open placement; the horse-led indexes can't serve them.
+            models.Index(fields=['location', 'end_date'], name='placement_loc_enddate'),
         ]
         constraints = [
             # Prevent a horse from having more than one open-ended placement
@@ -583,7 +587,7 @@ class Placement(models.Model):
         if was_open:
             from django.utils import timezone
             from .services import LocationUsageService
-            LocationUsageService.rest_if_empty(location, timezone.now().date())
+            LocationUsageService.rest_if_empty(location, timezone.localdate())
 
     @property
     def is_current(self):
@@ -674,7 +678,7 @@ class HorseOwnership(models.Model):
     @property
     def is_current(self):
         """Check if this ownership is currently active."""
-        today = date.today()
+        today = timezone.localdate()
         if self.effective_from > today:
             return False
         if self.effective_to and self.effective_to < today:
@@ -689,7 +693,7 @@ class HorseOwnership(models.Model):
         If no ownership records exist, returns empty list.
         """
         if as_of_date is None:
-            as_of_date = date.today()
+            as_of_date = timezone.localdate()
 
         ownerships = cls.objects.filter(
             horse=horse,
@@ -1028,7 +1032,7 @@ class Document(models.Model):
     @property
     def is_expired(self):
         from django.utils import timezone
-        return bool(self.expiry_date) and self.expiry_date < timezone.now().date()
+        return bool(self.expiry_date) and self.expiry_date < timezone.localdate()
 
 
 class HorsePhoto(models.Model):
