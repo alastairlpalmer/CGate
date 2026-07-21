@@ -166,6 +166,16 @@ if DATABASE_URL:
     DATABASES['default']['CONN_HEALTH_CHECKS'] = True
     DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True  # Required for Supabase pooler (pgbouncer transaction mode)
 else:
+    if not DEBUG:
+        # A missing/typo'd DATABASE_URL on a real host must fail loudly.
+        # The old silent SQLite fallback booted "successfully" against a
+        # fresh ephemeral file — the app accepted data and lost all of it
+        # on the next redeploy.
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured(
+            'DATABASE_URL is not set. Production runs (DEBUG=False) must '
+            'point at a real database — the SQLite fallback is dev-only.'
+        )
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',

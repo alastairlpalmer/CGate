@@ -413,19 +413,25 @@ def sync_record_charge(record):
     The single definition of record→charge billing, shared by the create,
     update and bulk flows for farrier, vet, vaccination and worming records:
     cost > 0 with no charge yet → create one for the horse's current owner;
-    an existing uninvoiced charge → resync amount/date/description/provider.
-    Invoiced charges are never touched.
+    an existing uninvoiced charge → resync amount/date/description/provider;
+    cost cleared/zeroed → delete the uninvoiced charge (no £0.00 invoice
+    lines). Invoiced charges are never touched.
+
+    Returns a status string so views can give honest feedback:
+    'created' | 'updated' | 'deleted' | 'no_owner' (cost recorded but not
+    billable — nobody to invoice) | 'invoiced' (charge already invoiced;
+    the edit does NOT change what was billed) | None (nothing to do).
     """
     details = _charge_details(record)
     if details is None:
-        return
+        return None
     charge = record.extra_charge
     if charge is None:
         if not record.cost or record.cost <= 0:
-            return
+            return None
         owner = record.horse.current_owner
         if not owner:
-            return
+            return 'no_owner'
         record.extra_charge = ExtraCharge.objects.create(
             horse=record.horse,
             owner=owner,
@@ -433,12 +439,45 @@ def sync_record_charge(record):
             **details,
         )
         record.save(update_fields=['extra_charge'])
-    elif not charge.invoiced:
-        charge.amount = record.cost
-        charge.date = details['date']
-        charge.description = details['description']
-        charge.service_provider = details['service_provider']
-        charge.save(update_fields=['amount', 'date', 'description', 'service_provider'])
+        return 'created'
+    if charge.invoiced:
+        # The bill is already on an invoice; silently diverging would lose
+        # money — callers surface this so staff know to raise an adjustment.
+        return 'invoiced' if record.cost != charge.amount else None
+    if not record.cost or record.cost <= 0:
+        # Cost cleared: remove the pending charge rather than letting a
+        # £0.00 line land on the next invoice.
+        record.extra_charge = None
+        record.save(update_fields=['extra_charge'])
+        charge.delete()
+        return 'deleted'
+    charge.amount = record.cost
+    charge.date = details['date']
+    charge.description = details['description']
+    charge.service_provider = details['service_provider']
+    charge.save(update_fields=['amount', 'date', 'description', 'service_provider'])
+    return 'updated'
+
+
+CHARGE_SYNC_MESSAGES = {
+    'no_owner': (
+        "Cost recorded, but no charge was raised — {horse} has no current "
+        "owner to bill. Assign an owner and re-save the record to bill it."
+    ),
+    'invoiced': (
+        "The charge for this record is already on an invoice — the amount "
+        "billed has NOT changed. Raise a separate charge for any difference."
+    ),
+}
+
+
+def _report_charge_sync(request, record, status):
+    """Surface non-silent sync outcomes to the user."""
+    template = CHARGE_SYNC_MESSAGES.get(status)
+    if template:
+        messages.warning(
+            request, template.format(horse=record.horse.name),
+        )
 
 
 # Placement-lifecycle bulk actions are gated on the same feature as their
@@ -605,7 +644,7 @@ def bulk_health_apply(request):
 
                 # Farrier/vet/vaccination/worming records with a cost bill
                 # the horse's owner — same helper as the single-record views.
-                sync_record_charge(obj)
+                _report_charge_sync(request, obj, sync_record_charge(obj))
 
                 count += 1
 
@@ -741,7 +780,10 @@ class VaccinationCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, Cre
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        sync_record_charge(form.instance)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         messages.success(self.request, "Vaccination record added successfully.")
         return response
 
@@ -757,7 +799,10 @@ class VaccinationUpdateView(FeatureAccessMixin, UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        sync_record_charge(form.instance)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         return response
 
 
@@ -865,7 +910,10 @@ class FarrierCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateV
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        sync_record_charge(form.instance)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         messages.success(self.request, "Farrier visit recorded successfully.")
         return response
 
@@ -881,7 +929,10 @@ class FarrierUpdateView(FeatureAccessMixin, UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        sync_record_charge(form.instance)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         messages.success(self.request, "Farrier visit updated successfully.")
         return response
 
@@ -928,7 +979,10 @@ class WormingCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateV
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        sync_record_charge(form.instance)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         messages.success(self.request, "Worming treatment recorded successfully.")
         return response
 
@@ -944,7 +998,10 @@ class WormingUpdateView(FeatureAccessMixin, UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        sync_record_charge(form.instance)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         return response
 
 
@@ -1102,7 +1159,10 @@ class VetVisitCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, Create
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        sync_record_charge(form.instance)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         messages.success(self.request, "Vet visit recorded successfully.")
         return response
 
@@ -1118,7 +1178,10 @@ class VetVisitUpdateView(FeatureAccessMixin, UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        sync_record_charge(form.instance)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         messages.success(self.request, "Vet visit updated successfully.")
         return response
 

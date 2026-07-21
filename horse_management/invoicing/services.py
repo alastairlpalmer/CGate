@@ -490,10 +490,21 @@ class InvoiceService:
             extra_charges__date__lte=period_end,
         ).distinct()
 
+        # Co-owners of horses with unbilled split charges, regardless of
+        # whether the horse has a placement in the period — a vet bill
+        # entered after a co-owned horse departed used to fall into a
+        # permanent gap and never be invoiced by any run.
+        owners_via_split_charges = Owner.objects.filter(
+            ownership_shares__horse__extra_charges__invoiced=False,
+            ownership_shares__horse__extra_charges__split_by_ownership=True,
+            ownership_shares__horse__extra_charges__date__lte=period_end,
+        ).distinct()
+
         return (
             owners_via_shares
             | owners_via_placements
             | owners_via_charges
+            | owners_via_split_charges
         ).distinct()
 
     @staticmethod

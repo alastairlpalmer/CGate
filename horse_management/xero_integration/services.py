@@ -87,6 +87,13 @@ def build_xero_invoice_payload(invoice, xero_contact_id):
     """
     # Tax type follows the invoice's snapshotted VAT rate so Xero's computed
     # total (net lines + VAT) always matches the invoice the owner saw.
+    # OUTPUT2 is Xero's 20% code — refuse any other non-zero rate rather
+    # than push a total that disagrees with what the owner was invoiced.
+    if invoice.vat_rate > 0 and invoice.vat_rate != Decimal('20'):
+        raise XeroAPIError(
+            f'Invoice {invoice.invoice_number} has VAT rate '
+            f'{invoice.vat_rate}% — only 0% and 20% map to Xero tax codes.'
+        )
     tax_type = 'OUTPUT2' if invoice.vat_rate > 0 else 'NONE'
 
     # The owner's account_code is a customer reference, not a GL code — it
@@ -112,7 +119,24 @@ def build_xero_invoice_payload(invoice, xero_contact_id):
             'UnitAmount': str(line_total),
             'AccountCode': account_code,
             'TaxType': tax_type,
+            '_net': line_total,
         })
+
+    # Xero rounds VAT per line; the app computes it once on the subtotal.
+    # Three £33.33 lines → £20.01 in Xero vs £20.00 locally, and the totals
+    # disagree by a penny. Distribute the invoice's actual VAT across the
+    # lines (rounded per line, remainder on the last line) and send explicit
+    # TaxAmounts so Xero's total always equals the invoice the owner saw.
+    if tax_type != 'NONE' and line_items:
+        rate = invoice.vat_rate / Decimal('100')
+        allocated = Decimal('0.00')
+        for item in line_items[:-1]:
+            tax = (item['_net'] * rate).quantize(Decimal('0.01'))
+            item['TaxAmount'] = str(tax)
+            allocated += tax
+        line_items[-1]['TaxAmount'] = str(invoice.vat_amount - allocated)
+    for item in line_items:
+        del item['_net']
 
     return {
         'Type': 'ACCREC',
@@ -236,6 +260,28 @@ def check_xero_invoice_status(sync):
     elif xero_status == 'VOIDED':
         sync.sync_status = XeroInvoiceSync.SyncStatus.ERROR
         sync.error_message = 'Invoice voided in Xero'
+        # Mirror the void locally — a SENT/OVERDUE local copy of a voided
+        # Xero invoice keeps emailing the owner overdue reminders forever.
+        invoice = sync.invoice
+        if invoice.status in (
+            Invoice.Status.DRAFT, Invoice.Status.SENT, Invoice.Status.OVERDUE,
+        ):
+            invoice.status = Invoice.Status.CANCELLED
+            invoice.save(update_fields=['status'])
+            released = invoice.release_extra_charges()
+            sync.error_message = (
+                'Invoice voided in Xero — local invoice cancelled to match'
+                + (f'; {released} charge(s) released for re-billing'
+                   if released else '')
+            )
+    elif xero_status == 'DELETED':
+        # A deleted Xero draft: the push no longer exists on their side.
+        # Without this branch the badge said "Pushed to Xero" forever and
+        # the nightly sweep polled a ghost.
+        sync.sync_status = XeroInvoiceSync.SyncStatus.ERROR
+        sync.error_message = (
+            'Invoice draft deleted in Xero — push again if it should exist'
+        )
 
     sync.save()
     return sync

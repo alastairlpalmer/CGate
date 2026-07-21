@@ -65,12 +65,26 @@ def fuzzy_horse_ids(query):
         pk for pk, name in Horse.objects.values_list('pk', 'name')
         if is_fuzzy_match(query, name)
     }
-    placements = Placement.objects.values_list(
-        'horse_id', 'owner__name', 'location__name'
-    )
-    for horse_id, owner_name, location_name in placements:
-        if horse_id in ids:
-            continue
-        if is_fuzzy_match(query, owner_name) or is_fuzzy_match(query, location_name):
-            ids.add(horse_id)
+    # Fuzzy-match owner/location names once each, then map back to horses in
+    # SQL. The old per-placement loop scanned the entire placements table
+    # (all history, unbounded growth) running difflib per row on every
+    # search keystroke — quadratic pain by the time a yard has years of
+    # move history.
+    from core.models import Location, Owner
+
+    owner_ids = [
+        pk for pk, name in Owner.objects.values_list('pk', 'name')
+        if is_fuzzy_match(query, name)
+    ]
+    location_ids = [
+        pk for pk, name in Location.objects.values_list('pk', 'name')
+        if is_fuzzy_match(query, name)
+    ]
+    if owner_ids or location_ids:
+        from django.db.models import Q
+        ids.update(
+            Placement.objects.filter(
+                Q(owner_id__in=owner_ids) | Q(location_id__in=location_ids)
+            ).values_list('horse_id', flat=True)
+        )
     return ids
