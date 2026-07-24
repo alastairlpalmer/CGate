@@ -12,11 +12,25 @@ from invoicing.models import Invoice, Payment
 # Refresh the live preview panel whenever the owner or period changes — the
 # invoice_preview endpoint reads owner/period_start/period_end from the
 # included form fields.
+#
+# The boosted <body> sets hx-select="#main-content", hx-swap="outerHTML" and
+# hx-push-url="true", and htmx inherits all three onto descendant requests.
+# Left inherited, the preview response (a partial with no #main-content)
+# selects to nothing, the empty outerHTML swap deletes #preview-content, and
+# the address bar is rewritten to /invoicing/preview/?...&csrfmiddlewaretoken=…
+# — from there "Create Invoice" leaves the user on a blank page. Each must be
+# overridden locally.
 PREVIEW_HTMX_ATTRS = {
     'hx-get': reverse_lazy('invoice_preview'),
     'hx-trigger': 'change',
     'hx-target': '#preview-content',
     'hx-include': 'closest form',
+    'hx-select': 'unset',
+    'hx-swap': 'innerHTML',
+    'hx-push-url': 'false',
+    # The CSRF token has no business in a GET query string (URL bar,
+    # history, server logs).
+    'hx-params': 'not csrfmiddlewaretoken',
 }
 
 
