@@ -283,6 +283,15 @@ def invoice_create(request):
 @feature_required('invoices', LEVEL_VIEW)
 def invoice_preview(request):
     """AJAX preview of invoice charges."""
+    # A pushed-history / bookmarked / reloaded full-page hit would render a
+    # bare unstyled fragment — send those to the create form instead.
+    if request.headers.get('HX-Request') != 'true':
+        url = reverse('invoice_create')
+        owner_id = request.GET.get('owner')
+        if owner_id:
+            url = f"{url}?owner={owner_id}"
+        return redirect(url)
+
     owner_id = request.GET.get('owner')
     period_start = request.GET.get('period_start')
     period_end = request.GET.get('period_end')
