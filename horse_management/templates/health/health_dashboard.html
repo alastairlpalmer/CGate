@@ -21,7 +21,7 @@
                 <button
                     hx-boost="false"
                     hx-get="{% url 'health_dashboard' %}?type={{ tab_key }}"
-                    hx-target="#health-table-area"
+                    hx-target="#health-table-area" hx-select="unset"
                     hx-push-url="{% url 'health_dashboard' %}?type={{ tab_key }}"
                     hx-swap="innerHTML"
                     hx-indicator="#health-skeleton"

@@ -10,7 +10,7 @@
         <button
             hx-boost="false"
             hx-get="{% url 'health_dashboard' %}?{% for key, val in request.GET.items %}{% if key != 'page' %}{{ key|urlencode }}={{ val|urlencode }}&amp;{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"
-            hx-target="#health-table-area"
+            hx-target="#health-table-area" hx-select="unset"
             hx-swap="innerHTML"
             hx-push-url="true"
             class="btn-secondary btn-xs"
@@ -26,7 +26,7 @@
         <button
             hx-boost="false"
             hx-get="{% url 'health_dashboard' %}?{% for key, val in request.GET.items %}{% if key != 'page' %}{{ key|urlencode }}={{ val|urlencode }}&amp;{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"
-            hx-target="#health-table-area"
+            hx-target="#health-table-area" hx-select="unset"
             hx-swap="innerHTML"
             hx-push-url="true"
             class="btn-secondary btn-xs"
