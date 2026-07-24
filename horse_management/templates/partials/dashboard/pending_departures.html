@@ -10,7 +10,7 @@
               hx-post="{% url 'confirm_departures_bulk' %}"
               hx-target="#pending-departures-card"
               hx-swap="outerHTML"
-              hx-select="unset"
+              hx-select="unset" hx-push-url="false"
               hx-confirm="Confirm all {{ pending_departure_ids|length }} horses as departed? They'll move to the Departed list.">
             {% csrf_token %}
             {% for id in pending_departure_ids %}
@@ -39,7 +39,7 @@
                           hx-post="{% url 'confirm_departures_bulk' %}"
                           hx-target="closest .bg-parchment"
                           hx-swap="outerHTML"
-                          hx-select="unset">
+                          hx-select="unset" hx-push-url="false">
                         {% csrf_token %}
                         {% for id in group.horse_ids %}
                         <input type="hidden" name="horse_ids" value="{{ id }}">
@@ -59,7 +59,7 @@
                               hx-post="{% url 'confirm_departure' horse.pk %}"
                               hx-target="closest .bg-white"
                               hx-swap="outerHTML"
-                              hx-select="unset">
+                              hx-select="unset" hx-push-url="false">
                             {% csrf_token %}
                             <button type="submit" class="text-sage hover:text-forest" title="Confirm departed">
                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -71,7 +71,7 @@
                               hx-post="{% url 'cancel_departure' horse.pk %}"
                               hx-target="closest .bg-white"
                               hx-swap="outerHTML"
-                              hx-select="unset">
+                              hx-select="unset" hx-push-url="false">
                             {% csrf_token %}
                             <button type="submit" class="text-sage hover:text-error-red" title="Remove from departure">
                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
