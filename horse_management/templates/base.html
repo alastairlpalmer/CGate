@@ -65,7 +65,12 @@
     </div>
 
     <!-- ── Sidebar (desktop only) ── -->
-    <aside class="fixed inset-y-0 left-0 z-50 w-64 bg-forest hidden lg:flex flex-col">
+    {# hx-sync: all nav links share one sync scope (the body), so a new    #}
+    {# nav click aborts an in-flight one instead of racing it — two        #}
+    {# overlapping boosted swaps of #main-content crash htmx (see the      #}
+    {# stale-target guard script below).                                   #}
+    <aside class="fixed inset-y-0 left-0 z-50 w-64 bg-forest hidden lg:flex flex-col"
+           hx-sync="closest body:replace">
 
         <!-- Logo -->
         <div class="flex items-center gap-2.5 px-5 h-16 border-b border-white/10 shrink-0">
@@ -264,7 +269,7 @@
     <!-- ── Mobile Bottom Tab Bar ── -->
     {% if user.is_authenticated %}
     <nav class="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-light-sage lg:hidden tab-bar-safe"
-         id="mobile-tab-bar">
+         id="mobile-tab-bar" hx-sync="closest body:replace">
         <div class="flex items-stretch justify-around h-16">
             {% if feature_access.dashboard.view %}
             <a href="{% url 'dashboard' %}"
@@ -297,7 +302,8 @@
     </nav>
 
     <!-- ── More Bottom Sheet ── -->
-    <div x-show="moreSheetOpen" x-cloak class="fixed inset-x-0 top-0 more-sheet-above-tabs z-50 lg:hidden" @keydown.escape.window="moreSheetOpen = false">
+    <div x-show="moreSheetOpen" x-cloak class="fixed inset-x-0 top-0 more-sheet-above-tabs z-50 lg:hidden" @keydown.escape.window="moreSheetOpen = false"
+         hx-sync="closest body:replace">
         <!-- Scrim -->
         <div @click="moreSheetOpen = false"
              class="absolute inset-0 bg-charcoal/40"></div>
@@ -511,6 +517,26 @@
             s.textContent = old.textContent;
             old.parentNode.replaceChild(s, old);
         });
+    });
+
+    // ── Stale-target guard for overlapping boosted navigations ──
+    // Two boosted navigations in flight at once: the first response to
+    // land outerHTML-swaps #main-content, detaching the element the
+    // second response captured as its swap target at request time. htmx
+    // then throws mid-swap (htmx:swapError, null parentElement), and the
+    // throw skips its request-lock release — every later click on that
+    // link queues behind a request that never finishes, so navigation
+    // appears dead until a full reload. The nav bars prevent nav-vs-nav
+    // races via hx-sync, and this guard heals any remaining case by
+    // re-pointing a detached target at the live element with the same id
+    // before the swap runs (last response wins; URL and content stay in
+    // step because htmx pushes this response's URL with its swap).
+    document.body.addEventListener('htmx:beforeOnLoad', function (e) {
+        var target = e.detail.target;
+        if (target && target.id && !document.body.contains(target)) {
+            var fresh = document.getElementById(target.id);
+            if (fresh) { e.detail.target = fresh; }
+        }
     });
 
     // ── Close More sheet on navigate ──
