@@ -365,7 +365,7 @@
     {% if grouped_horses %}
         {% for group in grouped_horses %}
         <div class="card overflow-hidden" x-data="{ collapsed: false }">
-            <div class="section-header cursor-pointer select-none hover:bg-light-sage/30 transition-colors" @click="collapsed = !collapsed">
+            <div class="section-header cursor-pointer select-none hover:bg-sand-100 transition-colors" @click="collapsed = !collapsed">
                 <div class="flex items-center gap-2.5 min-w-0">
                     <button type="button" class="text-sage hover:text-charcoal transition-transform duration-150" :class="collapsed && '-rotate-90'" aria-label="Toggle group">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
