@@ -27,12 +27,16 @@
     .badge-info { @apply badge bg-info-blue-50 text-info-blue ring-1 ring-inset ring-info-blue/20; }
     .badge-neutral { @apply badge bg-light-sage text-charcoal-light ring-1 ring-inset ring-sage/10; }
 
-    /* Data Tables */
+    /* Data Tables — cool sage-tinted header band separates columns from the
+       page; zebra striping on even rows keeps long tables scannable, and the
+       hover wash is a step darker than the stripe so the pointer row still
+       reads on both stripe colours. */
     .data-table { @apply min-w-full divide-y divide-light-sage; }
-    .data-table thead { @apply bg-parchment; }
-    .data-table th { @apply px-5 py-3 text-left text-xs font-semibold text-sage uppercase tracking-wider; }
+    .data-table thead { @apply bg-light-sage/60; }
+    .data-table th { @apply px-5 py-3 text-left text-xs font-semibold text-forest uppercase tracking-wider; }
     .data-table td { @apply px-5 py-3.5 text-sm; }
-    .data-table tbody tr { @apply border-b border-light-sage transition-colors duration-150 hover:bg-sand-50/40; }
+    .data-table tbody tr { @apply border-b border-light-sage transition-colors duration-150 hover:bg-sage-50/80; }
+    .data-table tbody tr:nth-child(even) { @apply bg-parchment/60 hover:bg-sage-50/80; }
 
     /* Forms */
     .form-input { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-sm focus:outline-none focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150 min-h-[44px] sm:min-h-0; }
@@ -51,23 +55,28 @@
 
     /* Navigation (dark sidebar) */
     .nav-link { @apply flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-btn text-white/70 hover:text-white hover:bg-white/10 transition-all duration-100 active:scale-[0.98]; }
-    .nav-link-active { @apply flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-btn text-white bg-white/15 hover:bg-white/20 transition-all duration-100 active:scale-[0.98]; }
-    .nav-group-label { @apply px-3 pt-5 pb-1 text-[11px] font-semibold text-white/40 uppercase tracking-widest; }
+    /* Active item carries a Crown-cream accent bar so the current page reads instantly */
+    .nav-link-active { @apply flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-btn text-white bg-white/15 hover:bg-white/20 transition-all duration-100 active:scale-[0.98] shadow-[inset_3px_0_0_0_#E6E1D1]; }
+    .nav-group-label { @apply px-3 pt-5 pb-1 text-[11px] font-semibold text-white/55 uppercase tracking-widest; }
 
     /* Page Headers */
     .page-header { @apply flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between; }
     .page-title { @apply text-2xl font-bold text-charcoal tracking-tight font-heading; }
     .page-subtitle { @apply mt-1 text-sm text-sage; }
 
-    /* Section Headers */
-    .section-header { @apply flex items-center justify-between px-5 py-4 border-b border-light-sage; }
-    .section-title { @apply text-base font-semibold text-charcoal font-heading; }
+    /* Section Headers — warm Crown-cream tint marks where each section starts
+       (distinct from the cool tint on table column headers), with the title
+       promoted into the brand teal. */
+    /* rounded-t matches the parent card so the tint never pokes past its corners
+       on cards without overflow-hidden */
+    .section-header { @apply flex items-center justify-between px-5 py-4 bg-sand-50 border-b border-sand-200 rounded-t-card; }
+    .section-title { @apply text-base font-semibold text-forest font-heading; }
 
     /* Dashboard KPI cards — whole card is the link; numbers in mono with
        tabular figures so columns of digits align */
     .kpi-card { @apply card-hover block p-5 no-underline; }
     .kpi-label { @apply text-xs font-semibold text-sage uppercase tracking-wider; }
-    .kpi-value { @apply font-mono tabular-nums text-3xl font-medium text-charcoal mt-2 leading-none; }
+    .kpi-value { @apply font-mono tabular-nums text-3xl font-medium text-forest mt-2 leading-none; }
     /* min-h keeps all four cards equal height when only some have a meta line */
     .kpi-meta { @apply text-xs text-sage mt-2 min-h-[1rem]; }
 
@@ -115,8 +124,10 @@
     .sheet-nav-item { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-charcoal rounded-btn hover:bg-light-sage active:bg-light-sage/70 transition-colors duration-100; }
     .sheet-nav-item-active { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-forest bg-sage-50 rounded-btn transition-colors duration-100; }
 
-    /* Mobile list cards (cards < md, table at md+) */
+    /* Mobile list cards (cards < md, table at md+) — zebra to mirror the
+       desktop table striping, so long lists stay scannable on phones */
     .list-card { @apply relative flex items-start gap-3 px-4 py-3 active:bg-sand-50/60 transition-colors duration-100; }
+    .list-card:nth-child(even) { @apply bg-parchment/60; }
     .list-card-title { @apply font-medium text-charcoal text-sm leading-snug; }
     .list-card-meta { @apply text-xs text-sage mt-0.5; }
     /* Stretched link: makes the whole card tappable; sibling actions stack above via relative z-10 */
@@ -285,7 +296,7 @@ input[type="file"] { @apply block w-full text-sm text-sage file:mr-3 file:rounde
     .data-table-cards tbody td[data-label]::before {
         content: attr(data-label);
         font-weight: 600; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em;
-        color: #6A8990; text-align: left; white-space: nowrap; flex-shrink: 0;
+        color: #4F727D; text-align: left; white-space: nowrap; flex-shrink: 0;
     }
 }
 
