@@ -66,12 +66,7 @@
             {% if feature_access.horses.full %}
             <div class="flex items-center gap-2 shrink-0 flex-wrap">
                 {% if current_placement %}
-                <a href="{% url 'horse_move' horse.pk %}" class="btn-success" title="Move to a different location">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
-                    </svg>
-                    Move
-                </a>
+                {# Move lives in Quick Actions as the primary action — no duplicate here #}
                 <div x-data="{ showDate: false }" class="relative">
                     <button x-show="!showDate" type="button" @click="showDate = true"
                             class="btn-secondary text-error-red border-error-red/30 hover:bg-error-red-50">
@@ -635,6 +630,30 @@
                 </div>
                 <div class="p-3">
                     <div class="grid grid-cols-2 gap-2">
+                        {% if feature_access.horses.full %}
+                        {# Primary action — full-width, brand-filled so it leads the set #}
+                        {% if current_placement %}
+                        <a href="{% url 'horse_move' horse.pk %}" title="Move to a different location"
+                           class="group/qa col-span-2 flex items-center justify-center gap-2.5 p-3 rounded-card bg-forest text-white shadow-sm hover:bg-forest-light hover:shadow-md hover:-translate-y-0.5 transition-all duration-150">
+                            <span class="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center group-hover/qa:bg-white/25 transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
+                                </svg>
+                            </span>
+                            <span class="text-sm font-semibold">Move to Location</span>
+                        </a>
+                        {% else %}
+                        <a href="{% url 'horse_arrive' horse.pk %}" title="Log this horse's arrival"
+                           class="group/qa col-span-2 flex items-center justify-center gap-2.5 p-3 rounded-card bg-forest text-white shadow-sm hover:bg-forest-light hover:shadow-md hover:-translate-y-0.5 transition-all duration-150">
+                            <span class="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center group-hover/qa:bg-white/25 transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                                </svg>
+                            </span>
+                            <span class="text-sm font-semibold">Log Arrival</span>
+                        </a>
+                        {% endif %}
+                        {% endif %}
                         {% if feature_access.health.full %}
                         <a href="{% url 'vaccination_create' %}?horse={{ horse.pk }}"
                            class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-sage/40 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
