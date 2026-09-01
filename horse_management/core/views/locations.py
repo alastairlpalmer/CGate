@@ -21,11 +21,11 @@ from ..models import Horse, Location, LocationUsagePeriod, Owner, Placement
 
 # Chart/legend colour per usage type — reuses the established design palette.
 USAGE_COLORS = {
-    Location.Usage.HORSES: '#1B3A2D',   # forest
+    Location.Usage.HORSES: '#3D5A63',   # brim (primary)
     Location.Usage.MIXED: '#A0522D',    # saddle
-    Location.Usage.RESTED: '#6B8F71',   # sage
+    Location.Usage.RESTED: '#6A8990',   # sage (brim tint)
     Location.Usage.HAY: '#2E86AB',      # info-blue
-    Location.Usage.OTHER: '#B8CBB9',    # sage-200
+    Location.Usage.OTHER: '#BCCCD0',    # sage-200
 }
 
 
@@ -175,7 +175,7 @@ class LocationListView(FeatureAccessMixin, ListView):
             window = _resolve_usage_window(self.request)
 
             usage_meta = [
-                {'value': v, 'label': label, 'color': USAGE_COLORS.get(v, '#6B8F71')}
+                {'value': v, 'label': label, 'color': USAGE_COLORS.get(v, '#6A8990')}
                 for v, label in Location.Usage.choices
             ]
             label_for = {v: label for v, label in Location.Usage.choices}
@@ -191,7 +191,7 @@ class LocationListView(FeatureAccessMixin, ListView):
                         {
                             'value': v,
                             'label': label_for[v],
-                            'color': USAGE_COLORS.get(v, '#6B8F71'),
+                            'color': USAGE_COLORS.get(v, '#6A8990'),
                             'days': totals[v],
                             'pct': round(totals[v] / total * 100, 1) if total else 0,
                         }
@@ -298,7 +298,7 @@ class LocationDetailView(FeatureAccessMixin, DetailView):
                 {
                     'value': value,
                     'label': usage_labels[value],
-                    'color': USAGE_COLORS.get(value, '#6B8F71'),
+                    'color': USAGE_COLORS.get(value, '#6A8990'),
                     'days': days,
                     'pct': round(days / window['days'] * 100, 1) if days else 0,
                 }
@@ -315,7 +315,7 @@ class LocationDetailView(FeatureAccessMixin, DetailView):
                 'days': [row['days'] for row in summary],
                 'colors': [row['color'] for row in summary],
                 'segments': [
-                    {**seg, 'color': USAGE_COLORS.get(seg['usage'], '#6B8F71')}
+                    {**seg, 'color': USAGE_COLORS.get(seg['usage'], '#6A8990')}
                     for seg in segments
                 ],
             }
@@ -346,7 +346,7 @@ class LocationDetailView(FeatureAccessMixin, DetailView):
                     'datasets': [
                         {
                             'label': label,
-                            'color': USAGE_COLORS.get(value, '#6B8F71'),
+                            'color': USAGE_COLORS.get(value, '#6A8990'),
                             'days': [year_totals[cy].get(value, 0) for cy in compare_years],
                         }
                         for value, label in Location.Usage.choices
