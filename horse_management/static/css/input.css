@@ -59,9 +59,16 @@
     .nav-link-active { @apply flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-btn text-white bg-white/15 hover:bg-white/20 transition-all duration-100 active:scale-[0.98] shadow-[inset_3px_0_0_0_#E6E1D1]; }
     .nav-group-label { @apply px-3 pt-5 pb-1 text-[11px] font-semibold text-white/55 uppercase tracking-widest; }
 
-    /* Page Headers */
+    /* Page Headers — every page title carries a short Brim→Saddle gradient bar
+       underneath: a small brand signature that warms up the page top without
+       shouting. */
     .page-header { @apply flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between; }
     .page-title { @apply text-2xl font-bold text-charcoal tracking-tight font-heading; }
+    .page-title::after {
+        content: '';
+        @apply block w-10 h-1 mt-2 rounded-full;
+        background-image: linear-gradient(90deg, theme(colors.forest.DEFAULT), theme(colors.saddle.DEFAULT));
+    }
     .page-subtitle { @apply mt-1 text-sm text-sage; }
 
     /* Section Headers — warm Crown-cream tint marks where each section starts
@@ -73,8 +80,11 @@
     .section-title { @apply text-base font-semibold text-forest font-heading; }
 
     /* Dashboard KPI cards — whole card is the link; numbers in mono with
-       tabular figures so columns of digits align */
-    .kpi-card { @apply card-hover block p-5 no-underline; }
+       tabular figures so columns of digits align. Each card carries a 3px
+       top accent (brand teal by default; templates override with
+       border-t-saddle / border-t-info-blue / border-t-sage to colour-code
+       the metric) so the KPI row reads with more colour confidence. */
+    .kpi-card { @apply card-hover block p-5 no-underline border-t-[3px] border-t-forest; }
     .kpi-label { @apply text-xs font-semibold text-sage uppercase tracking-wider; }
     .kpi-value { @apply font-mono tabular-nums text-3xl font-medium text-forest mt-2 leading-none; }
     /* min-h keeps all four cards equal height when only some have a meta line */
@@ -98,20 +108,22 @@
     .toast-info { @apply toast bg-info-blue-50 border-info-blue/20 text-info-blue; }
     .toast-warning { @apply toast bg-sand-50 border-sand/40 text-saddle; }
 
-    /* Link styling */
-    .link { @apply text-forest hover:text-sage font-medium transition-colors duration-100 relative; }
+    /* Link styling — hover warms to Saddle for a touch of personality */
+    .link { @apply text-forest hover:text-saddle font-medium transition-colors duration-100 relative; }
     .link::after {
         content: '';
         @apply absolute bottom-0 left-0 w-0 h-px bg-forest transition-all duration-200;
     }
     .link:hover::after { @apply w-full; }
 
-    /* Mobile Bottom Tab Bar */
+    /* Mobile Bottom Tab Bar — the active tab carries a small teal indicator
+       bar along its top edge so the current section reads at a glance */
     .tab-bar-item {
-        @apply flex flex-col items-center justify-center flex-1 gap-1 px-1 text-sage/60 transition-colors duration-100 active:bg-light-sage/50 no-underline;
+        @apply relative flex flex-col items-center justify-center flex-1 gap-1 px-1 text-sage/60 transition-colors duration-100 active:bg-light-sage/50 no-underline;
         min-width: 0;
     }
     .tab-bar-item.active { @apply text-forest; }
+    .tab-bar-item.active::before { content: ''; @apply absolute top-0 inset-x-4 h-0.5 rounded-b-full bg-forest; }
     .tab-bar-label {
         @apply text-[11px] font-medium leading-none text-center;
         max-width: 100%;
