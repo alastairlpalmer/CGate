@@ -7,7 +7,9 @@ photos is a (sliced) queryset of HorsePhoto; photo_count the unsliced total.
     <div class="section-header">
         <h3 class="section-title">Photos</h3>
         {% if feature_access.horses.full %}
-        <a href="{% url 'horse_photo_add' horse.pk %}" class="btn-ghost btn-xs">+ Add</a>
+        <a href="{% url 'horse_photo_add' horse.pk %}" class="btn-ghost btn-xs"
+           hx-get="{% url 'horse_photo_add' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Add photos for {{ horse.name }}">+ Add</a>
         {% endif %}
     </div>
     {% if photos %}
@@ -26,6 +28,16 @@ photos is a (sliced) queryset of HorsePhoto; photo_count the unsliced total.
                     {{ photo.get_category_display }}
                 </span>
                 {% if feature_access.horses.full %}
+                <form method="post" action="{% url 'horse_photo_set_profile' photo.pk %}" class="absolute top-1 left-1">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="w-7 h-7 rounded-full bg-charcoal/60 text-white flex items-center justify-center hover:bg-forest transition-colors"
+                            title="Use as profile picture" aria-label="Use as profile picture">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                        </svg>
+                    </button>
+                </form>
                 <form method="post" action="{% url 'horse_photo_delete' photo.pk %}" class="absolute top-1 right-1"
                       hx-confirm="Delete this {{ photo.get_category_display|lower }} photo?">
                     {% csrf_token %}

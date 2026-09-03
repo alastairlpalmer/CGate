@@ -2,7 +2,7 @@
 
 **Goal:** Let users make small changes without leaving the page they are on.
 **Scope:** Horse Edit, Horse Photo, Horse Move. Then the same pattern for other quick actions.
-**Status:** Phase 1 built (shared sheet + Move). Phases 2-4 not started.
+**Status:** Phases 1 (shared sheet + Move) and 2 (Photo sheet + profile picture) built. Phases 3-4 not started.
 
 ---
 

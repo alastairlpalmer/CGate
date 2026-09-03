@@ -33,6 +33,7 @@ urlpatterns = [
     path('horses/<int:pk>/ownership/', views.manage_ownership_shares, name='horse_ownership'),
     path('horses/<int:pk>/photos/add/', views.horse_photo_add, name='horse_photo_add'),
     path('horses/photos/<int:pk>/delete/', views.horse_photo_delete, name='horse_photo_delete'),
+    path('horses/photos/<int:pk>/use-as-profile/', views.horse_photo_set_profile, name='horse_photo_set_profile'),
 
     # Owners
     path('owners/', views.OwnerListView.as_view(), name='owner_list'),
