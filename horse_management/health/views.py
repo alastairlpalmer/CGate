@@ -82,6 +82,11 @@ HEALTH_TABS = [
 @feature_required('health', LEVEL_VIEW)
 def health_dashboard(request):
     tab = request.GET.get('type', 'overview')
+    if tab not in {t[0] for t in HEALTH_TABS}:
+        # The tab name is interpolated into a partial template path below;
+        # an unknown value was a TemplateDoesNotExist 500 (or a
+        # SuspiciousFileOperation for '../'), not an empty page.
+        tab = 'overview'
     today = timezone.localdate()
     is_htmx = request.headers.get('HX-Request') == 'true'
     htmx_target = request.headers.get('HX-Target', '')
@@ -250,7 +255,7 @@ def health_dashboard(request):
                 next_due_date__lt=today,
             )
         horse = request.GET.get('horse')
-        if horse:
+        if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
         paginator = Paginator(queryset.order_by('next_due_date'), 50)
         page_obj = paginator.get_page(request.GET.get('page'))
@@ -274,7 +279,7 @@ def health_dashboard(request):
                 next_due_date__lt=today,
             )
         horse = request.GET.get('horse')
-        if horse:
+        if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
         paginator = Paginator(queryset.order_by('-date'), 50)
         page_obj = paginator.get_page(request.GET.get('page'))
@@ -288,7 +293,7 @@ def health_dashboard(request):
             horse__is_active=True
         )
         horse = request.GET.get('horse')
-        if horse:
+        if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
         paginator = Paginator(queryset.order_by('-date'), 50)
         page_obj = paginator.get_page(request.GET.get('page'))
@@ -302,7 +307,7 @@ def health_dashboard(request):
             horse__is_active=True
         )
         horse = request.GET.get('horse')
-        if horse:
+        if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
         paginator = Paginator(queryset.order_by('-date'), 50)
         page_obj = paginator.get_page(request.GET.get('page'))
@@ -316,7 +321,7 @@ def health_dashboard(request):
             horse__is_active=True
         )
         horse = request.GET.get('horse')
-        if horse:
+        if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
         status = request.GET.get('status')
         if status:
@@ -333,7 +338,7 @@ def health_dashboard(request):
             horse__is_active=True
         )
         horse = request.GET.get('horse')
-        if horse:
+        if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
         paginator = Paginator(queryset.order_by('-date'), 50)
         page_obj = paginator.get_page(request.GET.get('page'))
@@ -724,7 +729,7 @@ class VaccinationListView(FeatureAccessMixin, ListView):
 
         # Filter by horse
         horse = self.request.GET.get('horse')
-        if horse:
+        if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
 
         return queryset.order_by('next_due_date')
@@ -890,7 +895,7 @@ class FarrierListView(FeatureAccessMixin, ListView):
 
         # Filter by horse
         horse = self.request.GET.get('horse')
-        if horse:
+        if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
 
         return queryset.order_by('-date')
@@ -961,7 +966,7 @@ class WormingListView(FeatureAccessMixin, ListView):
             horse__is_active=True
         )
         horse = self.request.GET.get('horse')
-        if horse:
+        if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
         return queryset.order_by('-date')
 
@@ -1029,7 +1034,7 @@ class WormEggCountListView(FeatureAccessMixin, ListView):
             horse__is_active=True
         )
         horse = self.request.GET.get('horse')
-        if horse:
+        if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
         return queryset.order_by('-date')
 
@@ -1084,7 +1089,7 @@ class MedicalConditionListView(FeatureAccessMixin, ListView):
             horse__is_active=True
         )
         horse = self.request.GET.get('horse')
-        if horse:
+        if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
         status = self.request.GET.get('status')
         if status:
@@ -1141,7 +1146,7 @@ class VetVisitListView(FeatureAccessMixin, ListView):
             horse__is_active=True
         )
         horse = self.request.GET.get('horse')
-        if horse:
+        if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
         return queryset.order_by('-date')
 
@@ -1210,7 +1215,7 @@ class BreedingRecordListView(FeatureAccessMixin, ListView):
             mare__is_active=True
         )
         horse = self.request.GET.get('horse')
-        if horse:
+        if horse and horse.isdigit():
             queryset = queryset.filter(mare_id=horse)
         status = self.request.GET.get('status')
         if status:

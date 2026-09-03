@@ -524,8 +524,9 @@ class HorseListView(FeatureAccessMixin, ListView):
         placement_filter = (
             {} if self.status == 'departed' else {'end_date__isnull': True}
         )
+        # Non-numeric ids raise ValueError at query time — treat as unset.
         location = self.request.GET.get('location')
-        if location:
+        if location and location.isdigit():
             queryset = queryset.filter(
                 Exists(Placement.objects.filter(
                     horse=OuterRef('pk'),
@@ -535,7 +536,7 @@ class HorseListView(FeatureAccessMixin, ListView):
             )
 
         owner = self.request.GET.get('owner')
-        if owner:
+        if owner and owner.isdigit():
             queryset = queryset.filter(
                 Exists(Placement.objects.filter(
                     horse=OuterRef('pk'),

@@ -70,7 +70,7 @@ class InvoiceListView(FeatureAccessMixin, ListView):
             queryset = queryset.filter(status=status)
 
         owner = self.request.GET.get('owner')
-        if owner:
+        if owner and owner.isdigit():
             queryset = queryset.filter(owner_id=owner)
 
         search = self.request.GET.get('search', '').strip()
@@ -273,7 +273,7 @@ def invoice_create(request):
                 initial['period_start'],
                 initial['period_end']
             )
-        except Owner.DoesNotExist:
+        except (Owner.DoesNotExist, ValueError):
             pass
 
     return render(request, 'invoicing/invoice_create.html', {
@@ -768,7 +768,7 @@ def invoice_export_csv(request):
         queryset = queryset.exclude(status=Invoice.Status.DRAFT)
 
     owner = request.GET.get('owner')
-    if owner:
+    if owner and owner.isdigit():
         queryset = queryset.filter(owner_id=owner)
 
     search = request.GET.get('search', '').strip()

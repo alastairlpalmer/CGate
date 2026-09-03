@@ -156,9 +156,11 @@ def resolve_usage_window(request, default='year'):
 
     try:
         year = int(request.GET.get('year', today.year))
+        # date() raises for years outside 1..9999 (?year=0 was a 500).
+        start, end = date(year, 1, 1), date(year, 12, 31)
     except (TypeError, ValueError):
         year = today.year
-    start, end = date(year, 1, 1), date(year, 12, 31)
+        start, end = date(year, 1, 1), date(year, 12, 31)
     return {
         'range': 'year', 'year': year,
         'start': start, 'end': end, 'label': str(year),

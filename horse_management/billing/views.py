@@ -53,12 +53,12 @@ class ExtraChargeListView(FeatureAccessMixin, ListView):
 
         # Filter by horse
         horse = self.request.GET.get('horse')
-        if horse:
+        if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
 
         # Filter by owner
         owner = self.request.GET.get('owner')
-        if owner:
+        if owner and owner.isdigit():
             queryset = queryset.filter(owner_id=owner)
 
         search = self.request.GET.get('search', '').strip()
@@ -96,7 +96,7 @@ class ExtraChargeCreateView(PopupFormMixin, FeatureAccessMixin, CreateView):
                 horse = Horse.objects.get(pk=horse_id)
                 if horse.current_owner:
                     initial['owner'] = horse.current_owner.pk
-            except Horse.DoesNotExist:
+            except (Horse.DoesNotExist, ValueError):
                 pass
         initial['date'] = timezone.localdate()
         return initial
