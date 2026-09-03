@@ -120,6 +120,32 @@ def _resolve_usage_window(request):
     }
 
 
+# Card-order options for the Locations tab. ``empty`` (the default) puts the
+# fields with no horses first so free space is visible at a glance;
+# ``default`` keeps the plain site/name order.
+LOCATION_SORT_EMPTY = 'empty'
+LOCATION_SORT_DEFAULT = 'default'
+LOCATION_SORTS = (LOCATION_SORT_EMPTY, LOCATION_SORT_DEFAULT)
+
+
+def sort_grouped_locations(grouped):
+    """Reorder ``[(site, locations, horse_count), ...]`` so empty fields lead.
+
+    Within each site the locations are ordered by horse count (empty first),
+    then name. Sites that have at least one empty field come before sites
+    that are full, and ties keep their alphabetical site order.
+    """
+    result = []
+    for site, locs, site_horse_count in grouped:
+        locs = sorted(locs, key=lambda l: (l.horse_count, l.name.lower()))
+        result.append((site, locs, site_horse_count))
+    result.sort(key=lambda g: (
+        0 if any(l.horse_count == 0 for l in g[1]) else 1,
+        (g[0] or '').lower(),
+    ))
+    return result
+
+
 class LocationListView(FeatureAccessMixin, ListView):
     feature = 'locations'
     access_level = LEVEL_VIEW
@@ -168,6 +194,12 @@ class LocationListView(FeatureAccessMixin, ListView):
                         loc.capacity - loc.horse_count
                         if loc.capacity is not None else None
                     )
+            sort = self.request.GET.get('sort', LOCATION_SORT_EMPTY)
+            if sort not in LOCATION_SORTS:
+                sort = LOCATION_SORT_EMPTY
+            if sort == LOCATION_SORT_EMPTY:
+                grouped = sort_grouped_locations(grouped)
+            context['location_sort'] = sort
             context['grouped_locations'] = grouped
 
         # Usage analytics overview tab
