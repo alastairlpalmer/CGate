@@ -13,6 +13,7 @@ urlpatterns = [
     path('preview/', views.invoice_preview, name='invoice_preview'),
     path('<int:pk>/', views.InvoiceDetailView.as_view(), name='invoice_detail'),
     path('<int:pk>/edit/', views.InvoiceUpdateView.as_view(), name='invoice_update'),
+    path('<int:pk>/delete/', views.invoice_delete, name='invoice_delete'),
     path('<int:pk>/pdf/', views.invoice_pdf, name='invoice_pdf'),
     path('<int:pk>/csv/', views.invoice_csv, name='invoice_csv'),
     path('<int:pk>/send/', views.invoice_send, name='invoice_send'),

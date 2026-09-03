@@ -16,6 +16,7 @@ from core.permissions import (
     has_feature_access,
 )
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
+from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -379,6 +380,44 @@ def invoice_mark_paid(request, pk):
     invoice.mark_as_paid(reference='Marked as paid')
     messages.success(request, f"Invoice {invoice.invoice_number} marked as paid.")
     return redirect(next_url)
+
+
+@feature_required('invoices')
+def invoice_delete(request, pk):
+    """Delete a draft invoice that was never issued.
+
+    The month-end task creates drafts for every owner, so a draft that is
+    wrong (period, missing horse, owner set up late) needs removing before
+    the correct invoice can be created for the same period. Cancelling
+    also frees the period, but leaves a dead stub in the list; a draft
+    nobody has seen can simply go. Its extra charges are released so the
+    replacement invoice picks them up. Anything past draft is refused —
+    see ``Invoice.deletion_blocker``.
+    """
+    if request.method != 'POST':
+        return redirect('invoice_detail', pk=pk)
+
+    invoice = get_object_or_404(Invoice.objects.select_related('owner'), pk=pk)
+
+    blocker = invoice.deletion_blocker
+    if blocker:
+        messages.error(request, blocker)
+        return redirect('invoice_detail', pk=pk)
+
+    number = invoice.invoice_number
+    owner_name = invoice.owner.name
+    with transaction.atomic():
+        released = invoice.release_extra_charges()
+        invoice.delete()
+
+    msg = f"Draft {number} for {owner_name} deleted."
+    if released:
+        msg += (
+            f" {released} extra charge{'s' if released != 1 else ''} "
+            "released for re-billing."
+        )
+    messages.success(request, msg)
+    return redirect('invoice_list')
 
 
 @feature_required('invoices', LEVEL_VIEW)

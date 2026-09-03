@@ -50,11 +50,25 @@
                             <svg class="w-5 h-5 text-error-red shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
                             </svg>
-                            <ul class="text-sm text-error-red space-y-1">
-                                {% for error in form.non_field_errors %}
-                                <li>{{ error }}</li>
-                                {% endfor %}
-                            </ul>
+                            <div class="text-sm text-error-red space-y-1">
+                                <ul class="space-y-1">
+                                    {% for error in form.non_field_errors %}
+                                    <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                                {% with blocker=form.overlapping_invoice %}
+                                {% if blocker %}
+                                <p class="pt-1">
+                                    <a href="{% url 'invoice_detail' blocker.pk %}" class="font-semibold underline">View {{ blocker.invoice_number }}</a>
+                                    {% if blocker.status == 'draft' %}
+                                    &ndash; it is still a draft. Delete it from its page, then create this invoice.
+                                    {% else %}
+                                    &ndash; to replace it, edit it and set its status to Cancelled, then create this invoice.
+                                    {% endif %}
+                                </p>
+                                {% endif %}
+                                {% endwith %}
+                            </div>
                         </div>
                     </div>
                     {% endif %}
