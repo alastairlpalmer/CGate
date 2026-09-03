@@ -2,7 +2,7 @@
 
 **Goal:** Let users make small changes without leaving the page they are on.
 **Scope:** Horse Edit, Horse Photo, Horse Move. Then the same pattern for other quick actions.
-**Status:** Phases 1 (shared sheet + Move), 2 (Photo sheet + profile picture) and 3 (Quick Edit) built. Phase 4 not started.
+**Status:** All four phases built. Phase 4 covers the health Quick Actions, Breeding, Charge, and Owner and Location edit through one `PopupFormMixin` and a generic form partial.
 
 ---
 

@@ -191,7 +191,7 @@
                         <a href="{% url 'horse_detail' ec.horse.pk %}" class="link text-sm font-medium tap-pad">{{ ec.horse.name }}</a>
                         <p class="text-xs text-sage mt-0.5">{{ ec.date|ago_label }} &middot; <span class="text-error-red font-semibold">{{ ec.count }} EPG</span></p>
                     </div>
-                    <a href="{% url 'worming_create' %}?horse={{ ec.horse.pk }}&next={{ request.get_full_path|urlencode }}" class="btn-ghost btn-xs">Record Worming</a>
+                    <a href="{% url 'worming_create' %}?horse={{ ec.horse.pk }}&next={{ request.get_full_path|urlencode }}" hx-get="{% url 'worming_create' %}?horse={{ ec.horse.pk }}&next={{ request.get_full_path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Worming for {{ ec.horse.name }}" class="btn-ghost btn-xs">Record Worming</a>
                 </li>
                 {% endfor %}
             </ul>

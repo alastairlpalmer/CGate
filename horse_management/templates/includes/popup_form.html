@@ -1,0 +1,51 @@
+{% comment %}
+Generic form body for the pop-up sheet, rendered by any view that mixes in
+core.views._popup.PopupFormMixin. Every visible field is laid out on a
+two-column grid (textareas, the horse picker and descriptions span both);
+a ?horse= deep link hides the horse picker because the sheet's title
+already names the horse. The full page stays one link away for anything
+the generic layout leaves out (inline add-a-vet, archive/delete controls).
+{% endcomment %}
+<form method="post" action="{{ request.get_full_path }}"
+      hx-post="{{ request.get_full_path }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+      {% if form.is_multipart %}enctype="multipart/form-data" hx-encoding="multipart/form-data"{% endif %}>
+    {% csrf_token %}
+
+    <div class="p-4 sm:p-5 space-y-4 sm:space-y-5">
+
+        {% if form.non_field_errors %}
+        <div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3" role="alert">
+            <p class="text-sm font-medium text-error-red">This wasn't saved:</p>
+            {% for error in form.non_field_errors %}
+            <p class="text-sm text-error-red mt-1">{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+
+        <div class="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2">
+            {% for field in form.visible_fields %}
+                {% if field.name == 'horse' and popup_horse_id %}
+                    <input type="hidden" name="horse" value="{{ popup_horse_id }}">
+                {% elif field.field.widget.input_type == 'checkbox' %}
+                    <div class="sm:col-span-2 flex items-center min-h-[44px]">
+                        {% include "includes/form_field.html" with field=field %}
+                    </div>
+                {% elif field.name == 'horse' or field.name == 'description' or field.field.widget.template_name == 'django/forms/widgets/textarea.html' %}
+                    {% include "includes/form_field.html" with field=field span="2" %}
+                {% else %}
+                    {% include "includes/form_field.html" with field=field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="popup-footer">
+        {# hx-boost="false": inside this form a boosted link would inherit hx-target="#popup-body" #}
+        <a href="{{ request.get_full_path }}" hx-boost="false"
+           class="hidden sm:inline-flex items-center mr-auto text-xs text-sage hover:text-charcoal-light">Open the full form</a>
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        <button type="submit" class="btn-primary">{{ popup_submit_label }}</button>
+    </div>
+</form>
