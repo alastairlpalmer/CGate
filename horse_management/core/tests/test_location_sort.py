@@ -111,8 +111,12 @@ class LocationSortTests(TestCase):
         self.assertContains(response, '?search=beta')
         self.assertContains(response, '?sort=default&search=beta')
 
-    def test_other_tabs_ignore_sort(self):
-        for tab in ('history', 'usage'):
-            response = self.client.get(reverse('location_list'), {'tab': tab, 'sort': 'default'})
-            self.assertEqual(response.status_code, 200)
-            self.assertNotIn('grouped_locations', response.context)
+    def test_usage_tab_ignores_sort(self):
+        response = self.client.get(reverse('location_list'), {'tab': 'usage', 'sort': 'default'})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('grouped_locations', response.context)
+
+    def test_retired_history_tab_redirects_rather_than_sorting(self):
+        response = self.client.get(reverse('location_list'), {'tab': 'history', 'sort': 'default'})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('tab=movements', response['Location'])
