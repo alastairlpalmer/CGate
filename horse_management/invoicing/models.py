@@ -7,6 +7,7 @@ Uses db_table to keep original table names, avoiding database migration changes.
 from datetime import timedelta
 from decimal import Decimal
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
@@ -183,6 +184,42 @@ class Invoice(models.Model):
             id__in=charge_ids, invoiced=True
         ).update(invoiced=False, invoice=None)
         return released
+
+    @property
+    def deletion_blocker(self):
+        """Why this invoice cannot be deleted, or '' if it can.
+
+        Only a never-issued draft may be deleted outright. Anything that has
+        reached the owner (sent/paid/overdue), has money recorded against
+        it, or has a copy in Xero must be cancelled instead so the record
+        and its number survive for the audit trail.
+        """
+        if self.status != self.Status.DRAFT:
+            return (
+                f"{self.invoice_number} is {self.get_status_display().lower()}, "
+                "not a draft. Edit it and set the status to Cancelled instead."
+            )
+        if self.payments.exists():
+            return (
+                f"{self.invoice_number} has payments recorded against it. "
+                "Remove them first, or cancel the invoice instead."
+            )
+        try:
+            sync = self.xero_sync
+        except ObjectDoesNotExist:
+            sync = None
+        if sync is not None and sync.xero_invoice_id:
+            return (
+                f"{self.invoice_number} has been pushed to Xero "
+                f"({sync.xero_invoice_number or sync.xero_invoice_id}). "
+                "Cancel it here and void it in Xero instead of deleting it."
+            )
+        return ''
+
+    @property
+    def can_be_deleted(self):
+        """True for a draft that was never issued, paid against or pushed."""
+        return not self.deletion_blocker
 
     @property
     def is_overdue(self):

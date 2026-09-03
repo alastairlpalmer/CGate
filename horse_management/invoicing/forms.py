@@ -58,6 +58,13 @@ class InvoiceCreateForm(forms.Form):
         widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3})
     )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set by clean() when the period collides with a live invoice, so
+        # the template can link to it rather than leave the user to hunt
+        # for the invoice number in the list.
+        self.overlapping_invoice = None
+
     def clean(self):
         cleaned_data = super().clean()
         start = cleaned_data.get('period_start')
@@ -71,6 +78,7 @@ class InvoiceCreateForm(forms.Form):
             from .services import InvoiceService
             existing = InvoiceService.check_for_overlapping_invoices(owner, start, end)
             if existing:
+                self.overlapping_invoice = existing
                 raise forms.ValidationError(
                     f"{owner.name} already has invoice {existing.invoice_number} "
                     f"covering {existing.period_start} to {existing.period_end} "
