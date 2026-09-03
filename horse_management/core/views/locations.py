@@ -19,9 +19,8 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from ..forms import ArrivalForm, LocationForm, LocationUsageForm
 from ._popup import PopupFormMixin, is_popup_request, popup_saved_response
-from .placements import movement_history
 from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
-from ..models import Horse, Location, LocationUsagePeriod, Owner, Placement
+from ..models import Horse, Location, LocationUsagePeriod, Placement
 
 # Chart/legend colour per usage type — reuses the established design palette.
 USAGE_COLORS = {
@@ -197,6 +196,17 @@ class LocationListView(FeatureAccessMixin, ListView):
     template_name = 'locations/location_list.html'
     context_object_name = 'locations'
 
+    def get(self, request, *args, **kwargs):
+        # The movement log lives on the horse list now. Old links and
+        # bookmarks keep working, filters and all — this page kept the tab
+        # for a release while people found the new one.
+        if request.GET.get('tab') == 'history':
+            carried = request.GET.copy()
+            carried.pop('tab', None)
+            carried['tab'] = 'movements'
+            return redirect(f"{reverse('horse_list')}?{carried.urlencode()}")
+        return super().get(request, *args, **kwargs)
+
     def get_queryset(self):
         queryset = Location.objects.active().annotate(
             horse_count=Count(
@@ -296,15 +306,6 @@ class LocationListView(FeatureAccessMixin, ListView):
             context['usage_year_choices'] = _usage_year_choices(
                 earliest.year if earliest else None
             )
-
-        # Movement History tab data. The query lives in placements.py so
-        # the horse list's Movements tab reads exactly the same log.
-        if context['current_tab'] == 'history':
-            placements, status = movement_history(self.request)
-            context['placements'] = placements
-            context['current_status'] = status
-            context['all_locations'] = Location.objects.order_by('site', 'name')
-            context['owners'] = Owner.objects.only('pk', 'name')
 
         return context
 

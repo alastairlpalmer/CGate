@@ -84,10 +84,13 @@ class ListSearchTestCase(TestCase):
         response = self.client.get(reverse('location_list'), {'search': 'somerford'})
         self.assertEqual(list(response.context['locations']), [self.barn])
 
-    def test_location_history_tab_ignores_search(self):
+    def test_location_history_tab_redirects_to_the_movements_tab(self):
+        """That tab was retired; a bookmarked search on it must still land
+        on the log, not on a 404."""
         response = self.client.get(reverse('location_list'), {'tab': 'history', 'search': 'paddock'})
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.context['locations']), 2)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('tab=movements', response['Location'])
+        self.assertEqual(self.client.get(response['Location']).status_code, 200)
 
     def test_invoice_list_search_by_number_and_owner(self):
         response = self.client.get(reverse('invoice_list'), {'search': 'INV-0001'})

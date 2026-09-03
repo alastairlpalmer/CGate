@@ -17,8 +17,9 @@ photos is a (sliced) queryset of HorsePhoto; photo_count the unsliced total.
         <div class="grid grid-cols-3 gap-2">
             {% for photo in photos %}
             <div class="relative group/photo">
-                {# Opens the full-screen viewer (static/js/lightbox.js); the href
-                   stays as the fallback when the viewer is not ready yet. #}
+                {% comment %}Opens the full-screen viewer
+                (static/js/lightbox.js); the href stays as the fallback when
+                the viewer is not ready yet.{% endcomment %}
                 <a href="{{ photo.image.url }}" target="_blank" rel="noopener" hx-boost="false"
                    class="block cursor-zoom-in"
                    data-lightbox-src="{{ photo.image.url }}"

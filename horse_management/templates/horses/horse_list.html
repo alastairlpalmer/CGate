@@ -10,23 +10,20 @@
         <div>
             <h1 class="page-title">Horses</h1>
         </div>
-        {% if feature_access.horses.full %}
+        {% if shows_movements and feature_access.locations.full %}
         <div class="flex items-center gap-2">
-            <a href="{% url 'horse_new_arrival' %}" class="btn-success">
+            <a href="{% url 'placement_create' %}" class="btn-primary">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                 </svg>
-                New Arrival
-            </a>
-            <a href="{% url 'horse_create' %}" class="btn-secondary">
-                Add Horse
+                Add Placement
             </a>
         </div>
         {% endif %}
     </div>
 
-    <!-- Search + Group Toggle + Filter -->
-    <div class="card px-5 py-4" x-data="{ filtersOpen: {% if request.GET.location or request.GET.owner %}true{% else %}false{% endif %} }">
+    <!-- Filters -->
+    <div x-data="{ filtersOpen: {% if request.GET.location or request.GET.owner %}true{% else %}false{% endif %} }">
         <form method="get" class="space-y-3">
             <!-- Preserve status, grouping and sort across a search -->
             {% if status == 'departed' %}<input type="hidden" name="status" value="departed">{% endif %}
@@ -34,9 +31,10 @@
             {% if sort != 'name' %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
             {% if group_sort != 'name' %}<input type="hidden" name="gsort" value="{{ group_sort }}">{% endif %}
 
+            {% comment %}No search box here: the app bar searches horses,
+            owners and locations from every page. What is left is filtering
+            the list you are looking at.{% endcomment %}
             <div class="flex items-center gap-2">
-                {% include 'includes/search_bar.html' with placeholder="Search horses…" action_url=request.path %}
-
                 <!-- Filter toggle -->
                 <button type="button" @click="filtersOpen = !filtersOpen"
                         class="btn-secondary relative"
@@ -59,7 +57,7 @@
             </div>
 
             <!-- Advanced filters (collapsible) -->
-            <div x-show="filtersOpen" x-collapse x-cloak class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-light-sage">
+            <div x-show="filtersOpen" x-collapse x-cloak class="card px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Location</label>
                     <select name="location" class="form-select"
@@ -134,7 +132,8 @@
             {% endfor %}
         </div>
         {% elif status == 'current' and not is_searching %}
-        <!-- Group by toggle. Clicking the selected option opens its Sort menu. -->
+        <!-- Group by toggle. Clicking the selected option opens its Sort
+             menu, which holds everything else that shapes the list. -->
         <div class="flex items-center gap-2 text-sm text-sage">
             <span class="text-xs uppercase tracking-wider font-semibold hidden sm:inline">Group by</span>
             <div class="relative flex gap-1 bg-white rounded-lg border border-light-sage p-1 shadow-sm"
@@ -145,35 +144,6 @@
                 {% if 'owner' in available_axes %}{% include 'horses/_group_toggle_button.html' with key='owner' label='Owner' %}{% endif %}
                 {% include 'horses/_sort_menu.html' %}
             </div>
-
-            {% if group_by != 'all' %}
-            <!-- Empty groups have no horses to build them from, so they are
-                 an explicit choice rather than a by-product of the list. -->
-            <a href="{% querystring show_empty=show_empty|yesno:'0,1' page=None %}"
-               class="inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-lg border shadow-sm transition-colors duration-150 {% if show_empty %}bg-light-sage border-forest/30 text-charcoal{% else %}bg-white border-light-sage text-sage hover:text-charcoal{% endif %}"
-               title="{% if show_empty %}Hide{% else %}Show{% endif %} {{ group_by }}s with no horses">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    {% if show_empty %}
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    {% else %}
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243"/>
-                    {% endif %}
-                </svg>
-                <span class="hidden sm:inline">Empty</span>
-            </a>
-            {% endif %}
-
-            {% if shows_usage %}
-            <!-- Land-use window. Only on the axes whose groups are land. -->
-            <div class="flex gap-0.5 bg-white rounded-lg border border-light-sage p-1 shadow-sm">
-                {% for key, label in usage_ranges %}
-                <a href="{% querystring range=key page=None %}"
-                   class="px-2 py-1 min-h-[44px] sm:min-h-0 inline-flex items-center text-xs font-medium rounded transition-colors duration-150 {% if usage_range == key %}bg-forest text-white{% else %}text-sage hover:text-charcoal hover:bg-light-sage/60{% endif %}"
-                   title="Land use over the {{ label }}">{{ label }}</a>
-                {% endfor %}
-            </div>
-            {% endif %}
         </div>
         {% else %}
         <!-- Flat list (search results / departed): sort only, no grouping. -->
@@ -424,6 +394,20 @@
     <!-- ── Active Tab: Grouped View ── -->
     {% if grouped_horses %}
         {% for group in grouped_horses %}
+        {% if group_by == 'location' %}
+        {% comment %}Locations belong to a site, so the site leads and its
+        locations sit under it. The groups are ordered site-major, which is
+        what makes one heading per site correct.{% endcomment %}
+        {% ifchanged group.site %}
+        <div class="flex items-center gap-3 pt-2 first:pt-0">
+            <svg class="w-4 h-4 text-sage shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21m-3.75 3H21"/>
+            </svg>
+            <h2 class="text-sm font-semibold text-charcoal font-heading">{{ group.site|default:"No site" }}</h2>
+            <div class="flex-1 border-b border-light-sage"></div>
+        </div>
+        {% endifchanged %}
+        {% endif %}
         <div class="card overflow-hidden" x-data="{ collapsed: false }">
             <div class="section-header cursor-pointer select-none hover:bg-sand-100 transition-colors" @click="collapsed = !collapsed">
                 <div class="flex items-center gap-2.5 min-w-0">
@@ -442,7 +426,6 @@
                         {% else %}
                         <h2 class="section-title truncate">{{ group.name }}</h2>
                         {% endif %}
-                        {% if group.site %}<span class="text-xs text-sage truncate">· {{ group.site }}</span>{% endif %}
                         {% if group.usage and group.usage != 'horses' %}
                         {% include 'horses/_usage_badge.html' with usage=group.usage label=group.usage_display %}
                         {% endif %}

@@ -10,17 +10,6 @@
         <div>
             <h1 class="page-title">Locations</h1>
         </div>
-        {% if current_tab == 'history' %}
-        <a href="{% url 'placement_create' %}" class="btn-primary">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-            Add Placement
-        </a>
-        {% else %}
-        <a href="{% url 'location_create' %}" class="btn-primary">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-            Add Location
-        </a>
-        {% endif %}
     </div>
 
     <!-- Tabs -->
@@ -29,11 +18,6 @@
            class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors inline-flex items-center gap-1.5 {% if current_tab != 'history' %}bg-forest text-white{% else %}text-sage hover:text-charcoal{% endif %}">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
             Locations
-        </a>
-        <a href="{% url 'location_list' %}?tab=history"
-           class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors inline-flex items-center gap-1.5 {% if current_tab == 'history' %}bg-forest text-white{% else %}text-sage hover:text-charcoal{% endif %}">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
-            Movement History
         </a>
         <a href="{% url 'location_list' %}?tab=usage"
            class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors inline-flex items-center gap-1.5 {% if current_tab == 'usage' %}bg-forest text-white{% else %}text-sage hover:text-charcoal{% endif %}">
@@ -120,62 +104,18 @@
     </div>
     {% endfor %}
 
-    {% elif current_tab == 'history' %}
-    <!-- ═══ Movement History Tab ═══ -->
-
-    <!-- Filters -->
-    <div class="card px-5 py-3">
-        <div class="flex flex-wrap items-center gap-4">
-            <div class="inline-flex rounded-lg shadow-sm">
-                <a href="?tab=history&status=active{% if request.GET.location %}&location={{ request.GET.location|urlencode }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner|urlencode }}{% endif %}"
-                   class="px-4 py-2 text-sm font-medium rounded-l-lg border {% if current_status == 'active' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
-                    Active
-                </a>
-                <a href="?tab=history&status=ended{% if request.GET.location %}&location={{ request.GET.location|urlencode }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner|urlencode }}{% endif %}"
-                   class="px-4 py-2 text-sm font-medium border-t border-b {% if current_status == 'ended' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
-                    Ended
-                </a>
-                <a href="?tab=history&status=all{% if request.GET.location %}&location={{ request.GET.location|urlencode }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner|urlencode }}{% endif %}"
-                   class="px-4 py-2 text-sm font-medium rounded-r-lg border {% if current_status == 'all' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
-                    All
-                </a>
-            </div>
-
-            <select onchange="window.location.href='?tab=history&status={{ current_status }}&location='+this.value+'{% if request.GET.owner %}&owner={{ request.GET.owner|urlencode }}{% endif %}'"
-                    class="form-select w-auto">
-                <option value="">All Locations</option>
-                {% regroup all_locations by site as site_list %}
-                {% for site in site_list %}
-                <optgroup label="{{ site.grouper }}">
-                    {% for loc in site.list %}
-                    <option value="{{ loc.pk }}" {% if request.GET.location == loc.pk|stringformat:"d" %}selected{% endif %}>{{ loc.name }}</option>
-                    {% endfor %}
-                </optgroup>
-                {% endfor %}
-            </select>
-
-            <select onchange="window.location.href='?tab=history&status={{ current_status }}&owner='+this.value+'{% if request.GET.location %}&location={{ request.GET.location|urlencode }}{% endif %}'"
-                    class="form-select w-auto">
-                <option value="">All Owners</option>
-                {% for own in owners %}
-                <option value="{{ own.pk }}" {% if request.GET.owner == own.pk|stringformat:"d" %}selected{% endif %}>{{ own.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-    </div>
-
-    {% include 'placements/_movement_table.html' %}
-
     {% else %}
     <!-- ═══ Locations Tab (default) ═══ -->
 
-    <!-- Search + Sort -->
+    <!-- Sort -->
     <div class="card px-4 py-3 sm:px-5 sm:py-4">
         <form method="get" class="flex flex-wrap items-center gap-2 sm:gap-3">
             <!-- Preserve the non-default sort across live searches -->
             {% if location_sort == 'default' %}<input type="hidden" name="sort" value="default">{% endif %}
 
-            {% include 'includes/search_bar.html' with placeholder="Search by location or site…" action_url=request.path %}
+            {% comment %}No search box here either: the app bar finds a
+            location from any page.{% endcomment %}
+            <div class="flex-1"></div>
 
             <!-- Sort toggle: fullest locations first (default) or plain site/name order -->
             <div class="flex items-center gap-2 text-sm text-sage shrink-0" data-testid="location-sort">
@@ -284,7 +224,8 @@
                     </div>
                     <div class="border-t border-light-sage px-5 py-3 flex justify-between items-center">
                         <div class="flex items-center gap-4">
-                            <a href="{% url 'location_detail' location.pk %}" class="link text-sm tap-pad">View horses &rarr;</a>
+                            {# Browsing who is where is the horse list's job now. #}
+                            <a href="{% url 'horse_list' %}?group_by=location&amp;location={{ location.pk }}" class="link text-sm tap-pad">View horses &rarr;</a>
                             <a href="{% url 'feed_out_create' location_pk=location.pk %}" class="text-sm text-sage hover:text-forest transition-colors duration-100 tap-pad">Feed Out</a>
                         </div>
                         <a href="{% url 'location_update' location.pk %}" hx-get="{% url 'location_update' location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit {{ location.name }}" class="text-sm text-sage hover:text-charcoal-light transition-colors duration-100 tap-pad">Edit</a>

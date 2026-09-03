@@ -1,3 +1,10 @@
+{% comment %}
+Results for the app bar's search.
+
+Each group shows the best few matches, then a link through to that area's
+own list filtered by the same words — so one box covers both "take me to
+this horse" and "show me everything matching".
+{% endcomment %}
 {% if has_results %}
 {% if horses %}
 <p class="quick-find-group-label">Horses</p>
@@ -7,6 +14,9 @@
     <span class="text-xs text-sage shrink-0">{% if h.is_active %}Horse{% else %}Departed{% endif %}</span>
 </a>
 {% endfor %}
+<a href="{% url 'horse_list' %}?search={{ query|urlencode }}" class="quick-find-more">
+    See all horses matching &ldquo;{{ query }}&rdquo;
+</a>
 {% endif %}
 {% if owners %}
 <p class="quick-find-group-label">Owners</p>
@@ -16,6 +26,9 @@
     <span class="text-xs text-sage shrink-0">Owner</span>
 </a>
 {% endfor %}
+<a href="{% url 'owner_list' %}?search={{ query|urlencode }}" class="quick-find-more">
+    See all owners matching &ldquo;{{ query }}&rdquo;
+</a>
 {% endif %}
 {% if locations %}
 <p class="quick-find-group-label">Locations</p>
@@ -25,6 +38,9 @@
     <span class="text-xs text-sage shrink-0">{{ l.site }}</span>
 </a>
 {% endfor %}
+<a href="{% url 'location_list' %}?search={{ query|urlencode }}" class="quick-find-more">
+    See all locations matching &ldquo;{{ query }}&rdquo;
+</a>
 {% endif %}
 <div class="h-2"></div>
 {% else %}

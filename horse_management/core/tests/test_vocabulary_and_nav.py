@@ -63,6 +63,43 @@ class LocationVocabularyLintTests(SimpleTestCase):
         )
 
 
+class TemplateCommentLintTests(SimpleTestCase):
+    """`{# … #}` only comments out the rest of ONE line.
+
+    Wrap it over two and Django renders the text to the page. It has
+    happened three times in this work and once before it, so catch it in
+    the source rather than one rendered page at a time.
+    """
+
+    def _unclosed_comments(self):
+        for path in sorted(TEMPLATES_DIR.rglob('*.html')):
+            for number, line in enumerate(path.read_text().split('\n'), 1):
+                if '{#' not in line:
+                    continue
+                if '#}' in line.split('{#', 1)[1]:
+                    continue
+                yield (
+                    f"{path.relative_to(TEMPLATES_DIR)}:{number}: "
+                    f"{line.strip()[:70]}"
+                )
+
+    def test_no_template_comment_runs_past_its_line(self):
+        offenders = list(self._unclosed_comments())
+        self.assertEqual(
+            offenders, [],
+            'A {# #} comment must open and close on one line, or Django '
+            'renders it as body text. Use {% comment %} for several '
+            'lines:\n  ' + '\n  '.join(offenders),
+        )
+
+    def test_the_rule_reads_a_real_comment_correctly(self):
+        self.assertIn('{# ok #}', '{# ok #}')
+        one_line = '<div>{# fine #}</div>'
+        wrapped = '{# not fine'
+        self.assertNotIn('#}', wrapped.split('{#', 1)[1])
+        self.assertIn('#}', one_line.split('{#', 1)[1])
+
+
 class OwnersInFinanceTests(TestCase):
     """Owners belongs to Finance: its page is contacts and billing."""
 
