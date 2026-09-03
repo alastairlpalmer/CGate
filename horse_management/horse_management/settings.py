@@ -131,6 +131,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'core.permissions.feature_access_context',
+                'core.analytics.template_context',
             ],
             'loaders': [
                 ('django.template.loaders.cached.Loader', [
@@ -274,6 +275,38 @@ XERO_CLIENT_ID = env('XERO_CLIENT_ID', default='')
 XERO_CLIENT_SECRET = env('XERO_CLIENT_SECRET', default='')
 XERO_REDIRECT_URI = env('XERO_REDIRECT_URI', default='')
 XERO_SCOPES = 'openid profile email accounting.invoices accounting.contacts offline_access'
+
+# Product analytics (PostHog)
+# --------------------------
+# Off entirely until POSTHOG_API_KEY is set, so local runs and the test suite
+# send nothing. The key is a *public* project key (phc_...) and is embedded in
+# the page on purpose — it can only write events, never read them.
+POSTHOG_API_KEY = env('POSTHOG_API_KEY', default='')
+
+# EU cloud by default. A UK livery business keeps personal data inside the EEA
+# with far less paperwork than the US region. Switch to https://us.i.posthog.com
+# (assets https://us-assets.i.posthog.com, UI https://us.posthog.com) if the
+# project was created in the US region.
+POSTHOG_HOST = env('POSTHOG_HOST', default='https://eu.i.posthog.com')
+POSTHOG_ASSET_HOST = env('POSTHOG_ASSET_HOST', default='https://eu-assets.i.posthog.com')
+POSTHOG_UI_HOST = env('POSTHOG_UI_HOST', default='https://eu.posthog.com')
+
+# Session replay. Inputs and page text are always masked (see
+# templates/includes/posthog.html); this switch turns recording off outright.
+POSTHOG_SESSION_RECORDING = env.bool('POSTHOG_SESSION_RECORDING', default=True)
+
+# Usernames in person profiles. Off by default because people can sign in with
+# an email address, which is personal data.
+POSTHOG_SEND_USERNAMES = env.bool('POSTHOG_SEND_USERNAMES', default=False)
+
+# Send server-side events on the request thread. Needed on serverless hosts,
+# where the function freezes before a background flush thread can run.
+POSTHOG_SYNC_MODE = env.bool(
+    'POSTHOG_SYNC_MODE', default=bool(os.environ.get('VERCEL'))
+)
+
+# Verbose posthog-js logging in the browser console.
+POSTHOG_DEBUG = env.bool('POSTHOG_DEBUG', default=False)
 
 # Celery Configuration
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379/0')

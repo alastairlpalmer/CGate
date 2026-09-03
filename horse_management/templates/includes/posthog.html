@@ -1,0 +1,112 @@
+{% comment %}
+PostHog product analytics — clicks, sign in, time on page and heatmaps.
+
+Rendered only for signed-in users (see core.analytics.template_context), so
+anonymous visitors and the sign-in page load no tracker and set no cookies.
+
+Two details matter here:
+
+1. The <body> carries hx-boost, so every link is an HTMX swap of #main-content
+   rather than a page load. posthog-js would record one pageview for a whole
+   session, so automatic pageviews are off and this file fires them on
+   htmx:afterSettle instead.
+2. The app shows owner names, addresses and invoice figures. Session replay
+   masks every input and every piece of text, autocapture masks element text
+   and attributes, and URL query strings are stripped because the search box
+   puts typed names into ?q=.
+{% endcomment %}
+{% if posthog.enabled %}
+{{ posthog|json_script:"posthog-config" }}
+<script>
+(function () {
+    var el = document.getElementById('posthog-config');
+    if (!el) return;
+    var cfg = JSON.parse(el.textContent);
+
+    // The search box puts typed text — often an owner or horse name — into
+    // ?q=. Drop every query string before it leaves the browser.
+    function cleanUrl(value) {
+        if (typeof value !== 'string') return value;
+        var cut = value.indexOf('?');
+        return cut === -1 ? value : value.slice(0, cut);
+    }
+
+    var URL_KEYS = ['$current_url', '$referrer', '$pathname',
+                    '$initial_current_url', '$initial_referrer',
+                    '$session_entry_url'];
+
+    function sanitize(properties) {
+        URL_KEYS.forEach(function (key) {
+            if (properties[key]) properties[key] = cleanUrl(properties[key]);
+        });
+        return properties;
+    }
+
+    // One $pageview per navigation. Guarded on the URL because htmx:afterSettle
+    // also fires for swaps that are not navigation (bulk action forms, partial
+    // refreshes), which would otherwise inflate the pageview count.
+    var lastUrl = null;
+    function capturePageview() {
+        if (!window.posthog || !window.posthog.__loaded) return;
+        var url = cleanUrl(window.location.href);
+        if (url === lastUrl) return;
+        lastUrl = url;
+        window.posthog.capture('$pageview');
+    }
+
+    document.addEventListener('htmx:afterSettle', capturePageview);
+    document.addEventListener('htmx:historyRestore', capturePageview);
+    window.addEventListener('popstate', capturePageview);
+
+    var script = document.createElement('script');
+    script.src = cfg.asset_host + '/static/array.js';
+    script.async = true;
+    script.onload = function () {
+        window.posthog.init(cfg.api_key, {
+            api_host: cfg.api_host,
+            ui_host: cfg.ui_host,
+            debug: cfg.debug,
+
+            // Clicks, taps and form submits, with no code per element.
+            autocapture: true,
+            // Click coordinates for the heatmap view in the PostHog toolbar.
+            enable_heatmaps: true,
+
+            // Mask autocaptured text and attributes: a link labelled with an
+            // owner's name is recorded by position and CSS selector only.
+            mask_all_text: true,
+            mask_all_element_attributes: true,
+
+            // Sent by capturePageview above, on HTMX settle.
+            capture_pageview: false,
+            // Pairs with each $pageview and carries the time spent on it.
+            capture_pageleave: true,
+
+            person_profiles: 'identified_only',
+            persistence: 'localStorage+cookie',
+
+            disable_session_recording: !cfg.session_recording,
+            session_recording: {
+                maskAllInputs: true,
+                maskTextSelector: '*',
+                blockClass: 'ph-no-capture'
+            },
+
+            sanitize_properties: sanitize,
+
+            loaded: function (ph) {
+                ph.identify(cfg.distinct_id, cfg.person_properties);
+                capturePageview();
+            }
+        });
+    };
+    script.onerror = function () {
+        // A blocked or unreachable CDN must never affect the app.
+        if (cfg.debug && window.console) {
+            console.warn('PostHog did not load.');
+        }
+    };
+    document.head.appendChild(script);
+})();
+</script>
+{% endif %}

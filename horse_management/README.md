@@ -148,6 +148,71 @@ The Django admin provides full control over all data:
 REST API endpoints are available for mobile integration (if needed):
 - Configure in `api/` app (not fully implemented yet)
 
+## Product Analytics (PostHog)
+
+Off by default. Nothing is sent until `POSTHOG_API_KEY` is set, so local
+development and the test suite stay silent.
+
+### Turn it on
+
+1. Create a free project at [posthog.com](https://posthog.com). Pick the **EU**
+   region — it keeps personal data inside the EEA.
+2. Copy the public project key (`phc_...`) from **Settings > Project**.
+3. Set it in `.env`, or in the host's environment variables:
+
+   ```
+   POSTHOG_API_KEY=phc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   ```
+
+4. Restart the app.
+
+### What is tracked
+
+| Signal | How |
+|---|---|
+| Clicks and taps | `posthog-js` autocapture — no code per element |
+| Page views and time on page | Fired on HTMX settle; `$pageleave` gives the duration |
+| Sign in / sign out / failed sign in | Django auth signals, server-side |
+| Heatmaps | Autocapture click coordinates; view them in the PostHog toolbar |
+| Session replay | On by default; set `POSTHOG_SESSION_RECORDING=False` to stop it |
+
+### Privacy
+
+This app holds owner names, addresses and invoice figures, so the tracker is
+masked by default:
+
+- The snippet loads **only for signed-in users**. The sign-in page and every
+  anonymous request load no tracker and set no analytics cookie.
+- Session replay masks every input and every piece of page text.
+- Autocapture masks element text and element attributes. A link labelled with
+  an owner's name is recorded by position and CSS selector only.
+- URL query strings are stripped, because the search box puts typed names
+  into `?q=`.
+- Person profiles carry a user id and a role. Usernames are sent only when
+  `POSTHOG_SEND_USERNAMES=True`, because people can sign in with an email
+  address.
+
+To keep one region of a page out of session replay, add the class
+`ph-no-capture` to its container.
+
+### Why page views are fired by hand
+
+`<body>` carries `hx-boost="true"`, so every link is an HTMX swap of
+`#main-content`, not a browser page load. Automatic page-view capture would
+record one view for a whole session. `templates/includes/posthog.html` sets
+`capture_pageview: false` and fires `$pageview` on `htmx:afterSettle` instead,
+guarded on the URL so partial swaps (bulk action forms, refreshes) do not
+inflate the count.
+
+### Files
+
+| File | Role |
+|---|---|
+| `core/analytics.py` | Client, context processor, capture helper |
+| `core/signals.py` | Sign in / sign out / failed sign in receivers |
+| `templates/includes/posthog.html` | Browser snippet and HTMX page-view fix |
+| `core/tests/test_analytics.py` | Tests for both halves |
+
 ## License
 
 Private use only.

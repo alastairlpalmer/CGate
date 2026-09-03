@@ -32,3 +32,6 @@ DATABASES = {
         'NAME': ':memory:',
     }
 }
+
+# Analytics must never fire from a test run, whatever is in the environment.
+POSTHOG_API_KEY = ''
