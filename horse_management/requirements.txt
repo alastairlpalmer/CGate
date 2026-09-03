@@ -38,3 +38,7 @@ crispy-tailwind~=1.0.3
 
 # Xero API integration
 requests~=2.33.0
+
+# Product analytics (server-side sign in / sign out events).
+# The browser half loads posthog-js from the PostHog CDN.
+posthog~=7.45

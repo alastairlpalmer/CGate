@@ -16,3 +16,7 @@ class CoreConfig(AppConfig):
             register_heif_opener()
         except ImportError:
             pass
+
+        # Connect the analytics receivers (sign in / sign out). They do
+        # nothing unless POSTHOG_API_KEY is set.
+        from core import signals  # noqa: F401
