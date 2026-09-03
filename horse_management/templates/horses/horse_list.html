@@ -144,6 +144,17 @@
                 <span class="hidden sm:inline">Empty</span>
             </a>
             {% endif %}
+
+            {% if shows_usage %}
+            <!-- Land-use window. Only on the axes whose groups are land. -->
+            <div class="flex gap-0.5 bg-white rounded-lg border border-light-sage p-1 shadow-sm">
+                {% for key, label in usage_ranges %}
+                <a href="{% querystring range=key page=None %}"
+                   class="px-2 py-1 min-h-[44px] sm:min-h-0 inline-flex items-center text-xs font-medium rounded transition-colors duration-150 {% if usage_range == key %}bg-forest text-white{% else %}text-sage hover:text-charcoal hover:bg-light-sage/60{% endif %}"
+                   title="Land use over the {{ label }}">{{ label }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
         </div>
         {% else %}
         <!-- Flat list (search results / departed): sort only, no grouping. -->
@@ -441,6 +452,9 @@
                 {% endif %}
             </div>
             <div x-show="!collapsed" x-collapse>
+                {% if shows_usage %}
+                {% include 'horses/_usage_strip.html' with segments=group.usage_strip days=group.usage_days label=usage_period_label group=group %}
+                {% endif %}
                 {% if not group.horses %}
                 <!-- An empty group is the point of "show empty", not a
                      missing row: say what the space is free for. -->

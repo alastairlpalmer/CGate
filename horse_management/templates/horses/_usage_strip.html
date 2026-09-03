@@ -1,0 +1,49 @@
+{% comment %}
+Land use for a location or site group header.
+
+The bar shows how the window's tracked days were spent, widest share
+first, so the dominant use reads without the legend. A location also gets
+a "Change use" trigger here rather than in the header row: this is where
+someone looking at land use already is.
+
+An unrecorded field shows no bar — an empty bar would imply it was
+tracked and idle.
+
+Params: segments, days, label (window), group.
+{% endcomment %}
+{% if segments or group.pk %}
+<div class="px-5 pb-3 pt-0.5">
+    {% if segments|length > 1 %}
+    {% comment %}One use for the whole window needs no bar: a full-width
+    block of a single colour reads as a rule, not as data. The legend
+    says it instead.{% endcomment %}
+    <div class="flex h-1.5 rounded-full overflow-hidden bg-light-sage"
+         role="img" aria-label="Land use over the {{ label }}: {% for s in segments %}{{ s.label }} {{ s.days }} days{% if not forloop.last %}, {% endif %}{% endfor %}">
+        {% for s in segments %}
+        <div style="width:{{ s.pct }}%;background:{{ s.color }}" title="{{ s.label }} · {{ s.days }} day{{ s.days|pluralize }}"></div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-sage">
+        {% for s in segments %}
+        <span class="inline-flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full shrink-0" style="background:{{ s.color }}"></span>
+            {{ s.label }}
+            <span class="tabular-nums text-charcoal-light">{{ s.days }}d</span>
+        </span>
+        {% empty %}
+        <span>No land use recorded for the {{ label }}.</span>
+        {% endfor %}
+        {% if segments %}<span class="text-sage/70">· {{ label }}</span>{% endif %}
+
+        {% if group.pk and feature_access.locations.full %}
+        <a href="{% url 'location_set_usage' group.pk %}"
+           hx-get="{% url 'location_set_usage' group.pk %}"
+           hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Change use — {{ group.name }}"
+           @click.stop
+           class="link ml-auto tap-pad">Change use</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}

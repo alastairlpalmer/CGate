@@ -57,6 +57,11 @@ from ..permissions import (
     feature_required,
 )
 from ..models import Horse, Location, Owner, OwnershipShare, Placement
+from .locations import (
+    USAGE_COLORS,
+    resolve_usage_window,
+    usage_days_for_locations,
+)
 from ..search import fuzzy_horse_ids
 from ._popup import is_popup_request, popup_saved_response
 
@@ -147,6 +152,10 @@ GROUP_SORT_OPTIONS = ('name', '-name', '-count', 'count')
 # Group headers that carry a capacity ring and a usage badge.
 AXES_WITH_CAPACITY = ('location',)
 
+# Axes whose groups are land, so a land-use strip says something.
+# It would say nothing under Owner or All.
+AXES_WITH_USAGE = ('location', 'site')
+
 
 def _age_sort_expression():
     """Age in whole years, for database-side ordering.
@@ -232,6 +241,30 @@ def _sort_horses(horses, sort):
     return sorted(horses, key=key, reverse=reverse)
 
 
+def _usage_strip(totals):
+    """Land-use day counts as bar segments, widest share first.
+
+    Only the usages with days in the window: a strip of five zero-width
+    slivers reads as noise on a browse row.
+    """
+    tracked = sum(totals.values())
+    if not tracked:
+        return []
+    labels = dict(Location.Usage.choices)
+    segments = [
+        {
+            'value': value,
+            'label': labels[value],
+            'color': USAGE_COLORS.get(value, '#6A8990'),
+            'days': days,
+            'pct': round(days / tracked * 100, 1),
+        }
+        for value, days in totals.items() if days
+    ]
+    segments.sort(key=lambda s: -s['days'])
+    return segments
+
+
 def _location_group(location, horses):
     """A group card for one location, carrying its capacity and land use.
 
@@ -243,6 +276,7 @@ def _location_group(location, horses):
         'kind': 'location',
         'name': location.name,
         'pk': location.pk,
+        'location_ids': [location.pk],
         'site': location.site,
         'count': count,
         'horses': horses,
@@ -310,6 +344,18 @@ class HorseListView(FeatureAccessMixin, ListView):
         # An axis the role cannot see falls back to All rather than
         # erroring — a stale bookmark should still show the horses.
         return value if value in self.available_axes else 'all'
+
+    @property
+    def shows_usage(self):
+        """Land-use only reads on the axes whose groups are land."""
+        return self.group_by in AXES_WITH_USAGE
+
+    @property
+    def usage_window(self):
+        # Last 3 months by default here, not the calendar year the
+        # analytics tab opens on: on a page you are in all day the useful
+        # question is "has this field had a rest recently".
+        return resolve_usage_window(self.request, default='3mo')
 
     @property
     def show_empty(self):
@@ -491,6 +537,15 @@ class HorseListView(FeatureAccessMixin, ListView):
             self.group_by, False
         )
         context['axis_has_capacity'] = self.group_by in AXES_WITH_CAPACITY
+        context['shows_usage'] = self.shows_usage
+        if self.shows_usage:
+            window = self.usage_window
+            context['usage_range'] = window['range']
+            context['usage_year'] = window['year']
+            context['usage_period_label'] = window['label']
+            context['usage_ranges'] = (
+                ('3mo', '3 mo'), ('6mo', '6 mo'), ('year', str(window['year'])),
+            )
         context['sort'] = self.sort
         context['group_sort'] = self.group_sort
         context['active_sort_label'] = HORSE_SORT_LABELS[self.sort]
@@ -579,9 +634,10 @@ class HorseListView(FeatureAccessMixin, ListView):
                     'horses': horses,
                 }]
             else:
-                context['grouped_horses'] = self._build_groups(
-                    horses, group_by,
-                )
+                groups = self._build_groups(horses, group_by)
+                if self.shows_usage:
+                    self._attach_usage(groups)
+                context['grouped_horses'] = groups
         elif self.is_searching:
             # Search results are one flat, unpaginated list.
             context['horses'] = _sort_horses(horses, self.sort)
@@ -601,6 +657,26 @@ class HorseListView(FeatureAccessMixin, ListView):
         if group_by == 'site':
             return self._site_groups(horses)
         return self._location_groups(horses)
+
+    def _attach_usage(self, groups):
+        """Hang a land-use strip on each land group, in one query.
+
+        Every location on the page is fetched together — see
+        ``usage_days_for_locations``. Doing it per group is the regression
+        that AxisQueryCountTests exists to catch.
+        """
+        window = self.usage_window
+        wanted = {pk for group in groups for pk in group['location_ids']}
+        usage = usage_days_for_locations(
+            wanted, window['start'], window['end'],
+        )
+        for group in groups:
+            totals = {}
+            for pk in group['location_ids']:
+                for value, days in usage[pk][0].items():
+                    totals[value] = totals.get(value, 0) + days
+            group['usage_strip'] = _usage_strip(totals)
+            group['usage_days'] = sum(totals.values())
 
     def _location_groups(self, horses):
         by_location = {}
@@ -637,7 +713,8 @@ class HorseListView(FeatureAccessMixin, ListView):
         if unplaced:
             groups.append({
                 'kind': 'location', 'name': 'No Location', 'pk': None,
-                'site': '', 'count': len(unplaced), 'horses': unplaced,
+                'location_ids': [], 'site': '',
+                'count': len(unplaced), 'horses': unplaced,
                 'capacity': None, 'availability': None,
                 'usage': '', 'usage_display': '',
             })
@@ -651,17 +728,22 @@ class HorseListView(FeatureAccessMixin, ListView):
             site = location.site if location else ''
             by_site.setdefault(site, []).append(horse)
 
+        # One pass over the active locations gives both the sites that
+        # exist and the locations each one owns — a site's land use is the
+        # sum of its fields'.
+        locations_by_site = {}
+        for pk, site in Location.objects.active().values_list('pk', 'site'):
+            locations_by_site.setdefault(site, []).append(pk)
+
         names = set(by_site)
         if self.show_empty:
-            names |= set(
-                Location.objects.active()
-                .values_list('site', flat=True).distinct()
-            )
+            names |= set(locations_by_site)
         names.discard('')
 
         groups = [
             {
                 'kind': 'site', 'name': site, 'pk': None, 'site': '',
+                'location_ids': locations_by_site.get(site, []),
                 'count': len(by_site.get(site, [])),
                 'horses': by_site.get(site, []),
             }
@@ -670,6 +752,7 @@ class HorseListView(FeatureAccessMixin, ListView):
         if by_site.get(''):
             groups.append({
                 'kind': 'site', 'name': 'No Site', 'pk': None, 'site': '',
+                'location_ids': [],
                 'count': len(by_site['']), 'horses': by_site[''],
             })
         return _sort_groups(groups, self.group_sort)
