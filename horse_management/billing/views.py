@@ -10,7 +10,7 @@ from operator import attrgetter
 from django.contrib import messages
 
 from core.permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
-from core.views._popup import PopupFormMixin
+from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_response
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum
 from django.http import JsonResponse
@@ -139,7 +139,7 @@ def _warn_if_owner_unrelated(request, form):
         )
 
 
-class ExtraChargeUpdateView(FeatureAccessMixin, UpdateView):
+class ExtraChargeUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'charges'
     model = ExtraCharge
     form_class = ExtraChargeForm
@@ -638,6 +638,7 @@ def feed_out_create(request, location_pk):
     from core.models import Location
 
     location = get_object_or_404(Location, pk=location_pk)
+    in_popup = is_popup_request(request)
     horses_at_location = Horse.objects.filter(
         placements__location=location,
         placements__end_date__isnull=True,
@@ -738,11 +739,15 @@ def feed_out_create(request, location_pk):
                     + ", ".join(skipped_ownerless)
                     + ". The full cost was spread across the owned horses.",
                 )
+            if in_popup:
+                return popup_saved_response()
             return redirect('location_detail', pk=location.pk)
     else:
         form = FeedOutForm(initial={'date': timezone.localdate()})
 
-    return render(request, 'billing/feed_out_form.html', {
+    template = 'billing/partials/feed_out_form.html' if in_popup else 'billing/feed_out_form.html'
+    return render(request, template, {
+        'in_popup': in_popup,
         'form': form,
         'location': location,
         'horses_with_owners': horses_with_owners,

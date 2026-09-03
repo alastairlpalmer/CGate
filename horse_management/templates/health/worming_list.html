@@ -65,7 +65,7 @@
                         <td class="text-sage" data-label="Active Ingredient">{{ t.active_ingredient|default:"-" }}</td>
                         <td class="text-sage" data-label="Administered By">{{ t.administered_by|default:"-" }}</td>
                         <td>
-                            <a href="{% url 'worming_update' t.pk %}" class="btn-ghost btn-xs">Edit</a>
+                            <a href="{% url 'worming_update' t.pk %}" hx-get="{% url 'worming_update' t.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit worming" class="btn-ghost btn-xs">Edit</a>
                         </td>
                     </tr>
                     {% empty %}

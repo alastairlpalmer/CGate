@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from core.permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 
 from ..forms import DocumentForm
+from ._popup import is_popup_request, popup_saved_response
 from ..models import Document, Horse, Owner
 
 
@@ -34,6 +35,8 @@ def document_create(request):
         messages.error(request, "Choose a horse or an owner to attach the document to.")
         return redirect('horse_list')
 
+    in_popup = is_popup_request(request)
+
     if request.method == 'POST':
         # Seed the instance so the model's horse-or-owner clean() passes.
         document = Document(horse=horse, owner=owner, uploaded_by=request.user)
@@ -44,14 +47,19 @@ def document_create(request):
                 request,
                 f"{document.get_doc_type_display()} “{document.title}” uploaded."
             )
+            if in_popup:
+                return popup_saved_response()
             return _back_to(horse, owner)
     else:
         form = DocumentForm()
 
-    return render(request, 'documents/document_form.html', {
+    template = 'includes/popup_form.html' if in_popup else 'documents/document_form.html'
+    return render(request, template, {
         'form': form,
         'horse': horse,
         'owner': owner,
+        'in_popup': in_popup,
+        'popup_submit_label': 'Upload',
     })
 
 

@@ -75,7 +75,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="{% url 'egg_count_update' ec.pk %}" class="btn-ghost btn-xs">Edit</a>
+                            <a href="{% url 'egg_count_update' ec.pk %}" hx-get="{% url 'egg_count_update' ec.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit egg count" class="btn-ghost btn-xs">Edit</a>
                         </td>
                     </tr>
                     {% empty %}

@@ -226,7 +226,7 @@
                         <div class="flex items-center gap-4">
                             {# Browsing who is where is the horse list's job now. #}
                             <a href="{% url 'horse_list' %}?group_by=location&amp;location={{ location.pk }}" class="link text-sm tap-pad">View horses &rarr;</a>
-                            <a href="{% url 'feed_out_create' location_pk=location.pk %}" class="text-sm text-sage hover:text-forest transition-colors duration-100 tap-pad">Feed Out</a>
+                            <a href="{% url 'feed_out_create' location_pk=location.pk %}" hx-get="{% url 'feed_out_create' location_pk=location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Feed out at {{ location.name }}" class="text-sm text-sage hover:text-forest transition-colors duration-100 tap-pad">Feed Out</a>
                         </div>
                         <a href="{% url 'location_update' location.pk %}" hx-get="{% url 'location_update' location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit {{ location.name }}" class="text-sm text-sage hover:text-charcoal-light transition-colors duration-100 tap-pad">Edit</a>
                     </div>
@@ -256,7 +256,7 @@
         <h3 class="mt-4 text-sm font-semibold text-charcoal">No locations found</h3>
         <p class="mt-1 text-sm text-sage">Get started by adding your first location.</p>
         <div class="mt-6">
-            <a href="{% url 'location_create' %}" class="btn-primary">
+            <a href="{% url 'location_create' %}" hx-get="{% url 'location_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add location" class="btn-primary">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                 Add your first location
             </a>

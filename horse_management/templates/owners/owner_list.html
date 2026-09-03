@@ -124,7 +124,7 @@
         <h3 class="mt-4 text-sm font-semibold text-charcoal">No owners yet</h3>
         <p class="mt-1 text-sm text-sage">Get started by adding your first owner.</p>
         <div class="mt-6">
-            <a href="{% url 'owner_create' %}" class="btn-primary">
+            <a href="{% url 'owner_create' %}" hx-get="{% url 'owner_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add owner" class="btn-primary">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                 </svg>

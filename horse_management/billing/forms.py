@@ -71,7 +71,9 @@ class FeedOutForm(forms.ModelForm):
             'unit': forms.Select(attrs={'class': 'form-select'}),
             'quantity': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Description (e.g. 2 round bales)'}),
             'total_cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'placeholder': 'Auto-calculated if left blank'}),
-            'is_recharged': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+            # x-model keeps the template's recharge panel in step with the box
+            # itself, not only with a click on its label.
+            'is_recharged': forms.CheckboxInput(attrs={'class': 'form-checkbox', 'x-model': 'isRecharged'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 

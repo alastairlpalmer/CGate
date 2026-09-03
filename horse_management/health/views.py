@@ -789,7 +789,7 @@ class VaccinationCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, Feature
         return response
 
 
-class VaccinationUpdateView(FeatureAccessMixin, UpdateView):
+class VaccinationUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'health'
     model = Vaccination
     form_class = VaccinationForm
@@ -919,7 +919,7 @@ class FarrierCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAcce
         return response
 
 
-class FarrierUpdateView(FeatureAccessMixin, UpdateView):
+class FarrierUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'health'
     model = FarrierVisit
     form_class = FarrierVisitForm
@@ -988,7 +988,7 @@ class WormingCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAcce
         return response
 
 
-class WormingUpdateView(FeatureAccessMixin, UpdateView):
+class WormingUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'health'
     model = WormingTreatment
     form_class = WormingTreatmentForm
@@ -1051,7 +1051,7 @@ class WormEggCountCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, Featur
         return super().form_valid(form)
 
 
-class WormEggCountUpdateView(FeatureAccessMixin, UpdateView):
+class WormEggCountUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'health'
     model = WormEggCount
     form_class = WormEggCountForm
@@ -1108,7 +1108,7 @@ class MedicalConditionCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, Fe
         return super().form_valid(form)
 
 
-class MedicalConditionUpdateView(FeatureAccessMixin, UpdateView):
+class MedicalConditionUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'health'
     model = MedicalCondition
     form_class = MedicalConditionForm
@@ -1168,7 +1168,7 @@ class VetVisitCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAcc
         return response
 
 
-class VetVisitUpdateView(FeatureAccessMixin, UpdateView):
+class VetVisitUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'health'
     model = VetVisit
     form_class = VetVisitForm
@@ -1234,7 +1234,7 @@ class BreedingRecordCreateView(PopupFormMixin, FeatureAccessMixin, CreateView):
         return super().form_valid(form)
 
 
-class BreedingRecordUpdateView(FeatureAccessMixin, UpdateView):
+class BreedingRecordUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'breeding'
     model = BreedingRecord
     form_class = BreedingRecordForm
