@@ -11,6 +11,7 @@ from django.db.models import (
     DecimalField, Exists, ExpressionWrapper, F, OuterRef, Q, Sum, Value,
 )
 from django.db.models.functions import Coalesce
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -391,13 +392,19 @@ def _find(queryset, query, fields, columns, key=None):
     return found[:QUICK_FIND_PER_GROUP]
 
 
-@feature_required('dashboard')
+@login_required
 def quick_find(request):
     """HTMX partial: typo-tolerant search across horses, owners and locations.
 
     Runs on every keystroke from the app bar, so the database does the
     obvious matching first and difflib only picks up what it missed — see
     ``_find``.
+
+    Logging in is the only gate. It used to need the dashboard feature,
+    from when this was the dashboard's own search — which left a role with
+    the dashboard hidden looking at a search box in the app bar that
+    silently did nothing. Each group below is gated on its own area, so
+    nothing leaks either way.
     """
     query = request.GET.get('q', '').strip()
     if len(query) < QUICK_FIND_MIN_CHARS:
