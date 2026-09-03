@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from ..forms import ArrivalForm, LocationForm, LocationUsageForm
-from ._popup import PopupFormMixin
+from ._popup import PopupFormMixin, is_popup_request, popup_saved_response
 from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Horse, Location, LocationUsagePeriod, Owner, Placement
 
@@ -32,19 +32,12 @@ USAGE_COLORS = {
 }
 
 
-def usage_days_for_period(location, period_start, period_end):
-    """Compute usage day-counts and timeline segments for a location in a period.
+def _tally_usage(periods, period_start, period_end):
+    """Turn already-fetched usage periods into totals and timeline segments.
 
-    Returns (totals, segments) where ``totals`` maps each usage value to its
-    inclusive day count within the period, and ``segments`` is a date-ordered
-    list of dicts (usage, label, start, end, days) for the timeline view.
+    Split out from the query so one location and many locations share the
+    same arithmetic — see ``usage_days_for_locations``.
     """
-    periods = location.usage_periods.filter(
-        start_date__lte=period_end,
-    ).filter(
-        Q(end_date__isnull=True) | Q(end_date__gte=period_start)
-    ).order_by('start_date')
-
     totals = {choice.value: 0 for choice in Location.Usage}
     segments = []
     for p in periods:
@@ -62,6 +55,51 @@ def usage_days_for_period(location, period_start, period_end):
             'source': p.source,
         })
     return totals, segments
+
+
+def _overlapping_usage_periods(period_start, period_end):
+    """Every usage period that overlaps the window, oldest first."""
+    return LocationUsagePeriod.objects.filter(
+        start_date__lte=period_end,
+    ).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=period_start)
+    ).order_by('start_date')
+
+
+def usage_days_for_locations(location_ids, period_start, period_end):
+    """Usage day-counts for many locations in ONE query.
+
+    ``usage_days_for_period`` costs a query per location, which is fine on
+    a tab you open now and then and not fine on a page you land on all
+    day. Returns ``{location_id: (totals, segments)}``, with an entry for
+    every id asked for even when it has no recorded periods.
+    """
+    location_ids = list(location_ids)
+    by_location = {pk: [] for pk in location_ids}
+    if location_ids:
+        for period in _overlapping_usage_periods(
+            period_start, period_end
+        ).filter(location_id__in=location_ids):
+            by_location[period.location_id].append(period)
+    return {
+        pk: _tally_usage(periods, period_start, period_end)
+        for pk, periods in by_location.items()
+    }
+
+
+def usage_days_for_period(location, period_start, period_end):
+    """Compute usage day-counts and timeline segments for a location in a period.
+
+    Returns (totals, segments) where ``totals`` maps each usage value to its
+    inclusive day count within the period, and ``segments`` is a date-ordered
+    list of dicts (usage, label, start, end, days) for the timeline view.
+    """
+    periods = location.usage_periods.filter(
+        start_date__lte=period_end,
+    ).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=period_start)
+    ).order_by('start_date')
+    return _tally_usage(periods, period_start, period_end)
 
 
 def usage_days_for_year(location, year):
@@ -89,16 +127,20 @@ def _usage_year_choices(earliest_year):
     return list(range(this_year, earliest_year - 1, -1))
 
 
-def _resolve_usage_window(request):
+def resolve_usage_window(request, default='year'):
     """Resolve the selected Usage analytics window from query params.
 
     Returns a dict: range ('3mo'|'6mo'|'year'), year, start, end (dates),
     label, days (inclusive day count), is_year.
+
+    ``default`` picks the window when the URL says nothing. The Locations
+    analytics tab opens on the calendar year; the horse list opens on the
+    last 3 months, which is what answers "has this field had a rest".
     """
     today = timezone.localdate()
-    range_key = request.GET.get('range', 'year')
+    range_key = request.GET.get('range', default)
     if range_key not in ('3mo', '6mo', 'year'):
-        range_key = 'year'
+        range_key = default if default in ('3mo', '6mo', 'year') else 'year'
 
     if range_key in ('3mo', '6mo'):
         months = 3 if range_key == '3mo' else 6
@@ -204,18 +246,23 @@ class LocationListView(FeatureAccessMixin, ListView):
 
         # Usage analytics overview tab
         if context['current_tab'] == 'usage':
-            window = _resolve_usage_window(self.request)
+            window = resolve_usage_window(self.request)
 
             usage_meta = [
                 {'value': v, 'label': label, 'color': USAGE_COLORS.get(v, '#6A8990')}
                 for v, label in Location.Usage.choices
             ]
             label_for = {v: label for v, label in Location.Usage.choices}
+            # One query for every location on the page, not one each.
+            usage_by_location = usage_days_for_locations(
+                [loc.pk for loc in context['locations']],
+                window['start'], window['end'],
+            )
             overview = []
             for site, locs in groupby(context['locations'], key=lambda l: l.site):
                 rows = []
                 for loc in locs:
-                    totals, _ = usage_days_for_period(loc, window['start'], window['end'])
+                    totals, _ = usage_by_location[loc.pk]
                     total = sum(totals.values())
                     # Compact, mobile-friendly: only the non-zero usages, each
                     # with its share of the field's tracked days for the bar.
@@ -319,7 +366,7 @@ class LocationDetailView(FeatureAccessMixin, DetailView):
 
         # Usage analytics tab data
         if context['current_tab'] == 'usage':
-            window = _resolve_usage_window(self.request)
+            window = resolve_usage_window(self.request)
 
             totals, segments = usage_days_for_period(
                 self.object, window['start'], window['end']
@@ -558,43 +605,75 @@ def log_departure(request, pk):
 
 @feature_required('locations')
 def set_location_usage(request, pk):
-    """Record a manual change to a field's usage, optionally backdated."""
+    """Record a manual change to a field's usage, optionally backdated.
+
+    Also serves the shared pop-up sheet, so land use can be changed from
+    the horse list without leaving the page. In the sheet a GET renders
+    the form, an invalid post re-renders it with its errors, and a saved
+    change answers 204 + ``popup:saved``.
+    """
     location = get_object_or_404(Location, pk=pk)
+    in_popup = is_popup_request(request)
+    full_page = redirect(
+        f"{reverse('location_detail', kwargs={'pk': location.pk})}?tab=usage"
+    )
 
-    if request.method == 'POST':
-        from ..services import LocationUsageService
+    def popup_form(form):
+        return render(request, 'includes/popup_form.html', {
+            'form': form,
+            'in_popup': True,
+            'popup_submit_label': 'Save Changes',
+        })
 
-        form = LocationUsageForm(request.POST)
-        if form.is_valid():
-            try:
-                period = LocationUsageService.set_usage(
-                    location,
-                    usage=form.cleaned_data['usage'],
-                    change_date=form.cleaned_data['change_date'],
-                    source=LocationUsagePeriod.Source.MANUAL,
-                    notes=form.cleaned_data.get('notes', ''),
-                )
-            except ValidationError as e:
-                messages.error(request, '; '.join(e.messages))
-            else:
-                if period is None:
-                    messages.info(
-                        request,
-                        f"{location.name} is already set to "
-                        f"{location.get_usage_display()}."
-                    )
-                else:
-                    messages.success(
-                        request,
-                        f"{location.name} usage set to {period.get_usage_display()} "
-                        f"from {period.start_date:%-d %b %Y}."
-                    )
-        else:
-            for errors in form.errors.values():
-                for err in errors:
-                    messages.error(request, err)
+    if request.method != 'POST':
+        if in_popup:
+            return popup_form(LocationUsageForm(initial={
+                'usage': location.usage,
+                'change_date': timezone.localdate(),
+            }))
+        return full_page
 
-    return redirect(f"{reverse_lazy('location_detail', kwargs={'pk': location.pk})}?tab=usage")
+    from ..services import LocationUsageService
+
+    form = LocationUsageForm(request.POST)
+    if not form.is_valid():
+        if in_popup:
+            return popup_form(form)
+        for errors in form.errors.values():
+            for err in errors:
+                messages.error(request, err)
+        return full_page
+
+    try:
+        period = LocationUsageService.set_usage(
+            location,
+            usage=form.cleaned_data['usage'],
+            change_date=form.cleaned_data['change_date'],
+            source=LocationUsagePeriod.Source.MANUAL,
+            notes=form.cleaned_data.get('notes', ''),
+        )
+    except ValidationError as e:
+        if in_popup:
+            # Show it on the form the user is looking at, not as a toast
+            # behind a sheet that stayed open.
+            form.add_error(None, '; '.join(e.messages))
+            return popup_form(form)
+        messages.error(request, '; '.join(e.messages))
+        return full_page
+
+    if period is None:
+        messages.info(
+            request,
+            f"{location.name} is already set to "
+            f"{location.get_usage_display()}."
+        )
+    else:
+        messages.success(
+            request,
+            f"{location.name} usage set to {period.get_usage_display()} "
+            f"from {period.start_date:%-d %b %Y}."
+        )
+    return popup_saved_response() if in_popup else full_page
 
 
 # ──────────────────────────────────────────────────────────────────────────
