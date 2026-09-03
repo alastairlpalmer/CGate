@@ -111,7 +111,7 @@ class Location(models.Model):
     is_archived = models.BooleanField(
         default=False,
         db_index=True,
-        help_text="Archived fields keep their history but are hidden from "
+        help_text="Archived locations keep their history but are hidden from "
                   "lists and pickers.",
     )
     archived_at = models.DateTimeField(null=True, blank=True)
@@ -127,32 +127,33 @@ class Location(models.Model):
         return f"{self.site} — {self.name}"
 
     def archive_blockers(self):
-        """Reasons this field cannot be archived right now.
+        """Reasons this location cannot be archived right now.
 
-        A field with horses on it must be emptied first; archiving it would
-        hide a field that the yard is still using.
+        A location with horses on it must be emptied first; archiving it
+        would hide somewhere the yard is still using.
         """
         blockers = []
         horses = self.current_horse_count
         if horses:
             blockers.append(
                 f"{horses} horse{'s are' if horses != 1 else ' is'} still on "
-                f"this field. Move {'them' if horses != 1 else 'it'} first."
+                f"this location. Move {'them' if horses != 1 else 'it'} first."
             )
         return blockers
 
     def delete_blockers(self):
-        """Reasons this field cannot be deleted.
+        """Reasons this location cannot be deleted.
 
-        Deletion is only for fields with no records attached. Anything with
-        placement or feed history must be archived, or the history goes too.
+        Deletion is only for locations with no records attached. Anything
+        with placement or feed history must be archived, or the history
+        goes too.
         """
         blockers = []
         placements = self.placements.count()
         if placements:
             blockers.append(
                 f"{placements} placement record"
-                f"{'s point' if placements != 1 else ' points'} at this field."
+                f"{'s point' if placements != 1 else ' points'} at this location."
             )
         feed_outs = self.feed_outs.count()
         if feed_outs:

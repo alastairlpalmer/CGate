@@ -22,7 +22,7 @@
                 <legend class="text-base font-semibold text-charcoal">Location Details</legend>
                 {% include "includes/form_field.html" with field=form.name help='e.g., "Front Field", "The Banks"' %}
                 {% include "includes/form_field.html" with field=form.site %}
-                {% include "includes/form_field.html" with field=form.usage help="What is this field currently being used for?" %}
+                {% include "includes/form_field.html" with field=form.usage help="What is this location currently being used for?" %}
                 {% include "includes/form_field.html" with field=form.capacity help="Maximum number of horses (optional)" %}
                 {% include "includes/form_field.html" with field=form.description %}
             </fieldset>
@@ -41,24 +41,24 @@
     <!-- Archive / Delete -->
     <div class="card">
         <div class="section-header">
-            <h3 class="section-title">{% if object.is_archived %}Archived{% else %}Take This Field Out of Use{% endif %}</h3>
+            <h3 class="section-title">{% if object.is_archived %}Archived{% else %}Take This Location Out of Use{% endif %}</h3>
         </div>
         <div class="p-4 sm:p-5 space-y-4">
             {% if object.is_archived %}
                 <p class="text-sm text-sage">
-                    This field is archived. It keeps its history and stays in
+                    This location is archived. It keeps its history and stays in
                     reports, but it is hidden from lists and pickers.
                 </p>
                 <form method="post" action="{% url 'location_restore' object.pk %}">
                     {% csrf_token %}
                     <div class="flex justify-end">
-                        <button type="submit" class="btn-secondary">Restore Field</button>
+                        <button type="submit" class="btn-secondary">Restore Location</button>
                     </div>
                 </form>
             {% else %}
                 <p class="text-sm text-sage">
                     Archiving keeps every record — history, invoices and usage
-                    analytics — and hides the field from lists and pickers.
+                    analytics — and hides the location from lists and pickers.
                 </p>
                 {% if archive_blockers %}
                     <div class="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
@@ -69,7 +69,7 @@
                       hx-confirm="Archive {{ object.name }}? You can restore it later.">
                     {% csrf_token %}
                     <div class="flex justify-end">
-                        <button type="submit" class="btn-secondary">Archive Field</button>
+                        <button type="submit" class="btn-secondary">Archive Location</button>
                     </div>
                 </form>
                 {% endif %}
@@ -77,7 +77,7 @@
 
             <div class="pt-4 border-t border-light-sage space-y-3">
                 <p class="text-sm text-sage">
-                    Deleting removes the field for good. It is only possible
+                    Deleting removes the location for good. It is only possible
                     while no records point at it.
                 </p>
                 {% if delete_blockers %}
@@ -90,7 +90,7 @@
                       hx-confirm="Delete {{ object.name }}? This cannot be undone.">
                     {% csrf_token %}
                     <div class="flex justify-end">
-                        <button type="submit" class="btn-secondary text-error-red border-error-red/30 hover:bg-error-red-50">Delete Field</button>
+                        <button type="submit" class="btn-secondary text-error-red border-error-red/30 hover:bg-error-red-50">Delete Location</button>
                     </div>
                 </form>
                 {% endif %}
