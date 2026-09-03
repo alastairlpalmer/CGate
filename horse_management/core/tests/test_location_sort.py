@@ -1,8 +1,7 @@
 """Tests for the card order on the Locations tab of the location list.
 
-By default the page puts fields with no horses first (``?sort=empty``), so
-free space is visible at the top. ``?sort=default`` keeps the plain
-site/name order.
+By default the page puts the fields with the most horses first
+(``?sort=fullest``). ``?sort=default`` keeps the plain site/name order.
 """
 
 from datetime import timedelta
@@ -35,10 +34,10 @@ class LocationSortTests(TestCase):
         rate = RateType.objects.create(name='Full', daily_rate=10)
         today = timezone.now().date()
 
-        # Site "Alpha": every field has a horse.
+        # Site "Alpha": two fields with one horse each (2 horses in total).
         cls.alpha_a = Location.objects.create(name='A Field', site='Alpha', capacity=4)
         cls.alpha_b = Location.objects.create(name='B Field', site='Alpha', capacity=4)
-        # Site "Beta": one full field, one empty field, one field with two horses.
+        # Site "Beta": two horses, none, one (3 horses in total).
         cls.beta_a = Location.objects.create(name='A Field', site='Beta', capacity=4)
         cls.beta_b = Location.objects.create(name='B Field', site='Beta', capacity=4)
         cls.beta_c = Location.objects.create(name='C Field', site='Beta', capacity=4)
@@ -65,13 +64,13 @@ class LocationSortTests(TestCase):
             for site, locs, _count in response.context['grouped_locations']
         ]
 
-    def test_empty_first_is_the_default(self):
+    def test_fullest_first_is_the_default(self):
         response = self.client.get(reverse('location_list'))
-        self.assertEqual(response.context['location_sort'], 'empty')
+        self.assertEqual(response.context['location_sort'], 'fullest')
         self.assertEqual(self._order(response), [
-            # Beta has an empty field, so it moves above Alpha; inside Beta
-            # the empty field leads, then the field with one horse, then two.
-            ('Beta', [self.beta_b.pk, self.beta_c.pk, self.beta_a.pk]),
+            # Beta has 3 horses to Alpha's 2, so it comes first; inside Beta
+            # the field with two horses leads, then one, then the empty one.
+            ('Beta', [self.beta_a.pk, self.beta_c.pk, self.beta_b.pk]),
             ('Alpha', [self.alpha_a.pk, self.alpha_b.pk]),
         ])
 
@@ -83,9 +82,9 @@ class LocationSortTests(TestCase):
             ('Beta', [self.beta_a.pk, self.beta_b.pk, self.beta_c.pk]),
         ])
 
-    def test_unknown_sort_falls_back_to_empty_first(self):
+    def test_unknown_sort_falls_back_to_fullest_first(self):
         response = self.client.get(reverse('location_list'), {'sort': 'bogus'})
-        self.assertEqual(response.context['location_sort'], 'empty')
+        self.assertEqual(response.context['location_sort'], 'fullest')
 
     def test_site_horse_counts_survive_sorting(self):
         response = self.client.get(reverse('location_list'))
@@ -94,7 +93,7 @@ class LocationSortTests(TestCase):
 
     def test_toggle_is_rendered_and_marks_the_active_option(self):
         response = self.client.get(reverse('location_list'))
-        self.assertContains(response, 'Empty first')
+        self.assertContains(response, 'Most horses first')
         self.assertContains(response, '?sort=default')
         # The default sort is not written into the search form.
         self.assertNotContains(response, 'name="sort"')
