@@ -18,6 +18,7 @@ from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from ..forms import ArrivalForm, LocationForm, LocationUsageForm
+from ._popup import PopupFormMixin
 from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Horse, Location, LocationUsagePeriod, Owner, Placement
 
@@ -402,7 +403,7 @@ class LocationCreateView(FeatureAccessMixin, CreateView):
     success_url = reverse_lazy('location_list')
 
 
-class LocationUpdateView(FeatureAccessMixin, UpdateView):
+class LocationUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'locations'
     model = Location
     form_class = LocationForm
@@ -453,6 +454,8 @@ class LocationUpdateView(FeatureAccessMixin, UpdateView):
                     "Location saved, but the usage wasn't changed: "
                     + '; '.join(e.messages),
                 )
+                return response
+        messages.success(self.request, f"Location '{self.object.name}' saved.")
         return response
 
 

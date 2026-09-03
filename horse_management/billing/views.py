@@ -10,6 +10,7 @@ from operator import attrgetter
 from django.contrib import messages
 
 from core.permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
+from core.views._popup import PopupFormMixin
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum
 from django.http import JsonResponse
@@ -79,7 +80,7 @@ class ExtraChargeListView(FeatureAccessMixin, ListView):
         return context
 
 
-class ExtraChargeCreateView(FeatureAccessMixin, CreateView):
+class ExtraChargeCreateView(PopupFormMixin, FeatureAccessMixin, CreateView):
     feature = 'charges'
     model = ExtraCharge
     form_class = ExtraChargeForm

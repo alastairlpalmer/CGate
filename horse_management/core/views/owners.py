@@ -2,11 +2,13 @@
 Owner views — CRUD and detail.
 """
 
+from django.contrib import messages
 from django.db.models import Count, Prefetch, Q
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from ..forms import OwnerForm
+from ._popup import PopupFormMixin
 from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Horse, Owner, OwnershipShare, Placement
 
@@ -96,7 +98,7 @@ class OwnerCreateView(FeatureAccessMixin, CreateView):
     success_url = reverse_lazy('owner_list')
 
 
-class OwnerUpdateView(FeatureAccessMixin, UpdateView):
+class OwnerUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'owners'
     model = Owner
     form_class = OwnerForm
@@ -104,3 +106,8 @@ class OwnerUpdateView(FeatureAccessMixin, UpdateView):
 
     def get_success_url(self):
         return reverse_lazy('owner_detail', kwargs={'pk': self.object.pk})
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, f"Owner '{self.object.name}' updated.")
+        return response

@@ -395,7 +395,7 @@
                             <a href="{% url 'location_detail' location.pk %}" class="link text-sm tap-pad">View horses &rarr;</a>
                             <a href="{% url 'feed_out_create' location_pk=location.pk %}" class="text-sm text-sage hover:text-forest transition-colors duration-100 tap-pad">Feed Out</a>
                         </div>
-                        <a href="{% url 'location_update' location.pk %}" class="text-sm text-sage hover:text-charcoal-light transition-colors duration-100 tap-pad">Edit</a>
+                        <a href="{% url 'location_update' location.pk %}" hx-get="{% url 'location_update' location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit {{ location.name }}" class="text-sm text-sage hover:text-charcoal-light transition-colors duration-100 tap-pad">Edit</a>
                     </div>
                 </div>
                 {% endfor %}

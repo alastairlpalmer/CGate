@@ -30,6 +30,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from billing.models import ExtraCharge
 from core.models import Horse, Placement
+from core.views._popup import PopupFormMixin
 
 from .forms import (
     BreedingRecordForm,
@@ -763,7 +764,7 @@ class HealthRecordSuccessUrlMixin:
         return context
 
 
-class VaccinationCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+class VaccinationCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
     feature = 'health'
     model = Vaccination
     form_class = VaccinationForm
@@ -893,7 +894,7 @@ class FarrierListView(FeatureAccessMixin, ListView):
         return context
 
 
-class FarrierCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+class FarrierCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
     feature = 'health'
     model = FarrierVisit
     form_class = FarrierVisitForm
@@ -962,7 +963,7 @@ class WormingListView(FeatureAccessMixin, ListView):
         return context
 
 
-class WormingCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+class WormingCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
     feature = 'health'
     model = WormingTreatment
     form_class = WormingTreatmentForm
@@ -1030,7 +1031,7 @@ class WormEggCountListView(FeatureAccessMixin, ListView):
         return context
 
 
-class WormEggCountCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+class WormEggCountCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
     feature = 'health'
     model = WormEggCount
     form_class = WormEggCountForm
@@ -1088,7 +1089,7 @@ class MedicalConditionListView(FeatureAccessMixin, ListView):
         return context
 
 
-class MedicalConditionCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+class MedicalConditionCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
     feature = 'health'
     model = MedicalCondition
     form_class = MedicalConditionForm
@@ -1142,7 +1143,7 @@ class VetVisitListView(FeatureAccessMixin, ListView):
         return context
 
 
-class VetVisitCreateView(HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+class VetVisitCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
     feature = 'health'
     model = VetVisit
     form_class = VetVisitForm
@@ -1214,7 +1215,7 @@ class BreedingRecordListView(FeatureAccessMixin, ListView):
         return context
 
 
-class BreedingRecordCreateView(FeatureAccessMixin, CreateView):
+class BreedingRecordCreateView(PopupFormMixin, FeatureAccessMixin, CreateView):
     feature = 'breeding'
     model = BreedingRecord
     form_class = BreedingRecordForm

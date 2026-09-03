@@ -224,7 +224,7 @@
             <div class="card">
                 <div class="section-header">
                     <h3 class="section-title">Details</h3>
-                    <a href="{% url 'condition_create' %}?horse={{ horse.pk }}" class="btn-ghost btn-xs">+ Condition</a>
+                    <a href="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-get="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Condition for {{ horse.name }}" class="btn-ghost btn-xs">+ Condition</a>
                 </div>
                 <div class="p-5">
                     <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
@@ -395,10 +395,10 @@
                     <!-- Hidden on phones: they cram at 390px and the Quick Actions grid below covers them -->
                     {% if feature_access.health.full %}
                     <div class="hidden sm:flex items-center gap-2">
-                        <a href="{% url 'vaccination_create' %}?horse={{ horse.pk }}" class="btn-ghost btn-xs">+ Vaccination</a>
-                        <a href="{% url 'farrier_create' %}?horse={{ horse.pk }}" class="btn-ghost btn-xs">+ Farrier</a>
-                        <a href="{% url 'worming_create' %}?horse={{ horse.pk }}" class="btn-ghost btn-xs">+ Worming</a>
-                        <a href="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" class="btn-ghost btn-xs">+ Vet Visit</a>
+                        <a href="{% url 'vaccination_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vaccination_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Vaccination for {{ horse.name }}" class="btn-ghost btn-xs">+ Vaccination</a>
+                        <a href="{% url 'farrier_create' %}?horse={{ horse.pk }}" hx-get="{% url 'farrier_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Farrier visit for {{ horse.name }}" class="btn-ghost btn-xs">+ Farrier</a>
+                        <a href="{% url 'worming_create' %}?horse={{ horse.pk }}" hx-get="{% url 'worming_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Worming for {{ horse.name }}" class="btn-ghost btn-xs">+ Worming</a>
+                        <a href="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Vet visit for {{ horse.name }}" class="btn-ghost btn-xs">+ Vet Visit</a>
                     </div>
                     {% endif %}
                 </div>
@@ -661,7 +661,7 @@
                         {% endif %}
                         {% endif %}
                         {% if feature_access.health.full %}
-                        <a href="{% url 'vaccination_create' %}?horse={{ horse.pk }}"
+                        <a href="{% url 'vaccination_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vaccination_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Vaccination for {{ horse.name }}"
                            class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-sage/40 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-sage-50 flex items-center justify-center group-hover/qa:bg-sage-100 transition-colors">
                                 <svg class="w-4 h-4 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -670,7 +670,7 @@
                             </div>
                             <span class="text-xs font-medium text-charcoal-light">Vaccination</span>
                         </a>
-                        <a href="{% url 'farrier_create' %}?horse={{ horse.pk }}"
+                        <a href="{% url 'farrier_create' %}?horse={{ horse.pk }}" hx-get="{% url 'farrier_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Farrier visit for {{ horse.name }}"
                            class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-saddle/40 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-saddle-50 flex items-center justify-center group-hover/qa:bg-saddle-100 transition-colors">
                                 <svg class="w-4 h-4 text-saddle" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -679,7 +679,7 @@
                             </div>
                             <span class="text-xs font-medium text-charcoal-light">Farrier</span>
                         </a>
-                        <a href="{% url 'worming_create' %}?horse={{ horse.pk }}"
+                        <a href="{% url 'worming_create' %}?horse={{ horse.pk }}" hx-get="{% url 'worming_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Worming for {{ horse.name }}"
                            class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-sand/60 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-sand-50 flex items-center justify-center group-hover/qa:bg-sand-100 transition-colors">
                                 <svg class="w-4 h-4 text-saddle" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -688,7 +688,7 @@
                             </div>
                             <span class="text-xs font-medium text-charcoal-light">Worming</span>
                         </a>
-                        <a href="{% url 'egg_count_create' %}?horse={{ horse.pk }}"
+                        <a href="{% url 'egg_count_create' %}?horse={{ horse.pk }}" hx-get="{% url 'egg_count_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Egg count for {{ horse.name }}"
                            class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-sand/60 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-sand-50 flex items-center justify-center group-hover/qa:bg-sand-100 transition-colors">
                                 <svg class="w-4 h-4 text-saddle" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -697,7 +697,7 @@
                             </div>
                             <span class="text-xs font-medium text-charcoal-light">Egg Count</span>
                         </a>
-                        <a href="{% url 'condition_create' %}?horse={{ horse.pk }}"
+                        <a href="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-get="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Condition for {{ horse.name }}"
                            class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-error-red/30 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-error-red-50 flex items-center justify-center group-hover/qa:bg-error-red-100 transition-colors">
                                 <svg class="w-4 h-4 text-error-red" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -706,7 +706,7 @@
                             </div>
                             <span class="text-xs font-medium text-charcoal-light">Condition</span>
                         </a>
-                        <a href="{% url 'vet_visit_create' %}?horse={{ horse.pk }}"
+                        <a href="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Vet visit for {{ horse.name }}"
                            class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-error-red/30 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-error-red-50 flex items-center justify-center group-hover/qa:bg-error-red-100 transition-colors">
                                 <svg class="w-4 h-4 text-error-red" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -716,7 +716,7 @@
                             <span class="text-xs font-medium text-charcoal-light">Vet Visit</span>
                         </a>
                         {% if horse.is_mare %}
-                        <a href="{% url 'breeding_create' %}?horse={{ horse.pk }}"
+                        <a href="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-get="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Breeding record for {{ horse.name }}"
                            class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-forest/30 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-sage-50 flex items-center justify-center group-hover/qa:bg-sage-100 transition-colors">
                                 <svg class="w-4 h-4 text-forest" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -742,7 +742,7 @@
                         </a>
                         {% endif %}
                         {% if feature_access.charges.full %}
-                        <a href="{% url 'charge_create' %}?horse={{ horse.pk }}"
+                        <a href="{% url 'charge_create' %}?horse={{ horse.pk }}" hx-get="{% url 'charge_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Charge for {{ horse.name }}"
                            class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-info-blue/30 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-info-blue-50 flex items-center justify-center group-hover/qa:bg-info-blue-100 transition-colors">
                                 <svg class="w-4 h-4 text-info-blue" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
