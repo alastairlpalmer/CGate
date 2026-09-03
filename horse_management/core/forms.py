@@ -47,17 +47,84 @@ class OwnerForm(forms.ModelForm):
         }
 
 
+class SitePickerWidget(forms.Select):
+    """Drop-down of the sites already in use, plus an "Add a new site…" row.
+
+    Picking the new-site row reveals a text box (``<name>_new``) whose value
+    becomes the field's value. A plain ``site=<text>`` submission still
+    works, so nothing that posts the old text field breaks.
+    """
+
+    template_name = 'core/widgets/site_picker.html'
+    NEW = '__new__'
+    NEW_LABEL = 'Add a new site…'
+
+    def __init__(self, attrs=None):
+        super().__init__(attrs)
+        self._new_value = ''
+        self._picked_new = False
+
+    def value_from_datadict(self, data, files, name):
+        value = data.get(name)
+        if value == self.NEW:
+            self._picked_new = True
+            self._new_value = (data.get(f'{name}_new') or '').strip()
+            return self._new_value
+        return value
+
+    def get_context(self, name, value, attrs):
+        selected = value or ''
+        known = {str(v) for v, _ in self.choices}
+        if selected and selected not in known:
+            # Keep a freshly typed name on the form after a validation error
+            # instead of dropping it back to the placeholder row.
+            self._new_value = selected
+            selected = self.NEW
+        elif not selected and self._picked_new:
+            # "Add a new site…" chosen but left blank: keep the box open so
+            # the required-field error lands next to it.
+            selected = self.NEW
+        context = super().get_context(name, selected, attrs)
+        context['widget']['selected'] = selected
+        context['widget']['new_value'] = self._new_value
+        context['widget']['new_option'] = self.NEW
+        return context
+
+
+def get_site_choices(include=None):
+    """Every distinct site name, archived fields included, A–Z.
+
+    ``include`` adds a name that must appear even if no field carries it
+    yet (the instance being edited, for example).
+    """
+    names = set(Location.objects.values_list('site', flat=True).distinct())
+    if include:
+        names.add(include)
+    names.discard('')
+    choices = [('', '---------')]
+    choices += [(n, n) for n in sorted(names, key=str.lower)]
+    choices.append((SitePickerWidget.NEW, SitePickerWidget.NEW_LABEL))
+    return choices
+
+
 class LocationForm(forms.ModelForm):
     class Meta:
         model = Location
         fields = ['name', 'site', 'usage', 'description', 'capacity']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
-            'site': forms.TextInput(attrs={'class': 'form-input'}),
+            'site': SitePickerWidget(attrs={'class': 'form-select'}),
             'usage': forms.Select(attrs={'class': 'form-select'}),
             'description': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
             'capacity': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        site = self.fields['site']
+        current = self.instance.site if self.instance and self.instance.pk else None
+        site.widget.choices = get_site_choices(include=current)
+        site.help_text = 'Pick a site, or choose "Add a new site…" to type one in.'
 
 
 class LocationUsageForm(forms.Form):

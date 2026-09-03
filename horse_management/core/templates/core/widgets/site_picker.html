@@ -1,0 +1,17 @@
+{% comment %}
+Site picker: a <select> of every site already in use, plus an
+"Add a new site…" option that reveals a text box for the name.
+Rendered by core.forms.SitePickerWidget. Alpine drives the show/hide;
+without JavaScript the text box simply stays visible.
+{% endcomment %}
+<div x-data="{ site: '{{ widget.selected|escapejs }}' }" class="space-y-2">
+    <select name="{{ widget.name }}" x-model="site"{% include "django/forms/widgets/attrs.html" %}>
+        {% for group_name, group_choices, group_index in widget.optgroups %}
+            {% for option in group_choices %}{% include option.template_name with widget=option %}{% endfor %}
+        {% endfor %}
+    </select>
+    <input type="text" name="{{ widget.name }}_new" value="{{ widget.new_value }}"
+           class="form-input" placeholder="New site name" maxlength="100"
+           aria-label="New site name" autocomplete="off"
+           x-show="site === '{{ widget.new_option }}'" x-cloak>
+</div>
