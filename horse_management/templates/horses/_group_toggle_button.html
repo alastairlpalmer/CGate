@@ -20,7 +20,7 @@ Params: key ('all' | 'location' | 'owner'), label.
     </svg>
 </button>
 {% else %}
-<a href="{% querystring group_by=key page=None %}"
+<a href="{% querystring group_by=key page=None show_empty=None %}"
    class="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] sm:min-h-0 text-sm font-medium rounded-md transition-all duration-150 text-sage hover:text-charcoal hover:bg-light-sage/60">
     {% include 'horses/_group_icon.html' %}
     {{ label }}

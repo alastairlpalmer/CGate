@@ -1,0 +1,19 @@
+{% comment %}
+Occupancy ring for a location group header — the same n/capacity dial the
+Locations page uses, so the two pages never disagree at a glance.
+
+Params: count, capacity, availability.
+{% endcomment %}
+<div class="shrink-0 relative flex items-center justify-center" style="width:40px;height:40px"
+     title="{{ count }} of {{ capacity }} spaces used">
+    <svg viewBox="0 0 36 36" class="w-10 h-10 -rotate-90" aria-hidden="true">
+        <circle cx="18" cy="18" r="15.5" fill="none" stroke="#E4EAEB" stroke-width="3"/>
+        <circle cx="18" cy="18" r="15.5" fill="none"
+            stroke="{% if availability <= 0 %}#C0392B{% elif availability <= 2 %}#3D5A63{% else %}#6A8990{% endif %}"
+            stroke-width="3" stroke-linecap="round"
+            stroke-dasharray="{% widthratio count capacity 97 %} 97.4"/>
+    </svg>
+    <span class="absolute inset-0 flex items-center justify-center text-[11px] font-bold tabular-nums {% if availability <= 0 %}text-error-red{% else %}text-charcoal{% endif %}">
+        {{ count }}/{{ capacity }}
+    </span>
+</div>
