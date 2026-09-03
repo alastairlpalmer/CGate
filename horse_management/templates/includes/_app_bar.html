@@ -10,10 +10,13 @@ lookup across horses, owners and locations, each group gated on the role's
 access to it (core.views.dashboard.quick_find).
 {% endcomment %}
 {% if user.is_authenticated %}
+{% comment %}The search covers three areas; a role that can see none of
+them gets no box.{% endcomment %}
 <div class="sticky top-11 lg:top-0 z-40 bg-parchment/90 backdrop-blur border-b border-light-sage">
     <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-2 sm:gap-3">
 
         <!-- Search -->
+        {% if feature_access.horses.view or feature_access.owners.view or feature_access.locations.view %}
         <div class="relative flex-1 min-w-0 max-w-2xl"
              x-data="{ open: false, q: '' }"
              @click.outside="open = false"
@@ -48,6 +51,9 @@ access to it (core.views.dashboard.quick_find).
                  @keydown.arrow-down.prevent="(function(){ var as = Array.from($refs.results.querySelectorAll('a')); var i = as.indexOf(document.activeElement); if (as[i+1]) as[i+1].focus(); })()"
                  @keydown.arrow-up.prevent="(function(){ var as = Array.from($refs.results.querySelectorAll('a')); var i = as.indexOf(document.activeElement); if (i > 0) { as[i-1].focus(); } else { $refs.input.focus(); } })()"></div>
         </div>
+        {% else %}
+        <div class="flex-1"></div>
+        {% endif %}
 
         <!-- Add -->
         {% if feature_access.horses.full or feature_access.locations.full or feature_access.owners.full %}
