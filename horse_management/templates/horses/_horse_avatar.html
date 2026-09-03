@@ -9,6 +9,11 @@ static/js/lightbox.js), so the horse can be seen large from any list without
 leaving the page. The viewer shows the full-resolution original and, from the
 small sizes, a link to the horse page — the hero (lg) is already on it.
 
+The small sizes share the "horses" gallery group, so a swipe (or an arrow
+key or button) in the viewer goes to the next horse on the page that has a
+photo. The hero is one photo on its own — the Photos card below it holds
+that horse's gallery.
+
 The small sizes are `relative z-10`, which lifts the photo above the
 stretched .list-card-link::after overlay. Without that, a tap on the photo
 opens the horse page instead of the viewer.
@@ -38,7 +43,8 @@ Args:
          data-lightbox-src="{{ horse.photo.url }}"
          data-lightbox-title="{{ horse.name }}"
          data-lightbox-caption="{% if horse.calculated_age %}{{ horse.calculated_age }}yo · {% endif %}{{ horse.get_color_display }} · {{ horse.get_sex_display }}"
-         data-lightbox-href="{% url 'horse_detail' horse.pk %}">
+         data-lightbox-href="{% url 'horse_detail' horse.pk %}"
+         data-lightbox-group="horses">
     {% endif %}
 {% else %}
     {% if size == 'lg' %}
