@@ -133,13 +133,22 @@ def template_context(request) -> dict:
     user = getattr(request, 'user', None)
     if not is_enabled() or user is None or not user.is_authenticated:
         return {'posthog': {'enabled': False}}
+    # With the proxy on, the browser talks only to this origin. posthog-js
+    # accepts a relative api_host, and the loader builds its script URL from
+    # asset_host, so both become the proxy path. ui_host stays absolute: the
+    # toolbar needs the real dashboard.
+    if settings.POSTHOG_PROXY:
+        api_host = asset_host = settings.POSTHOG_PROXY_PATH
+    else:
+        api_host = settings.POSTHOG_HOST
+        asset_host = settings.POSTHOG_ASSET_HOST
     return {
         'posthog': {
             'enabled': True,
             'api_key': settings.POSTHOG_API_KEY,
-            'api_host': settings.POSTHOG_HOST,
+            'api_host': api_host,
             'ui_host': settings.POSTHOG_UI_HOST,
-            'asset_host': settings.POSTHOG_ASSET_HOST,
+            'asset_host': asset_host,
             'session_recording': settings.POSTHOG_SESSION_RECORDING,
             'debug': settings.POSTHOG_DEBUG,
             'distinct_id': distinct_id_for(user),

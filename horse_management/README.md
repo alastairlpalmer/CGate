@@ -215,6 +215,24 @@ masked by default:
 To keep one region of a page out of session replay, add the class
 `ph-no-capture` to its container.
 
+### Ad blockers and the proxy
+
+uBlock, Brave Shields and similar block `*.posthog.com` by default, so anyone
+running one is invisible to analytics. To get round that the browser never
+talks to PostHog directly. It sends everything to `/ingest/...` on this app,
+and `core.views.posthog_proxy` forwards it:
+
+| Path | Forwarded to |
+|---|---|
+| `/ingest/static/...` | `POSTHOG_ASSET_HOST` (the `array.js` bundle) |
+| `/ingest/...` anything else | `POSTHOG_HOST` (events, replay, flags) |
+
+The proxy never forwards cookies, accepts only GET, HEAD, POST and OPTIONS,
+refuses `..` in paths, and returns 404 when analytics is off. Upstream
+failures come back as 502 and never surface as an app error. Set
+`POSTHOG_PROXY=False` to switch it off and have browsers hit posthog.com
+directly.
+
 ### Why page views are fired by hand
 
 `<body>` carries `hx-boost="true"`, so every link is an HTMX swap of
