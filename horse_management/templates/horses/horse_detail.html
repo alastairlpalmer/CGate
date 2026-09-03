@@ -633,7 +633,9 @@
                         {% if feature_access.horses.full %}
                         {# Primary action — full-width, brand-filled so it leads the set #}
                         {% if current_placement %}
-                        <a href="{% url 'horse_move' horse.pk %}" title="Move to a different location"
+                        <a href="{% url 'horse_move' horse.pk %}?next={{ request.path|urlencode }}" title="Move to a different location"
+                           hx-get="{% url 'horse_move' horse.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                           data-popup-title="Move {{ horse.name }}"
                            class="group/qa col-span-2 flex items-center justify-center gap-2.5 p-3 rounded-card bg-forest text-white shadow-sm hover:bg-forest-light hover:shadow-md hover:-translate-y-0.5 transition-all duration-150">
                             <span class="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center group-hover/qa:bg-white/25 transition-colors">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

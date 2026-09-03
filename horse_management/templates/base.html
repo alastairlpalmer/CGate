@@ -29,6 +29,8 @@
     <!-- Tailwind CSS (compiled) -->
     <link rel="stylesheet" href="{% static_v 'css/styles.css' %}">
     <!-- Alpine.js + Collapse plugin (vendored locally — no CDN round trip) -->
+    {# popup.js registers an Alpine store on alpine:init, so it must run before Alpine starts #}
+    <script defer src="{% static_v 'js/popup.js' %}"></script>
     <script defer src="{% static_v 'js/alpine-collapse.min.js' %}"></script>
     <script defer src="{% static_v 'js/alpine.min.js' %}"></script>
     <!-- HTMX -->
@@ -419,10 +421,50 @@
     </div>
     {% endif %}
 
+{# Shared pop-up sheet for in-page Edit/Photo/Move forms (see static/js/popup.js) #}
+{% if user.is_authenticated %}
+{% include 'includes/_popup_sheet.html' %}
+{% endif %}
+
 <script>
 (function () {
     var bar = document.getElementById('htmx-progress');
     var barTimer = null;
+
+    // ── Chrome for a freshly swapped #main-content ──
+    // Shared by boosted navigations (below) and the pop-up sheet's
+    // in-place refresh (static/js/popup.js): page title, toasts, Alpine
+    // and inline scripts — everything the swapped DOM needs beyond itself.
+    window.Yardway = window.Yardway || {};
+    window.Yardway.afterMainSwap = function (main, responseText) {
+        if (responseText) {
+            var m = responseText.match(/<title>(.*?)<\/title>/);
+            if (m) document.title = m[1];
+            // Surface Django messages: the toast container sits outside
+            // #main-content, so hx-select drops it from the swap — lift any
+            // fresh toasts out of the full response instead.
+            try {
+                var doc = new DOMParser().parseFromString(responseText, 'text/html');
+                var fresh = doc.getElementById('toast-container');
+                var live = document.getElementById('toast-container');
+                if (fresh && live && fresh.children.length) {
+                    live.innerHTML = fresh.innerHTML;
+                    if (window.Alpine) Alpine.initTree(live);
+                }
+            } catch (err) { /* toast extraction is best-effort */ }
+        }
+        // Re-initialize Alpine on swapped content
+        try {
+            if (window.Alpine) Alpine.initTree(main);
+        } catch(err) { /* Alpine init errors are non-fatal */ }
+        // Re-run inline scripts (skip json_script type=application/json and
+        // external [src] scripts — cloning those via textContent empties them)
+        main.querySelectorAll('script:not([type]):not([src])').forEach(function(old) {
+            var s = document.createElement('script');
+            s.textContent = old.textContent;
+            old.parentNode.replaceChild(s, old);
+        });
+    };
 
     // ── Progress bar ──
     document.body.addEventListener('htmx:beforeRequest', function (e) {
@@ -505,35 +547,9 @@
             if (!href || href === '#') return;
             a.className = (a === sheetActive) ? 'sheet-nav-item-active' : 'sheet-nav-item';
         });
-        // Update page title from response
+        // Page title, toasts, Alpine, inline scripts
         var responseText = e.detail.xhr && e.detail.xhr.responseText;
-        if (responseText) {
-            var m = responseText.match(/<title>(.*?)<\/title>/);
-            if (m) document.title = m[1];
-            // Surface Django messages: the toast container sits outside
-            // #main-content, so hx-select drops it from the swap — lift any
-            // fresh toasts out of the full response instead.
-            try {
-                var doc = new DOMParser().parseFromString(responseText, 'text/html');
-                var fresh = doc.getElementById('toast-container');
-                var live = document.getElementById('toast-container');
-                if (fresh && live && fresh.children.length) {
-                    live.innerHTML = fresh.innerHTML;
-                    if (window.Alpine) Alpine.initTree(live);
-                }
-            } catch (err) { /* toast extraction is best-effort */ }
-        }
-        // Re-initialize Alpine on swapped content
-        try {
-            if (window.Alpine) Alpine.initTree(main);
-        } catch(err) { /* Alpine init errors are non-fatal */ }
-        // Re-run inline scripts (skip json_script type=application/json and
-        // external [src] scripts — cloning those via textContent empties them)
-        main.querySelectorAll('script:not([type]):not([src])').forEach(function(old) {
-            var s = document.createElement('script');
-            s.textContent = old.textContent;
-            old.parentNode.replaceChild(s, old);
-        });
+        window.Yardway.afterMainSwap(main, responseText);
     });
 
     // ── Stale-target guard for overlapping boosted navigations ──

@@ -27,6 +27,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.html import format_html
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from health.models import (
@@ -689,13 +690,43 @@ def _flash_superseded_trim(request, horse, placement):
         )
 
 
+def _is_popup_request(request):
+    """True when the shared pop-up sheet (base.html) asked for this view."""
+    htmx = getattr(request, 'htmx', None)
+    return bool(htmx) and htmx.target == 'popup-body'
+
+
+def _safe_next_url(request):
+    """A same-origin ``next`` from the query string or POST body, else ''."""
+    candidate = request.POST.get('next') or request.GET.get('next') or ''
+    if candidate and url_has_allowed_host_and_scheme(
+        candidate,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return candidate
+    return ''
+
+
 @feature_required('horses')
 def horse_move(request, pk):
-    """Move a horse to a new location."""
+    """Move a horse to a new location.
+
+    One form partial serves two shells: the full page, and — when the
+    shared pop-up sheet asks for it (HX-Target: popup-body) — the form on
+    its own. A successful pop-up save answers 204 + ``HX-Trigger:
+    popup:saved`` so the sheet closes and refreshes the page it was opened
+    from (the success toast rides along on that refresh); the full page
+    redirects to a same-origin ``next`` or the horse list. Service errors
+    (move date before the current stay, a clashing update) render inline
+    on the form in both shells.
+    """
     from ..services import PlacementService
 
     horse = get_object_or_404(Horse, pk=pk)
     current_placement = horse.current_placement
+    in_popup = _is_popup_request(request)
+    next_url = _safe_next_url(request)
 
     if request.method == 'POST':
         form = MoveHorseForm(request.POST)
@@ -711,30 +742,33 @@ def horse_move(request, pk):
                     notes=form.cleaned_data['notes'],
                 )
             except ValidationError as e:
-                messages.error(request, '; '.join(e.messages))
+                form.add_error(None, e)
             except IntegrityError:
-                messages.error(
-                    request,
+                form.add_error(
+                    None,
                     "That change clashed with another update to the same "
                     "horse (it may already be placed) — refresh and check "
                     "the current placement before retrying.",
                 )
-                return render(request, 'horses/horse_move.html', {
-                    'horse': horse, 'form': form, 'current_placement': current_placement
-                })
-
-            messages.success(request, f"{horse.name} moved successfully.")
-            _flash_superseded_trim(request, horse, new_placement)
-            return redirect('horse_list')
+            else:
+                messages.success(request, f"{horse.name} moved successfully.")
+                _flash_superseded_trim(request, horse, new_placement)
+                if in_popup:
+                    return HttpResponse(status=204, headers={'HX-Trigger': 'popup:saved'})
+                return redirect(next_url or 'horse_list')
     else:
         form = MoveHorseForm(initial={
             'move_date': timezone.localdate()
         })
 
-    return render(request, 'horses/horse_move.html', {
+    template = 'horses/partials/move_form.html' if in_popup else 'horses/horse_move.html'
+    return render(request, template, {
         'horse': horse,
         'form': form,
-        'current_placement': current_placement
+        'current_placement': current_placement,
+        'in_popup': in_popup,
+        'next_url': next_url,
+        'today': timezone.localdate(),
     })
 
 
