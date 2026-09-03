@@ -176,6 +176,26 @@ development and the test suite stay silent.
 | Heatmaps | Autocapture click coordinates; view them in the PostHog toolbar |
 | Session replay | On by default; set `POSTHOG_SESSION_RECORDING=False` to stop it |
 
+### Is it working?
+
+```bash
+python manage.py check_analytics                     # config report
+python manage.py check_analytics --send-test-event   # prove it can send
+python manage.py check_analytics --reach             # probe the hosts
+```
+
+Run it inside the deployed container (Railway shell, or `vercel dev`). A
+dashboard shows you that a variable exists; this shows you the app read it,
+the browser snippet is registered, the sign-in signal is connected, and
+PostHog accepts the key. Exit code is 0 when healthy, 1 when not. An unset
+`POSTHOG_API_KEY` reports OFF and exits 0 — that is a valid state.
+
+`--send-test-event` posts straight to the capture endpoint rather than through
+the SDK, because the SDK queues events and returns before the network call —
+it reports success even when the host is unreachable. The direct post gives a
+real verdict: HTTP 200 means accepted, 401 means the key is wrong or belongs
+to a project in the other region.
+
 ### Privacy
 
 This app holds owner names, addresses and invoice figures, so the tracker is
