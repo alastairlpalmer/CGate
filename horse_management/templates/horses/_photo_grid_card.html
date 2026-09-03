@@ -17,7 +17,13 @@ photos is a (sliced) queryset of HorsePhoto; photo_count the unsliced total.
         <div class="grid grid-cols-3 gap-2">
             {% for photo in photos %}
             <div class="relative group/photo">
+                {# Opens the full-screen viewer (static/js/lightbox.js); the href
+                   stays as the fallback when the viewer is not ready yet. #}
                 <a href="{{ photo.image.url }}" target="_blank" rel="noopener" hx-boost="false"
+                   class="block cursor-zoom-in"
+                   data-lightbox-src="{{ photo.image.url }}"
+                   data-lightbox-title="{{ horse.name }}"
+                   data-lightbox-caption="{{ photo.get_category_display }}{% if photo.caption %} — {{ photo.caption }}{% endif %} ({{ photo.uploaded_at|date:'d M Y' }})"
                    title="{{ photo.get_category_display }}{% if photo.caption %} — {{ photo.caption }}{% endif %} ({{ photo.uploaded_at|date:'d M Y' }})">
                     <img src="{% if photo.thumb %}{{ photo.thumb.url }}{% else %}{{ photo.image.url }}{% endif %}"
                          alt="{{ photo.get_category_display }} photo of {{ horse.name }}"

@@ -31,6 +31,8 @@
     <!-- Alpine.js + Collapse plugin (vendored locally — no CDN round trip) -->
     {# popup.js registers an Alpine store on alpine:init, so it must run before Alpine starts #}
     <script defer src="{% static_v 'js/popup.js' %}"></script>
+    {# lightbox.js registers an Alpine store on alpine:init, so it must run before Alpine starts #}
+    <script defer src="{% static_v 'js/lightbox.js' %}"></script>
     <script defer src="{% static_v 'js/photo_quick_add.js' %}"></script>
     <script defer src="{% static_v 'js/alpine-collapse.min.js' %}"></script>
     <script defer src="{% static_v 'js/alpine.min.js' %}"></script>
@@ -426,6 +428,9 @@
 {# Shared pop-up sheet for in-page Edit/Photo/Move forms (see static/js/popup.js) #}
 {% if user.is_authenticated %}
 {% include 'includes/_popup_sheet.html' %}
+
+{# Full-screen photo viewer (see static/js/lightbox.js) #}
+{% include 'includes/_photo_lightbox.html' %}
 {% endif %}
 
 <script>
