@@ -733,8 +733,19 @@ def feed_out_create(request, location_pk):
                 # silently absorb its slice (and sometimes the rounding
                 # remainder) with the yard eating the difference.
                 skipped_ownerless = []
+                zero_cost_recharge = False
+                if feed_out.is_recharged and feed_out.total_cost <= 0:
+                    # No cost and no priced stock to derive one from: every
+                    # selected horse used to get a permanent £0.00 charge
+                    # that no invoice run could ever clear.
+                    zero_cost_recharge = True
+                    feed_out.is_recharged = False
+                    feed_out.save(update_fields=['is_recharged'])
                 if feed_out.is_recharged:
-                    selected_ids = request.POST.getlist('recharge_horses')
+                    selected_ids = [
+                        i for i in request.POST.getlist('recharge_horses')
+                        if i.isdigit()
+                    ]
                     selected = horses_at_location.filter(pk__in=selected_ids)
                     billable = []
                     for horse in selected:
@@ -762,6 +773,13 @@ def feed_out_create(request, location_pk):
                             )
 
             messages.success(request, f"Feed out recorded for {location.name}.")
+            if zero_cost_recharge:
+                messages.warning(
+                    request,
+                    "Not recharged: this feed out has no cost (enter a total "
+                    "cost, or log the stock purchase first so one can be "
+                    "worked out).",
+                )
             if skipped_ownerless:
                 messages.warning(
                     request,
