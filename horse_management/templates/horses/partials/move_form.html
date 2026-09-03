@@ -1,0 +1,125 @@
+{% comment %}
+Move form body — shared by the full page (horses/horse_move.html) and the
+pop-up sheet. `in_popup` is True when the view was asked for by the sheet
+(HX-Target: popup-body): the form then posts back into the sheet, and its
+footer sticks to the sheet's bottom edge instead of above the tab bar.
+
+Everyday moves only change the location and the date, so those lead;
+owner, rate and expected departure sit behind "More options".
+{% endcomment %}
+<form method="post" action="{% url 'horse_move' horse.pk %}"
+      {% if in_popup %}hx-post="{% url 'horse_move' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"{% endif %}
+      x-data="{ pickDate: {% if form.move_date.value and form.move_date.value|stringformat:'s' != today|date:'Y-m-d' %}true{% else %}false{% endif %} }">
+    {% csrf_token %}
+    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+
+    <div class="p-4 sm:p-5 space-y-4 sm:space-y-5">
+
+        {% if in_popup %}
+        <p class="text-xs text-sage -mt-1">
+            {% if current_placement %}
+            Now at <span class="font-medium text-charcoal-light">{{ current_placement.location.name }}</span>
+            · {{ current_placement.owner.name }}
+            · {{ current_placement.rate_type.name }} &pound;{{ current_placement.rate_type.daily_rate }}/day
+            {% else %}
+            No current placement
+            {% endif %}
+        </p>
+        {% endif %}
+
+        {% include 'includes/form_errors.html' with form=form intro="The move wasn't saved:" %}
+
+        <div{% if form.new_location.errors %} class="field-invalid"{% endif %}>
+            <label for="id_new_location" class="block text-sm font-medium text-charcoal">New location *</label>
+            {{ form.new_location }}
+            {% if form.new_location.errors %}
+            <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.new_location.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div{% if form.move_date.errors %} class="field-invalid"{% endif %}>
+            <span class="block text-sm font-medium text-charcoal" id="move-date-label">Move date *</span>
+            <div class="mt-1 flex flex-wrap items-center gap-2" role="group" aria-labelledby="move-date-label">
+                <button type="button" class="chip" :class="!pickDate && 'chip-on'" :aria-pressed="!pickDate"
+                        @click="pickDate = false; $refs.moveDate.value = '{{ today|date:'Y-m-d' }}'">
+                    Today
+                </button>
+                <button type="button" class="chip" :class="pickDate && 'chip-on'" :aria-pressed="pickDate"
+                        @click="pickDate = true; $nextTick(() => $refs.moveDate.focus())">
+                    Pick a date
+                </button>
+            </div>
+            {# Always in the DOM so the value submits; only shown when picking. Visible without JS. #}
+            <div x-show="pickDate" x-cloak class="mt-2">
+                <label for="id_move_date" class="sr-only">Move date</label>
+                <input type="date" name="move_date" id="id_move_date" required x-ref="moveDate"
+                       class="form-input !mt-0" value="{{ form.move_date.value|date:'Y-m-d'|default:form.move_date.value|default_if_none:'' }}">
+            </div>
+            {% if form.move_date.errors %}
+            <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.move_date.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div{% if form.notes.errors %} class="field-invalid"{% endif %}>
+            <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
+            {{ form.notes }}
+            {% if form.notes.errors %}
+            <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.notes.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <details class="group"
+                 {% if form.new_owner.value or form.new_rate_type.value or form.expected_departure.value or form.new_owner.errors or form.new_rate_type.errors or form.expected_departure.errors %}open{% endif %}>
+            <summary class="inline-flex items-center gap-1.5 min-h-[44px] sm:min-h-0 text-sm font-medium text-forest cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                <svg class="w-4 h-4 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                </svg>
+                More options
+                <span class="font-normal text-sage">· owner, rate, expected departure</span>
+            </summary>
+
+            <div class="mt-3 space-y-4 sm:space-y-5">
+                <div{% if form.new_owner.errors %} class="field-invalid"{% endif %}>
+                    <label for="id_new_owner" class="block text-sm font-medium text-charcoal">New owner</label>
+                    {{ form.new_owner }}
+                    {% if form.new_owner.errors %}
+                    <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.new_owner.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-sage">Leave empty to keep the current owner</p>
+                </div>
+
+                <div{% if form.new_rate_type.errors %} class="field-invalid"{% endif %}>
+                    <label for="id_new_rate_type" class="block text-sm font-medium text-charcoal">New rate</label>
+                    {{ form.new_rate_type }}
+                    {% if form.new_rate_type.errors %}
+                    <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.new_rate_type.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-sage">Leave empty to keep the current rate</p>
+                </div>
+
+                <div{% if form.expected_departure.errors %} class="field-invalid"{% endif %}>
+                    <label for="id_expected_departure" class="block text-sm font-medium text-charcoal">Expected departure</label>
+                    {{ form.expected_departure }}
+                    {% if form.expected_departure.errors %}
+                    <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.expected_departure.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-sage">When is this horse expected to leave?</p>
+                </div>
+            </div>
+        </details>
+    </div>
+
+    <div class="{% if in_popup %}popup-footer{% else %}form-footer{% endif %}">
+        {% if in_popup %}
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        {% else %}
+        <a href="{% if next_url %}{{ next_url }}{% else %}{% url 'horse_detail' horse.pk %}{% endif %}" class="btn-secondary">Cancel</a>
+        {% endif %}
+        <button type="submit" class="btn-primary">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
+            </svg>
+            Move Horse
+        </button>
+    </div>
+</form>

@@ -184,7 +184,9 @@
                 </div>
                 <div class="list-card-actions self-center">
                     {% if not placement.end_date %}
-                    <a href="{% url 'horse_move' placement.horse.pk %}" class="btn-icon" title="Move" aria-label="Move {{ placement.horse.name }}">
+                    <a href="{% url 'horse_move' placement.horse.pk %}" hx-get="{% url 'horse_move' placement.horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                       data-popup-title="Move {{ placement.horse.name }}"
+                       class="btn-icon" title="Move" aria-label="Move {{ placement.horse.name }}">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
                     </a>
                     {% endif %}
@@ -240,7 +242,9 @@
                         <td>
                             <div class="flex items-center gap-1">
                                 {% if not placement.end_date %}
-                                <a href="{% url 'horse_move' placement.horse.pk %}" class="btn-ghost btn-xs">
+                                <a href="{% url 'horse_move' placement.horse.pk %}" hx-get="{% url 'horse_move' placement.horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                                   data-popup-title="Move {{ placement.horse.name }}"
+                                   class="btn-ghost btn-xs">
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
                                     </svg>

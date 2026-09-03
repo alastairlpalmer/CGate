@@ -294,6 +294,27 @@ input[type="file"] { @apply block w-full text-sm text-sage file:mr-3 file:rounde
     .form-footer > a, .form-footer > button { flex: 1 1 0%; }
 }
 
+/* Pop-up sheet footer — the form inside the sheet (includes/_popup_sheet.html)
+   scrolls within #popup-body, so its footer sticks to that container's
+   bottom edge and Save stays in reach while fields scroll under it. */
+.popup-footer {
+    @apply sticky bottom-0 border-t border-light-sage px-4 py-3 sm:px-5 sm:py-4 bg-parchment flex justify-end gap-3 z-10;
+}
+@media (max-width: 639px) {
+    .popup-footer { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)); }
+    .popup-footer > a, .popup-footer > button { flex: 1 1 0%; }
+}
+
+/* Choice chips — a small set of mutually exclusive quick picks (e.g. Move
+   date: Today / Pick a date). Pair with aria-pressed; add .chip-on to the
+   selected one. 44px tall on touch layouts. */
+.chip {
+    @apply inline-flex items-center justify-center min-h-[44px] sm:min-h-[36px] px-4 rounded-full border border-light-sage bg-white text-sm font-medium text-charcoal-light transition-colors duration-100 hover:border-sage/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest/40 touch-manipulation;
+}
+.chip-on {
+    @apply bg-forest border-forest text-white hover:border-forest;
+}
+
 /* Responsive record tables — add `data-table-cards` to a `.data-table` so that
    below `sm` each row stacks into a labelled card instead of a cramped,
    right-clipped horizontal-scroll table. Give each <td> a `data-label="..."`;

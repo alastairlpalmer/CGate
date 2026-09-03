@@ -1,0 +1,65 @@
+{% comment %}
+Shared pop-up sheet — rendered once in base.html.
+
+A bottom sheet on phones, a centred dialog from `sm` up. Forms load into
+#popup-body via htmx: give a trigger `hx-get` + `hx-target="#popup-body"`
++ `hx-select="unset"` + `hx-swap="innerHTML"` + `hx-push-url="false"` and a
+`data-popup-title`; static/js/popup.js opens the sheet on that request,
+tracks unsaved edits, and closes + refreshes #main-content when a form
+answers 204 with `HX-Trigger: popup:saved`. The sheet covers the mobile
+tab bar (z-60 > z-50) so a stray thumb can't navigate away mid-form.
+{% endcomment %}
+<div x-data x-show="$store.popup.open" x-cloak
+     class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4"
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     @keydown.escape.window="$store.popup.open && $store.popup.close()">
+
+    <!-- Scrim -->
+    <div class="absolute inset-0 bg-charcoal/50" @click="$store.popup.close()"></div>
+
+    <!-- Panel -->
+    <div id="popup-panel" role="dialog" aria-modal="true" aria-labelledby="popup-title" tabindex="-1"
+         x-show="$store.popup.open"
+         x-transition:enter="transition ease-out duration-200 motion-reduce:transition-none"
+         x-transition:enter-start="translate-y-8 sm:translate-y-0 sm:scale-95"
+         x-transition:enter-end="translate-y-0 sm:scale-100"
+         x-transition:leave="transition ease-in duration-150 motion-reduce:transition-none"
+         x-transition:leave-start="translate-y-0 sm:scale-100"
+         x-transition:leave-end="translate-y-8 sm:translate-y-0 sm:scale-95"
+         class="relative flex flex-col w-full sm:max-w-lg max-h-[92dvh] sm:max-h-[90vh] bg-white rounded-t-2xl sm:rounded-lg shadow-xl focus:outline-none">
+
+        <!-- Drag handle (phones) -->
+        <div class="flex justify-center pt-3 pb-1 sm:hidden" aria-hidden="true">
+            <div class="w-10 h-1 rounded-full bg-sage/30"></div>
+        </div>
+
+        <!-- Header -->
+        <div class="flex items-center justify-between gap-3 px-4 sm:px-5 py-2 sm:py-3 border-b border-light-sage shrink-0">
+            <h2 id="popup-title" class="text-lg font-semibold text-charcoal truncate" x-text="$store.popup.title"></h2>
+            <button type="button" class="btn-icon -mr-2" aria-label="Close" @click="$store.popup.close()">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Body: the scroll container. Form footers stick to its bottom edge. -->
+        <div id="popup-body" class="flex-1 min-h-0 overflow-y-auto overscroll-contain"></div>
+    </div>
+
+    <!-- Loading skeleton, cloned into #popup-body while the form is fetched -->
+    <template id="popup-skeleton">
+        <div class="p-4 sm:p-5 space-y-4 animate-pulse" aria-busy="true" aria-label="Loading">
+            <div class="h-3 w-2/3 rounded bg-light-sage"></div>
+            <div class="h-11 rounded-btn bg-light-sage"></div>
+            <div class="h-3 w-1/3 rounded bg-light-sage"></div>
+            <div class="h-11 rounded-btn bg-light-sage"></div>
+            <div class="h-16 rounded-btn bg-light-sage"></div>
+        </div>
+    </template>
+</div>

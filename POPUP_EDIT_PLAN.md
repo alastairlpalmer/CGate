@@ -2,7 +2,7 @@
 
 **Goal:** Let users make small changes without leaving the page they are on.
 **Scope:** Horse Edit, Horse Photo, Horse Move. Then the same pattern for other quick actions.
-**Status:** Plan only. No product code changed yet.
+**Status:** Phase 1 built (shared sheet + Move). Phases 2-4 not started.
 
 ---
 
@@ -161,7 +161,7 @@ The store tracks `dirty` (set on first `input` event inside `#popup-body`). Clos
 
 | Phase | Work | Size | Result for users |
 |-------|------|------|------------------|
-| 1 | Shared sheet in `base.html`. Move pop-up. Wire Move triggers on horse detail, horse list, location list, location detail. Fix Move redirect for non-HTMX to go back to the referring page. | M | Moving a horse is one tap, one pick, one save. You stay on the list. |
+| 1 | Shared sheet in `base.html`. Move pop-up. Wire Move triggers on horse detail, horse list, location list, location detail. Non-HTMX Move honours a same-origin `next`, else lands on the horse list as today. | M | Moving a horse is one tap, one pick, one save. You stay on the list. |
 | 2 | Photo pop-up. "Profile picture" label. "Set as profile picture" tick box. "Use as profile picture" on photo grid. | M | Camera opens from the sheet. Profile picture and photo log are clearly separate. |
 | 3 | Quick Edit pop-up + `QuickHorseForm`. Edit triggers on horse detail and horse list point at it. Full edit page keeps its URL. | M | Rename or fix a colour without leaving the list. |
 | 4 | Same pattern for the other Quick Actions that already deep-link with `?horse=` (Vaccination, Farrier, Worming, Egg count, Vet visit, Charge), then Owner and Location edit. | L | One editing model across the app. |
@@ -191,7 +191,7 @@ Mobile check: the Playwright sweep from `MOBILE_QA_REPORT.md` at 390 x 844. Open
 | A boosted navigation while the sheet is open (base.html has a race guard for overlapping `#main-content` swaps). | Sheet cancels any in-flight popup request on close. Page refresh after save uses one `htmx.ajax` call, not a boosted link. |
 | File input inside a swapped partial loses Alpine state. | The Alpine component lives inside the partial. Alpine's mutation observer initialises it after the swap. |
 | Toast not shown after save. | Refresh of `#main-content` goes through the existing toast extractor. Test asserts the message is in the refreshed response. |
-| Move currently redirects to the horse list. | Non-HTMX path redirects to `next` or referrer with fallback to horse detail. HTMX path never redirects. |
+| Move currently redirects to the horse list. | HTMX path never redirects. Non-HTMX path honours a same-origin `next` (horse detail passes its own path), else the horse list as today. |
 | Deep links from emails and old bookmarks. | Full pages stay at the same URLs. |
 | Keyboard covers Save on small phones. | Sticky footer inside the sheet plus `dvh` height. |
 | Users on view-only roles. | Triggers stay behind `feature_access.horses.full`, same as today. |
