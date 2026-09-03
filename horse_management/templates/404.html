@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block title %}Not Found - Yardway{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto mt-16 text-center">
+  <div class="bg-white rounded-xl shadow-sm border border-light-sage p-10">
+    <h1 class="text-xl font-semibold text-charcoal">Page not found</h1>
+    <p class="mt-2 text-sage">That page doesn't exist or has been removed. If you followed a link inside the app, the record may have been deleted.</p>
+    <div class="mt-6">
+      <a href="{% url 'dashboard' %}" class="btn-primary">Back to Dashboard</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
