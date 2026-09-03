@@ -8,6 +8,7 @@ from datetime import timedelta
 
 from django.contrib import messages
 
+from core.views._popup import is_popup_request, popup_saved_response
 from core.permissions import (
     LEVEL_FULL,
     LEVEL_VIEW,
@@ -479,13 +480,14 @@ def owner_statement_email(request, owner_pk):
 def payment_create(request, pk):
     """Record a payment (possibly partial) against an invoice."""
     invoice = get_object_or_404(Invoice, pk=pk)
+    in_popup = is_popup_request(request)
 
     if invoice.status == Invoice.Status.CANCELLED:
         messages.error(request, "Payments cannot be recorded against a cancelled invoice.")
-        return redirect('invoice_detail', pk=pk)
+        return popup_saved_response() if in_popup else redirect('invoice_detail', pk=pk)
     if invoice.balance_due <= 0:
         messages.info(request, "This invoice is already fully paid.")
-        return redirect('invoice_detail', pk=pk)
+        return popup_saved_response() if in_popup else redirect('invoice_detail', pk=pk)
 
     if request.method == 'POST':
         form = PaymentForm(request.POST, invoice=invoice)
@@ -506,6 +508,8 @@ def payment_create(request, pk):
                     f"Payment of £{payment.amount:.2f} recorded — "
                     f"£{invoice.balance_due:.2f} still outstanding."
                 )
+            if in_popup:
+                return popup_saved_response()
             return redirect('invoice_detail', pk=pk)
     else:
         form = PaymentForm(
@@ -516,9 +520,12 @@ def payment_create(request, pk):
             },
         )
 
-    return render(request, 'invoicing/payment_form.html', {
+    template = 'includes/popup_form.html' if in_popup else 'invoicing/payment_form.html'
+    return render(request, template, {
         'form': form,
         'invoice': invoice,
+        'in_popup': in_popup,
+        'popup_submit_label': 'Record Payment',
     })
 
 

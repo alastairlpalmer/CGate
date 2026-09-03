@@ -433,7 +433,7 @@ class LocationDetailView(FeatureAccessMixin, DetailView):
         return context
 
 
-class LocationCreateView(FeatureAccessMixin, CreateView):
+class LocationCreateView(PopupFormMixin, FeatureAccessMixin, CreateView):
     feature = 'locations'
     model = Location
     form_class = LocationForm

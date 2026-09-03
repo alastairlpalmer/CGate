@@ -1168,10 +1168,16 @@ def new_arrival(request):
 
 @feature_required('horses')
 def horse_arrive(request, pk):
-    """Log a single horse arriving at a location (from Horse Detail)."""
+    """Log a single horse arriving at a location (from Horse Detail).
+
+    Serves the pop-up sheet too (HX-Target: popup-body): the form partial
+    alone, 204 + ``popup:saved`` on success, and the partial with any
+    service error inline otherwise.
+    """
     from ..services import PlacementService
 
     horse = get_object_or_404(Horse, pk=pk)
+    in_popup = is_popup_request(request)
 
     if request.method == 'POST':
         form = SingleArrivalForm(request.POST)
@@ -1186,6 +1192,16 @@ def horse_arrive(request, pk):
                     expected_departure=form.cleaned_data.get('expected_departure'),
                     notes=form.cleaned_data['notes'],
                 )
+            except ValidationError as e:
+                form.add_error(None, e)
+            except IntegrityError:
+                form.add_error(
+                    None,
+                    "That change clashed with another update to the same "
+                    "horse (it may already be placed) — refresh and check "
+                    "the current placement before retrying.",
+                )
+            else:
                 messages.success(request, format_html(
                     '{} arrived at {}. <a href="{}?category=arrival" class="underline font-semibold">Add photos</a>',
                     horse.name,
@@ -1193,16 +1209,9 @@ def horse_arrive(request, pk):
                     reverse('horse_photo_add', args=[horse.pk]),
                 ))
                 _flash_superseded_trim(request, horse, placement)
+                if in_popup:
+                    return popup_saved_response()
                 return redirect('horse_list')
-            except ValidationError as e:
-                messages.error(request, '; '.join(e.messages))
-            except IntegrityError:
-                messages.error(
-                    request,
-                    "That change clashed with another update to the same "
-                    "horse (it may already be placed) — refresh and check "
-                    "the current placement before retrying.",
-                )
     else:
         initial = {'arrival_date': timezone.localdate()}
         primary_owner = horse.primary_owner
@@ -1210,9 +1219,12 @@ def horse_arrive(request, pk):
             initial['owner'] = primary_owner.pk
         form = SingleArrivalForm(initial=initial)
 
-    return render(request, 'horses/horse_arrive.html', {
+    template = 'horses/partials/arrive_form.html' if in_popup else 'horses/horse_arrive.html'
+    return render(request, template, {
         'horse': horse,
         'form': form,
+        'in_popup': in_popup,
+        'today': timezone.localdate(),
     })
 
 

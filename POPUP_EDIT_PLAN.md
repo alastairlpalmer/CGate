@@ -2,7 +2,7 @@
 
 **Goal:** Let users make small changes without leaving the page they are on.
 **Scope:** Horse Edit, Horse Photo, Horse Move. Then the same pattern for other quick actions.
-**Status:** All four phases built. Phase 4 covers the health Quick Actions, Breeding, Charge, and Owner and Location edit through one `PopupFormMixin` and a generic form partial.
+**Status:** All four phases built, plus phase 5 (Record payment, Feed out, Log arrival, Add document, Placement edit, health record edits, Add owner/location, in-place Placements filters).
 
 ---
 

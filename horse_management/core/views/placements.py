@@ -9,6 +9,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import CreateView, ListView, UpdateView
 
 from ..forms import PlacementForm
+from ._popup import PopupFormMixin
 from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Location, Owner, Placement
 
@@ -127,7 +128,7 @@ class PlacementCreateView(_PlacementFormViewMixin, FeatureAccessMixin, CreateVie
     template_name = 'placements/placement_form.html'
 
 
-class PlacementUpdateView(_PlacementFormViewMixin, FeatureAccessMixin, UpdateView):
+class PlacementUpdateView(PopupFormMixin, _PlacementFormViewMixin, FeatureAccessMixin, UpdateView):
     feature = 'locations'
     model = Placement
     form_class = PlacementForm

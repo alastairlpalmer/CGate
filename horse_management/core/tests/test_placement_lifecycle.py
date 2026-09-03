@@ -601,8 +601,9 @@ class ArriveMoveViewTests(LifecycleTestCase):
             },
         )
         self.assertEqual(response.status_code, 200)
-        messages = [m.message for m in response.context['messages']]
-        self.assertTrue(any('already has a placement' in m for m in messages))
+        # Shown inline on the form (the same partial serves the pop-up sheet,
+        # where a toast queued for the next page would never be seen).
+        self.assertContains(response, 'already has a placement')
 
 
 class PlacementEditDeleteTests(LifecycleTestCase):

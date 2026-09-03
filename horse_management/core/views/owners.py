@@ -90,7 +90,7 @@ class OwnerDetailView(FeatureAccessMixin, DetailView):
         return context
 
 
-class OwnerCreateView(FeatureAccessMixin, CreateView):
+class OwnerCreateView(PopupFormMixin, FeatureAccessMixin, CreateView):
     feature = 'owners'
     model = Owner
     form_class = OwnerForm
