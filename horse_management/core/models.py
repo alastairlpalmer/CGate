@@ -75,6 +75,18 @@ class Owner(models.Model):
         return self.active_horses_via_shares.count()
 
 
+class LocationQuerySet(models.QuerySet):
+    """Queryset helpers so callers can say what they mean about archiving."""
+
+    def active(self):
+        """Locations still in use — everything pickers and lists should show."""
+        return self.filter(is_archived=False)
+
+    def archived(self):
+        """Locations taken out of use but kept for history and reports."""
+        return self.filter(is_archived=True)
+
+
 class Location(models.Model):
     """Physical location where horses are kept."""
 
@@ -95,14 +107,59 @@ class Location(models.Model):
     )
     description = models.TextField(blank=True)
     capacity = models.PositiveIntegerField(null=True, blank=True)
+    is_archived = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Archived fields keep their history but are hidden from "
+                  "lists and pickers.",
+    )
+    archived_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    objects = LocationQuerySet.as_manager()
 
     class Meta:
         ordering = ['site', 'name']
 
     def __str__(self):
         return f"{self.site} — {self.name}"
+
+    def archive_blockers(self):
+        """Reasons this field cannot be archived right now.
+
+        A field with horses on it must be emptied first; archiving it would
+        hide a field that the yard is still using.
+        """
+        blockers = []
+        horses = self.current_horse_count
+        if horses:
+            blockers.append(
+                f"{horses} horse{'s are' if horses != 1 else ' is'} still on "
+                f"this field. Move {'them' if horses != 1 else 'it'} first."
+            )
+        return blockers
+
+    def delete_blockers(self):
+        """Reasons this field cannot be deleted.
+
+        Deletion is only for fields with no records attached. Anything with
+        placement or feed history must be archived, or the history goes too.
+        """
+        blockers = []
+        placements = self.placements.count()
+        if placements:
+            blockers.append(
+                f"{placements} placement record"
+                f"{'s point' if placements != 1 else ' points'} at this field."
+            )
+        feed_outs = self.feed_outs.count()
+        if feed_outs:
+            blockers.append(
+                f"{feed_outs} feed record"
+                f"{'s point' if feed_outs != 1 else ' points'} at this field."
+            )
+        return blockers
 
     @cached_property
     def current_horses(self):

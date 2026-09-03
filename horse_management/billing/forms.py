@@ -99,7 +99,11 @@ class FeedStockForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from core.models import Location
-        sites = Location.objects.values_list('site', flat=True).distinct().order_by('site')
+        # Sites that still have a field in use — nothing new is booked
+        # against a site whose fields are all archived.
+        sites = Location.objects.active().values_list(
+            'site', flat=True
+        ).distinct().order_by('site')
         self.fields['site'].widget = forms.Select(
             attrs={'class': 'form-select'},
             choices=[('', '---------')] + [(s, s) for s in sites],

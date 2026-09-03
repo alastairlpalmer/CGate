@@ -166,7 +166,7 @@ class HorseListView(FeatureAccessMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['status'] = self.status
         context['group_by'] = self.request.GET.get('group_by', 'location')
-        context['locations'] = Location.objects.order_by('site', 'name')
+        context['locations'] = Location.objects.active().order_by('site', 'name')
         context['owners'] = Owner.objects.values('pk', 'name').order_by('name')
         context['is_searching'] = self.is_searching
         # Single query for both counts. The departed test must be
