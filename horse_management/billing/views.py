@@ -9,7 +9,10 @@ from operator import attrgetter
 
 from django.contrib import messages
 
-from core.permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
+from invoicing.models import Invoice
+from core.permissions import (
+    LEVEL_VIEW, FeatureAccessMixin, deny, feature_required, has_feature_access,
+)
 from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_response
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum
@@ -139,6 +142,22 @@ def _warn_if_owner_unrelated(request, form):
         )
 
 
+def _on_live_invoice(charge):
+    """True when the charge is billed on any non-cancelled invoice.
+
+    ``charge.invoiced`` alone is not enough: a split charge on a co-owned
+    horse stays invoiced=False until *every* co-owner has been billed, yet
+    one owner's live invoice already carries a line for it. Editing or
+    deleting it then orphaned that line (InvoiceLineItem.charge is
+    SET_NULL) and left the split no longer summing to the charge.
+    """
+    if charge.invoiced:
+        return True
+    return charge.invoice_items.exclude(
+        invoice__status=Invoice.Status.CANCELLED
+    ).exists()
+
+
 class ExtraChargeUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'charges'
     model = ExtraCharge
@@ -147,8 +166,15 @@ class ExtraChargeUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
     success_url = reverse_lazy('charge_list')
 
     def dispatch(self, request, *args, **kwargs):
+        # Access check first: the old order ran get_object() and answered
+        # "already invoiced" before FeatureAccessMixin got to deny, leaking
+        # the charge's existence and billing state to anyone.
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        if not has_feature_access(request.user, self.feature, self.access_level):
+            return deny(request)
         obj = self.get_object()
-        if obj.invoiced:
+        if _on_live_invoice(obj):
             messages.error(request, "This charge has already been invoiced and cannot be edited.")
             return redirect('charge_list')
         return super().dispatch(request, *args, **kwargs)
@@ -176,8 +202,12 @@ class ExtraChargeDeleteView(FeatureAccessMixin, DeleteView):
     )
 
     def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        if not has_feature_access(request.user, self.feature, self.access_level):
+            return deny(request)
         obj = self.get_object()
-        if obj.invoiced:
+        if _on_live_invoice(obj):
             messages.error(request, "This charge has already been invoiced and cannot be deleted.")
             return redirect('charge_list')
         return super().dispatch(request, *args, **kwargs)
