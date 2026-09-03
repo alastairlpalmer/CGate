@@ -48,7 +48,14 @@ from ..forms import (
     OwnershipShareFormSet,
     SingleArrivalForm,
 )
-from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
+from ..permissions import (
+    LEVEL_HIDDEN,
+    LEVEL_ORDER,
+    LEVEL_VIEW,
+    FeatureAccessMixin,
+    access_map,
+    feature_required,
+)
 from ..models import Horse, Location, Owner, OwnershipShare, Placement
 from ..search import fuzzy_horse_ids
 from ._popup import is_popup_request, popup_saved_response
@@ -70,11 +77,32 @@ def _warn_if_incomplete_ownership(request, formset):
 
 
 # ── Horse list: grouping and sorting ─────────────────────────────────────
-# "all" is a flat list of every horse on the property; "location" and
-# "owner" put the same horses into group cards. Each grouping has its own
-# sort menu, so an option that says nothing in that view (sort by owner
-# while grouped by owner) is never offered.
-GROUP_BY_CHOICES = ('all', 'location', 'owner')
+# "all" is a flat list of every horse on the property; the other axes put
+# the same horses into group cards. Each axis has its own sort menu, so an
+# option that says nothing there (sort by owner while grouped by owner) is
+# never offered.
+#
+# The grouped axes build from the *entity* side — every location, site or
+# owner — and hang horses off them, rather than bucketing the horse list.
+# Grouping horses cannot show an empty location, and an empty location is
+# exactly what you look for when you move a horse.
+GROUP_BY_CHOICES = ('all', 'site', 'location', 'owner')
+GROUPED_AXES = ('site', 'location', 'owner')
+
+# Axes that need more than the 'horses' feature to make sense. A role can
+# see horses without seeing owners, so an axis its role hides is not
+# offered and its URL falls back to All.
+AXIS_FEATURE = {
+    'site': 'locations',
+    'location': 'locations',
+    'owner': 'owners',
+}
+
+# Which axes show empty groups unless the URL says otherwise. Empty
+# locations answer "where can this horse go"; a roll of owners with no
+# horses is just noise.
+SHOW_EMPTY_DEFAULT = {'site': True, 'location': True, 'owner': False}
+
 DEFAULT_SORT = 'name'
 
 HORSE_SORT_LABELS = {
@@ -95,6 +123,8 @@ HORSE_SORT_LABELS = {
 HORSE_SORT_OPTIONS = {
     'all': ('name', '-name', 'age', '-age', 'sex', 'owner', 'location',
             '-arrived'),
+    'site': ('name', '-name', 'age', '-age', 'sex', 'owner', 'location',
+             '-arrived'),
     'location': ('name', '-name', 'age', '-age', 'sex', 'owner', '-arrived'),
     'owner': ('name', '-name', 'age', '-age', 'sex', 'location', '-arrived'),
     'departed': ('name', '-name', 'age', '-age', 'sex', '-departed',
@@ -113,6 +143,9 @@ GROUP_SORT_LABEL_OVERRIDES = {
     'location': {'name': 'Site, then name', '-name': 'Site, then name Z–A'},
 }
 GROUP_SORT_OPTIONS = ('name', '-name', '-count', 'count')
+
+# Group headers that carry a capacity ring and a usage badge.
+AXES_WITH_CAPACITY = ('location',)
 
 
 def _age_sort_expression():
@@ -199,6 +232,30 @@ def _sort_horses(horses, sort):
     return sorted(horses, key=key, reverse=reverse)
 
 
+def _location_group(location, horses):
+    """A group card for one location, carrying its capacity and land use.
+
+    Capacity and usage hang off the location, not off anything standing
+    in it — which is why an empty or rested field can still be a card.
+    """
+    count = len(horses)
+    return {
+        'kind': 'location',
+        'name': location.name,
+        'pk': location.pk,
+        'site': location.site,
+        'count': count,
+        'horses': horses,
+        'capacity': location.capacity,
+        'availability': (
+            location.capacity - count if location.capacity is not None
+            else None
+        ),
+        'usage': location.usage,
+        'usage_display': location.get_usage_display(),
+    }
+
+
 def _sort_groups(groups, group_sort):
     """Order the group cards. They arrive in name order already."""
     if group_sort == '-count':
@@ -232,9 +289,40 @@ class HorseListView(FeatureAccessMixin, ListView):
         return bool(self.request.GET.get('search'))
 
     @property
+    def available_axes(self):
+        """The group-by axes this role may use.
+
+        Horses, owners and locations are separate features. A role can see
+        horses without seeing owners, so the axes that read another
+        feature's records are offered only when that feature is visible.
+        """
+        access = access_map(self.request.user)
+        axes = ['all']
+        for axis in GROUPED_AXES:
+            level = access.get(AXIS_FEATURE[axis], LEVEL_HIDDEN)
+            if LEVEL_ORDER[level] >= LEVEL_ORDER[LEVEL_VIEW]:
+                axes.append(axis)
+        return axes
+
+    @property
     def group_by(self):
         value = self.request.GET.get('group_by', 'all')
-        return value if value in GROUP_BY_CHOICES else 'all'
+        # An axis the role cannot see falls back to All rather than
+        # erroring — a stale bookmark should still show the horses.
+        return value if value in self.available_axes else 'all'
+
+    @property
+    def show_empty(self):
+        """Whether groups with no horses are listed.
+
+        On by default for locations and sites: an empty field is the
+        answer to "where can this horse go", and grouping horses can
+        never produce one.
+        """
+        raw = self.request.GET.get('show_empty')
+        if raw in ('0', '1'):
+            return raw == '1'
+        return SHOW_EMPTY_DEFAULT.get(self.group_by, False)
 
     @property
     def sort_context(self):
@@ -397,6 +485,12 @@ class HorseListView(FeatureAccessMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['status'] = self.status
         context['group_by'] = self.group_by
+        context['available_axes'] = self.available_axes
+        context['show_empty'] = self.show_empty
+        context['show_empty_default'] = SHOW_EMPTY_DEFAULT.get(
+            self.group_by, False
+        )
+        context['axis_has_capacity'] = self.group_by in AXES_WITH_CAPACITY
         context['sort'] = self.sort
         context['group_sort'] = self.group_sort
         context['active_sort_label'] = HORSE_SORT_LABELS[self.sort]
@@ -420,7 +514,7 @@ class HorseListView(FeatureAccessMixin, ListView):
                 'active': key == self.group_sort,
             }
             for key in GROUP_SORT_OPTIONS
-        ] if self.sort_context in ('location', 'owner') else None
+        ] if self.sort_context in GROUPED_AXES else None
         # Location.objects.active() hides archived fields (from main).
         context['locations'] = Location.objects.active().order_by('site', 'name')
         context['owners'] = Owner.objects.values('pk', 'name').order_by('name')
@@ -472,64 +566,143 @@ class HorseListView(FeatureAccessMixin, ListView):
 
         # Build grouped data for current tab (not when searching or departed)
         if self.status == 'current' and not self.is_searching:
-            group_by = context['group_by']
             horses = _sort_horses(horses, self.sort)
+            group_by = context['group_by']
 
             if group_by == 'all':
                 # One flat card holding every horse on the property.
                 context['grouped_horses'] = [{
+                    'kind': 'all',
                     'name': 'All Horses',
                     'pk': None,
                     'count': len(horses),
                     'horses': horses,
                 }]
             else:
-                # Bucket into a dict rather than itertools.groupby: the
-                # horses are already in the requested sort order, and
-                # groupby would need them re-sorted by the group key.
-                buckets = {}
-                for h in horses:
-                    if group_by == 'owner':
-                        owner = h.resolved_owner
-                        key = (
-                            owner.name if owner else 'No Owner',
-                            owner.pk if owner else 0,
-                            '',
-                        )
-                    else:
-                        placement = _current_placement(h)
-                        location = placement.location if placement else None
-                        key = (
-                            location.name if location else 'No Location',
-                            location.pk if location else 0,
-                            location.site if location else '',
-                        )
-                    buckets.setdefault(key, []).append(h)
-
-                # Location groups stay ordered by site then name, as
-                # before; owner groups by name.
-                def group_order(item):
-                    name, pk, site = item
-                    return (site, name) if group_by == 'location' else (name,)
-
-                grouped = [
-                    {
-                        'site': site,
-                        'name': name,
-                        'pk': pk,
-                        'count': len(members),
-                        'horses': members,
-                    }
-                    for (name, pk, site), members in sorted(
-                        buckets.items(), key=lambda kv: group_order(kv[0]),
-                    )
-                ]
-                context['grouped_horses'] = _sort_groups(
-                    grouped, self.group_sort,
+                context['grouped_horses'] = self._build_groups(
+                    horses, group_by,
                 )
         elif self.is_searching:
             # Search results are one flat, unpaginated list.
             context['horses'] = _sort_horses(horses, self.sort)
+
+        return context
+
+    def _build_groups(self, horses, group_by):
+        """Group the horses by location, site or owner.
+
+        Built from the entity side: every location (or site, or owner) is
+        a candidate group, and the horses hang off it. Bucketing the horse
+        list instead would silently drop every empty location — the one
+        thing you most want to see when moving a horse.
+        """
+        if group_by == 'owner':
+            return self._owner_groups(horses)
+        if group_by == 'site':
+            return self._site_groups(horses)
+        return self._location_groups(horses)
+
+    def _location_groups(self, horses):
+        by_location = {}
+        unplaced = []
+        for horse in horses:
+            placement = _current_placement(horse)
+            location = placement.location if placement else None
+            if location is None:
+                unplaced.append(horse)
+            else:
+                by_location.setdefault(location.pk, []).append(horse)
+
+        groups = []
+        if self.show_empty:
+            # Archived fields stay out: they keep their history but are
+            # hidden from lists and pickers.
+            spine = Location.objects.active().order_by('site', 'name')
+        else:
+            spine = Location.objects.filter(
+                pk__in=by_location
+            ).order_by('site', 'name')
+
+        for location in spine:
+            groups.append(
+                _location_group(location, by_location.pop(location.pk, []))
+            )
+
+        # A horse on an archived field still has to appear somewhere.
+        for location in Location.objects.filter(pk__in=by_location):
+            groups.append(_location_group(location, by_location[location.pk]))
+        groups.sort(key=lambda g: ((g['site'] or '').lower(),
+                                   g['name'].lower()))
+
+        if unplaced:
+            groups.append({
+                'kind': 'location', 'name': 'No Location', 'pk': None,
+                'site': '', 'count': len(unplaced), 'horses': unplaced,
+                'capacity': None, 'availability': None,
+                'usage': '', 'usage_display': '',
+            })
+        return _sort_groups(groups, self.group_sort)
+
+    def _site_groups(self, horses):
+        by_site = {}
+        for horse in horses:
+            placement = _current_placement(horse)
+            location = placement.location if placement else None
+            site = location.site if location else ''
+            by_site.setdefault(site, []).append(horse)
+
+        names = set(by_site)
+        if self.show_empty:
+            names |= set(
+                Location.objects.active()
+                .values_list('site', flat=True).distinct()
+            )
+        names.discard('')
+
+        groups = [
+            {
+                'kind': 'site', 'name': site, 'pk': None, 'site': '',
+                'count': len(by_site.get(site, [])),
+                'horses': by_site.get(site, []),
+            }
+            for site in sorted(names, key=str.lower)
+        ]
+        if by_site.get(''):
+            groups.append({
+                'kind': 'site', 'name': 'No Site', 'pk': None, 'site': '',
+                'count': len(by_site['']), 'horses': by_site[''],
+            })
+        return _sort_groups(groups, self.group_sort)
+
+    def _owner_groups(self, horses):
+        by_owner = {}
+        unowned = []
+        for horse in horses:
+            owner = horse.resolved_owner
+            if owner is None:
+                unowned.append(horse)
+            else:
+                by_owner.setdefault(owner.pk, []).append(horse)
+
+        if self.show_empty:
+            spine = Owner.objects.order_by('name')
+        else:
+            spine = Owner.objects.filter(pk__in=by_owner).order_by('name')
+
+        groups = [
+            {
+                'kind': 'owner', 'name': owner.name, 'pk': owner.pk,
+                'site': '', 'count': len(by_owner.get(owner.pk, [])),
+                'horses': by_owner.get(owner.pk, []),
+            }
+            for owner in spine
+        ]
+        if unowned:
+            groups.append({
+                'kind': 'owner', 'name': 'No Owner', 'pk': None, 'site': '',
+                'count': len(unowned), 'horses': unowned,
+            })
+        return _sort_groups(groups, self.group_sort)
 
         return context
 
