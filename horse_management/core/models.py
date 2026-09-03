@@ -95,6 +95,7 @@ class Location(models.Model):
         MIXED = 'mixed', 'Mixed Grazing'
         RESTED = 'rested', 'Rested'
         HAY = 'hay', 'Hay'
+        ARABLE = 'arable', 'Arable'
         OTHER = 'other', 'Other'
 
     name = models.CharField(max_length=200)

@@ -28,6 +28,7 @@ USAGE_COLORS = {
     Location.Usage.MIXED: '#A0522D',    # saddle
     Location.Usage.RESTED: '#6A8990',   # sage (brim tint)
     Location.Usage.HAY: '#2E86AB',      # info-blue
+    Location.Usage.ARABLE: '#92400E',   # amber-800
     Location.Usage.OTHER: '#BCCCD0',    # sage-200
 }
 

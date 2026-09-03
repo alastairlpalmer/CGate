@@ -21,7 +21,7 @@
             <fieldset class="px-4 sm:px-5 py-4 sm:py-5 space-y-4 sm:space-y-5">
                 <legend class="text-base font-semibold text-charcoal">Location Details</legend>
                 {% include "includes/form_field.html" with field=form.name help='e.g., "Front Field", "The Banks"' %}
-                {% include "includes/form_field.html" with field=form.site help='e.g., "Colgate", "Somerford", "California Farm"' %}
+                {% include "includes/form_field.html" with field=form.site %}
                 {% include "includes/form_field.html" with field=form.usage help="What is this field currently being used for?" %}
                 {% include "includes/form_field.html" with field=form.capacity help="Maximum number of horses (optional)" %}
                 {% include "includes/form_field.html" with field=form.description %}
