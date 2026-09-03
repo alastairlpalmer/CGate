@@ -231,6 +231,11 @@
             </div>
         </header>
 
+        {% comment %}The app bar sits outside #main-content on purpose:
+        hx-boost only swaps that element, so search and Add survive every
+        navigation.{% endcomment %}
+        {% include 'includes/_app_bar.html' %}
+
         <!-- Toast Messages — always rendered (with a stable id) so boosted
              navigations can lift fresh toasts out of the full response;
              hx-select only swaps #main-content and would otherwise discard

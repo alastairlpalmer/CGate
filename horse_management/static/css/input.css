@@ -93,6 +93,8 @@
     /* Quick find dropdown (dashboard search) */
     .quick-find-group-label { @apply px-4 pt-3 pb-1 text-[11px] font-semibold text-sage uppercase tracking-widest; }
     .quick-find-item { @apply flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-charcoal hover:bg-light-sage focus:bg-light-sage focus:outline-none transition-colors duration-100; }
+    .app-bar-add-item { @apply flex items-center gap-2.5 px-4 py-2.5 text-sm text-charcoal hover:bg-parchment focus:bg-parchment focus:outline-none transition-colors duration-100; }
+    .quick-find-more { @apply block px-4 py-2 text-xs font-medium text-forest hover:bg-light-sage focus:bg-light-sage focus:outline-none transition-colors duration-100; }
 }
 
 /* Quick find panel: no empty white box while results are still loading
