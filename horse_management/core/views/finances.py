@@ -144,7 +144,7 @@ def _finances_inner(request):
     # One query: per-location counts (correct under the placements join),
     # then sum per site in Python. Annotating Sum(capacity) and the
     # placement Count together would inflate capacity across joined rows.
-    location_rows = Location.objects.filter(
+    location_rows = Location.objects.active().filter(
         usage__in=[Location.Usage.HORSES, Location.Usage.MIXED],
     ).annotate(
         horse_count=Count(

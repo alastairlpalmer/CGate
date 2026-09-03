@@ -11,8 +11,10 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, Exists, Min, OuterRef, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from ..forms import ArrivalForm, LocationForm, LocationUsageForm
@@ -120,6 +122,29 @@ def _resolve_usage_window(request):
     }
 
 
+# Card-order options for the Locations tab. ``fullest`` (the default) puts
+# the fields with the most horses first; ``default`` keeps the plain
+# site/name order.
+LOCATION_SORT_FULLEST = 'fullest'
+LOCATION_SORT_DEFAULT = 'default'
+LOCATION_SORTS = (LOCATION_SORT_FULLEST, LOCATION_SORT_DEFAULT)
+
+
+def sort_grouped_locations(grouped):
+    """Reorder ``[(site, locations, horse_count), ...]`` so full fields lead.
+
+    Within each site the locations are ordered by horse count (most horses
+    first), then name. Sites are ordered by their total horse count (most
+    first), and ties keep their alphabetical site order.
+    """
+    result = []
+    for site, locs, site_horse_count in grouped:
+        locs = sorted(locs, key=lambda l: (-l.horse_count, l.name.lower()))
+        result.append((site, locs, site_horse_count))
+    result.sort(key=lambda g: (-g[2], (g[0] or '').lower()))
+    return result
+
+
 class LocationListView(FeatureAccessMixin, ListView):
     feature = 'locations'
     access_level = LEVEL_VIEW
@@ -128,7 +153,7 @@ class LocationListView(FeatureAccessMixin, ListView):
     context_object_name = 'locations'
 
     def get_queryset(self):
-        queryset = Location.objects.annotate(
+        queryset = Location.objects.active().annotate(
             horse_count=Count(
                 'placements__horse',
                 filter=Q(
@@ -168,6 +193,12 @@ class LocationListView(FeatureAccessMixin, ListView):
                         loc.capacity - loc.horse_count
                         if loc.capacity is not None else None
                     )
+            sort = self.request.GET.get('sort', LOCATION_SORT_FULLEST)
+            if sort not in LOCATION_SORTS:
+                sort = LOCATION_SORT_FULLEST
+            if sort == LOCATION_SORT_FULLEST:
+                grouped = sort_grouped_locations(grouped)
+            context['location_sort'] = sort
             context['grouped_locations'] = grouped
 
         # Usage analytics overview tab
@@ -377,6 +408,14 @@ class LocationUpdateView(FeatureAccessMixin, UpdateView):
     form_class = LocationForm
     template_name = 'locations/location_form.html'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # The edit page carries the archive/delete controls, so it needs to
+        # know what is possible and why not.
+        context['archive_blockers'] = self.object.archive_blockers()
+        context['delete_blockers'] = self.object.delete_blockers()
+        return context
+
     def get_success_url(self):
         return reverse_lazy('location_detail', kwargs={'pk': self.object.pk})
 
@@ -421,6 +460,13 @@ class LocationUpdateView(FeatureAccessMixin, UpdateView):
 def log_arrival(request, pk):
     """Log one or more horses arriving at a location."""
     location = get_object_or_404(Location, pk=pk)
+
+    if location.is_archived:
+        messages.error(
+            request,
+            f"{location.name} is archived. Restore it before you log arrivals.",
+        )
+        return redirect('location_detail', pk=location.pk)
 
     # Horses without an active placement (available to arrive)
     horses_with_active = Placement.objects.filter(
@@ -546,3 +592,182 @@ def set_location_usage(request, pk):
                     messages.error(request, err)
 
     return redirect(f"{reverse_lazy('location_detail', kwargs={'pk': location.pk})}?tab=usage")
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Archive / restore / delete
+#
+# Archiving is the normal way to retire a field or a site: the records stay,
+# so history, invoices and usage analytics keep working, but the field drops
+# out of every list and picker. Deleting is only for fields added by mistake
+# — it is blocked as soon as any placement or feed record points at the field.
+# ──────────────────────────────────────────────────────────────────────────
+
+def _safe_next(request, fallback):
+    """Return the POSTed ``next`` URL when it is a safe local path."""
+    next_url = request.POST.get('next', '')
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return next_url
+    return fallback
+
+
+def _archive_location(location):
+    """Archive one location. Returns the blocking reasons (empty = archived)."""
+    blockers = location.archive_blockers()
+    if blockers:
+        return blockers
+    location.is_archived = True
+    location.archived_at = timezone.now()
+    location.save(update_fields=['is_archived', 'archived_at', 'updated_at'])
+    return []
+
+
+@feature_required('locations')
+@require_POST
+def location_archive(request, pk):
+    """Archive a field: hide it from lists and pickers, keep its history."""
+    location = get_object_or_404(Location, pk=pk)
+    fallback = reverse('location_detail', kwargs={'pk': location.pk})
+
+    if location.is_archived:
+        messages.info(request, f"{location.name} is already archived.")
+        return redirect(_safe_next(request, fallback))
+
+    blockers = _archive_location(location)
+    if blockers:
+        messages.error(
+            request,
+            f"{location.name} can't be archived. " + ' '.join(blockers),
+        )
+    else:
+        messages.success(
+            request,
+            f"{location.name} archived. Its history is kept, and you can "
+            "restore it from Settings.",
+        )
+    return redirect(_safe_next(request, fallback))
+
+
+@feature_required('locations')
+@require_POST
+def location_restore(request, pk):
+    """Bring an archived field back into use."""
+    location = get_object_or_404(Location, pk=pk)
+    if location.is_archived:
+        location.is_archived = False
+        location.archived_at = None
+        location.save(update_fields=['is_archived', 'archived_at', 'updated_at'])
+        messages.success(request, f"{location.name} restored.")
+    else:
+        messages.info(request, f"{location.name} is already in use.")
+    return redirect(_safe_next(
+        request, reverse('location_detail', kwargs={'pk': location.pk})
+    ))
+
+
+@feature_required('locations')
+@require_POST
+def location_delete(request, pk):
+    """Delete a field permanently — only when no records point at it."""
+    location = get_object_or_404(Location, pk=pk)
+    blockers = location.delete_blockers()
+    if blockers:
+        messages.error(
+            request,
+            f"{location.name} can't be deleted. " + ' '.join(blockers)
+            + " Archive it instead to keep the records.",
+        )
+        return redirect(_safe_next(
+            request, reverse('location_detail', kwargs={'pk': location.pk})
+        ))
+
+    name = location.name
+    location.delete()
+    messages.success(request, f"{name} deleted.")
+    return redirect(_safe_next(request, reverse('location_list')))
+
+
+@feature_required('locations')
+@require_POST
+def site_archive(request):
+    """Archive every field on a site in one step."""
+    site = (request.POST.get('site') or '').strip()
+    locations = list(Location.objects.active().filter(site=site))
+    fallback = reverse('location_list')
+
+    if not locations:
+        messages.error(request, f"No fields in use on site “{site}”.")
+        return redirect(_safe_next(request, fallback))
+
+    archived, blocked = 0, []
+    for location in locations:
+        if _archive_location(location):
+            blocked.append(location.name)
+        else:
+            archived += 1
+
+    if archived:
+        messages.success(
+            request,
+            f"{archived} field{'s' if archived != 1 else ''} on {site} archived.",
+        )
+    if blocked:
+        messages.error(
+            request,
+            "These fields still have horses on them, so they stay in use: "
+            f"{', '.join(blocked)}.",
+        )
+    return redirect(_safe_next(request, fallback))
+
+
+@feature_required('locations')
+@require_POST
+def site_restore(request):
+    """Bring every archived field on a site back into use."""
+    site = (request.POST.get('site') or '').strip()
+    restored = Location.objects.archived().filter(site=site).update(
+        is_archived=False, archived_at=None,
+    )
+    if restored:
+        messages.success(
+            request,
+            f"{restored} field{'s' if restored != 1 else ''} on {site} restored.",
+        )
+    else:
+        messages.error(request, f"No archived fields on site “{site}”.")
+    return redirect(_safe_next(request, reverse('location_list')))
+
+
+@feature_required('locations')
+@require_POST
+def site_delete(request):
+    """Delete a whole site — only when every one of its fields is deletable."""
+    site = (request.POST.get('site') or '').strip()
+    locations = list(Location.objects.filter(site=site))
+    fallback = reverse('location_list')
+
+    if not locations:
+        messages.error(request, f"No site named “{site}”.")
+        return redirect(_safe_next(request, fallback))
+
+    blocked = [loc.name for loc in locations if loc.delete_blockers()]
+    if blocked:
+        messages.error(
+            request,
+            f"{site} can't be deleted — these fields have records: "
+            f"{', '.join(blocked)}. Archive the site instead.",
+        )
+        return redirect(_safe_next(request, fallback))
+
+    count = len(locations)
+    with transaction.atomic():
+        Location.objects.filter(site=site).delete()
+    messages.success(
+        request,
+        f"Site {site} deleted with its {count} field{'s' if count != 1 else ''}.",
+    )
+    return redirect(_safe_next(request, fallback))

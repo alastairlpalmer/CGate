@@ -418,7 +418,8 @@ class HorseListView(FeatureAccessMixin, ListView):
             }
             for key in GROUP_SORT_OPTIONS
         ] if self.sort_context in ('location', 'owner') else None
-        context['locations'] = Location.objects.order_by('site', 'name')
+        # Location.objects.active() hides archived fields (from main).
+        context['locations'] = Location.objects.active().order_by('site', 'name')
         context['owners'] = Owner.objects.values('pk', 'name').order_by('name')
         context['is_searching'] = self.is_searching
         # Single query for both counts. The departed test must be

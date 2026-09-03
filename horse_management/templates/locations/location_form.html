@@ -37,5 +37,67 @@
         </form>
     </div>
 
+    {% if object %}
+    <!-- Archive / Delete -->
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">{% if object.is_archived %}Archived{% else %}Take This Field Out of Use{% endif %}</h3>
+        </div>
+        <div class="p-4 sm:p-5 space-y-4">
+            {% if object.is_archived %}
+                <p class="text-sm text-sage">
+                    This field is archived. It keeps its history and stays in
+                    reports, but it is hidden from lists and pickers.
+                </p>
+                <form method="post" action="{% url 'location_restore' object.pk %}">
+                    {% csrf_token %}
+                    <div class="flex justify-end">
+                        <button type="submit" class="btn-secondary">Restore Field</button>
+                    </div>
+                </form>
+            {% else %}
+                <p class="text-sm text-sage">
+                    Archiving keeps every record — history, invoices and usage
+                    analytics — and hides the field from lists and pickers.
+                </p>
+                {% if archive_blockers %}
+                    <div class="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+                        {% for reason in archive_blockers %}{{ reason }} {% endfor %}
+                    </div>
+                {% else %}
+                <form method="post" action="{% url 'location_archive' object.pk %}"
+                      hx-confirm="Archive {{ object.name }}? You can restore it later.">
+                    {% csrf_token %}
+                    <div class="flex justify-end">
+                        <button type="submit" class="btn-secondary">Archive Field</button>
+                    </div>
+                </form>
+                {% endif %}
+            {% endif %}
+
+            <div class="pt-4 border-t border-light-sage space-y-3">
+                <p class="text-sm text-sage">
+                    Deleting removes the field for good. It is only possible
+                    while no records point at it.
+                </p>
+                {% if delete_blockers %}
+                    <div class="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+                        {% for reason in delete_blockers %}{{ reason }} {% endfor %}
+                        Archive it instead to keep the records.
+                    </div>
+                {% else %}
+                <form method="post" action="{% url 'location_delete' object.pk %}"
+                      hx-confirm="Delete {{ object.name }}? This cannot be undone.">
+                    {% csrf_token %}
+                    <div class="flex justify-end">
+                        <button type="submit" class="btn-secondary text-error-red border-error-red/30 hover:bg-error-red-50">Delete Field</button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
 </div>
 {% endblock %}

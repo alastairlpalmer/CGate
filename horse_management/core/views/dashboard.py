@@ -177,7 +177,7 @@ def _dashboard_inner(request):
         ).filter(Q(end_date__isnull=True) | Q(end_date__gte=year_start)):
             periods_by_loc[p.location_id].append(p)
 
-        for loc in Location.objects.order_by('site', 'name'):
+        for loc in Location.objects.active().order_by('site', 'name'):
             rested = horses = 0
             for p in periods_by_loc.get(loc.pk, []):
                 days = p.get_days_in_period(year_start, year_end)
@@ -399,7 +399,7 @@ def quick_find(request):
     if has_feature_access(request.user, 'locations'):
         locations = [
             {'pk': pk, 'name': name, 'site': site}
-            for pk, name, site in Location.objects.values_list('pk', 'name', 'site')
+            for pk, name, site in Location.objects.active().values_list('pk', 'name', 'site')
             if is_fuzzy_match(query, name) or is_fuzzy_match(query, site)
         ][:QUICK_FIND_PER_GROUP]
 

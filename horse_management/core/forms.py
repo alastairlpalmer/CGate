@@ -12,8 +12,12 @@ from .models import BusinessSettings, Document, Horse, HorsePhoto, Location, Own
 
 
 def get_grouped_location_choices():
-    """Build location choices grouped by site for <optgroup> rendering."""
-    locations = Location.objects.order_by('site', 'name')
+    """Build location choices grouped by site for <optgroup> rendering.
+
+    Archived fields are left out — they are retired, so nothing new should
+    be placed on them.
+    """
+    locations = Location.objects.active().order_by('site', 'name')
     choices = [('', '---------')]
     current_site = None
     group = []

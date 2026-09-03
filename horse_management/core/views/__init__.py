@@ -28,9 +28,15 @@ from .locations import (  # noqa: F401
     LocationDetailView,
     LocationListView,
     LocationUpdateView,
+    location_archive,
+    location_delete,
+    location_restore,
     log_arrival,
     log_departure,
     set_location_usage,
+    site_archive,
+    site_delete,
+    site_restore,
 )
 from .owners import (  # noqa: F401
     OwnerCreateView,
