@@ -57,8 +57,9 @@ urlpatterns = [
     path('sites/restore/', views.site_restore, name='site_restore'),
     path('sites/delete/', views.site_delete, name='site_delete'),
 
-    # Placements (create/edit still needed, list redirects to locations)
-    path('placements/', login_required(RedirectView.as_view(url='/locations/?tab=history', permanent=False)), name='placement_list'),
+    # Placements (create/edit still needed; the log is the horse list's
+    # Movements tab, which is where the old /placements/ URL now lands)
+    path('placements/', login_required(RedirectView.as_view(url='/horses/?tab=movements', permanent=False)), name='placement_list'),
     path('placements/add/', views.PlacementCreateView.as_view(), name='placement_create'),
     path('placements/<int:pk>/edit/', views.PlacementUpdateView.as_view(), name='placement_update'),
     path('placements/<int:pk>/delete/', views.placement_delete, name='placement_delete'),

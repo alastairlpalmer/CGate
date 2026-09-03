@@ -174,7 +174,7 @@ class PopupSheetRenderingTests(MoveFixtureTestCase):
         for name, args, query in (
             ('horse_list', [], ''),
             ('horse_detail', [self.horse.pk], ''),
-            ('location_list', [], '?tab=history'),  # placements live on the History tab
+            ('horse_list', [], '?tab=movements'),  # the movement log moved here
             ('location_detail', [self.location.pk], ''),
         ):
             with self.subTest(page=name):

@@ -121,25 +121,50 @@ class MovementsTabTests(TestCase):
 
     # ── Shared with the Locations page ───────────────────────────────
 
-    def test_both_pages_show_the_same_log(self):
-        """One query function serves both tabs — they cannot drift."""
-        for params in ({'status': 'all'}, {'status': 'ended'}, {}):
-            with self.subTest(**params):
-                horses_tab = self._placements(**params)
-                locations_tab = self.client.get(
-                    reverse('location_list'), dict(params, tab='history'),
-                ).context['placements']
-                self.assertEqual(
-                    response_pks(horses_tab), response_pks(locations_tab),
-                )
-
-    def test_locations_history_tab_still_works(self):
-        """Duplicated on purpose: nothing is removed from Locations."""
+    def test_locations_history_tab_redirects_here(self):
+        """Phase 5 retired that tab. Its URL still has to land somewhere
+        useful, so it comes here."""
         response = self.client.get(
             reverse('location_list'), {'tab': 'history'},
         )
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Big Barn')
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response['Location'], f"{reverse('horse_list')}?tab=movements",
+        )
+
+    def test_the_redirect_carries_the_filters(self):
+        """A bookmarked, filtered log must arrive still filtered."""
+        response = self.client.get(reverse('location_list'), {
+            'tab': 'history', 'status': 'ended', 'location': self.barn.pk,
+        })
+        self.assertEqual(response.status_code, 302)
+        target = response['Location']
+        self.assertIn('tab=movements', target)
+        self.assertIn('status=ended', target)
+        self.assertIn(f'location={self.barn.pk}', target)
+
+        followed = self.client.get(target)
+        self.assertEqual(
+            response_pks(followed.context['placements']), {self.ended.pk},
+        )
+
+    def test_placements_url_lands_on_the_movements_tab(self):
+        """/placements/ pointed at the Locations tab that no longer exists."""
+        response = self.client.get(reverse('placement_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response['Location'], '/horses/?tab=movements')
+
+    def test_add_placement_is_offered_on_the_tab(self):
+        """It used to sit on the Locations history tab."""
+        response = self.client.get(
+            reverse('horse_list'), {'tab': 'movements'},
+        )
+        self.assertContains(response, reverse('placement_create'))
+        self.assertContains(response, 'Add Placement')
+
+    def test_add_placement_is_not_offered_on_the_horse_views(self):
+        response = self.client.get(reverse('horse_list'))
+        self.assertNotContains(response, 'Add Placement')
 
     def test_helper_caps_the_log(self):
         request = self.client.get(
