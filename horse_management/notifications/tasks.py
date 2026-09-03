@@ -282,7 +282,6 @@ def check_invoice_status():
     Run daily via Celery Beat.
     """
     today = timezone.localdate()
-    updated = 0
 
     # Mark sent invoices as overdue if past due date
     overdue = Invoice.objects.filter(

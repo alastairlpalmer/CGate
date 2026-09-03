@@ -192,7 +192,6 @@ class SettingsPagePermissionsTests(TestCase):
         self.assertNotIn('Integrations', body)
 
     def test_staff_sees_both_business_and_dashboard_sections(self):
-        from core.roles_testutils import make_admin
         user = make_admin('staffuser')
         self.client.force_login(user)
         resp = self.client.get(reverse('app_settings'))

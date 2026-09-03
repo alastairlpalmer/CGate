@@ -350,7 +350,7 @@ def import_location_csv(filepath):
                     )
                     placements_created += 1
 
-    print(f"\nImport complete:")
+    print("\nImport complete:")
     print(f"  Owners created: {owners_created}")
     print(f"  Locations created: {locations_created}")
     print(f"  Horses created: {horses_created}")

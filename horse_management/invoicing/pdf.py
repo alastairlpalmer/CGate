@@ -91,11 +91,6 @@ def generate_invoice_pdf_reportlab(invoice):
         fontSize=9,
         textColor=colors.Color(0.4, 0.4, 0.4),
     )
-    bold_style = ParagraphStyle(
-        'Bold',
-        parent=normal_style,
-        fontName='Helvetica-Bold',
-    )
     item_style = ParagraphStyle(
         'Item',
         parent=normal_style,

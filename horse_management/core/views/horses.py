@@ -860,8 +860,6 @@ class HorseListView(FeatureAccessMixin, ListView):
             })
         return _sort_groups(groups, self.group_sort)
 
-        return context
-
 
 class HorseDetailView(FeatureAccessMixin, DetailView):
     feature = 'horses'
