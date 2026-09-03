@@ -276,10 +276,38 @@
     {% else %}
     <!-- ═══ Locations Tab (default) ═══ -->
 
-    <!-- Search -->
+    <!-- Search + Sort -->
     <div class="card px-4 py-3 sm:px-5 sm:py-4">
-        <form method="get">
+        <form method="get" class="flex flex-wrap items-center gap-2 sm:gap-3">
+            <!-- Preserve the non-default sort across live searches -->
+            {% if location_sort == 'default' %}<input type="hidden" name="sort" value="default">{% endif %}
+
             {% include 'includes/search_bar.html' with placeholder="Search by location or site…" action_url=request.path %}
+
+            <!-- Sort toggle: empty fields first (default) or plain site/name order -->
+            <div class="flex items-center gap-2 text-sm text-sage shrink-0" data-testid="location-sort">
+                <span class="text-xs uppercase tracking-wider font-semibold hidden sm:inline">Sort</span>
+                <div class="flex gap-1 bg-white rounded-lg border border-light-sage p-1 shadow-sm">
+                    <a href="{% url 'location_list' %}{% if request.GET.search %}?search={{ request.GET.search|urlencode }}{% endif %}"
+                       title="Show fields with no horses first"
+                       {% if location_sort != 'default' %}aria-current="true"{% endif %}
+                       class="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] sm:min-h-0 text-sm font-medium rounded-md transition-all duration-150 {% if location_sort != 'default' %}bg-forest text-white shadow-sm{% else %}text-sage hover:text-charcoal hover:bg-light-sage/60{% endif %}">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h9.75m4.5-4.5v12m0 0l-3.75-3.75M17.25 21L21 17.25"/>
+                        </svg>
+                        Empty first
+                    </a>
+                    <a href="{% url 'location_list' %}?sort=default{% if request.GET.search %}&search={{ request.GET.search|urlencode }}{% endif %}"
+                       title="Show sites and fields in name order"
+                       {% if location_sort == 'default' %}aria-current="true"{% endif %}
+                       class="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] sm:min-h-0 text-sm font-medium rounded-md transition-all duration-150 {% if location_sort == 'default' %}bg-forest text-white shadow-sm{% else %}text-sage hover:text-charcoal hover:bg-light-sage/60{% endif %}">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
+                        </svg>
+                        Default
+                    </a>
+                </div>
+            </div>
         </form>
     </div>
 
@@ -379,7 +407,7 @@
         </svg>
         <h3 class="mt-3 text-sm font-semibold text-charcoal">No matches for "{{ request.GET.search }}"</h3>
         <p class="mt-1 text-xs text-sage">Try a different location or site name.</p>
-        <a href="{% url 'location_list' %}" class="btn-ghost mt-4 inline-flex text-xs">Clear search</a>
+        <a href="{% url 'location_list' %}{% if location_sort == 'default' %}?sort=default{% endif %}" class="btn-ghost mt-4 inline-flex text-xs">Clear search</a>
     </div>
     {% else %}
     <!-- Empty State -->
