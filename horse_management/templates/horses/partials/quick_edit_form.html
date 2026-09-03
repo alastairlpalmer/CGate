@@ -1,0 +1,49 @@
+{% comment %}
+Quick Edit form — pop-up sheet only (the trigger's href goes to the full
+Edit page, which the view also redirects to outside the sheet). Holds the
+fields people change day to day; profile picture, dam/sire, breeding and
+ownership shares live on the full page, one link away.
+{% endcomment %}
+<form method="post" action="{% url 'horse_quick_edit' horse.pk %}"
+      hx-post="{% url 'horse_quick_edit' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false">
+    {% csrf_token %}
+
+    <div class="p-4 sm:p-5 space-y-4 sm:space-y-5">
+
+        {% if form.non_field_errors %}
+        <div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3" role="alert">
+            <p class="text-sm font-medium text-error-red">The horse wasn't saved:</p>
+            {% for error in form.non_field_errors %}
+            <p class="text-sm text-error-red mt-1">{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2">
+            {% include "includes/form_field.html" with field=form.name span="2" %}
+            {% include "includes/form_field.html" with field=form.sex %}
+            {% include "includes/form_field.html" with field=form.color label="Colour" %}
+            {% include "includes/form_field.html" with field=form.date_of_birth help="Age is worked out from this" %}
+            {% include "includes/form_field.html" with field=form.age help="Only used if date of birth is not set" %}
+            {% include "includes/form_field.html" with field=form.passport_number %}
+            <div class="flex items-end min-h-[44px]">
+                {% include "includes/form_field.html" with field=form.has_passport %}
+            </div>
+            {% include "includes/form_field.html" with field=form.notes span="2" help="Special notes (e.g. first winter, lame, needs rug)" %}
+            <div class="sm:col-span-2">
+                {% include "includes/form_field.html" with field=form.is_active help="Untick only if the horse has left for good" %}
+            </div>
+        </div>
+
+        <p class="text-xs text-sage border-t border-light-sage pt-3">
+            Profile picture, dam and sire, breeding and ownership are on the
+            {# hx-boost="false": inside the form this link would otherwise inherit hx-target="#popup-body" and load the page into the sheet #}
+            <a href="{% url 'horse_update' horse.pk %}" class="link" hx-boost="false">full edit page</a>.
+        </p>
+    </div>
+
+    <div class="popup-footer">
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        <button type="submit" class="btn-primary">Save Changes</button>
+    </div>
+</form>

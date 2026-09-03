@@ -81,6 +81,15 @@
             'That didn’t load. Check your signal and try again.' + link + '</div>';
     }
 
+    // A boosted navigation (e.g. the "full edit page" link inside a form)
+    // has left the page: close the sheet once the new page has landed.
+    // (Closing on request start would remove the link mid-request.)
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+        if (!e.detail.boosted) { return; }
+        var s = store();
+        if (s && s.open) { s.close(true); }
+    });
+
     // Open on request start.
     document.body.addEventListener('htmx:beforeRequest', function (e) {
         var elt = e.detail.elt;
