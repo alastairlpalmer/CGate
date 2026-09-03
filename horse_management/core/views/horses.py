@@ -1320,7 +1320,11 @@ def confirm_departure(request, pk):
                 f"{horse.name} is still placed in a location — use Log Departure instead.",
             )
     if request.headers.get('HX-Request'):
-        return HttpResponse('')
+        # 204 + popup:saved: nothing is swapped, and popup.js re-fetches
+        # #main-content so the queued message shows and the widget
+        # re-renders from the database. Swapping an empty body used to
+        # delete the row even when the action was refused.
+        return HttpResponse(status=204, headers={'HX-Trigger': 'popup:saved'})
     return redirect('dashboard')
 
 
@@ -1334,7 +1338,11 @@ def cancel_departure(request, pk):
         if PlacementService.cancel_departure(horse):
             messages.success(request, f"{horse.name} departure cancelled.")
     if request.headers.get('HX-Request'):
-        return HttpResponse('')
+        # 204 + popup:saved: nothing is swapped, and popup.js re-fetches
+        # #main-content so the queued message shows and the widget
+        # re-renders from the database. Swapping an empty body used to
+        # delete the row even when the action was refused.
+        return HttpResponse(status=204, headers={'HX-Trigger': 'popup:saved'})
     return redirect('dashboard')
 
 
@@ -1355,7 +1363,11 @@ def confirm_departures_bulk(request):
                 msg += f" {skipped} skipped (already departed or still placed in a location)."
             messages.success(request, msg)
     if request.headers.get('HX-Request'):
-        return HttpResponse('')
+        # 204 + popup:saved: nothing is swapped, and popup.js re-fetches
+        # #main-content so the queued message shows and the widget
+        # re-renders from the database. Swapping an empty body used to
+        # delete the row even when the action was refused.
+        return HttpResponse(status=204, headers={'HX-Trigger': 'popup:saved'})
     return redirect('dashboard')
 
 

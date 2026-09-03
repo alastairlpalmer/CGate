@@ -614,9 +614,17 @@ class LocationUsageService:
             previous.save()
             restored_usage = previous.usage
         else:
-            # The rest period had no predecessor to re-open; the field holds
-            # horses again, so at least keep the label truthful.
+            # The rest period had no predecessor to re-open (history that
+            # predates usage tracking). Open a replacement rather than
+            # leave the location with no open period — the usage tab
+            # otherwise shows a gap from here on.
             restored_usage = Location.Usage.HORSES
+            LocationUsagePeriod.objects.create(
+                location=location,
+                usage=restored_usage,
+                start_date=current.start_date,
+                source=LocationUsagePeriod.Source.AUTO,
+            )
         # Queryset write — see set_usage: instance state can be stale.
         Location.objects.filter(pk=location.pk).update(usage=restored_usage)
         location.usage = restored_usage

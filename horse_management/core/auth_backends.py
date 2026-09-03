@@ -22,9 +22,12 @@ class EmailOrUsernameBackend(ModelBackend):
         if not username or not password:
             return None
 
+        # No LIMIT here: with three or more matches an unordered LIMIT 2
+        # could omit the username owner, and the login was refused or not
+        # depending on row order.
         users = list(UserModel._default_manager.filter(
             Q(username__iexact=username) | Q(email__iexact=username)
-        )[:2])
+        ))
         if len(users) > 1:
             # The identifier matched one account's username and another's
             # email — the username owner wins. Two accounts sharing an email

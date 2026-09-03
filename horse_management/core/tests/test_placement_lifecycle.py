@@ -1164,7 +1164,7 @@ class FutureDepartureTests(LifecycleTestCase):
             {'horse_ids': ['abc']},
             HTTP_HX_REQUEST='true',
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 204)
 
     def test_bulk_health_apply_ignores_non_numeric_ids(self):
         response = self.client.post(
@@ -1259,3 +1259,47 @@ class ToastContainerTests(TestCase):
         self.client.force_login(make_admin(username='toast-admin'))
         response = self.client.get(reverse('dashboard'))
         self.assertContains(response, 'id="toast-container"')
+
+
+class HtmxDepartureResponseTests(LifecycleTestCase):
+    """The dashboard's per-horse confirm/cancel buttons swap the row with
+    the response body. An empty 200 deleted the row even when the action
+    was refused and hid the queued message; a 204 + popup:saved leaves the
+    row alone and refreshes the page content so the toast shows."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(make_admin())
+
+    def test_refused_confirm_does_not_swap_the_row(self):
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner, location=self.location,
+            rate_type=self.rate, start_date=self.today - timedelta(days=30),
+        )
+        response = self.client.post(
+            reverse('confirm_departure', args=[self.horse.pk]),
+            HTTP_HX_REQUEST='true',
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response['HX-Trigger'], 'popup:saved')
+        self.horse.refresh_from_db()
+        self.assertTrue(self.horse.is_active)
+
+
+class UndoAutoRestWithoutPredecessorTests(LifecycleTestCase):
+    def test_replacement_period_is_opened(self):
+        from core.models import LocationUsagePeriod
+        from core.services import LocationUsageService
+
+        # An AUTO rest with no earlier period (history predating tracking).
+        self.location.usage_periods.all().delete()
+        LocationUsagePeriod.objects.create(
+            location=self.location, usage='rested',
+            start_date=self.today - timedelta(days=5),
+            source=LocationUsagePeriod.Source.AUTO,
+        )
+        LocationUsageService.undo_auto_rest(self.location)
+        open_periods = self.location.usage_periods.filter(end_date__isnull=True)
+        self.assertEqual(open_periods.count(), 1)
+        self.assertEqual(open_periods.get().usage, 'horses')
+        self.assertEqual(open_periods.get().start_date, self.today - timedelta(days=5))
