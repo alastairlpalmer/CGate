@@ -2,6 +2,8 @@
 Settings, rate types, and health check views.
 """
 
+from itertools import groupby
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import connection, models
@@ -12,6 +14,40 @@ from django.views.decorators.http import require_POST
 from ..dashboard_widgets import WIDGETS, WIDGETS_BY_KEY
 from ..permissions import feature_required, has_feature_access
 from ..models import DashboardPreference, Location
+
+
+def _location_groups(queryset):
+    """Group locations by site with the archive/delete state each row needs.
+
+    Working the counts out here keeps them out of the template and turns
+    what would be several queries per row into one.
+    """
+    locations = list(
+        queryset.annotate(
+            placement_count=models.Count('placements', distinct=True),
+            feed_out_count=models.Count('feed_outs', distinct=True),
+            live_horse_count=models.Count(
+                'placements__horse',
+                filter=models.Q(placements__end_date__isnull=True),
+                distinct=True,
+            ),
+        )
+    )
+    for loc in locations:
+        loc.can_be_deleted = not (loc.placement_count or loc.feed_out_count)
+        loc.can_be_archived = not loc.is_archived and not loc.live_horse_count
+
+    groups = []
+    for site, rows in groupby(locations, key=lambda l: l.site):
+        rows = list(rows)
+        groups.append({
+            'site': site,
+            'locations': rows,
+            # A site is only deletable when every one of its fields is.
+            'can_be_deleted': all(r.can_be_deleted for r in rows),
+            'can_be_archived': any(r.can_be_archived for r in rows),
+        })
+    return groups
 
 
 def health_check(request):
@@ -55,7 +91,12 @@ def app_settings(request):
             'biz_form': biz_form,
             'rate_types': RateType.objects.all(),
             'vaccination_types': VaccinationType.objects.all(),
-            'locations': Location.objects.order_by('site', 'name'),
+            'location_groups': _location_groups(
+                Location.objects.active().order_by('site', 'name')
+            ),
+            'archived_location_groups': _location_groups(
+                Location.objects.archived().order_by('site', 'name')
+            ),
         })
 
     if has_feature_access(request.user, 'xero', 'full'):

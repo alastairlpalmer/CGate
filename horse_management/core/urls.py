@@ -48,6 +48,12 @@ urlpatterns = [
     path('locations/<int:pk>/arrive/', views.log_arrival, name='location_arrive'),
     path('locations/<int:pk>/depart/', views.log_departure, name='location_depart'),
     path('locations/<int:pk>/set-usage/', views.set_location_usage, name='location_set_usage'),
+    path('locations/<int:pk>/archive/', views.location_archive, name='location_archive'),
+    path('locations/<int:pk>/restore/', views.location_restore, name='location_restore'),
+    path('locations/<int:pk>/delete/', views.location_delete, name='location_delete'),
+    path('sites/archive/', views.site_archive, name='site_archive'),
+    path('sites/restore/', views.site_restore, name='site_restore'),
+    path('sites/delete/', views.site_delete, name='site_delete'),
 
     # Placements (create/edit still needed, list redirects to locations)
     path('placements/', login_required(RedirectView.as_view(url='/locations/?tab=history', permanent=False)), name='placement_list'),

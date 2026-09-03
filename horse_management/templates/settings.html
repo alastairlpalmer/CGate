@@ -219,20 +219,47 @@
             </a>
         </div>
         <div class="p-5">
-            {% if locations %}
-                {% regroup locations by site as site_list %}
+            <p class="text-xs text-sage mb-4">
+                Archive a field or a site to take it out of use. Its history,
+                invoices and usage records stay, and you can restore it later.
+                Delete removes it for good, and is only possible while nothing
+                points at it.
+            </p>
+            {% if location_groups %}
                 <div class="space-y-5">
-                    {% for site in site_list %}
+                    {% for group in location_groups %}
                     <div>
-                        <div class="flex items-center gap-2 mb-2">
-                            <svg class="w-4 h-4 text-forest" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21m-3.75 3H21"/>
-                            </svg>
-                            <span class="text-sm font-semibold text-charcoal">{{ site.grouper }}</span>
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-forest" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21m-3.75 3H21"/>
+                                </svg>
+                                <span class="text-sm font-semibold text-charcoal">{{ group.site }}</span>
+                            </div>
+                            <div class="flex items-center gap-3 shrink-0">
+                                {% if group.can_be_archived %}
+                                <form method="post" action="{% url 'site_archive' %}" class="inline"
+                                      hx-confirm="Archive every field on {{ group.site }}? They keep their history and can be restored.">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="site" value="{{ group.site }}">
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="text-xs text-sage hover:text-forest transition-colors tap-pad">Archive site</button>
+                                </form>
+                                {% endif %}
+                                {% if group.can_be_deleted %}
+                                <form method="post" action="{% url 'site_delete' %}" class="inline"
+                                      hx-confirm="Delete {{ group.site }} and all its fields? This cannot be undone.">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="site" value="{{ group.site }}">
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="text-xs text-sage hover:text-error-red transition-colors tap-pad">Delete site</button>
+                                </form>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="space-y-2 ml-6">
-                            {% for loc in site.list %}
-                            <div class="flex items-center justify-between">
+                            {% for loc in group.locations %}
+                            <div class="flex items-start justify-between gap-3">
                                 <div>
                                     <p class="text-sm font-medium text-charcoal">{{ loc.name }}</p>
                                     <p class="text-xs text-sage">
@@ -240,8 +267,31 @@
                                         &middot; {% if loc.capacity %}Capacity: {{ loc.capacity }}{% else %}No capacity set{% endif %}
                                         {% if loc.description %}&middot; {{ loc.description|truncatewords:8 }}{% endif %}
                                     </p>
+                                    {% if loc.live_horse_count %}
+                                    <p class="text-xs text-sage">
+                                        {{ loc.live_horse_count }} horse{{ loc.live_horse_count|pluralize }} here — move them off before you archive it.
+                                    </p>
+                                    {% endif %}
                                 </div>
-                                <a href="{% url 'location_update' loc.pk %}" class="text-xs text-sage hover:text-forest transition-colors tap-pad">Edit</a>
+                                <div class="flex items-center gap-3 shrink-0">
+                                    <a href="{% url 'location_update' loc.pk %}" class="text-xs text-sage hover:text-forest transition-colors tap-pad">Edit</a>
+                                    {% if loc.can_be_archived %}
+                                    <form method="post" action="{% url 'location_archive' loc.pk %}" class="inline"
+                                          hx-confirm="Archive {{ loc.name }}? It keeps its history and can be restored.">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                        <button type="submit" class="text-xs text-sage hover:text-forest transition-colors tap-pad">Archive</button>
+                                    </form>
+                                    {% endif %}
+                                    {% if loc.can_be_deleted %}
+                                    <form method="post" action="{% url 'location_delete' loc.pk %}" class="inline"
+                                          hx-confirm="Delete {{ loc.name }}? This cannot be undone.">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                        <button type="submit" class="text-xs text-sage hover:text-error-red transition-colors tap-pad">Delete</button>
+                                    </form>
+                                    {% endif %}
+                                </div>
                             </div>
                             {% endfor %}
                         </div>
@@ -250,6 +300,60 @@
                 </div>
             {% else %}
                 <p class="text-sm text-sage">No locations configured.</p>
+            {% endif %}
+
+            {% if archived_location_groups %}
+            <div class="mt-6 pt-5 border-t border-light-sage">
+                <h4 class="text-sm font-semibold text-charcoal mb-1">Archived</h4>
+                <p class="text-xs text-sage mb-3">
+                    These fields are out of use. They stay in reports and history,
+                    and you can restore them at any time.
+                </p>
+                <div class="space-y-4">
+                    {% for group in archived_location_groups %}
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <span class="text-sm font-semibold text-sage">{{ group.site }}</span>
+                            <form method="post" action="{% url 'site_restore' %}" class="inline"
+                                  hx-confirm="Restore every archived field on {{ group.site }}?">
+                                {% csrf_token %}
+                                <input type="hidden" name="site" value="{{ group.site }}">
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="text-xs text-sage hover:text-forest transition-colors tap-pad">Restore site</button>
+                            </form>
+                        </div>
+                        <div class="space-y-2 ml-6">
+                            {% for loc in group.locations %}
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-sm font-medium text-sage">{{ loc.name }}</p>
+                                    <p class="text-xs text-sage">
+                                        Archived{% if loc.archived_at %} {{ loc.archived_at|date:"j M Y" }}{% endif %}
+                                        {% if loc.placement_count %}&middot; {{ loc.placement_count }} placement record{{ loc.placement_count|pluralize }}{% endif %}
+                                    </p>
+                                </div>
+                                <div class="flex items-center gap-3 shrink-0">
+                                    <form method="post" action="{% url 'location_restore' loc.pk %}" class="inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                        <button type="submit" class="text-xs text-sage hover:text-forest transition-colors tap-pad">Restore</button>
+                                    </form>
+                                    {% if loc.can_be_deleted %}
+                                    <form method="post" action="{% url 'location_delete' loc.pk %}" class="inline"
+                                          hx-confirm="Delete {{ loc.name }}? This cannot be undone.">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                        <button type="submit" class="text-xs text-sage hover:text-error-red transition-colors tap-pad">Delete</button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
             {% endif %}
         </div>
     </div>
