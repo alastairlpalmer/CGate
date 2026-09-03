@@ -1,0 +1,68 @@
+{% comment %}
+Full-screen photo viewer — rendered once in base.html.
+
+Any element with `data-lightbox-src` opens it (see static/js/lightbox.js), so
+a horse photo can be seen large from the list without leaving the page. It
+sits above the pop-up sheet (z-70 > z-60). Escape, the scrim, the close
+button and the photo itself all close it.
+{% endcomment %}
+<div x-data x-show="$store.lightbox.open" x-cloak
+     class="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6"
+     x-transition:enter="transition ease-out duration-150"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-100"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     @keydown.escape.window="$store.lightbox.open && $store.lightbox.close()">
+
+    <!-- Scrim -->
+    <div class="absolute inset-0 bg-charcoal/90" @click="$store.lightbox.close()"></div>
+
+    <!-- Panel -->
+    <div id="lightbox-panel" role="dialog" aria-modal="true" aria-labelledby="lightbox-title" tabindex="-1"
+         x-show="$store.lightbox.open"
+         x-transition:enter="transition ease-out duration-150 motion-reduce:transition-none"
+         x-transition:enter-start="scale-95"
+         x-transition:enter-end="scale-100"
+         class="relative flex flex-col items-center gap-3 w-full max-w-4xl max-h-full focus:outline-none">
+
+        <!-- Header -->
+        <div class="flex items-center gap-3 w-full shrink-0">
+            <h2 id="lightbox-title" class="text-base font-semibold text-white truncate font-heading"
+                x-text="$store.lightbox.title"></h2>
+            <template x-if="$store.lightbox.href">
+                <a :href="$store.lightbox.href" @click="$store.lightbox.close()"
+                   class="text-sm text-white/80 underline underline-offset-2 hover:text-white shrink-0">Horse page</a>
+            </template>
+            <button type="button" @click="$store.lightbox.close()" aria-label="Close photo"
+                    class="ml-auto shrink-0 w-11 h-11 -mr-2 rounded-full flex items-center justify-center text-white hover:bg-white/15 transition-colors">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Photo -->
+        <div class="relative flex items-center justify-center min-h-0 w-full">
+            <div x-show="$store.lightbox.loading && !$store.lightbox.failed"
+                 class="absolute inset-x-0 flex items-center justify-center" aria-hidden="true">
+                <div class="w-8 h-8 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+            </div>
+            <p x-show="$store.lightbox.failed" class="text-sm text-white/80" role="alert">
+                That photo could not be loaded.
+            </p>
+            <img :src="$store.lightbox.src" :alt="$store.lightbox.title"
+                 x-show="!$store.lightbox.failed"
+                 @load="$store.lightbox.loading = false"
+                 @error="$store.lightbox.loading = false; $store.lightbox.failed = true"
+                 @click="$store.lightbox.close()"
+                 :class="$store.lightbox.loading ? 'opacity-0' : 'opacity-100'"
+                 class="max-w-full max-h-[75dvh] object-contain rounded-card shadow-xl cursor-zoom-out transition-opacity">
+        </div>
+
+        <!-- Caption -->
+        <p x-show="$store.lightbox.caption" class="text-xs text-white/70 text-center shrink-0"
+           x-text="$store.lightbox.caption"></p>
+    </div>
+</div>
