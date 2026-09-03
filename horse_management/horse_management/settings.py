@@ -456,18 +456,30 @@ LOGGING = {
             'class': 'logging.StreamHandler',
         },
     },
+    # Root logger: every app module (invoicing, notifications, xero_integration,
+    # health, billing...) logs through it. Without this only 'django' and
+    # 'core' had a handler, so a logger.exception() in a Celery task or a
+    # view outside core fell through to Python's last-resort handler —
+    # WARNING and above only, and with no formatting.
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
     'loggers': {
         'django': {
             'handlers': ['console'],
             'level': 'INFO',
+            'propagate': False,
         },
         'performance': {
             'handlers': ['console'],
             'level': 'WARNING',
+            'propagate': False,
         },
         'core': {
             'handlers': ['console'],
             'level': 'INFO',
+            'propagate': False,
         },
     },
 }
