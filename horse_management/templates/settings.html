@@ -220,7 +220,7 @@
         </div>
         <div class="p-5">
             <p class="text-xs text-sage mb-4">
-                Archive a field or a site to take it out of use. Its history,
+                Archive a location or a site to take it out of use. Its history,
                 invoices and usage records stay, and you can restore it later.
                 Delete removes it for good, and is only possible while nothing
                 points at it.
@@ -239,7 +239,7 @@
                             <div class="flex items-center gap-3 shrink-0">
                                 {% if group.can_be_archived %}
                                 <form method="post" action="{% url 'site_archive' %}" class="inline"
-                                      hx-confirm="Archive every field on {{ group.site }}? They keep their history and can be restored.">
+                                      hx-confirm="Archive every location on {{ group.site }}? They keep their history and can be restored.">
                                     {% csrf_token %}
                                     <input type="hidden" name="site" value="{{ group.site }}">
                                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
@@ -248,7 +248,7 @@
                                 {% endif %}
                                 {% if group.can_be_deleted %}
                                 <form method="post" action="{% url 'site_delete' %}" class="inline"
-                                      hx-confirm="Delete {{ group.site }} and all its fields? This cannot be undone.">
+                                      hx-confirm="Delete {{ group.site }} and all its locations? This cannot be undone.">
                                     {% csrf_token %}
                                     <input type="hidden" name="site" value="{{ group.site }}">
                                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
@@ -306,7 +306,7 @@
             <div class="mt-6 pt-5 border-t border-light-sage">
                 <h4 class="text-sm font-semibold text-charcoal mb-1">Archived</h4>
                 <p class="text-xs text-sage mb-3">
-                    These fields are out of use. They stay in reports and history,
+                    These locations are out of use. They stay in reports and history,
                     and you can restore them at any time.
                 </p>
                 <div class="space-y-4">
@@ -315,7 +315,7 @@
                         <div class="flex items-center justify-between gap-2 mb-2">
                             <span class="text-sm font-semibold text-sage">{{ group.site }}</span>
                             <form method="post" action="{% url 'site_restore' %}" class="inline"
-                                  hx-confirm="Restore every archived field on {{ group.site }}?">
+                                  hx-confirm="Restore every archived location on {{ group.site }}?">
                                 {% csrf_token %}
                                 <input type="hidden" name="site" value="{{ group.site }}">
                                 <input type="hidden" name="next" value="{{ request.get_full_path }}">

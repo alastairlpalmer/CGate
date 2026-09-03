@@ -368,7 +368,7 @@ class HorseListView(FeatureAccessMixin, ListView):
     def usage_window(self):
         # Last 3 months by default here, not the calendar year the
         # analytics tab opens on: on a page you are in all day the useful
-        # question is "has this field had a rest recently".
+        # question is "has this location had a rest recently".
         return resolve_usage_window(self.request, default='3mo')
 
     @property
@@ -1260,7 +1260,7 @@ def confirm_departure(request, pk):
         else:
             messages.warning(
                 request,
-                f"{horse.name} is still placed in a field — use Log Departure instead.",
+                f"{horse.name} is still placed in a location — use Log Departure instead.",
             )
     if request.headers.get('HX-Request'):
         return HttpResponse('')
@@ -1293,7 +1293,7 @@ def confirm_departures_bulk(request):
             skipped = len(set(horse_ids)) - count
             msg = f"{count} horse{'s' if count != 1 else ''} confirmed as departed."
             if skipped > 0:
-                msg += f" {skipped} skipped (already departed or still placed in a field)."
+                msg += f" {skipped} skipped (already departed or still placed in a location)."
             messages.success(request, msg)
     if request.headers.get('HX-Request'):
         return HttpResponse('')

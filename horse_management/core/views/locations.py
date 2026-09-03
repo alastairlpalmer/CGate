@@ -137,7 +137,7 @@ def resolve_usage_window(request, default='year'):
 
     ``default`` picks the window when the URL says nothing. The Locations
     analytics tab opens on the calendar year; the horse list opens on the
-    last 3 months, which is what answers "has this field had a rest".
+    last 3 months, which is what answers "has this location had a rest".
     """
     today = timezone.localdate()
     range_key = request.GET.get('range', default)
@@ -168,7 +168,7 @@ def resolve_usage_window(request, default='year'):
 
 
 # Card-order options for the Locations tab. ``fullest`` (the default) puts
-# the fields with the most horses first; ``default`` keeps the plain
+# the locations with the most horses first; ``default`` keeps the plain
 # site/name order.
 LOCATION_SORT_FULLEST = 'fullest'
 LOCATION_SORT_DEFAULT = 'default'
@@ -176,7 +176,7 @@ LOCATION_SORTS = (LOCATION_SORT_FULLEST, LOCATION_SORT_DEFAULT)
 
 
 def sort_grouped_locations(grouped):
-    """Reorder ``[(site, locations, horse_count), ...]`` so full fields lead.
+    """Reorder ``[(site, locations, horse_count), ...]`` so full ones lead.
 
     Within each site the locations are ordered by horse count (most horses
     first), then name. Sites are ordered by their total horse count (most
@@ -267,7 +267,7 @@ class LocationListView(FeatureAccessMixin, ListView):
                     totals, _ = usage_by_location[loc.pk]
                     total = sum(totals.values())
                     # Compact, mobile-friendly: only the non-zero usages, each
-                    # with its share of the field's tracked days for the bar.
+                    # with its share of the location's tracked days for the bar.
                     segments = [
                         {
                             'value': v,
@@ -483,7 +483,7 @@ class LocationUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
                 )
             except ValidationError as e:
                 # e.g. the current usage period also started today (horses
-                # arrived onto an empty field this morning). The other
+                # arrived onto an empty location this morning). The other
                 # fields saved fine — surface why the usage didn't change
                 # instead of 500ing on a half-applied edit.
                 messages.warning(
@@ -595,7 +595,7 @@ def log_departure(request, pk):
 
 @feature_required('locations')
 def set_location_usage(request, pk):
-    """Record a manual change to a field's usage, optionally backdated.
+    """Record a manual change to a location's usage, optionally backdated.
 
     Also serves the shared pop-up sheet, so land use can be changed from
     the horse list without leaving the page. In the sheet a GET renders
@@ -669,10 +669,11 @@ def set_location_usage(request, pk):
 # ──────────────────────────────────────────────────────────────────────────
 # Archive / restore / delete
 #
-# Archiving is the normal way to retire a field or a site: the records stay,
-# so history, invoices and usage analytics keep working, but the field drops
-# out of every list and picker. Deleting is only for fields added by mistake
-# — it is blocked as soon as any placement or feed record points at the field.
+# Archiving is the normal way to retire a location or a site: the records
+# stay, so history, invoices and usage analytics keep working, but the
+# location drops out of every list and picker. Deleting is only for ones
+# added by mistake — blocked as soon as any placement or feed record points
+# at the location.
 # ──────────────────────────────────────────────────────────────────────────
 
 def _safe_next(request, fallback):
@@ -701,7 +702,7 @@ def _archive_location(location):
 @feature_required('locations')
 @require_POST
 def location_archive(request, pk):
-    """Archive a field: hide it from lists and pickers, keep its history."""
+    """Archive a location: hide it from lists and pickers, keep its history."""
     location = get_object_or_404(Location, pk=pk)
     fallback = reverse('location_detail', kwargs={'pk': location.pk})
 
@@ -727,7 +728,7 @@ def location_archive(request, pk):
 @feature_required('locations')
 @require_POST
 def location_restore(request, pk):
-    """Bring an archived field back into use."""
+    """Bring an archived location back into use."""
     location = get_object_or_404(Location, pk=pk)
     if location.is_archived:
         location.is_archived = False
@@ -744,7 +745,7 @@ def location_restore(request, pk):
 @feature_required('locations')
 @require_POST
 def location_delete(request, pk):
-    """Delete a field permanently — only when no records point at it."""
+    """Delete a location permanently — only when no records point at it."""
     location = get_object_or_404(Location, pk=pk)
     blockers = location.delete_blockers()
     if blockers:
@@ -766,13 +767,13 @@ def location_delete(request, pk):
 @feature_required('locations')
 @require_POST
 def site_archive(request):
-    """Archive every field on a site in one step."""
+    """Archive every location on a site in one step."""
     site = (request.POST.get('site') or '').strip()
     locations = list(Location.objects.active().filter(site=site))
     fallback = reverse('location_list')
 
     if not locations:
-        messages.error(request, f"No fields in use on site “{site}”.")
+        messages.error(request, f"No locations in use on site “{site}”.")
         return redirect(_safe_next(request, fallback))
 
     archived, blocked = 0, []
@@ -785,12 +786,12 @@ def site_archive(request):
     if archived:
         messages.success(
             request,
-            f"{archived} field{'s' if archived != 1 else ''} on {site} archived.",
+            f"{archived} location{'s' if archived != 1 else ''} on {site} archived.",
         )
     if blocked:
         messages.error(
             request,
-            "These fields still have horses on them, so they stay in use: "
+            "These locations still have horses on them, so they stay in use: "
             f"{', '.join(blocked)}.",
         )
     return redirect(_safe_next(request, fallback))
@@ -799,7 +800,7 @@ def site_archive(request):
 @feature_required('locations')
 @require_POST
 def site_restore(request):
-    """Bring every archived field on a site back into use."""
+    """Bring every archived location on a site back into use."""
     site = (request.POST.get('site') or '').strip()
     restored = Location.objects.archived().filter(site=site).update(
         is_archived=False, archived_at=None,
@@ -807,17 +808,17 @@ def site_restore(request):
     if restored:
         messages.success(
             request,
-            f"{restored} field{'s' if restored != 1 else ''} on {site} restored.",
+            f"{restored} location{'s' if restored != 1 else ''} on {site} restored.",
         )
     else:
-        messages.error(request, f"No archived fields on site “{site}”.")
+        messages.error(request, f"No archived locations on site “{site}”.")
     return redirect(_safe_next(request, reverse('location_list')))
 
 
 @feature_required('locations')
 @require_POST
 def site_delete(request):
-    """Delete a whole site — only when every one of its fields is deletable."""
+    """Delete a whole site — only when every location on it is deletable."""
     site = (request.POST.get('site') or '').strip()
     locations = list(Location.objects.filter(site=site))
     fallback = reverse('location_list')
@@ -830,7 +831,7 @@ def site_delete(request):
     if blocked:
         messages.error(
             request,
-            f"{site} can't be deleted — these fields have records: "
+            f"{site} can't be deleted — these locations have records: "
             f"{', '.join(blocked)}. Archive the site instead.",
         )
         return redirect(_safe_next(request, fallback))
@@ -840,6 +841,6 @@ def site_delete(request):
         Location.objects.filter(site=site).delete()
     messages.success(
         request,
-        f"Site {site} deleted with its {count} field{'s' if count != 1 else ''}.",
+        f"Site {site} deleted with its {count} location{'s' if count != 1 else ''}.",
     )
     return redirect(_safe_next(request, fallback))
