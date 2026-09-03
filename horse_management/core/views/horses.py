@@ -2,13 +2,26 @@
 Horse views — CRUD, move, arrive, depart, ownership.
 """
 
-from datetime import timedelta
-from itertools import groupby
+from datetime import date, timedelta
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Exists, OuterRef, Prefetch, Q
+from django.db.models import (
+    Case,
+    Count,
+    Exists,
+    ExpressionWrapper,
+    F,
+    IntegerField,
+    Max,
+    OuterRef,
+    Prefetch,
+    Q,
+    Value,
+    When,
+)
+from django.db.models.functions import ExtractYear
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -53,6 +66,153 @@ def _warn_if_incomplete_ownership(request, formset):
         )
 
 
+# ── Horse list: grouping and sorting ─────────────────────────────────────
+# "all" is a flat list of every horse on the property; "location" and
+# "owner" put the same horses into group cards. Each grouping has its own
+# sort menu, so an option that says nothing in that view (sort by owner
+# while grouped by owner) is never offered.
+GROUP_BY_CHOICES = ('all', 'location', 'owner')
+DEFAULT_SORT = 'name'
+
+HORSE_SORT_LABELS = {
+    'name': 'Name A–Z',
+    '-name': 'Name Z–A',
+    'age': 'Age: youngest first',
+    '-age': 'Age: oldest first',
+    'sex': 'Gender',
+    'owner': 'Owner A–Z',
+    'location': 'Location A–Z',
+    '-arrived': 'Recently arrived',
+    '-departed': 'Departed: newest first',
+    'departed': 'Departed: earliest first',
+}
+
+# Keyed by sort context: the grouping on the Active tab, or the tab name
+# when that tab shows one flat list.
+HORSE_SORT_OPTIONS = {
+    'all': ('name', '-name', 'age', '-age', 'sex', 'owner', 'location',
+            '-arrived'),
+    'location': ('name', '-name', 'age', '-age', 'sex', 'owner', '-arrived'),
+    'owner': ('name', '-name', 'age', '-age', 'sex', 'location', '-arrived'),
+    'departed': ('name', '-name', 'age', '-age', 'sex', '-departed',
+                 'departed'),
+    'search': ('name', '-name', 'age', '-age', 'sex', 'owner', 'location'),
+}
+
+GROUP_SORT_LABELS = {
+    'name': 'Name A–Z',
+    '-name': 'Name Z–A',
+    '-count': 'Most horses first',
+    'count': 'Fewest horses first',
+}
+# Location groups sort on site first, so say so rather than "Name A–Z".
+GROUP_SORT_LABEL_OVERRIDES = {
+    'location': {'name': 'Site, then name', '-name': 'Site, then name Z–A'},
+}
+GROUP_SORT_OPTIONS = ('name', '-name', '-count', 'count')
+
+
+def _age_sort_expression():
+    """Age in whole years, for database-side ordering.
+
+    Mirrors Horse.calculated_age: from date_of_birth when it is set, else
+    the stored age field. Horses with neither stay NULL, and the callers
+    order them last.
+    """
+    today = timezone.localdate()
+    had_birthday = Case(
+        When(
+            Q(date_of_birth__month__lt=today.month) |
+            Q(date_of_birth__month=today.month,
+              date_of_birth__day__lte=today.day),
+            then=Value(0),
+        ),
+        default=Value(1),
+        output_field=IntegerField(),
+    )
+    from_dob = ExpressionWrapper(
+        Value(today.year) - ExtractYear('date_of_birth') - had_birthday,
+        output_field=IntegerField(),
+    )
+    return Case(
+        When(date_of_birth__isnull=False, then=from_dob),
+        default=F('age'),
+        output_field=IntegerField(),
+    )
+
+
+def _current_placement(horse):
+    """The open placement if there is one, else the most recent."""
+    placements = (
+        getattr(horse, 'active_placements', None)
+        or getattr(horse, 'last_placements', None)
+        or []
+    )
+    return placements[0] if placements else None
+
+
+def _sort_horses(horses, sort):
+    """Order a materialised list of horses by one of HORSE_SORT_LABELS.
+
+    Rows with nothing to sort on (no age, no owner, no location) go to the
+    bottom in both directions, and ties fall back to name A–Z.
+    """
+    reverse = sort.startswith('-')
+    field = sort.lstrip('-')
+
+    # Name order first: sorted() is stable, so it becomes the tie-break.
+    horses = sorted(horses, key=lambda h: h.name.lower())
+    if field == 'name':
+        return list(reversed(horses)) if reverse else horses
+
+    def rank(is_missing):
+        # Descending flips the ranks, so pick the one that still leaves
+        # the unknown rows at the bottom.
+        if reverse:
+            return 0 if is_missing else 1
+        return 1 if is_missing else 0
+
+    def key(horse):
+        if field == 'age':
+            age = horse.calculated_age
+            return (rank(age is None), age or 0)
+        if field == 'sex':
+            sex = horse.get_sex_display() or ''
+            return (rank(not sex), sex.lower())
+        if field == 'owner':
+            owner = getattr(horse, 'resolved_owner', None)
+            return (rank(owner is None), owner.name.lower() if owner else '')
+        if field == 'location':
+            placement = _current_placement(horse)
+            location = placement.location if placement else None
+            return (rank(location is None),
+                    location.name.lower() if location else '')
+        if field == 'arrived':
+            placement = _current_placement(horse)
+            start = placement.start_date if placement else None
+            return (rank(start is None), start or date.min)
+        return (0, horse.name.lower())
+
+    return sorted(horses, key=key, reverse=reverse)
+
+
+def _sort_groups(groups, group_sort):
+    """Order the group cards. They arrive in name order already."""
+    if group_sort == '-count':
+        return sorted(groups, key=lambda g: (-g['count'], g['name'].lower()))
+    if group_sort == 'count':
+        return sorted(groups, key=lambda g: (g['count'], g['name'].lower()))
+    if group_sort == '-name':
+        # Location groups carry a site, and it leads the default order —
+        # so it must lead the reverse of that order too.
+        return sorted(
+            groups,
+            key=lambda g: (g.get('site') or '', g['name'].lower()),
+            reverse=True,
+        )
+    return groups
+
+
 class HorseListView(FeatureAccessMixin, ListView):
     feature = 'horses'
     access_level = LEVEL_VIEW
@@ -67,6 +227,35 @@ class HorseListView(FeatureAccessMixin, ListView):
     @property
     def is_searching(self):
         return bool(self.request.GET.get('search'))
+
+    @property
+    def group_by(self):
+        value = self.request.GET.get('group_by', 'all')
+        return value if value in GROUP_BY_CHOICES else 'all'
+
+    @property
+    def sort_context(self):
+        """Which sort menu applies: the grouping, or the flat-list tab."""
+        if self.is_searching:
+            return 'search'
+        if self.status == 'departed':
+            return 'departed'
+        return self.group_by
+
+    @property
+    def sort(self):
+        """The horse sort key, dropped back to the default if it is not
+        offered here — the menu differs per grouping, and stale keys
+        survive in the URL when the grouping changes."""
+        value = self.request.GET.get('sort', DEFAULT_SORT)
+        if value in HORSE_SORT_OPTIONS[self.sort_context]:
+            return value
+        return DEFAULT_SORT
+
+    @property
+    def group_sort(self):
+        value = self.request.GET.get('gsort', DEFAULT_SORT)
+        return value if value in GROUP_SORT_OPTIONS else DEFAULT_SORT
 
     def get_paginate_by(self, queryset):
         # Only paginate the departed tab (current tab shows all, grouped).
@@ -160,12 +349,76 @@ class HorseListView(FeatureAccessMixin, ListView):
                 ))
             )
 
+        if self.status == 'departed' and not self.is_searching:
+            return self._order_departed(queryset)
         return queryset.order_by('name')
+
+    def _order_departed(self, queryset):
+        """Order the departed tab in the database.
+
+        That tab is paginated, so a Python sort would only order the 25
+        rows of the current page. The other tabs render every row, and
+        sort in get_context_data on resolved owner/location values that
+        SQL cannot see.
+        """
+        sort = self.sort
+        if sort in ('age', '-age'):
+            queryset = queryset.annotate(sort_age=_age_sort_expression())
+            field = F('sort_age')
+        elif sort in ('departed', '-departed'):
+            queryset = queryset.annotate(
+                sort_departed=Max('placements__end_date'),
+            )
+            field = F('sort_departed')
+        elif sort == 'sex':
+            # Blank sex sorts last, to match the flat-list sort.
+            return queryset.annotate(
+                sort_sex=Case(
+                    When(sex='', then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                ),
+            ).order_by('sort_sex', 'sex', 'name')
+        elif sort == '-name':
+            return queryset.order_by('-name')
+        else:
+            return queryset.order_by('name')
+
+        direction = (
+            field.desc(nulls_last=True) if sort.startswith('-')
+            else field.asc(nulls_last=True)
+        )
+        return queryset.order_by(direction, 'name')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['status'] = self.status
-        context['group_by'] = self.request.GET.get('group_by', 'location')
+        context['group_by'] = self.group_by
+        context['sort'] = self.sort
+        context['group_sort'] = self.group_sort
+        context['active_sort_label'] = HORSE_SORT_LABELS[self.sort]
+        context['sort_options'] = [
+            {
+                'key': key,
+                'label': HORSE_SORT_LABELS[key],
+                'active': key == self.sort,
+            }
+            for key in HORSE_SORT_OPTIONS[self.sort_context]
+        ]
+        # Only the grouped views order groups as well as horses.
+        group_labels = dict(GROUP_SORT_LABELS)
+        group_labels.update(
+            GROUP_SORT_LABEL_OVERRIDES.get(self.sort_context, {}),
+        )
+        context['group_sort_options'] = [
+            {
+                'key': key,
+                'label': group_labels[key],
+                'active': key == self.group_sort,
+            }
+            for key in GROUP_SORT_OPTIONS
+        ] if self.sort_context in ('location', 'owner') else None
+        # Location.objects.active() hides archived fields (from main).
         context['locations'] = Location.objects.active().order_by('site', 'name')
         context['owners'] = Owner.objects.values('pk', 'name').order_by('name')
         context['is_searching'] = self.is_searching
@@ -217,43 +470,63 @@ class HorseListView(FeatureAccessMixin, ListView):
         # Build grouped data for current tab (not when searching or departed)
         if self.status == 'current' and not self.is_searching:
             group_by = context['group_by']
+            horses = _sort_horses(horses, self.sort)
 
-            if group_by == 'owner':
-                def key_fn(h):
-                    o = h.resolved_owner
-                    return (o.name if o else 'No Owner', o.pk if o else 0)
-                horses.sort(key=lambda h: key_fn(h)[0])
-                grouped = []
-                for (name, pk), group in groupby(horses, key=key_fn):
-                    group_list = list(group)
-                    grouped.append({
+            if group_by == 'all':
+                # One flat card holding every horse on the property.
+                context['grouped_horses'] = [{
+                    'name': 'All Horses',
+                    'pk': None,
+                    'count': len(horses),
+                    'horses': horses,
+                }]
+            else:
+                # Bucket into a dict rather than itertools.groupby: the
+                # horses are already in the requested sort order, and
+                # groupby would need them re-sorted by the group key.
+                buckets = {}
+                for h in horses:
+                    if group_by == 'owner':
+                        owner = h.resolved_owner
+                        key = (
+                            owner.name if owner else 'No Owner',
+                            owner.pk if owner else 0,
+                            '',
+                        )
+                    else:
+                        placement = _current_placement(h)
+                        location = placement.location if placement else None
+                        key = (
+                            location.name if location else 'No Location',
+                            location.pk if location else 0,
+                            location.site if location else '',
+                        )
+                    buckets.setdefault(key, []).append(h)
+
+                # Location groups stay ordered by site then name, as
+                # before; owner groups by name.
+                def group_order(item):
+                    name, pk, site = item
+                    return (site, name) if group_by == 'location' else (name,)
+
+                grouped = [
+                    {
+                        'site': site,
                         'name': name,
                         'pk': pk,
-                        'count': len(group_list),
-                        'horses': group_list,
-                    })
-                context['grouped_horses'] = grouped
-            else:
-                # Group by location (default)
-                def key_fn(h):
-                    p = h.active_placements[0] if h.active_placements else None
-                    return (
-                        p.location.site if p and p.location else '',
-                        p.location.name if p and p.location else 'No Location',
-                        p.location.pk if p and p.location else 0,
+                        'count': len(members),
+                        'horses': members,
+                    }
+                    for (name, pk, site), members in sorted(
+                        buckets.items(), key=lambda kv: group_order(kv[0]),
                     )
-                horses.sort(key=lambda h: key_fn(h))
-                grouped = []
-                for (site, loc_name, pk), group in groupby(horses, key=key_fn):
-                    group_list = list(group)
-                    grouped.append({
-                        'site': site,
-                        'name': loc_name,
-                        'pk': pk,
-                        'count': len(group_list),
-                        'horses': group_list,
-                    })
-                context['grouped_horses'] = grouped
+                ]
+                context['grouped_horses'] = _sort_groups(
+                    grouped, self.group_sort,
+                )
+        elif self.is_searching:
+            # Search results are one flat, unpaginated list.
+            context['horses'] = _sort_horses(horses, self.sort)
 
         return context
 
