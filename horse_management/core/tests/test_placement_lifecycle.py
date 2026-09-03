@@ -1079,6 +1079,10 @@ class FutureDepartureTests(LifecycleTestCase):
     days while it was still standing on the yard. It becomes a scheduled
     departure (expected_departure) instead."""
 
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(make_admin())
+
     def _placed_horse(self):
         return Placement.objects.create(
             horse=self.horse, owner=self.owner, location=self.location,
@@ -1104,6 +1108,72 @@ class FutureDepartureTests(LifecycleTestCase):
         self.assertEqual(placement.end_date, self.today)
         self.horse.refresh_from_db()
         self.assertFalse(self.horse.is_active)
+
+    def test_bulk_future_departure_schedules_instead_of_closing(self):
+        # The location page's bulk "Log Departure" must follow the same rule
+        # as the single-horse path; it used to close the placement at once.
+        self._placed_horse()
+        friday = self.today + timedelta(days=4)
+        response = self.client.post(
+            reverse('location_depart', args=[self.location.pk]),
+            {'horse_ids': [self.horse.pk], 'departure_date': friday.isoformat()},
+        )
+        self.assertEqual(response.status_code, 302)
+        placement = self.horse.placements.get()
+        self.assertIsNone(placement.end_date)
+        self.assertEqual(placement.expected_departure, friday)
+        self.horse.refresh_from_db()
+        self.assertTrue(self.horse.is_active)
+
+    def test_bulk_today_departure_closes_and_deactivates(self):
+        self._placed_horse()
+        response = self.client.post(
+            reverse('location_depart', args=[self.location.pk]),
+            {'horse_ids': [self.horse.pk], 'departure_date': self.today.isoformat()},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.horse.placements.get().end_date, self.today)
+        self.horse.refresh_from_db()
+        self.assertFalse(self.horse.is_active)
+
+    def test_bulk_departure_ignores_non_numeric_ids(self):
+        self._placed_horse()
+        response = self.client.post(
+            reverse('location_depart', args=[self.location.pk]),
+            {'horse_ids': ['abc', str(self.horse.pk)],
+             'departure_date': self.today.isoformat()},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.horse.refresh_from_db()
+        self.assertFalse(self.horse.is_active)
+
+    def test_depart_without_placement_tells_the_user(self):
+        # No placement at all: the old code fell through to a bare redirect
+        # with no message, indistinguishable from a dropped request.
+        response = self.client.post(
+            reverse('horse_depart', args=[self.horse.pk]),
+            {'departure_date': self.today.isoformat()},
+            follow=True,
+        )
+        msgs = [str(m) for m in response.context['messages']]
+        self.assertTrue(any('no current placement' in m for m in msgs), msgs)
+
+    def test_confirm_bulk_ignores_non_numeric_ids(self):
+        response = self.client.post(
+            reverse('confirm_departures_bulk'),
+            {'horse_ids': ['abc']},
+            HTTP_HX_REQUEST='true',
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_bulk_health_apply_ignores_non_numeric_ids(self):
+        response = self.client.post(
+            reverse('bulk_health_apply'),
+            {'action_type': 'expected_departure', 'horse_ids': ['abc'],
+             'date': self.today.isoformat()},
+        )
+        # Nothing numeric left → treated as "no horses selected".
+        self.assertEqual(response.status_code, 400)
 
 
 class ArrivalOwnerShareSyncTests(LifecycleTestCase):

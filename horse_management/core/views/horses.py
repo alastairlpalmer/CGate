@@ -1233,7 +1233,16 @@ def horse_depart(request, pk):
 
     horse = get_object_or_404(Horse, pk=pk)
 
-    if request.method == 'POST' and horse.current_placement:
+    if request.method == 'POST':
+        if not horse.current_placement:
+            # A double-submit or a colleague's bulk departure closed it
+            # first. Say so — a silent redirect looks like a dropped request
+            # and invites another click.
+            messages.error(
+                request,
+                f"{horse.name} has no current placement to depart from.",
+            )
+            return redirect('horse_detail', pk=horse.pk)
         departure_date_str = request.POST.get('departure_date')
         if not departure_date_str:
             messages.error(request, "Departure date is required.")
@@ -1334,7 +1343,9 @@ def confirm_departures_bulk(request):
     from ..services import PlacementService
 
     if request.method == 'POST':
-        horse_ids = request.POST.getlist('horse_ids')
+        horse_ids = [
+            i for i in request.POST.getlist('horse_ids') if i.isdigit()
+        ]
         if horse_ids:
             count = PlacementService.confirm_departures_bulk(horse_ids)
             skipped = len(set(horse_ids)) - count

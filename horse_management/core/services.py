@@ -401,10 +401,19 @@ class PlacementService:
     def bulk_depart(horse_ids, location, departure_date, notes=''):
         """Log departure of selected horses from a location.
 
-        Returns the count of departed horses.
+        Same rules as depart_horse: a date today or earlier closes the
+        placement and deactivates the horse; a *future* date is recorded as
+        expected_departure and the placement stays open. Closing it early
+        used to make the horses vanish from the field, capacity counts and
+        the Current tab (and auto-rest the field) while they were still
+        standing in it.
+
+        Returns (departed, errors, scheduled).
         """
         departed = 0
+        scheduled = 0
         depart_errors = []
+        today = timezone.localdate()
         placements = Placement.objects.filter(
             horse_id__in=horse_ids,
             location=location,
@@ -418,6 +427,11 @@ class PlacementService:
                     f"arrival ({placement.start_date})."
                 )
                 continue
+            if departure_date > today:
+                placement.expected_departure = departure_date
+                placement.save()
+                scheduled += 1
+                continue
             placement.end_date = departure_date
             if notes:
                 placement.notes = (
@@ -425,12 +439,11 @@ class PlacementService:
                     if placement.notes else notes
                 )
             placement.save()  # save hook rests the field once it empties
-            if departure_date <= timezone.localdate():
-                placement.horse.is_active = False
-                placement.horse.save(update_fields=['is_active'])
+            placement.horse.is_active = False
+            placement.horse.save(update_fields=['is_active'])
             departed += 1
 
-        return departed, depart_errors
+        return departed, depart_errors, scheduled
 
 
 class LocationUsageService:

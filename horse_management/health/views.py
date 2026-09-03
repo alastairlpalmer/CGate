@@ -529,7 +529,8 @@ def bulk_health_apply(request):
         return HttpResponseBadRequest('POST required')
 
     action_type = request.POST.get('action_type', '')
-    horse_ids = request.POST.getlist('horse_ids')
+    # Non-numeric ids would raise ValueError inside the pk__in filter.
+    horse_ids = [i for i in request.POST.getlist('horse_ids') if i.isdigit()]
     form_class = BULK_FORM_MAP.get(action_type)
 
     if not form_class or not horse_ids:
@@ -577,11 +578,18 @@ def bulk_health_apply(request):
                     # Active and placed — nothing to undo
                     restore_skipped.append(horse.name)
                     continue
-                if PlacementService.cancel_departure(horse):
-                    count += 1
-                else:
-                    # No placement history to re-open
-                    restore_skipped.append(horse.name)
+                try:
+                    if PlacementService.cancel_departure(horse):
+                        count += 1
+                    else:
+                        # No placement history to re-open
+                        restore_skipped.append(horse.name)
+                except ValidationError as e:
+                    # Re-opening re-validates the placement; one bad horse
+                    # must be reported, not 500 the whole batch.
+                    action_errors.append(
+                        f"Not restored — {horse.name}: {'; '.join(e.messages)}"
+                    )
         elif action_type == 'move':
             for horse in horses:
                 try:
