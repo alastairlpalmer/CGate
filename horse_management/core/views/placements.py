@@ -13,6 +13,41 @@ from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Location, Owner, Placement
 
 
+MOVEMENT_STATUSES = ('active', 'ended', 'all')
+
+
+def movement_history(request, default_status='active'):
+    """The filtered placement log, newest first.
+
+    Shared by the Locations page's Movement History tab and the horse
+    list's Movements tab, so the two can never drift apart. Reads the
+    same ``status``/``location``/``owner`` params on both.
+
+    Returns ``(placements, status)``. Capped at 50 rows, matching the
+    Locations tab this was lifted from — neither view pages it.
+    """
+    status = request.GET.get('status', default_status)
+    if status not in MOVEMENT_STATUSES:
+        status = default_status
+
+    placements = Placement.objects.select_related(
+        'horse', 'owner', 'location', 'rate_type'
+    )
+    if status == 'active':
+        placements = placements.filter(end_date__isnull=True)
+    elif status == 'ended':
+        placements = placements.filter(end_date__isnull=False)
+
+    location = request.GET.get('location')
+    if location:
+        placements = placements.filter(location_id=location)
+    owner = request.GET.get('owner')
+    if owner:
+        placements = placements.filter(owner_id=owner)
+
+    return placements.order_by('-start_date')[:50], status
+
+
 def _safe_next_url(request):
     """Validated ?next= target so edits can return to the page they came
     from (e.g. a horse's timeline) without becoming an open redirect."""
