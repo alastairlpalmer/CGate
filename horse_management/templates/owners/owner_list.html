@@ -10,19 +10,6 @@
         <div>
             <h1 class="page-title">Owners</h1>
         </div>
-        <a href="{% url 'owner_create' %}" class="btn-primary">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-            </svg>
-            Add Owner
-        </a>
-    </div>
-
-    <!-- Search -->
-    <div class="card px-4 py-3 sm:px-5 sm:py-4">
-        <form method="get">
-            {% include 'includes/search_bar.html' with placeholder="Search by name, email, phone…" action_url=request.path %}
-        </form>
     </div>
 
     <div id="list-results" class="space-y-6">

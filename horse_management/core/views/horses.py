@@ -144,11 +144,21 @@ GROUP_SORT_LABELS = {
     '-count': 'Most horses first',
     'count': 'Fewest horses first',
 }
-# Location groups sort on site first, so say so rather than "Name A–Z".
+# Location groups run inside a site heading, so their labels say so.
 GROUP_SORT_LABEL_OVERRIDES = {
-    'location': {'name': 'Site, then name', '-name': 'Site, then name Z–A'},
+    'location': {
+        'name': 'Name A–Z, in site',
+        '-name': 'Name Z–A, in site',
+        '-count': 'Fullest first, empty last',
+        'count': 'Emptiest first, in site',
+    },
 }
 GROUP_SORT_OPTIONS = ('name', '-name', '-count', 'count')
+
+# Locations print under a heading per site, and the useful thing to see
+# first inside a site is where the horses are — which drops empty ground
+# to the bottom of each site by itself.
+GROUP_SORT_DEFAULT = {'location': '-count'}
 
 # Group headers that carry a capacity ring and a usage badge.
 AXES_WITH_CAPACITY = ('location',)
@@ -291,21 +301,47 @@ def _location_group(location, horses):
     }
 
 
-def _sort_groups(groups, group_sort):
-    """Order the group cards. They arrive in name order already."""
+def _sort_groups(groups, group_sort, site_major=False):
+    """Order the group cards. They arrive in name order already.
+
+    ``site_major`` keeps every order inside its site, because the location
+    axis prints a heading per site — an order that crossed those headings
+    would scatter each site's locations down the page.
+    """
+    def site(group):
+        if not site_major:
+            return ''
+        # A group with no site ("No Location") sorts after every real one.
+        return (group.get('site') or '\uffff').lower()
+
     if group_sort == '-count':
-        return sorted(groups, key=lambda g: (-g['count'], g['name'].lower()))
+        return sorted(groups, key=lambda g: (site(g), -g['count'], g['name'].lower()))
     if group_sort == 'count':
-        return sorted(groups, key=lambda g: (g['count'], g['name'].lower()))
+        return sorted(groups, key=lambda g: (site(g), g['count'], g['name'].lower()))
     if group_sort == '-name':
-        # Location groups carry a site, and it leads the default order —
-        # so it must lead the reverse of that order too.
-        return sorted(
-            groups,
-            key=lambda g: (g.get('site') or '', g['name'].lower()),
-            reverse=True,
-        )
+        if site_major:
+            return sorted(
+                groups, key=lambda g: (site(g), _reverse_key(g['name'].lower())),
+            )
+        return sorted(groups, key=lambda g: g['name'].lower(), reverse=True)
+    if site_major:
+        return sorted(groups, key=lambda g: (site(g), g['name'].lower()))
     return groups
+
+
+class _reverse_key:
+    """Sort one field descending inside an otherwise ascending key."""
+
+    __slots__ = ('value',)
+
+    def __init__(self, value):
+        self.value = value
+
+    def __lt__(self, other):
+        return other.value < self.value
+
+    def __eq__(self, other):
+        return other.value == self.value
 
 
 class HorseListView(FeatureAccessMixin, ListView):
@@ -405,8 +441,9 @@ class HorseListView(FeatureAccessMixin, ListView):
 
     @property
     def group_sort(self):
-        value = self.request.GET.get('gsort', DEFAULT_SORT)
-        return value if value in GROUP_SORT_OPTIONS else DEFAULT_SORT
+        default = GROUP_SORT_DEFAULT.get(self.sort_context, DEFAULT_SORT)
+        value = self.request.GET.get('gsort', default)
+        return value if value in GROUP_SORT_OPTIONS else default
 
     def get_paginate_by(self, queryset):
         # The Movements tab shows a placement log, not horses.
@@ -754,7 +791,7 @@ class HorseListView(FeatureAccessMixin, ListView):
                 'capacity': None, 'availability': None,
                 'usage': '', 'usage_display': '',
             })
-        return _sort_groups(groups, self.group_sort)
+        return _sort_groups(groups, self.group_sort, site_major=True)
 
     def _site_groups(self, horses):
         by_site = {}

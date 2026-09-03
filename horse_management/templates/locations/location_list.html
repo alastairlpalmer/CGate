@@ -10,10 +10,6 @@
         <div>
             <h1 class="page-title">Locations</h1>
         </div>
-        <a href="{% url 'location_create' %}" class="btn-primary">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-            Add Location
-        </a>
     </div>
 
     <!-- Tabs -->
@@ -111,13 +107,15 @@
     {% else %}
     <!-- ═══ Locations Tab (default) ═══ -->
 
-    <!-- Search + Sort -->
+    <!-- Sort -->
     <div class="card px-4 py-3 sm:px-5 sm:py-4">
         <form method="get" class="flex flex-wrap items-center gap-2 sm:gap-3">
             <!-- Preserve the non-default sort across live searches -->
             {% if location_sort == 'default' %}<input type="hidden" name="sort" value="default">{% endif %}
 
-            {% include 'includes/search_bar.html' with placeholder="Search by location or site…" action_url=request.path %}
+            {% comment %}No search box here either: the app bar finds a
+            location from any page.{% endcomment %}
+            <div class="flex-1"></div>
 
             <!-- Sort toggle: fullest locations first (default) or plain site/name order -->
             <div class="flex items-center gap-2 text-sm text-sage shrink-0" data-testid="location-sort">

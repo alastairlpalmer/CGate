@@ -358,12 +358,46 @@ QUICK_FIND_MIN_CHARS = 2
 QUICK_FIND_PER_GROUP = 4
 
 
+def _find(queryset, query, fields, columns, key=None):
+    """Rows of ``queryset`` matching ``query``, best effort then typo-tolerant.
+
+    The database answers the common case: someone typing "bel" wants Bella,
+    and SQL can find that without waking Python. Only when that comes up
+    short do we scan every row with difflib — the path that catches
+    "alihnter" for ALIHUNTER, and the one that costs real time once a yard
+    has thousands of records.
+    """
+    def rows(qs):
+        return [dict(zip(columns, values)) for values in qs.values_list(*columns)]
+
+    exact = Q()
+    for field in fields:
+        exact |= Q(**{f'{field}__icontains': query})
+    found = rows(queryset.filter(exact)[:QUICK_FIND_PER_GROUP * 3])
+
+    # Fuzzy only rescues a query the database could not answer at all.
+    # Falling back whenever there were merely "few" matches meant the scan
+    # ran on nearly every keystroke, since most searches have one or two
+    # hits — and a row containing what you typed beats one that resembles
+    # it anyway.
+    if not found:
+        found = [
+            row for row in rows(queryset)
+            if any(is_fuzzy_match(query, row[field]) for field in fields)
+        ]
+
+    if key:
+        found.sort(key=key)
+    return found[:QUICK_FIND_PER_GROUP]
+
+
 @feature_required('dashboard')
 def quick_find(request):
     """HTMX partial: typo-tolerant search across horses, owners and locations.
 
-    Same in-Python fuzzy matching as the list searches (core.search) — the
-    dataset is a few hundred rows, so three values_list queries are cheap.
+    Runs on every keystroke from the app bar, so the database does the
+    obvious matching first and difflib only picks up what it missed — see
+    ``_find``.
     """
     query = request.GET.get('q', '').strip()
     if len(query) < QUICK_FIND_MIN_CHARS:
@@ -376,32 +410,22 @@ def quick_find(request):
     # role can't view are skipped entirely so hidden areas don't leak here.
     horses = []
     if has_feature_access(request.user, 'horses'):
-        horses = sorted(
-            (
-                {'pk': pk, 'name': name, 'is_active': is_active}
-                for pk, name, is_active in Horse.objects.values_list(
-                    'pk', 'name', 'is_active'
-                )
-                if is_fuzzy_match(query, name)
-            ),
+        horses = _find(
+            Horse.objects.all(), query, ('name',),
+            ('pk', 'name', 'is_active'),
             key=lambda h: not h['is_active'],  # active horses first
-        )[:QUICK_FIND_PER_GROUP]
+        )
 
     owners = []
     if has_feature_access(request.user, 'owners'):
-        owners = [
-            {'pk': pk, 'name': name}
-            for pk, name in Owner.objects.values_list('pk', 'name')
-            if is_fuzzy_match(query, name)
-        ][:QUICK_FIND_PER_GROUP]
+        owners = _find(Owner.objects.all(), query, ('name',), ('pk', 'name'))
 
     locations = []
     if has_feature_access(request.user, 'locations'):
-        locations = [
-            {'pk': pk, 'name': name, 'site': site}
-            for pk, name, site in Location.objects.active().values_list('pk', 'name', 'site')
-            if is_fuzzy_match(query, name) or is_fuzzy_match(query, site)
-        ][:QUICK_FIND_PER_GROUP]
+        locations = _find(
+            Location.objects.active(), query, ('name', 'site'),
+            ('pk', 'name', 'site'),
+        )
 
     return render(request, 'partials/dashboard/quick_find_results.html', {
         'query': query,

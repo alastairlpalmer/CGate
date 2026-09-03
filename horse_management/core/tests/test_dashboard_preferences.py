@@ -337,7 +337,7 @@ class DashboardRedesignTests(TestCase):
         self.assertNotIn('id="capacityChart"', body)
         self.assertNotIn('id="chart-data"', body)
 
-    def test_dashboard_header_and_quick_find(self):
+    def test_dashboard_header_greets_the_user(self):
         user = make_user('headeruser')
         user.first_name = 'Sam'
         user.save()
@@ -345,8 +345,20 @@ class DashboardRedesignTests(TestCase):
         body = self.client.get(reverse('dashboard')).content.decode()
         self.assertIn('Sam', body)
         self.assertRegex(body, r'Good (morning|afternoon|evening)')
-        self.assertIn('id="quick-find-results"', body)
         self.assertNotIn('Your dashboard is empty', body)
+
+    def test_search_moved_to_the_app_bar(self):
+        """The dashboard had the only search; it is on every page now."""
+        user = make_user('searchuser')
+        self.client.force_login(user)
+        for name in ('dashboard', 'horse_list', 'location_list'):
+            with self.subTest(page=name):
+                body = self.client.get(reverse(name)).content.decode()
+                self.assertIn('id="app-search-results"', body)
+                self.assertIn('Search horses, owners and locations', body)
+        # ...and not twice on the page it came from.
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertEqual(body.count('id="app-search-results"'), 1)
 
     def test_all_caught_up_banner_when_lists_empty(self):
         user = make_user('caughtupuser')

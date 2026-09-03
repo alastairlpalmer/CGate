@@ -283,3 +283,141 @@ class AxisQueryCountTests(TestCase):
         lean = self._count(group_by='location', show_empty='0')
         full = self._count(group_by='location', show_empty='1')
         self.assertLessEqual(full, lean + 1)
+
+
+class SiteMajorLocationOrderTests(TestCase):
+    """The Location axis prints a heading per site.
+
+    That only reads correctly if every group order runs inside its site,
+    and the useful thing to see first in a site is where the horses are —
+    which puts empty ground at the bottom of each one.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = make_admin('sitesorter')
+        rate = RateType.objects.create(name='Full', daily_rate=10)
+        owner = Owner.objects.create(name='Alice Appleby')
+        today = timezone.localdate()
+
+        # Colgate: one full, one empty. Somerford: one full, one empty.
+        cls.places = {}
+        for site, name, horses in (
+            ('Colgate', 'Aardvark Field', 0),
+            ('Colgate', 'Zebra Field', 2),
+            ('Somerford', 'Alpha Yard', 0),
+            ('Somerford', 'Omega Yard', 1),
+        ):
+            location = Location.objects.create(name=name, site=site, capacity=4)
+            cls.places[name] = location
+            for i in range(horses):
+                horse = Horse.objects.create(name=f'{name[:3]}{i}')
+                Placement.objects.create(
+                    horse=horse, owner=owner, location=location,
+                    rate_type=rate, start_date=today,
+                )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def _groups(self, **params):
+        params.setdefault('group_by', 'location')
+        response = self.client.get(reverse('horse_list'), params)
+        self.assertEqual(response.status_code, 200)
+        return response.context['grouped_horses']
+
+    def test_groups_never_cross_a_site_boundary(self):
+        sites = [g['site'] for g in self._groups()]
+        self.assertEqual(sites, sorted(sites), 'sites must stay contiguous')
+
+    def test_empty_locations_fall_to_the_bottom_of_their_own_site(self):
+        names = [g['name'] for g in self._groups()]
+        self.assertEqual(
+            names,
+            ['Zebra Field', 'Aardvark Field', 'Omega Yard', 'Alpha Yard'],
+        )
+
+    def test_name_order_also_stays_inside_the_site(self):
+        names = [g['name'] for g in self._groups(gsort='name')]
+        self.assertEqual(
+            names,
+            ['Aardvark Field', 'Zebra Field', 'Alpha Yard', 'Omega Yard'],
+        )
+
+    def test_reverse_name_order_stays_inside_the_site(self):
+        groups = self._groups(gsort='-name')
+        self.assertEqual([g['site'] for g in groups],
+                         ['Colgate', 'Colgate', 'Somerford', 'Somerford'])
+        self.assertEqual([g['name'] for g in groups],
+                         ['Zebra Field', 'Aardvark Field',
+                          'Omega Yard', 'Alpha Yard'])
+
+    def test_a_site_heading_is_printed_once_per_site(self):
+        response = self.client.get(
+            reverse('horse_list'), {'group_by': 'location'},
+        )
+        body = response.content.decode()
+        self.assertEqual(body.count('>Colgate</h2>'), 1)
+        self.assertEqual(body.count('>Somerford</h2>'), 1)
+
+    def test_horses_with_no_location_sort_after_every_site(self):
+        stray = Horse.objects.create(name='Stray')
+        Placement.objects.create(
+            horse=stray, owner=Owner.objects.first(),
+            location=self.places['Zebra Field'],
+            rate_type=RateType.objects.first(),
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate(),
+        )
+        stray.is_active = True
+        stray.save()
+        groups = self._groups()
+        self.assertEqual(groups[-1]['site'], groups[-1]['site'])
+        self.assertTrue(all(g['site'] for g in groups if g['pk']))
+
+
+class SortMenuHoldsTheControlsTests(TestCase):
+    """Show empty and the land-use window moved into the sort pop-out."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = make_admin('menuser')
+        Location.objects.create(name='Spare', site='Colgate', capacity=3)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_show_empty_is_offered_in_the_menu_on_grouped_views(self):
+        body = self.client.get(
+            reverse('horse_list'), {'group_by': 'location'},
+        ).content.decode()
+        self.assertIn('Show empty', body)
+        self.assertIn('show_empty=0', body)
+
+    def test_the_land_use_window_is_offered_in_the_menu(self):
+        body = self.client.get(
+            reverse('horse_list'), {'group_by': 'location'},
+        ).content.decode()
+        self.assertIn('Land use over', body)
+        self.assertIn('range=6mo', body)
+
+    def test_neither_appears_on_the_flat_all_view(self):
+        body = self.client.get(reverse('horse_list')).content.decode()
+        self.assertNotIn('Show empty', body)
+        self.assertNotIn('Land use over', body)
+
+    def test_show_empty_appears_without_the_window_on_the_owner_axis(self):
+        body = self.client.get(
+            reverse('horse_list'), {'group_by': 'owner'},
+        ).content.decode()
+        self.assertIn('Show empty', body)
+        self.assertNotIn('Land use over', body)
+
+    def test_the_toggle_still_works_from_the_menu(self):
+        response = self.client.get(
+            reverse('horse_list'), {'group_by': 'location', 'show_empty': '0'},
+        )
+        self.assertFalse(response.context['show_empty'])
+        self.assertNotIn(
+            'Spare', [g['name'] for g in response.context['grouped_horses']],
+        )
