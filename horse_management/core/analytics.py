@@ -67,20 +67,27 @@ def get_client():
                 'installed. Server-side analytics is off.'
             )
             return None
-        _client = Posthog(
-            settings.POSTHOG_API_KEY,
-            host=settings.POSTHOG_HOST,
-            # Serverless functions freeze after the response, which can kill a
-            # background flush thread before it sends. Sync mode costs a few
-            # milliseconds on the sign-in request and nothing elsewhere.
-            sync_mode=settings.POSTHOG_SYNC_MODE,
-            # Feature flags are not used. Without this the SDK starts a poller
-            # that makes a network call every 30 seconds.
-            enable_local_evaluation=False,
-            # Do not resolve the caller's IP address to a location.
-            disable_geoip=True,
-            timeout=5,
-        )
+        try:
+            _client = Posthog(
+                settings.POSTHOG_API_KEY,
+                host=settings.POSTHOG_HOST,
+                # Serverless functions freeze after the response, which can
+                # kill a background flush thread before it sends. Sync mode
+                # costs a few milliseconds on the sign-in request and nothing
+                # elsewhere.
+                sync_mode=settings.POSTHOG_SYNC_MODE,
+                # Feature flags are not used. Without this the SDK starts a
+                # poller that makes a network call every 30 seconds.
+                enable_local_evaluation=False,
+                # Do not resolve the caller's IP address to a location.
+                disable_geoip=True,
+                timeout=5,
+            )
+        except Exception:
+            # A bad key/host or an SDK that rejects one of these kwargs must
+            # not turn every sign-in into a 500. Log once and stay off.
+            logger.exception('PostHog client could not be created; analytics off.')
+            return None
         return _client
 
 
@@ -106,20 +113,23 @@ def person_properties_for(user) -> dict:
 def capture(user, event: str, properties: dict | None = None) -> None:
     """Send one event for ``user``. Never raises — analytics must not break a
     request. ``user`` may be ``None`` for events with no signed-in person."""
-    client = get_client()
-    if client is None:
-        return
-    props = dict(properties or {})
-    if user is None or not getattr(user, 'is_authenticated', False):
-        # Keep anonymous events out of the person database.
-        props['$process_person_profile'] = False
-        did = 'anonymous'
-    else:
-        did = distinct_id_for(user)
-        props.setdefault('$set', person_properties_for(user))
+    # Everything is inside the try: this runs on the sign-in request via
+    # the user_logged_in receiver, and person_properties_for() hits the
+    # database for the role — a failure there must not block the login.
     try:
+        client = get_client()
+        if client is None:
+            return
+        props = dict(properties or {})
+        if user is None or not getattr(user, 'is_authenticated', False):
+            # Keep anonymous events out of the person database.
+            props['$process_person_profile'] = False
+            did = 'anonymous'
+        else:
+            did = distinct_id_for(user)
+            props.setdefault('$set', person_properties_for(user))
         client.capture(event, distinct_id=did, properties=props)
-    except Exception:  # pragma: no cover - defensive
+    except Exception:
         logger.exception('PostHog capture failed for event %r', event)
 
 
