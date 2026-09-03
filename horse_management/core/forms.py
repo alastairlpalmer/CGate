@@ -119,6 +119,21 @@ class HorseForm(forms.ModelForm):
     # automatically and maps the error onto the is_active field.
 
 
+class QuickHorseForm(HorseForm):
+    """The day-to-day subset of HorseForm for the pop-up sheet.
+
+    Profile picture, dam/sire, breeding text and ownership shares stay on
+    the full Edit page; everything else (and the same validation, via
+    inheritance) is here.
+    """
+
+    class Meta(HorseForm.Meta):
+        fields = [
+            'name', 'sex', 'color', 'date_of_birth', 'age',
+            'passport_number', 'has_passport', 'notes', 'is_active',
+        ]
+
+
 class PlacementForm(forms.ModelForm):
     class Meta:
         model = Placement

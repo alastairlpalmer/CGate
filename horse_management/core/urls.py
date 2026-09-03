@@ -23,6 +23,7 @@ urlpatterns = [
     path('horses/new-arrival/', views.new_arrival, name='horse_new_arrival'),
     path('horses/<int:pk>/', views.HorseDetailView.as_view(), name='horse_detail'),
     path('horses/<int:pk>/edit/', views.HorseUpdateView.as_view(), name='horse_update'),
+    path('horses/<int:pk>/quick-edit/', views.horse_quick_edit, name='horse_quick_edit'),
     path('horses/<int:pk>/move/', views.horse_move, name='horse_move'),
     path('horses/<int:pk>/arrive/', views.horse_arrive, name='horse_arrive'),
     path('horses/<int:pk>/depart/', views.horse_depart, name='horse_depart'),

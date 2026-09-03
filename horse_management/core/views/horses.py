@@ -43,6 +43,7 @@ from health.models import (
 from ..forms import (
     ArrivalForm,
     HorseForm,
+    QuickHorseForm,
     MoveHorseForm,
     OwnershipShareFormSet,
     SingleArrivalForm,
@@ -674,6 +675,34 @@ class HorseUpdateView(FeatureAccessMixin, UpdateView):
         _warn_if_incomplete_ownership(self.request, ownership_formset)
         messages.success(self.request, f"Horse '{self.object.name}' updated successfully.")
         return redirect(self.get_success_url())
+
+
+@feature_required('horses')
+def horse_quick_edit(request, pk):
+    """The day-to-day horse fields, for the pop-up sheet only.
+
+    Triggers keep their href on the full Edit page, so without JavaScript
+    (or on a direct visit) this simply redirects there. Inside the sheet
+    (HX-Target: popup-body) it renders QuickHorseForm, re-renders it with
+    errors, and answers a valid save with 204 + ``popup:saved``.
+    """
+    horse = get_object_or_404(Horse, pk=pk)
+    if not is_popup_request(request):
+        return redirect('horse_update', pk=horse.pk)
+
+    if request.method == 'POST':
+        form = QuickHorseForm(request.POST, instance=horse)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Horse '{horse.name}' updated successfully.")
+            return popup_saved_response()
+    else:
+        form = QuickHorseForm(instance=horse)
+
+    return render(request, 'horses/partials/quick_edit_form.html', {
+        'horse': horse,
+        'form': form,
+    })
 
 
 def _flash_superseded_trim(request, horse, placement):
