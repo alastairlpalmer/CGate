@@ -308,6 +308,13 @@ POSTHOG_SYNC_MODE = env.bool(
 # Verbose posthog-js logging in the browser console.
 POSTHOG_DEBUG = env.bool('POSTHOG_DEBUG', default=False)
 
+# Route browser traffic through this app at /ingest/ instead of straight to
+# posthog.com. Ad blockers block posthog.com by default, so without this anyone
+# running one is invisible. The proxy view is core.views.posthog_proxy; the
+# path here must match the route in urls.py.
+POSTHOG_PROXY = env.bool('POSTHOG_PROXY', default=True)
+POSTHOG_PROXY_PATH = '/ingest'
+
 # Celery Configuration
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default='django-db')

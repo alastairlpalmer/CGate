@@ -94,6 +94,10 @@ class Command(BaseCommand):
         self.row('Event host', settings.POSTHOG_HOST)
         self.row('Asset host', settings.POSTHOG_ASSET_HOST)
         self.row('Dashboard', settings.POSTHOG_UI_HOST)
+        self.row('Browser proxy', (
+            f'on, via {settings.POSTHOG_PROXY_PATH}/' if settings.POSTHOG_PROXY
+            else 'off (browser talks to posthog.com directly)'
+        ))
         self.row('Session replay', 'on' if settings.POSTHOG_SESSION_RECORDING else 'off')
         self.row('Usernames sent', 'yes' if settings.POSTHOG_SEND_USERNAMES else 'no')
         self.row('Server send mode', 'sync' if settings.POSTHOG_SYNC_MODE else 'background')

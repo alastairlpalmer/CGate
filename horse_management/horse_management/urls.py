@@ -9,6 +9,7 @@ from django.urls import include, path
 
 from core.views import (
     app_settings,
+    posthog_proxy,
     dashboard_toggle,
     health_check,
     rate_type_create,
@@ -22,6 +23,10 @@ from core.views import (
 
 urlpatterns = [
     path('_health/', health_check, name='health_check'),
+    # Same-origin PostHog proxy, so ad blockers cannot see the tracker.
+    # Path must match POSTHOG_PROXY_PATH in settings.
+    path('ingest/', posthog_proxy, name='posthog_proxy_root'),
+    path('ingest/<path:upstream_path>', posthog_proxy, name='posthog_proxy'),
     path('settings/', app_settings, name='app_settings'),
     path('settings/rates/add/', rate_type_create, name='rate_type_create'),
     path('settings/rates/<int:pk>/edit/', rate_type_update, name='rate_type_update'),
