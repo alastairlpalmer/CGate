@@ -31,6 +31,7 @@
     <!-- Alpine.js + Collapse plugin (vendored locally — no CDN round trip) -->
     {# popup.js registers an Alpine store on alpine:init, so it must run before Alpine starts #}
     <script defer src="{% static_v 'js/popup.js' %}"></script>
+    <script defer src="{% static_v 'js/photo_quick_add.js' %}"></script>
     <script defer src="{% static_v 'js/alpine-collapse.min.js' %}"></script>
     <script defer src="{% static_v 'js/alpine.min.js' %}"></script>
     <!-- HTMX -->

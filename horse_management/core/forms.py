@@ -493,6 +493,12 @@ class QuickPhotoForm(forms.Form):
             'placeholder': 'Optional note (applies to all photos)',
         }),
     )
+    # Also copy the first saved photo onto Horse.photo (the avatar). Ignored
+    # for passport shots, which become Documents rather than HorsePhotos.
+    set_profile = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────────

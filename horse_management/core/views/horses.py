@@ -50,6 +50,7 @@ from ..forms import (
 from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Horse, Location, Owner, OwnershipShare, Placement
 from ..search import fuzzy_horse_ids
+from ._popup import is_popup_request, popup_saved_response
 
 
 def _warn_if_incomplete_ownership(request, formset):
@@ -690,12 +691,6 @@ def _flash_superseded_trim(request, horse, placement):
         )
 
 
-def _is_popup_request(request):
-    """True when the shared pop-up sheet (base.html) asked for this view."""
-    htmx = getattr(request, 'htmx', None)
-    return bool(htmx) and htmx.target == 'popup-body'
-
-
 def _safe_next_url(request):
     """A same-origin ``next`` from the query string or POST body, else ''."""
     candidate = request.POST.get('next') or request.GET.get('next') or ''
@@ -725,7 +720,7 @@ def horse_move(request, pk):
 
     horse = get_object_or_404(Horse, pk=pk)
     current_placement = horse.current_placement
-    in_popup = _is_popup_request(request)
+    in_popup = is_popup_request(request)
     next_url = _safe_next_url(request)
 
     if request.method == 'POST':
@@ -754,7 +749,7 @@ def horse_move(request, pk):
                 messages.success(request, f"{horse.name} moved successfully.")
                 _flash_superseded_trim(request, horse, new_placement)
                 if in_popup:
-                    return HttpResponse(status=204, headers={'HX-Trigger': 'popup:saved'})
+                    return popup_saved_response()
                 return redirect(next_url or 'horse_list')
     else:
         form = MoveHorseForm(initial={
