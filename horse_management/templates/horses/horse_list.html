@@ -112,9 +112,28 @@
                 Departed
                 <span class="ml-0.5 text-xs font-semibold tabular-nums {% if status == 'departed' %}text-white/80{% else %}text-sage/80{% endif %}">{{ total_departed }}</span>
             </a>
+            {% if movements_available %}
+            {% comment %}The placement log. Same view as the Locations
+            page's Movement History tab — it stays there too.{% endcomment %}
+            <a href="{% url 'horse_list' %}?tab=movements"
+               class="inline-flex items-center gap-1.5 px-3.5 py-1.5 min-h-[44px] sm:min-h-0 text-sm font-medium rounded-md transition-all duration-150 {% if shows_movements %}bg-forest text-white shadow-sm{% else %}text-sage hover:text-charcoal hover:bg-light-sage/60{% endif %}">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
+                </svg>
+                Movements
+            </a>
+            {% endif %}
         </div>
 
-        {% if status == 'current' and not is_searching %}
+        {% if shows_movements %}
+        <!-- Movement status. Matches the Locations page's filter. -->
+        <div class="flex gap-1 bg-white rounded-lg border border-light-sage p-1 shadow-sm">
+            {% for key, label in movement_statuses %}
+            <a href="{% querystring status=key page=None %}"
+               class="inline-flex items-center px-3 py-1.5 min-h-[44px] sm:min-h-0 text-sm font-medium rounded-md transition-all duration-150 {% if current_status == key %}bg-forest text-white shadow-sm{% else %}text-sage hover:text-charcoal hover:bg-light-sage/60{% endif %}">{{ label }}</a>
+            {% endfor %}
+        </div>
+        {% elif status == 'current' and not is_searching %}
         <!-- Group by toggle. Clicking the selected option opens its Sort menu. -->
         <div class="flex items-center gap-2 text-sm text-sage">
             <span class="text-xs uppercase tracking-wider font-semibold hidden sm:inline">Group by</span>
@@ -174,7 +193,11 @@
         {% endif %}
     </div>
 
-    {% if is_searching %}
+    {% if shows_movements %}
+    <!-- ── Movements: the shared placement log ── -->
+    {% include 'placements/_movement_table.html' %}
+
+    {% elif is_searching %}
     <!-- ── Search Results (flat list, mixed active/departed) ── -->
     {% if horses %}
     <div class="card overflow-hidden">

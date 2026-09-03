@@ -57,6 +57,7 @@ from ..permissions import (
     feature_required,
 )
 from ..models import Horse, Location, Owner, OwnershipShare, Placement
+from .placements import movement_history
 from .locations import (
     USAGE_COLORS,
     resolve_usage_window,
@@ -323,6 +324,19 @@ class HorseListView(FeatureAccessMixin, ListView):
         return bool(self.request.GET.get('search'))
 
     @property
+    def shows_movements(self):
+        """Whether the Movements tab is what the URL asked for.
+
+        The log reads placements — horse, owner and location together —
+        so it needs the locations feature, the same as the land axes.
+        """
+        if self.request.GET.get('tab') != 'movements':
+            return False
+        access = access_map(self.request.user)
+        level = access.get('locations', LEVEL_HIDDEN)
+        return LEVEL_ORDER[level] >= LEVEL_ORDER[LEVEL_VIEW]
+
+    @property
     def available_axes(self):
         """The group-by axes this role may use.
 
@@ -395,6 +409,9 @@ class HorseListView(FeatureAccessMixin, ListView):
         return value if value in GROUP_SORT_OPTIONS else DEFAULT_SORT
 
     def get_paginate_by(self, queryset):
+        # The Movements tab shows a placement log, not horses.
+        if self.shows_movements:
+            return None
         # Only paginate the departed tab (current tab shows all, grouped).
         # Search results are never paginated: the search branch renders a
         # flat list with no pager, so paginating silently capped a departed
@@ -404,6 +421,10 @@ class HorseListView(FeatureAccessMixin, ListView):
         return None
 
     def get_queryset(self):
+        if self.shows_movements:
+            # Nothing on that tab reads the horse list, so don't build it.
+            return Horse.objects.none()
+
         active_placements = Prefetch(
             'placements',
             queryset=Placement.objects.filter(
@@ -530,6 +551,19 @@ class HorseListView(FeatureAccessMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['status'] = self.status
+        context['shows_movements'] = self.shows_movements
+        context['movements_available'] = (
+            'location' in self.available_axes
+        )
+        if self.shows_movements:
+            # Same log, same filters as the Locations page's tab — one
+            # query function serves both (placements.movement_history).
+            placements, movement_status = movement_history(self.request)
+            context['placements'] = placements
+            context['current_status'] = movement_status
+            context['movement_statuses'] = (
+                ('active', 'Current'), ('ended', 'Ended'), ('all', 'All'),
+            )
         context['group_by'] = self.group_by
         context['available_axes'] = self.available_axes
         context['show_empty'] = self.show_empty
@@ -620,7 +654,9 @@ class HorseListView(FeatureAccessMixin, ListView):
             h.resolved_owner = _get_owner(h)
 
         # Build grouped data for current tab (not when searching or departed)
-        if self.status == 'current' and not self.is_searching:
+        if self.shows_movements:
+            pass
+        elif self.status == 'current' and not self.is_searching:
             horses = _sort_horses(horses, self.sort)
             group_by = context['group_by']
 

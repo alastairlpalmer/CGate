@@ -19,6 +19,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from ..forms import ArrivalForm, LocationForm, LocationUsageForm
 from ._popup import PopupFormMixin, is_popup_request, popup_saved_response
+from .placements import movement_history
 from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Horse, Location, LocationUsagePeriod, Owner, Placement
 
@@ -295,23 +296,11 @@ class LocationListView(FeatureAccessMixin, ListView):
                 earliest.year if earliest else None
             )
 
-        # Movement History tab data
+        # Movement History tab data. The query lives in placements.py so
+        # the horse list's Movements tab reads exactly the same log.
         if context['current_tab'] == 'history':
-            placements = Placement.objects.select_related(
-                'horse', 'owner', 'location', 'rate_type'
-            )
-            status = self.request.GET.get('status', 'active')
-            if status == 'active':
-                placements = placements.filter(end_date__isnull=True)
-            elif status == 'ended':
-                placements = placements.filter(end_date__isnull=False)
-            location_filter = self.request.GET.get('location')
-            if location_filter:
-                placements = placements.filter(location_id=location_filter)
-            owner_filter = self.request.GET.get('owner')
-            if owner_filter:
-                placements = placements.filter(owner_id=owner_filter)
-            context['placements'] = placements.order_by('-start_date')[:50]
+            placements, status = movement_history(self.request)
+            context['placements'] = placements
             context['current_status'] = status
             context['all_locations'] = Location.objects.order_by('site', 'name')
             context['owners'] = Owner.objects.only('pk', 'name')
