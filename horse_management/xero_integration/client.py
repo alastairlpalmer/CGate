@@ -20,21 +20,34 @@ XERO_CONNECTIONS_URL = 'https://api.xero.com/connections'
 XERO_API_BASE = 'https://api.xero.com/api.xro/2.0'
 
 
-class XeroAuthError(Exception):
-    """Raised when Xero authentication fails."""
+class XeroAPIError(Exception):
+    """Raised when a Xero API call fails.
+
+    ``retry_after`` carries Xero's Retry-After header (seconds) on a 429 so
+    callers can wait exactly as long as asked instead of guessing.
+    """
+
+    def __init__(self, message, status_code=None, response_body=None,
+                 retry_after=None):
+        super().__init__(message)
+        self.status_code = status_code
+        self.response_body = response_body
+        self.retry_after = retry_after
+
+
+class XeroAuthError(XeroAPIError):
+    """Raised when Xero authentication fails.
+
+    A subclass of XeroAPIError on purpose: a transient failure of the token
+    endpoint (network blip, 429, 5xx during refresh) must reach the same
+    record-the-error / skip-and-continue handlers as any other API failure.
+    As a sibling class it escaped every ``except XeroAPIError`` — aborting
+    the nightly sweep and leaving pushes with no sync record.
+    """
 
 
 class XeroTokenExpiredError(XeroAuthError):
     """Raised when refresh token has expired (re-auth required)."""
-
-
-class XeroAPIError(Exception):
-    """Raised when a Xero API call fails."""
-
-    def __init__(self, message, status_code=None, response_body=None):
-        super().__init__(message)
-        self.status_code = status_code
-        self.response_body = response_body
 
 
 class XeroClient:
@@ -249,10 +262,17 @@ class XeroClient:
             ) from exc
 
         if response.status_code >= 400:
+            retry_after = None
+            if response.status_code == 429:
+                try:
+                    retry_after = int(response.headers.get('Retry-After', ''))
+                except (TypeError, ValueError):
+                    retry_after = None
             raise XeroAPIError(
                 f'Xero API error: {response.status_code}',
                 status_code=response.status_code,
                 response_body=response.text,
+                retry_after=retry_after,
             )
 
         return response.json()

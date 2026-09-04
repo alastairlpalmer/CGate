@@ -21,6 +21,13 @@ _HEIF_FORMATS = {'HEIF', 'HEIC', 'AVIF'}
 # phone photo re-encoded as JPEG can exceed the original HEIC's size.
 _MAX_DIMENSION = 2560
 
+# Above this many pixels an upload is always downscaled, whatever the
+# caller asked for. The size validator caps bytes, not pixels: a 5MB PNG
+# can be 12000x12000, and decoding it (here, then again for the thumbnail)
+# needs ~430MB — enough to OOM-kill a worker rather than raise. 50MP is
+# above any current phone camera's full-resolution output.
+_MAX_PIXELS = 50_000_000
+
 
 def _normalise_upload(upload, downscale_oversized):
     """Re-encode ``upload`` to JPEG when it needs it, else return it as-is.
@@ -48,11 +55,19 @@ def _normalise_upload(upload, downscale_oversized):
         upload.seek(0)
         image = Image.open(upload)
         needs_convert = (image.format or '').upper() in _HEIF_FORMATS
-        needs_downscale = downscale_oversized and max(image.size) > _MAX_DIMENSION
+        width, height = image.size
+        needs_downscale = (
+            (downscale_oversized and max(image.size) > _MAX_DIMENSION)
+            or width * height > _MAX_PIXELS
+        )
         if not needs_convert and not needs_downscale:
             upload.seek(0)
             return upload
 
+        # JPEG can decode straight to a reduced size (DCT scaling), which
+        # keeps the peak memory of a huge upload far below a full decode.
+        if needs_downscale and image.format == 'JPEG':
+            image.draft('RGB', (_MAX_DIMENSION, _MAX_DIMENSION))
         # Apply the EXIF rotation before it is lost in conversion, then
         # flatten to RGB (JPEG has no alpha channel).
         image = ImageOps.exif_transpose(image)

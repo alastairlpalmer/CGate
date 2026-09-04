@@ -692,7 +692,13 @@ document.addEventListener('alpine:init', function() {
                 fetch('/health/bulk/form/?action_type=' + this.actionType, {
                     credentials: 'same-origin'
                 })
-                .then(function(resp) { return resp.text(); })
+                .then(function(resp) {
+                    // A 400/403 used to inject Django's error page into
+                    // the modal; offline left it on "Loading form..." with
+                    // an unhandled rejection.
+                    if (!resp.ok) { throw new Error('HTTP ' + resp.status); }
+                    return resp.text();
+                })
                 .then(function(html) {
                     container.innerHTML = html;
                     htmx.process(container);
@@ -708,6 +714,11 @@ document.addEventListener('alpine:init', function() {
                         });
                         htmx.process(form);
                     }
+                })
+                .catch(function() {
+                    container.innerHTML =
+                        '<div class="p-5 text-sm text-charcoal-light" role="alert">' +
+                        'That didn\u2019t load. Check your signal and try again.</div>';
                 });
 
                 this.modalOpen = true;
@@ -715,12 +726,20 @@ document.addEventListener('alpine:init', function() {
 
             init() {
                 var self = this;
-                document.body.addEventListener('bulkActionComplete', function() {
+                // init() runs again on every boosted navigation that lands
+                // on a list page, but document.body is never swapped, so
+                // each visit used to stack another listener (and retain the
+                // dead component). Keep exactly one.
+                if (window.__bulkActionComplete) {
+                    document.body.removeEventListener('bulkActionComplete', window.__bulkActionComplete);
+                }
+                window.__bulkActionComplete = function() {
                     self.modalOpen = false;
                     self.clearAll();
                     self.actionType = '';
                     window.location.reload();
-                });
+                };
+                document.body.addEventListener('bulkActionComplete', window.__bulkActionComplete);
             }
         };
     });

@@ -207,7 +207,7 @@ class CancelReleasesChargesTests(TestCase):
             date=date(2026, 6, 8), description="Hay",
             amount=Decimal("80.00"), split_by_ownership=True,
         )
-        inv1 = InvoiceService.create_invoice(self.owner, *PERIOD)
+        InvoiceService.create_invoice(self.owner, *PERIOD)
         inv2 = InvoiceService.create_invoice(o2, *PERIOD)
         split.refresh_from_db()
         self.assertTrue(split.invoiced)
