@@ -49,7 +49,7 @@ them gets no box.{% endcomment %}
                    @input="open = true"
                    @focus="focused = true; open = true"
                    @blur="focused = false"
-                   @keydown.arrow-down.prevent="$refs.results.querySelector('a')?.focus()">
+                   @keydown.arrow-down.prevent="$refs.results.querySelector('a:not([tabindex])')?.focus()">
             {# Shortcut hint: press / anywhere to jump here (base.html). Hidden once the box is in use. #}
             <span x-show="!q && !focused" x-cloak
                   class="absolute right-3.5 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-1.5 pointer-events-none text-[11px] text-sage"
@@ -99,8 +99,8 @@ them gets no box.{% endcomment %}
 
                 <div id="app-search-results" x-ref="results" x-show="!short"
                      class="max-h-[60vh] overflow-y-auto overscroll-contain"
-                     @keydown.arrow-down.prevent="(function(){ var as = Array.from($refs.results.querySelectorAll('a')); var i = as.indexOf(document.activeElement); if (as[i+1]) as[i+1].focus(); })()"
-                     @keydown.arrow-up.prevent="(function(){ var as = Array.from($refs.results.querySelectorAll('a')); var i = as.indexOf(document.activeElement); if (i > 0) { as[i-1].focus(); } else { $refs.input.focus(); } })()"></div>
+                     @keydown.arrow-down.prevent="(function(){ var as = Array.from($refs.results.querySelectorAll('a:not([tabindex])')); var i = as.indexOf(document.activeElement); if (as[i+1]) as[i+1].focus(); })()"
+                     @keydown.arrow-up.prevent="(function(){ var as = Array.from($refs.results.querySelectorAll('a:not([tabindex])')); var i = as.indexOf(document.activeElement); if (i > 0) { as[i-1].focus(); } else { $refs.input.focus(); } })()"></div>
 
                 <div class="hidden sm:flex items-center gap-4 px-4 py-2 border-t border-light-sage bg-parchment/70 text-[11px] text-sage" aria-hidden="true">
                     <span class="inline-flex items-center gap-1"><kbd class="app-search-kbd">&uarr;</kbd><kbd class="app-search-kbd">&darr;</kbd> move</span>
