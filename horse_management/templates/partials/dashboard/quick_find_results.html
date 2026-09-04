@@ -4,45 +4,56 @@ Results for the app bar's search.
 Each group shows the best few matches, then a link through to that area's
 own list filtered by the same words — so one box covers both "take me to
 this horse" and "show me everything matching".
+
+Every row carries its area's icon, so a mixed list still reads at a glance.
 {% endcomment %}
 {% if has_results %}
+<div class="py-1.5">
 {% if horses %}
 <p class="quick-find-group-label">Horses</p>
 {% for h in horses %}
 <a href="{% url 'horse_detail' h.pk %}" class="quick-find-item">
-    <span class="truncate">{{ h.name }}</span>
-    <span class="text-xs text-sage shrink-0">{% if h.is_active %}Horse{% else %}Departed{% endif %}</span>
+    <span class="quick-find-icon"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25L12 17.25 2.25 12l4.179-2.25"/></svg></span>
+    <span class="truncate flex-1">{{ h.name }}</span>
+    {% if not h.is_active %}<span class="quick-find-tag">Departed</span>{% endif %}
 </a>
 {% endfor %}
 <a href="{% url 'horse_list' %}?search={{ query|urlencode }}" class="quick-find-more">
     See all horses matching &ldquo;{{ query }}&rdquo;
+    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
 </a>
 {% endif %}
 {% if owners %}
 <p class="quick-find-group-label">Owners</p>
 {% for o in owners %}
 <a href="{% url 'owner_detail' o.pk %}" class="quick-find-item">
-    <span class="truncate">{{ o.name }}</span>
-    <span class="text-xs text-sage shrink-0">Owner</span>
+    <span class="quick-find-icon"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg></span>
+    <span class="truncate flex-1">{{ o.name }}</span>
 </a>
 {% endfor %}
 <a href="{% url 'owner_list' %}?search={{ query|urlencode }}" class="quick-find-more">
     See all owners matching &ldquo;{{ query }}&rdquo;
+    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
 </a>
 {% endif %}
 {% if locations %}
 <p class="quick-find-group-label">Locations</p>
 {% for l in locations %}
 <a href="{% url 'location_detail' l.pk %}" class="quick-find-item">
-    <span class="truncate">{{ l.name }}</span>
-    <span class="text-xs text-sage shrink-0">{{ l.site }}</span>
+    <span class="quick-find-icon"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg></span>
+    <span class="truncate flex-1">{{ l.name }}</span>
+    <span class="quick-find-tag">{{ l.site }}</span>
 </a>
 {% endfor %}
 <a href="{% url 'location_list' %}?search={{ query|urlencode }}" class="quick-find-more">
     See all locations matching &ldquo;{{ query }}&rdquo;
+    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
 </a>
 {% endif %}
-<div class="h-2"></div>
+</div>
 {% else %}
-<p class="px-4 py-3 text-sm text-sage">No matches for &ldquo;{{ query }}&rdquo;</p>
+<div class="px-4 py-5 text-center">
+    <p class="text-sm text-charcoal">No matches for &ldquo;{{ query }}&rdquo;</p>
+    <p class="mt-1 text-xs text-sage">Try fewer letters, or a different spelling.</p>
+</div>
 {% endif %}
