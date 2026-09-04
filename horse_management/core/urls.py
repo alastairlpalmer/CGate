@@ -11,7 +11,8 @@ from . import views
 urlpatterns = [
     # Dashboard
     path('', views.dashboard, name='dashboard'),
-    path('_partials/health-alerts/', views.dashboard_health_alerts, name='dashboard_health_alerts'),
+    path('_partials/dashboard/money/', views.dashboard_money, name='dashboard_money'),
+    path('_partials/dashboard/activity/', views.dashboard_activity, name='dashboard_activity'),
     path('_partials/quick-find/', views.quick_find, name='quick_find'),
 
     # Finances overview

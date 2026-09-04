@@ -1,0 +1,22 @@
+{% comment %}
+One action button. Context: action (core.dashboard.attention.Action).
+
+- method 'post': a plain form. The body is hx-boosted, so the post travels
+  through htmx; the confirm/cancel views answer 204 + popup:saved (the page
+  refreshes in place) and mark-paid redirects back to ?next=.
+- popup_title set: opens in the pop-up sheet.
+- otherwise a plain link.
+{% endcomment %}
+{% if action.method == 'post' %}
+<form method="post" action="{{ action.url }}" class="inline">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <button type="submit" class="{% if action.style == 'primary' %}btn-primary{% else %}btn-ghost{% endif %} btn-xs">{{ action.label }}</button>
+</form>
+{% elif action.popup_title %}
+<a href="{{ action.url }}" hx-get="{{ action.url }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+   data-popup-title="{{ action.popup_title }}"
+   class="{% if action.style == 'primary' %}btn-primary{% else %}btn-ghost{% endif %} btn-xs">{{ action.label }}</a>
+{% else %}
+<a href="{{ action.url }}" class="{% if action.style == 'primary' %}btn-primary{% else %}btn-ghost{% endif %} btn-xs">{{ action.label }}</a>
+{% endif %}

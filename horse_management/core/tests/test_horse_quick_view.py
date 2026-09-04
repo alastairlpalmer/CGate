@@ -101,11 +101,13 @@ class QuickViewContentTests(QuickViewFixture):
         self.assertIn(reverse('horse_detail', args=[self.horse.pk]), body)
         self.assertIn('Open full profile', body)
 
-    def test_shows_the_photo_or_the_initial(self):
+    def test_shows_the_photo_or_the_coat_placeholder(self):
         body = self.client.get(self.url, **POPUP).content.decode()
-        # No photo on the fixture horse: the 96px initial placeholder stands in
+        # No photo on the fixture horse: the 96px coat-coloured horse icon
+        # stands in (horses/_horse_avatar.html, size='lg')
         self.assertIn('w-24 h-24', body)
-        self.assertIn('>F<', body)
+        self.assertIn('href="#i-horse"', body)
+        self.assertIn('title="Bay"', body)
 
     def test_offers_the_day_to_day_actions_in_the_same_sheet(self):
         body = self.client.get(self.url, **POPUP).content.decode()

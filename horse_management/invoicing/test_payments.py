@@ -205,5 +205,10 @@ class OutstandingKpiTests(TestCase):
         )
         self.client.force_login(staff)
         response = self.client.get(reverse("dashboard"))
-        rows = response.context["outstanding_invoices"]
-        self.assertEqual(rows[0].balance, Decimal("100.00"))
+        # The inbox row shows what is still owed, not the face value.
+        items = [
+            item for row in response.context["rows"] for item in row.items
+            if item.kind == "invoice"
+        ]
+        self.assertEqual([item.amount for item in items], [Decimal("100.00")])
+        self.assertIn("£100.00 of £150.00 outstanding", items[0].detail)

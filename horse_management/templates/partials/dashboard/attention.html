@@ -1,0 +1,38 @@
+{% comment %}
+Zone B: one inbox across every area. Rows come from core.dashboard.attention
+and are already grouped (a shared visit, a horse with several items, or a
+loose item) and sorted most urgent first. The header chips filter rows
+client-side through the page's Alpine `filter` state.
+{% endcomment %}
+<div class="card overflow-hidden h-full" id="needs-action">
+    <div class="section-header">
+        <div class="flex items-center gap-2.5">
+            <h2 class="section-title" id="needs-action-title">Needs action</h2>
+            {% if rows %}<span class="badge-neutral">{{ rows|length }}</span>{% endif %}
+        </div>
+        {% if departure_ids|length > 1 and feature_access.horses.full %}
+        <form method="post" action="{% url 'confirm_departures_bulk' %}"
+              hx-confirm="Confirm all {{ departure_ids|length }} horses as departed? They'll move to the Departed list.">
+            {% csrf_token %}
+            {% for id in departure_ids %}<input type="hidden" name="horse_ids" value="{{ id }}">{% endfor %}
+            <button type="submit" class="btn-secondary btn-xs" title="Confirm every departure listed below">Confirm all {{ departure_ids|length }} departures</button>
+        </form>
+        {% else %}
+        <span class="text-xs text-sage">Overdue first, then today</span>
+        {% endif %}
+    </div>
+
+    {% if rows %}
+    <ul class="divide-y divide-light-sage">
+        {% for row in rows %}
+        {% include 'partials/dashboard/_attention_row.html' %}
+        {% endfor %}
+    </ul>
+    {% else %}
+    <div class="px-5 py-10 text-center">
+        <svg class="mx-auto h-9 w-9 text-sage" aria-hidden="true"><use href="#i-horseshoe"/></svg>
+        <p class="mt-3 text-sm font-medium text-charcoal">Nothing needs doing{% if site %} at {{ site }}{% endif %}.</p>
+        <p class="mt-1 text-xs text-sage">Anything overdue, and anything due today, shows here the moment it comes up.</p>
+    </div>
+    {% endif %}
+</div>

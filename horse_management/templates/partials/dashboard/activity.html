@@ -1,0 +1,37 @@
+{% load ui_extras %}
+{% comment %}
+Zone F: what changed, newest first, grouped by day. Loaded after first
+paint. Context: days (core.dashboard.activity.recent), site.
+
+Each row: a tinted glyph for the kind, the horses (or owner, or location)
+as chips with their coat colour, what happened, and any money on the right.
+A farrier round or a batch of vaccinations is one row naming every horse.
+{% endcomment %}
+<div class="card overflow-hidden h-full">
+    <div class="section-header">
+        <h2 class="section-title">What changed</h2>
+        {% if feature_access.horses.view %}<a href="{% url 'horse_list' %}?tab=movements" class="text-xs link tap-pad">Movements &rarr;</a>{% endif %}
+    </div>
+    {% if days %}
+    <div class="log">
+        {% for day in days %}
+        <p class="log-day"><span>{{ day.label }}{% if day.with_date %} <span class="text-sage/70">&middot; {{ day.date|date:"j M" }}</span>{% endif %}</span></p>
+        {% for event in day.events %}
+        <div class="log-event">
+            <span class="log-icon log-icon-{{ event.group }}" aria-hidden="true"><svg class="w-4 h-4"><use href="#i-{{ event.kind|kind_icon }}"/></svg></span>
+            <div class="log-body">
+                {% for n in event.names %}
+                <a href="{{ n.url }}" class="log-name">{% if n.color %}{% with coat=n.color|coat_colour %}<span class="coat-dot" style="background:{{ coat.0 }}"></span>{% endwith %}{% endif %}{{ n.name }}</a>
+                {% endfor %}
+                {% if event.url %}<a href="{{ event.url }}" class="log-what link">{{ event.what }}</a>{% else %}<span class="log-what">{{ event.what }}</span>{% endif %}
+                {% if event.count > 1 %}<span class="log-count">{{ event.count }} horses</span>{% endif %}
+            </div>
+            {% if event.amount is not None %}<span class="log-amount">{{ event.amount|gbp }}</span>{% endif %}
+        </div>
+        {% endfor %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="px-5 py-8 text-center text-sm text-sage">Nothing recorded yet{% if site %} at {{ site }}{% endif %}.</p>
+    {% endif %}
+</div>

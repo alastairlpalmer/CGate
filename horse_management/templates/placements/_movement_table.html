@@ -39,9 +39,7 @@ Context: placements.
             </div>
         </li>
         {% empty %}
-        <li class="py-12 text-center">
-            <p class="text-sm font-medium text-sage">No movements found</p>
-        </li>
+        <li>{% include 'includes/empty_state.html' with icon='gate' title='No movements yet' body='Arrivals, moves and departures show here as they happen.' compact=1 %}</li>
         {% endfor %}
     </ul>
 
@@ -63,7 +61,7 @@ Context: placements.
                 {% for placement in placements %}
                 <tr>
                     <td>
-                        <a href="{% url 'horse_detail' placement.horse.pk %}" class="link tap-pad">{{ placement.horse.name }}</a>
+                        <span class="inline-flex items-center gap-2">{% include 'horses/_coat_dot.html' with horse=placement.horse %}<a href="{% url 'horse_detail' placement.horse.pk %}" class="link tap-pad">{{ placement.horse.name }}</a></span>
                     </td>
                     <td>
                         <a href="{% url 'owner_detail' placement.owner.pk %}" class="link tap-pad">{{ placement.owner.name }}</a>
@@ -105,13 +103,8 @@ Context: placements.
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7">
-                        <div class="py-12 text-center">
-                            <svg class="mx-auto h-12 w-12 text-sage/50" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
-                            </svg>
-                            <p class="mt-3 text-sm font-medium text-sage">No movements found</p>
-                        </div>
+                    <td colspan="7" class="!p-0">
+                        {% include 'includes/empty_state.html' with icon='gate' title='No movements yet' body='Arrivals, moves and departures show here as they happen.' compact=1 %}
                     </td>
                 </tr>
                 {% endfor %}
