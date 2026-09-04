@@ -1,15 +1,41 @@
 # Dashboard redesign plan
 
-Status: draft for discussion. Nothing in this plan is built yet.
-Date: 4 September 2026. Branch: `claude/dashboard-redesign-overhaul-lzy7ei`.
+Status: decisions taken on 4 September 2026 (section 0); the build is on
+branch `claude/dashboard-redesign-overhaul-lzy7ei`.
 
 This plan comes from a read of the whole codebase: models, services, views,
 templates, the role suite, the reminder tasks, the tests, and the earlier
 review documents (`CODEBASE_REVIEW.md`, `UI_AUDIT.md`, `FULL_QA_REPORT.md`,
 `MOBILE_QA_REPORT.md`, `POPUP_EDIT_PLAN.md`, `CUTOVER.md`).
 
-Section 10 lists the questions that decide the final shape. Section 11 lists
-the assumptions the plan makes until those questions are answered.
+Section 10 lists the questions that were put to the yard; section 0 records
+the answers and what changed because of them.
+
+---
+
+## 0. Decisions (4 September 2026)
+
+Answers from the yard, and the effect on the plan:
+
+| Question | Answer | Effect |
+|---|---|---|
+| Tiers of user | One tier, keep it simple | No lenses. One dashboard for everyone; zones still hide by feature access and per-user switches stay. |
+| Who uses it, on what | Operations and management are the same people, on both phone and desktop | Desktop and phone get equal care. |
+| Morning walk of the yard | No | The "Today's round" phone mode is dropped. |
+| Farrier and vet | Booked and ad hoc; the farrier does several in one visit, sometimes one; the vet is mostly ad hoc, sometimes booked | Items due the same day for two or more horses become one row with "Record for N". No assumption of fixed rounds. |
+| Sites | Somerford and Colgate, staff work across both | Site switch, default All, remembered per user. |
+| Monthly invoices | Charlie runs them; to be picked up separately | Money zone stays compact: drafts to review, outstanding with aged split, received, unbilled, send and Xero state. No cycle stepper yet. |
+| Daily run-rate | Not daily | Dropped from the dashboard. |
+| Resting Locations year totals | Your call | Off the home page. The Yard board shows days rested so far; year totals stay on Locations, Land use. |
+| Breeding | Seasonal block | "In foal" renders only when a mare has a confirmed pregnancy. |
+| Feed stock | Not tracked now, could be | Low-stock rows appear in the inbox only when stock data exists. |
+| Per-user or per-role layout | Your call | Per-user switches, as today, re-keyed to the six zones. |
+| Looks | Follow the UI audit; make the sections stand out | State title, domain icon sprite, coat-colour dots, staggered entrance, the yard's name in the sidebar, hover-quiet actions. |
+
+What was built, in order: the data layer (`core/dashboard/`), the six
+zones, the health bulk form's pop-up mode for "Record for N", the Health
+overview switched to the shared collectors, the visual items above, and
+the tests.
 
 ---
 
