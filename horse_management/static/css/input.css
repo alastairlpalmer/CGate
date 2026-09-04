@@ -616,3 +616,132 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 /* Nav click feedback */
 .nav-link.htmx-request,
 .nav-link-active.htmx-request { @apply opacity-60; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Home dashboard zones (templates/dashboard.html, partials/dashboard/*)
+   ══════════════════════════════════════════════════════════════════════════ */
+:root { --ease-out: cubic-bezier(.25, 1, .5, 1); }
+
+@layer components {
+    /* Header chips: filter the inbox; the hot one carries the rust accent */
+    .chip-count { @apply inline-flex items-center gap-1.5 rounded-full border border-light-sage bg-white px-3 py-1 text-xs text-charcoal transition-colors hover:border-sage min-h-[32px]; }
+    .chip-count b { @apply font-mono font-medium tabular-nums; }
+    .chip-count.is-active { @apply border-forest bg-sage-50 text-forest; }
+    .chip-count-hot { @apply border-saddle/50 bg-saddle-50 text-saddle; }
+    .chip-count-hot.is-active { @apply border-saddle bg-saddle-100 text-saddle-dark; }
+
+    /* Site switch */
+    .site-switch { @apply inline-flex shrink-0 rounded-lg bg-sage-50 p-1 text-xs; }
+    .site-switch-item { @apply rounded-md px-3 py-1.5 text-sage no-underline transition-colors hover:text-forest min-h-[32px] inline-flex items-center; }
+    .site-switch-item.is-active { @apply bg-white font-semibold text-forest shadow-sm; }
+
+    /* Needs action rows */
+    .attn-row { @apply grid items-start gap-3 px-4 py-3 lg:px-5; grid-template-columns: 2.25rem minmax(0, 1fr); }
+    .attn-icon { @apply grid h-9 w-9 shrink-0 place-items-center rounded-lg; }
+    .attn-icon-overdue { @apply bg-error-red-50 text-error-red; }
+    .attn-icon-due { @apply bg-saddle-50 text-saddle; }
+    .attn-icon-info { @apply bg-sage-50 text-sage; }
+    .attn-head { @apply flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5; }
+    .attn-title { @apply text-sm font-semibold text-charcoal no-underline hover:text-forest; }
+    .attn-sub { @apply truncate text-xs text-sage; }
+    .attn-line { @apply mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5; }
+    .attn-line + .attn-line { @apply border-t border-light-sage/70 pt-1.5; }
+    .attn-line-text { @apply text-sm text-charcoal-light; }
+    .attn-date { @apply font-mono text-xs text-sage tabular-nums; }
+    .attn-actions { @apply ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1; }
+
+    /* Coat-colour dot: the 6px cue the UI audit asked for in compact lists */
+    .coat-dot { @apply inline-block h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10; }
+
+    /* Next 14 days strip */
+    .strip { @apply grid gap-1 px-4 pt-4 pb-2 lg:px-5; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+    @screen sm { .strip { grid-template-columns: repeat(14, minmax(0, 1fr)); } }
+    .strip-day { @apply flex flex-col items-center rounded-lg py-1.5 text-sage; }
+    .strip-day-name { @apply font-mono text-[10px] uppercase tracking-wide; }
+    .strip-day-num { @apply font-mono text-sm font-medium text-charcoal tabular-nums; }
+    .strip-day.is-weekend { @apply bg-sand-50; }
+    .strip-day.has-items { @apply bg-white ring-1 ring-light-sage; }
+    .strip-day.is-today { @apply bg-forest text-sage-100 ring-0; }
+    .strip-day.is-today .strip-day-num { @apply text-white; }
+    .strip-dots { @apply mt-1 flex h-1.5 items-center justify-center gap-0.5; }
+    .strip-dot { @apply inline-block h-1.5 w-1.5 rounded-full bg-sage; }
+    .strip-legend { @apply flex flex-wrap gap-x-3 gap-y-1 px-4 pb-3 text-[11px] text-sage lg:px-5; }
+    .strip-legend .strip-dot { @apply mr-1 align-middle; }
+
+    /* Kind colours shared by the strip and the activity log */
+    .dot-farrier, .dot-ehv { @apply bg-saddle; }
+    .dot-vaccination, .dot-worming { @apply bg-forest; }
+    .dot-vet, .dot-foal, .dot-egg_count { @apply bg-error-red; }
+    .dot-invoice, .dot-payment, .dot-charge { @apply bg-info-blue; }
+    .dot-departure, .dot-departure_expected, .dot-arrival, .dot-move { @apply bg-sage; }
+    .dot-document, .dot-feed { @apply bg-sand; }
+    .dot-more { @apply bg-charcoal/40; }
+
+    /* Visits worth booking together */
+    .visit-row { @apply grid items-center gap-3 px-4 py-3 lg:px-5; grid-template-columns: 2.5rem minmax(0, 1fr) auto; }
+    .visit-date { @apply flex h-10 w-10 flex-col items-center justify-center rounded-lg bg-sand-50 font-mono leading-none; }
+    .visit-date-name { @apply text-[9px] uppercase tracking-wide text-sage; }
+    .visit-date-num { @apply mt-0.5 text-sm font-semibold text-forest tabular-nums; }
+
+    /* Yard board */
+    .board { @apply grid gap-5 px-4 py-4 lg:px-5; }
+    .board-site { @apply grid gap-3; }
+    @screen lg { .board-site { grid-template-columns: 9.5rem minmax(0, 1fr); } }
+    .board-site-name { @apply font-heading text-sm font-semibold text-forest no-underline hover:text-saddle; }
+    .board-site-meta { @apply mt-1 text-xs leading-5 text-sage; }
+    .board-site-meta b { @apply font-mono text-base font-medium text-charcoal tabular-nums; }
+    .board-tiles { @apply grid gap-2; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); }
+    .board-tile { @apply relative grid items-center gap-2 rounded-lg border border-light-sage bg-white px-3 py-2.5 no-underline transition-colors hover:border-sage hover:bg-sage-50/40; grid-template-columns: minmax(0, 1fr) auto; }
+    .board-tile.is-flagged { @apply border-saddle/40; }
+    .board-tile-name { @apply block text-sm font-medium leading-tight text-charcoal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .board-tile-meta { @apply mt-0.5 block text-[11px] leading-4 text-sage; }
+    .board-count { @apply grid h-10 w-10 place-items-center rounded-full bg-sage-50 font-mono text-sm font-semibold text-forest tabular-nums; }
+    .board-usage { @apply grid h-10 w-10 place-items-center rounded-full bg-sand-50; }
+    .board-flag { @apply absolute -right-1.5 -top-1.5 h-3 w-3 rounded-full bg-saddle ring-2 ring-white; }
+
+    /* In foal */
+    .foal-row { @apply flex items-start justify-between gap-4 px-4 py-3 lg:px-5; }
+    .foal-bar { @apply mt-2 h-1.5 w-full overflow-hidden rounded-full bg-light-sage; }
+    .foal-bar i { @apply block h-full rounded-full bg-saddle; }
+
+    /* Money */
+    .money-grid { @apply grid grid-cols-2 gap-3 p-4 lg:grid-cols-4 lg:p-5; }
+    .money-fig { @apply flex flex-col rounded-lg bg-sand-50 px-4 py-3 no-underline transition-colors; }
+    a.money-fig:hover { @apply bg-sand-100; }
+    .money-fig.is-action { @apply bg-saddle-50 ring-1 ring-saddle/30; }
+    .money-fig-label { @apply text-xs text-charcoal-light; }
+    .money-fig-value { @apply mt-1 font-mono text-2xl font-medium leading-none text-forest tabular-nums; }
+    .money-fig.is-action .money-fig-value { @apply text-saddle; }
+    .money-fig-meta { @apply mt-1.5 text-xs text-sage; }
+    .aged-bar { @apply mt-2 flex h-1.5 w-full overflow-hidden rounded-full bg-light-sage; }
+    .aged-bar i { @apply block h-full; }
+    .aged-current { @apply bg-sage; }
+    .aged-d30 { @apply bg-forest; }
+    .aged-d60 { @apply bg-saddle/70; }
+    .aged-d90 { @apply bg-saddle; }
+    .aged-d90plus { @apply bg-error-red; }
+    .money-pills { @apply flex flex-wrap items-center gap-2 border-t border-light-sage px-4 py-3 lg:px-5; }
+
+    /* What changed */
+    .log { @apply px-4 pb-4 pt-1 lg:px-5; }
+    .log-day { @apply pb-1 pt-3 font-mono text-[10px] uppercase tracking-[.08em] text-sage; }
+    .log-event { @apply grid items-baseline gap-2.5 rounded-md py-1.5 text-sm text-charcoal no-underline hover:bg-parchment -mx-2 px-2; grid-template-columns: .5rem minmax(0, 1fr) auto; }
+    .log-dot { @apply block h-2 w-2 translate-y-px rounded-full; }
+    .log-text { @apply min-w-0; }
+    .log-amount { @apply font-mono text-xs text-sage tabular-nums; }
+}
+
+/* Motion that reports change (UI audit 3.10) */
+.zone-enter { animation: page-in .3s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 45ms); }
+@keyframes flash {
+    from { background-color: #F2EEE4; }
+    to   { background-color: transparent; }
+}
+.flash { animation: flash 1.2s var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+}

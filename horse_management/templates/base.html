@@ -6,6 +6,7 @@
     <title>{% block title %}Yardway{% endblock %}</title>
     {% load static %}
     {% load cache_bust %}
+    {% load ui_extras %}
     <!-- PWA: installable, branded home-screen app -->
     <meta name="theme-color" content="#3D5A63">
     <link rel="manifest" href="{% static_v 'manifest.json' %}">
@@ -62,6 +63,8 @@
          style="width: 0%; opacity: 0; transition: none;">
     </div>
 
+    {% include 'includes/_icons.html' %}
+
     <!-- ── Sidebar (desktop only) ── -->
     {# hx-sync: all nav links share one sync scope (the body), so a new    #}
     {# nav click aborts an in-flight one instead of racing it — two        #}
@@ -80,7 +83,7 @@
                     <line x1="15" y1="20" x2="21" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                 </svg>
             </div>
-            <span class="text-lg font-bold text-white tracking-tight font-heading">Yardway</span>
+            <span class="text-lg font-bold text-white tracking-tight font-heading truncate">{% business_name %}</span>
         </div>
 
         <!-- Nav -->
@@ -218,7 +221,7 @@
                         <line x1="15" y1="16" x2="21" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         <line x1="15" y1="20" x2="21" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
-                    <span class="text-sm font-bold text-charcoal font-heading">Yardway</span>
+                    <span class="text-sm font-bold text-charcoal font-heading truncate">{% business_name %}</span>
                 </div>
             </div>
         </header>

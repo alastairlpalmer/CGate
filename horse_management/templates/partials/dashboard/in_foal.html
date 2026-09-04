@@ -1,0 +1,42 @@
+{% load ui_extras %}
+{% comment %}
+Seasonal block: mares in foal. Only included when the list is non-empty.
+Context: in_foal (core.dashboard.breeding.in_foal).
+{% endcomment %}
+<div class="card overflow-hidden">
+    <div class="section-header">
+        <div class="flex items-center gap-2.5">
+            <h2 class="section-title" id="in-foal-title">In foal</h2>
+            <span class="badge-neutral">{{ in_foal|length }}</span>
+        </div>
+        <a href="{% url 'breeding_list' %}" class="text-xs link tap-pad">Breeding &rarr;</a>
+    </div>
+    <ul class="grid grid-cols-1 divide-y divide-light-sage md:grid-cols-2 md:divide-y-0 xl:grid-cols-3">
+        {% for entry in in_foal %}
+        <li class="foal-row">
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 min-w-0">
+                    {% include 'horses/_coat_dot.html' with horse=entry.mare %}
+                    <a href="{% url 'horse_detail' entry.mare.pk %}" class="link text-sm font-medium truncate">{{ entry.mare.name }}</a>
+                    {% if entry.stallion %}<span class="text-xs text-sage truncate">&times; {{ entry.stallion }}</span>{% endif %}
+                </div>
+                <div class="foal-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ entry.progress }}" aria-label="Gestation progress">
+                    <i style="width: {{ entry.progress }}%"></i>
+                </div>
+                <p class="mt-1.5 text-xs text-sage">
+                    {% if entry.day_of is not None %}Day {{ entry.day_of }} of 340{% endif %}
+                    {% if entry.next_ehv %} &middot; EHV month {{ entry.next_ehv.month }} {{ entry.next_ehv.date|due_label }}{% endif %}
+                </p>
+            </div>
+            {% if entry.due %}
+            <div class="text-right shrink-0">
+                <span class="{% if entry.overdue %}badge-danger{% elif entry.days_to_go <= 14 %}badge-warning{% else %}badge-neutral{% endif %}">
+                    {% if entry.overdue %}Due date passed{% else %}Foal {{ entry.due|due_label }}{% endif %}
+                </span>
+                <p class="mt-1 font-mono text-xs text-sage">{{ entry.due|date:"j M Y" }}</p>
+            </div>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
