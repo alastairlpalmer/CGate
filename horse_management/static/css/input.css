@@ -1,18 +1,57 @@
+/* Brand fonts, self-hosted (latin subsets, variable weight). The *Fallback
+   faces are Arial metric-matched to each web font (computed with fontTools
+   against Liberation Sans) so text keeps its measure while the woff2 loads
+   and stays put if it never does. */
+@font-face {
+    font-family: "DM Sans";
+    src: url("../fonts/DMSans-Variable.woff2") format("woff2");
+    font-weight: 400 700; font-style: normal; font-display: swap;
+}
+@font-face {
+    font-family: "Source Sans 3";
+    src: url("../fonts/SourceSans3-Variable.woff2") format("woff2");
+    font-weight: 400 700; font-style: normal; font-display: swap;
+}
+@font-face {
+    font-family: "JetBrains Mono";
+    src: url("../fonts/JetBrainsMono-Variable.woff2") format("woff2");
+    font-weight: 400 500; font-style: normal; font-display: swap;
+}
+@font-face {
+    font-family: "DM Sans Fallback";
+    src: local("Arial"), local("Liberation Sans"), local("Helvetica");
+    size-adjust: 106.37%; ascent-override: 93.26%; descent-override: 29.14%; line-gap-override: 0.00%;
+}
+@font-face {
+    font-family: "Source Sans 3 Fallback";
+    src: local("Arial"), local("Liberation Sans"), local("Helvetica");
+    size-adjust: 96.47%; ascent-override: 106.14%; descent-override: 41.46%; line-gap-override: 0.00%;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+    /* 14px is a phone size; unclassed body text reads better at 15px on desktop */
+    @media (min-width: 1024px) { body { font-size: 15px; } }
+}
+
 @layer components {
     /* Cards */
-    .card { @apply bg-white rounded-card border border-light-sage shadow-sm; }
-    .card-hover { @apply bg-white rounded-card border border-light-sage shadow-sm hover:shadow-md hover:border-sage/40 transition-all duration-150 hover:-translate-y-0.5; }
+    /* Three surfaces: `card` is flat (lists, tables, forms); `card-raised`
+       carries a Brim-tinted shadow and lifts on hover (KPIs, whole-card
+       links); `panel` is a Crown-cream fill with no border (hero, summaries). */
+    .card { @apply bg-white rounded-card border border-light-sage; }
+    .card-raised { @apply card shadow-card transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-float hover:border-sage/40; }
+    .panel { @apply bg-sand-50 rounded-card p-5 lg:p-6; }
 
     /* Buttons */
     .btn { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-btn transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 cursor-pointer active:scale-[0.97] touch-manipulation min-h-[44px] sm:min-h-0; }
-    .btn-primary { @apply btn bg-forest text-white hover:bg-forest-light focus:ring-sage shadow-sm; }
+    .btn-primary { @apply btn bg-saddle text-white hover:bg-saddle-dark focus:ring-saddle/40 shadow-sm; }
     .btn-secondary { @apply btn bg-white text-charcoal border border-sage/30 hover:bg-light-sage focus:ring-sage; }
     .btn-danger { @apply btn bg-error-red text-white hover:bg-error-red/90 focus:ring-error-red shadow-sm; }
-    .btn-success { @apply btn bg-sage text-white hover:bg-sage-light focus:ring-sage shadow-sm; }
+    .btn-success { @apply btn bg-forest text-white hover:bg-forest-light focus:ring-sage shadow-sm; }
     .btn-ghost { @apply btn text-sage hover:text-charcoal hover:bg-light-sage focus:ring-sage; }
     .btn-xs { @apply px-2 py-1 text-xs rounded-sm; }
     /* Icon-only action button — 44px touch target on mobile, compact on desktop */
@@ -22,7 +61,7 @@
     /* App bar icon buttons — square, the same height as the search input, so
        search + filter + add read as one control strip. */
     .btn-icon-base { @apply relative inline-flex items-center justify-center w-11 h-11 sm:w-9 sm:h-9 shrink-0 rounded-btn transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-sage focus:ring-offset-2 active:scale-95 cursor-pointer touch-manipulation; }
-    .btn-icon-primary { @apply btn-icon-base bg-forest text-white shadow-sm hover:bg-forest-light; }
+    .btn-icon-primary { @apply btn-icon-base bg-saddle text-white shadow-sm hover:bg-saddle-dark focus:ring-saddle/40; }
     .btn-icon-outline { @apply btn-icon-base bg-white text-sage border border-sage/30 hover:text-charcoal hover:bg-light-sage; }
     .btn-icon-outline.is-on { @apply bg-light-sage text-forest border-forest/40; }
     /* Count of applied filters, pinned to the button corner */
@@ -72,7 +111,7 @@
        underneath: a small brand signature that warms up the page top without
        shouting. */
     .page-header { @apply flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between; }
-    .page-title { @apply text-2xl font-bold text-charcoal tracking-tight font-heading; }
+    .page-title { @apply text-2xl lg:text-3xl font-semibold text-charcoal tracking-[-0.02em] font-heading; }
     .page-title::after {
         content: '';
         @apply block w-10 h-1 mt-2 rounded-full;
@@ -80,22 +119,26 @@
     }
     .page-subtitle { @apply mt-1 text-sm text-sage; }
 
+    /* Detail / filter labels — sentence case, 13px. Uppercase tracking is
+       reserved for table column headers so it keeps its signal. */
+    .dt-label { @apply block text-[13px] font-medium text-charcoal-light; }
+
     /* Section Headers — warm Crown-cream tint marks where each section starts
        (distinct from the cool tint on table column headers), with the title
        promoted into the brand teal. */
     /* rounded-t matches the parent card so the tint never pokes past its corners
        on cards without overflow-hidden */
-    .section-header { @apply flex items-center justify-between px-5 py-4 bg-sand-50 border-b border-sand-200 rounded-t-card; }
-    .section-title { @apply text-base font-semibold text-forest font-heading; }
+    .section-header { @apply flex items-center justify-between px-5 lg:px-6 py-4 bg-sand-50 border-b border-sand-200 rounded-t-card; }
+    .section-title { @apply text-[15px] font-semibold text-forest font-heading; }
 
     /* Dashboard KPI cards — whole card is the link; numbers in mono with
        tabular figures so columns of digits align. Each card carries a 3px
        top accent (brand teal by default; templates override with
        border-t-saddle / border-t-info-blue / border-t-sage to colour-code
        the metric) so the KPI row reads with more colour confidence. */
-    .kpi-card { @apply card-hover block p-5 no-underline border-t-[3px] border-t-forest; }
-    .kpi-label { @apply text-xs font-semibold text-sage uppercase tracking-wider; }
-    .kpi-value { @apply font-mono tabular-nums text-3xl font-medium text-forest mt-2 leading-none; }
+    .kpi-card { @apply card-raised block p-5 lg:p-6 no-underline border-t-[3px] border-t-forest; }
+    .kpi-label { @apply text-[13px] font-medium text-charcoal-light; }
+    .kpi-value { @apply font-mono tabular-nums text-4xl font-medium text-forest mt-2 leading-none; }
     /* min-h keeps all four cards equal height when only some have a meta line */
     .kpi-meta { @apply text-xs text-sage mt-2 min-h-[1rem]; }
 
@@ -111,6 +154,13 @@
 #quick-find-results:empty { display: none !important; }
 
 @layer components {
+
+    /* Alerts — inline panels inside forms and cards (toasts are separate) */
+    .alert         { @apply rounded-card border p-3 text-sm flex items-start gap-2.5; }
+    .alert-error   { @apply alert bg-error-red-50 border-error-red/25 text-error-red; }
+    .alert-warning { @apply alert bg-sand-50 border-sand-200 text-saddle; }
+    .alert-info    { @apply alert bg-info-blue-50 border-info-blue/25 text-info-blue; }
+    .alert-success { @apply alert bg-sage-50 border-sage/25 text-forest; }
 
     /* Toast */
     .toast { @apply rounded-card p-4 shadow-lg shadow-charcoal/10 border text-sm flex items-start gap-3 relative overflow-hidden; }
@@ -251,6 +301,19 @@ textarea, select {
     input[type="url"], input[type="tel"], input[type="date"], input[type="datetime-local"],
     textarea, select { font-size: 0.875rem; } /* restore text-sm at sm+ */
 }
+/* Selects: replace the browser's grey gradient with a white field and a Brim chevron */
+select:not([multiple]):not([size]) {
+    appearance: none; -webkit-appearance: none;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%234F727D' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M6 8l4 4 4-4'/></svg>");
+    background-repeat: no-repeat; background-position: right .6rem center; background-size: 1rem;
+    padding-right: 2.25rem;
+}
+/* Form section headings: a <legend> normally sits in the fieldset border
+   and leaves a gap under itself. Float it so it flows like a heading. */
+fieldset > legend { float: left; width: 100%; padding: 0; }
+fieldset > legend + * { clear: both; }
+
 /* Hide webkit's native clear so the shared search bar's clear button is the single control */
 input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
 /* .form-input/.form-select/.form-textarea component classes carry text-sm via @apply;
@@ -266,7 +329,7 @@ input[type="checkbox"] { @apply h-5 w-5 rounded-sm border-sage/30 text-forest fo
    .hidden utility (0,1,0) — the quick-add photo form hides its camera and
    gallery inputs behind real buttons, and `block` here used to force all
    three raw file pickers back on screen. */
-input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-3 file:rounded-btn file:border-0 file:bg-light-sage file:px-3 file:py-2 file:text-sm file:font-medium file:text-forest hover:file:bg-sage-100 cursor-pointer; }
+input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-3 file:rounded-btn file:border file:border-solid file:border-sage/30 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-charcoal hover:file:bg-light-sage cursor-pointer; }
 @media (max-width: 639px) {
     input[type="file"] { font-size: 16px; } /* match text inputs: no iOS zoom */
 }
@@ -342,7 +405,7 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 /* Form footer — sticky just above the mobile tab bar so Save stays reachable
    on long forms; static again on desktop where the sidebar layout has no tab bar. */
 .form-footer {
-    @apply border-t border-light-sage px-4 py-3 sm:px-5 sm:py-4 bg-parchment rounded-b-xl flex justify-end gap-3 z-20;
+    @apply border-t border-light-sage px-4 py-3 sm:px-5 sm:py-4 bg-parchment rounded-b-card flex justify-end gap-3 z-20;
     position: sticky;
     /* Sit clear of the mobile tab bar. The bar is h-16 (4rem) plus its
        .tab-bar-safe padding of max(safe-area, 8px), so we must offset by the

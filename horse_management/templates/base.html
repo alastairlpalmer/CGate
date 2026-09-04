@@ -13,19 +13,11 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{% static 'icons/favicon-16.png' %}">
     <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
     <meta name="apple-mobile-web-app-title" content="Yardway">
-    <!-- Brand Fonts: DM Sans (headings), Source Sans 3 (body), JetBrains Mono (data).
-         Loaded non-render-blocking so a slow or blocked Google Fonts CDN never
-         delays first paint — the local font stacks fall back to system
-         sans-serif/monospace until (and if) the web fonts arrive. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-          media="print" onload="this.media='all'">
-    <noscript>
-        <link rel="stylesheet"
-              href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-    </noscript>
+    <!-- Brand fonts are self-hosted (static/fonts, declared in css/input.css).
+         Preload the two text faces so the first paint uses them; JetBrains
+         Mono is only for figures and can arrive with the stylesheet. -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="{% static 'fonts/DMSans-Variable.woff2' %}">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="{% static 'fonts/SourceSans3-Variable.woff2' %}">
     <!-- Tailwind CSS (compiled) -->
     <link rel="stylesheet" href="{% static_v 'css/styles.css' %}">
     <!-- Alpine.js + Collapse plugin (vendored locally — no CDN round trip) -->

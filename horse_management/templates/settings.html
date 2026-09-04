@@ -19,7 +19,7 @@
         <div class="section-header">
             <h3 class="section-title">Business Details</h3>
         </div>
-        <form method="post" class="p-5">
+        <form method="post" class="p-5 lg:p-6">
             {% csrf_token %}
             <input type="hidden" name="save_business" value="1">
 
@@ -113,7 +113,7 @@
                 Add User
             </a>
         </div>
-        <div class="p-5">
+        <div class="p-5 lg:p-6">
             <div class="space-y-3">
                 {% for u in app_users %}
                 <div class="flex items-center justify-between">
@@ -130,13 +130,13 @@
                     </div>
                     <div class="flex items-center gap-3 shrink-0">
                         {% if not u.is_active %}
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-sage border border-sage/20">Inactive</span>
+                        <span class="badge-neutral">Inactive</span>
                         {% elif u.is_superuser %}
                         <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-sage-50 text-forest border border-sage/20">Superuser</span>
                         {% elif u.role_assignment %}
                         <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-sage-50 text-forest border border-sage/20">{{ u.role_assignment.role.name }}</span>
                         {% else %}
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-sage border border-sage/20">No role</span>
+                        <span class="badge-neutral">No role</span>
                         {% endif %}
                         <a href="{% url 'user_update' u.pk %}" class="text-xs text-sage hover:text-forest transition-colors tap-pad">Edit</a>
                     </div>
@@ -188,7 +188,7 @@
                 Add Rate
             </a>
         </div>
-        <div class="p-5">
+        <div class="p-5 lg:p-6">
             {% if rate_types %}
                 <div class="space-y-3">
                     {% for rate in rate_types %}
@@ -218,7 +218,7 @@
                 Add Location
             </a>
         </div>
-        <div class="p-5">
+        <div class="p-5 lg:p-6">
             <p class="text-xs text-sage mb-4">
                 Archive a location or a site to take it out of use. Its history,
                 invoices and usage records stay, and you can restore it later.
@@ -369,7 +369,7 @@
                 Add Type
             </a>
         </div>
-        <div class="p-5">
+        <div class="p-5 lg:p-6">
             {% if vaccination_types %}
                 <div class="space-y-3">
                     {% for vt in vaccination_types %}
@@ -399,7 +399,7 @@
                 Add Provider
             </a>
         </div>
-        <div class="p-5">
+        <div class="p-5 lg:p-6">
             {% if providers %}
                 <div class="space-y-3">
                     {% for provider in providers %}
@@ -431,7 +431,7 @@
         <div class="section-header">
             <h3 class="section-title">Integrations</h3>
         </div>
-        <div class="p-5">
+        <div class="p-5 lg:p-6">
             <!-- Xero -->
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-4">
@@ -500,7 +500,7 @@
             <h3 class="section-title">Dashboard</h3>
             <span class="text-xs text-sage">Per-user preferences</span>
         </div>
-        <div class="p-5">
+        <div class="p-5 lg:p-6">
             {% include "partials/settings/dashboard_prefs.html" %}
         </div>
     </div>

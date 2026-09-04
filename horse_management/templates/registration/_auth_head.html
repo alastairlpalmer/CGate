@@ -5,20 +5,13 @@ flow). These use the compiled Tailwind stylesheet and vendored Alpine — NOT
 the Tailwind Play CDN — so the login page renders reliably even when external
 CDNs are blocked or slow (the CDN JIT left the whole page unstyled otherwise).
 The auth templates' classes are in the Tailwind content glob, so they're
-included in styles.css. Fonts load non-render-blocking with a <noscript>
-fallback.
+included in styles.css. Fonts are self-hosted too (static/fonts) and
+preloaded here, so no third-party request is needed to sign in.
 {% endcomment %}
 <link rel="stylesheet" href="{% static_v 'css/styles.css' %}">
 <script defer src="{% static_v 'js/alpine.min.js' %}"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap"
-      media="print" onload="this.media='all'">
-<noscript>
-    <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap">
-</noscript>
+<link rel="preload" as="font" type="font/woff2" crossorigin href="{% static 'fonts/DMSans-Variable.woff2' %}">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="{% static 'fonts/SourceSans3-Variable.woff2' %}">
 <meta name="theme-color" content="#3D5A63">
 <link rel="manifest" href="{% static 'manifest.json' %}">
 <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/favicon-32.png' %}">

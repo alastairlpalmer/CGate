@@ -36,8 +36,9 @@ and hierarchy, not about rebuilding.
 | "Good morning, {user}" greeting as the page title | `dashboard.html` | Generic dashboard opener |
 | Icon in grey circle + text + button empty state | `empty_state.html` and 6 hand-rolled copies | Default empty state |
 | Native `<select>` and file input styling | all forms | Grey gradient selects beside white inputs |
-| Raw `bg-red-50` error boxes | about 30 forms | Bypasses the `error-red` token |
-| `gray-*` classes | `invoicing/partials/preview.html` | Bypasses the palette |
+| Raw `red-*` error boxes | login and password reset pages | Bypasses the `error-red` token |
+| Raw `amber-*` warning boxes | location, role and bulk health forms | Bypasses the `saddle` and `sand` tokens |
+| `gray-*` classes | `invoicing/partials/preview.html`, `settings.html` | Bypasses the palette |
 
 ## 3. Twelve opportunities
 

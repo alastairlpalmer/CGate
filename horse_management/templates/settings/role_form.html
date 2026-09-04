@@ -90,7 +90,7 @@
 
                 {% if not object.is_system %}
                 <div x-show="usersLevel != 'full'" x-cloak
-                     class="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+                     class="alert-warning">
                     People with this role won't be able to manage users or roles.
                 </div>
                 {% endif %}

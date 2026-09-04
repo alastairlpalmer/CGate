@@ -20,7 +20,7 @@
           class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <input type="hidden" name="type" value="conditions">
         <div>
-            <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Horse</label>
+            <label class="dt-label mb-1">Horse</label>
             <select name="horse" class="form-select">
                 <option value="">All horses</option>
                 {% for h in horses %}
@@ -29,7 +29,7 @@
             </select>
         </div>
         <div>
-            <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Status</label>
+            <label class="dt-label mb-1">Status</label>
             <select name="status" class="form-select">
                 <option value="">All</option>
                 <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
