@@ -93,10 +93,11 @@ class UsageStripTests(TestCase):
     # ── Which axes carry it ──────────────────────────────────────────
 
     def test_land_axes_carry_the_strip(self):
-        for axis in ('location', 'site'):
-            with self.subTest(axis=axis):
+        for layout in ('location', 'site'):
+            with self.subTest(layout=layout):
                 response = self.client.get(
-                    reverse('horse_list'), {'group_by': axis},
+                    reverse('horse_list'),
+                    {'group_by': 'location', 'layout': layout},
                 )
                 self.assertTrue(response.context['shows_usage'])
 
@@ -131,7 +132,7 @@ class UsageStripTests(TestCase):
         )
 
     def test_site_strip_sums_its_locations(self):
-        colgate = self._groups(group_by='site')['Colgate']
+        colgate = self._groups(group_by='location', layout='site')['Colgate']
         days = {s['value']: s['days'] for s in colgate['usage_strip']}
         self.assertEqual(days[Location.Usage.RESTED], 40)
         self.assertEqual(days[Location.Usage.HAY], 21)
@@ -147,10 +148,11 @@ class UsageStripTests(TestCase):
     def test_no_raw_template_comment_leaks_into_the_page(self):
         """A {# #} comment only works on one line; a wrapped one renders
         as body text. It did, on the mixed-use card."""
-        for axis in ('location', 'site'):
-            with self.subTest(axis=axis):
+        for layout in ('location', 'site'):
+            with self.subTest(layout=layout):
                 response = self.client.get(
-                    reverse('horse_list'), {'group_by': axis},
+                    reverse('horse_list'),
+                    {'group_by': 'location', 'layout': layout},
                 )
                 self.assertNotContains(response, '{#')
 

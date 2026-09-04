@@ -93,7 +93,9 @@ class EntityGroupSpineTests(TestCase):
 
     def test_empty_site_appears_by_default(self):
         """Somerford holds only the resting field, so it has no horses."""
-        self.assertIn('Somerford', self._names(group_by='site'))
+        self.assertIn(
+            'Somerford', self._names(group_by='location', layout='site'),
+        )
 
     # ── Archived locations ───────────────────────────────────────────
 
@@ -137,22 +139,97 @@ class EntityGroupSpineTests(TestCase):
         self.assertContains(response, '2/4')
         self.assertContains(response, 'Rested')
 
-    # ── Site axis ────────────────────────────────────────────────────
+    # ── Site layout of the Location axis ─────────────────────────────
 
-    def test_site_axis_groups_by_site(self):
-        groups = self._groups(group_by='site')
+    def test_site_layout_groups_by_site(self):
+        groups = self._groups(group_by='location', layout='site')
         colgate = next(g for g in groups if g['name'] == 'Colgate')
+        self.assertEqual(colgate['kind'], 'site')
         self.assertEqual(colgate['count'], 3)
         self.assertEqual(
             sorted(h.name for h in colgate['horses']),
             ['Apple', 'Milo', 'Zara'],
         )
 
-    def test_site_axis_offers_its_own_sorts(self):
-        response = self.client.get(reverse('horse_list'), {'group_by': 'site'})
+    def test_site_layout_offers_its_own_sorts(self):
+        response = self.client.get(
+            reverse('horse_list'), {'group_by': 'location', 'layout': 'site'},
+        )
+        self.assertEqual(response.context['group_kind'], 'site')
         keys = [o['key'] for o in response.context['sort_options']]
         self.assertIn('location', keys)
         self.assertIn('owner', keys)
+
+    def test_location_axis_offers_its_layouts(self):
+        response = self.client.get(
+            reverse('horse_list'), {'group_by': 'location'},
+        )
+        self.assertEqual(response.context['layout'], 'location')
+        self.assertEqual(
+            [(o['key'], o['active']) for o in response.context['layout_options']],
+            [('location', True), ('site', False)],
+        )
+
+    def test_old_site_axis_links_open_the_site_layout(self):
+        """?group_by=site was an axis of its own. Bookmarks survive."""
+        response = self.client.get(reverse('horse_list'), {'group_by': 'site'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['group_by'], 'location')
+        self.assertEqual(response.context['layout'], 'site')
+        self.assertEqual(response.context['group_kind'], 'site')
+        self.assertIn('Colgate', [g['name'] for g in response.context['grouped_horses']])
+
+    def test_explicit_layout_beats_the_old_site_alias(self):
+        response = self.client.get(
+            reverse('horse_list'), {'group_by': 'site', 'layout': 'location'},
+        )
+        self.assertEqual(response.context['group_kind'], 'location')
+
+    def test_unknown_layout_falls_back_to_the_default(self):
+        response = self.client.get(
+            reverse('horse_list'), {'group_by': 'owner', 'layout': 'site'},
+        )
+        self.assertEqual(response.context['layout'], 'table')
+
+    def test_all_axis_has_no_layout(self):
+        response = self.client.get(reverse('horse_list'))
+        self.assertIsNone(response.context['layout'])
+        self.assertEqual(response.context['layout_options'], [])
+
+    # ── Which groups start folded ────────────────────────────────────
+
+    def test_locations_and_owners_start_collapsed(self):
+        for params in (
+            {'group_by': 'location'},
+            {'group_by': 'owner'},
+            {'group_by': 'owner', 'layout': 'cards'},
+        ):
+            with self.subTest(**params):
+                response = self.client.get(reverse('horse_list'), params)
+                self.assertTrue(response.context['groups_collapsed'])
+                self.assertContains(response, 'Expand all')
+
+    def test_site_tables_and_the_flat_list_start_open(self):
+        for params in ({}, {'group_by': 'location', 'layout': 'site'}):
+            with self.subTest(**params):
+                response = self.client.get(reverse('horse_list'), params)
+                self.assertFalse(response.context['groups_collapsed'])
+
+    def test_owner_table_layout_renders_one_table(self):
+        response = self.client.get(reverse('horse_list'), {'group_by': 'owner'})
+        self.assertEqual(response.context['layout'], 'table')
+        self.assertEqual(response.content.decode().count('<table class="data-table">'), 1)
+        self.assertContains(response, 'Bob Bramble')
+
+    def test_owner_cards_layout_renders_a_card_per_owner(self):
+        response = self.client.get(
+            reverse('horse_list'), {'group_by': 'owner', 'layout': 'cards'},
+        )
+        owners = len(response.context['grouped_horses'])
+        self.assertGreater(owners, 1)
+        self.assertEqual(
+            response.content.decode().count('<table class="data-table">'), owners,
+        )
 
     # ── Unplaced and unowned horses ──────────────────────────────────
 
@@ -194,7 +271,7 @@ class AxisPermissionTests(TestCase):
 
     def test_all_axes_when_every_feature_is_visible(self):
         axes = self._axes_for(horses='full', owners='view', locations='view')
-        self.assertEqual(axes, ['all', 'site', 'location', 'owner'])
+        self.assertEqual(axes, ['all', 'location', 'owner'])
 
     def test_owner_axis_hidden_without_the_owners_feature(self):
         axes = self._axes_for(horses='full', locations='view')
@@ -204,7 +281,6 @@ class AxisPermissionTests(TestCase):
     def test_location_axes_hidden_without_the_locations_feature(self):
         axes = self._axes_for(horses='full', owners='view')
         self.assertNotIn('location', axes)
-        self.assertNotIn('site', axes)
         self.assertIn('owner', axes)
 
     def test_hidden_axis_in_the_url_falls_back_to_all(self):
@@ -269,10 +345,11 @@ class AxisQueryCountTests(TestCase):
         # headroom for middleware without hiding a per-group query.
         for params in (
             {},
-            {'group_by': 'site'},
+            {'group_by': 'location', 'layout': 'site'},
             {'group_by': 'location'},
             {'group_by': 'location', 'show_empty': '0'},
             {'group_by': 'owner'},
+            {'group_by': 'owner', 'layout': 'cards'},
             {'group_by': 'owner', 'show_empty': '1'},
         ):
             with self.subTest(**params):
