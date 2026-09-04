@@ -1,4 +1,4 @@
-"""Tests for the horse list "Group by" toggle and its Sort pop-out.
+"""Tests for the horse list "View" rail and its Sort pop-out.
 
 The Active tab groups by All (the default flat list), Location or Owner.
 Each grouping offers its own sort menu; the Departed tab and search
@@ -14,7 +14,9 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.models import Horse, Location, Owner, Placement, RateType
-from core.roles_testutils import administrator_role, assign_role
+from core.roles_testutils import (
+    administrator_role, assign_role, make_user_with_access,
+)
 
 User = get_user_model()
 
@@ -250,7 +252,7 @@ class HorseListGroupSortTests(TestCase):
             with self.subTest(group_by=group_by):
                 response = self._get(group_by=group_by)
                 self.assertEqual(response.status_code, 200)
-                self.assertContains(response, 'Group by')
+                self.assertContains(response, 'aria-label="View"')
 
     def test_sort_menu_renders_on_the_flat_views(self):
         for params in ({'status': 'departed'}, {'search': 'a'}):
@@ -304,12 +306,88 @@ class HorseListGroupSortTests(TestCase):
 
     def test_movements_menu_has_no_horse_sorts(self):
         """The placement log does not sort like a horse list: its menu is
-        the Show block alone, reached from a "View" button."""
+        the Show block alone, reached from the lit Movements option."""
         response = self._get(tab='movements')
         self.assertContains(response, 'show-chip')
         self.assertNotContains(response, 'Sort by')
         self.assertNotContains(response, 'Order horses by')
-        self.assertContains(response, 'View')
+        self.assertEqual(response.context['rail_active'], 'movements')
+        self.assertContains(
+            response, 'title="Showing Movements — click to change"',
+        )
+
+    def test_show_block_is_not_on_the_grouped_axes(self):
+        """Location and Owner only shape the Active list. Their menus hold
+        the grouping controls; Active / Departed / Movements are not
+        offered there."""
+        for group_by in ('location', 'owner'):
+            with self.subTest(group_by=group_by):
+                response = self._get(group_by=group_by)
+                self.assertEqual(response.status_code, 200)
+                self.assertFalse(response.context['shows_switcher'])
+                self.assertNotContains(response, 'show-chip')
+                self.assertNotContains(response, 'aria-label="Which horses"')
+                self.assertContains(response, 'Order horses by')
+
+    def test_show_block_is_on_the_list_picking_views(self):
+        for params in ({}, {'status': 'departed'}, {'search': 'a'},
+                       {'tab': 'movements'}):
+            with self.subTest(**params):
+                response = self._get(**params)
+                self.assertTrue(response.context['shows_switcher'])
+                self.assertContains(response, 'aria-label="Which horses"')
+
+    # ── The View rail: All / Location / Owner / Movements ───────────
+
+    def _rail_items(self, response):
+        html = response.content.decode()
+        rail = re.search(
+            r'aria-label="View">(.*?)</div>\s*</div>', html, re.S,
+        )
+        self.assertIsNotNone(rail, 'the View rail is missing')
+        return re.findall(
+            r'class="segmented-item( is-active)?">\s*(?:<svg.*?</svg>\s*)?(\w+)',
+            rail.group(1), re.S,
+        )
+
+    def test_rail_offers_movements_beside_the_groupings(self):
+        response = self._get()
+        items = self._rail_items(response)
+        self.assertEqual(
+            [label for _, label in items],
+            ['All', 'Location', 'Owner', 'Movements'],
+        )
+        self.assertEqual([label for lit, label in items if lit], ['All'])
+        self.assertContains(response, 'href="/horses/?tab=movements"')
+
+    def test_rail_stays_on_the_movements_log(self):
+        """The way back to the horses is one click on the rail, not a hunt
+        through a menu. The group links drop the log's params so they
+        land on the Active list."""
+        response = self._get(tab='movements', status='ended')
+        items = self._rail_items(response)
+        self.assertEqual(
+            [label for _, label in items],
+            ['All', 'Location', 'Owner', 'Movements'],
+        )
+        self.assertEqual(
+            [label for lit, label in items if lit], ['Movements'],
+        )
+        html = response.content.decode()
+        self.assertIn('href="?group_by=all"', html)
+        self.assertIn('href="?group_by=location"', html)
+        self.assertIn('href="?group_by=owner"', html)
+        self.assertNotIn('group_by=location&amp;tab=movements', html)
+        # The log's own filter sits beside the rail.
+        self.assertContains(response, 'aria-label="Movement status"')
+
+    def test_rail_hides_movements_without_the_locations_feature(self):
+        user = make_user_with_access('norail', horses='full')
+        self.client.force_login(user)
+        response = self._get()
+        self.assertNotIn(
+            'Movements', [label for _, label in self._rail_items(response)],
+        )
 
     def test_toolbar_no_longer_has_the_second_rail(self):
         response = self._get()
