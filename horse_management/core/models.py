@@ -947,8 +947,10 @@ class DashboardPreference(models.Model):
         on_delete=models.CASCADE,
         related_name='dashboard_preference',
     )
-    # {"kpi_total_horses": {"visible": True, "order": 0}, ...}
+    # {"attention": {"visible": True, "order": 0}, ...}
     layout = models.JSONField(default=dict, blank=True)
+    # The site the dashboard's site switch was last set to; blank = all sites.
+    site = models.CharField(max_length=100, blank=True, default='')
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
@@ -979,6 +981,10 @@ class DashboardPreference(models.Model):
                 resolved[key] = dict(default)
         # Drop any stale keys (defensive — DEFAULT_LAYOUT is already the filter).
         return {k: v for k, v in resolved.items() if k in WIDGETS_BY_KEY}
+
+    def visible_keys(self):
+        """The set of widget keys this user sees (visible, and allowed)."""
+        return {key for keys in self.visible_ordered_keys_by_group().values() for key in keys}
 
     def visible_ordered_keys_by_group(self):
         """Return {group: [key, ...]} filtered to visible keys, sorted by order.

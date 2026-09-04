@@ -92,7 +92,14 @@ class QueryCountTestCase(TestCase):
         # the rolling 30-day login), +2 for the Field Rest widget (locations
         # + their usage periods, a constant 2 regardless of field count);
         # headroom for auth/session jitter.
-        self.assertMaxQueries(reverse('dashboard'), 23)
+        # The inbox runs one query per collector (vaccinations, farrier,
+        # vet, egg counts, breeding, documents, departures, expected
+        # departures, invoices, feed) plus the open-placement map, the
+        # site list and two for the yard board; a fresh user also pays the
+        # get_or_create inserts for the preference row and business
+        # settings here. Steady state is about 23; per-row patterns would
+        # push this well past 30 with twelve horses.
+        self.assertMaxQueries(reverse('dashboard'), 30)
 
     def test_finances_query_count(self):
         # Measured 9 (revenue, costs union, placements, capacity, two

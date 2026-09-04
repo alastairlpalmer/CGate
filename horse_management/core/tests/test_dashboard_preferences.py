@@ -1,36 +1,42 @@
-"""Tests for per-user configurable dashboard (DashboardPreference).
+"""Tests for the home dashboard page and per-user zone preferences.
 
 Covers:
-- Lazy-create on first access.
-- ``resolved_layout`` merges stored payloads with DEFAULT_LAYOUT and ignores
-  unknown keys.
+- ``DashboardPreference``: lazy-create, merging stored layouts over the
+  registry defaults, ignoring keys from older dashboards.
 - Toggle endpoint: saves visibility; rejects unknown keys; requires CSRF;
   only touches the caller's row.
-- Dashboard view skips queries for hidden widgets.
-- ``dashboard_health_alerts`` returns an empty body when no health widget is
-  visible.
-- Settings page permissions: non-admin roles can view their dashboard
-  toggles; roles with Business-settings access still see the business-config
-  sections.
+- The page: the title is the yard's state, the inbox holds overdue and
+  today's items, due-soon items go to the 14-day strip, shared visits
+  group into one row, the site switch narrows and is remembered.
+- Hidden zones render nothing and their partial endpoints return empty.
+- Settings page permissions: every user can switch their own zones; only
+  roles with Business-settings access see the business cards.
 - Regression: multi-line Django comments don't leak into rendered HTML.
+- The health bulk form's pop-up mode, which the inbox's "Record for N"
+  action opens with the horses preselected.
 """
 
 import re
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
-from core.dashboard_widgets import DEFAULT_LAYOUT, WIDGETS
-from core.models import DashboardPreference
-from core.roles_testutils import make_admin, make_user_with_access, make_viewer
+from core.dashboard_widgets import DEFAULT_HIDDEN, DEFAULT_LAYOUT, WIDGETS
+from core.models import DashboardPreference, Horse, Location, Owner, Placement, RateType
+from core.permissions import access_map
+from core.roles_testutils import make_admin, make_user_with_access
+from health.models import FarrierVisit, Vaccination, VaccinationType
 
 User = get_user_model()
 
 
 def make_user(username='testuser'):
-    """A non-admin user whose role can see the dashboard and every widget's
-    feature area, but none of the admin areas (settings, users)."""
+    """A non-admin user whose role can see the dashboard and most zones'
+    feature areas, but none of the admin areas (settings, users) and not
+    breeding or feed."""
     return make_user_with_access(
         username,
         dashboard='full',
@@ -52,50 +58,54 @@ class DashboardPreferenceModelTests(TestCase):
         self.assertTrue(DashboardPreference.objects.filter(user=user).exists())
         self.assertEqual(pref.user, user)
         self.assertEqual(pref.layout, {})
+        self.assertEqual(pref.site, '')
 
-    def test_resolved_layout_uses_defaults_for_new_preference(self):
-        from core.dashboard_widgets import DEFAULT_HIDDEN
-
+    def test_every_zone_is_on_by_default(self):
+        self.assertEqual(DEFAULT_HIDDEN, set())
         user = make_user('defaultuser')
-        pref = DashboardPreference.get_for(user)
-        layout = pref.resolved_layout()
-        self.assertEqual(set(layout.keys()), set(DEFAULT_LAYOUT.keys()))
+        layout = DashboardPreference.get_for(user).resolved_layout()
+        self.assertEqual(set(layout), {w['key'] for w in WIDGETS})
         for key, meta in layout.items():
-            self.assertEqual(meta['visible'], key not in DEFAULT_HIDDEN)
+            self.assertTrue(meta['visible'], key)
             self.assertEqual(meta['order'], DEFAULT_LAYOUT[key]['order'])
-
-    def test_pending_departures_hidden_by_default(self):
-        user = make_user('pendinghidden')
-        pref = DashboardPreference.get_for(user)
-        self.assertFalse(pref.resolved_layout()['pending_departures']['visible'])
 
     def test_resolved_layout_merges_partial_stored(self):
         user = make_user('partialuser')
         pref = DashboardPreference.get_for(user)
-        pref.layout = {'kpi_total_horses': {'visible': False, 'order': 99}}
+        pref.layout = {'yard_board': {'visible': False, 'order': 99}}
         pref.save()
         layout = pref.resolved_layout()
-        self.assertFalse(layout['kpi_total_horses']['visible'])
-        self.assertEqual(layout['kpi_total_horses']['order'], 99)
+        self.assertFalse(layout['yard_board']['visible'])
+        self.assertEqual(layout['yard_board']['order'], 99)
         # Untouched key keeps its default.
-        self.assertTrue(layout['recent_activity']['visible'])
+        self.assertTrue(layout['attention']['visible'])
 
-    def test_explicit_pending_departures_pref_survives_default_change(self):
-        """Users who explicitly enabled Pending Departures keep it even though
-        the registry default flipped to hidden."""
-        user = make_user('pendingoptin')
+    def test_layout_from_the_old_dashboard_is_ignored(self):
+        """Stored layouts predating the redesign carry the old widget keys;
+        they must neither render nor break the page."""
+        user = make_user('oldlayout')
         pref = DashboardPreference.get_for(user)
-        pref.layout = {'pending_departures': {'visible': True, 'order': 4}}
-        pref.save()
-        self.assertTrue(pref.resolved_layout()['pending_departures']['visible'])
-
-    def test_resolved_layout_ignores_stale_keys(self):
-        user = make_user('staleuser')
-        pref = DashboardPreference.get_for(user)
-        pref.layout = {'not_a_real_widget': {'visible': False, 'order': 0}}
+        pref.layout = {
+            'kpi_total_horses': {'visible': False, 'order': 0},
+            'recent_activity': {'visible': True, 'order': 5},
+            'chart_revenue': {'visible': True, 'order': 4},
+        }
         pref.save()
         layout = pref.resolved_layout()
-        self.assertNotIn('not_a_real_widget', layout)
+        self.assertNotIn('kpi_total_horses', layout)
+        self.assertNotIn('recent_activity', layout)
+        self.assertTrue(layout['attention']['visible'])
+        self.client.force_login(user)
+        self.assertEqual(self.client.get(reverse('dashboard')).status_code, 200)
+
+    def test_visible_keys_drops_zones_for_hidden_features(self):
+        user = make_user('gated')  # breeding and feed hidden, locations view
+        keys = DashboardPreference.get_for(user).visible_keys()
+        self.assertIn('attention', keys)
+        self.assertIn('yard_board', keys)
+        self.assertIn('money', keys)
+        self.assertNotIn('in_foal', keys)
+        self.assertEqual(access_map(user)['breeding'], 'hidden')
 
 
 class DashboardToggleCSRFTests(TestCase):
@@ -110,7 +120,7 @@ class DashboardToggleCSRFTests(TestCase):
         client.force_login(user)
         resp = client.post(
             reverse('dashboard_toggle'),
-            {'key': 'recent_activity', 'visible': 'false'},
+            {'key': 'activity', 'visible': 'false'},
         )
         self.assertEqual(resp.status_code, 403)
 
@@ -119,11 +129,11 @@ class DashboardToggleCSRFTests(TestCase):
         client = Client(enforce_csrf_checks=True)
         user = make_user('csrfheaderuser')
         client.force_login(user)
-        get_resp = client.get(reverse('app_settings'))
-        token = get_resp.cookies['csrftoken'].value
+        page = client.get(reverse('app_settings'))
+        token = re.search(r'name="csrfmiddlewaretoken" value="([^"]+)"', page.content.decode()).group(1)
         resp = client.post(
             reverse('dashboard_toggle'),
-            {'key': 'recent_activity', 'visible': 'false'},
+            {'key': 'activity', 'visible': 'false'},
             HTTP_X_CSRFTOKEN=token,
         )
         self.assertEqual(resp.status_code, 204)
@@ -136,56 +146,67 @@ class DashboardToggleEndpointTests(TestCase):
         self.url = reverse('dashboard_toggle')
 
     def test_toggle_saves_visibility(self):
-        resp = self.client.post(self.url, {'key': 'recent_activity', 'visible': 'false'})
+        resp = self.client.post(self.url, {'key': 'activity', 'visible': 'false'})
         self.assertEqual(resp.status_code, 204)
         pref = DashboardPreference.get_for(self.user)
-        self.assertFalse(pref.resolved_layout()['recent_activity']['visible'])
+        self.assertFalse(pref.resolved_layout()['activity']['visible'])
 
-        resp = self.client.post(self.url, {'key': 'recent_activity', 'visible': 'true'})
+        resp = self.client.post(self.url, {'key': 'activity', 'visible': 'true'})
         self.assertEqual(resp.status_code, 204)
         pref.refresh_from_db()
-        self.assertTrue(pref.resolved_layout()['recent_activity']['visible'])
+        self.assertTrue(pref.resolved_layout()['activity']['visible'])
 
     def test_toggle_rejects_unknown_widget(self):
         resp = self.client.post(self.url, {'key': 'not_a_widget', 'visible': 'true'})
         self.assertEqual(resp.status_code, 400)
 
+    def test_toggle_rejects_removed_keys(self):
+        for key in ('chart_revenue', 'kpi_total_horses', 'pending_departures'):
+            with self.subTest(key=key):
+                resp = self.client.post(self.url, {'key': key, 'visible': 'true'})
+                self.assertEqual(resp.status_code, 400)
+
     def test_toggle_rejects_bad_visible_value(self):
-        resp = self.client.post(self.url, {'key': 'recent_activity', 'visible': 'maybe'})
+        resp = self.client.post(self.url, {'key': 'activity', 'visible': 'maybe'})
         self.assertEqual(resp.status_code, 400)
 
     def test_toggle_requires_login(self):
         self.client.logout()
-        resp = self.client.post(self.url, {'key': 'recent_activity', 'visible': 'true'})
+        resp = self.client.post(self.url, {'key': 'activity', 'visible': 'true'})
         self.assertEqual(resp.status_code, 302)
 
     def test_toggle_only_touches_own_row(self):
         other = make_user('otheruser')
         other_pref = DashboardPreference.get_for(other)
-        other_pref.layout = {'recent_activity': {'visible': True, 'order': 4}}
+        other_pref.layout = {'activity': {'visible': True, 'order': 4}}
         other_pref.save()
 
-        self.client.post(self.url, {'key': 'recent_activity', 'visible': 'false'})
+        self.client.post(self.url, {'key': 'activity', 'visible': 'false'})
 
         other_pref.refresh_from_db()
-        self.assertEqual(other_pref.layout['recent_activity']['visible'], True)
+        self.assertEqual(other_pref.layout['activity']['visible'], True)
 
 
 class SettingsPagePermissionsTests(TestCase):
     """Everyone can configure their own dashboard from /settings/; non-staff
     don't see the business-config cards."""
 
-    def test_non_staff_sees_dashboard_widgets_but_not_business_sections(self):
+    def test_non_staff_sees_dashboard_zones_but_not_business_sections(self):
         user = make_user('nonstaff')
         self.client.force_login(user)
         resp = self.client.get(reverse('app_settings'))
         self.assertEqual(resp.status_code, 200)
         body = resp.content.decode()
-        # Dashboard section header is visible.
         self.assertIn('>Dashboard<', body)
-        # All 15 widget names render on the page.
+        # Zones for areas the role can see are switchable; the rest are not
+        # offered (they could never render).
+        levels = access_map(user)
         for w in WIDGETS:
-            self.assertIn(w['name'], body)
+            if levels[w['feature']] == 'hidden':
+                self.assertNotIn(f'data-widget-key="{w["key"]}"', body)
+            else:
+                self.assertIn(w['name'], body)
+                self.assertIn(f'data-widget-key="{w["key"]}"', body)
         # Business-only cards are hidden.
         self.assertNotIn('Business Details', body)
         self.assertNotIn('Rate Types', body)
@@ -199,6 +220,8 @@ class SettingsPagePermissionsTests(TestCase):
         body = resp.content.decode()
         self.assertIn('Business Details', body)
         self.assertIn('>Dashboard<', body)
+        for w in WIDGETS:
+            self.assertIn(w['name'], body)
 
     def test_standalone_prefs_page_is_gone(self):
         """The old /settings/dashboard/ URL was removed; no named route exists
@@ -231,69 +254,68 @@ class TemplateRegressionTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self._assert_no_comment_leak(resp.content.decode())
 
-    def test_health_alerts_partial_has_no_raw_comment_markers(self):
+    def test_partials_have_no_raw_comment_markers(self):
         user = make_user('commentcheck3')
         self.client.force_login(user)
-        resp = self.client.get(reverse('dashboard_health_alerts'))
-        self.assertEqual(resp.status_code, 200)
-        self._assert_no_comment_leak(resp.content.decode())
+        for name in ('dashboard_money', 'dashboard_activity'):
+            with self.subTest(partial=name):
+                resp = self.client.get(reverse(name))
+                self.assertEqual(resp.status_code, 200)
+                self._assert_no_comment_leak(resp.content.decode())
 
 
-class DashboardQueryGatingTests(TestCase):
-    def test_hidden_list_widget_not_rendered(self):
+class DashboardZoneGatingTests(TestCase):
+    def _hide(self, user, key):
+        pref = DashboardPreference.get_for(user)
+        layout = pref.resolved_layout()
+        layout[key]['visible'] = False
+        pref.layout = layout
+        pref.save()
+
+    def test_hidden_zone_not_rendered(self):
         user = make_user('gatinguser')
         self.client.force_login(user)
+        self._hide(user, 'activity')
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertNotIn('What changed', body)
+        self.assertNotIn(reverse('dashboard_activity'), body)
+        # Money still loads lazily.
+        self.assertIn(reverse('dashboard_money'), body)
 
-        pref = DashboardPreference.get_for(user)
-        layout = pref.resolved_layout()
-        layout['recent_activity']['visible'] = False
-        pref.layout = layout
-        pref.save()
-
-        resp = self.client.get(reverse('dashboard'))
-        self.assertEqual(resp.status_code, 200)
-        self.assertNotIn('Recent Activity', resp.content.decode())
-
-    def test_all_health_hidden_skips_lazy_loader(self):
-        user = make_user('healthhideuser')
+    def test_hidden_zone_endpoint_returns_empty(self):
+        user = make_user('emptyendpoint')
         self.client.force_login(user)
+        self._hide(user, 'money')
+        resp = self.client.get(reverse('dashboard_money'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.content, b'')
 
+    def test_partials_require_the_dashboard_feature(self):
+        user = make_user_with_access('nodash', invoices='view')
+        self.client.force_login(user)
+        for name in ('dashboard_money', 'dashboard_activity'):
+            with self.subTest(partial=name):
+                resp = self.client.get(reverse(name))
+                self.assertEqual(resp.status_code, 302)
+
+    def test_all_hidden_shows_customize_card(self):
+        user = make_user('allhiddenuser')
+        self.client.force_login(user)
         pref = DashboardPreference.get_for(user)
         layout = pref.resolved_layout()
-        for key in ('health_upcoming_dep', 'health_ehv_due',
-                    'health_egg_counts', 'health_vet_followups'):
+        for key in layout:
             layout[key]['visible'] = False
         pref.layout = layout
         pref.save()
 
-        resp = self.client.get(reverse('dashboard'))
-        body = resp.content.decode()
-        self.assertNotIn('_partials/health-alerts', body)
-
-    def test_health_endpoint_empty_when_all_hidden(self):
-        user = make_user('healthendpointuser')
-        self.client.force_login(user)
-
-        pref = DashboardPreference.get_for(user)
-        layout = pref.resolved_layout()
-        for key in ('health_upcoming_dep', 'health_ehv_due',
-                    'health_egg_counts', 'health_vet_followups'):
-            layout[key]['visible'] = False
-        pref.layout = layout
-        pref.save()
-
-        resp = self.client.get(reverse('dashboard_health_alerts'))
-        self.assertEqual(resp.status_code, 200)
-        self.assertNotIn('EHV Vaccinations Due', resp.content.decode())
-        self.assertNotIn('High Egg Counts', resp.content.decode())
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('Your dashboard is empty', body)
+        self.assertNotIn('Needs action', body)
 
 
-class FinancesChartRenderingTests(TestCase):
-    """Regression: the revenue-chart cost UNION crashed on SQLite because the
-    billing models' Meta.ordering leaked an ORDER BY into the compound
-    subqueries. The view's catch-all then served an empty fallback, so no
-    charts rendered at all. The query (and the regression) now lives in the
-    Finances view."""
+class FinancesPageTests(TestCase):
+    """The revenue/capacity charts live on the Finances page, not the
+    dashboard."""
 
     def test_finances_renders_chart_canvases_and_data(self):
         user = make_user('chartuser')
@@ -324,9 +346,22 @@ class FinancesChartRenderingTests(TestCase):
         self.assertIn('href="/finances/"', body)
 
 
-class DashboardRedesignTests(TestCase):
-    """The dashboard is operational-only: no charts, greeting header,
-    quick-find, hide-when-empty widgets, all-caught-up banner."""
+class DashboardPageTests(TestCase):
+    """The page's first response: state headline, inbox, strip."""
+
+    def setUp(self):
+        self.today = timezone.localdate()
+        self.owner = Owner.objects.create(name='Jo Bloggs')
+        self.rate = RateType.objects.create(name='Grass', daily_rate=5)
+        self.flu = VaccinationType.objects.create(name='Flu')
+
+    def _horse(self, name, location):
+        horse = Horse.objects.create(name=name)
+        Placement.objects.create(
+            horse=horse, owner=self.owner, location=location, rate_type=self.rate,
+            start_date=self.today - timedelta(days=100),
+        )
+        return horse
 
     def test_dashboard_has_no_charts(self):
         user = make_user('nochartuser')
@@ -336,14 +371,17 @@ class DashboardRedesignTests(TestCase):
         self.assertNotIn('id="capacityChart"', body)
         self.assertNotIn('id="chart-data"', body)
 
-    def test_dashboard_header_greets_the_user(self):
+    def test_title_greets_and_the_subtext_is_the_yards_state(self):
         user = make_user('headeruser')
         user.first_name = 'Sam'
         user.save()
         self.client.force_login(user)
         body = self.client.get(reverse('dashboard')).content.decode()
-        self.assertIn('Sam', body)
-        self.assertRegex(body, r'Good (morning|afternoon|evening)')
+        title = re.search(r'<h1 class="page-title">([^<]+)</h1>', body).group(1)
+        self.assertRegex(title.strip(), r'^Good (morning|afternoon|evening), Sam$')
+        subtitle = re.search(r'<p class="page-subtitle">(.*?)</p>', body, re.S).group(1)
+        self.assertIn('All clear on the yard', subtitle)
+        self.assertIn('Nothing needs doing', body)
         self.assertNotIn('Your dashboard is empty', body)
 
     def test_search_moved_to_the_app_bar(self):
@@ -359,77 +397,195 @@ class DashboardRedesignTests(TestCase):
         body = self.client.get(reverse('dashboard')).content.decode()
         self.assertEqual(body.count('id="app-search-results"'), 1)
 
-    def test_all_caught_up_banner_when_lists_empty(self):
-        user = make_user('caughtupuser')
-        self.client.force_login(user)
-        body = self.client.get(reverse('dashboard')).content.decode()
-        self.assertIn('All caught up', body)
-        # Empty widgets emit nothing at all.
-        self.assertNotIn('Vaccinations Due</h2>', body)
-        self.assertNotIn('Farrier Due', body)
-
-    def test_all_hidden_shows_customize_card_not_banner(self):
-        user = make_user('allhiddenuser')
-        self.client.force_login(user)
-        pref = DashboardPreference.get_for(user)
-        layout = pref.resolved_layout()
-        for key in layout:
-            layout[key]['visible'] = False
-        pref.layout = layout
-        pref.save()
-
-        body = self.client.get(reverse('dashboard')).content.decode()
-        self.assertIn('Your dashboard is empty', body)
-        self.assertNotIn('All caught up', body)
-
-    def test_stale_chart_pref_keys_still_render(self):
-        """Stored layouts predating the chart removal contain chart_* keys;
-        the dashboard must ignore them."""
-        user = make_user('stalechartuser')
-        pref = DashboardPreference.get_for(user)
-        pref.layout = {'chart_revenue': {'visible': True, 'order': 4}}
-        pref.save()
-        self.client.force_login(user)
-        resp = self.client.get(reverse('dashboard'))
-        self.assertEqual(resp.status_code, 200)
-        self.assertNotIn('id="revenueChart"', resp.content.decode())
-
-    def test_toggle_rejects_removed_chart_key(self):
-        user = make_user('removedkeyuser')
-        self.client.force_login(user)
-        resp = self.client.post(
-            reverse('dashboard_toggle'),
-            {'key': 'chart_revenue', 'visible': 'true'},
-        )
-        self.assertEqual(resp.status_code, 400)
-
-    def test_overdue_items_stay_on_dashboard(self):
-        """Regression: the due lists filtered next_due_date >= today, so an
-        item silently vanished from the dashboard the day it became overdue.
-        Overdue is the most urgent state — it must render, with the header
-        attention summary counting it (matching the Health page semantics)."""
-        from datetime import timedelta
-
-        from django.utils import timezone
-
-        from core.models import Horse
-        from health.models import Vaccination, VaccinationType
-
-        today = timezone.now().date()
-        horse = Horse.objects.create(name='Latebloomer')
-        vt = VaccinationType.objects.create(name='Flu')
+    def test_overdue_items_stay_on_dashboard_and_count_in_the_title(self):
+        """Regression: the due lists once filtered next_due_date >= today, so
+        an item vanished the day it became overdue. Overdue is the most
+        urgent state — it must render, and the title must count it."""
+        field = Location.objects.create(name='Top Paddock', site='Main')
+        horse = self._horse('Latebloomer', field)
         Vaccination.objects.create(
-            horse=horse, vaccination_type=vt,
-            date_given=today - timedelta(days=300),
-            next_due_date=today - timedelta(days=3),
+            horse=horse, vaccination_type=self.flu,
+            date_given=self.today - timedelta(days=300),
+            next_due_date=self.today - timedelta(days=3),
         )
-
         user = make_user('overdueuser')
         self.client.force_login(user)
         body = self.client.get(reverse('dashboard')).content.decode()
         self.assertIn('Latebloomer', body)
-        self.assertIn('days overdue', body)
-        self.assertIn('1 item needs attention', body)
+        self.assertIn('3 days overdue', body)
+        self.assertIn('1 thing needs doing', body)
+        # The action opens the record form in the pop-up sheet.
+        self.assertIn(reverse('vaccination_create') + f'?horse={horse.pk}', body)
+        self.assertIn('data-popup-title="Record vaccination for Latebloomer"', body)
+
+    def test_due_soon_items_go_to_the_strip_not_the_inbox(self):
+        field = Location.objects.create(name='Top Paddock', site='Main')
+        horse = self._horse('Soon', field)
+        Vaccination.objects.create(
+            horse=horse, vaccination_type=self.flu,
+            date_given=self.today - timedelta(days=300),
+            next_due_date=self.today + timedelta(days=5),
+        )
+        user = make_user('soonuser')
+        self.client.force_login(user)
+        resp = self.client.get(reverse('dashboard'))
+        self.assertEqual(resp.context['rows'], [])
+        self.assertEqual(resp.context['upcoming']['total'], 1)
+        self.assertEqual(resp.context['upcoming']['days'][5]['count'], 1)
+        body = resp.content.decode()
+        self.assertIn('All clear on the yard', body)
+        self.assertIn('Soon', body)  # in the visits list under the strip
+
+    def test_shared_visit_groups_horses_into_one_row(self):
+        field = Location.objects.create(name='Top Paddock', site='Main')
+        a = self._horse('Huella', field)
+        b = self._horse('True', field)
+        for horse in (a, b):
+            FarrierVisit.objects.create(
+                horse=horse, date=self.today - timedelta(days=56),
+                next_due_date=self.today - timedelta(days=14),
+            )
+        user = make_user('visituser')
+        self.client.force_login(user)
+        resp = self.client.get(reverse('dashboard'))
+        rows = resp.context['rows']
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].kind, 'visit')
+        self.assertEqual({h.pk for h in rows[0].horses}, {a.pk, b.pk})
+        body = resp.content.decode()
+        self.assertIn('Record for 2', body)
+        self.assertIn('1 thing needs doing', body)
+        self.assertIn(f'action_type=farrier&amp;horse_ids={a.pk}&amp;horse_ids={b.pk}', body)
+
+    def test_view_only_health_role_gets_no_action_buttons(self):
+        field = Location.objects.create(name='Top Paddock', site='Main')
+        horse = self._horse('Watcher', field)
+        FarrierVisit.objects.create(
+            horse=horse, date=self.today - timedelta(days=56),
+            next_due_date=self.today - timedelta(days=1),
+        )
+        user = make_user_with_access('viewonly', dashboard='full', health='view', horses='view')
+        self.client.force_login(user)
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('Watcher', body)
+        self.assertNotIn('Record visit', body)
+
+    def test_site_switch_is_remembered_and_narrows_the_inbox(self):
+        somerford = Location.objects.create(name='Sandhills', site='Somerford')
+        Location.objects.create(name='Bottom Barn', site='Colgate')
+        horse = self._horse('Beech', somerford)
+        Vaccination.objects.create(
+            horse=horse, vaccination_type=self.flu,
+            date_given=self.today - timedelta(days=300),
+            next_due_date=self.today - timedelta(days=2),
+        )
+        user = make_user('siteuser')
+        self.client.force_login(user)
+
+        resp = self.client.get(reverse('dashboard'))
+        self.assertEqual(resp.context['site'], '')
+        self.assertEqual(len(resp.context['rows']), 1)
+        body = resp.content.decode()
+        self.assertIn('All sites', body)
+        self.assertIn('?site=Colgate', body)
+
+        resp = self.client.get(reverse('dashboard') + '?site=Colgate')
+        self.assertEqual(resp.context['site'], 'Colgate')
+        self.assertEqual(resp.context['rows'], [])
+        self.assertIn('All clear at Colgate', resp.content.decode())
+        self.assertEqual(DashboardPreference.get_for(user).site, 'Colgate')
+
+        # Remembered on the next visit; an unknown site falls back to all.
+        resp = self.client.get(reverse('dashboard'))
+        self.assertEqual(resp.context['site'], 'Colgate')
+        resp = self.client.get(reverse('dashboard') + '?site=Nowhere')
+        self.assertEqual(resp.context['site'], '')
+        self.assertEqual(DashboardPreference.get_for(user).site, '')
+
+    def test_single_site_yard_has_no_site_switch(self):
+        Location.objects.create(name='Sandhills', site='Main')
+        user = make_user('onesite')
+        self.client.force_login(user)
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertNotIn('All sites', body)
+
+    def test_yard_board_lists_sites_and_locations(self):
+        field = Location.objects.create(name='Sandhills', site='Somerford', capacity=8)
+        Location.objects.create(name='Bottom Barn', site='Colgate', usage='rested')
+        self._horse('Beech', field)
+        user = make_user('boarduser')
+        self.client.force_login(user)
+        resp = self.client.get(reverse('dashboard'))
+        body = resp.content.decode()
+        self.assertIn('Yard board', body)
+        self.assertIn('Somerford', body)
+        self.assertIn('Colgate', body)
+        self.assertIn('1/8', body)  # the occupancy ring
+        self.assertIn('Rested', body)
+        self.assertEqual(resp.context['horse_count'], 1)
+
+
+class BulkFormPopupTests(TestCase):
+    """The inbox's "Record for N" opens the health bulk form in the pop-up
+    sheet with the horses preselected."""
+
+    def setUp(self):
+        self.today = timezone.localdate()
+        owner = Owner.objects.create(name='Jo Bloggs')
+        field = Location.objects.create(name='Top Paddock', site='Main')
+        rate = RateType.objects.create(name='Grass', daily_rate=5)
+        self.a = Horse.objects.create(name='Huella')
+        self.b = Horse.objects.create(name='True')
+        for horse in (self.a, self.b):
+            Placement.objects.create(
+                horse=horse, owner=owner, location=field, rate_type=rate,
+                start_date=self.today - timedelta(days=100),
+            )
+        self.user = make_user('bulkuser')
+        self.client.force_login(self.user)
+
+    def test_get_renders_preselected_horses(self):
+        url = (reverse('bulk_health_form')
+               + f'?action_type=farrier&horse_ids={self.a.pk}&horse_ids={self.b.pk}')
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        self.assertIn(f'name="horse_ids" value="{self.a.pk}"', body)
+        self.assertIn(f'name="horse_ids" value="{self.b.pk}"', body)
+        self.assertIn('Huella, True', body)
+        self.assertIn('hx-target="#popup-body"', body)
+        self.assertIn('Record for 2 horses', body)
+
+    def test_post_records_for_every_horse_and_closes_the_sheet(self):
+        resp = self.client.post(reverse('bulk_health_apply'), {
+            'action_type': 'farrier',
+            'horse_ids': [self.a.pk, self.b.pk],
+            'date': self.today.isoformat(),
+            'work_done': 'trim',
+            'cost': '45.00',
+        })
+        self.assertEqual(resp.status_code, 204)
+        self.assertEqual(resp['HX-Trigger'], 'popup:saved')
+        self.assertEqual(FarrierVisit.objects.filter(horse__in=[self.a, self.b], date=self.today).count(), 2)
+
+    def test_list_page_bar_uses_the_same_sheet(self):
+        # The Horses / Locations / Owners action bar opens the same form in
+        # the same sheet, so its save closes the sheet the same way.
+        resp = self.client.post(reverse('bulk_health_apply'), {
+            'action_type': 'farrier',
+            'horse_ids': [self.a.pk],
+            'date': self.today.isoformat(),
+            'work_done': 'trim',
+            'cost': '45.00',
+        })
+        self.assertEqual(resp.status_code, 204)
+        self.assertEqual(resp['HX-Trigger'], 'popup:saved')
+
+    def test_popup_mode_needs_health_full(self):
+        viewer = make_user_with_access('bulkviewer', dashboard='full', health='view')
+        self.client.force_login(viewer)
+        url = reverse('bulk_health_form') + f'?action_type=farrier&horse_ids={self.a.pk}'
+        self.assertEqual(self.client.get(url).status_code, 403)
 
 
 class QuickFindTests(TestCase):

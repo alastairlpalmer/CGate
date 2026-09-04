@@ -1,32 +1,50 @@
 {% comment %}
-Reusable empty state for lists with no results.
+The one empty state (UI audit 3.8). Two variants:
 
-Usage:
-  {% include "includes/empty_state.html" with message="No horses found." %}
-  {% include "includes/empty_state.html" with message="No horses found." add_url="/horses/add/" add_label="Add Horse" %}
-  {% include "includes/empty_state.html" with message="No results match your filters." icon="search" %}
+  first     nothing exists yet — a domain glyph, what this list is for, and
+            the primary action that starts it
+  filtered  a search or filter found nothing — the search glyph and a way
+            to clear it
 
 Parameters:
-  message   - Required. The message to display.
-  add_url   - Optional. URL for an action button.
-  add_label - Optional. Label for the action button (default: "Add New").
-  icon      - Optional. Icon type: "empty" (default) or "search".
-{% endcomment %}
+  variant          "first" (default) or "filtered"
+  title            heading, in the yard's voice ("No horses on the yard yet")
+  body             one sentence under it (optional)
+  icon             sprite id for the first variant (default "fence")
+  clear_url        "Clear filters" link for the filtered variant
+  clear_label      its label (default "Clear filters")
+  add_url          primary action (optional)
+  add_label        its label
+  add_popup_title  set to open the action in the pop-up sheet
+  extra_url        a secondary action (optional)
+  extra_label      its label
+  compact          truthy for a shorter block inside a table cell or list
 
-<div class="card p-8 text-center">
-    <div class="mx-auto w-12 h-12 rounded-full bg-light-sage flex items-center justify-center mb-3">
-        {% if icon == "search" %}
-        <svg class="w-6 h-6 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
-        </svg>
+Filter arguments must exist in the context, so this template never reads
+optional variables through a filter.
+{% endcomment %}
+<div class="empty-state{% if compact %} empty-state-compact{% endif %}">
+    <div class="empty-state-icon{% if variant == 'filtered' %} is-search{% endif %}" aria-hidden="true">
+        {% if variant == 'filtered' %}
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
         {% else %}
-        <svg class="w-6 h-6 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/>
-        </svg>
+        <svg class="w-7 h-7"><use href="#i-{{ icon|default:'fence' }}"/></svg>
         {% endif %}
     </div>
-    <p class="text-sm text-sage">{{ message }}</p>
-    {% if add_url %}
-    <a href="{{ add_url }}" class="btn-primary mt-4 inline-flex">{{ add_label|default:"Add New" }}</a>
+    <h3 class="empty-state-title">{{ title }}</h3>
+    {% if body %}<p class="empty-state-body">{{ body }}</p>{% endif %}
+    {% if clear_url or add_url or extra_url %}
+    <div class="empty-state-actions">
+        {% if clear_url %}<a href="{{ clear_url }}" class="btn-ghost">{{ clear_label|default:"Clear filters" }}</a>{% endif %}
+        {% if add_url %}
+            {% if add_popup_title %}
+            <a href="{{ add_url }}" hx-get="{{ add_url }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="{{ add_popup_title }}" class="btn-primary">{{ add_label|default:"Add" }}</a>
+            {% else %}
+            <a href="{{ add_url }}" class="btn-primary">{{ add_label|default:"Add" }}</a>
+            {% endif %}
+        {% endif %}
+        {% if extra_url %}<a href="{{ extra_url }}" class="btn-secondary">{{ extra_label|default:"More" }}</a>{% endif %}
+    </div>
     {% endif %}
 </div>

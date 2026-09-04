@@ -1,0 +1,50 @@
+{% load ui_extras %}
+<li class="attn-row" id="row-{{ row.key }}"
+    data-filter="{{ row.severity }}{% for item in row.items %} {% if item.category == 'documents' %}yard{% else %}{{ item.category }}{% endif %}{% endfor %}"
+    x-show="filter === 'all' || $el.dataset.filter.split(' ').includes(filter)">
+    <div class="attn-icon {% if row.severity == 'overdue' %}attn-icon-overdue{% elif row.severity == 'due' %}attn-icon-due{% else %}attn-icon-info{% endif %}" aria-hidden="true">
+        <svg class="h-[18px] w-[18px]"><use href="#i-{{ row.items.0.kind|kind_icon }}"/></svg>
+    </div>
+    <div class="min-w-0">
+        <div class="attn-head">
+            {% if row.horse %}{% include 'horses/_coat_dot.html' with horse=row.horse %}{% endif %}
+            {% if row.url %}
+            <a href="{{ row.url }}" class="attn-title">{{ row.title }}</a>
+            {% else %}
+            <span class="attn-title">{{ row.title }}</span>
+            {% endif %}
+            {% if row.subtitle %}<span class="attn-sub">{{ row.subtitle }}</span>{% endif %}
+        </div>
+
+        {% if row.kind == 'visit' %}
+        {% with item=row.items.0 %}
+        <div class="attn-line">
+            <span class="attn-line-text">{{ row.horses|length }} horses, one visit</span>
+            <span class="{% if item.is_overdue %}badge-danger{% elif item.delta == 0 %}badge-warning{% else %}badge-neutral{% endif %}">{{ item.due_date|due_label }}</span>
+            <span class="attn-date">{{ item.due_date|date:"j M" }}</span>
+            <span class="attn-actions">
+                {% if row.action %}{% include 'partials/dashboard/_action.html' with action=row.action %}{% endif %}
+            </span>
+        </div>
+        {% endwith %}
+        {% else %}
+        {% for item in row.items %}
+        <div class="attn-line">
+            <span class="attn-line-text">{{ item.detail }}</span>
+            {% if item.kind == 'departure' %}
+            <span class="badge-warning">Left {{ item.due_date|ago_label|lower }}</span>
+            <span class="attn-date">{{ item.due_date|date:"j M" }}</span>
+            {% elif item.due_date %}
+            <span class="{% if item.is_overdue %}badge-danger{% elif item.delta == 0 %}badge-warning{% else %}badge-neutral{% endif %}">{{ item.due_date|due_label }}</span>
+            <span class="attn-date">{{ item.due_date|date:"j M" }}</span>
+            {% endif %}
+            {% if item.actions %}
+            <span class="attn-actions">
+                {% for action in item.actions %}{% include 'partials/dashboard/_action.html' %}{% endfor %}
+            </span>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+</li>

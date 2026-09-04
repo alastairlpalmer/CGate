@@ -6,7 +6,7 @@ groups and the Location column under location groups.
   row_attrs (optional) — extra attributes for the <tr>; the owner table
   passes an x-show so its owner row can fold the horses under it.
 {% endcomment %}
-<tr class="group" {{ row_attrs|default:''|safe }}>
+<tr class="group" id="horse-{{ horse.pk }}" {{ row_attrs|default:''|safe }}>
     <td>
         <input type="checkbox" data-horse-checkbox value="{{ horse.pk }}"
                @change="toggleHorse({{ horse.pk }})" :checked="isSelected({{ horse.pk }})"
@@ -36,7 +36,7 @@ groups and the Location column under location groups.
     </td>
     {% endif %}
     <td class="pr-5">
-        <div class="flex items-center justify-end gap-1 lg:opacity-60 lg:group-hover:opacity-100 transition-opacity">
+        <div class="flex items-center justify-end gap-1">
             {% if feature_access.horses.full %}
             <a href="{% url 'horse_photo_add' horse.pk %}" hx-get="{% url 'horse_photo_add' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
                data-popup-title="Add photos for {{ horse.name }}"

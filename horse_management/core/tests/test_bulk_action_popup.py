@@ -57,8 +57,9 @@ class BulkActionPopupTests(TestCase):
         self.assertNotContains(response, 'value="abc"')
         # Posts back into the sheet, not a modal of its own
         self.assertContains(response, 'hx-target="#popup-body"')
-        self.assertContains(response, 'Applies to')
-        self.assertContains(response, '2 selected horses')
+        self.assertContains(response, 'For 2 horses:')
+        self.assertContains(response, 'POPUP0, POPUP1')
+        self.assertContains(response, 'Apply to 2 horses')
 
     def test_validation_error_rerender_keeps_the_selection(self):
         response = self.client.post(

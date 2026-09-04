@@ -1,0 +1,67 @@
+{% load ui_extras %}
+{% comment %}
+Zone C: a 14-day strip from today, then the visits worth booking together.
+Context: upcoming (core.dashboard.upcoming.build).
+{% endcomment %}
+<div class="card overflow-hidden h-full">
+    <div class="section-header">
+        <div class="flex items-center gap-2.5">
+            <h2 class="section-title" id="upcoming-title">Next 14 days</h2>
+            {% if upcoming.total %}<span class="badge-neutral">{{ upcoming.total }}</span>{% endif %}
+        </div>
+        <span class="font-mono text-xs text-sage">{{ upcoming.start|date:"j M" }} &ndash; {{ upcoming.end|date:"j M" }}</span>
+    </div>
+
+    <div class="strip" role="list" aria-label="Days">
+        {% for day in upcoming.days %}
+        <div class="strip-day{% if day.is_today %} is-today{% elif day.is_weekend %} is-weekend{% endif %}{% if day.count %} has-items{% endif %}" role="listitem"
+             title="{{ day.date|date:'l j F' }}{% if day.titles %} · {{ day.titles }}{% else %} · nothing due{% endif %}">
+            <span class="strip-day-name">{{ day.date|date:"D" }}</span>
+            <span class="strip-day-num">{{ day.date|date:"j" }}</span>
+            <span class="strip-dots" aria-hidden="true">
+                {% for kind in day.dots %}<i class="strip-dot dot-{{ kind }}"></i>{% endfor %}{% if day.more %}<i class="strip-dot dot-more"></i>{% endif %}
+            </span>
+            <span class="sr-only">{% if day.titles %}{{ day.titles }}{% else %}nothing due{% endif %}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% if upcoming.legend %}
+    <div class="strip-legend" aria-hidden="true">
+        {% for entry in upcoming.legend %}<span><i class="strip-dot dot-{{ entry.kind }}"></i>{{ entry.label }}</span>{% endfor %}
+    </div>
+    {% endif %}
+
+    {% if upcoming.visits %}
+    <ul class="divide-y divide-light-sage border-t border-light-sage">
+        {% for visit in upcoming.visits %}
+        <li class="visit-row">
+            <div class="visit-date" aria-hidden="true">
+                <span class="visit-date-name">{{ visit.date|date:"D" }}</span>
+                <span class="visit-date-num">{{ visit.date|date:"j" }}</span>
+            </div>
+            <div class="min-w-0">
+                <p class="text-sm font-medium text-charcoal">
+                    <span class="text-sage">{{ visit.label }}</span> &middot;
+                    {% for horse in visit.horses %}<a href="{% url 'horse_detail' horse.pk %}" class="link">{{ horse.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
+                </p>
+                <p class="text-xs text-sage">{{ visit.detail }} &middot; {{ visit.date|due_label }}</p>
+            </div>
+            <div class="attn-actions">
+                {% if visit.action %}
+                {% include 'partials/dashboard/_action.html' with action=visit.action %}
+                {% elif visit.single_action %}
+                {% include 'partials/dashboard/_action.html' with action=visit.single_action %}
+                {% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% if upcoming.more_visits %}
+    <p class="border-t border-light-sage px-5 py-2.5 text-xs text-sage">
+        {{ upcoming.more_visits }} more &middot; <a href="{% url 'health_dashboard' %}" class="link">Health overview</a>
+    </p>
+    {% endif %}
+    {% elif not upcoming.total %}
+    <p class="border-t border-light-sage px-5 py-5 text-sm text-sage">Nothing is dated in the next two weeks.</p>
+    {% endif %}
+</div>

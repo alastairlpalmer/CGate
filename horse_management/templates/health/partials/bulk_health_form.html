@@ -1,7 +1,10 @@
 {% comment %}
 Bulk-action form, loaded into the shared pop-up sheet
-(includes/_popup_sheet.html) by the "Apply to selected" button in
-health/partials/bulk_action_bar.html.
+(includes/_popup_sheet.html). Two triggers open it:
+
+- the "Apply to Selected" button in health/partials/bulk_action_bar.html
+  (Horses list, Owner and Location detail pages), with the ticked horses;
+- the dashboard inbox's "Record for N" (core/dashboard/attention.py).
 
 The selected horses travel with the form as hidden inputs, rendered by the
 server from the query string (GET) or the posted data (re-render after a
@@ -9,21 +12,21 @@ validation error), so a second submit never loses the selection. A valid
 POST answers 204 + `HX-Trigger: popup:saved`: popup.js closes the sheet and
 refreshes #main-content in place.
 {% endcomment %}
-<form hx-post="{% url 'bulk_health_apply' %}"
+<form method="post" action="{% url 'bulk_health_apply' %}"
+      hx-post="{% url 'bulk_health_apply' %}"
       hx-target="#popup-body"
       hx-select="unset" hx-push-url="false"
       hx-swap="innerHTML">
     {% csrf_token %}
     <input type="hidden" name="action_type" value="{{ action_type }}">
-    {% for id in horse_ids %}
-    <input type="hidden" name="horse_ids" value="{{ id }}">
-    {% endfor %}
+    {% for id in horse_ids %}<input type="hidden" name="horse_ids" value="{{ id }}">{% endfor %}
 
     <fieldset class="p-4 sm:p-5 space-y-4">
         <legend class="text-sm font-medium text-charcoal mb-2">{{ action_label }} details</legend>
 
-        <p class="text-xs text-sage -mt-1">
-            Applies to <span class="font-medium text-charcoal-light">{{ horse_ids|length }} selected horse{{ horse_ids|length|pluralize }}</span>.
+        <p class="text-sm text-charcoal -mt-1">
+            <span class="text-sage">For {{ horse_ids|length }} horse{{ horse_ids|length|pluralize }}{% if horse_names %}:{% endif %}</span>
+            {% if horse_names %}{{ horse_names|join:", " }}{% endif %}
         </p>
 
         {% if form.non_field_errors %}
@@ -71,6 +74,6 @@ refreshes #main-content in place.
 
     <div class="popup-footer">
         <button type="button" @click="$store.popup.close()" class="btn-secondary text-sm">Cancel</button>
-        <button type="submit" class="btn-primary text-sm">Apply to {{ horse_ids|length }} horse{{ horse_ids|length|pluralize }}</button>
+        <button type="submit" class="btn-primary text-sm">{% if action_type in 'move,restore,expected_departure,actual_departure' %}Apply to{% else %}Record for{% endif %} {{ horse_ids|length }} horse{{ horse_ids|length|pluralize }}</button>
     </div>
 </form>

@@ -69,12 +69,17 @@
             accent: false,  // outlined panel (trigger has data-popup-accent)
             opener: null,   // the trigger element, for focus return + abort
             href: '',       // full-page fallback URL, shown if the load fails
+            flashId: '',    // id of the row the trigger sat in, flashed after a save
 
             show: function (title, opener) {
                 this.title = title || '';
                 this.opener = opener || null;
                 this.href = (opener && opener.getAttribute('href')) || '';
                 this.accent = !!(opener && opener.dataset && opener.dataset.popupAccent !== undefined);
+                // Remember which row the sheet was opened from, so the page
+                // can point at what changed once it refreshes (UI audit 3.10).
+                var anchor = opener && opener.closest ? opener.closest('[id]') : null;
+                this.flashId = (anchor && anchor.id !== 'main-content' && anchor.id !== 'popup-body') ? anchor.id : '';
                 this.dirty = false;
                 this.open = true;
                 document.documentElement.classList.add('overflow-hidden');
@@ -253,10 +258,22 @@
         });
     });
 
+    // After a refresh, point at the row the sheet was opened from: a short
+    // cream-to-transparent flash answers "did that save?" without a toast.
+    function flashRow(id) {
+        if (!id) { return; }
+        var el = document.getElementById(id);
+        if (!el) { return; }
+        el.classList.remove('flash');
+        void el.offsetWidth;  // restart the animation if it was mid-run
+        el.classList.add('flash');
+        el.addEventListener('animationend', function () { el.classList.remove('flash'); }, { once: true });
+    }
+
     // Re-fetch the current page and swap #main-content in place. Scroll,
     // filters and the URL all stay put; toasts and Alpine state come back
     // through the same chrome hook boosted navigations use (base.html).
-    function refreshMain() {
+    function refreshMain(flashId) {
         return fetch(window.location.href, {
             credentials: 'same-origin',
             headers: { 'Accept': 'text/html' }
@@ -272,6 +289,7 @@
             if (window.Yardway && Yardway.afterMainSwap) {
                 Yardway.afterMainSwap(fresh, html);
             }
+            flashRow(flashId);
         }).catch(function () {
             window.location.reload();
         });
@@ -279,7 +297,8 @@
 
     document.body.addEventListener('popup:saved', function () {
         var s = store();
+        var flashId = s ? s.flashId : '';
         if (s) { s.close(true); }
-        refreshMain();
+        refreshMain(flashId);
     });
 })();

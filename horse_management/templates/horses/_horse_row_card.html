@@ -4,7 +4,7 @@ One horse as a mobile list card, inside a grouped view.
 Context: horse, group_kind — the meta line shows whichever of owner and
 location the group does not already say.
 {% endcomment %}
-<li class="list-card">
+<li class="list-card" id="horse-card-{{ horse.pk }}">
     <label class="relative z-10 inline-flex items-center justify-center w-11 h-11 -ml-2 -my-1.5 shrink-0 cursor-pointer">
         <input type="checkbox" data-horse-checkbox value="{{ horse.pk }}"
                @change="toggleHorse({{ horse.pk }})" :checked="isSelected({{ horse.pk }})"

@@ -1,0 +1,66 @@
+{% load ui_extras %}
+{% comment %}
+Zone E: the month's billing position, loaded after first paint.
+Context: money (core.dashboard.money.snapshot). A block is None when the
+role cannot see that area.
+{% endcomment %}
+{% if money.any %}
+<div class="card overflow-hidden">
+    <div class="section-header">
+        <h2 class="section-title">Money</h2>
+        {% if feature_access.finances.view %}<a href="{% url 'finances' %}" class="text-xs link tap-pad">Finances overview &rarr;</a>{% endif %}
+    </div>
+    <div class="money-grid">
+        {% if money.invoices %}
+        {% with inv=money.invoices %}
+        <a href="{% url 'invoice_list' %}?status=draft" class="money-fig{% if inv.drafts %} is-action{% endif %}">
+            <span class="money-fig-label">Drafts to review</span>
+            <span class="money-fig-value">{{ inv.drafts }}</span>
+            <span class="money-fig-meta">{% if inv.drafts %}{{ inv.drafts_total|gbp }} waiting to be sent{% else %}Nothing waiting{% endif %}</span>
+        </a>
+        <a href="{% url 'invoice_list' %}?status=overdue" class="money-fig">
+            <span class="money-fig-label">Outstanding</span>
+            <span class="money-fig-value">{{ inv.outstanding|gbp }}</span>
+            <span class="money-fig-meta">
+                {% if inv.overdue_count %}<span class="font-medium text-error-red">{{ inv.overdue_count }} overdue &middot; {{ inv.overdue_total|gbp }}</span>{% else %}Nothing overdue{% endif %}
+            </span>
+            {% if inv.outstanding %}
+            <span class="aged-bar" aria-hidden="true">{% for bucket in inv.aged %}{% if bucket.pct %}<i class="aged-{{ bucket.key }}" style="width:{{ bucket.pct }}%" title="{{ bucket.label }}: {{ bucket.amount|gbp }}"></i>{% endif %}{% endfor %}</span>
+            <span class="sr-only">{% for bucket in inv.aged %}{% if bucket.amount %}{{ bucket.label }} {{ bucket.amount|gbp }}. {% endif %}{% endfor %}</span>
+            {% endif %}
+        </a>
+        <div class="money-fig">
+            <span class="money-fig-label">Received, last 30 days</span>
+            <span class="money-fig-value">{{ inv.received_30d|gbp }}</span>
+            <span class="money-fig-meta">{{ inv.received_30d_count }} payment{{ inv.received_30d_count|pluralize }}</span>
+        </div>
+        {% endwith %}
+        {% endif %}
+        {% if money.unbilled is not None %}
+        <a href="{% url 'charge_list' %}" class="money-fig">
+            <span class="money-fig-label">Unbilled extras</span>
+            <span class="money-fig-value">{{ money.unbilled|gbp }}</span>
+            <span class="money-fig-meta">Not yet on an invoice</span>
+        </a>
+        {% endif %}
+    </div>
+    {% if money.invoices or money.xero %}
+    <div class="money-pills">
+        {% if money.invoices %}
+        {% if money.invoices.aged.4.amount %}<span class="text-xs text-sage">Aged: {% for bucket in money.invoices.aged %}{% if bucket.amount %}<span class="whitespace-nowrap"><i class="strip-dot aged-{{ bucket.key }}"></i> {{ bucket.label }} {{ bucket.amount|gbp }}</span> {% endif %}{% endfor %}</span>{% endif %}
+        {% if money.invoices.send_errors %}<a href="{% url 'invoice_list' %}" class="badge-danger">{{ money.invoices.send_errors }} send failure{{ money.invoices.send_errors|pluralize }}</a>{% endif %}
+        {% endif %}
+        {% if money.xero %}
+        {% if not money.xero.configured %}
+        <span class="badge-neutral">Xero not set up</span>
+        {% elif money.xero.connected %}
+        <span class="badge-success">Xero connected</span>
+        {% else %}
+        <a href="{% url 'xero_settings' %}" class="badge-warning">Xero disconnected</a>
+        {% endif %}
+        {% if money.xero.errors %}<a href="{% url 'invoice_list' %}" class="badge-danger">{{ money.xero.errors }} Xero sync error{{ money.xero.errors|pluralize }}</a>{% endif %}
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}

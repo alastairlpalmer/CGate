@@ -1,0 +1,52 @@
+{% comment %}
+Zone D: one band per site, one tile per active location. Context:
+sites_overview (core.dashboard.board.sites_overview), horse_count.
+Rings and land-use badges are the same partials the Locations page uses,
+so the two never disagree at a glance.
+{% endcomment %}
+<div class="card overflow-hidden">
+    <div class="section-header">
+        <div class="flex items-center gap-2.5">
+            <h2 class="section-title" id="yard-board-title">Yard board</h2>
+            {% if horse_count is not None %}<span class="badge-neutral">{{ horse_count }} horse{{ horse_count|pluralize }}</span>{% endif %}
+        </div>
+        <a href="{% url 'location_list' %}?tab=usage" class="text-xs link tap-pad">Land use &rarr;</a>
+    </div>
+    <div class="board">
+        {% for band in sites_overview %}
+        <div class="board-site">
+            <div class="board-site-head">
+                <a href="{% url 'horse_list' %}?group_by=location" class="board-site-name">{{ band.name|default:"No site" }}</a>
+                <p class="board-site-meta">
+                    <b>{{ band.horses }}</b>{% if band.has_capacity %}<span class="text-sage/70">/{{ band.capacity }}</span>{% endif %} horse{{ band.horses|pluralize }}
+                    {% if band.resting %}<br>{{ band.resting }} resting{% endif %}
+                    {% if band.flagged %}<br><span class="text-saddle">{{ band.flagged }} location{{ band.flagged|pluralize }} need{{ band.flagged|pluralize:"s," }} attention</span>{% endif %}
+                </p>
+            </div>
+            <div class="board-tiles">
+                {% for tile in band.tiles %}
+                <a href="{% url 'location_detail' tile.location.pk %}" class="board-tile{% if tile.flagged %} is-flagged{% endif %}"
+                   title="{{ tile.location.name }}{% if tile.holds_horses %} · {{ tile.count }} horse{{ tile.count|pluralize }}{% if tile.capacity %} of {{ tile.capacity }}{% endif %}{% else %} · {{ tile.usage_label }}{% endif %}{% if tile.flagged %} · needs attention{% endif %}">
+                    <span class="min-w-0">
+                        <span class="board-tile-name">{{ tile.location.name }}</span>
+                        <span class="board-tile-meta{% if tile.usage == 'rested' %} text-sage{% elif tile.usage == 'hay' %} text-info-blue{% elif tile.usage == 'arable' or tile.usage == 'mixed' %} text-saddle{% endif %}">
+                            {% if tile.usage == 'rested' %}Rested{% if tile.rest_days is not None %} &middot; {{ tile.rest_days }} day{{ tile.rest_days|pluralize }}{% endif %}
+                            {% elif tile.holds_horses %}{{ tile.count }} horse{{ tile.count|pluralize }}{% if tile.usage == 'mixed' %} &middot; mixed grazing{% endif %}
+                            {% else %}{{ tile.usage_label }}{% endif %}
+                        </span>
+                    </span>
+                    {% if tile.holds_horses and tile.capacity %}
+                    {% include 'horses/_capacity_ring.html' with count=tile.count capacity=tile.capacity availability=tile.availability %}
+                    {% elif tile.holds_horses %}
+                    <span class="board-count">{{ tile.count }}</span>
+                    {% else %}
+                    <span class="board-usage">{% include 'horses/_usage_badge.html' with usage=tile.usage label='' %}</span>
+                    {% endif %}
+                    {% if tile.flagged %}<span class="board-flag" aria-hidden="true"></span>{% endif %}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
