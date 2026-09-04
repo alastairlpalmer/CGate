@@ -158,6 +158,10 @@
     .quick-find-icon { @apply inline-flex items-center justify-center w-7 h-7 rounded-lg bg-sage-50 text-forest shrink-0; }
     .quick-find-tag { @apply text-xs text-sage shrink-0; }
     .quick-find-more { @apply flex items-center gap-1.5 mx-1.5 px-2.5 py-1.5 rounded-btn text-xs font-medium text-forest hover:bg-light-sage focus:bg-light-sage focus:outline-none transition-colors duration-100; }
+    /* A horse row: the wide link opens the quick view, the arrow goes straight to the profile */
+    .quick-find-row { @apply flex items-center mx-1.5 rounded-btn hover:bg-light-sage focus-within:bg-light-sage transition-colors duration-100; }
+    .quick-find-row > .quick-find-item { @apply mx-0 flex-1 min-w-0 hover:bg-transparent focus:bg-transparent; }
+    .quick-find-open { @apply inline-flex items-center justify-center w-8 h-8 mr-1 rounded-btn text-sage shrink-0 hover:bg-white hover:text-forest hover:shadow-sm focus:outline-none focus:bg-white focus:text-forest transition-colors duration-100; }
     .app-bar-add-item { @apply flex items-center gap-2.5 px-4 py-2.5 text-sm text-charcoal hover:bg-parchment focus:bg-parchment focus:outline-none transition-colors duration-100; }
 }
 
@@ -505,6 +509,15 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 /* Pop-up sheet footer — the form inside the sheet (includes/_popup_sheet.html)
    scrolls within #popup-body, so its footer sticks to that container's
    bottom edge and Save stays in reach while fields scroll under it. */
+/* Quick view card (horses/partials/quick_view.html) */
+.quick-view-label { @apply text-[11px] font-semibold text-sage uppercase tracking-widest; }
+.quick-view-menu { @apply grid grid-cols-2 gap-1 p-1.5 rounded-lg border border-light-sage bg-white shadow-lg; }
+.quick-view-menu-item { @apply flex items-center gap-2.5 px-2.5 py-2 min-h-[44px] rounded-btn text-sm font-medium text-charcoal hover:bg-parchment focus:bg-parchment focus:outline-none transition-colors duration-100; }
+.quick-view-menu-icon { @apply inline-flex items-center justify-center w-8 h-8 rounded-full shrink-0; }
+
+/* The sheet while a trigger inside it fetches the next step (popup.js) */
+#popup-body.popup-busy { @apply opacity-50 pointer-events-none transition-opacity duration-150; }
+
 .popup-footer {
     @apply sticky bottom-0 border-t border-light-sage px-4 py-3 sm:px-5 sm:py-4 bg-parchment flex justify-end gap-3 z-10;
 }

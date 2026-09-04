@@ -1,0 +1,168 @@
+{% comment %}
+Quick view — the pop-up sheet's first stop from the app bar search
+(core.views.horses.horse_quick_view).
+
+Photo, the facts you need at a glance (where, whose, colour, age), the
+day-to-day actions, and one button through to the full profile. Every
+action loads its own form into this same sheet: a trigger inside
+#popup-body keeps the sheet open and only retitles it (static/js/popup.js),
+so search → Move → Save never leaves the page you were on.
+
+Links out (owner, location, full profile) are ordinary boosted links; the
+sheet closes itself once the new page has landed.
+{% endcomment %}
+<div class="p-4 sm:p-5 space-y-4" data-quick-view="{{ horse.pk }}">
+
+    <!-- Who -->
+    <div class="flex items-start gap-4">
+        {% include 'horses/_horse_avatar.html' with horse=horse size='lg' %}
+        <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="text-xl font-semibold font-heading text-charcoal truncate">{{ horse.name }}</h3>
+                {% if horse.is_active %}
+                <span class="badge-success"><span class="w-1.5 h-1.5 rounded-full bg-forest mr-1.5"></span>Active</span>
+                {% else %}
+                <span class="badge-neutral">Departed</span>
+                {% endif %}
+            </div>
+            <p class="mt-1 text-sm text-sage">
+                {% if horse.calculated_age %}<span class="text-charcoal-light font-medium">{{ horse.calculated_age }}yo</span> &middot; {% endif %}{{ horse.get_color_display|default:"Colour not set" }} &middot; {{ horse.get_sex_display|default:"Sex not set" }}
+            </p>
+            {% if owner %}
+            <p class="mt-1.5 text-sm text-charcoal-light flex items-center gap-1.5 min-w-0">
+                <svg class="w-3.5 h-3.5 text-sage shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                {% if feature_access.owners.view %}<a href="{% url 'owner_detail' owner.pk %}" class="link truncate">{{ owner.name }}</a>{% else %}<span class="truncate">{{ owner.name }}</span>{% endif %}
+            </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- The facts -->
+    <dl class="grid grid-cols-2 gap-x-4 gap-y-3 rounded-card border border-light-sage bg-parchment/60 p-3.5 text-sm">
+        <div class="col-span-2 min-w-0">
+            <dt class="quick-view-label">Location</dt>
+            <dd class="mt-0.5 font-medium text-charcoal">
+                {% if current_placement %}
+                {% if feature_access.locations.view %}<a href="{% url 'location_detail' current_placement.location.pk %}" class="link">{{ current_placement.location.name }}</a>{% else %}{{ current_placement.location.name }}{% endif %}
+                <span class="text-sage font-normal">&middot; {{ current_placement.location.site }} &middot; since {{ current_placement.start_date|date:"j M Y" }}</span>
+                {% else %}
+                <span class="text-sage font-normal">Not on the yard</span>
+                {% endif %}
+            </dd>
+        </div>
+        <div class="min-w-0">
+            <dt class="quick-view-label">Colour</dt>
+            <dd class="mt-0.5 font-medium text-charcoal">{{ horse.get_color_display|default:"&mdash;" }}</dd>
+        </div>
+        <div class="min-w-0">
+            <dt class="quick-view-label">Age</dt>
+            <dd class="mt-0.5 font-medium text-charcoal">
+                {% if horse.calculated_age %}{{ horse.calculated_age }} years{% if horse.date_of_birth %} <span class="text-sage font-normal">&middot; born {{ horse.date_of_birth|date:"j M Y" }}</span>{% endif %}{% else %}&mdash;{% endif %}
+            </dd>
+        </div>
+        <div class="min-w-0">
+            <dt class="quick-view-label">Sex</dt>
+            <dd class="mt-0.5 font-medium text-charcoal">{{ horse.get_sex_display|default:"&mdash;" }}</dd>
+        </div>
+        <div class="min-w-0">
+            <dt class="quick-view-label">Passport</dt>
+            <dd class="mt-0.5 font-medium text-charcoal">
+                {% if horse.has_passport %}{{ horse.passport_number|default:"Yes" }}{% else %}<span class="text-error-red">None on record</span>{% endif %}
+            </dd>
+        </div>
+    </dl>
+
+    {% if feature_access.horses.full or feature_access.health.full %}
+    <!-- Quick actions -->
+    <div x-data="{ addOpen: false }" class="space-y-2">
+        <p class="quick-view-label">Quick actions</p>
+        <div class="flex flex-wrap gap-2">
+            {% if feature_access.horses.full %}
+            {% if current_placement %}
+            <a href="{% url 'horse_move' horse.pk %}" hx-get="{% url 'horse_move' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Move {{ horse.name }}" class="btn-primary">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
+                Move
+            </a>
+            {% else %}
+            <a href="{% url 'horse_arrive' horse.pk %}" hx-get="{% url 'horse_arrive' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Log arrival for {{ horse.name }}" class="btn-primary">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                Log arrival
+            </a>
+            {% endif %}
+            <a href="{% url 'horse_update' horse.pk %}" hx-get="{% url 'horse_quick_edit' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Edit {{ horse.name }}" class="btn-secondary">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+                Edit
+            </a>
+            <a href="{% url 'horse_photo_add' horse.pk %}" hx-get="{% url 'horse_photo_add' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Add photos for {{ horse.name }}" class="btn-secondary">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/></svg>
+                Photos
+            </a>
+            {% endif %}
+            {% if feature_access.health.full %}
+            {# The menu opens in the flow below (not floated): the sheet body scrolls, so a floated menu would be clipped #}
+            <button type="button" @click="addOpen = !addOpen" :aria-expanded="addOpen ? 'true' : 'false'"
+                    aria-haspopup="true" aria-controls="quick-view-add-menu" class="btn-secondary">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                Add record
+                <svg class="w-3.5 h-3.5 transition-transform duration-150" :class="addOpen && 'rotate-180'" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+            </button>
+            {% endif %}
+        </div>
+
+        {% if feature_access.health.full %}
+        <div id="quick-view-add-menu" x-show="addOpen" x-cloak x-transition.opacity.duration.100ms
+             role="menu" aria-label="Add a record for {{ horse.name }}" class="quick-view-menu">
+            <a href="{% url 'vaccination_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vaccination_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Vaccination for {{ horse.name }}" role="menuitem" class="quick-view-menu-item">
+                <span class="quick-view-menu-icon bg-sage-50 text-sage"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg></span>
+                Vaccination
+            </a>
+            <a href="{% url 'farrier_create' %}?horse={{ horse.pk }}" hx-get="{% url 'farrier_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Farrier visit for {{ horse.name }}" role="menuitem" class="quick-view-menu-item">
+                <span class="quick-view-menu-icon bg-saddle-50 text-saddle"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.648 3.203a.75.75 0 01-1.088-.791l1.078-6.29-4.57-4.454a.75.75 0 01.416-1.28l6.317-.917L11.11 1.14a.75.75 0 011.346 0l2.826 5.72 6.317.917a.75.75 0 01.416 1.28l-4.57 4.454 1.078 6.29a.75.75 0 01-1.088.79l-5.648-3.203z"/></svg></span>
+                Farrier
+            </a>
+            <a href="{% url 'worming_create' %}?horse={{ horse.pk }}" hx-get="{% url 'worming_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Worming for {{ horse.name }}" role="menuitem" class="quick-view-menu-item">
+                <span class="quick-view-menu-icon bg-sand-50 text-saddle"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg></span>
+                Worming
+            </a>
+            <a href="{% url 'egg_count_create' %}?horse={{ horse.pk }}" hx-get="{% url 'egg_count_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Egg count for {{ horse.name }}" role="menuitem" class="quick-view-menu-item">
+                <span class="quick-view-menu-icon bg-sand-50 text-saddle"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/></svg></span>
+                Egg count
+            </a>
+            <a href="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-get="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Condition for {{ horse.name }}" role="menuitem" class="quick-view-menu-item">
+                <span class="quick-view-menu-icon bg-error-red-50 text-error-red"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/></svg></span>
+                Condition
+            </a>
+            <a href="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Vet visit for {{ horse.name }}" role="menuitem" class="quick-view-menu-item">
+                <span class="quick-view-menu-icon bg-error-red-50 text-error-red"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>
+                Vet visit
+            </a>
+            {% if horse.is_mare %}
+            <a href="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-get="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Breeding for {{ horse.name }}" role="menuitem" class="quick-view-menu-item">
+                <span class="quick-view-menu-icon bg-sage-50 text-forest"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"/></svg></span>
+                Breeding
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="popup-footer">
+    <button type="button" class="btn-secondary" @click="$store.popup.close()">Close</button>
+    <a href="{% url 'horse_detail' horse.pk %}" class="btn-primary">
+        Open full profile
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+    </a>
+</div>

@@ -187,6 +187,7 @@
         var body = popupBody();
         var s = store();
         if (!body) { return; }
+        body.classList.remove('popup-busy');
         var link = s && s.href
             ? ' <a href="' + s.href + '" class="link">Open the full page instead.</a>'
             : '';
@@ -211,6 +212,19 @@
         if (!isPopupTarget(e.detail.target)) { return; }
         var s = store();
         if (!s) { return; }
+        if (s.open && elt.closest('#popup-body')) {
+            // A trigger inside the sheet (a quick-view action) loads the
+            // next step into the same sheet. Keep the original opener and
+            // history entry — focus still returns to where the user
+            // started — and leave the current content up (dimmed) until
+            // the swap lands, so the element issuing the request stays in
+            // the DOM for the whole round trip.
+            s.title = elt.dataset.popupTitle;
+            s.dirty = false;
+            var body = popupBody();
+            if (body) { body.classList.add('popup-busy'); }
+            return;
+        }
         showSkeleton();
         s.show(elt.dataset.popupTitle, elt);
     });
@@ -222,6 +236,7 @@
     // the keyboard over the sheet, so the panel keeps focus).
     document.body.addEventListener('htmx:afterSwap', function (e) {
         if (!isPopupTarget(e.detail.target)) { return; }
+        e.detail.target.classList.remove('popup-busy');
         var s = store();
         var verb = e.detail.requestConfig && e.detail.requestConfig.verb;
         var fresh = !!e.detail.target.querySelector('[data-popup-fresh]');
