@@ -17,10 +17,12 @@
     {% endif %}
 
     <!-- Page Header -->
+    {% comment %}No visible <h1>: the tab bar names the section you are in
+    (the More tab relabels itself, see base.html) and the sidebar highlights
+    it on desktop. The heading stays for screen readers and the outline.
+    {% endcomment %}
+    <h1 class="sr-only">Invoices</h1>
     <div class="page-header">
-        <div>
-            <h1 class="page-title">Invoices</h1>
-        </div>
         <div class="flex flex-wrap items-center gap-2 sm:gap-3">
             <a href="{% url 'invoice_export_csv' %}?{{ request.GET.urlencode }}" class="btn-secondary" hx-boost="false">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -43,14 +45,23 @@
         </div>
     </div>
 
-    <!-- Search + Filters -->
-    <div class="card px-4 py-3 sm:px-5 sm:py-4">
+    {% comment %}Search stays in view — the app bar's search covers horses,
+    owners and locations, not invoices, so this is the only way to find one.
+    The four structured filters move behind the app bar's filter button:
+    they were holding four rows open for a page that mostly gets scrolled.
+    {% endcomment %}
+    <div @change="countFilters()"
+         x-data="listFilters({% if request.GET.owner or request.GET.status or request.GET.date_from or request.GET.date_to %}true{% else %}false{% endif %})">
+        {% include 'includes/_filter_toggle.html' %}
         <form method="get" class="space-y-3">
-            {% include 'includes/search_bar.html' with placeholder="Search invoices…" action_url=request.path %}
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="flex items-center gap-2">
+                {% include 'includes/search_bar.html' with placeholder="Search invoices…" action_url=request.path %}
+            </div>
+            <div x-show="filtersOpen" x-collapse x-cloak>
+            <div class="card px-4 py-3 sm:px-5 sm:py-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                     <label class="dt-label mb-1">Owner</label>
-                    <select name="owner" class="form-select"
+                    <select name="owner" class="form-select" data-filter-field
                             hx-get="{{ request.path }}" hx-trigger="change"
                             hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
                             hx-include="closest form" hx-push-url="true">
@@ -62,7 +73,7 @@
                 </div>
                 <div>
                     <label class="dt-label mb-1">Status</label>
-                    <select name="status" class="form-select"
+                    <select name="status" class="form-select" data-filter-field
                             hx-get="{{ request.path }}" hx-trigger="change"
                             hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
                             hx-include="closest form" hx-push-url="true">
@@ -74,14 +85,14 @@
                 </div>
                 <div>
                     <label class="dt-label mb-1">Period From</label>
-                    <input type="date" name="date_from" value="{{ request.GET.date_from }}" class="form-input"
+                    <input type="date" name="date_from" value="{{ request.GET.date_from }}" class="form-input" data-filter-field
                            hx-get="{{ request.path }}" hx-trigger="change"
                            hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
                            hx-include="closest form" hx-push-url="true">
                 </div>
                 <div>
                     <label class="dt-label mb-1">Period To</label>
-                    <input type="date" name="date_to" value="{{ request.GET.date_to }}" class="form-input"
+                    <input type="date" name="date_to" value="{{ request.GET.date_to }}" class="form-input" data-filter-field
                            hx-get="{{ request.path }}" hx-trigger="change"
                            hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
                            hx-include="closest form" hx-push-url="true">
@@ -91,6 +102,7 @@
                     <a href="{% url 'invoice_list' %}" class="btn-ghost text-xs">Clear filters</a>
                 </div>
                 {% endif %}
+            </div>
             </div>
         </form>
     </div>

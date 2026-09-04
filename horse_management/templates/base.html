@@ -302,13 +302,18 @@
                 <span class="tab-bar-label">Locations</span>
             </a>
             {% endif %}
+            {% comment %}The pages behind this button have no tab of their own,
+            so without help the bar says "More" while you stand on Invoices.
+            syncMoreTab() below relabels it with whatever the More sheet marks
+            as current — the sheet is the single source of truth, so nothing
+            here needs a second copy of the path-to-name mapping.{% endcomment %}
             <button type="button" @click="moreSheetOpen = !moreSheetOpen"
-                    class="tab-bar-item"
+                    id="more-tab" class="tab-bar-item"
                     :class="moreSheetOpen && 'active'">
                 <span class="tab-bar-icon">
                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
                 </span>
-                <span class="tab-bar-label">More</span>
+                <span class="tab-bar-label" data-more-label>More</span>
             </button>
         </div>
     </nav>
@@ -405,11 +410,11 @@
                             <p class="text-xs text-sage">{{ current_role_name }}</p>
                         </div>
                     </div>
-                    <a href="{% url 'app_settings' %}" class="sheet-nav-item">
+                    <a href="{% url 'app_settings' %}" class="{% if '/settings/' in request.path %}sheet-nav-item-active{% else %}sheet-nav-item{% endif %}">
                         <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                         Settings
                     </a>
-                    <a href="{% url 'password_change' %}" class="sheet-nav-item">
+                    <a href="{% url 'password_change' %}" class="{% if '/password' in request.path %}sheet-nav-item-active{% else %}sheet-nav-item{% endif %}">
                         <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
                         Change Password
                     </a>
@@ -499,6 +504,26 @@
         });
     };
 
+    // ── The More tab, labelled with the section you are in ──
+    // Pages under More have no tab of their own. Left alone the bar reads
+    // "More" while you stand on Invoices, which is the one thing a tab bar
+    // is for. The More sheet already knows which of its items is current
+    // (server-rendered, and re-picked after every boosted swap below), so
+    // read the answer off it rather than keeping a second path mapping here.
+    window.Yardway.syncMoreTab = function () {
+        var tab = document.getElementById('more-tab');
+        if (!tab) return;
+        var label = tab.querySelector('[data-more-label]');
+        var active = document.querySelector('.sheet-nav-item-active');
+        if (active && label) {
+            label.textContent = active.textContent.trim();
+            tab.classList.add('active');
+        } else {
+            if (label) label.textContent = 'More';
+            tab.classList.remove('active');
+        }
+    };
+
     // ── Progress bar ──
     document.body.addEventListener('htmx:beforeRequest', function (e) {
         if (!e.detail.boosted) return;
@@ -580,6 +605,7 @@
             if (!href || href === '#') return;
             a.className = (a === sheetActive) ? 'sheet-nav-item-active' : 'sheet-nav-item';
         });
+        window.Yardway.syncMoreTab();
         // Page title, toasts, Alpine, inline scripts
         var responseText = e.detail.xhr && e.detail.xhr.responseText;
         window.Yardway.afterMainSwap(main, responseText);
@@ -614,6 +640,9 @@
         }
     });
 
+    // First load: the sheet is server-rendered, so the label is available now.
+    window.Yardway.syncMoreTab();
+
     // ── Form submission feedback — loading spinner on submit buttons ──
     document.addEventListener('submit', function (e) {
         // Spin the button that was actually clicked — forms with two submits
@@ -637,6 +666,26 @@
 <!-- Register Alpine components before Alpine starts (loaded with defer) -->
 <script>
 document.addEventListener('alpine:init', function() {
+    // ── List filters ──
+    // The toggle lives in the app bar (teleported, see
+    // includes/_filter_toggle.html); the panel stays with the list. The
+    // count is read off the live controls rather than rendered server-side,
+    // because an HTMX filter change swaps only #list-results and would
+    // leave a server-rendered badge stale.
+    Alpine.data('listFilters', function (startOpen) {
+        return {
+            filtersOpen: !!startOpen,
+            filterCount: 0,
+            countFilters: function () {
+                var fields = this.$el.querySelectorAll('[data-filter-field]');
+                this.filterCount = Array.prototype.filter.call(fields, function (f) {
+                    return f.value;
+                }).length;
+            },
+            init: function () { this.countFilters(); }
+        };
+    });
+
     // ── Segmented control ──
     // Slides one filled thumb behind the selected option instead of
     // repainting two separate buttons. Options are links, so a click starts

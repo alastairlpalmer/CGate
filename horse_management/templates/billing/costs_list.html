@@ -9,7 +9,7 @@
     <!-- Page Header -->
     <div class="page-header">
         <div>
-            <h1 class="page-title">Costs</h1>
+            <h1 class="sr-only">Costs</h1>
             <p class="page-subtitle">All yard and rechargeable costs in one place</p>
         </div>
         <div class="flex items-center gap-2" x-data="{ open: false }">
@@ -68,32 +68,31 @@
         </div>
     </div>
 
-    <!-- Filters -->
-    <div class="card px-5 py-4">
-        <form method="get" class="flex flex-wrap items-end gap-4">
-            <!-- Date Period Pills -->
-            <div>
-                <label class="dt-label mb-1">Period</label>
-                <div class="inline-flex rounded-lg shadow-sm">
-                    <a href="?period=month{% if request.GET.category %}&category={{ request.GET.category|urlencode }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source|urlencode }}{% endif %}"
-                       class="px-3 py-2 min-h-[44px] sm:min-h-0 inline-flex items-center text-xs font-medium rounded-l-lg border {% if current_period == 'month' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
-                        Month
-                    </a>
-                    <a href="?period=quarter{% if request.GET.category %}&category={{ request.GET.category|urlencode }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source|urlencode }}{% endif %}"
-                       class="px-3 py-2 min-h-[44px] sm:min-h-0 inline-flex items-center text-xs font-medium border-t border-b {% if current_period == 'quarter' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
-                        Quarter
-                    </a>
-                    <a href="?period=year{% if request.GET.category %}&category={{ request.GET.category|urlencode }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source|urlencode }}{% endif %}"
-                       class="px-3 py-2 min-h-[44px] sm:min-h-0 inline-flex items-center text-xs font-medium rounded-r-lg border {% if current_period == 'year' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
-                        Year
-                    </a>
-                </div>
-            </div>
+    {% comment %}Period leads: it frames every figure below, so it stays in
+    view. Category, type and supplier move behind the app bar's filter
+    button — three fields that most visits never touch.{% endcomment %}
+    <div class="segmented-scroll">
+        <div class="segmented" x-data="segmented" role="group" aria-label="Period">
+            <span class="segmented-thumb" x-ref="thumb" aria-hidden="true"></span>
+            {% for key, label in period_options %}
+            <a href="?period={{ key }}{% if request.GET.category %}&category={{ request.GET.category|urlencode }}{% endif %}{% if request.GET.source %}&source={{ request.GET.source|urlencode }}{% endif %}"
+               @click="pick($el)"
+               class="segmented-item{% if current_period == key %} is-active{% endif %}"
+               {% if current_period == key %}aria-current="true"{% endif %}>{{ label }}</a>
+            {% endfor %}
+        </div>
+    </div>
 
+    <!-- Filters -->
+    <div @change="countFilters()"
+         x-data="listFilters({% if request.GET.category or request.GET.source or request.GET.supplier %}true{% else %}false{% endif %})">
+        {% include 'includes/_filter_toggle.html' %}
+        <form method="get" x-show="filtersOpen" x-collapse x-cloak>
+        <div class="card px-5 py-4 flex flex-wrap items-end gap-4">
             <!-- Category -->
             <div>
                 <label class="dt-label mb-1">Category</label>
-                <select name="category" class="form-select w-auto">
+                <select name="category" class="form-select w-auto" data-filter-field>
                     <option value="">All categories</option>
                     {% for val, label in all_categories %}
                     <option value="{{ val }}" {% if request.GET.category == val %}selected{% endif %}>{{ label }}</option>
@@ -104,7 +103,7 @@
             <!-- Source -->
             <div>
                 <label class="dt-label mb-1">Type</label>
-                <select name="source" class="form-select w-auto">
+                <select name="source" class="form-select w-auto" data-filter-field>
                     <option value="">All costs</option>
                     <option value="rechargeable" {% if request.GET.source == 'rechargeable' %}selected{% endif %}>Rechargeable only</option>
                     <option value="yard" {% if request.GET.source == 'yard' %}selected{% endif %}>Yard costs only</option>
@@ -114,7 +113,7 @@
             <!-- Supplier -->
             <div>
                 <label class="dt-label mb-1">Supplier</label>
-                <input type="text" name="supplier" value="{{ request.GET.supplier }}" placeholder="Search supplier..." class="form-input w-auto">
+                <input type="text" name="supplier" value="{{ request.GET.supplier }}" placeholder="Search supplier..." class="form-input w-auto" data-filter-field>
             </div>
 
             <!-- Hidden period pass-through -->
@@ -129,6 +128,7 @@
                 </button>
                 <a href="{% url 'costs_list' %}" class="btn-secondary">Clear</a>
             </div>
+        </div>
         </form>
     </div>
 

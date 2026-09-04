@@ -6,10 +6,12 @@
 <div class="space-y-6">
 
     <!-- Page Header -->
+    {% comment %}No visible <h1>: the tab bar names the section you are in
+    (the More tab relabels itself, see base.html) and the sidebar highlights
+    it on desktop. The heading stays for screen readers and the outline.
+    {% endcomment %}
+    <h1 class="sr-only">Extra Charges</h1>
     <div class="page-header">
-        <div>
-            <h1 class="page-title">Extra Charges</h1>
-        </div>
         <div class="flex items-center gap-3">
             <a href="{% url 'provider_list' %}" class="btn-secondary">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -26,14 +28,19 @@
         </div>
     </div>
 
-    <!-- Search + Filters -->
-    <div class="card px-4 py-3 sm:px-5 sm:py-4">
+    {% comment %}Search stays in view; the four structured filters move behind
+    the app bar's filter button rather than holding rows open on every visit.
+    {% endcomment %}
+    <div @change="countFilters()"
+         x-data="listFilters({% if request.GET.invoiced or request.GET.type or request.GET.horse or request.GET.owner %}true{% else %}false{% endif %})">
+        {% include 'includes/_filter_toggle.html' %}
         <form method="get" class="space-y-3">
             {% include 'includes/search_bar.html' with placeholder="Search description, horse, owner, provider…" action_url=request.path %}
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div x-show="filtersOpen" x-collapse x-cloak>
+            <div class="card px-4 py-3 sm:px-5 sm:py-4 grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div>
                     <label class="dt-label mb-1">Invoiced</label>
-                    <select name="invoiced" class="form-select"
+                    <select name="invoiced" class="form-select" data-filter-field
                             hx-get="{{ request.path }}" hx-trigger="change"
                             hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
                             hx-include="closest form" hx-push-url="true">
@@ -44,7 +51,7 @@
                 </div>
                 <div>
                     <label class="dt-label mb-1">Type</label>
-                    <select name="type" class="form-select"
+                    <select name="type" class="form-select" data-filter-field
                             hx-get="{{ request.path }}" hx-trigger="change"
                             hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
                             hx-include="closest form" hx-push-url="true">
@@ -56,7 +63,7 @@
                 </div>
                 <div>
                     <label class="dt-label mb-1">Horse</label>
-                    <select name="horse" class="form-select"
+                    <select name="horse" class="form-select" data-filter-field
                             hx-get="{{ request.path }}" hx-trigger="change"
                             hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
                             hx-include="closest form" hx-push-url="true">
@@ -68,7 +75,7 @@
                 </div>
                 <div>
                     <label class="dt-label mb-1">Owner</label>
-                    <select name="owner" class="form-select"
+                    <select name="owner" class="form-select" data-filter-field
                             hx-get="{{ request.path }}" hx-trigger="change"
                             hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
                             hx-include="closest form" hx-push-url="true">
@@ -83,6 +90,7 @@
                     <a href="{% url 'charge_list' %}" class="btn-ghost text-xs">Clear filters</a>
                     {% endif %}
                 </div>
+            </div>
             </div>
         </form>
     </div>
