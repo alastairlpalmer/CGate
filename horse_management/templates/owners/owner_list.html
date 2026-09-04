@@ -5,12 +5,11 @@
 {% block content %}
 <div class="space-y-6">
 
-    <!-- Page Header -->
-    <div class="page-header">
-        <div>
-            <h1 class="page-title">Owners</h1>
-        </div>
-    </div>
+    {% comment %}No visible <h1>: the tab bar names the section you are in
+    (the More tab relabels itself, see base.html) and the sidebar highlights
+    it on desktop. The heading stays for screen readers and the outline.
+    {% endcomment %}
+    <h1 class="sr-only">Owners</h1>
 
     <div id="list-results" class="space-y-6">
 

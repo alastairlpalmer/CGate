@@ -418,6 +418,11 @@ class CostsListView(FeatureAccessMixin, ListView):
 
         context['period_label'] = period_label
         context['current_period'] = self.request.GET.get('period', 'month')
+        # Drives the period rail in the template, so the options live in one
+        # place rather than three near-identical links.
+        context['period_options'] = (
+            ('month', 'Month'), ('quarter', 'Quarter'), ('year', 'Year'),
+        )
 
         # Merged category choices for filter dropdown
         all_categories = []
