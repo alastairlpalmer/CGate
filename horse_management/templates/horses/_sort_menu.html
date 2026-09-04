@@ -5,22 +5,78 @@ Render it inside a relatively positioned parent that owns an Alpine
 `sortOpen` flag — the "Group by" toggle, or the standalone Sort button on
 the Departed and search views.
 
-Everything that changes what the list shows lives here: how the groups
-order, how the horses order, whether empty groups appear, and the window
-the land-use figures cover. The toolbar stays a set of group buttons.
+Everything that changes what the list shows lives here: which set of
+horses (Active, Departed, or the Movements log), how the groups order, how
+the horses order, whether empty groups appear, and the window the land-use
+figures cover. The toolbar stays a set of group buttons.
+
+The "Show" block at the top is the one control that applies on every view,
+so it is styled apart from the sort rows: blue chips, the selected one
+filled, the others outlined.
 
 Context (from HorseListView):
+  status              required — 'current' or 'departed'
+  shows_movements     required — the Movements log is open
+  movements_available required — whether the Movements option is offered
+  total_current       required — count for the Active chip
+  total_departed      required — count for the Departed chip
   sort_options        required — one row per horse sort key
   layout_options      optional — how a grouped axis lays its groups out
   group_sort_options  optional — only the grouped views order groups too
   show_empty          optional — the grouped views can list empty groups
+  use_filter_options  optional — the location axis can limit its groups
+                      to a set of use cases (one tick per case)
   usage_ranges        optional — the land axes carry a land-use window
+  menu_align          optional — 'left' hangs the menu from the trigger's
+                      left edge (for a trigger at the start of the row);
+                      the default hangs it from the right.
 {% endcomment %}
 <div x-show="sortOpen" x-cloak x-transition
      @click.outside="sortOpen = false"
      @keydown.escape.window="sortOpen = false"
-     class="absolute right-0 top-full mt-2 w-56 py-1 bg-white rounded-lg shadow-lg border border-light-sage z-30 max-h-[70vh] overflow-y-auto text-left"
-     role="menu" aria-label="Sort options">
+     class="absolute {% if menu_align == 'left' %}left-0{% else %}right-0{% endif %} top-full mt-2 w-56 py-1 bg-white rounded-lg shadow-lg border border-light-sage z-30 max-h-[70vh] overflow-y-auto text-left"
+     role="menu" aria-label="Show and sort options">
+
+    {% comment %}Which horses. The search box is kept in the links so a
+    search carries across Active and Departed; Movements is a different
+    list, so it starts clean.{% endcomment %}
+    <p class="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sage">Show</p>
+    <div class="px-2 pb-1 space-y-1" role="group" aria-label="Which horses">
+        <a href="{% url 'horse_list' %}{% if request.GET.search %}?search={{ request.GET.search|urlencode }}{% endif %}"
+           role="menuitemradio" aria-checked="{% if status == 'current' and not shows_movements %}true{% else %}false{% endif %}"
+           class="show-chip{% if status == 'current' and not shows_movements %} is-active{% endif %}">
+            <span class="w-1.5 h-1.5 rounded-full bg-current opacity-70 shrink-0"></span>
+            <span class="flex-1">Active</span>
+            <span class="show-chip-count">{{ total_current }}</span>
+        </a>
+        <a href="{% url 'horse_list' %}?status=departed{% if request.GET.search %}&search={{ request.GET.search|urlencode }}{% endif %}"
+           role="menuitemradio" aria-checked="{% if status == 'departed' and not shows_movements %}true{% else %}false{% endif %}"
+           class="show-chip{% if status == 'departed' and not shows_movements %} is-active{% endif %}">
+            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/>
+            </svg>
+            <span class="flex-1">Departed</span>
+            <span class="show-chip-count">{{ total_departed }}</span>
+        </a>
+        {% if movements_available %}
+        {% comment %}The placement log. Same view as the Locations page's
+        Movement History tab — it stays there too.{% endcomment %}
+        <a href="{% url 'horse_list' %}?tab=movements"
+           role="menuitemradio" aria-checked="{% if shows_movements %}true{% else %}false{% endif %}"
+           class="show-chip{% if shows_movements %} is-active{% endif %}">
+            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
+            </svg>
+            <span class="flex-1">Movements</span>
+        </a>
+        {% endif %}
+    </div>
+
+    {% if shows_movements %}
+    {% comment %}The Movements log has its own status filter in the toolbar
+    and does not sort like a horse list, so the menu stops here.{% endcomment %}
+    {% else %}
+    <div class="mt-1 border-t border-light-sage"></div>
 
     {% if layout_options %}
     <p class="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sage">Show as</p>
@@ -82,6 +138,35 @@ Context (from HorseListView):
     </a>
     {% endif %}
 
+    {% if use_filter_options %}
+    {% comment %}A tick-select, not a pick-one: "horses and mixed grazing"
+    is a normal question. No tick on any row means no filter — every location
+    shows, whatever its use case.{% endcomment %}
+    <p class="px-3 pt-2 pb-1 mt-1 border-t border-light-sage text-[10px] font-semibold uppercase tracking-wider text-sage">Use case</p>
+    <a href="{% querystring use=None page=None %}" role="menuitemcheckbox"
+       aria-checked="{% if use_filter %}false{% else %}true{% endif %}"
+       class="flex items-center justify-between gap-2 px-3 py-2 text-sm transition-colors hover:bg-parchment {% if not use_filter %}text-forest font-medium bg-light-sage/40{% else %}text-charcoal{% endif %}">
+        <span>All use cases</span>
+        {% if not use_filter %}
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+        </svg>
+        {% endif %}
+    </a>
+    {% for opt in use_filter_options %}
+    <a href="{% querystring use=opt.values page=None %}" role="menuitemcheckbox"
+       aria-checked="{% if opt.active %}true{% else %}false{% endif %}"
+       class="flex items-center justify-between gap-2 px-3 py-2 text-sm transition-colors hover:bg-parchment {% if opt.active %}text-forest font-medium bg-light-sage/40{% else %}text-charcoal{% endif %}">
+        <span>{{ opt.label }}</span>
+        {% if opt.active %}
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+        </svg>
+        {% endif %}
+    </a>
+    {% endfor %}
+    {% endif %}
+
     {% if shows_usage %}
     <p class="px-3 pt-2 pb-1 mt-1 border-t border-light-sage text-[10px] font-semibold uppercase tracking-wider text-sage">Land use over</p>
     {% for key, label in usage_ranges %}
@@ -95,5 +180,6 @@ Context (from HorseListView):
         {% endif %}
     </a>
     {% endfor %}
+    {% endif %}
     {% endif %}
 </div>

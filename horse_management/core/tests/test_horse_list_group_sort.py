@@ -5,6 +5,7 @@ Each grouping offers its own sort menu; the Departed tab and search
 results are flat lists with a sort menu of their own.
 """
 
+import re
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
@@ -257,3 +258,60 @@ class HorseListGroupSortTests(TestCase):
                 response = self._get(**params)
                 self.assertEqual(response.status_code, 200)
                 self.assertContains(response, 'Sort by')
+
+    # ── The "Show" block: Active / Departed / Movements in the menu ──
+
+    def test_show_block_marks_the_open_view(self):
+        """Which list you are on is picked inside the Sort pop-out, on every
+        view, and the chip for the open list is the filled one."""
+        cases = (
+            ({}, 'Active'),
+            ({'status': 'departed'}, 'Departed'),
+            ({'search': 'a'}, 'Active'),
+            ({'tab': 'movements'}, 'Movements'),
+        )
+        for params, expected in cases:
+            with self.subTest(**params):
+                response = self._get(**params)
+                self.assertEqual(response.status_code, 200)
+                html = response.content.decode()
+                chips = re.findall(
+                    r'class="show-chip( is-active)?">\s*(?:<[^>]+>\s*)*(?:<[^>]+>)?'
+                    r'\s*<span class="flex-1">(\w+)</span>',
+                    html,
+                )
+                self.assertEqual(
+                    [label for _, label in chips],
+                    ['Active', 'Departed', 'Movements'],
+                )
+                self.assertEqual(
+                    [label for active, label in chips if active],
+                    [expected],
+                )
+
+    def test_show_block_carries_the_counts(self):
+        response = self._get()
+        self.assertContains(
+            response,
+            '<span class="show-chip-count">%d</span>'
+            % response.context['total_current'],
+        )
+        self.assertContains(
+            response,
+            '<span class="show-chip-count">%d</span>'
+            % response.context['total_departed'],
+        )
+
+    def test_movements_menu_has_no_horse_sorts(self):
+        """The placement log does not sort like a horse list: its menu is
+        the Show block alone, reached from a "View" button."""
+        response = self._get(tab='movements')
+        self.assertContains(response, 'show-chip')
+        self.assertNotContains(response, 'Sort by')
+        self.assertNotContains(response, 'Order horses by')
+        self.assertContains(response, 'View')
+
+    def test_toolbar_no_longer_has_the_second_rail(self):
+        response = self._get()
+        self.assertNotContains(response, 'aria-label="Which horses"><span class="segmented-thumb"')
+        self.assertNotContains(response, 'Rail 2')

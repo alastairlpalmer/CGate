@@ -142,16 +142,28 @@
     /* min-h keeps all four cards equal height when only some have a meta line */
     .kpi-meta { @apply text-xs text-sage mt-2 min-h-[1rem]; }
 
-    /* Quick find dropdown (dashboard search) */
-    .quick-find-group-label { @apply px-4 pt-3 pb-1 text-[11px] font-semibold text-sage uppercase tracking-widest; }
-    .quick-find-item { @apply flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-charcoal hover:bg-light-sage focus:bg-light-sage focus:outline-none transition-colors duration-100; }
+    /* App bar search — the box that reaches horses, owners and locations
+       from every page. It fills its row, so it is taller and rounder than
+       a form field; the focus ring is the brand teal, not the form sage. */
+    .app-search-input { @apply block w-full h-11 sm:h-10 pl-11 pr-11 rounded-card bg-white border border-sage/30 shadow-card text-base sm:text-[15px] text-charcoal placeholder:text-sage hover:border-sage/60 focus:outline-none focus:border-forest focus:ring-4 focus:ring-forest/10 transition-[border-color,box-shadow] duration-150; }
+    .app-search-kbd { @apply inline-flex items-center justify-center h-[18px] min-w-[18px] px-1 rounded border border-sage/30 bg-white font-mono text-[10px] font-medium leading-none text-sage; }
+    .app-search-panel { @apply absolute left-4 right-4 sm:left-0 sm:right-0 top-full mt-2 z-30 bg-white rounded-card border border-light-sage shadow-float overflow-hidden; }
+    .app-search-hint { @apply flex items-center gap-3 px-1.5 py-1.5 text-sm text-charcoal-light; }
+    /* The page actions beside the box match its desktop height (icon buttons are 36px by default). */
+    .app-bar .btn-icon-base { @apply sm:w-10 sm:h-10; }
+
+    /* Results inside the panel */
+    .quick-find-group-label { @apply px-4 pt-2.5 pb-1 text-[11px] font-semibold text-sage uppercase tracking-widest; }
+    .quick-find-item { @apply flex items-center gap-3 mx-1.5 px-2.5 py-2 rounded-btn text-sm text-charcoal hover:bg-light-sage focus:bg-light-sage focus:outline-none transition-colors duration-100; }
+    .quick-find-icon { @apply inline-flex items-center justify-center w-7 h-7 rounded-lg bg-sage-50 text-forest shrink-0; }
+    .quick-find-tag { @apply text-xs text-sage shrink-0; }
+    .quick-find-more { @apply flex items-center gap-1.5 mx-1.5 px-2.5 py-1.5 rounded-btn text-xs font-medium text-forest hover:bg-light-sage focus:bg-light-sage focus:outline-none transition-colors duration-100; }
     .app-bar-add-item { @apply flex items-center gap-2.5 px-4 py-2.5 text-sm text-charcoal hover:bg-parchment focus:bg-parchment focus:outline-none transition-colors duration-100; }
-    .quick-find-more { @apply block px-4 py-2 text-xs font-medium text-forest hover:bg-light-sage focus:bg-light-sage focus:outline-none transition-colors duration-100; }
 }
 
-/* Quick find panel: no empty white box while results are still loading
+/* Search panel: no blank strip while the results are still on their way
    (kept outside @layer — :empty with !important must beat Alpine's x-show) */
-#quick-find-results:empty { display: none !important; }
+#app-search-results:empty { display: none !important; }
 
 @layer components {
 
@@ -207,8 +219,21 @@
     .segmented-scroll { @apply -mx-4 px-4 overflow-x-auto sm:mx-0 sm:px-0 sm:overflow-visible; scrollbar-width: none; }
     .segmented-scroll::-webkit-scrollbar { display: none; }
 
-    /* Toolbar strip above a list: the two segmented rails plus any page action */
+    /* Toolbar strip above a list: the segmented rail plus any page action */
     .list-toolbar { @apply flex flex-col gap-2.5; }
+
+    /* ── "Show" chips in the horse-list Sort pop-out ──
+       Active / Departed / Movements sit at the top of the menu, and they
+       change which list you are on rather than how it sorts, so they are
+       set apart from the sort rows: bold blue chips, the current one filled
+       and the others outlined. */
+    .show-chip {
+        @apply flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg border no-underline transition-colors duration-150;
+        @apply bg-white border-info-blue text-info-blue hover:bg-info-blue-50;
+    }
+    .show-chip.is-active { @apply bg-info-blue border-info-blue text-white hover:bg-info-blue; }
+    .show-chip-count { @apply inline-flex items-center justify-center min-w-[20px] px-1.5 h-5 text-[11px] font-semibold tabular-nums rounded-full bg-info-blue-50 text-info-blue; }
+    .show-chip.is-active .show-chip-count { @apply bg-white/20 text-white; }
 
     /* Mobile Bottom Tab Bar — the active tab inverts: its icon sits in a
        filled Brim pill, so the current section is unmistakable */

@@ -166,6 +166,7 @@ GROUP_SORT_LABELS = {
     '-name': 'Name Z–A',
     '-count': 'Most horses first',
     'count': 'Fewest horses first',
+    'usage': 'Use case',
 }
 # Location groups run inside a site heading, so their labels say so.
 GROUP_SORT_LABEL_OVERRIDES = {
@@ -174,9 +175,26 @@ GROUP_SORT_LABEL_OVERRIDES = {
         '-name': 'Name Z–A, in site',
         '-count': 'Fullest first, empty last',
         'count': 'Emptiest first, in site',
+        'usage': 'Use case, in site',
     },
 }
 GROUP_SORT_OPTIONS = ('name', '-name', '-count', 'count')
+# Only locations carry a use case, so only their groups can order by it.
+GROUP_SORT_OPTIONS_BY_AXIS = {
+    'location': GROUP_SORT_OPTIONS + ('usage',),
+}
+
+# The use-case filter reads on the location axis alone: its groups are
+# the locations themselves, so "show me the mixed grazing" is a question
+# about which groups appear. In a site table or under Owner a location's
+# use case is one input among several, not the thing the group is.
+AXES_WITH_USE_FILTER = ('location',)
+
+# Order the use cases print in — the order they are declared in, which
+# puts the horse ground first and the odd cases last.
+USAGE_ORDER = {
+    value: index for index, (value, _label) in enumerate(Location.Usage.choices)
+}
 
 # Locations print under a heading per site, and the useful thing to see
 # first inside a site is where the horses are — which drops empty ground
@@ -337,6 +355,13 @@ def _sort_groups(groups, group_sort, site_major=False):
         # A group with no site ("No Location") sorts after every real one.
         return (group.get('site') or '\uffff').lower()
 
+    if group_sort == 'usage':
+        # A group with no use case ("No Location") sorts after every real one.
+        return sorted(groups, key=lambda g: (
+            site(g),
+            USAGE_ORDER.get(g.get('usage'), len(USAGE_ORDER)),
+            g['name'].lower(),
+        ))
     if group_sort == '-count':
         return sorted(groups, key=lambda g: (site(g), -g['count'], g['name'].lower()))
     if group_sort == 'count':
@@ -489,10 +514,33 @@ class HorseListView(FeatureAccessMixin, ListView):
         return DEFAULT_SORT
 
     @property
+    def group_sort_options(self):
+        return GROUP_SORT_OPTIONS_BY_AXIS.get(
+            self.sort_context, GROUP_SORT_OPTIONS,
+        )
+
+    @property
     def group_sort(self):
         default = GROUP_SORT_DEFAULT.get(self.sort_context, DEFAULT_SORT)
         value = self.request.GET.get('gsort', default)
-        return value if value in GROUP_SORT_OPTIONS else default
+        return value if value in self.group_sort_options else default
+
+    @property
+    def shows_use_filter(self):
+        return self.group_kind in AXES_WITH_USE_FILTER
+
+    @property
+    def use_filter(self):
+        """The use cases the location groups are limited to.
+
+        ``?use=horses&use=mixed`` — one value per tick in the menu. Empty
+        means no filter, which is the default. Unknown values are dropped
+        rather than erroring, so a stale bookmark still shows the horses.
+        """
+        if not self.shows_use_filter:
+            return []
+        wanted = set(self.request.GET.getlist('use'))
+        return [value for value in USAGE_ORDER if value in wanted]
 
     def get_paginate_by(self, queryset):
         # The Movements tab shows a placement log, not horses.
@@ -696,8 +744,26 @@ class HorseListView(FeatureAccessMixin, ListView):
                 'label': group_labels[key],
                 'active': key == self.group_sort,
             }
-            for key in GROUP_SORT_OPTIONS
+            for key in self.group_sort_options
         ] if self.group_by in GROUPED_AXES else None
+        context['shows_use_filter'] = self.shows_use_filter
+        context['use_filter'] = self.use_filter
+        # One tick per use case. Each row's href carries the set that
+        # clicking it would leave behind: this value added or removed.
+        # The querystring tag writes a list as repeated ``use=`` params
+        # and drops the key for None.
+        context['use_filter_options'] = [
+            {
+                'key': value,
+                'label': label,
+                'active': value in self.use_filter,
+                'values': [
+                    v for v in USAGE_ORDER
+                    if (v in self.use_filter) != (v == value)
+                ] or None,
+            }
+            for value, label in Location.Usage.choices
+        ] if self.shows_use_filter else None
         # Location.objects.active() hides archived fields (from main).
         context['locations'] = Location.objects.active().order_by('site', 'name')
         context['owners'] = Owner.objects.values('pk', 'name').order_by('name')
@@ -829,18 +895,29 @@ class HorseListView(FeatureAccessMixin, ListView):
                 pk__in=by_location
             ).order_by('site', 'name')
 
+        # The use-case filter limits which locations print, and with them
+        # the horses standing on the locations it leaves out.
+        use_filter = self.use_filter
+        if use_filter:
+            spine = spine.filter(usage__in=use_filter)
+
         for location in spine:
             groups.append(
                 _location_group(location, by_location.pop(location.pk, []))
             )
 
         # A horse on an archived field still has to appear somewhere.
-        for location in Location.objects.filter(pk__in=by_location):
+        leftover = Location.objects.filter(pk__in=by_location)
+        if use_filter:
+            leftover = leftover.filter(usage__in=use_filter)
+        for location in leftover:
             groups.append(_location_group(location, by_location[location.pk]))
         groups.sort(key=lambda g: ((g['site'] or '').lower(),
                                    g['name'].lower()))
 
-        if unplaced:
+        # A horse with no location has no use case, so it has no place
+        # in a list limited to one.
+        if unplaced and not use_filter:
             groups.append({
                 'kind': 'location', 'name': 'No Location', 'pk': None,
                 'location_ids': [], 'site': '',
