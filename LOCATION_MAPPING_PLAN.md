@@ -148,13 +148,13 @@ Findings from the repository on 2026-09-04.
 | 3 | ORM | Django ORM. |
 | 4 | Site and Location models | **No Site model exists.** `core.Location` (`core_location`, integer PK) has `name`, `site` (CharField 100), `usage`, `description`, `capacity`, `is_archived`, `archived_at`, timestamps. Sites are distinct `site` strings. `DashboardPreference.site` (CharField, blank = all sites) stores the dashboard's chosen site per user. |
 | 5 | Where the Google Maps link lives | `Location.description`, a free-text `TextField`. No dedicated column. Rendered as plain text, not as a link, on both the list and the detail page. |
-| 6 | How many locations, how many with a link | Not countable from the repo; this environment has no database. Run the command under this table in the Railway shell. |
+| 6 | How many locations, how many with a link | **26 active locations. 19 have a maps link in the description. 7 have none.** Counted in production on 2026-09-04 with the command under this table. |
 | 7 | Tests | Django test runner, 913 tests, in-memory SQLite, migrations skipped (`horse_management/test_settings.py`). CI also runs `ruff check .` and `makemigrations --check`. **There is no JS test runner.** |
 | 8 | Feature flags | None. Two related systems exist: per-role feature access (`core/features.py`: hidden / view / full per area) and the per-user dashboard widget registry (`core/dashboard_widgets.py`). Decision: one env setting `LOCATION_MAPS_ENABLED` (see 3.1) plus a registry widget for the dashboard card. |
 | 9 | HTTPS | Yes in production (Railway; Vercel at the edge). `SECURE_PROXY_SSL_HEADER` is set. Dev runs on plain `http://127.0.0.1:8000`, which browsers treat as secure. A phone on a LAN IP is **not** a secure context. |
 | 10 | Map library | None. No Leaflet, Turf or Mapbox anywhere. |
 
-Command for question 6:
+Command used for question 6, run in the Web container with `railway ssh`:
 
 ```bash
 python manage.py shell -c "from core.models import Location; q=Location.objects.active(); print(q.count(), q.filter(description__iregex=r'goo\.gl|google\.[a-z.]+/maps').count())"
@@ -717,7 +717,7 @@ The phone must load the app over **HTTPS**. `http://<lan-ip>:8000` from the dev 
 | Phase | Ships what | Gate before continuing |
 |---|---|---|
 | 0 | A recon report | Done. Section 3. |
-| 1 | Coordinates on every location | Backfill report reviewed. Unresolved list is manageable. |
+| 1 | Coordinates on every location | Backfill report reviewed. With 19 links, expect 13–17 resolved and about 9–13 locations to enter by hand. |
 | 2 | Nearest location chip | Used by real operators for one week. If nobody taps it, stop here. |
 | 4a | A parser command. No user-facing change. | A real export file is in hand. Real boundaries are in the dev database. |
 | 3 | Map tab and dashboard card | Circles look right with no boundaries present, and polygons look right with them |
