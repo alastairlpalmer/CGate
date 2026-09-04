@@ -66,6 +66,7 @@
             open: false,
             title: '',
             dirty: false,
+            accent: false,  // outlined panel (trigger has data-popup-accent)
             opener: null,   // the trigger element, for focus return + abort
             href: '',       // full-page fallback URL, shown if the load fails
             flashId: '',    // id of the row the trigger sat in, flashed after a save
@@ -74,6 +75,7 @@
                 this.title = title || '';
                 this.opener = opener || null;
                 this.href = (opener && opener.getAttribute('href')) || '';
+                this.accent = !!(opener && opener.dataset && opener.dataset.popupAccent !== undefined);
                 // Remember which row the sheet was opened from, so the page
                 // can point at what changed once it refreshes (UI audit 3.10).
                 var anchor = opener && opener.closest ? opener.closest('[id]') : null;
@@ -112,6 +114,7 @@
                 if (opener && window.htmx) { htmx.trigger(opener, 'htmx:abort'); }
                 this.open = false;
                 this.dirty = false;
+                this.accent = false;
                 this.opener = null;
                 document.documentElement.classList.remove('overflow-hidden');
                 var body = document.getElementById('popup-body');

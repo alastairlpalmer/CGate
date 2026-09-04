@@ -167,7 +167,6 @@ class RowGroupingTests(DashboardDataTestCase):
         self.assertIn(f'horse_ids={a.pk}', row.action.url)
         self.assertIn(f'horse_ids={b.pk}', row.action.url)
         self.assertIn('action_type=farrier', row.action.url)
-        self.assertIn('popup=1', row.action.url)
 
     def test_visit_row_has_no_bulk_action_for_view_only(self):
         a = self.horse('Huella')

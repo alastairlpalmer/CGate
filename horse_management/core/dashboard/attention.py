@@ -680,7 +680,7 @@ def _bulk_action(kind, horses, user):
     label = 'farrier visit' if kind == 'farrier' else 'vaccination'
     return Action(
         label=f'Record for {len(horses)}',
-        url=reverse('bulk_health_form') + f'?action_type={action_type}&popup=1&{ids}',
+        url=reverse('bulk_health_form') + f'?action_type={action_type}&{ids}',
         popup_title=f'Record {label} for {len(horses)} horses',
         style='primary',
     )

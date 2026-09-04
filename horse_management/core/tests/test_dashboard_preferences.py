@@ -455,7 +455,7 @@ class DashboardPageTests(TestCase):
         body = resp.content.decode()
         self.assertIn('Record for 2', body)
         self.assertIn('1 thing needs doing', body)
-        self.assertIn(f'action_type=farrier&amp;popup=1&amp;horse_ids={a.pk}&amp;horse_ids={b.pk}', body)
+        self.assertIn(f'action_type=farrier&amp;horse_ids={a.pk}&amp;horse_ids={b.pk}', body)
 
     def test_view_only_health_role_gets_no_action_buttons(self):
         field = Location.objects.create(name='Top Paddock', site='Main')
@@ -546,13 +546,12 @@ class BulkFormPopupTests(TestCase):
 
     def test_get_renders_preselected_horses(self):
         url = (reverse('bulk_health_form')
-               + f'?action_type=farrier&popup=1&horse_ids={self.a.pk}&horse_ids={self.b.pk}')
+               + f'?action_type=farrier&horse_ids={self.a.pk}&horse_ids={self.b.pk}')
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         body = resp.content.decode()
         self.assertIn(f'name="horse_ids" value="{self.a.pk}"', body)
         self.assertIn(f'name="horse_ids" value="{self.b.pk}"', body)
-        self.assertIn('name="popup" value="1"', body)
         self.assertIn('Huella, True', body)
         self.assertIn('hx-target="#popup-body"', body)
         self.assertIn('Record for 2 horses', body)
@@ -560,7 +559,6 @@ class BulkFormPopupTests(TestCase):
     def test_post_records_for_every_horse_and_closes_the_sheet(self):
         resp = self.client.post(reverse('bulk_health_apply'), {
             'action_type': 'farrier',
-            'popup': '1',
             'horse_ids': [self.a.pk, self.b.pk],
             'date': self.today.isoformat(),
             'work_done': 'trim',
@@ -570,7 +568,9 @@ class BulkFormPopupTests(TestCase):
         self.assertEqual(resp['HX-Trigger'], 'popup:saved')
         self.assertEqual(FarrierVisit.objects.filter(horse__in=[self.a, self.b], date=self.today).count(), 2)
 
-    def test_modal_path_is_unchanged(self):
+    def test_list_page_bar_uses_the_same_sheet(self):
+        # The Horses / Locations / Owners action bar opens the same form in
+        # the same sheet, so its save closes the sheet the same way.
         resp = self.client.post(reverse('bulk_health_apply'), {
             'action_type': 'farrier',
             'horse_ids': [self.a.pk],
@@ -579,12 +579,12 @@ class BulkFormPopupTests(TestCase):
             'cost': '45.00',
         })
         self.assertEqual(resp.status_code, 204)
-        self.assertEqual(resp['HX-Trigger'], 'bulkActionComplete')
+        self.assertEqual(resp['HX-Trigger'], 'popup:saved')
 
     def test_popup_mode_needs_health_full(self):
         viewer = make_user_with_access('bulkviewer', dashboard='full', health='view')
         self.client.force_login(viewer)
-        url = reverse('bulk_health_form') + f'?action_type=farrier&popup=1&horse_ids={self.a.pk}'
+        url = reverse('bulk_health_form') + f'?action_type=farrier&horse_ids={self.a.pk}'
         self.assertEqual(self.client.get(url).status_code, 403)
 
 

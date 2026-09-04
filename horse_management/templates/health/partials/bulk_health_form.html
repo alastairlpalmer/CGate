@@ -1,33 +1,36 @@
 {% comment %}
-The bulk health form. Two homes:
+Bulk-action form, loaded into the shared pop-up sheet
+(includes/_popup_sheet.html). Two triggers open it:
 
-- The horse list's bulk modal (#bulk-form-container): the Alpine
-  bulkActions component injects the horse ids and the view answers with
-  HX-Trigger bulkActionComplete.
-- The dashboard's pop-up sheet (in_popup): the horses arrive preselected
-  in the URL, the form posts back to #popup-body, and a valid save answers
-  204 + popup:saved so the sheet closes and the page refreshes.
+- the "Apply to Selected" button in health/partials/bulk_action_bar.html
+  (Horses list, Owner and Location detail pages), with the ticked horses;
+- the dashboard inbox's "Record for N" (core/dashboard/attention.py).
+
+The selected horses travel with the form as hidden inputs, rendered by the
+server from the query string (GET) or the posted data (re-render after a
+validation error), so a second submit never loses the selection. A valid
+POST answers 204 + `HX-Trigger: popup:saved`: popup.js closes the sheet and
+refreshes #main-content in place.
 {% endcomment %}
-<form {% if in_popup %}method="post" action="{% url 'bulk_health_apply' %}" hx-post="{% url 'bulk_health_apply' %}" hx-target="#popup-body" hx-select="unset" hx-push-url="false" hx-swap="innerHTML"{% else %}hx-post="{% url 'bulk_health_apply' %}" hx-target="#bulk-form-container" hx-select="unset" hx-push-url="false" hx-swap="innerHTML"{% endif %}>
+<form method="post" action="{% url 'bulk_health_apply' %}"
+      hx-post="{% url 'bulk_health_apply' %}"
+      hx-target="#popup-body"
+      hx-select="unset" hx-push-url="false"
+      hx-swap="innerHTML">
     {% csrf_token %}
     <input type="hidden" name="action_type" value="{{ action_type }}">
-    {% if in_popup %}
-    <input type="hidden" name="popup" value="1">
-    {% for id in popup_horse_ids %}<input type="hidden" name="horse_ids" value="{{ id }}">{% endfor %}
-    {% endif %}
+    {% for id in horse_ids %}<input type="hidden" name="horse_ids" value="{{ id }}">{% endfor %}
 
     <fieldset class="p-4 sm:p-5 space-y-4">
-        <legend class="text-sm font-medium text-charcoal mb-2">{{ action_label }} Details</legend>
+        <legend class="text-sm font-medium text-charcoal mb-2">{{ action_label }} details</legend>
 
-        {% if in_popup and popup_horse_names %}
-        <p class="text-sm text-charcoal">
-            <span class="text-sage">For {{ popup_horse_names|length }} horse{{ popup_horse_names|length|pluralize }}:</span>
-            {{ popup_horse_names|join:", " }}
+        <p class="text-sm text-charcoal -mt-1">
+            <span class="text-sage">For {{ horse_ids|length }} horse{{ horse_ids|length|pluralize }}{% if horse_names %}:{% endif %}</span>
+            {% if horse_names %}{{ horse_names|join:", " }}{% endif %}
         </p>
-        {% endif %}
 
         {% if form.non_field_errors %}
-        <div class="rounded-md bg-error-red-50 border border-error-red/20 p-3">
+        <div class="rounded-md bg-error-red-50 border border-error-red/20 p-3" role="alert">
             {% for error in form.non_field_errors %}
             <p class="text-sm text-error-red">{{ error }}</p>
             {% endfor %}
@@ -52,14 +55,14 @@ The bulk health form. Two homes:
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {% for field in form %}
-            <div class="{% if field.name == 'notes' or field.name == 'diagnosis' or field.name == 'treatment' %}sm:col-span-2{% endif %}">
+            <div class="{% if field.name == 'notes' or field.name == 'diagnosis' or field.name == 'treatment' %}sm:col-span-2{% endif %}{% if field.errors %} field-invalid{% endif %}">
                 <label for="{{ field.id_for_label }}" class="dt-label mb-1">
                     {{ field.label }}
                     {% if field.field.required %}<span class="text-error-red">*</span>{% endif %}
                 </label>
                 {{ field }}
                 {% if field.errors %}
-                <p class="mt-1 text-sm text-error-red">{{ field.errors.0 }}</p>
+                <p class="form-error mt-1 text-sm text-error-red" role="alert">{{ field.errors.0 }}</p>
                 {% endif %}
                 {% if field.help_text %}
                 <p class="mt-1 text-xs text-sage">{{ field.help_text }}</p>
@@ -69,15 +72,8 @@ The bulk health form. Two homes:
         </div>
     </fieldset>
 
-    {% if in_popup %}
     <div class="popup-footer">
-        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
-        <button type="submit" class="btn-primary">Record for {{ popup_horse_ids|length }} horse{{ popup_horse_ids|length|pluralize }}</button>
+        <button type="button" @click="$store.popup.close()" class="btn-secondary text-sm">Cancel</button>
+        <button type="submit" class="btn-primary text-sm">{% if action_type in 'move,restore,expected_departure,actual_departure' %}Apply to{% else %}Record for{% endif %} {{ horse_ids|length }} horse{{ horse_ids|length|pluralize }}</button>
     </div>
-    {% else %}
-    <div class="flex items-center justify-end gap-3 px-5 py-4 border-t border-light-sage bg-parchment rounded-b-lg">
-        <button type="button" @click="modalOpen = false" class="btn-secondary text-sm">Cancel</button>
-        <button type="submit" class="btn-primary text-sm">Apply to Selected Horses</button>
-    </div>
-    {% endif %}
 </form>
