@@ -2,7 +2,7 @@
 Sort pop-out for the horse list.
 
 Render it inside a relatively positioned parent that owns an Alpine
-`sortOpen` flag — the "Group by" toggle, or the standalone Sort button on
+`sortOpen` flag — the "View" rail, or the standalone Sort button on
 the Departed and search views.
 
 Everything that changes what the list shows lives here: which set of
@@ -10,12 +10,16 @@ horses (Active, Departed, or the Movements log), how the groups order, how
 the horses order, whether empty groups appear, and the window the land-use
 figures cover. The toolbar stays a set of group buttons.
 
-The "Show" block at the top is the one control that applies on every view,
-so it is styled apart from the sort rows: blue chips, the selected one
-filled, the others outlined.
+The "Show" block at the top changes which list you are on rather than how
+it sorts, so it is styled apart from the sort rows: blue chips, the
+selected one filled, the others outlined. It appears only where picking a
+list makes sense — the All axis, Departed, a search, and the log itself.
+The Location and Owner axes only shape the Active list, so their menus
+hold the grouping controls alone.
 
 Context (from HorseListView):
   status              required — 'current' or 'departed'
+  shows_switcher      required — whether the Show block appears
   shows_movements     required — the Movements log is open
   movements_available required — whether the Movements option is offered
   total_current       required — count for the Active chip
@@ -37,6 +41,7 @@ Context (from HorseListView):
      class="absolute {% if menu_align == 'left' %}left-0{% else %}right-0{% endif %} top-full mt-2 w-56 py-1 bg-white rounded-lg shadow-lg border border-light-sage z-30 max-h-[70vh] overflow-y-auto text-left"
      role="menu" aria-label="Show and sort options">
 
+    {% if shows_switcher %}
     {% comment %}Which horses. The search box is kept in the links so a
     search carries across Active and Departed; Movements is a different
     list, so it starts clean.{% endcomment %}
@@ -71,12 +76,13 @@ Context (from HorseListView):
         </a>
         {% endif %}
     </div>
+    {% endif %}
 
     {% if shows_movements %}
     {% comment %}The Movements log has its own status filter in the toolbar
     and does not sort like a horse list, so the menu stops here.{% endcomment %}
     {% else %}
-    <div class="mt-1 border-t border-light-sage"></div>
+    {% if shows_switcher %}<div class="mt-1 border-t border-light-sage"></div>{% endif %}
 
     {% if layout_options %}
     <p class="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sage">Show as</p>

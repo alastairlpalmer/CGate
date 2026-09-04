@@ -700,6 +700,24 @@ class HorseListView(FeatureAccessMixin, ListView):
                 ('active', 'Current'), ('ended', 'Ended'), ('all', 'All'),
             )
         context['group_by'] = self.group_by
+        # The toolbar rail: All, Location, Owner and (with the locations
+        # feature) Movements. The rail stays on the Movements view so the
+        # way back to the horse list is one click, not a hunt through a
+        # menu. On that view the Movements option is the lit one; group_by
+        # still reads 'all' there, so the rail cannot key off it alone.
+        context['rail_active'] = (
+            'movements' if self.shows_movements else self.group_by
+        )
+        # The Show block (Active / Departed / Movements) belongs on the
+        # views that pick which list you see: All, Departed, a search, and
+        # the log itself. A grouped axis only shapes the Active list, so
+        # its menu holds the grouping controls alone.
+        context['shows_switcher'] = (
+            self.shows_movements
+            or self.status == 'departed'
+            or self.is_searching
+            or self.group_by == 'all'
+        )
         context['group_kind'] = self.group_kind
         context['layout'] = self.layout
         context['layout_options'] = [

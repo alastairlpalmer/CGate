@@ -1,17 +1,22 @@
 {% comment %}
-One option in the horse-list "Group by" segmented rail.
+One option in the horse-list "View" segmented rail.
 
-Picking a different grouping is a plain link. Clicking the option that is
+Picking a different option is a plain link. Clicking the option that is
 already selected opens the Sort pop-out instead — an ancestor owns the
 Alpine `sortOpen` flag, and the rail owns `pick()`, which slides the thumb
 straight away rather than waiting for the page to come back.
 
-Params: key ('all' | 'location' | 'owner'), label.
+Which option is lit comes from `rail_active` (HorseListView): the group
+axis on the Active list, or 'movements' on the log. The group links drop
+the log's `tab` and `status` params so they always land on the Active
+list; the Movements link starts clean, as it is a different list.
+
+Params: key ('all' | 'location' | 'owner' | 'movements'), label.
 {% endcomment %}
-{% if key == group_by %}
+{% if key == rail_active %}
 <button type="button" @click="sortOpen = !sortOpen"
         :aria-expanded="sortOpen ? 'true' : 'false'" aria-haspopup="true"
-        title="Showing Active, sorted by {{ active_sort_label }} — click to change"
+        title="{% if key == 'movements' %}Showing Movements{% else %}Showing Active, sorted by {{ active_sort_label }}{% endif %} — click to change"
         class="segmented-item is-active">
     {% include 'horses/_group_icon.html' %}
     {{ label }}
@@ -21,8 +26,14 @@ Params: key ('all' | 'location' | 'owner'), label.
         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
     </svg>
 </button>
+{% elif key == 'movements' %}
+<a href="{% url 'horse_list' %}?tab=movements" @click="pick($el)"
+   class="segmented-item">
+    {% include 'horses/_group_icon.html' %}
+    {{ label }}
+</a>
 {% else %}
-<a href="{% querystring group_by=key page=None show_empty=None use=None %}" @click="pick($el)"
+<a href="{% querystring group_by=key page=None show_empty=None use=None tab=None status=None %}" @click="pick($el)"
    class="segmented-item">
     {% include 'horses/_group_icon.html' %}
     {{ label }}
