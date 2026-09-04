@@ -6,12 +6,13 @@
 {% block content %}
 <div class="space-y-6" x-data="{ filter: 'all' }">
 
-    {# ── A. Headline: the yard's state, not a greeting ── #}
+    {# ── A. Headline: the greeting, with the yard's state as the subtext ── #}
     <div class="page-header zone-enter" style="--i:0">
         <div class="min-w-0">
-            <h1 class="page-title">{{ headline }}</h1>
+            <h1 class="page-title">{{ greeting }}, {{ user.first_name|default:user.username }}</h1>
             <p class="page-subtitle">
-                {{ greeting }}, {{ user.first_name|default:user.username }} &middot; {% now "l j F Y" %}{% if site %} &middot; {{ site }}{% endif %}
+                <span class="{% if summary.things %}font-medium text-saddle{% else %}font-medium text-forest{% endif %}">{{ headline }}</span>
+                &middot; {% now "l j F Y" %}{% if site %} &middot; {{ site }}{% endif %}
             </p>
             {% if 'attention' in visible and rows %}
             <div class="mt-3 flex flex-wrap gap-2" role="group" aria-label="Filter what needs doing">

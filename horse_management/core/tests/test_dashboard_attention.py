@@ -460,7 +460,7 @@ class ActivityTests(DashboardDataTestCase):
         )
         days = activity.recent(self.admin, today=self.today)
         texts = [e.text for d in days for e in d['events']]
-        self.assertEqual(len(texts), activity.DEFAULT_LIMIT)
+        self.assertEqual(len(texts), activity.MAX_ROWS)
         self.assertFalse(any('Hay' in t for t in texts))
         self.assertEqual(days[0]['label'], 'Today')
         self.assertEqual(days[1]['label'], 'Yesterday')
@@ -470,19 +470,87 @@ class ActivityTests(DashboardDataTestCase):
         horse = self.horse('Mover')
         PlacementService.move_horse(horse, new_location=self.colgate, move_date=self.today - timedelta(days=2))
         days = activity.recent(self.admin, today=self.today)
-        texts = [e.text for d in days for e in d['events']]
-        self.assertIn('Mover moved from Sandhills to Bottom Barn', texts)
-        self.assertNotIn('Mover left Sandhills', texts)
-        self.assertEqual(sum(1 for t in texts if t.startswith('Mover arrived')), 1)
+        whats = [e.what for d in days for e in d['events']]
+        self.assertIn('Moved from Sandhills to Bottom Barn', whats)
+        self.assertNotIn('Left Sandhills', whats)
+        self.assertEqual(whats.count('Arrived at Sandhills'), 1)
+        move = next(e for d in days for e in d['events'] if e.kind == 'move')
+        self.assertEqual([n.name for n in move.names], ['Mover'])
+        self.assertEqual(move.text, 'Mover · Moved from Sandhills to Bottom Barn')
 
     def test_site_filter_and_access(self):
         self.horse('Here', self.somerford)
         self.horse('There', self.colgate)
         days = activity.recent(self.admin, today=self.today, site='Colgate')
         texts = [e.text for d in days for e in d['events']]
-        self.assertEqual(texts, ['There arrived at Bottom Barn'])
+        self.assertEqual(texts, ['There · Arrived at Bottom Barn'])
         finance_only = make_user_with_access('fin', dashboard='full', invoices='view')
         self.assertEqual(activity.recent(finance_only, today=self.today), [])
+
+
+class ActivityGroupingTests(DashboardDataTestCase):
+    def test_same_day_visits_become_one_row_with_the_money_summed(self):
+        from billing.models import ExtraCharge
+        a = self.horse('MP Indigo')
+        b = self.horse('Punk Rock')
+        c = self.horse('Vivian')
+        for horse in (a, b, c):
+            visit = FarrierVisit.objects.create(
+                horse=horse, date=self.today - timedelta(days=1), work_done='trim', cost=Decimal('45.00'),
+            )
+            # The charge the record creates must not appear as a second row.
+            charge = ExtraCharge.objects.create(
+                horse=horse, owner=self.owner, charge_type='farrier', date=visit.date,
+                description='Trim Only', amount=Decimal('45.00'),
+            )
+            visit.extra_charge = charge
+            visit.save()
+        days = activity.recent(self.admin, today=self.today)
+        events = [e for d in days for e in d['events']]
+        farrier = [e for e in events if e.kind == 'farrier']
+        self.assertEqual(len(farrier), 1)
+        self.assertEqual(farrier[0].count, 3)
+        self.assertEqual([n.name for n in farrier[0].names], ['MP Indigo', 'Punk Rock', 'Vivian'])
+        self.assertEqual(farrier[0].amount, Decimal('135.00'))
+        self.assertEqual(farrier[0].what, 'Farrier · Trim Only')
+        self.assertEqual([e for e in events if e.kind == 'charge'], [])
+
+    def test_hand_entered_charge_on_the_same_day_folds_into_the_visit(self):
+        from billing.models import ExtraCharge
+        horse = self.horse('Star')
+        FarrierVisit.objects.create(horse=horse, date=self.today - timedelta(days=3), work_done='full_set')
+        ExtraCharge.objects.create(
+            horse=horse, owner=self.owner, charge_type='farrier', date=self.today - timedelta(days=3),
+            description='Full set', amount=Decimal('81.00'),
+        )
+        days = activity.recent(self.admin, today=self.today)
+        events = [e for d in days for e in d['events']]
+        self.assertEqual([e.kind for e in events if e.kind in ('farrier', 'charge')], ['farrier'])
+        self.assertEqual(next(e for e in events if e.kind == 'farrier').amount, Decimal('81.00'))
+
+    def test_standalone_charges_still_show(self):
+        from billing.models import ExtraCharge
+        horse = self.horse('Bella')
+        ExtraCharge.objects.create(
+            horse=horse, owner=self.owner, charge_type='feed', date=self.today,
+            description='Hay', amount=Decimal('45.00'),
+        )
+        days = activity.recent(self.admin, today=self.today)
+        charges = [e for d in days for e in d['events'] if e.kind == 'charge']
+        self.assertEqual(len(charges), 1)
+        self.assertEqual(charges[0].what, 'Feed/Hay charge')
+        self.assertEqual(charges[0].amount, Decimal('45.00'))
+        self.assertEqual(charges[0].names[0].color, '')
+
+    def test_arrivals_into_one_location_group_and_carry_coat_colours(self):
+        Horse.objects.all().delete()
+        for name, colour in (('Pepona', 'bay'), ('Pilarita', 'grey'), ('Pollera', 'chestnut')):
+            self.horse(name, color=colour)
+        days = activity.recent(self.admin, today=self.today)
+        arrivals = [e for d in days for e in d['events'] if e.kind == 'arrival']
+        self.assertEqual(len(arrivals), 1)
+        self.assertEqual(arrivals[0].what, 'Arrived at Sandhills')
+        self.assertEqual({n.color for n in arrivals[0].names}, {'bay', 'grey', 'chestnut'})
 
 
 class BreedingBlockTests(DashboardDataTestCase):

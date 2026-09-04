@@ -722,13 +722,8 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .aged-d90plus { @apply bg-error-red; }
     .money-pills { @apply flex flex-wrap items-center gap-2 border-t border-light-sage px-4 py-3 lg:px-5; }
 
-    /* What changed */
+    /* What changed (row styles live in the follow-ups block below) */
     .log { @apply px-4 pb-4 pt-1 lg:px-5; }
-    .log-day { @apply pb-1 pt-3 font-mono text-[10px] uppercase tracking-[.08em] text-sage; }
-    .log-event { @apply grid items-baseline gap-2.5 rounded-md py-1.5 text-sm text-charcoal no-underline hover:bg-parchment -mx-2 px-2; grid-template-columns: .5rem minmax(0, 1fr) auto; }
-    .log-dot { @apply block h-2 w-2 translate-y-px rounded-full; }
-    .log-text { @apply min-w-0; }
-    .log-amount { @apply font-mono text-xs text-sage tabular-nums; }
 }
 
 /* Motion that reports change (UI audit 3.10) */
@@ -744,4 +739,44 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
         animation-iteration-count: 1 !important;
         transition-duration: .01ms !important;
     }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   UI audit follow-ups: empty states (3.8), quieter tables (3.12), richer log
+   ══════════════════════════════════════════════════════════════════════════ */
+@layer components {
+    /* One empty state for every list */
+    .empty-state { @apply card px-6 py-14 text-center; }
+    .empty-state-compact { @apply rounded-none border-0 py-10; }
+    .empty-state-icon { @apply mx-auto grid h-14 w-14 place-items-center rounded-full bg-sand-50 text-saddle; }
+    .empty-state-icon.is-search { @apply bg-sage-50 text-sage; }
+    .empty-state-title { @apply mt-4 font-heading text-[15px] font-semibold text-charcoal; }
+    .empty-state-body { @apply mx-auto mt-1 max-w-sm text-sm text-sage; }
+    .empty-state-actions { @apply mt-5 flex flex-wrap items-center justify-center gap-2; }
+
+    /* What changed: glyph, coat-dotted name chips, what happened, money */
+    .log-day { @apply flex items-center gap-3 pb-1.5 pt-4 font-mono text-[10px] uppercase tracking-[.08em] text-sage; }
+    .log-day::after { content: ""; @apply h-px flex-1 bg-light-sage; }
+    .log-event { @apply grid items-start gap-3 py-2; grid-template-columns: 1.75rem minmax(0, 1fr) auto; }
+    .log-icon { @apply grid h-7 w-7 place-items-center rounded-md; }
+    .log-icon-health { @apply bg-sage-50 text-forest; }
+    .log-icon-money { @apply bg-info-blue-50 text-info-blue; }
+    .log-icon-yard { @apply bg-sand-100 text-saddle; }
+    .log-icon-documents { @apply bg-sand-50 text-charcoal-light; }
+    .log-body { @apply flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pt-0.5; }
+    .log-name { @apply inline-flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-charcoal no-underline ring-1 ring-light-sage transition-colors hover:ring-sage hover:text-forest; }
+    .log-what { @apply text-sm text-charcoal-light; }
+    .log-count { @apply text-xs text-sage; }
+    .log-amount { @apply pt-1 font-mono text-xs text-sage tabular-nums; }
+}
+
+/* Quieter tables (UI audit 3.12): row actions appear on hover or keyboard
+   focus where a pointer can hover; touch screens keep them visible. */
+@media (min-width: 1024px) and (hover: hover) {
+    .data-table tbody tr .btn-icon,
+    .data-table tbody tr .btn-icon-danger { opacity: 0; transition: opacity .1s ease-out; }
+    .data-table tbody tr:hover .btn-icon,
+    .data-table tbody tr:hover .btn-icon-danger,
+    .data-table tbody tr:focus-within .btn-icon,
+    .data-table tbody tr:focus-within .btn-icon-danger { opacity: 1; }
 }
