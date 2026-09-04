@@ -61,7 +61,7 @@
                     analytics — and hides the location from lists and pickers.
                 </p>
                 {% if archive_blockers %}
-                    <div class="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+                    <div class="alert-warning">
                         {% for reason in archive_blockers %}{{ reason }} {% endfor %}
                     </div>
                 {% else %}
@@ -81,7 +81,7 @@
                     while no records point at it.
                 </p>
                 {% if delete_blockers %}
-                    <div class="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+                    <div class="alert-warning">
                         {% for reason in delete_blockers %}{{ reason }} {% endfor %}
                         Archive it instead to keep the records.
                     </div>

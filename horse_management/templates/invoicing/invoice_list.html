@@ -49,7 +49,7 @@
             {% include 'includes/search_bar.html' with placeholder="Search invoices…" action_url=request.path %}
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
-                    <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Owner</label>
+                    <label class="dt-label mb-1">Owner</label>
                     <select name="owner" class="form-select"
                             hx-get="{{ request.path }}" hx-trigger="change"
                             hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
@@ -61,7 +61,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Status</label>
+                    <label class="dt-label mb-1">Status</label>
                     <select name="status" class="form-select"
                             hx-get="{{ request.path }}" hx-trigger="change"
                             hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
@@ -73,14 +73,14 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Period From</label>
+                    <label class="dt-label mb-1">Period From</label>
                     <input type="date" name="date_from" value="{{ request.GET.date_from }}" class="form-input"
                            hx-get="{{ request.path }}" hx-trigger="change"
                            hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
                            hx-include="closest form" hx-push-url="true">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">Period To</label>
+                    <label class="dt-label mb-1">Period To</label>
                     <input type="date" name="date_to" value="{{ request.GET.date_to }}" class="form-input"
                            hx-get="{{ request.path }}" hx-trigger="change"
                            hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
