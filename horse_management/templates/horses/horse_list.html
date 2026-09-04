@@ -45,6 +45,7 @@
             {% if group_by != 'all' %}<input type="hidden" name="group_by" value="{{ group_by }}">{% endif %}
             {% if sort != 'name' %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
             {% if group_sort != 'name' %}<input type="hidden" name="gsort" value="{{ group_sort }}">{% endif %}
+            {% for value in use_filter %}<input type="hidden" name="use" value="{{ value }}">{% endfor %}
 
             {% comment %}No search box here: the app bar searches horses,
             owners and locations from every page. What is left is filtering

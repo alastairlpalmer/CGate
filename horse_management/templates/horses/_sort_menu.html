@@ -23,6 +23,8 @@ Context (from HorseListView):
   sort_options        required — one row per horse sort key
   group_sort_options  optional — only the grouped views order groups too
   show_empty          optional — the grouped views can list empty groups
+  use_filter_options  optional — the location axis can limit its groups
+                      to a set of use cases (one tick per case)
   usage_ranges        optional — the land axes carry a land-use window
   menu_align          optional — 'left' hangs the menu from the trigger's
                       left edge (for a trigger at the start of the row);
@@ -117,6 +119,35 @@ Context (from HorseListView):
         </svg>
         {% endif %}
     </a>
+    {% endif %}
+
+    {% if use_filter_options %}
+    {% comment %}A tick-select, not a pick-one: "horses and mixed grazing"
+    is a normal question. No tick on any row means no filter — every location
+    shows, whatever its use case.{% endcomment %}
+    <p class="px-3 pt-2 pb-1 mt-1 border-t border-light-sage text-[10px] font-semibold uppercase tracking-wider text-sage">Use case</p>
+    <a href="{% querystring use=None page=None %}" role="menuitemcheckbox"
+       aria-checked="{% if use_filter %}false{% else %}true{% endif %}"
+       class="flex items-center justify-between gap-2 px-3 py-2 text-sm transition-colors hover:bg-parchment {% if not use_filter %}text-forest font-medium bg-light-sage/40{% else %}text-charcoal{% endif %}">
+        <span>All use cases</span>
+        {% if not use_filter %}
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+        </svg>
+        {% endif %}
+    </a>
+    {% for opt in use_filter_options %}
+    <a href="{% querystring use=opt.values page=None %}" role="menuitemcheckbox"
+       aria-checked="{% if opt.active %}true{% else %}false{% endif %}"
+       class="flex items-center justify-between gap-2 px-3 py-2 text-sm transition-colors hover:bg-parchment {% if opt.active %}text-forest font-medium bg-light-sage/40{% else %}text-charcoal{% endif %}">
+        <span>{{ opt.label }}</span>
+        {% if opt.active %}
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+        </svg>
+        {% endif %}
+    </a>
+    {% endfor %}
     {% endif %}
 
     {% if shows_usage %}
