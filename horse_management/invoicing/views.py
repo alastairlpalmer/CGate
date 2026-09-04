@@ -17,6 +17,7 @@ from core.permissions import (
     has_feature_access,
 )
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
@@ -600,9 +601,14 @@ def invoice_bulk_action(request):
         return redirect(next_url)
 
     if action == 'send':
-        from notifications.emails import send_invoice_email
+        from .tasks import claim_invoice_for_sending, send_invoice_email_task
 
-        sent = failed = skipped = 0
+        # Each invoice is claimed (send_queued_at) and handed to a Celery
+        # task, so the request returns at once and a double-submit cannot
+        # email an owner twice. Without a worker (Vercel) the task runs
+        # inline here, which is the old behaviour.
+        async_send = getattr(settings, 'INVOICE_SEND_ASYNC', False)
+        sent = failed = skipped = queued = 0
         no_email = []
         for invoice in invoices:
             if invoice.status != Invoice.Status.DRAFT:
@@ -611,11 +617,29 @@ def invoice_bulk_action(request):
             if not invoice.owner.email:
                 no_email.append(invoice.invoice_number)
                 continue
-            if send_invoice_email(invoice):
-                invoice.mark_as_sent()
+            if not claim_invoice_for_sending(invoice.pk):
+                skipped += 1  # already queued by another submit
+                continue
+            if async_send:
+                # The claim above is already committed (no atomic block
+                # around this view), so the worker will see it.
+                send_invoice_email_task.delay(invoice.pk)
+                queued += 1
+                continue
+            outcome = send_invoice_email_task(invoice.pk)
+            if outcome == 'sent':
                 sent += 1
-            else:
+            elif outcome == 'failed':
                 failed += 1
+            else:
+                skipped += 1
+        if queued:
+            messages.success(
+                request,
+                f"Sending {queued} invoice{'s' if queued != 1 else ''} in the "
+                "background — each shows as Sent once its email has gone. An "
+                "invoice that stays Draft with a send error needs attention.",
+            )
         if sent:
             messages.success(request, f"Sent {sent} invoice{'s' if sent != 1 else ''}.")
         if no_email:
@@ -633,7 +657,7 @@ def invoice_bulk_action(request):
             messages.info(
                 request,
                 f"Skipped {skipped} invoice{'s' if skipped != 1 else ''} "
-                "already sent, paid or cancelled."
+                "already sent, paid, cancelled or already being sent."
             )
     elif action == 'mark_paid':
         paid = skipped = 0

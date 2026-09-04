@@ -65,6 +65,12 @@ class Invoice(models.Model):
     sent_at = models.DateTimeField(null=True, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)
     last_overdue_reminder_at = models.DateTimeField(null=True, blank=True)
+    # Bulk sending is queued through Celery. send_queued_at is the claim
+    # (set when queued, cleared when the task finishes either way) so a
+    # double-submit cannot email the owner twice; send_error holds the
+    # last failure reason so a queued send that fails is not invisible.
+    send_queued_at = models.DateTimeField(null=True, blank=True)
+    send_error = models.TextField(blank=True)
 
     class Meta:
         db_table = 'core_invoice'
@@ -98,7 +104,14 @@ class Invoice(models.Model):
         """Mark invoice as sent."""
         self.status = self.Status.SENT
         self.sent_at = timezone.now()
-        self.save(update_fields=['status', 'sent_at'])
+        self.send_queued_at = None
+        self.send_error = ''
+        self.save(update_fields=['status', 'sent_at', 'send_queued_at', 'send_error'])
+
+    @property
+    def is_send_queued(self):
+        """True while a queued send is still in flight."""
+        return self.send_queued_at is not None
 
     @property
     def amount_paid(self):
