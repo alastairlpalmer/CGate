@@ -1,15 +1,33 @@
+{% comment %}
+Bulk-action form, loaded into the shared pop-up sheet
+(includes/_popup_sheet.html) by the "Apply to selected" button in
+health/partials/bulk_action_bar.html.
+
+The selected horses travel with the form as hidden inputs, rendered by the
+server from the query string (GET) or the posted data (re-render after a
+validation error), so a second submit never loses the selection. A valid
+POST answers 204 + `HX-Trigger: popup:saved`: popup.js closes the sheet and
+refreshes #main-content in place.
+{% endcomment %}
 <form hx-post="{% url 'bulk_health_apply' %}"
-      hx-target="#bulk-form-container"
+      hx-target="#popup-body"
       hx-select="unset" hx-push-url="false"
       hx-swap="innerHTML">
     {% csrf_token %}
     <input type="hidden" name="action_type" value="{{ action_type }}">
+    {% for id in horse_ids %}
+    <input type="hidden" name="horse_ids" value="{{ id }}">
+    {% endfor %}
 
     <fieldset class="p-4 sm:p-5 space-y-4">
-        <legend class="text-sm font-medium text-charcoal mb-2">{{ action_label }} Details</legend>
+        <legend class="text-sm font-medium text-charcoal mb-2">{{ action_label }} details</legend>
+
+        <p class="text-xs text-sage -mt-1">
+            Applies to <span class="font-medium text-charcoal-light">{{ horse_ids|length }} selected horse{{ horse_ids|length|pluralize }}</span>.
+        </p>
 
         {% if form.non_field_errors %}
-        <div class="rounded-md bg-error-red-50 border border-error-red/20 p-3">
+        <div class="rounded-md bg-error-red-50 border border-error-red/20 p-3" role="alert">
             {% for error in form.non_field_errors %}
             <p class="text-sm text-error-red">{{ error }}</p>
             {% endfor %}
@@ -34,14 +52,14 @@
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {% for field in form %}
-            <div class="{% if field.name == 'notes' or field.name == 'diagnosis' or field.name == 'treatment' %}sm:col-span-2{% endif %}">
+            <div class="{% if field.name == 'notes' or field.name == 'diagnosis' or field.name == 'treatment' %}sm:col-span-2{% endif %}{% if field.errors %} field-invalid{% endif %}">
                 <label for="{{ field.id_for_label }}" class="dt-label mb-1">
                     {{ field.label }}
                     {% if field.field.required %}<span class="text-error-red">*</span>{% endif %}
                 </label>
                 {{ field }}
                 {% if field.errors %}
-                <p class="mt-1 text-sm text-error-red">{{ field.errors.0 }}</p>
+                <p class="form-error mt-1 text-sm text-error-red" role="alert">{{ field.errors.0 }}</p>
                 {% endif %}
                 {% if field.help_text %}
                 <p class="mt-1 text-xs text-sage">{{ field.help_text }}</p>
@@ -51,8 +69,8 @@
         </div>
     </fieldset>
 
-    <div class="flex items-center justify-end gap-3 px-5 py-4 border-t border-light-sage bg-parchment rounded-b-lg">
-        <button type="button" @click="modalOpen = false" class="btn-secondary text-sm">Cancel</button>
-        <button type="submit" class="btn-primary text-sm">Apply to Selected Horses</button>
+    <div class="popup-footer">
+        <button type="button" @click="$store.popup.close()" class="btn-secondary text-sm">Cancel</button>
+        <button type="submit" class="btn-primary text-sm">Apply to {{ horse_ids|length }} horse{{ horse_ids|length|pluralize }}</button>
     </div>
 </form>

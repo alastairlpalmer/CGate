@@ -739,8 +739,6 @@ document.addEventListener('alpine:init', function() {
         return {
             selectedHorses: new Set(),
             actionType: '',
-            modalOpen: false,
-            modalTitle: '',
 
             toggleHorse(id) {
                 if (this.selectedHorses.has(id)) {
@@ -763,8 +761,7 @@ document.addEventListener('alpine:init', function() {
             clearAll() {
                 this.selectedHorses = new Set();
                 document.querySelectorAll('input[data-horse-checkbox]').forEach(cb => cb.checked = false);
-                var selectAllCb = document.querySelector('input[data-select-all]');
-                if (selectAllCb) selectAllCb.checked = false;
+                document.querySelectorAll('input[data-select-all]').forEach(cb => cb.checked = false);
             },
 
             toggleAll(event) {
@@ -789,9 +786,12 @@ document.addEventListener('alpine:init', function() {
                 }
             },
 
-            openModal() {
-                if (!this.actionType || this.selectedHorses.size === 0) return;
-
+            // Title for the pop-up sheet the "Apply to selected" button
+            // opens (health/partials/bulk_action_bar.html). The form itself
+            // is fetched by htmx and answers 204 + popup:saved on success,
+            // which closes the sheet and refreshes #main-content — that
+            // swap re-creates this component, so the selection resets.
+            popupTitle() {
                 var labels = {
                     vaccination: 'Record Vaccination',
                     farrier: 'Record Farrier Visit',
@@ -804,63 +804,9 @@ document.addEventListener('alpine:init', function() {
                     expected_departure: 'Set Expected Departure',
                     actual_departure: 'Set Departure Date'
                 };
-                this.modalTitle = labels[this.actionType] + ' (' + this.selectedHorses.size + ' horses)';
-
-                var container = document.getElementById('bulk-form-container');
-                container.innerHTML = '<div class="p-5 text-center text-sage"><p class="text-sm">Loading form...</p></div>';
-
-                var self = this;
-                fetch('/health/bulk/form/?action_type=' + this.actionType, {
-                    credentials: 'same-origin'
-                })
-                .then(function(resp) {
-                    // A 400/403 used to inject Django's error page into
-                    // the modal; offline left it on "Loading form..." with
-                    // an unhandled rejection.
-                    if (!resp.ok) { throw new Error('HTTP ' + resp.status); }
-                    return resp.text();
-                })
-                .then(function(html) {
-                    container.innerHTML = html;
-                    htmx.process(container);
-                    var form = container.querySelector('form');
-                    if (form) {
-                        form.setAttribute('hx-select', 'unset');
-                        self.selectedHorses.forEach(function(id) {
-                            var input = document.createElement('input');
-                            input.type = 'hidden';
-                            input.name = 'horse_ids';
-                            input.value = id;
-                            form.appendChild(input);
-                        });
-                        htmx.process(form);
-                    }
-                })
-                .catch(function() {
-                    container.innerHTML =
-                        '<div class="p-5 text-sm text-charcoal-light" role="alert">' +
-                        'That didn\u2019t load. Check your signal and try again.</div>';
-                });
-
-                this.modalOpen = true;
-            },
-
-            init() {
-                var self = this;
-                // init() runs again on every boosted navigation that lands
-                // on a list page, but document.body is never swapped, so
-                // each visit used to stack another listener (and retain the
-                // dead component). Keep exactly one.
-                if (window.__bulkActionComplete) {
-                    document.body.removeEventListener('bulkActionComplete', window.__bulkActionComplete);
-                }
-                window.__bulkActionComplete = function() {
-                    self.modalOpen = false;
-                    self.clearAll();
-                    self.actionType = '';
-                    window.location.reload();
-                };
-                document.body.addEventListener('bulkActionComplete', window.__bulkActionComplete);
+                var n = this.selectedHorses.size;
+                return (labels[this.actionType] || 'Apply action') +
+                    ' (' + n + ' horse' + (n !== 1 ? 's' : '') + ')';
             }
         };
     });

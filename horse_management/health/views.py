@@ -500,14 +500,32 @@ def _bulk_action_allowed(user, action_type):
     return has_feature_access(user, 'health', LEVEL_FULL)
 
 
+def _bulk_horse_ids(data):
+    """Numeric ``horse_ids`` from a QueryDict, in order and de-duplicated.
+
+    Non-numeric ids would raise ValueError inside a pk__in filter.
+    """
+    return list(dict.fromkeys(
+        i for i in data.getlist('horse_ids') if i.isdigit()
+    ))
+
+
 @login_required
 def bulk_health_form(request):
+    """Render the bulk-action form into the shared pop-up sheet.
+
+    The selected horses come in the query string and are rendered as
+    hidden inputs, so the form carries its own selection: a re-render
+    after a validation error keeps them (the old modal appended them
+    client-side, and lost them on the first error).
+    """
     action_type = request.GET.get('action_type', '')
     form_class = BULK_FORM_MAP.get(action_type)
     if not form_class:
         return HttpResponseBadRequest('Invalid action type')
     if not _bulk_action_allowed(request.user, action_type):
         raise PermissionDenied
+    horse_ids = _bulk_horse_ids(request.GET)
 
     # Determine initial date value
     if action_type == 'vaccination':
@@ -525,6 +543,7 @@ def bulk_health_form(request):
         'form': form,
         'action_type': action_type,
         'action_label': BULK_LABELS.get(action_type, action_type),
+        'horse_ids': horse_ids,
     })
 
 
@@ -534,8 +553,7 @@ def bulk_health_apply(request):
         return HttpResponseBadRequest('POST required')
 
     action_type = request.POST.get('action_type', '')
-    # Non-numeric ids would raise ValueError inside the pk__in filter.
-    horse_ids = [i for i in request.POST.getlist('horse_ids') if i.isdigit()]
+    horse_ids = _bulk_horse_ids(request.POST)
     form_class = BULK_FORM_MAP.get(action_type)
 
     if not form_class or not horse_ids:
@@ -550,6 +568,7 @@ def bulk_health_apply(request):
             'form': form,
             'action_type': action_type,
             'action_label': BULK_LABELS.get(action_type, action_type),
+            'horse_ids': horse_ids,
         })
 
     from core.services import PlacementService
@@ -691,10 +710,9 @@ def bulk_health_apply(request):
             + ", ".join(restore_skipped)
         )
 
-    # Return HX-Trigger to close modal and refresh page
-    response = HttpResponse(status=204)
-    response['HX-Trigger'] = 'bulkActionComplete'
-    return response
+    # Same contract as every other pop-up form: 204 + popup:saved closes
+    # the sheet and refreshes #main-content in place (static/js/popup.js).
+    return HttpResponse(status=204, headers={'HX-Trigger': 'popup:saved'})
 
 
 # ─── Vaccination Views ───────────────────────────────────────────────

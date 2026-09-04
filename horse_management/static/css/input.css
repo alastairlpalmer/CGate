@@ -515,6 +515,19 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .popup-footer > .popup-add-another { flex-basis: 100%; order: 3; }
 }
 
+/* Accent outline for the pop-up panel (trigger has data-popup-accent):
+   a thick brand border plus a tinted header, so a sheet that acts on many
+   horses at once reads as a distinct object and not the page behind it. */
+.popup-panel-accent {
+    @apply border-2 border-forest ring-4 ring-forest/20 shadow-2xl;
+}
+.popup-panel-accent > .popup-header {
+    @apply bg-sage-50 border-b-forest/30;
+}
+.popup-panel-accent > .popup-header h2 {
+    @apply text-forest;
+}
+
 /* Confirm dialog footer (includes/_confirm_sheet.html) — same look as the
    sheet footer, but the dialog never scrolls so nothing sticks. */
 .confirm-footer {

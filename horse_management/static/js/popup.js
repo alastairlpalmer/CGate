@@ -66,6 +66,7 @@
             open: false,
             title: '',
             dirty: false,
+            accent: false,  // outlined panel (trigger has data-popup-accent)
             opener: null,   // the trigger element, for focus return + abort
             href: '',       // full-page fallback URL, shown if the load fails
 
@@ -73,6 +74,7 @@
                 this.title = title || '';
                 this.opener = opener || null;
                 this.href = (opener && opener.getAttribute('href')) || '';
+                this.accent = !!(opener && opener.dataset && opener.dataset.popupAccent !== undefined);
                 this.dirty = false;
                 this.open = true;
                 document.documentElement.classList.add('overflow-hidden');
@@ -107,6 +109,7 @@
                 if (opener && window.htmx) { htmx.trigger(opener, 'htmx:abort'); }
                 this.open = false;
                 this.dirty = false;
+                this.accent = false;
                 this.opener = null;
                 document.documentElement.classList.remove('overflow-hidden');
                 var body = document.getElementById('popup-body');
