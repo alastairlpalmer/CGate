@@ -11,7 +11,7 @@ Params: key ('all' | 'site' | 'location' | 'owner'), label.
 {% if key == group_by %}
 <button type="button" @click="sortOpen = !sortOpen"
         :aria-expanded="sortOpen ? 'true' : 'false'" aria-haspopup="true"
-        title="Sorted by {{ active_sort_label }} — click to change"
+        title="Showing Active, sorted by {{ active_sort_label }} — click to change"
         class="segmented-item is-active">
     {% include 'horses/_group_icon.html' %}
     {{ label }}
