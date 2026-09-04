@@ -448,6 +448,22 @@
     var bar = document.getElementById('htmx-progress');
     var barTimer = null;
 
+    // ── "/" jumps to the app bar search ──
+    // Ctrl/Cmd+K does the same for people who expect it. Ignored while
+    // typing in any field, so a "/" in a note stays a "/".
+    document.addEventListener('keydown', function (e) {
+        var slash = e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey;
+        var cmdK = (e.metaKey || e.ctrlKey) && !e.altKey && (e.key === 'k' || e.key === 'K');
+        if (!slash && !cmdK) return;
+        var input = document.getElementById('app-search-input');
+        if (!input) return;
+        var t = e.target;
+        if (slash && t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+        e.preventDefault();
+        input.focus();
+        input.select();
+    });
+
     // ── Chrome for a freshly swapped #main-content ──
     // Shared by boosted navigations (below) and the pop-up sheet's
     // in-place refresh (static/js/popup.js): page title, toasts, Alpine
