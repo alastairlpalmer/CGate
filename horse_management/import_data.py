@@ -366,7 +366,6 @@ def import_data():
 
         # Check for special notes in name
         notes_parts = []
-        clean_name = name
 
         # Extract notes like "first winter", "no passport", "lame", "needs rug", etc.
         note_patterns = [

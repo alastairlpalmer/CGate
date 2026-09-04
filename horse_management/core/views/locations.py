@@ -156,9 +156,11 @@ def resolve_usage_window(request, default='year'):
 
     try:
         year = int(request.GET.get('year', today.year))
+        # date() raises for years outside 1..9999 (?year=0 was a 500).
+        start, end = date(year, 1, 1), date(year, 12, 31)
     except (TypeError, ValueError):
         year = today.year
-    start, end = date(year, 1, 1), date(year, 12, 31)
+        start, end = date(year, 1, 1), date(year, 12, 31)
     return {
         'range': 'year', 'year': year,
         'start': start, 'end': end, 'label': str(year),
@@ -433,7 +435,7 @@ class LocationDetailView(FeatureAccessMixin, DetailView):
         return context
 
 
-class LocationCreateView(FeatureAccessMixin, CreateView):
+class LocationCreateView(PopupFormMixin, FeatureAccessMixin, CreateView):
     feature = 'locations'
     model = Location
     form_class = LocationForm
@@ -560,7 +562,10 @@ def log_departure(request, pk):
     if request.method == 'POST':
         from ..services import PlacementService
 
-        horse_ids = request.POST.getlist('horse_ids')
+        # Non-numeric ids would raise ValueError inside the pk__in filter.
+        horse_ids = [
+            i for i in request.POST.getlist('horse_ids') if i.isdigit()
+        ]
         departure_date_str = request.POST.get('departure_date')
         notes = request.POST.get('notes', '')
 
@@ -579,7 +584,7 @@ def log_departure(request, pk):
             messages.error(request, "Invalid date format.")
             return redirect('location_detail', pk=location.pk)
 
-        departed, depart_errors = PlacementService.bulk_depart(
+        departed, depart_errors, scheduled = PlacementService.bulk_depart(
             horse_ids, location, departure_date, notes
         )
         for err in depart_errors:
@@ -588,6 +593,13 @@ def log_departure(request, pk):
             messages.success(
                 request,
                 f"{departed} horse{'s' if departed != 1 else ''} departed from {location.name}."
+            )
+        if scheduled:
+            messages.success(
+                request,
+                f"{scheduled} horse{'s' if scheduled != 1 else ''} scheduled to "
+                f"depart {location.name} on {departure_date.strftime('%d %b %Y')} "
+                "— log the departure on the day to close the placement.",
             )
         return redirect('location_detail', pk=location.pk)
 

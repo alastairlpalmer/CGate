@@ -169,7 +169,7 @@
                         </td>
                         <td>
                             <div class="flex items-center gap-1">
-                                <a href="{% url 'charge_update' charge.pk %}" class="btn-ghost btn-xs">Edit</a>
+                                <a href="{% url 'charge_update' charge.pk %}" hx-get="{% url 'charge_update' charge.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit charge" class="btn-ghost btn-xs">Edit</a>
                                 {% if not charge.invoiced %}
                                 <a href="{% url 'charge_delete' charge.pk %}" class="btn-ghost btn-xs text-error-red hover:text-error-red hover:bg-error-red-50">Delete</a>
                                 {% endif %}

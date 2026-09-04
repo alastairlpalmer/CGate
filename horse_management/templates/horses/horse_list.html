@@ -114,15 +114,27 @@
                     {% endfor %}
                 </div>
             </div>
+            {% if feature_access.locations.full %}
+            {% comment %}Labelled, not a bare plus: the app bar already carries
+            one, and two anonymous plus buttons on a row read as a mistake.
+            {% endcomment %}
+            <a href="{% url 'placement_create' %}" class="btn-primary ml-auto shrink-0 px-3 text-xs sm:text-sm">
+                <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                </svg>
+                Add Placement
+            </a>
+            {% endif %}
 
             {% elif status == 'current' and not is_searching %}
             {% comment %}Group by. Clicking the option that is already
             selected opens its Sort menu, which holds everything else that
             shapes the list. The menu sits outside the scroll wrapper, which
             would otherwise clip it.{% endcomment %}
+            <span class="hidden sm:inline text-xs uppercase tracking-wider font-semibold text-sage shrink-0">Group by</span>
             <div class="relative min-w-0" x-data="{ sortOpen: false }">
                 <div class="segmented-scroll">
-                    <div class="segmented" x-data="segmented" role="group" aria-label="Group horses by">
+                    <div class="segmented" x-data="segmented" role="group" aria-label="Group by">
                         <span class="segmented-thumb" x-ref="thumb" aria-hidden="true"></span>
                         {% include 'horses/_group_toggle_button.html' with key='all' label='All' %}
                         {% if 'site' in available_axes %}{% include 'horses/_group_toggle_button.html' with key='site' label='Site' %}{% endif %}

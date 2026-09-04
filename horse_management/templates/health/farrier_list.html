@@ -81,7 +81,7 @@
                             {% if visit.cost %}&pound;{{ visit.cost|floatformat:2 }}{% else %}<span class="text-sage">-</span>{% endif %}
                         </td>
                         <td>
-                            <a href="{% url 'farrier_update' visit.pk %}" class="btn-ghost btn-xs">Edit</a>
+                            <a href="{% url 'farrier_update' visit.pk %}" hx-get="{% url 'farrier_update' visit.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit farrier visit" class="btn-ghost btn-xs">Edit</a>
                         </td>
                     </tr>
                     {% empty %}

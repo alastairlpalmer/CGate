@@ -1,0 +1,28 @@
+{% comment %}
+Rendered by Django's default server_error handler with an EMPTY context:
+no request, no user, no context processors. It must therefore stay
+self-contained — extending base.html would itself raise inside the
+error handler and fall back to a bare "Server Error (500)".
+{% endcomment %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Something went wrong - Yardway</title>
+  <style>
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #f6f7f5; color: #2b2f2e; }
+    .wrap { max-width: 32rem; margin: 6rem auto; padding: 2.5rem; background: #fff; border: 1px solid #d9e2dc; border-radius: 0.75rem; text-align: center; }
+    h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
+    p { margin: 0 0 1.5rem; color: #5f7a72; }
+    a { display: inline-block; padding: 0.6rem 1.2rem; background: #3D5A63; color: #fff; border-radius: 0.5rem; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Something went wrong</h1>
+    <p>The page couldn't be loaded. Nothing you entered was lost unless you saw a confirmation, so try again in a moment.</p>
+    <a href="/">Back to Dashboard</a>
+  </div>
+</body>
+</html>

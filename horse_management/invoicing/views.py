@@ -8,6 +8,7 @@ from datetime import timedelta
 
 from django.contrib import messages
 
+from core.views._popup import is_popup_request, popup_saved_response
 from core.permissions import (
     LEVEL_FULL,
     LEVEL_VIEW,
@@ -69,7 +70,7 @@ class InvoiceListView(FeatureAccessMixin, ListView):
             queryset = queryset.filter(status=status)
 
         owner = self.request.GET.get('owner')
-        if owner:
+        if owner and owner.isdigit():
             queryset = queryset.filter(owner_id=owner)
 
         search = self.request.GET.get('search', '').strip()
@@ -172,7 +173,14 @@ class InvoiceUpdateView(FeatureAccessMixin, UpdateView):
         was_cancelled = (
             form.initial.get('status') == Invoice.Status.CANCELLED
         )
+        was_paid = form.initial.get('status') == Invoice.Status.PAID
         response = super().form_valid(form)
+        # Choosing "Paid" on the edit form used to write the status only:
+        # amount_paid stayed 0, the statement still showed the full balance,
+        # aged debtors dropped it, and with no payment to delete there was
+        # no way back. Route it through mark_as_paid like the button does.
+        if self.object.status == Invoice.Status.PAID and not was_paid:
+            self.object.mark_as_paid(reference='Set to Paid on invoice edit')
         # Cancelling must free the invoice's extra charges, or they stay
         # invoiced=True against a dead invoice and drop out of any
         # replacement invoice.
@@ -272,7 +280,7 @@ def invoice_create(request):
                 initial['period_start'],
                 initial['period_end']
             )
-        except Owner.DoesNotExist:
+        except (Owner.DoesNotExist, ValueError):
             pass
 
     return render(request, 'invoicing/invoice_create.html', {
@@ -373,11 +381,14 @@ def invoice_mark_paid(request, pk):
     ):
         next_url = reverse('invoice_detail', kwargs={'pk': pk})
 
-    invoice = get_object_or_404(Invoice, pk=pk)
-    if invoice.status not in [Invoice.Status.SENT, Invoice.Status.OVERDUE]:
-        messages.error(request, "Only sent or overdue invoices can be marked as paid.")
-        return redirect(next_url)
-    invoice.mark_as_paid(reference='Marked as paid')
+    # Lock the row: a double-click used to pass the status check twice and
+    # record two balancing payments (amount_paid = 2x total).
+    with transaction.atomic():
+        invoice = get_object_or_404(Invoice.objects.select_for_update(), pk=pk)
+        if invoice.status not in [Invoice.Status.SENT, Invoice.Status.OVERDUE]:
+            messages.error(request, "Only sent or overdue invoices can be marked as paid.")
+            return redirect(next_url)
+        invoice.mark_as_paid(reference='Marked as paid')
     messages.success(request, f"Invoice {invoice.invoice_number} marked as paid.")
     return redirect(next_url)
 
@@ -479,21 +490,27 @@ def owner_statement_email(request, owner_pk):
 def payment_create(request, pk):
     """Record a payment (possibly partial) against an invoice."""
     invoice = get_object_or_404(Invoice, pk=pk)
+    in_popup = is_popup_request(request)
 
     if invoice.status == Invoice.Status.CANCELLED:
         messages.error(request, "Payments cannot be recorded against a cancelled invoice.")
-        return redirect('invoice_detail', pk=pk)
+        return popup_saved_response() if in_popup else redirect('invoice_detail', pk=pk)
     if invoice.balance_due <= 0:
         messages.info(request, "This invoice is already fully paid.")
-        return redirect('invoice_detail', pk=pk)
+        return popup_saved_response() if in_popup else redirect('invoice_detail', pk=pk)
 
     if request.method == 'POST':
-        form = PaymentForm(request.POST, invoice=invoice)
+        # Validate and save under a row lock so two concurrent submissions
+        # cannot both pass the balance check and overpay the invoice.
+        with transaction.atomic():
+            invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
+            form = PaymentForm(request.POST, invoice=invoice)
+            if form.is_valid():
+                payment = form.save(commit=False)
+                payment.invoice = invoice
+                payment.save()
+                invoice.refresh_payment_status()
         if form.is_valid():
-            payment = form.save(commit=False)
-            payment.invoice = invoice
-            payment.save()
-            invoice.refresh_payment_status()
             if invoice.balance_due <= 0:
                 messages.success(
                     request,
@@ -506,6 +523,8 @@ def payment_create(request, pk):
                     f"Payment of £{payment.amount:.2f} recorded — "
                     f"£{invoice.balance_due:.2f} still outstanding."
                 )
+            if in_popup:
+                return popup_saved_response()
             return redirect('invoice_detail', pk=pk)
     else:
         form = PaymentForm(
@@ -516,9 +535,12 @@ def payment_create(request, pk):
             },
         )
 
-    return render(request, 'invoicing/payment_form.html', {
+    template = 'includes/popup_form.html' if in_popup else 'invoicing/payment_form.html'
+    return render(request, template, {
         'form': form,
         'invoice': invoice,
+        'in_popup': in_popup,
+        'popup_submit_label': 'Record Payment',
     })
 
 
@@ -761,7 +783,7 @@ def invoice_export_csv(request):
         queryset = queryset.exclude(status=Invoice.Status.DRAFT)
 
     owner = request.GET.get('owner')
-    if owner:
+    if owner and owner.isdigit():
         queryset = queryset.filter(owner_id=owner)
 
     search = request.GET.get('search', '').strip()

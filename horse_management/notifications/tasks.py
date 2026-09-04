@@ -184,7 +184,10 @@ def send_overdue_invoice_reminders():
     Run daily via Celery Beat.
     """
     now = timezone.now()
-    today = now.date()
+    # Local (Europe/London) date, not the UTC date: between 00:00 and 01:00
+    # BST now.date() is still yesterday and an invoice due yesterday would
+    # not yet count as overdue.
+    today = timezone.localdate()
     cutoff = now - timedelta(days=REMINDER_REPEAT_DAYS)
     reminders_sent = 0
 
@@ -282,7 +285,6 @@ def check_invoice_status():
     Run daily via Celery Beat.
     """
     today = timezone.localdate()
-    updated = 0
 
     # Mark sent invoices as overdue if past due date
     overdue = Invoice.objects.filter(
@@ -330,7 +332,15 @@ def send_document_expiry_reminders():
     # so a transient send error doesn't consume the reminder.
     ids = [d.pk for d in documents]
     Document.objects.filter(pk__in=ids).update(expiry_reminder_sent=True)
-    if not send_document_expiry_summary(business.email, documents, today):
+    try:
+        sent = send_document_expiry_summary(business.email, documents, today)
+    except Exception:
+        # The claim must not leak: an exception in the send path (template
+        # error, DB hiccup) would consume every reminder in the batch with
+        # no email and no retry — the other reminder tasks guard this too.
+        Document.objects.filter(pk__in=ids).update(expiry_reminder_sent=False)
+        raise
+    if not sent:
         Document.objects.filter(pk__in=ids).update(expiry_reminder_sent=False)
         return "Document expiry reminder send failed; rolled back"
 

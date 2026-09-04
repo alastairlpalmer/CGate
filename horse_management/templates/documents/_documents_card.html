@@ -7,7 +7,7 @@ and documents=<queryset>:
     <div class="section-header">
         <h3 class="section-title">Documents</h3>
         {% if feature_access.horses.full %}
-        <a href="{% url 'document_create' %}?{% if horse %}horse={{ horse.pk }}{% else %}owner={{ owner.pk }}{% endif %}"
+        <a href="{% url 'document_create' %}?{% if horse %}horse={{ horse.pk }}{% else %}owner={{ owner.pk }}{% endif %}" hx-get="{% url 'document_create' %}?{% if horse %}horse={{ horse.pk }}{% else %}owner={{ owner.pk }}{% endif %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add document"
            class="btn-ghost btn-xs">+ Add</a>
         {% endif %}
     </div>

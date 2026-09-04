@@ -132,6 +132,18 @@ class FarrierVisitForm(ActiveHorseFormMixin, forms.ModelForm):
         next_due = cleaned_data.get('next_due_date')
         if visit_date and next_due and next_due <= visit_date:
             self.add_error('next_due_date', "Next due date must be after the visit date.")
+        # Same rule as VaccinationForm: editing the visit date without
+        # touching the due date means "recalculate it". FarrierVisit.save()
+        # only fills next_due_date when empty, so the old value stayed
+        # anchored to the old visit date and the horse showed due/overdue
+        # on the wrong day.
+        if (
+            self.instance.pk
+            and 'date' in self.changed_data
+            and 'next_due_date' not in self.changed_data
+        ):
+            cleaned_data['next_due_date'] = None
+            self.instance.next_due_date = None
         return cleaned_data
 
 

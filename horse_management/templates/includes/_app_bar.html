@@ -10,10 +10,13 @@ lookup across horses, owners and locations, each group gated on the role's
 access to it (core.views.dashboard.quick_find).
 {% endcomment %}
 {% if user.is_authenticated %}
+{% comment %}The search covers three areas; a role that can see none of
+them gets no box.{% endcomment %}
 <div class="sticky top-11 lg:top-0 z-40 bg-parchment/90 backdrop-blur border-b border-light-sage">
     <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-2 sm:gap-3">
 
         <!-- Search -->
+        {% if feature_access.horses.view or feature_access.owners.view or feature_access.locations.view %}
         <div class="relative flex-1 min-w-0 max-w-2xl"
              x-data="{ open: false, q: '' }"
              @click.outside="open = false"
@@ -48,6 +51,9 @@ access to it (core.views.dashboard.quick_find).
                  @keydown.arrow-down.prevent="(function(){ var as = Array.from($refs.results.querySelectorAll('a')); var i = as.indexOf(document.activeElement); if (as[i+1]) as[i+1].focus(); })()"
                  @keydown.arrow-up.prevent="(function(){ var as = Array.from($refs.results.querySelectorAll('a')); var i = as.indexOf(document.activeElement); if (i > 0) { as[i-1].focus(); } else { $refs.input.focus(); } })()"></div>
         </div>
+        {% else %}
+        <div class="flex-1"></div>
+        {% endif %}
 
         {% comment %}Page action slot. List pages teleport their filter
         button in here (Alpine x-teleport), so filtering sits on the same
@@ -82,17 +88,13 @@ access to it (core.views.dashboard.quick_find).
                 </a>
                 {% endif %}
                 {% if feature_access.locations.full %}
-                <a href="{% url 'placement_create' %}" role="menuitem" class="app-bar-add-item">
-                    <svg class="w-4 h-4 text-sage shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
-                    Add placement
-                </a>
-                <a href="{% url 'location_create' %}" role="menuitem" class="app-bar-add-item">
+                <a href="{% url 'location_create' %}" hx-get="{% url 'location_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add location" role="menuitem" class="app-bar-add-item">
                     <svg class="w-4 h-4 text-sage shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
                     Add location
                 </a>
                 {% endif %}
                 {% if feature_access.owners.full %}
-                <a href="{% url 'owner_create' %}" role="menuitem" class="app-bar-add-item">
+                <a href="{% url 'owner_create' %}" hx-get="{% url 'owner_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add owner" role="menuitem" class="app-bar-add-item">
                     <svg class="w-4 h-4 text-sage shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
                     Add owner
                 </a>

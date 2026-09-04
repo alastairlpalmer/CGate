@@ -168,7 +168,7 @@
                         <a href="{% url 'horse_detail' c.horse.pk %}" class="link text-sm font-medium tap-pad">{{ c.horse.name }}</a>
                         <p class="text-xs text-sage mt-0.5">{{ c.name }}</p>
                     </div>
-                    <a href="{% url 'condition_update' c.pk %}" class="btn-ghost btn-xs">Edit</a>
+                    <a href="{% url 'condition_update' c.pk %}" hx-get="{% url 'condition_update' c.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit condition" class="btn-ghost btn-xs">Edit</a>
                 </li>
                 {% endfor %}
             </ul>

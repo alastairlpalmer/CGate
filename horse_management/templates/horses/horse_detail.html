@@ -87,7 +87,7 @@
                     </form>
                 </div>
                 {% else %}
-                <a href="{% url 'horse_arrive' horse.pk %}" class="btn-success">
+                <a href="{% url 'horse_arrive' horse.pk %}" hx-get="{% url 'horse_arrive' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Log arrival for {{ horse.name }}" class="btn-success">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                     </svg>
@@ -153,7 +153,7 @@
                             {{ current_placement.start_date|timesince|cut:"," }} on site
                         </span>
                         {% if feature_access.locations.full %}
-                        <a href="{% url 'placement_update' current_placement.pk %}?next={{ request.path|urlencode }}"
+                        <a href="{% url 'placement_update' current_placement.pk %}?next={{ request.path|urlencode }}" hx-get="{% url 'placement_update' current_placement.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit placement"
                            class="btn-ghost btn-xs" title="Correct dates, rate or owner">Edit</a>
                         {% endif %}
                     </div>
@@ -209,7 +209,7 @@
                         </div>
                         <p class="mt-3 text-sm font-medium text-charcoal">No current placement</p>
                         <p class="text-xs text-sage mt-0.5">{{ horse.name }} isn't currently at a location.</p>
-                        <a href="{% url 'horse_arrive' horse.pk %}" class="btn-primary mt-4 inline-flex">
+                        <a href="{% url 'horse_arrive' horse.pk %}" hx-get="{% url 'horse_arrive' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Log arrival for {{ horse.name }}" class="btn-primary mt-4 inline-flex">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                             </svg>
@@ -498,7 +498,7 @@
                                     </div>
                                     <span class="flex items-center gap-2 shrink-0">
                                         {% if event.type == 'placement' and feature_access.locations.full %}
-                                        <a href="{% url 'placement_update' event.obj.pk %}?next={{ request.path|urlencode }}"
+                                        <a href="{% url 'placement_update' event.obj.pk %}?next={{ request.path|urlencode }}" hx-get="{% url 'placement_update' event.obj.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit placement"
                                            class="link text-xs tap-pad" title="Correct dates, rate or owner">Edit</a>
                                         {% endif %}
                                         <span class="text-xs text-sage" title="{{ event.date|date:"d M Y" }}">{{ event.date|ago_label }}</span>
@@ -649,7 +649,7 @@
                             <span class="text-sm font-semibold">Move to Location</span>
                         </a>
                         {% else %}
-                        <a href="{% url 'horse_arrive' horse.pk %}" title="Log this horse's arrival"
+                        <a href="{% url 'horse_arrive' horse.pk %}" hx-get="{% url 'horse_arrive' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Log arrival for {{ horse.name }}" title="Log this horse's arrival"
                            class="group/qa col-span-2 flex items-center justify-center gap-2.5 p-3 rounded-card bg-forest text-white shadow-sm hover:bg-forest-light hover:shadow-md hover:-translate-y-0.5 transition-all duration-150">
                             <span class="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center group-hover/qa:bg-white/25 transition-colors">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

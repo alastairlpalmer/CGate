@@ -9,6 +9,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import CreateView, ListView, UpdateView
 
 from ..forms import PlacementForm
+from ._popup import PopupFormMixin
 from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Location, Owner, Placement
 
@@ -38,11 +39,12 @@ def movement_history(request, default_status='active'):
     elif status == 'ended':
         placements = placements.filter(end_date__isnull=False)
 
+    # Non-numeric ids raise ValueError at query time — treat as unset.
     location = request.GET.get('location')
-    if location:
+    if location and location.isdigit():
         placements = placements.filter(location_id=location)
     owner = request.GET.get('owner')
-    if owner:
+    if owner and owner.isdigit():
         placements = placements.filter(owner_id=owner)
 
     return placements.order_by('-start_date')[:50], status
@@ -84,12 +86,12 @@ class PlacementListView(FeatureAccessMixin, ListView):
 
         # Location filter
         location = self.request.GET.get('location')
-        if location:
+        if location and location.isdigit():
             queryset = queryset.filter(location_id=location)
 
         # Owner filter
         owner = self.request.GET.get('owner')
-        if owner:
+        if owner and owner.isdigit():
             queryset = queryset.filter(owner_id=owner)
 
         return queryset.order_by('-start_date')
@@ -127,7 +129,7 @@ class PlacementCreateView(_PlacementFormViewMixin, FeatureAccessMixin, CreateVie
     template_name = 'placements/placement_form.html'
 
 
-class PlacementUpdateView(_PlacementFormViewMixin, FeatureAccessMixin, UpdateView):
+class PlacementUpdateView(PopupFormMixin, _PlacementFormViewMixin, FeatureAccessMixin, UpdateView):
     feature = 'locations'
     model = Placement
     form_class = PlacementForm

@@ -45,7 +45,7 @@
                     {% if feature_access.invoices.full %}
                     <td>
                         <div class="flex items-center justify-end gap-1">
-                            <a href="{% url 'payment_create' invoice.pk %}" class="btn-ghost btn-xs">Record Payment</a>
+                            <a href="{% url 'payment_create' invoice.pk %}" hx-get="{% url 'payment_create' invoice.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record payment for {{ invoice.invoice_number }}" class="btn-ghost btn-xs">Record Payment</a>
                             <form method="post" action="{% url 'invoice_mark_paid' invoice.pk %}" class="inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="next" value="{{ request.get_full_path }}">

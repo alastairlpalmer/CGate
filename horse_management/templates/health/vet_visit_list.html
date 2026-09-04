@@ -71,7 +71,7 @@
                             &pound;{{ v.cost|floatformat:2 }}
                         </td>
                         <td>
-                            <a href="{% url 'vet_visit_update' v.pk %}" class="btn-ghost btn-xs">Edit</a>
+                            <a href="{% url 'vet_visit_update' v.pk %}" hx-get="{% url 'vet_visit_update' v.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vet visit" class="btn-ghost btn-xs">Edit</a>
                         </td>
                     </tr>
                     {% empty %}

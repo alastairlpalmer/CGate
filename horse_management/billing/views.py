@@ -9,8 +9,11 @@ from operator import attrgetter
 
 from django.contrib import messages
 
-from core.permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
-from core.views._popup import PopupFormMixin
+from invoicing.models import Invoice
+from core.permissions import (
+    LEVEL_VIEW, FeatureAccessMixin, deny, feature_required, has_feature_access,
+)
+from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_response
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum
 from django.http import JsonResponse
@@ -53,12 +56,12 @@ class ExtraChargeListView(FeatureAccessMixin, ListView):
 
         # Filter by horse
         horse = self.request.GET.get('horse')
-        if horse:
+        if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
 
         # Filter by owner
         owner = self.request.GET.get('owner')
-        if owner:
+        if owner and owner.isdigit():
             queryset = queryset.filter(owner_id=owner)
 
         search = self.request.GET.get('search', '').strip()
@@ -96,7 +99,7 @@ class ExtraChargeCreateView(PopupFormMixin, FeatureAccessMixin, CreateView):
                 horse = Horse.objects.get(pk=horse_id)
                 if horse.current_owner:
                     initial['owner'] = horse.current_owner.pk
-            except Horse.DoesNotExist:
+            except (Horse.DoesNotExist, ValueError):
                 pass
         initial['date'] = timezone.localdate()
         return initial
@@ -139,7 +142,23 @@ def _warn_if_owner_unrelated(request, form):
         )
 
 
-class ExtraChargeUpdateView(FeatureAccessMixin, UpdateView):
+def _on_live_invoice(charge):
+    """True when the charge is billed on any non-cancelled invoice.
+
+    ``charge.invoiced`` alone is not enough: a split charge on a co-owned
+    horse stays invoiced=False until *every* co-owner has been billed, yet
+    one owner's live invoice already carries a line for it. Editing or
+    deleting it then orphaned that line (InvoiceLineItem.charge is
+    SET_NULL) and left the split no longer summing to the charge.
+    """
+    if charge.invoiced:
+        return True
+    return charge.invoice_items.exclude(
+        invoice__status=Invoice.Status.CANCELLED
+    ).exists()
+
+
+class ExtraChargeUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'charges'
     model = ExtraCharge
     form_class = ExtraChargeForm
@@ -147,8 +166,15 @@ class ExtraChargeUpdateView(FeatureAccessMixin, UpdateView):
     success_url = reverse_lazy('charge_list')
 
     def dispatch(self, request, *args, **kwargs):
+        # Access check first: the old order ran get_object() and answered
+        # "already invoiced" before FeatureAccessMixin got to deny, leaking
+        # the charge's existence and billing state to anyone.
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        if not has_feature_access(request.user, self.feature, self.access_level):
+            return deny(request)
         obj = self.get_object()
-        if obj.invoiced:
+        if _on_live_invoice(obj):
             messages.error(request, "This charge has already been invoiced and cannot be edited.")
             return redirect('charge_list')
         return super().dispatch(request, *args, **kwargs)
@@ -176,8 +202,12 @@ class ExtraChargeDeleteView(FeatureAccessMixin, DeleteView):
     )
 
     def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        if not has_feature_access(request.user, self.feature, self.access_level):
+            return deny(request)
         obj = self.get_object()
-        if obj.invoiced:
+        if _on_live_invoice(obj):
             messages.error(request, "This charge has already been invoiced and cannot be deleted.")
             return redirect('charge_list')
         return super().dispatch(request, *args, **kwargs)
@@ -638,6 +668,7 @@ def feed_out_create(request, location_pk):
     from core.models import Location
 
     location = get_object_or_404(Location, pk=location_pk)
+    in_popup = is_popup_request(request)
     horses_at_location = Horse.objects.filter(
         placements__location=location,
         placements__end_date__isnull=True,
@@ -702,8 +733,19 @@ def feed_out_create(request, location_pk):
                 # silently absorb its slice (and sometimes the rounding
                 # remainder) with the yard eating the difference.
                 skipped_ownerless = []
+                zero_cost_recharge = False
+                if feed_out.is_recharged and feed_out.total_cost <= 0:
+                    # No cost and no priced stock to derive one from: every
+                    # selected horse used to get a permanent £0.00 charge
+                    # that no invoice run could ever clear.
+                    zero_cost_recharge = True
+                    feed_out.is_recharged = False
+                    feed_out.save(update_fields=['is_recharged'])
                 if feed_out.is_recharged:
-                    selected_ids = request.POST.getlist('recharge_horses')
+                    selected_ids = [
+                        i for i in request.POST.getlist('recharge_horses')
+                        if i.isdigit()
+                    ]
                     selected = horses_at_location.filter(pk__in=selected_ids)
                     billable = []
                     for horse in selected:
@@ -731,6 +773,13 @@ def feed_out_create(request, location_pk):
                             )
 
             messages.success(request, f"Feed out recorded for {location.name}.")
+            if zero_cost_recharge:
+                messages.warning(
+                    request,
+                    "Not recharged: this feed out has no cost (enter a total "
+                    "cost, or log the stock purchase first so one can be "
+                    "worked out).",
+                )
             if skipped_ownerless:
                 messages.warning(
                     request,
@@ -738,11 +787,15 @@ def feed_out_create(request, location_pk):
                     + ", ".join(skipped_ownerless)
                     + ". The full cost was spread across the owned horses.",
                 )
+            if in_popup:
+                return popup_saved_response()
             return redirect('location_detail', pk=location.pk)
     else:
         form = FeedOutForm(initial={'date': timezone.localdate()})
 
-    return render(request, 'billing/feed_out_form.html', {
+    template = 'billing/partials/feed_out_form.html' if in_popup else 'billing/feed_out_form.html'
+    return render(request, template, {
+        'in_popup': in_popup,
         'form': form,
         'location': location,
         'horses_with_owners': horses_with_owners,

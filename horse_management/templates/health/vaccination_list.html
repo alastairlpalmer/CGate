@@ -84,7 +84,7 @@
                         </td>
                         <td>
                             <div class="flex items-center gap-1">
-                                <a href="{% url 'vaccination_update' vax.pk %}" class="btn-ghost btn-xs">Edit</a>
+                                <a href="{% url 'vaccination_update' vax.pk %}" hx-get="{% url 'vaccination_update' vax.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vaccination" class="btn-ghost btn-xs">Edit</a>
                                 <a href="{% url 'vaccination_create' %}?horse={{ vax.horse.pk }}" class="btn-ghost btn-xs">Re-vaccinate</a>
                             </div>
                         </td>

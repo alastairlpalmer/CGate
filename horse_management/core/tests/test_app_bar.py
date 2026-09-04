@@ -39,6 +39,28 @@ class AppBarPlacementTests(TestCase):
         main = body.index('id="main-content"')
         self.assertLess(bar, main, 'the app bar must precede #main-content')
 
+    def test_search_works_for_a_role_that_cannot_see_the_dashboard(self):
+        """The search was the dashboard's, and kept its gate when it moved.
+        A role with the dashboard hidden saw a box that did nothing."""
+        user = make_user_with_access('nodash', horses='view', locations='view')
+        self.client.force_login(user)
+        body = self.client.get(reverse('horse_list')).content.decode()
+        self.assertIn('id="app-search-results"', body)
+
+        response = self.client.get(reverse('quick_find'), {'q': 'ali'})
+        self.assertEqual(response.status_code, 200)
+
+    def test_no_search_box_when_no_searchable_area_is_visible(self):
+        user = make_user_with_access('feedonly', dashboard='full', feed='view')
+        self.client.force_login(user)
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertNotIn('id="app-search-results"', body)
+
+    def test_search_still_needs_a_login(self):
+        self.client.logout()
+        response = self.client.get(reverse('quick_find'), {'q': 'ali'})
+        self.assertEqual(response.status_code, 302)
+
     def test_anonymous_visitors_get_no_bar(self):
         self.client.logout()
         body = self.client.get(reverse('login')).content.decode()

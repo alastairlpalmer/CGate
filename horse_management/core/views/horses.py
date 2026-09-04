@@ -524,8 +524,9 @@ class HorseListView(FeatureAccessMixin, ListView):
         placement_filter = (
             {} if self.status == 'departed' else {'end_date__isnull': True}
         )
+        # Non-numeric ids raise ValueError at query time — treat as unset.
         location = self.request.GET.get('location')
-        if location:
+        if location and location.isdigit():
             queryset = queryset.filter(
                 Exists(Placement.objects.filter(
                     horse=OuterRef('pk'),
@@ -535,7 +536,7 @@ class HorseListView(FeatureAccessMixin, ListView):
             )
 
         owner = self.request.GET.get('owner')
-        if owner:
+        if owner and owner.isdigit():
             queryset = queryset.filter(
                 Exists(Placement.objects.filter(
                     horse=OuterRef('pk'),
@@ -860,8 +861,6 @@ class HorseListView(FeatureAccessMixin, ListView):
             })
         return _sort_groups(groups, self.group_sort)
 
-        return context
-
 
 class HorseDetailView(FeatureAccessMixin, DetailView):
     feature = 'horses'
@@ -1168,10 +1167,16 @@ def new_arrival(request):
 
 @feature_required('horses')
 def horse_arrive(request, pk):
-    """Log a single horse arriving at a location (from Horse Detail)."""
+    """Log a single horse arriving at a location (from Horse Detail).
+
+    Serves the pop-up sheet too (HX-Target: popup-body): the form partial
+    alone, 204 + ``popup:saved`` on success, and the partial with any
+    service error inline otherwise.
+    """
     from ..services import PlacementService
 
     horse = get_object_or_404(Horse, pk=pk)
+    in_popup = is_popup_request(request)
 
     if request.method == 'POST':
         form = SingleArrivalForm(request.POST)
@@ -1186,6 +1191,16 @@ def horse_arrive(request, pk):
                     expected_departure=form.cleaned_data.get('expected_departure'),
                     notes=form.cleaned_data['notes'],
                 )
+            except ValidationError as e:
+                form.add_error(None, e)
+            except IntegrityError:
+                form.add_error(
+                    None,
+                    "That change clashed with another update to the same "
+                    "horse (it may already be placed) — refresh and check "
+                    "the current placement before retrying.",
+                )
+            else:
                 messages.success(request, format_html(
                     '{} arrived at {}. <a href="{}?category=arrival" class="underline font-semibold">Add photos</a>',
                     horse.name,
@@ -1193,16 +1208,9 @@ def horse_arrive(request, pk):
                     reverse('horse_photo_add', args=[horse.pk]),
                 ))
                 _flash_superseded_trim(request, horse, placement)
+                if in_popup:
+                    return popup_saved_response()
                 return redirect('horse_list')
-            except ValidationError as e:
-                messages.error(request, '; '.join(e.messages))
-            except IntegrityError:
-                messages.error(
-                    request,
-                    "That change clashed with another update to the same "
-                    "horse (it may already be placed) — refresh and check "
-                    "the current placement before retrying.",
-                )
     else:
         initial = {'arrival_date': timezone.localdate()}
         primary_owner = horse.primary_owner
@@ -1210,9 +1218,12 @@ def horse_arrive(request, pk):
             initial['owner'] = primary_owner.pk
         form = SingleArrivalForm(initial=initial)
 
-    return render(request, 'horses/horse_arrive.html', {
+    template = 'horses/partials/arrive_form.html' if in_popup else 'horses/horse_arrive.html'
+    return render(request, template, {
         'horse': horse,
         'form': form,
+        'in_popup': in_popup,
+        'today': timezone.localdate(),
     })
 
 
@@ -1223,7 +1234,16 @@ def horse_depart(request, pk):
 
     horse = get_object_or_404(Horse, pk=pk)
 
-    if request.method == 'POST' and horse.current_placement:
+    if request.method == 'POST':
+        if not horse.current_placement:
+            # A double-submit or a colleague's bulk departure closed it
+            # first. Say so — a silent redirect looks like a dropped request
+            # and invites another click.
+            messages.error(
+                request,
+                f"{horse.name} has no current placement to depart from.",
+            )
+            return redirect('horse_detail', pk=horse.pk)
         departure_date_str = request.POST.get('departure_date')
         if not departure_date_str:
             messages.error(request, "Departure date is required.")
@@ -1300,7 +1320,11 @@ def confirm_departure(request, pk):
                 f"{horse.name} is still placed in a location — use Log Departure instead.",
             )
     if request.headers.get('HX-Request'):
-        return HttpResponse('')
+        # 204 + popup:saved: nothing is swapped, and popup.js re-fetches
+        # #main-content so the queued message shows and the widget
+        # re-renders from the database. Swapping an empty body used to
+        # delete the row even when the action was refused.
+        return HttpResponse(status=204, headers={'HX-Trigger': 'popup:saved'})
     return redirect('dashboard')
 
 
@@ -1314,7 +1338,11 @@ def cancel_departure(request, pk):
         if PlacementService.cancel_departure(horse):
             messages.success(request, f"{horse.name} departure cancelled.")
     if request.headers.get('HX-Request'):
-        return HttpResponse('')
+        # 204 + popup:saved: nothing is swapped, and popup.js re-fetches
+        # #main-content so the queued message shows and the widget
+        # re-renders from the database. Swapping an empty body used to
+        # delete the row even when the action was refused.
+        return HttpResponse(status=204, headers={'HX-Trigger': 'popup:saved'})
     return redirect('dashboard')
 
 
@@ -1324,7 +1352,9 @@ def confirm_departures_bulk(request):
     from ..services import PlacementService
 
     if request.method == 'POST':
-        horse_ids = request.POST.getlist('horse_ids')
+        horse_ids = [
+            i for i in request.POST.getlist('horse_ids') if i.isdigit()
+        ]
         if horse_ids:
             count = PlacementService.confirm_departures_bulk(horse_ids)
             skipped = len(set(horse_ids)) - count
@@ -1333,7 +1363,11 @@ def confirm_departures_bulk(request):
                 msg += f" {skipped} skipped (already departed or still placed in a location)."
             messages.success(request, msg)
     if request.headers.get('HX-Request'):
-        return HttpResponse('')
+        # 204 + popup:saved: nothing is swapped, and popup.js re-fetches
+        # #main-content so the queued message shows and the widget
+        # re-renders from the database. Swapping an empty body used to
+        # delete the row even when the action was refused.
+        return HttpResponse(status=204, headers={'HX-Trigger': 'popup:saved'})
     return redirect('dashboard')
 
 
