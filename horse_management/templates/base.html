@@ -286,28 +286,36 @@
             {% if feature_access.dashboard.view %}
             <a href="{% url 'dashboard' %}"
                class="tab-bar-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>
+                <span class="tab-bar-icon">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>
+                </span>
                 <span class="tab-bar-label">Dashboard</span>
             </a>
             {% endif %}
             {% if feature_access.horses.view %}
             <a href="{% url 'horse_list' %}"
                class="tab-bar-item {% if '/horses/' in request.path %}active{% endif %}">
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25L12 17.25 2.25 12l4.179-2.25"/></svg>
+                <span class="tab-bar-icon">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25L12 17.25 2.25 12l4.179-2.25"/></svg>
+                </span>
                 <span class="tab-bar-label">Horses</span>
             </a>
             {% endif %}
             {% if feature_access.locations.view %}
             <a href="{% url 'location_list' %}"
                class="tab-bar-item {% if '/locations/' in request.path or '/placements/' in request.path %}active{% endif %}">
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+                <span class="tab-bar-icon">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+                </span>
                 <span class="tab-bar-label">Locations</span>
             </a>
             {% endif %}
             <button type="button" @click="moreSheetOpen = !moreSheetOpen"
                     class="tab-bar-item"
                     :class="moreSheetOpen && 'active'">
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+                <span class="tab-bar-icon">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+                </span>
                 <span class="tab-bar-label">More</span>
             </button>
         </div>
@@ -449,6 +457,11 @@
     // and inline scripts — everything the swapped DOM needs beyond itself.
     window.Yardway = window.Yardway || {};
     window.Yardway.afterMainSwap = function (main, responseText) {
+        // The app bar sits outside #main-content, so its page-action slot is
+        // not part of the swap. Empty it here: the new page fills it again
+        // when Alpine initialises its x-teleport below.
+        var slot = document.getElementById('app-bar-slot');
+        if (slot) slot.innerHTML = '';
         if (responseText) {
             var m = responseText.match(/<title>(.*?)<\/title>/);
             if (m) document.title = m[1];
@@ -616,6 +629,51 @@
 <!-- Register Alpine components before Alpine starts (loaded with defer) -->
 <script>
 document.addEventListener('alpine:init', function() {
+    // ── Segmented control ──
+    // Slides one filled thumb behind the selected option instead of
+    // repainting two separate buttons. Options are links, so a click starts
+    // a boosted navigation: move the thumb straight away rather than waiting
+    // for the response, which is what makes the control feel direct.
+    Alpine.data('segmented', function() {
+        return {
+            init: function() {
+                var self = this;
+                this.$nextTick(function() { self.place(false); });
+                // Fonts and container width both settle after first paint
+                if (window.ResizeObserver) {
+                    this._ro = new ResizeObserver(function() { self.place(false); });
+                    this._ro.observe(this.$el);
+                }
+            },
+            destroy: function() {
+                if (this._ro) this._ro.disconnect();
+            },
+            place: function(animate) {
+                var thumb = this.$refs.thumb;
+                var active = this.$el.querySelector('.segmented-item.is-active');
+                if (!thumb) return;
+                if (!active) { thumb.style.opacity = '0'; return; }
+                if (animate === false) thumb.style.transition = 'none';
+                thumb.style.width = active.offsetWidth + 'px';
+                thumb.style.transform = 'translateX(' + active.offsetLeft + 'px)';
+                thumb.style.opacity = '1';
+                this.$el.classList.add('is-ready');
+                if (animate === false) {
+                    void thumb.offsetWidth;   // flush, so the next move animates
+                    thumb.style.transition = '';
+                }
+            },
+            // Optimistic select: paint the click before the page comes back
+            pick: function(el) {
+                this.$el.querySelectorAll('.segmented-item').forEach(function(i) {
+                    i.classList.remove('is-active');
+                });
+                el.classList.add('is-active');
+                this.place(true);
+            }
+        };
+    });
+
     Alpine.data('bulkActions', function() {
         return {
             selectedHorses: new Set(),

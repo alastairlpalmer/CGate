@@ -1,17 +1,18 @@
 {% comment %}
-One option in the horse-list "Group by" toggle.
+One option in the horse-list "Group by" segmented rail.
 
 Picking a different grouping is a plain link. Clicking the option that is
-already selected opens the Sort pop-out instead — the parent element owns
-the Alpine `sortOpen` flag.
+already selected opens the Sort pop-out instead — an ancestor owns the
+Alpine `sortOpen` flag, and the rail owns `pick()`, which slides the thumb
+straight away rather than waiting for the page to come back.
 
-Params: key ('all' | 'location' | 'owner'), label.
+Params: key ('all' | 'site' | 'location' | 'owner'), label.
 {% endcomment %}
 {% if key == group_by %}
 <button type="button" @click="sortOpen = !sortOpen"
         :aria-expanded="sortOpen ? 'true' : 'false'" aria-haspopup="true"
         title="Sorted by {{ active_sort_label }} — click to change"
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] sm:min-h-0 text-sm font-medium rounded-md transition-all duration-150 bg-forest text-white shadow-sm">
+        class="segmented-item is-active">
     {% include 'horses/_group_icon.html' %}
     {{ label }}
     <svg class="w-3 h-3 opacity-80 transition-transform duration-150" :class="sortOpen && 'rotate-180'"
@@ -20,8 +21,8 @@ Params: key ('all' | 'location' | 'owner'), label.
     </svg>
 </button>
 {% else %}
-<a href="{% querystring group_by=key page=None show_empty=None %}"
-   class="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] sm:min-h-0 text-sm font-medium rounded-md transition-all duration-150 text-sage hover:text-charcoal hover:bg-light-sage/60">
+<a href="{% querystring group_by=key page=None show_empty=None %}" @click="pick($el)"
+   class="segmented-item">
     {% include 'horses/_group_icon.html' %}
     {{ label }}
 </a>
