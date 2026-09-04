@@ -1,12 +1,30 @@
-<form hx-post="{% url 'bulk_health_apply' %}"
-      hx-target="#bulk-form-container"
-      hx-select="unset" hx-push-url="false"
-      hx-swap="innerHTML">
+{% comment %}
+The bulk health form. Two homes:
+
+- The horse list's bulk modal (#bulk-form-container): the Alpine
+  bulkActions component injects the horse ids and the view answers with
+  HX-Trigger bulkActionComplete.
+- The dashboard's pop-up sheet (in_popup): the horses arrive preselected
+  in the URL, the form posts back to #popup-body, and a valid save answers
+  204 + popup:saved so the sheet closes and the page refreshes.
+{% endcomment %}
+<form {% if in_popup %}method="post" action="{% url 'bulk_health_apply' %}" hx-post="{% url 'bulk_health_apply' %}" hx-target="#popup-body" hx-select="unset" hx-push-url="false" hx-swap="innerHTML"{% else %}hx-post="{% url 'bulk_health_apply' %}" hx-target="#bulk-form-container" hx-select="unset" hx-push-url="false" hx-swap="innerHTML"{% endif %}>
     {% csrf_token %}
     <input type="hidden" name="action_type" value="{{ action_type }}">
+    {% if in_popup %}
+    <input type="hidden" name="popup" value="1">
+    {% for id in popup_horse_ids %}<input type="hidden" name="horse_ids" value="{{ id }}">{% endfor %}
+    {% endif %}
 
     <fieldset class="p-4 sm:p-5 space-y-4">
         <legend class="text-sm font-medium text-charcoal mb-2">{{ action_label }} Details</legend>
+
+        {% if in_popup and popup_horse_names %}
+        <p class="text-sm text-charcoal">
+            <span class="text-sage">For {{ popup_horse_names|length }} horse{{ popup_horse_names|length|pluralize }}:</span>
+            {{ popup_horse_names|join:", " }}
+        </p>
+        {% endif %}
 
         {% if form.non_field_errors %}
         <div class="rounded-md bg-error-red-50 border border-error-red/20 p-3">
@@ -51,8 +69,15 @@
         </div>
     </fieldset>
 
+    {% if in_popup %}
+    <div class="popup-footer">
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        <button type="submit" class="btn-primary">Record for {{ popup_horse_ids|length }} horse{{ popup_horse_ids|length|pluralize }}</button>
+    </div>
+    {% else %}
     <div class="flex items-center justify-end gap-3 px-5 py-4 border-t border-light-sage bg-parchment rounded-b-lg">
         <button type="button" @click="modalOpen = false" class="btn-secondary text-sm">Cancel</button>
         <button type="submit" class="btn-primary text-sm">Apply to Selected Horses</button>
     </div>
+    {% endif %}
 </form>

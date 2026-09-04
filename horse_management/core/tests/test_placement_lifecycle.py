@@ -921,11 +921,7 @@ class PendingDeparturesWidgetTests(LifecycleTestCase):
 
     def setUp(self):
         super().setUp()
-        from core.models import DashboardPreference
         self.admin = make_admin(username='dash-admin')
-        pref = DashboardPreference.get_for(self.admin)
-        pref.layout = {'pending_departures': {'visible': True, 'order': 0}}
-        pref.save()
         self.client.force_login(self.admin)
 
     def _pending(self, horse, days_ago_end):
@@ -974,11 +970,7 @@ class PendingDeparturesSelectionTests(LifecycleTestCase):
 
     def setUp(self):
         super().setUp()
-        from core.models import DashboardPreference
         self.admin = make_admin(username='pending-admin')
-        pref = DashboardPreference.get_for(self.admin)
-        pref.layout = {'pending_departures': {'visible': True, 'order': 0}}
-        pref.save()
         self.client.force_login(self.admin)
 
     def _moved_horse(self):
@@ -999,7 +991,11 @@ class PendingDeparturesSelectionTests(LifecycleTestCase):
     def test_moved_horse_is_not_a_pending_departure(self):
         self._moved_horse()
         response = self.client.get(reverse('dashboard'))
-        self.assertNotContains(response, 'pending-departures-card')
+        self.assertNotContains(response, 'Confirm departed')
+        self.assertEqual(
+            [item.kind for row in response.context['rows'] for item in row.items if item.kind == 'departure'],
+            [],
+        )
 
     def test_confirm_departure_refuses_currently_placed_horse(self):
         horse = self._moved_horse()
@@ -1041,11 +1037,14 @@ class PendingDeparturesSelectionTests(LifecycleTestCase):
             end_date=self.today - timedelta(days=2),
         )
         response = self.client.get(reverse('dashboard'))
-        self.assertContains(response, 'pending-departures-card')
-        departures = response.context['pending_departures']
-        all_ids = [pk for g in departures for pk in g['horse_ids']]
-        self.assertEqual(all_ids, [str(self.horse.pk)])
-        self.assertEqual(departures[0]['date'], self.today - timedelta(days=2))
+        self.assertContains(response, 'Confirm departed')
+        departures = [
+            item for row in response.context['rows'] for item in row.items
+            if item.kind == 'departure'
+        ]
+        self.assertEqual([item.horse_id for item in departures], [self.horse.pk])
+        self.assertEqual(departures[0].due_date, self.today - timedelta(days=2))
+        self.assertEqual(response.context['departure_ids'], [str(self.horse.pk)])
 
 
 class LogoutMethodTests(TestCase):

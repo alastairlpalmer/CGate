@@ -1,0 +1,66 @@
+{% comment %}
+Domain icon sprite. Included once in base.html (outside #main-content, so
+boosted navigations keep it) and referenced with
+  <svg class="w-4 h-4" aria-hidden="true"><use href="#i-horse"/></svg>
+
+All glyphs sit on the same 24px grid with a 1.75 stroke, round caps and
+joins, so they read as one set beside the Heroicons the app keeps for
+utility actions (edit, close, search).
+{% endcomment %}
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <defs>
+        <symbol id="i-horse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 3l-1.6 3.5C9.4 8.4 7.3 10.7 5.6 13c-1 1.3-1.3 2.4-.7 3 .8.7 2.4.3 3.6-.5l2.1-.9c1 1 1.4 2.4 1.4 4.4V21h9v-6.5c0-3.5-1.4-5.9-3.8-7.4l-2-1.2L13 3z"/>
+            <path d="M17.2 7.1c1.3 1.9 2 3.9 2.2 6.4"/>
+            <path d="M9.3 10.2h.01"/>
+        </symbol>
+        <symbol id="i-foal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 5l-1.2 2.6C10 9.4 8.5 11 7.2 12.6c-.8 1-1 1.8-.5 2.3.6.5 1.8.2 2.7-.4l1.6-.7c.8.8 1.1 1.8 1.1 3.3V20h7v-4.9c0-2.6-1.1-4.4-2.9-5.6l-1.5-.9L13 5z"/>
+            <path d="M10.1 10.3h.01"/>
+        </symbol>
+        <symbol id="i-horseshoe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.5 20v-8.5a5.5 5.5 0 0 1 11 0V20"/>
+            <path d="M4.5 19.5h4M15.5 19.5h4"/>
+            <path d="M7.5 12.5h.01M16.5 12.5h.01M7.5 15.5h.01M16.5 15.5h.01M9.3 8.3h.01M14.7 8.3h.01"/>
+        </symbol>
+        <symbol id="i-fence" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 20V6l1.5-2L8 6v14M16 20V6l1.5-2L19 6v14"/>
+            <path d="M2.5 10h19M2.5 15.5h19"/>
+        </symbol>
+        <symbol id="i-gate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3.5 20V5M20.5 20V5"/>
+            <path d="M3.5 8h17M3.5 12.5h17M3.5 17h17"/>
+            <path d="M3.5 17L20.5 8"/>
+        </symbol>
+        <symbol id="i-hay" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="7.5" width="18" height="10" rx="2"/>
+            <path d="M9 7.5v10M15 7.5v10"/>
+            <path d="M5.5 11l1.5 3M18.5 11l-1.5 3"/>
+        </symbol>
+        <symbol id="i-syringe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 3l3 3M19.5 4.5l-3 3"/>
+            <path d="M16.5 7.5l-8.6 8.6a1.5 1.5 0 0 1-2.1 0l-.4-.4a1.5 1.5 0 0 1 0-2.1L14 5"/>
+            <path d="M14 5l5 5"/>
+            <path d="M6.3 17.7L3 21"/>
+            <path d="M10 10l1.5 1.5M12 8l1.5 1.5"/>
+        </symbol>
+        <symbol id="i-stethoscope" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5.5 3.5V9a5 5 0 0 0 10 0V3.5"/>
+            <path d="M10.5 14v2.5a4.5 4.5 0 0 0 9 0V13"/>
+            <circle cx="19.5" cy="10.5" r="2"/>
+            <path d="M4.5 3.5h2M14.5 3.5h2"/>
+        </symbol>
+        <symbol id="i-egg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21c3.9 0 7-2.9 7-6.8C19 9.7 15.6 3 12 3S5 9.7 5 14.2c0 3.9 3.1 6.8 7 6.8z"/>
+            <path d="M9 13.5c0 1.8 1.3 3.2 3 3.2"/>
+        </symbol>
+        <symbol id="i-pound" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.1 7.6a3 3 0 0 0-5.1 1.8c0 .2 0 .4.1.6l.5 3.6a4.5 4.5 0 0 1-.4 2.6L9 16.5l1.5-.5a2.3 2.3 0 0 1 1.4 0l.7.2a2.3 2.3 0 0 0 1.7-.1L15 15.8M8.3 12H12"/>
+            <circle cx="12" cy="12" r="9"/>
+        </symbol>
+        <symbol id="i-document" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 3.5H7.5A1.5 1.5 0 0 0 6 5v14a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 18 19V7.5L14 3.5z"/>
+            <path d="M14 3.5V7.5h4M9 12h6M9 15.5h6"/>
+        </symbol>
+    </defs>
+</svg>

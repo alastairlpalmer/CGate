@@ -1,0 +1,27 @@
+{% load ui_extras %}
+{% comment %}
+Zone F: what changed, newest first, grouped by day. Loaded after first
+paint. Context: days (core.dashboard.activity.recent), site.
+{% endcomment %}
+<div class="card overflow-hidden h-full">
+    <div class="section-header">
+        <h2 class="section-title">What changed</h2>
+        {% if feature_access.horses.view %}<a href="{% url 'horse_list' %}?tab=movements" class="text-xs link tap-pad">Movements &rarr;</a>{% endif %}
+    </div>
+    {% if days %}
+    <div class="log">
+        {% for day in days %}
+        <p class="log-day">{{ day.label }}{% if day.with_date %} <span class="text-sage/70">&middot; {{ day.date|date:"j M" }}</span>{% endif %}</p>
+        {% for event in day.events %}
+        <a href="{{ event.url }}" class="log-event">
+            <i class="log-dot dot-{{ event.kind }}" aria-hidden="true"></i>
+            <span class="log-text">{{ event.text }}</span>
+            {% if event.amount is not None %}<span class="log-amount">{{ event.amount|gbp }}</span>{% endif %}
+        </a>
+        {% endfor %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="px-5 py-8 text-center text-sm text-sage">Nothing recorded yet{% if site %} at {{ site }}{% endif %}.</p>
+    {% endif %}
+</div>

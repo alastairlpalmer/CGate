@@ -8,6 +8,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 
+from core.dashboard import attention
 from core.permissions import (
     LEVEL_FULL,
     LEVEL_VIEW,
@@ -30,7 +31,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from billing.models import ExtraCharge
 from core.models import Horse, Placement
-from core.views._popup import PopupFormMixin
+from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_response
 
 from .forms import (
     BreedingRecordForm,
@@ -98,61 +99,9 @@ def health_dashboard(request):
     }
 
     if tab == 'overview':
-        thirty_days = today + timedelta(days=30)
-        two_weeks = today + timedelta(days=14)
-
-        # Overdue vaccinations — latest record per (horse, type) only, or a
-        # horse looks permanently overdue the day after its annual booster
-        # (last year's record keeps a past next_due_date forever).
-        overdue_vaccinations = list(current_vaccinations(
-            Vaccination.objects.select_related('horse', 'vaccination_type')
-        ).filter(horse__is_active=True, next_due_date__lt=today).order_by('next_due_date'))
-
-        # Due soon vaccinations
-        due_vaccinations = list(current_vaccinations(
-            Vaccination.objects.select_related('horse', 'vaccination_type')
-        ).filter(
-            horse__is_active=True,
-            next_due_date__gte=today,
-            next_due_date__lte=thirty_days,
-        ).order_by('next_due_date'))
-
-        # Overdue farrier — latest visit per horse only
-        overdue_farrier = list(current_farrier_visits(
-            FarrierVisit.objects.select_related('horse', 'service_provider')
-        ).filter(
-            horse__is_active=True,
-            next_due_date__isnull=False,
-            next_due_date__lt=today,
-        ).order_by('next_due_date'))
-
-        # Due soon farrier
-        due_farrier = list(current_farrier_visits(
-            FarrierVisit.objects.select_related('horse', 'service_provider')
-        ).filter(
-            horse__is_active=True,
-            next_due_date__gte=today,
-            next_due_date__lte=two_weeks,
-        ).order_by('next_due_date'))
-
-        # Vet follow-ups (overdue)
-        overdue_vet = list(VetVisit.objects.select_related(
-            'horse', 'vet'
-        ).filter(
-            horse__is_active=True,
-            follow_up_date__isnull=False,
-            follow_up_date__lt=today,
-        ).order_by('follow_up_date'))
-
-        # Vet follow-ups (upcoming)
-        due_vet = list(VetVisit.objects.select_related(
-            'horse', 'vet'
-        ).filter(
-            horse__is_active=True,
-            follow_up_date__isnull=False,
-            follow_up_date__gte=today,
-            follow_up_date__lte=thirty_days,
-        ).order_by('follow_up_date'))
+        # Action Required / Coming Up come from the dashboard's collectors, so
+        # the two pages can never disagree about what is overdue.
+        action_required, coming_up = attention.health_lists(request.user, today=today)
 
         # High egg counts (last 90 days)
         high_egg_counts = list(WormEggCount.objects.select_related('horse').filter(
@@ -167,76 +116,15 @@ def health_dashboard(request):
             status='active',
         ).order_by('-created_at')[:10]
 
-        # Build unified action_required list (overdue items)
-        action_required = []
-        for vax in overdue_vaccinations:
-            action_required.append({
-                'horse': vax.horse,
-                'type': 'Vaccination',
-                'detail': vax.vaccination_type.name,
-                'due_date': vax.next_due_date,
-                'url': reverse('vaccination_create') + f'?horse={vax.horse.pk}',
-                'action_label': 'Re-vaccinate',
-            })
-        for visit in overdue_farrier:
-            action_required.append({
-                'horse': visit.horse,
-                'type': 'Farrier',
-                'detail': visit.get_work_done_display(),
-                'due_date': visit.next_due_date,
-                'url': reverse('farrier_create') + f'?horse={visit.horse.pk}',
-                'action_label': 'Book',
-            })
-        for v in overdue_vet:
-            action_required.append({
-                'horse': v.horse,
-                'type': 'Vet Follow-up',
-                'detail': v.reason[:60] if v.reason else '-',
-                'due_date': v.follow_up_date,
-                'url': reverse('vet_visit_create') + f'?horse={v.horse.pk}',
-                'action_label': 'New Visit',
-            })
-        action_required.sort(key=lambda x: x['due_date'])
-
-        # Build unified coming_up list (due soon items)
-        coming_up = []
-        for vax in due_vaccinations:
-            coming_up.append({
-                'horse': vax.horse,
-                'type': 'Vaccination',
-                'detail': vax.vaccination_type.name,
-                'due_date': vax.next_due_date,
-                'url': reverse('vaccination_create') + f'?horse={vax.horse.pk}',
-                'action_label': 'Re-vaccinate',
-            })
-        for visit in due_farrier:
-            coming_up.append({
-                'horse': visit.horse,
-                'type': 'Farrier',
-                'detail': visit.get_work_done_display(),
-                'due_date': visit.next_due_date,
-                'url': reverse('farrier_create') + f'?horse={visit.horse.pk}',
-                'action_label': 'Book',
-            })
-        for v in due_vet:
-            coming_up.append({
-                'horse': v.horse,
-                'type': 'Vet Follow-up',
-                'detail': v.reason[:60] if v.reason else '-',
-                'due_date': v.follow_up_date,
-                'url': reverse('vet_visit_create') + f'?horse={v.horse.pk}',
-                'action_label': 'New Visit',
-            })
-        coming_up.sort(key=lambda x: x['due_date'])
 
         context.update({
             'action_required': action_required,
             'coming_up': coming_up,
             'high_egg_counts': high_egg_counts,
             'active_conditions': active_conditions,
-            'stat_overdue_vax': len(overdue_vaccinations),
-            'stat_due_farrier': len(overdue_farrier) + len(due_farrier),
-            'stat_vet_followups': len(overdue_vet) + len(due_vet),
+            'stat_overdue_vax': sum(1 for e in action_required if e['type'] == 'Vaccination'),
+            'stat_due_farrier': sum(1 for e in action_required + coming_up if e['type'] == 'Farrier'),
+            'stat_vet_followups': sum(1 for e in action_required + coming_up if e['type'] == 'Vet Follow-up'),
             'stat_high_eggs': len(high_egg_counts),
         })
 
@@ -525,7 +413,30 @@ def bulk_health_form(request):
         'form': form,
         'action_type': action_type,
         'action_label': BULK_LABELS.get(action_type, action_type),
+        **_bulk_popup_context(request, request.GET),
     })
+
+
+def _bulk_popup_context(request, data):
+    """Context for the bulk form when the dashboard opens it in the pop-up
+    sheet with the horses already chosen (``?popup=1&horse_ids=..``).
+
+    The horse-list modal keeps its own path: it injects the ids itself and
+    never sends ``popup``.
+    """
+    horse_ids = [i for i in data.getlist('horse_ids') if i.isdigit()]
+    in_popup = data.get('popup') == '1' or is_popup_request(request)
+    horse_names = []
+    if in_popup and horse_ids:
+        horse_names = list(
+            Horse.objects.filter(pk__in=horse_ids, is_active=True)
+            .order_by('name').values_list('name', flat=True)
+        )
+    return {
+        'in_popup': in_popup,
+        'popup_horse_ids': horse_ids if in_popup else [],
+        'popup_horse_names': horse_names,
+    }
 
 
 @login_required
@@ -550,6 +461,7 @@ def bulk_health_apply(request):
             'form': form,
             'action_type': action_type,
             'action_label': BULK_LABELS.get(action_type, action_type),
+            **_bulk_popup_context(request, request.POST),
         })
 
     from core.services import PlacementService
@@ -690,6 +602,11 @@ def bulk_health_apply(request):
             "Not restored (already active, or no placement history): "
             + ", ".join(restore_skipped)
         )
+
+    if request.POST.get('popup') == '1':
+        # Opened from the dashboard in the pop-up sheet: close it and
+        # refresh the page beneath so the rows disappear and toasts show.
+        return popup_saved_response()
 
     # Return HX-Trigger to close modal and refresh page
     response = HttpResponse(status=204)

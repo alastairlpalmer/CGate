@@ -47,3 +47,19 @@ def on_user_login_failed(sender, credentials=None, request=None, **kwargs):
     # ``credentials`` holds the attempted username and is never sent. Only the
     # count of failures is useful, and only as an anonymous event.
     analytics.capture(None, 'user_sign_in_failed', {'source': _source(request)})
+
+
+# ── Business name cache ──────────────────────────────────────────────────────
+# The sidebar shows the yard's name through the ``business_name`` template
+# tag, which caches it. Clear the cache the moment Business Settings save.
+
+from django.core.cache import cache  # noqa: E402
+from django.db.models.signals import post_save  # noqa: E402
+
+from core.models import BusinessSettings  # noqa: E402
+from core.templatetags.ui_extras import BUSINESS_NAME_CACHE_KEY  # noqa: E402
+
+
+@receiver(post_save, sender=BusinessSettings)
+def clear_business_name_cache(sender, **kwargs):
+    cache.delete(BUSINESS_NAME_CACHE_KEY)
