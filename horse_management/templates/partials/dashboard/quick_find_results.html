@@ -6,17 +6,32 @@ own list filtered by the same words — so one box covers both "take me to
 this horse" and "show me everything matching".
 
 Every row carries its area's icon, so a mixed list still reads at a glance.
+
+A horse row opens the quick view (horses/partials/quick_view.html) in the
+pop-up sheet rather than the full profile: photo, location, colour, age and
+the day-to-day actions, one tap deep. The small arrow at the row's right
+edge — and the row's own href, without JavaScript — goes straight to the
+profile. It is tabindex=-1 so the arrow keys step through horses, not
+through two links per horse; the quick view's footer covers keyboard users.
 {% endcomment %}
 {% if has_results %}
 <div class="py-1.5">
 {% if horses %}
 <p class="quick-find-group-label">Horses</p>
 {% for h in horses %}
-<a href="{% url 'horse_detail' h.pk %}" class="quick-find-item">
-    <span class="quick-find-icon"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25L12 17.25 2.25 12l4.179-2.25"/></svg></span>
-    <span class="truncate flex-1">{{ h.name }}</span>
-    {% if not h.is_active %}<span class="quick-find-tag">Departed</span>{% endif %}
-</a>
+<div class="quick-find-row">
+    <a href="{% url 'horse_detail' h.pk %}" class="quick-find-item"
+       hx-get="{% url 'horse_quick_view' h.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+       data-popup-title="Quick view">
+        <span class="quick-find-icon"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25L12 17.25 2.25 12l4.179-2.25"/></svg></span>
+        <span class="truncate flex-1">{{ h.name }}</span>
+        {% if not h.is_active %}<span class="quick-find-tag">Departed</span>{% endif %}
+    </a>
+    <a href="{% url 'horse_detail' h.pk %}" class="quick-find-open" tabindex="-1"
+       title="Open the full profile" aria-label="Open the full profile of {{ h.name }}">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+    </a>
+</div>
 {% endfor %}
 <a href="{% url 'horse_list' %}?search={{ query|urlencode }}" class="quick-find-more">
     See all horses matching &ldquo;{{ query }}&rdquo;

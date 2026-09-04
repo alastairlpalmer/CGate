@@ -21,6 +21,7 @@ from .horses import (  # noqa: F401
     horse_depart,
     horse_move,
     horse_quick_edit,
+    horse_quick_view,
     horse_reactivate,
     manage_ownership_shares,
     new_arrival,

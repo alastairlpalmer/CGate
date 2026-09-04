@@ -1184,6 +1184,32 @@ def horse_quick_edit(request, pk):
     })
 
 
+@feature_required('horses', LEVEL_VIEW)
+def horse_quick_view(request, pk):
+    """A one-glance profile card for the pop-up sheet.
+
+    The app bar search opens this first: photo, where the horse is, who
+    owns it, colour, age, and the day-to-day actions (Move, Edit, Photos,
+    Add record). The full profile is one tap away in the footer. Triggers
+    keep their href on the horse page, so without JavaScript (or on a
+    direct visit) this simply redirects there.
+    """
+    horse = get_object_or_404(Horse, pk=pk)
+    if not is_popup_request(request):
+        return redirect('horse_detail', pk=horse.pk)
+
+    placement = (
+        horse.placements.filter(end_date__isnull=True)
+        .select_related('location', 'owner')
+        .first()
+    )
+    return render(request, 'horses/partials/quick_view.html', {
+        'horse': horse,
+        'current_placement': placement,
+        'owner': horse.current_owner,
+    })
+
+
 def _flash_superseded_trim(request, horse, placement):
     """Tell the user when logging a return shortened the previous stay —
     the trim changes recorded (potentially invoiced) dates, so it must
