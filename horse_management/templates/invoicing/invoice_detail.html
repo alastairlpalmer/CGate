@@ -75,7 +75,12 @@
                 {% endif %}
                 {% endwith %}
             {% endif %}
-            {% if invoice.status == 'draft' %}
+            {% if invoice.status == 'draft' and invoice.is_send_queued %}
+            <span class="badge-info" title="Queued — the email is being sent">Sending…</span>
+            {% elif invoice.status == 'draft' %}
+            {% if invoice.send_error %}
+            <span class="badge-danger" title="{{ invoice.send_error }}">Send failed: {{ invoice.send_error }}</span>
+            {% endif %}
             <form method="post" action="{% url 'invoice_send' invoice.pk %}" class="inline">
                 {% csrf_token %}
                 <button type="submit" class="btn-success">

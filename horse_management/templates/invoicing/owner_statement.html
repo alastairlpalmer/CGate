@@ -35,15 +35,15 @@
 
     <!-- Summary KPIs -->
     <div class="grid grid-cols-1 min-[360px]:grid-cols-3 gap-4">
-        <div class="card p-5 lg:p-6 lg:p-6">
+        <div class="card p-5 lg:p-6 lg:p-6 lg:p-6">
             <p class="dt-label">Invoiced</p>
             <p class="mt-1 text-2xl font-bold text-charcoal tabular-nums">&pound;{{ statement.totals.invoiced|floatformat:2 }}</p>
         </div>
-        <div class="card p-5 lg:p-6 lg:p-6">
+        <div class="card p-5 lg:p-6 lg:p-6 lg:p-6">
             <p class="dt-label">Paid</p>
             <p class="mt-1 text-2xl font-bold text-forest tabular-nums">&pound;{{ statement.totals.paid|floatformat:2 }}</p>
         </div>
-        <div class="card p-5 lg:p-6 lg:p-6">
+        <div class="card p-5 lg:p-6 lg:p-6 lg:p-6">
             <p class="dt-label">Balance</p>
             <p class="mt-1 text-2xl font-bold {% if statement.totals.balance > 0 %}text-error-red{% else %}text-charcoal{% endif %} tabular-nums">&pound;{{ statement.totals.balance|floatformat:2 }}</p>
         </div>
