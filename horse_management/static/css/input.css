@@ -219,8 +219,21 @@
     .segmented-scroll { @apply -mx-4 px-4 overflow-x-auto sm:mx-0 sm:px-0 sm:overflow-visible; scrollbar-width: none; }
     .segmented-scroll::-webkit-scrollbar { display: none; }
 
-    /* Toolbar strip above a list: the two segmented rails plus any page action */
+    /* Toolbar strip above a list: the segmented rail plus any page action */
     .list-toolbar { @apply flex flex-col gap-2.5; }
+
+    /* ── "Show" chips in the horse-list Sort pop-out ──
+       Active / Departed / Movements sit at the top of the menu, and they
+       change which list you are on rather than how it sorts, so they are
+       set apart from the sort rows: bold blue chips, the current one filled
+       and the others outlined. */
+    .show-chip {
+        @apply flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg border no-underline transition-colors duration-150;
+        @apply bg-white border-info-blue text-info-blue hover:bg-info-blue-50;
+    }
+    .show-chip.is-active { @apply bg-info-blue border-info-blue text-white hover:bg-info-blue; }
+    .show-chip-count { @apply inline-flex items-center justify-center min-w-[20px] px-1.5 h-5 text-[11px] font-semibold tabular-nums rounded-full bg-info-blue-50 text-info-blue; }
+    .show-chip.is-active .show-chip-count { @apply bg-white/20 text-white; }
 
     /* Mobile Bottom Tab Bar — the active tab inverts: its icon sits in a
        filled Brim pill, so the current section is unmistakable */
