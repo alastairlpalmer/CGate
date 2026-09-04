@@ -88,7 +88,7 @@ DJANGO_SETTINGS_MODULE=horse_management.test_settings python manage.py test <mod
 
 ## Proposed follow-ups (not done here)
 
-1. **Queue bulk invoice sending.** `invoice_bulk_action` renders every PDF and blocks on SMTP inside one request; on a 40-owner yard a worker timeout stops it mid-loop. Dispatch one Celery task per invoice using the claim/rollback pattern from `notifications/tasks.py`.
+1. ~~Queue bulk invoice sending.~~ Done: `invoice_bulk_action` now claims each draft (`Invoice.send_queued_at`) and dispatches `invoicing.tasks.send_invoice_email_task` per invoice. The list shows "Sending…" while queued and "Send failed" with the reason (`Invoice.send_error`) if the task could not deliver. `INVOICE_SEND_ASYNC` (default on, off on Vercel where there is no worker) switches back to inline sending. Tests: `invoicing.test_send_queue`.
 2. **PostHog proxy `X-Forwarded-For`.** `_client_ip` takes the leftmost entry, which the client can set. Take the rightmost (added by the platform edge) or drop it. The existing test asserts the current behaviour, so this is a deliberate change to make.
 3. **Vercel cold-start migrations.** `wsgi.py` runs `migrate` on every cold start on Vercel. Move it to a deploy step as Railway already does.
 4. **Retire the root-level QA scripts** (`verify_*.py`, `mobile_*.py`, `seed_qa.py`) or move them under a `scripts/` folder so lint and coverage tooling can ignore them by path.

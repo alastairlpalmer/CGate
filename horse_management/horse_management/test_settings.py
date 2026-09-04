@@ -35,3 +35,9 @@ DATABASES = {
 
 # Analytics must never fire from a test run, whatever is in the environment.
 POSTHOG_API_KEY = ''
+
+# Run queued tasks inline so the async bulk-send path is exercised without
+# a broker. INVOICE_SEND_ASYNC stays on so tests cover the queued code.
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True
+INVOICE_SEND_ASYNC = True
