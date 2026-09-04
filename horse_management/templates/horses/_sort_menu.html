@@ -11,6 +11,7 @@ the land-use figures cover. The toolbar stays a set of group buttons.
 
 Context (from HorseListView):
   sort_options        required — one row per horse sort key
+  layout_options      optional — how a grouped axis lays its groups out
   group_sort_options  optional — only the grouped views order groups too
   show_empty          optional — the grouped views can list empty groups
   usage_ranges        optional — the land axes carry a land-use window
@@ -21,8 +22,24 @@ Context (from HorseListView):
      class="absolute right-0 top-full mt-2 w-56 py-1 bg-white rounded-lg shadow-lg border border-light-sage z-30 max-h-[70vh] overflow-y-auto text-left"
      role="menu" aria-label="Sort options">
 
+    {% if layout_options %}
+    <p class="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sage">Show as</p>
+    {% for opt in layout_options %}
+    <a href="{% querystring layout=opt.key page=None %}" role="menuitemradio"
+       aria-checked="{% if opt.active %}true{% else %}false{% endif %}"
+       class="flex items-center justify-between gap-2 px-3 py-2 text-sm transition-colors hover:bg-parchment {% if opt.active %}text-forest font-medium bg-light-sage/40{% else %}text-charcoal{% endif %}">
+        <span>{{ opt.label }}</span>
+        {% if opt.active %}
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+        </svg>
+        {% endif %}
+    </a>
+    {% endfor %}
+    {% endif %}
+
     {% if group_sort_options %}
-    <p class="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sage">Order groups by</p>
+    <p class="px-3 pt-2 pb-1 {% if layout_options %}mt-1 border-t border-light-sage{% endif %} text-[10px] font-semibold uppercase tracking-wider text-sage">Order groups by</p>
     {% for opt in group_sort_options %}
     <a href="{% querystring gsort=opt.key page=None %}" role="menuitem"
        class="flex items-center justify-between gap-2 px-3 py-2 text-sm transition-colors hover:bg-parchment {% if opt.active %}text-forest font-medium bg-light-sage/40{% else %}text-charcoal{% endif %}">

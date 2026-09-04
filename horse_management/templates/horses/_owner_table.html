@@ -1,0 +1,105 @@
+{% comment %}
+The Owner axis in its table layout: one card, one table, an owner row
+above each owner's horses. Compact enough to scan a long roll of owners,
+which a card per owner is not.
+
+Each owner is its own <tbody> with its own open state, so a row header
+folds only its own horses. Owner rows start closed (groups_collapsed);
+the Expand all button flips them all through a window event. Zebra
+striping runs per owner and the owner row is the first, unstriped, one.
+
+Context (from HorseListView): grouped_horses, groups_collapsed,
+group_kind ('owner'), feature_access.
+{% endcomment %}
+<div class="card overflow-hidden">
+    <!-- Mobile: an owner row, then that owner's horses as list cards -->
+    <div class="md:hidden">
+        {% for group in grouped_horses %}
+        <div x-data="{ collapsed: {{ groups_collapsed|yesno:'true,false' }} }"
+             @groups-toggle.window="collapsed = !$event.detail"
+             class="border-b border-light-sage last:border-b-0">
+            <div class="flex items-center gap-2.5 px-4 py-3 bg-sand-50 cursor-pointer select-none hover:bg-sand-100 transition-colors"
+                 @click="collapsed = !collapsed">
+                <button type="button" class="text-sage hover:text-charcoal transition-transform duration-150" :class="collapsed && '-rotate-90'"
+                        :aria-expanded="collapsed ? 'false' : 'true'" aria-label="Toggle owner">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+                    </svg>
+                </button>
+                {% if group.pk %}
+                <a href="{% url 'owner_detail' group.pk %}" class="section-title link truncate tap-pad" @click.stop>{{ group.name }}</a>
+                {% else %}
+                <h2 class="section-title truncate">{{ group.name }}</h2>
+                {% endif %}
+                <span class="badge-info shrink-0 ml-auto">{{ group.count }}</span>
+            </div>
+            <div x-show="!collapsed" x-collapse>
+                {% if group.horses %}
+                <ul class="divide-y divide-light-sage">
+                    {% for horse in group.horses %}
+                    {% include 'horses/_horse_row_card.html' %}
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="px-5 py-4 text-sm text-sage">No horses here.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Desktop: one table, owners as section rows -->
+    <div class="hidden md:block overflow-x-auto">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th class="w-10"><span class="sr-only">Select</span></th>
+                <th>Horse</th>
+                <th>Location</th>
+                <th class="w-24 text-right pr-5">Actions</th>
+            </tr>
+        </thead>
+        {% for group in grouped_horses %}
+        <tbody x-data="{ collapsed: {{ groups_collapsed|yesno:'true,false' }} }"
+               @groups-toggle.window="collapsed = !$event.detail">
+            <tr class="bg-sand-50 hover:bg-sand-100 cursor-pointer select-none" @click="collapsed = !collapsed">
+                <td class="!py-2">
+                    {% if group.horses %}
+                    <input type="checkbox" data-select-all @change="toggleAll($event)" class="form-checkbox rounded" @click.stop
+                           aria-label="Select every horse of {{ group.name }}">
+                    {% endif %}
+                </td>
+                <td colspan="2" class="!py-2">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <button type="button" class="text-sage hover:text-charcoal transition-transform duration-150" :class="collapsed && '-rotate-90'"
+                                :aria-expanded="collapsed ? 'false' : 'true'" aria-label="Toggle owner">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+                            </svg>
+                        </button>
+                        <svg class="w-4 h-4 text-sage shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                        </svg>
+                        {% if group.pk %}
+                        <a href="{% url 'owner_detail' group.pk %}" class="section-title link truncate tap-pad" @click.stop>{{ group.name }}</a>
+                        {% else %}
+                        <span class="section-title truncate">{{ group.name }}</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td class="!py-2 text-right pr-5">
+                    <span class="badge-info">{{ group.count }}</span>
+                </td>
+            </tr>
+            {% for horse in group.horses %}
+            {% include 'horses/_horse_row.html' with row_attrs='x-show="!collapsed"' %}
+            {% empty %}
+            <tr x-show="!collapsed">
+                <td colspan="4" class="text-sm text-sage">No horses here.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        {% endfor %}
+    </table>
+    </div>
+</div>

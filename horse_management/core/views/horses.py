@@ -92,22 +92,45 @@ def _warn_if_incomplete_ownership(request, formset):
 # owner — and hang horses off them, rather than bucketing the horse list.
 # Grouping horses cannot show an empty location, and an empty location is
 # exactly what you look for when you move a horse.
-GROUP_BY_CHOICES = ('all', 'site', 'location', 'owner')
-GROUPED_AXES = ('site', 'location', 'owner')
+GROUP_BY_CHOICES = ('all', 'location', 'owner')
+GROUPED_AXES = ('location', 'owner')
+
+# What one group on the page *is*. The Location axis prints either a card
+# per location or one table per site, so its group kind is 'location' or
+# 'site'; the other axes print groups of their own kind. Everything keyed
+# by kind (sorts, empty groups, land use) reads the kind, not the axis.
+GROUP_KINDS = ('all', 'site', 'location', 'owner')
+
+# How a grouped axis lays its groups out. The first option is the default.
+#   location: a card per location under a site heading, or one table per
+#             site with the location as a column (the old Site axis).
+#   owner:    one table with an owner row above each owner's horses, or a
+#             card per owner.
+LAYOUT_OPTIONS = {
+    'location': (('location', 'Locations'), ('site', 'Sites')),
+    'owner': (('table', 'Table'), ('cards', 'Cards')),
+}
+# Old links and bookmarks said ?group_by=site. They mean the Location axis
+# in its site layout.
+LEGACY_AXIS_ALIASES = {'site': ('location', 'site')}
 
 # Axes that need more than the 'horses' feature to make sense. A role can
 # see horses without seeing owners, so an axis its role hides is not
 # offered and its URL falls back to All.
 AXIS_FEATURE = {
-    'site': 'locations',
     'location': 'locations',
     'owner': 'owners',
 }
 
-# Which axes show empty groups unless the URL says otherwise. Empty
+# Which group kinds show empty groups unless the URL says otherwise. Empty
 # locations answer "where can this horse go"; a roll of owners with no
 # horses is just noise.
 SHOW_EMPTY_DEFAULT = {'site': True, 'location': True, 'owner': False}
+
+# Which group kinds open collapsed. Locations and owners make long pages,
+# so they start as a list of headers to scan; a site table is the point of
+# picking that layout, so it opens. Per-group state lives in the browser.
+COLLAPSED_DEFAULT = {'site': False, 'location': True, 'owner': True}
 
 DEFAULT_SORT = 'name'
 
@@ -391,14 +414,40 @@ class HorseListView(FeatureAccessMixin, ListView):
     @property
     def group_by(self):
         value = self.request.GET.get('group_by', 'all')
+        value, _ = LEGACY_AXIS_ALIASES.get(value, (value, None))
         # An axis the role cannot see falls back to All rather than
         # erroring — a stale bookmark should still show the horses.
         return value if value in self.available_axes else 'all'
 
     @property
+    def layout(self):
+        """How the grouped axis prints its groups; None on the All axis."""
+        options = LAYOUT_OPTIONS.get(self.group_by)
+        if not options:
+            return None
+        keys = [key for key, _ in options]
+        value = self.request.GET.get('layout')
+        if value not in keys:
+            raw_axis = self.request.GET.get('group_by')
+            _, value = LEGACY_AXIS_ALIASES.get(raw_axis, (None, None))
+        return value if value in keys else keys[0]
+
+    @property
+    def group_kind(self):
+        """What each group on the page is: 'all', 'site', 'location' or
+        'owner'. The Location axis in its site layout prints sites."""
+        if self.group_by == 'location' and self.layout == 'site':
+            return 'site'
+        return self.group_by
+
+    @property
+    def groups_collapsed(self):
+        return COLLAPSED_DEFAULT.get(self.group_kind, False)
+
+    @property
     def shows_usage(self):
         """Land-use only reads on the axes whose groups are land."""
-        return self.group_by in AXES_WITH_USAGE
+        return self.group_kind in AXES_WITH_USAGE
 
     @property
     def usage_window(self):
@@ -418,7 +467,7 @@ class HorseListView(FeatureAccessMixin, ListView):
         raw = self.request.GET.get('show_empty')
         if raw in ('0', '1'):
             return raw == '1'
-        return SHOW_EMPTY_DEFAULT.get(self.group_by, False)
+        return SHOW_EMPTY_DEFAULT.get(self.group_kind, False)
 
     @property
     def sort_context(self):
@@ -427,7 +476,7 @@ class HorseListView(FeatureAccessMixin, ListView):
             return 'search'
         if self.status == 'departed':
             return 'departed'
-        return self.group_by
+        return self.group_kind
 
     @property
     def sort(self):
@@ -603,12 +652,19 @@ class HorseListView(FeatureAccessMixin, ListView):
                 ('active', 'Current'), ('ended', 'Ended'), ('all', 'All'),
             )
         context['group_by'] = self.group_by
+        context['group_kind'] = self.group_kind
+        context['layout'] = self.layout
+        context['layout_options'] = [
+            {'key': key, 'label': label, 'active': key == self.layout}
+            for key, label in LAYOUT_OPTIONS.get(self.group_by, ())
+        ]
+        context['groups_collapsed'] = self.groups_collapsed
         context['available_axes'] = self.available_axes
         context['show_empty'] = self.show_empty
         context['show_empty_default'] = SHOW_EMPTY_DEFAULT.get(
-            self.group_by, False
+            self.group_kind, False
         )
-        context['axis_has_capacity'] = self.group_by in AXES_WITH_CAPACITY
+        context['axis_has_capacity'] = self.group_kind in AXES_WITH_CAPACITY
         context['shows_usage'] = self.shows_usage
         if self.shows_usage:
             window = self.usage_window
@@ -641,7 +697,7 @@ class HorseListView(FeatureAccessMixin, ListView):
                 'active': key == self.group_sort,
             }
             for key in GROUP_SORT_OPTIONS
-        ] if self.sort_context in GROUPED_AXES else None
+        ] if self.group_by in GROUPED_AXES else None
         # Location.objects.active() hides archived fields (from main).
         context['locations'] = Location.objects.active().order_by('site', 'name')
         context['owners'] = Owner.objects.values('pk', 'name').order_by('name')
@@ -696,9 +752,9 @@ class HorseListView(FeatureAccessMixin, ListView):
             pass
         elif self.status == 'current' and not self.is_searching:
             horses = _sort_horses(horses, self.sort)
-            group_by = context['group_by']
+            group_kind = self.group_kind
 
-            if group_by == 'all':
+            if group_kind == 'all':
                 # One flat card holding every horse on the property.
                 context['grouped_horses'] = [{
                     'kind': 'all',
@@ -708,7 +764,7 @@ class HorseListView(FeatureAccessMixin, ListView):
                     'horses': horses,
                 }]
             else:
-                groups = self._build_groups(horses, group_by)
+                groups = self._build_groups(horses, group_kind)
                 if self.shows_usage:
                     self._attach_usage(groups)
                 context['grouped_horses'] = groups
@@ -718,7 +774,7 @@ class HorseListView(FeatureAccessMixin, ListView):
 
         return context
 
-    def _build_groups(self, horses, group_by):
+    def _build_groups(self, horses, group_kind):
         """Group the horses by location, site or owner.
 
         Built from the entity side: every location (or site, or owner) is
@@ -726,9 +782,9 @@ class HorseListView(FeatureAccessMixin, ListView):
         list instead would silently drop every empty location — the one
         thing you most want to see when moving a horse.
         """
-        if group_by == 'owner':
+        if group_kind == 'owner':
             return self._owner_groups(horses)
-        if group_by == 'site':
+        if group_kind == 'site':
             return self._site_groups(horses)
         return self._location_groups(horses)
 

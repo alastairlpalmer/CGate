@@ -6,7 +6,7 @@ already selected opens the Sort pop-out instead — an ancestor owns the
 Alpine `sortOpen` flag, and the rail owns `pick()`, which slides the thumb
 straight away rather than waiting for the page to come back.
 
-Params: key ('all' | 'site' | 'location' | 'owner'), label.
+Params: key ('all' | 'location' | 'owner'), label.
 {% endcomment %}
 {% if key == group_by %}
 <button type="button" @click="sortOpen = !sortOpen"

@@ -699,10 +699,12 @@ document.addEventListener('alpine:init', function() {
             },
 
             toggleAll(event) {
-                // Scope to the containing card so a group header's
+                // Scope to the containing group so a group header's
                 // select-all only affects that group's horses — never the
                 // whole page (a global sweep once departed an entire yard).
-                var scope = event.target.closest('.card') || document;
+                // The owner table keeps every owner in one card, one
+                // <tbody> each, so the table body wins over the card.
+                var scope = event.target.closest('tbody, .card') || document;
                 var checkboxes = scope.querySelectorAll('input[data-horse-checkbox]');
                 var ids = [];
                 var checked = event.target.checked;
