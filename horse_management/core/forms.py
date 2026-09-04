@@ -499,7 +499,9 @@ class BusinessSettingsForm(forms.ModelForm):
             'card_payment_url': forms.URLInput(attrs={'class': 'form-input'}),
             'default_payment_terms': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
             'invoice_prefix': forms.TextInput(attrs={'class': 'form-input', 'maxlength': 10}),
-            'auto_generate_invoices': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+            # Rendered as a switch on the settings page: the input is visually
+            # hidden and the .switch-track next to it draws the control.
+            'auto_generate_invoices': forms.CheckboxInput(attrs={'class': 'switch-input'}),
             'vat_rate': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
         }
 
