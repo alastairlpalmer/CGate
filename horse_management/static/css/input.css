@@ -55,12 +55,12 @@
 
     /* Toggle switch — pair with role="switch" + aria-checked for a11y.
        The ::after overlay grows the tap box to ~44px without changing the
-       20x36 visual (the control itself is too small a touch target alone). */
-    .form-toggle { @apply relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-sage/30 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sage focus:ring-offset-2; }
+       24x44 visual (the control itself is too small a touch target alone). */
+    .form-toggle { @apply relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent bg-sage/40 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sage focus:ring-offset-2; }
     .form-toggle::after { content: ''; @apply absolute -inset-3; }
     .form-toggle[aria-checked="true"] { @apply bg-forest; }
-    .form-toggle-thumb { @apply pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out translate-x-0; }
-    .form-toggle[aria-checked="true"] .form-toggle-thumb { @apply translate-x-4; }
+    .form-toggle-thumb { @apply pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out translate-x-0; }
+    .form-toggle[aria-checked="true"] .form-toggle-thumb { @apply translate-x-5; }
 
     /* Navigation (dark sidebar) */
     .nav-link { @apply flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-btn text-white/70 hover:text-white hover:bg-white/10 transition-all duration-100 active:scale-[0.98]; }
@@ -198,6 +198,58 @@
     /* Stretched link: makes the whole card tappable; sibling actions stack above via relative z-10 */
     .list-card-link::after { content: ''; @apply absolute inset-0; }
     .list-card-actions { @apply relative z-10 flex items-center gap-0.5 shrink-0 -my-1.5 -mr-1.5; }
+
+    /* ── Settings page ──────────────────────────────────────────────────
+       Settings is one long column of many unrelated sections. Four devices
+       keep it readable: band labels split the page into named groups, a
+       chip row jumps to each group, every card lists its items as divided
+       zebra rows instead of loose text, and a tinted sub-head marks a list
+       inside a list (the sites that hold locations). */
+
+    /* Band label above each group of cards */
+    .settings-band { @apply flex items-center gap-3 pt-2; }
+    .settings-band-title { @apply text-[11px] font-semibold uppercase tracking-widest text-sage shrink-0; }
+    .settings-band-rule { @apply h-px flex-1 bg-light-sage; }
+
+    /* Jump-to chips under the page header */
+    .settings-jump { @apply flex flex-wrap gap-2; }
+    .settings-jump-link { @apply inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium text-forest bg-white border border-sage/30 no-underline hover:bg-light-sage hover:border-sage/50 transition-colors duration-100; }
+
+    /* Rows inside a settings card. The list sits flush to the card edges and
+       stripes on even rows, so a card of 12 locations still scans. */
+    .settings-rows { @apply divide-y divide-light-sage; }
+    .settings-row { @apply flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-5 py-3 transition-colors duration-100; }
+    .settings-row:nth-child(even) { @apply bg-parchment/60; }
+    .settings-row-title { @apply text-sm font-medium text-charcoal; }
+    .settings-row-meta { @apply text-xs text-sage mt-0.5; }
+    /* Warm flag on a row that needs the reader to do something first */
+    .settings-row-flag { @apply text-xs text-saddle mt-0.5; }
+
+    /* Sub-head band inside a card — a site heading over its locations */
+    .settings-subhead { @apply flex items-center justify-between gap-3 px-5 py-2.5 bg-light-sage/60 border-y border-light-sage; }
+    .settings-subhead-title { @apply flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-forest; }
+
+    /* Explanatory text that belongs to a whole card, on its own tinted strip */
+    .settings-note { @apply px-5 py-3 text-xs text-sage bg-parchment/50 border-b border-light-sage; }
+    .settings-empty { @apply px-5 py-8 text-center text-sm text-sage; }
+
+    /* Row actions — small outlined buttons, not bare text links, so the
+       target is obvious and large enough to tap */
+    .settings-action { @apply inline-flex items-center justify-center gap-1 min-h-[38px] sm:min-h-[32px] px-2.5 rounded-btn border border-sage/30 bg-white text-xs font-medium text-forest no-underline hover:bg-light-sage hover:border-sage/50 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-sage focus:ring-offset-1 transition-all duration-100 cursor-pointer touch-manipulation; }
+    .settings-action-danger { @apply settings-action text-error-red border-error-red/25 hover:bg-error-red-50 hover:border-error-red/40 focus:ring-error-red; }
+    .settings-actions { @apply flex flex-wrap items-center justify-end gap-2 shrink-0; }
+
+    /* Checkbox rendered as a switch. The real input stays in the DOM so the
+       form posts unchanged; the track that follows it draws the control.
+       The checked and focus states are written as explicit sibling selectors,
+       not peer-* variants: @apply flattens a peer variant onto the class
+       itself, which would leave the track stuck in its "on" colour. */
+    .switch-input { @apply sr-only; }
+    .switch-track { @apply relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full bg-sage/40 transition-colors duration-200; }
+    .switch-track::after { content: ''; @apply absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200; }
+    .switch-input:checked ~ .switch-track { @apply bg-forest; }
+    .switch-input:checked ~ .switch-track::after { transform: translateX(1.25rem); }
+    .switch-input:focus-visible ~ .switch-track { @apply ring-2 ring-sage ring-offset-2; }
 }
 
 /* Safe area insets for notched phones (iPhone X+).
@@ -251,6 +303,7 @@ textarea, select {
     input[type="url"], input[type="tel"], input[type="date"], input[type="datetime-local"],
     textarea, select { font-size: 0.875rem; } /* restore text-sm at sm+ */
 }
+summary::-webkit-details-marker { display: none; }
 /* Hide webkit's native clear so the shared search bar's clear button is the single control */
 input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
 /* .form-input/.form-select/.form-textarea component classes carry text-sm via @apply;
@@ -261,7 +314,9 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
 /* h-5 w-5 here (not just on .form-checkbox) so checkboxes Django renders
    without a class — formset DELETE boxes, admin-ish widgets — never fall
    back to the ~13px browser default. */
-input[type="checkbox"] { @apply h-5 w-5 rounded-sm border-sage/30 text-forest focus:ring-sage; }
+/* :not(.switch-input) keeps this attribute selector off the checkboxes that
+   render as switches — those are visually hidden and driven by .switch-track. */
+input[type="checkbox"]:not(.switch-input) { @apply h-5 w-5 rounded-sm border-sage/30 text-forest focus:ring-sage; }
 /* :not(.hidden) keeps this attribute selector (0,1,1) from out-ranking the
    .hidden utility (0,1,0) — the quick-add photo form hides its camera and
    gallery inputs behind real buttons, and `block` here used to force all

@@ -1,9 +1,9 @@
-<div class="space-y-3" x-data>
-    <p class="text-sm text-sage">Show or hide widgets on your home dashboard. Changes save automatically.</p>
-    <ul class="divide-y divide-light-sage border border-light-sage rounded-card bg-white">
+<div x-data>
+    <p class="settings-note">Show or hide widgets on your home dashboard. Changes save automatically.</p>
+    <div class="settings-rows">
         {% for item in flat_items %}
-        <li class="flex items-center justify-between gap-3 px-4 py-3" data-widget-key="{{ item.key }}">
-            <span class="text-sm text-charcoal truncate">{{ item.name }}</span>
+        <div class="settings-row" data-widget-key="{{ item.key }}">
+            <span class="settings-row-title truncate">{{ item.name }}</span>
             <button type="button" role="switch"
                     x-data="{ on: {{ item.visible|yesno:'true,false' }} }"
                     :aria-checked="on ? 'true' : 'false'"
@@ -14,11 +14,11 @@
                               swap: 'none',
                               headers: { 'X-CSRFToken': '{{ csrf_token }}' },
                             });"
-                    class="form-toggle"
+                    class="form-toggle shrink-0"
                     aria-label="Toggle {{ item.name }}">
                 <span class="form-toggle-thumb"></span>
             </button>
-        </li>
+        </div>
         {% endfor %}
-    </ul>
+    </div>
 </div>

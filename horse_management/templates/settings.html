@@ -3,7 +3,7 @@
 {% block title %}Settings - Yardway{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-8">
 
     <!-- Page Header -->
     <div class="page-header">
@@ -13,513 +13,573 @@
         </div>
     </div>
 
+    <!-- Jump to a group: settings is a long page, so give it a table of contents -->
+    <nav class="settings-jump" aria-label="Settings sections">
+        {% if feature_access.settings.full %}<a href="#business" class="settings-jump-link">Business</a>{% endif %}
+        {% if feature_access.users.full %}<a href="#people" class="settings-jump-link">Users &amp; Roles</a>{% endif %}
+        {% if feature_access.settings.full %}
+        <a href="#yard" class="settings-jump-link">Yard setup</a>
+        <a href="#billing" class="settings-jump-link">Billing</a>
+        {% endif %}
+        <a href="#you" class="settings-jump-link">Your preferences</a>
+        {% if feature_access.settings.full %}<a href="#data" class="settings-jump-link">Data</a>{% endif %}
+    </nav>
+
     {% if feature_access.settings.full %}
-    <!-- ── Business Details ── -->
-    <div class="card">
-        <div class="section-header">
-            <h3 class="section-title">Business Details</h3>
+    <!-- ══ Business ══ -->
+    <section id="business" class="space-y-4 scroll-mt-24">
+        <div class="settings-band">
+            <span class="settings-band-title">Business</span>
+            <span class="settings-band-rule"></span>
         </div>
-        <form method="post" class="p-5">
-            {% csrf_token %}
-            <input type="hidden" name="save_business" value="1">
 
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div class="sm:col-span-2">
-                    <label for="{{ biz_form.business_name.id_for_label }}" class="text-sm font-medium text-charcoal">Business Name</label>
-                    {{ biz_form.business_name }}
+        <div class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">Business Details</h3>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="save_business" value="1">
+
+                <!-- Identity -->
+                <div class="settings-subhead">
+                    <span class="settings-subhead-title">Identity</span>
+                </div>
+                <div class="p-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <label for="{{ biz_form.business_name.id_for_label }}" class="text-sm font-medium text-charcoal">Business Name</label>
+                        {{ biz_form.business_name }}
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label for="{{ biz_form.address.id_for_label }}" class="text-sm font-medium text-charcoal">Address</label>
+                        {{ biz_form.address }}
+                    </div>
+                    <div>
+                        <label for="{{ biz_form.phone.id_for_label }}" class="text-sm font-medium text-charcoal">Phone</label>
+                        {{ biz_form.phone }}
+                    </div>
+                    <div>
+                        <label for="{{ biz_form.email.id_for_label }}" class="text-sm font-medium text-charcoal">Email</label>
+                        {{ biz_form.email }}
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label for="{{ biz_form.website.id_for_label }}" class="text-sm font-medium text-charcoal">Website</label>
+                        {{ biz_form.website }}
+                    </div>
                 </div>
 
-                <div class="sm:col-span-2">
-                    <label for="{{ biz_form.address.id_for_label }}" class="text-sm font-medium text-charcoal">Address</label>
-                    {{ biz_form.address }}
+                <!-- Invoicing & tax -->
+                <div class="settings-subhead">
+                    <span class="settings-subhead-title">Invoicing &amp; tax</span>
+                </div>
+                <div class="p-5 grid grid-cols-1 gap-4 sm:grid-cols-2 bg-parchment/40">
+                    <div>
+                        <label for="{{ biz_form.vat_registration.id_for_label }}" class="text-sm font-medium text-charcoal">VAT Registration</label>
+                        {{ biz_form.vat_registration }}
+                    </div>
+                    <div>
+                        <label for="{{ biz_form.vat_rate.id_for_label }}" class="text-sm font-medium text-charcoal">VAT Rate (%)</label>
+                        {{ biz_form.vat_rate }}
+                        {% if biz_form.vat_rate.errors %}
+                        <p class="mt-1 text-sm text-error-red">{{ biz_form.vat_rate.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-xs text-sage mt-0.5">0 if not VAT-registered, 20 for the UK standard rate. Applies to new invoices only.</p>
+                    </div>
+                    <div>
+                        <label for="{{ biz_form.invoice_prefix.id_for_label }}" class="text-sm font-medium text-charcoal">Invoice Prefix</label>
+                        {{ biz_form.invoice_prefix }}
+                    </div>
+                    <div>
+                        <label for="{{ biz_form.default_payment_terms.id_for_label }}" class="text-sm font-medium text-charcoal">Payment Terms (days)</label>
+                        {{ biz_form.default_payment_terms }}
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label for="{{ biz_form.bank_details.id_for_label }}" class="text-sm font-medium text-charcoal">Bank Details</label>
+                        {{ biz_form.bank_details }}
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label for="{{ biz_form.card_payment_url.id_for_label }}" class="text-sm font-medium text-charcoal">Card Payment URL</label>
+                        {{ biz_form.card_payment_url }}
+                        <p class="text-xs text-sage mt-1">e.g. SumUp payment link</p>
+                    </div>
                 </div>
 
-                <div>
-                    <label for="{{ biz_form.phone.id_for_label }}" class="text-sm font-medium text-charcoal">Phone</label>
-                    {{ biz_form.phone }}
+                <!-- Automation -->
+                <div class="settings-subhead">
+                    <span class="settings-subhead-title">Automation</span>
                 </div>
-
-                <div>
-                    <label for="{{ biz_form.email.id_for_label }}" class="text-sm font-medium text-charcoal">Email</label>
-                    {{ biz_form.email }}
-                </div>
-
-                <div>
-                    <label for="{{ biz_form.website.id_for_label }}" class="text-sm font-medium text-charcoal">Website</label>
-                    {{ biz_form.website }}
-                </div>
-
-                <div>
-                    <label for="{{ biz_form.vat_registration.id_for_label }}" class="text-sm font-medium text-charcoal">VAT Registration</label>
-                    {{ biz_form.vat_registration }}
-                </div>
-
-                <div>
-                    <label for="{{ biz_form.vat_rate.id_for_label }}" class="text-sm font-medium text-charcoal">VAT Rate (%)</label>
-                    {{ biz_form.vat_rate }}
-                    {% if biz_form.vat_rate.errors %}
-                    <p class="mt-1 text-sm text-error-red">{{ biz_form.vat_rate.errors.0 }}</p>
-                    {% endif %}
-                    <p class="text-xs text-sage mt-0.5">0 if not VAT-registered, 20 for the UK standard rate. Applies to new invoices only.</p>
-                </div>
-
-                <div class="sm:col-span-2">
-                    <label for="{{ biz_form.bank_details.id_for_label }}" class="text-sm font-medium text-charcoal">Bank Details</label>
-                    {{ biz_form.bank_details }}
-                </div>
-
-                <div>
-                    <label for="{{ biz_form.card_payment_url.id_for_label }}" class="text-sm font-medium text-charcoal">Card Payment URL</label>
-                    {{ biz_form.card_payment_url }}
-                    <p class="text-xs text-sage mt-1">e.g. SumUp payment link</p>
-                </div>
-
-                <div>
-                    <label for="{{ biz_form.invoice_prefix.id_for_label }}" class="text-sm font-medium text-charcoal">Invoice Prefix</label>
-                    {{ biz_form.invoice_prefix }}
-                </div>
-
-                <div>
-                    <label for="{{ biz_form.default_payment_terms.id_for_label }}" class="text-sm font-medium text-charcoal">Payment Terms (days)</label>
-                    {{ biz_form.default_payment_terms }}
-                </div>
-
-                <div class="sm:col-span-2">
-                    <label class="inline-flex items-center gap-2 min-h-[44px] sm:min-h-0 cursor-pointer">
-                        {{ biz_form.auto_generate_invoices }}
-                        <span class="text-sm font-medium text-charcoal">Auto-generate monthly draft invoices</span>
+                <div class="settings-rows">
+                    <label class="settings-row cursor-pointer">
+                        <span class="min-w-0">
+                            <span class="settings-row-title block">Auto-generate monthly draft invoices</span>
+                            <span class="settings-row-meta block">{{ biz_form.auto_generate_invoices.help_text }}</span>
+                        </span>
+                        <span class="inline-flex items-center shrink-0 ml-auto">
+                            {{ biz_form.auto_generate_invoices }}
+                            <span class="switch-track" aria-hidden="true"></span>
+                        </span>
                     </label>
-                    <p class="text-xs text-sage mt-0.5">{{ biz_form.auto_generate_invoices.help_text }}</p>
                 </div>
-            </div>
 
-            <div class="mt-4 flex justify-end">
-                <button type="submit" class="btn-primary btn-sm">Save Business Details</button>
-            </div>
-        </form>
-    </div>
-
+                <div class="px-5 py-4 flex justify-end border-t border-light-sage">
+                    <button type="submit" class="btn-primary btn-sm">Save Business Details</button>
+                </div>
+            </form>
+        </div>
+    </section>
     {% endif %}
 
     {% if feature_access.users.full %}
-    <!-- ── Users & Roles ── -->
-    <div class="card">
-        <div class="section-header flex items-center justify-between">
-            <h3 class="section-title">Users &amp; Roles</h3>
-            <a href="{% url 'user_create' %}" class="btn-primary btn-sm">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                </svg>
-                Add User
-            </a>
+    <!-- ══ Users & Roles ══ -->
+    <section id="people" class="space-y-4 scroll-mt-24">
+        <div class="settings-band">
+            <span class="settings-band-title">Users &amp; Roles</span>
+            <span class="settings-band-rule"></span>
         </div>
-        <div class="p-5">
-            <div class="space-y-3">
+
+        <div class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">Users</h3>
+                <a href="{% url 'user_create' %}" class="btn-primary btn-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
+                    Add User
+                </a>
+            </div>
+            <p class="settings-note">Users sign in with their email address. Each user's role controls which areas they can see and change.</p>
+            <div class="settings-rows">
                 {% for u in app_users %}
-                <div class="flex items-center justify-between">
+                <div class="settings-row">
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="w-8 h-8 rounded-full bg-light-sage text-forest flex items-center justify-center text-xs font-semibold shrink-0">
                             {{ u.first_name|default:u.username|make_list|first|upper }}
                         </div>
                         <div class="min-w-0">
-                            <p class="text-sm font-medium text-charcoal truncate">
+                            <p class="settings-row-title truncate">
                                 {{ u.get_full_name|default:u.username }}{% if u == user %} <span class="text-xs text-sage font-normal">(you)</span>{% endif %}
                             </p>
-                            <p class="text-xs text-sage truncate">{{ u.email|default:u.username }}</p>
+                            <p class="settings-row-meta truncate">{{ u.email|default:u.username }}</p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-3 shrink-0">
+                    <div class="settings-actions">
                         {% if not u.is_active %}
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-sage border border-sage/20">Inactive</span>
+                        <span class="badge-neutral">Inactive</span>
                         {% elif u.is_superuser %}
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-sage-50 text-forest border border-sage/20">Superuser</span>
+                        <span class="badge-success">Superuser</span>
                         {% elif u.role_assignment %}
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-sage-50 text-forest border border-sage/20">{{ u.role_assignment.role.name }}</span>
+                        <span class="badge-success">{{ u.role_assignment.role.name }}</span>
                         {% else %}
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-sage border border-sage/20">No role</span>
+                        <span class="badge-neutral">No role</span>
                         {% endif %}
-                        <a href="{% url 'user_update' u.pk %}" class="text-xs text-sage hover:text-forest transition-colors tap-pad">Edit</a>
+                        <a href="{% url 'user_update' u.pk %}" class="settings-action">Edit</a>
                     </div>
                 </div>
+                {% empty %}
+                <p class="settings-empty">No users yet.</p>
                 {% endfor %}
             </div>
-            <p class="text-xs text-sage mt-4">Users sign in with their email address. Each user's role controls which areas they can see and change.</p>
+        </div>
 
-            <!-- Roles -->
-            <div class="border-t border-light-sage mt-5 pt-4">
-                <div class="flex items-center justify-between mb-3">
-                    <h4 class="text-sm font-semibold text-charcoal">Roles</h4>
-                    <a href="{% url 'role_create' %}" class="btn-secondary btn-sm">
-                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                        </svg>
-                        New Role
-                    </a>
-                </div>
-                <div class="space-y-3">
-                    {% for role in roles %}
-                    <div class="flex items-center justify-between">
-                        <div class="min-w-0">
-                            <p class="text-sm font-medium text-charcoal truncate">
-                                {{ role.name }}
-                                {% if role.is_system %}<span class="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-sage-50 text-forest border border-sage/20">System</span>{% endif %}
-                            </p>
-                            <p class="text-xs text-sage truncate">{{ role.description|default:"No description" }} &middot; {{ role.member_count }} member{{ role.member_count|pluralize }}</p>
-                        </div>
-                        <a href="{% url 'role_update' role.pk %}" class="text-xs text-sage hover:text-forest transition-colors shrink-0 tap-pad">Edit</a>
+        <div class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">Roles</h3>
+                <a href="{% url 'role_create' %}" class="btn-secondary btn-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
+                    New Role
+                </a>
+            </div>
+            <p class="settings-note">Each role sets an access level per area: Hidden, View only, or Full access.</p>
+            <div class="settings-rows">
+                {% for role in roles %}
+                <div class="settings-row">
+                    <div class="min-w-0">
+                        <p class="settings-row-title truncate">
+                            {{ role.name }}
+                            {% if role.is_system %}<span class="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-sage-50 text-forest border border-sage/20">System</span>{% endif %}
+                        </p>
+                        <p class="settings-row-meta truncate">{{ role.description|default:"No description" }} &middot; {{ role.member_count }} member{{ role.member_count|pluralize }}</p>
                     </div>
-                    {% endfor %}
+                    <div class="settings-actions">
+                        <a href="{% url 'role_update' role.pk %}" class="settings-action">Edit</a>
+                    </div>
                 </div>
-                <p class="text-xs text-sage mt-4">Each role sets an access level per area: Hidden, View only, or Full access.</p>
+                {% empty %}
+                <p class="settings-empty">No roles yet.</p>
+                {% endfor %}
             </div>
         </div>
-    </div>
+    </section>
     {% endif %}
 
     {% if feature_access.settings.full %}
-    <!-- ── Rate Types ── -->
-    <div class="card">
-        <div class="section-header flex items-center justify-between">
-            <h3 class="section-title">Rate Types</h3>
-            <a href="{% url 'rate_type_create' %}" class="btn-primary btn-sm">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                </svg>
-                Add Rate
-            </a>
+    <!-- ══ Yard setup ══ -->
+    <section id="yard" class="space-y-4 scroll-mt-24">
+        <div class="settings-band">
+            <span class="settings-band-title">Yard setup</span>
+            <span class="settings-band-rule"></span>
         </div>
-        <div class="p-5">
-            {% if rate_types %}
-                <div class="space-y-3">
-                    {% for rate in rate_types %}
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-charcoal">{{ rate.name }}</p>
-                            <p class="text-xs text-sage">&pound;{{ rate.daily_rate }}/day{% if not rate.is_active %} &middot; <span class="text-warning-amber">Inactive</span>{% endif %}</p>
-                        </div>
-                        <a href="{% url 'rate_type_update' rate.pk %}" class="text-xs text-sage hover:text-forest transition-colors tap-pad">Edit</a>
-                    </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-sm text-sage">No rate types configured.</p>
-            {% endif %}
-        </div>
-    </div>
 
-    <!-- ── Locations & Sites ── -->
-    <div class="card">
-        <div class="section-header flex items-center justify-between">
-            <h3 class="section-title">Locations &amp; Sites</h3>
-            <a href="{% url 'location_create' %}" hx-get="{% url 'location_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add location" class="btn-primary btn-sm">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                </svg>
-                Add Location
-            </a>
-        </div>
-        <div class="p-5">
-            <p class="text-xs text-sage mb-4">
+        <!-- ── Locations & Sites ── -->
+        <div class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">Locations &amp; Sites</h3>
+                <a href="{% url 'location_create' %}" hx-get="{% url 'location_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add location" class="btn-primary btn-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
+                    Add Location
+                </a>
+            </div>
+            <p class="settings-note">
                 Archive a location or a site to take it out of use. Its history,
                 invoices and usage records stay, and you can restore it later.
                 Delete removes it for good, and is only possible while nothing
                 points at it.
             </p>
             {% if location_groups %}
-                <div class="space-y-5">
-                    {% for group in location_groups %}
-                    <div>
-                        <div class="flex items-center justify-between gap-2 mb-2">
-                            <div class="flex items-center gap-2">
-                                <svg class="w-4 h-4 text-forest" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21m-3.75 3H21"/>
-                                </svg>
-                                <span class="text-sm font-semibold text-charcoal">{{ group.site }}</span>
-                            </div>
-                            <div class="flex items-center gap-3 shrink-0">
-                                {% if group.can_be_archived %}
-                                <form method="post" action="{% url 'site_archive' %}" class="inline"
-                                      hx-confirm="Archive every location on {{ group.site }}? They keep their history and can be restored.">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="site" value="{{ group.site }}">
-                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                    <button type="submit" class="text-xs text-sage hover:text-forest transition-colors tap-pad">Archive site</button>
-                                </form>
-                                {% endif %}
-                                {% if group.can_be_deleted %}
-                                <form method="post" action="{% url 'site_delete' %}" class="inline"
-                                      hx-confirm="Delete {{ group.site }} and all its locations? This cannot be undone.">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="site" value="{{ group.site }}">
-                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                    <button type="submit" class="text-xs text-sage hover:text-error-red transition-colors tap-pad">Delete site</button>
-                                </form>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="space-y-2 ml-6">
-                            {% for loc in group.locations %}
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <p class="text-sm font-medium text-charcoal">{{ loc.name }}</p>
-                                    <p class="text-xs text-sage">
-                                        {{ loc.get_usage_display }}
-                                        &middot; {% if loc.capacity %}Capacity: {{ loc.capacity }}{% else %}No capacity set{% endif %}
-                                        {% if loc.description %}&middot; {{ loc.description|truncatewords:8 }}{% endif %}
-                                    </p>
-                                    {% if loc.live_horse_count %}
-                                    <p class="text-xs text-sage">
-                                        {{ loc.live_horse_count }} horse{{ loc.live_horse_count|pluralize }} here — move them off before you archive it.
-                                    </p>
-                                    {% endif %}
-                                </div>
-                                <div class="flex items-center gap-3 shrink-0">
-                                    <a href="{% url 'location_update' loc.pk %}" class="text-xs text-sage hover:text-forest transition-colors tap-pad">Edit</a>
-                                    {% if loc.can_be_archived %}
-                                    <form method="post" action="{% url 'location_archive' loc.pk %}" class="inline"
-                                          hx-confirm="Archive {{ loc.name }}? It keeps its history and can be restored.">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                        <button type="submit" class="text-xs text-sage hover:text-forest transition-colors tap-pad">Archive</button>
-                                    </form>
-                                    {% endif %}
-                                    {% if loc.can_be_deleted %}
-                                    <form method="post" action="{% url 'location_delete' loc.pk %}" class="inline"
-                                          hx-confirm="Delete {{ loc.name }}? This cannot be undone.">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                        <button type="submit" class="text-xs text-sage hover:text-error-red transition-colors tap-pad">Delete</button>
-                                    </form>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-sm text-sage">No locations configured.</p>
-            {% endif %}
-
-            {% if archived_location_groups %}
-            <div class="mt-6 pt-5 border-t border-light-sage">
-                <h4 class="text-sm font-semibold text-charcoal mb-1">Archived</h4>
-                <p class="text-xs text-sage mb-3">
-                    These locations are out of use. They stay in reports and history,
-                    and you can restore them at any time.
-                </p>
-                <div class="space-y-4">
-                    {% for group in archived_location_groups %}
-                    <div>
-                        <div class="flex items-center justify-between gap-2 mb-2">
-                            <span class="text-sm font-semibold text-sage">{{ group.site }}</span>
-                            <form method="post" action="{% url 'site_restore' %}" class="inline"
-                                  hx-confirm="Restore every archived location on {{ group.site }}?">
-                                {% csrf_token %}
-                                <input type="hidden" name="site" value="{{ group.site }}">
-                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                <button type="submit" class="text-xs text-sage hover:text-forest transition-colors tap-pad">Restore site</button>
-                            </form>
-                        </div>
-                        <div class="space-y-2 ml-6">
-                            {% for loc in group.locations %}
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <p class="text-sm font-medium text-sage">{{ loc.name }}</p>
-                                    <p class="text-xs text-sage">
-                                        Archived{% if loc.archived_at %} {{ loc.archived_at|date:"j M Y" }}{% endif %}
-                                        {% if loc.placement_count %}&middot; {{ loc.placement_count }} placement record{{ loc.placement_count|pluralize }}{% endif %}
-                                    </p>
-                                </div>
-                                <div class="flex items-center gap-3 shrink-0">
-                                    <form method="post" action="{% url 'location_restore' loc.pk %}" class="inline">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                        <button type="submit" class="text-xs text-sage hover:text-forest transition-colors tap-pad">Restore</button>
-                                    </form>
-                                    {% if loc.can_be_deleted %}
-                                    <form method="post" action="{% url 'location_delete' loc.pk %}" class="inline"
-                                          hx-confirm="Delete {{ loc.name }}? This cannot be undone.">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                        <button type="submit" class="text-xs text-sage hover:text-error-red transition-colors tap-pad">Delete</button>
-                                    </form>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- ── Vaccination Types ── -->
-    <div class="card">
-        <div class="section-header flex items-center justify-between">
-            <h3 class="section-title">Vaccination Types</h3>
-            <a href="{% url 'vaccination_type_create' %}" class="btn-primary btn-sm">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                </svg>
-                Add Type
-            </a>
-        </div>
-        <div class="p-5">
-            {% if vaccination_types %}
-                <div class="space-y-3">
-                    {% for vt in vaccination_types %}
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-charcoal">{{ vt.name }}</p>
-                            <p class="text-xs text-sage">Every {{ vt.interval_months }} months &middot; Reminder {{ vt.reminder_days_before }} days before{% if not vt.is_active %} &middot; <span class="text-warning-amber">Inactive</span>{% endif %}</p>
-                        </div>
-                        <a href="{% url 'vaccination_type_update' vt.pk %}" class="text-xs text-sage hover:text-forest transition-colors tap-pad">Edit</a>
-                    </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-sm text-sage">No vaccination types configured.</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- ── Service Providers ── -->
-    <div class="card">
-        <div class="section-header flex items-center justify-between">
-            <h3 class="section-title">Service Providers</h3>
-            <a href="{% url 'provider_create' %}" class="btn-primary btn-sm">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                </svg>
-                Add Provider
-            </a>
-        </div>
-        <div class="p-5">
-            {% if providers %}
-                <div class="space-y-3">
-                    {% for provider in providers %}
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-light-sage text-forest flex items-center justify-center text-xs font-semibold shrink-0">
-                                {{ provider.name|make_list|first|upper }}
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium text-charcoal">{{ provider.name }}</p>
-                                <p class="text-xs text-sage">{{ provider.get_provider_type_display }}</p>
-                            </div>
-                        </div>
-                        <a href="{% url 'provider_update' provider.pk %}" class="text-xs text-sage hover:text-forest transition-colors tap-pad">
-                            Edit
-                        </a>
-                    </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-sm text-sage">No service providers yet.</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- ── Integrations ── -->
-    {% if feature_access.xero.full %}
-    <div class="card">
-        <div class="section-header">
-            <h3 class="section-title">Integrations</h3>
-        </div>
-        <div class="p-5">
-            <!-- Xero -->
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-lg bg-info-blue-50 text-info-blue flex items-center justify-center shrink-0">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z"/>
+                {% for group in location_groups %}
+                <div class="settings-subhead">
+                    <span class="settings-subhead-title">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21m-3.75 3H21"/>
                         </svg>
-                    </div>
-                    <div>
-                        <p class="text-sm font-medium text-charcoal">Xero</p>
-                        {% if xero_connection.is_connected %}
-                            <p class="text-xs text-sage">Connected to {{ xero_connection.xero_tenant_name }}</p>
-                        {% else %}
-                            <p class="text-xs text-sage">Push invoices directly to Xero as drafts</p>
+                        {{ group.site }}
+                    </span>
+                    <div class="settings-actions">
+                        {% if group.can_be_archived %}
+                        <form method="post" action="{% url 'site_archive' %}" class="inline"
+                              hx-confirm="Archive every location on {{ group.site }}? They keep their history and can be restored.">
+                            {% csrf_token %}
+                            <input type="hidden" name="site" value="{{ group.site }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="settings-action">Archive site</button>
+                        </form>
+                        {% endif %}
+                        {% if group.can_be_deleted %}
+                        <form method="post" action="{% url 'site_delete' %}" class="inline"
+                              hx-confirm="Delete {{ group.site }} and all its locations? This cannot be undone.">
+                            {% csrf_token %}
+                            <input type="hidden" name="site" value="{{ group.site }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="settings-action-danger">Delete site</button>
+                        </form>
                         {% endif %}
                     </div>
                 </div>
-                <div>
-                    {% if xero_connection.is_connected %}
-                        <div class="flex items-center gap-3">
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sage-50 text-forest border border-sage/20">
+                <div class="settings-rows">
+                    {% for loc in group.locations %}
+                    <div class="settings-row">
+                        <div class="min-w-0">
+                            <p class="settings-row-title">{{ loc.name }}</p>
+                            <p class="settings-row-meta">
+                                {{ loc.get_usage_display }}
+                                &middot; {% if loc.capacity %}Capacity: {{ loc.capacity }}{% else %}No capacity set{% endif %}
+                                {% if loc.description %}&middot; {{ loc.description|truncatewords:8 }}{% endif %}
+                            </p>
+                            {% if loc.live_horse_count %}
+                            <p class="settings-row-flag">
+                                {{ loc.live_horse_count }} horse{{ loc.live_horse_count|pluralize }} here — move them off before you archive it.
+                            </p>
+                            {% endif %}
+                        </div>
+                        <div class="settings-actions">
+                            <a href="{% url 'location_update' loc.pk %}" class="settings-action">Edit</a>
+                            {% if loc.can_be_archived %}
+                            <form method="post" action="{% url 'location_archive' loc.pk %}" class="inline"
+                                  hx-confirm="Archive {{ loc.name }}? It keeps its history and can be restored.">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="settings-action">Archive</button>
+                            </form>
+                            {% endif %}
+                            {% if loc.can_be_deleted %}
+                            <form method="post" action="{% url 'location_delete' loc.pk %}" class="inline"
+                                  hx-confirm="Delete {{ loc.name }}? This cannot be undone.">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="settings-action-danger">Delete</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="settings-empty">No locations configured.</p>
+            {% endif %}
+
+            {% if archived_location_groups %}
+            <!-- Archived locations are folded away: they are rarely the reason
+                 anyone opens this page, and they used to double its length. -->
+            <details class="group border-t border-light-sage">
+                <summary class="flex items-center justify-between gap-3 px-5 py-3 cursor-pointer list-none bg-parchment/50 hover:bg-light-sage/50 transition-colors duration-100">
+                    <span class="text-sm font-medium text-charcoal">Archived locations</span>
+                    <span class="flex items-center gap-2 text-xs text-sage">
+                        <span>Show</span>
+                        <svg class="w-4 h-4 transition-transform duration-150 group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+                        </svg>
+                    </span>
+                </summary>
+                <p class="settings-note border-t border-light-sage">
+                    These locations are out of use. They stay in reports and history,
+                    and you can restore them at any time.
+                </p>
+                {% for group in archived_location_groups %}
+                <div class="settings-subhead">
+                    <span class="settings-subhead-title">{{ group.site }}</span>
+                    <div class="settings-actions">
+                        <form method="post" action="{% url 'site_restore' %}" class="inline"
+                              hx-confirm="Restore every archived location on {{ group.site }}?">
+                            {% csrf_token %}
+                            <input type="hidden" name="site" value="{{ group.site }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="settings-action">Restore site</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="settings-rows">
+                    {% for loc in group.locations %}
+                    <div class="settings-row">
+                        <div class="min-w-0">
+                            <p class="settings-row-title text-sage">{{ loc.name }}</p>
+                            <p class="settings-row-meta">
+                                Archived{% if loc.archived_at %} {{ loc.archived_at|date:"j M Y" }}{% endif %}
+                                {% if loc.placement_count %}&middot; {{ loc.placement_count }} placement record{{ loc.placement_count|pluralize }}{% endif %}
+                            </p>
+                        </div>
+                        <div class="settings-actions">
+                            <form method="post" action="{% url 'location_restore' loc.pk %}" class="inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="settings-action">Restore</button>
+                            </form>
+                            {% if loc.can_be_deleted %}
+                            <form method="post" action="{% url 'location_delete' loc.pk %}" class="inline"
+                                  hx-confirm="Delete {{ loc.name }}? This cannot be undone.">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="settings-action-danger">Delete</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </details>
+            {% endif %}
+        </div>
+
+        <!-- ── Vaccination Types ── -->
+        <div class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">Vaccination Types</h3>
+                <a href="{% url 'vaccination_type_create' %}" class="btn-primary btn-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
+                    Add Type
+                </a>
+            </div>
+            <div class="settings-rows">
+                {% for vt in vaccination_types %}
+                <div class="settings-row">
+                    <div class="min-w-0">
+                        <p class="settings-row-title">{{ vt.name }}</p>
+                        <p class="settings-row-meta">Every {{ vt.interval_months }} months &middot; Reminder {{ vt.reminder_days_before }} days before</p>
+                    </div>
+                    <div class="settings-actions">
+                        {% if not vt.is_active %}<span class="badge-warning">Inactive</span>{% endif %}
+                        <a href="{% url 'vaccination_type_update' vt.pk %}" class="settings-action">Edit</a>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="settings-empty">No vaccination types configured.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- ── Service Providers ── -->
+        <div class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">Service Providers</h3>
+                <a href="{% url 'provider_create' %}" class="btn-primary btn-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
+                    Add Provider
+                </a>
+            </div>
+            <div class="settings-rows">
+                {% for provider in providers %}
+                <div class="settings-row">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-8 h-8 rounded-full bg-light-sage text-forest flex items-center justify-center text-xs font-semibold shrink-0">
+                            {{ provider.name|make_list|first|upper }}
+                        </div>
+                        <div class="min-w-0">
+                            <p class="settings-row-title truncate">{{ provider.name }}</p>
+                            <p class="settings-row-meta truncate">{{ provider.get_provider_type_display }}</p>
+                        </div>
+                    </div>
+                    <div class="settings-actions">
+                        <a href="{% url 'provider_update' provider.pk %}" class="settings-action">Edit</a>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="settings-empty">No service providers yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- ══ Billing ══ -->
+    <section id="billing" class="space-y-4 scroll-mt-24">
+        <div class="settings-band">
+            <span class="settings-band-title">Billing</span>
+            <span class="settings-band-rule"></span>
+        </div>
+
+        <!-- ── Rate Types ── -->
+        <div class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">Rate Types</h3>
+                <a href="{% url 'rate_type_create' %}" class="btn-primary btn-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
+                    Add Rate
+                </a>
+            </div>
+            <div class="settings-rows">
+                {% for rate in rate_types %}
+                <div class="settings-row">
+                    <div class="min-w-0">
+                        <p class="settings-row-title">{{ rate.name }}</p>
+                        <p class="settings-row-meta font-mono tabular-nums">&pound;{{ rate.daily_rate }}/day</p>
+                    </div>
+                    <div class="settings-actions">
+                        {% if not rate.is_active %}<span class="badge-warning">Inactive</span>{% endif %}
+                        <a href="{% url 'rate_type_update' rate.pk %}" class="settings-action">Edit</a>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="settings-empty">No rate types configured.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- ── Integrations ── -->
+        {% if feature_access.xero.full %}
+        <div class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">Integrations</h3>
+            </div>
+            <div class="settings-rows">
+                <div class="settings-row">
+                    <div class="flex items-center gap-4 min-w-0">
+                        <div class="w-10 h-10 rounded-lg bg-info-blue-50 text-info-blue flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z"/>
+                            </svg>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="settings-row-title">Xero</p>
+                            {% if xero_connection.is_connected %}
+                                <p class="settings-row-meta truncate">Connected to {{ xero_connection.xero_tenant_name }}</p>
+                            {% else %}
+                                <p class="settings-row-meta">Push invoices directly to Xero as drafts</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="settings-actions">
+                        {% if xero_connection.is_connected %}
+                            <span class="badge-success gap-1.5">
                                 <span class="w-1.5 h-1.5 rounded-full bg-forest"></span>
                                 Connected
                             </span>
                             <form method="post" action="{% url 'xero_disconnect' %}" class="inline"
                                   hx-confirm="Are you sure you want to disconnect from Xero?">
                                 {% csrf_token %}
-                                <button type="submit"
-                                        class="text-xs text-sage hover:text-error-red transition-colors">
-                                    Disconnect
-                                </button>
+                                <button type="submit" class="settings-action-danger">Disconnect</button>
                             </form>
-                        </div>
-                    {% else %}
-                        <a href="{% url 'xero_connect' %}" class="btn-primary btn-sm" hx-boost="false">
-                            Connect
-                        </a>
-                    {% endif %}
+                        {% else %}
+                            <a href="{% url 'xero_connect' %}" class="btn-primary btn-sm" hx-boost="false">Connect</a>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+        {% endif %}
+    </section>
     {% endif %}
 
-    <!-- ── Data Management ── -->
-    <div class="card">
-        <div class="section-header">
-            <h3 class="section-title">Data Management</h3>
+    <!-- ══ Your preferences ══ -->
+    <section id="you" class="space-y-4 scroll-mt-24">
+        <div class="settings-band">
+            <span class="settings-band-title">Your preferences</span>
+            <span class="settings-band-rule"></span>
         </div>
-        <div class="p-5 space-y-3">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-charcoal">Reset Feed Stock</p>
-                    <p class="text-xs text-sage">Clear all feed stock records (deliveries &amp; adjustments) to start tracking from scratch</p>
-                </div>
-                <a href="{% url 'feed_stock_clear' %}" class="btn-secondary btn-sm text-error-red border-error-red/30 hover:bg-error-red-50">Reset</a>
+
+        <!-- ── Dashboard ── -->
+        <div class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">Dashboard</h3>
+                <span class="text-xs text-sage">Per-user preferences</span>
             </div>
-        </div>
-    </div>
-
-    {% endif %}
-
-    <!-- ── Dashboard ── -->
-    <div class="card">
-        <div class="section-header">
-            <h3 class="section-title">Dashboard</h3>
-            <span class="text-xs text-sage">Per-user preferences</span>
-        </div>
-        <div class="p-5">
             {% include "partials/settings/dashboard_prefs.html" %}
         </div>
-    </div>
 
-    <!-- ── Account ── -->
-    <div class="card">
-        <div class="section-header">
-            <h3 class="section-title">Account</h3>
-        </div>
-        <div class="p-5 space-y-3">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-charcoal">{{ user.get_full_name|default:user.username }}</p>
-                    <p class="text-xs text-sage">{{ user.email|default:"No email set" }}</p>
+        <!-- ── Account ── -->
+        <div class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">Account</h3>
+            </div>
+            <div class="settings-rows">
+                <div class="settings-row">
+                    <div class="min-w-0">
+                        <p class="settings-row-title truncate">{{ user.get_full_name|default:user.username }}</p>
+                        <p class="settings-row-meta truncate">{{ user.email|default:"No email set" }}</p>
+                    </div>
+                    <div class="settings-actions">
+                        <a href="{% url 'password_change' %}" class="btn-secondary btn-sm">Change Password</a>
+                    </div>
                 </div>
-                <a href="{% url 'password_change' %}" class="btn-secondary btn-sm">Change Password</a>
             </div>
         </div>
-    </div>
+    </section>
+
+    {% if feature_access.settings.full %}
+    <!-- ══ Data ══ -->
+    <section id="data" class="space-y-4 scroll-mt-24">
+        <div class="settings-band">
+            <span class="settings-band-title">Data</span>
+            <span class="settings-band-rule"></span>
+        </div>
+
+        <div class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">Data Management</h3>
+            </div>
+            <div class="settings-rows">
+                <div class="settings-row">
+                    <div class="min-w-0">
+                        <p class="settings-row-title">Reset Feed Stock</p>
+                        <p class="settings-row-meta">Clear all feed stock records (deliveries &amp; adjustments) to start tracking from scratch</p>
+                    </div>
+                    <div class="settings-actions">
+                        <a href="{% url 'feed_stock_clear' %}" class="settings-action-danger">Reset</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    {% endif %}
 
 </div>
 {% endblock %}
