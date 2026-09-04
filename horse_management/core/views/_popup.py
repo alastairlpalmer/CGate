@@ -37,6 +37,9 @@ class PopupFormMixin:
     """
 
     popup_template_name = 'includes/popup_form.html'
+    # Offer "Save & add another" on create forms: the record saves and a
+    # fresh form re-renders in the sheet (a farrier day is six in a row).
+    popup_add_another = True
 
     @property
     def in_popup(self):
@@ -57,10 +60,28 @@ class PopupFormMixin:
         context['in_popup'] = self.in_popup
         context['popup_horse_id'] = horse_id if horse_id.isdigit() else ''
         context['popup_submit_label'] = self.get_popup_submit_label()
+        context['popup_add_another'] = bool(
+            self.in_popup and self.popup_add_another and self._is_create()
+        )
         return context
+
+    def _is_create(self):
+        obj = getattr(self, 'object', None)
+        return obj is None or not obj.pk
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        if self.in_popup:
-            return popup_saved_response()
-        return response
+        if not self.in_popup:
+            return response
+        if self.popup_add_another and 'save_and_add' in self.request.POST:
+            # Saved: hand back a clean form in the same sheet. The messages
+            # the view queued show together on the final refresh.
+            self.object = None
+            kwargs = self.get_form_kwargs()
+            kwargs.pop('data', None)
+            kwargs.pop('files', None)
+            fresh = self.get_form_class()(**kwargs)
+            return self.render_to_response(
+                self.get_context_data(form=fresh, popup_saved_note='Saved. Add another below.')
+            )
+        return popup_saved_response()

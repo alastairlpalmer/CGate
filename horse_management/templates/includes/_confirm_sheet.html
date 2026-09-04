@@ -1,0 +1,48 @@
+{% comment %}
+Styled confirm dialog — rendered once in base.html, driven by the
+`confirm` Alpine store in static/js/popup.js. Replaces the browser's
+plain OK/Cancel box for every hx-confirm in the app (htmx's htmx:confirm
+event is intercepted) and for the pop-up sheet's "discard changes?" ask.
+The action button says what will happen ("Delete", "Archive", "Send")
+and turns red for destructive verbs.
+{% endcomment %}
+<div x-data x-show="$store.confirm.open" x-cloak
+     class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4"
+     x-transition:enter="transition ease-out duration-150"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-100"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     @keydown.escape.window="$store.confirm.open && $store.confirm.decide(false)">
+
+    <div class="absolute inset-0 bg-charcoal/50" @click="$store.confirm.decide(false)"></div>
+
+    <div id="confirm-panel" role="alertdialog" aria-modal="true" aria-labelledby="confirm-text" tabindex="-1"
+         x-show="$store.confirm.open"
+         x-transition:enter="transition ease-out duration-150 motion-reduce:transition-none"
+         x-transition:enter-start="translate-y-8 sm:translate-y-0 sm:scale-95"
+         x-transition:enter-end="translate-y-0 sm:scale-100"
+         x-transition:leave="transition ease-in duration-100 motion-reduce:transition-none"
+         x-transition:leave-start="translate-y-0 sm:scale-100"
+         x-transition:leave-end="translate-y-8 sm:translate-y-0 sm:scale-95"
+         class="relative w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-lg shadow-xl focus:outline-none">
+
+        <div class="flex justify-center pt-3 pb-1 sm:hidden" aria-hidden="true">
+            <div class="w-10 h-1 rounded-full bg-sage/30"></div>
+        </div>
+
+        <div class="px-5 pt-3 sm:pt-5 pb-4">
+            <p id="confirm-text" class="text-base font-medium text-charcoal" x-text="$store.confirm.text"></p>
+        </div>
+
+        <div class="confirm-footer">
+            <button type="button" class="btn-secondary" x-ref="cancel"
+                    @click="$store.confirm.decide(false)">Cancel</button>
+            <button type="button"
+                    :class="$store.confirm.danger ? 'btn-danger' : 'btn-primary'"
+                    @click="$store.confirm.decide(true)"
+                    x-text="$store.confirm.label"></button>
+        </div>
+    </div>
+</div>

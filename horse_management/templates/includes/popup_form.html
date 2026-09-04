@@ -13,6 +13,14 @@ the generic layout leaves out (inline add-a-vet, archive/delete controls).
 
     <div class="p-4 sm:p-5 space-y-4 sm:space-y-5">
 
+        {% if popup_saved_note %}
+        {# data-popup-fresh: a clean form after "Save & add another", not an edited one #}
+        <div class="rounded-lg border border-sage/20 bg-sage-50 p-3 text-sm text-forest flex items-center gap-2" role="status" data-popup-fresh>
+            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+            {{ popup_saved_note }}
+        </div>
+        {% endif %}
+
         {% if form.non_field_errors %}
         <div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3" role="alert">
             <p class="text-sm font-medium text-error-red">This wasn't saved:</p>
@@ -47,5 +55,8 @@ the generic layout leaves out (inline add-a-vet, archive/delete controls).
            class="hidden sm:inline-flex items-center mr-auto text-xs text-sage hover:text-charcoal-light">Open the full form</a>
         <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
         <button type="submit" class="btn-primary">{{ popup_submit_label }}</button>
+        {% if popup_add_another %}
+        <button type="submit" name="save_and_add" value="1" class="btn-secondary popup-add-another">Save &amp; add another</button>
+        {% endif %}
     </div>
 </form>

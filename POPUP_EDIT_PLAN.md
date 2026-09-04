@@ -2,7 +2,7 @@
 
 **Goal:** Let users make small changes without leaving the page they are on.
 **Scope:** Horse Edit, Horse Photo, Horse Move. Then the same pattern for other quick actions.
-**Status:** All four phases built, plus phase 5 (Record payment, Feed out, Log arrival, Add document, Placement edit, health record edits, Add owner/location, in-place Placements filters).
+**Status:** All four phases built, plus phase 5 (Record payment, Feed out, Log arrival, Add document, Placement edit, health record edits, Add owner/location, in-place Placements filters) and phase 6 (styled confirm sheet for every hx-confirm, Save & add another inside the sheet, phone Back button closes the sheet).
 
 ---
 
