@@ -5,6 +5,7 @@ PDF generation for invoices.
 import io
 import logging
 from decimal import Decimal
+from xml.sax.saxutils import escape as _xml_escape
 
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -12,6 +13,22 @@ from django.utils import timezone
 from core.models import BusinessSettings
 
 from .utils import group_line_items_by_horse
+
+
+def _esc(value):
+    """Escape free text for a ReportLab Paragraph.
+
+    Paragraph parses its string as XML-ish markup, so a stray '<' or '&' in
+    an owner's address, a charge description or the invoice notes raised
+    ValueError — which the email path swallowed, sending the invoice email
+    with no PDF attached.
+    """
+    return _xml_escape(str(value if value is not None else ''))
+
+
+def _esc_lines(value):
+    """Escape multi-line text and turn newlines into <br/>."""
+    return '<br/>'.join(_esc(line) for line in str(value or '').split('\n'))
 
 logger = logging.getLogger(__name__)
 
@@ -91,11 +108,6 @@ def generate_invoice_pdf_reportlab(invoice):
         fontSize=9,
         textColor=colors.Color(0.4, 0.4, 0.4),
     )
-    bold_style = ParagraphStyle(
-        'Bold',
-        parent=normal_style,
-        fontName='Helvetica-Bold',
-    )
     item_style = ParagraphStyle(
         'Item',
         parent=normal_style,
@@ -112,16 +124,16 @@ def generate_invoice_pdf_reportlab(invoice):
     elements = []
 
     # Header
-    elements.append(Paragraph(settings.business_name, title_style))
+    elements.append(Paragraph(_esc(settings.business_name), title_style))
     header_parts = []
     if settings.address:
-        header_parts.append(settings.address.replace('\n', '<br/>'))
+        header_parts.append(_esc_lines(settings.address))
     if settings.phone:
-        header_parts.append(f"Tel: {settings.phone}")
+        header_parts.append(f"Tel: {_esc(settings.phone)}")
     if settings.email:
-        header_parts.append(settings.email)
+        header_parts.append(_esc(settings.email))
     if settings.website:
-        header_parts.append(settings.website)
+        header_parts.append(_esc(settings.website))
     if header_parts:
         elements.append(Paragraph('<br/>'.join(header_parts), small_style))
 
@@ -131,9 +143,9 @@ def generate_invoice_pdf_reportlab(invoice):
     elements.append(Paragraph("<b>INVOICE</b>", heading_style))
 
     # Two-column layout: Bill To + Invoice box
-    bill_to_parts = [f"<b>{invoice.owner.name}</b>"]
+    bill_to_parts = [f"<b>{_esc(invoice.owner.name)}</b>"]
     if invoice.owner.address:
-        bill_to_parts.append(invoice.owner.address.replace('\n', '<br/>'))
+        bill_to_parts.append(_esc_lines(invoice.owner.address))
     bill_to_text = '<br/>'.join(bill_to_parts)
 
     invoice_info_lines = [
@@ -195,7 +207,7 @@ def generate_invoice_pdf_reportlab(invoice):
                 share_label = f" ({share_pct:g}% share)"
         # Horse header row
         table_data.append([
-            Paragraph(f"<b>{group['horse_name']}{share_label}</b>", item_style),
+            Paragraph(f"<b>{_esc(group['horse_name'])}{share_label}</b>", item_style),
             '',
         ])
         row_idx = len(table_data) - 1
@@ -204,13 +216,13 @@ def generate_invoice_pdf_reportlab(invoice):
 
         for item in group['items']:
             if item.line_type == 'livery':
-                desc = Paragraph(f"&nbsp;&nbsp;&nbsp;&nbsp;{item.description}", item_style)
+                desc = Paragraph(f"&nbsp;&nbsp;&nbsp;&nbsp;{_esc(item.description)}", item_style)
             else:
                 date_prefix = ''
                 if item.charge:
                     date_prefix = f"{item.charge.date.strftime('%d/%m/%Y')}: "
                 desc = Paragraph(
-                    f"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{date_prefix}{item.description}",
+                    f"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{date_prefix}{_esc(item.description)}",
                     indent_style
                 )
 
@@ -273,15 +285,15 @@ def generate_invoice_pdf_reportlab(invoice):
     # Payment details
     if settings.bank_details:
         elements.append(Paragraph("<b>Payment Details:</b>", normal_style))
-        elements.append(Paragraph(settings.bank_details.replace('\n', '<br/>'), small_style))
+        elements.append(Paragraph(_esc_lines(settings.bank_details), small_style))
         if settings.card_payment_url:
-            elements.append(Paragraph(f"Or pay by card: {settings.card_payment_url}", small_style))
+            elements.append(Paragraph(f"Or pay by card: {_esc(settings.card_payment_url)}", small_style))
 
     # Notes
     if invoice.notes:
         elements.append(Spacer(1, 6*mm))
         elements.append(Paragraph("<b>Notes:</b>", normal_style))
-        elements.append(Paragraph(invoice.notes, normal_style))
+        elements.append(Paragraph(_esc_lines(invoice.notes), normal_style))
 
     doc.build(elements)
     buffer.seek(0)
@@ -322,13 +334,13 @@ def generate_owner_statement_pdf(owner, statement):
 
     elements = [
         Paragraph('Statement of Account', title_style),
-        Paragraph(settings.business_name, normal_style),
+        Paragraph(_esc(settings.business_name), normal_style),
         Spacer(1, 4*mm),
-        Paragraph(f"<b>{owner.name}</b>", normal_style),
+        Paragraph(f"<b>{_esc(owner.name)}</b>", normal_style),
     ]
     if owner.address:
         for line in owner.address.strip().split('\n'):
-            elements.append(Paragraph(line.strip(), small_style))
+            elements.append(Paragraph(_esc(line.strip()), small_style))
     elements.append(Paragraph(
         f"Issued {timezone.localdate():%d %B %Y}", small_style
     ))

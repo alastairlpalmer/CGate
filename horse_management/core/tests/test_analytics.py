@@ -114,3 +114,28 @@ class AnalyticsOnTests(TestCase):
     def test_capture_survives_a_broken_client(self):
         self.posthog.capture.side_effect = RuntimeError("boom")
         analytics.capture(self.user, "user_signed_in")  # must not raise
+
+    def test_capture_survives_person_properties_failure(self):
+        # person_properties_for hits the DB for the role; it runs on the
+        # sign-in request and must never turn a login into a 500.
+        with patch.object(
+            analytics, "person_properties_for", side_effect=RuntimeError("db")
+        ):
+            analytics.capture(self.user, "user_signed_in")  # must not raise
+        self.posthog.capture.assert_not_called()
+
+
+
+@override_settings(POSTHOG_API_KEY="phc_test")
+class AnalyticsClientConstructionTests(TestCase):
+    """get_client is not stubbed here: the real constructor path runs."""
+
+    def setUp(self):
+        analytics._client = None
+        self.addCleanup(lambda: setattr(analytics, "_client", None))
+        self.user = make_admin(username="rider")
+
+    def test_broken_sdk_constructor_disables_analytics(self):
+        with patch("posthog.Posthog", side_effect=TypeError("bad kwarg")):
+            self.assertIsNone(analytics.get_client())
+            analytics.capture(self.user, "user_signed_in")  # must not raise

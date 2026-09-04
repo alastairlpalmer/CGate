@@ -361,3 +361,48 @@ class DigestGroupingTests(TestCase):
         self.assertEqual(
             FarrierVisit.objects.filter(reminder_sent=True).count(), 2
         )
+
+
+class DocumentExpiryClaimTests(TestCase):
+    """The expiry flag is claimed before sending; an exception in the send
+    path must release the claim, or the reminder is consumed with no email."""
+
+    def _document(self):
+        from django.core.files.base import ContentFile
+
+        from core.models import BusinessSettings, Document
+
+        business = BusinessSettings.get_settings()
+        business.email = "yard@example.com"
+        business.save()
+        horse = _horse("Ghost", _owner("Alice"))
+        return Document.objects.create(
+            horse=horse, title="Passport", doc_type=Document.DocType.PASSPORT,
+            file=ContentFile(b"x", name="passport.pdf"),
+            expiry_date=TODAY + timedelta(days=5),
+        )
+
+    def test_exception_in_send_releases_claim(self):
+        from unittest.mock import patch
+
+        from notifications.tasks import send_document_expiry_reminders
+
+        doc = self._document()
+        with patch(
+            "notifications.emails.send_document_expiry_summary",
+            side_effect=RuntimeError("template blew up"),
+        ):
+            with self.assertRaises(RuntimeError):
+                send_document_expiry_reminders()
+        doc.refresh_from_db()
+        self.assertFalse(doc.expiry_reminder_sent)
+
+    def test_successful_send_marks_sent(self):
+        from notifications.tasks import send_document_expiry_reminders
+
+        doc = self._document()
+        result = send_document_expiry_reminders()
+        self.assertIn("1 document", result)
+        doc.refresh_from_db()
+        self.assertTrue(doc.expiry_reminder_sent)
+        self.assertEqual(len(mail.outbox), 1)

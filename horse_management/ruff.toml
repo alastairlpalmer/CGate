@@ -1,0 +1,33 @@
+# Error-only lint: catches undefined names, syntax errors, unused
+# variables and common bug patterns without enforcing a code style.
+# Run: ruff check .   (installed by `pip install ruff`; also runs in CI)
+target-version = "py311"
+line-length = 120
+
+extend-exclude = [
+    "migrations",
+    "staticfiles",
+    "node_modules",
+    # One-off QA / verification scripts, not part of the app.
+    "verify_*.py",
+    "mobile_*.py",
+    "qa_playwright.py",
+    "seed_qa.py",
+]
+
+[lint]
+select = [
+    "E9",   # syntax errors / io errors
+    "F",    # pyflakes: undefined names, unused imports/variables, etc.
+    "B",    # bugbear: likely bugs (mutable defaults, except-pass, ...)
+    "PLE",  # pylint errors
+]
+ignore = [
+    "F401", # unused import (re-exports in __init__ files, settings * import)
+    "F403", # star import (test_settings intentionally does `from .settings import *`)
+    "F405", # names from star import
+    "B008", # function call in default arg (Django uses this pattern)
+    "B904", # raise ... from err — stylistic, no runtime effect
+    "B905", # zip(strict=) — no runtime effect on equal-length inputs
+    "B007", # unused loop variable — noisy in tests
+]

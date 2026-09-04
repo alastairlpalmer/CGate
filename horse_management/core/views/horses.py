@@ -524,8 +524,9 @@ class HorseListView(FeatureAccessMixin, ListView):
         placement_filter = (
             {} if self.status == 'departed' else {'end_date__isnull': True}
         )
+        # Non-numeric ids raise ValueError at query time — treat as unset.
         location = self.request.GET.get('location')
-        if location:
+        if location and location.isdigit():
             queryset = queryset.filter(
                 Exists(Placement.objects.filter(
                     horse=OuterRef('pk'),
@@ -535,7 +536,7 @@ class HorseListView(FeatureAccessMixin, ListView):
             )
 
         owner = self.request.GET.get('owner')
-        if owner:
+        if owner and owner.isdigit():
             queryset = queryset.filter(
                 Exists(Placement.objects.filter(
                     horse=OuterRef('pk'),
@@ -859,8 +860,6 @@ class HorseListView(FeatureAccessMixin, ListView):
                 'count': len(unowned), 'horses': unowned,
             })
         return _sort_groups(groups, self.group_sort)
-
-        return context
 
 
 class HorseDetailView(FeatureAccessMixin, DetailView):
@@ -1235,7 +1234,16 @@ def horse_depart(request, pk):
 
     horse = get_object_or_404(Horse, pk=pk)
 
-    if request.method == 'POST' and horse.current_placement:
+    if request.method == 'POST':
+        if not horse.current_placement:
+            # A double-submit or a colleague's bulk departure closed it
+            # first. Say so — a silent redirect looks like a dropped request
+            # and invites another click.
+            messages.error(
+                request,
+                f"{horse.name} has no current placement to depart from.",
+            )
+            return redirect('horse_detail', pk=horse.pk)
         departure_date_str = request.POST.get('departure_date')
         if not departure_date_str:
             messages.error(request, "Departure date is required.")
@@ -1312,7 +1320,11 @@ def confirm_departure(request, pk):
                 f"{horse.name} is still placed in a location — use Log Departure instead.",
             )
     if request.headers.get('HX-Request'):
-        return HttpResponse('')
+        # 204 + popup:saved: nothing is swapped, and popup.js re-fetches
+        # #main-content so the queued message shows and the widget
+        # re-renders from the database. Swapping an empty body used to
+        # delete the row even when the action was refused.
+        return HttpResponse(status=204, headers={'HX-Trigger': 'popup:saved'})
     return redirect('dashboard')
 
 
@@ -1326,7 +1338,11 @@ def cancel_departure(request, pk):
         if PlacementService.cancel_departure(horse):
             messages.success(request, f"{horse.name} departure cancelled.")
     if request.headers.get('HX-Request'):
-        return HttpResponse('')
+        # 204 + popup:saved: nothing is swapped, and popup.js re-fetches
+        # #main-content so the queued message shows and the widget
+        # re-renders from the database. Swapping an empty body used to
+        # delete the row even when the action was refused.
+        return HttpResponse(status=204, headers={'HX-Trigger': 'popup:saved'})
     return redirect('dashboard')
 
 
@@ -1336,7 +1352,9 @@ def confirm_departures_bulk(request):
     from ..services import PlacementService
 
     if request.method == 'POST':
-        horse_ids = request.POST.getlist('horse_ids')
+        horse_ids = [
+            i for i in request.POST.getlist('horse_ids') if i.isdigit()
+        ]
         if horse_ids:
             count = PlacementService.confirm_departures_bulk(horse_ids)
             skipped = len(set(horse_ids)) - count
@@ -1345,7 +1363,11 @@ def confirm_departures_bulk(request):
                 msg += f" {skipped} skipped (already departed or still placed in a location)."
             messages.success(request, msg)
     if request.headers.get('HX-Request'):
-        return HttpResponse('')
+        # 204 + popup:saved: nothing is swapped, and popup.js re-fetches
+        # #main-content so the queued message shows and the widget
+        # re-renders from the database. Swapping an empty body used to
+        # delete the row even when the action was refused.
+        return HttpResponse(status=204, headers={'HX-Trigger': 'popup:saved'})
     return redirect('dashboard')
 
 

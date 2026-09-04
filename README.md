@@ -73,6 +73,22 @@ python manage.py runserver
 
 Visit http://127.0.0.1:8000/ and log in.
 
+## Tests and lint
+
+CI (`.github/workflows/ci.yml`) runs these on every push and pull request.
+Run them locally before pushing:
+
+```bash
+cd horse_management
+pip install ruff
+ruff check .                                   # errors only: undefined names, unused variables, bug patterns
+python manage.py makemigrations --check --dry-run
+DJANGO_SETTINGS_MODULE=horse_management.test_settings python manage.py test --parallel auto
+```
+
+`test_settings` uses an in-memory SQLite database and skips migrations, so the
+full suite runs in a couple of minutes.
+
 ## Running Celery (for automated notifications)
 
 ### Start Redis

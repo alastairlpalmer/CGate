@@ -39,11 +39,12 @@ def movement_history(request, default_status='active'):
     elif status == 'ended':
         placements = placements.filter(end_date__isnull=False)
 
+    # Non-numeric ids raise ValueError at query time — treat as unset.
     location = request.GET.get('location')
-    if location:
+    if location and location.isdigit():
         placements = placements.filter(location_id=location)
     owner = request.GET.get('owner')
-    if owner:
+    if owner and owner.isdigit():
         placements = placements.filter(owner_id=owner)
 
     return placements.order_by('-start_date')[:50], status
@@ -85,12 +86,12 @@ class PlacementListView(FeatureAccessMixin, ListView):
 
         # Location filter
         location = self.request.GET.get('location')
-        if location:
+        if location and location.isdigit():
             queryset = queryset.filter(location_id=location)
 
         # Owner filter
         owner = self.request.GET.get('owner')
-        if owner:
+        if owner and owner.isdigit():
             queryset = queryset.filter(owner_id=owner)
 
         return queryset.order_by('-start_date')

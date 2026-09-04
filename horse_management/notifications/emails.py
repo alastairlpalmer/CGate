@@ -40,17 +40,19 @@ def send_invoice_email(invoice):
     )
     email.content_subtype = 'html'
 
-    # Attach PDF if generation succeeds
+    # The PDF *is* the invoice. Sending without it used to report success,
+    # mark the invoice SENT and drop it from the draft queue, while the
+    # owner got an email with nothing attached and nobody was told.
     try:
         pdf_file = generate_invoice_pdf(invoice)
-        email.attach(
-            f"{invoice.invoice_number}.pdf",
-            pdf_file.read(),
-            'application/pdf'
-        )
-    except Exception as e:
-        logger.error(f"Failed to generate PDF for {invoice.invoice_number}: {e}")
-        # Send without attachment rather than failing entirely
+    except Exception:
+        logger.exception("Failed to generate PDF for %s", invoice.invoice_number)
+        return False
+    email.attach(
+        f"{invoice.invoice_number}.pdf",
+        pdf_file.read(),
+        'application/pdf'
+    )
 
     try:
         email.send()

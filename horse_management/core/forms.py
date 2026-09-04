@@ -243,6 +243,10 @@ class MoveHorseForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Setting .choices only changes the rendering; ModelChoiceField
+        # validates against .queryset, so an archived location's pk (stale
+        # tab, back button, hand-crafted post) was still accepted.
+        self.fields['new_location'].queryset = Location.objects.active()
         self.fields['new_location'].choices = get_grouped_location_choices()
         self.fields['new_owner'].queryset = Owner.objects.all()
         self.fields['new_rate_type'].queryset = RateType.objects.filter(is_active=True)
@@ -316,6 +320,8 @@ class SingleArrivalForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # See MoveHorseForm: .queryset is what validates, .choices only renders.
+        self.fields['location'].queryset = Location.objects.active()
         self.fields['location'].choices = get_grouped_location_choices()
         self.fields['owner'].queryset = Owner.objects.all()
         self.fields['rate_type'].queryset = RateType.objects.filter(is_active=True)
@@ -409,6 +415,8 @@ class NewArrivalForm(forms.Form):
         self.fields['sex'].choices = [('', '---------')] + list(Horse._meta.get_field('sex').choices)
         self.fields['color'].choices = [('', '---------')] + list(Horse._meta.get_field('color').choices)
         self.fields['owner'].queryset = Owner.objects.all()
+        # See MoveHorseForm: .queryset is what validates, .choices only renders.
+        self.fields['location'].queryset = Location.objects.active()
         self.fields['location'].choices = get_grouped_location_choices()
         self.fields['rate_type'].queryset = RateType.objects.filter(is_active=True)
 

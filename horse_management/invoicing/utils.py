@@ -5,6 +5,7 @@ Utility functions for invoice formatting and grouping.
 import csv
 import io
 from collections import OrderedDict
+from datetime import date
 from decimal import Decimal
 
 from django.utils import timezone
@@ -62,8 +63,11 @@ def group_line_items_by_horse(line_items):
     for group in groups.values():
         livery = [i for i in group['items'] if i.line_type == 'livery']
         extras = [i for i in group['items'] if i.line_type != 'livery']
-        # Sort extras by charge date if available
-        extras.sort(key=lambda i: i.charge.date if i.charge else i.pk)
+        # Sort extras by charge date if available. The key must be
+        # type-stable: a line whose charge was deleted (charge=None) used to
+        # sort by pk, and comparing int with date raised TypeError — a 500
+        # on the invoice page and its PDF.
+        extras.sort(key=lambda i: (i.charge.date if i.charge else date.min, i.pk))
         group['items'] = livery + extras
         # Group-level share label only when every line carries the same
         # fractional share — mixed groups (50% livery + 100% direct charge)

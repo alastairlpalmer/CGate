@@ -19,6 +19,15 @@
     .btn-icon { @apply inline-flex items-center justify-center w-11 h-11 sm:w-8 sm:h-8 shrink-0 rounded-btn text-sage hover:text-charcoal hover:bg-light-sage active:bg-light-sage/70 transition-colors duration-100 touch-manipulation; }
     .btn-icon-danger { @apply btn-icon text-error-red/70 hover:text-error-red hover:bg-error-red-50 active:bg-error-red-50; }
 
+    /* App bar icon buttons — square, the same height as the search input, so
+       search + filter + add read as one control strip. */
+    .btn-icon-base { @apply relative inline-flex items-center justify-center w-11 h-11 sm:w-9 sm:h-9 shrink-0 rounded-btn transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-sage focus:ring-offset-2 active:scale-95 cursor-pointer touch-manipulation; }
+    .btn-icon-primary { @apply btn-icon-base bg-forest text-white shadow-sm hover:bg-forest-light; }
+    .btn-icon-outline { @apply btn-icon-base bg-white text-sage border border-sage/30 hover:text-charcoal hover:bg-light-sage; }
+    .btn-icon-outline.is-on { @apply bg-light-sage text-forest border-forest/40; }
+    /* Count of applied filters, pinned to the button corner */
+    .btn-icon-badge { @apply absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[10px] font-bold leading-none rounded-full bg-forest text-white ring-2 ring-parchment; }
+
     /* Badges */
     .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
     .badge-success { @apply badge bg-sage-50 text-forest ring-1 ring-inset ring-sage/20; }
@@ -118,14 +127,56 @@
     }
     .link:hover::after { @apply w-full; }
 
-    /* Mobile Bottom Tab Bar — the active tab carries a small teal indicator
-       bar along its top edge so the current section reads at a glance */
+    /* ── Segmented control ──
+       Replaces the old rows of loose selector buttons. One rail, one filled
+       thumb that slides between the options (positioned by the `segmented`
+       Alpine component in base.html), so a change of view reads as movement
+       rather than as two separate buttons repainting. */
+    .segmented { @apply relative inline-flex items-center p-1 bg-white rounded-xl border border-light-sage shadow-sm; }
+    .segmented-thumb {
+        @apply absolute left-0 top-1 bottom-1 rounded-lg bg-forest shadow-sm pointer-events-none;
+        width: 0;
+        opacity: 0;
+        transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+                    width 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+                    opacity 0.15s ease-out;
+    }
+    .segmented-item {
+        @apply relative z-10 inline-flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] sm:min-h-0 text-sm font-medium rounded-lg whitespace-nowrap no-underline;
+        @apply text-sage hover:text-charcoal active:scale-[0.97] cursor-pointer;
+        transition: color 0.18s ease-out, transform 0.12s ease-out;
+    }
+    .segmented-item.is-active { @apply text-white; }
+    /* Fallback fill for the moment before the thumb is measured, and for
+       anyone with JavaScript off. The thumb covers it once it is placed. */
+    .segmented:not(.is-ready) .segmented-item.is-active { @apply bg-forest; }
+    .segmented-icon { @apply w-4 h-4 shrink-0; }
+    .segmented-count { @apply inline-flex items-center justify-center min-w-[20px] px-1.5 h-5 text-[11px] font-semibold tabular-nums rounded-full bg-light-sage text-sage transition-colors duration-200; }
+    .segmented-item.is-active .segmented-count { @apply bg-white/20 text-white; }
+    /* Scroll the rail instead of wrapping it when the labels outgrow the phone */
+    .segmented-scroll { @apply -mx-4 px-4 overflow-x-auto sm:mx-0 sm:px-0 sm:overflow-visible; scrollbar-width: none; }
+    .segmented-scroll::-webkit-scrollbar { display: none; }
+
+    /* Toolbar strip above a list: the two segmented rails plus any page action */
+    .list-toolbar { @apply flex flex-col gap-2.5; }
+
+    /* Mobile Bottom Tab Bar — the active tab inverts: its icon sits in a
+       filled Brim pill, so the current section is unmistakable */
     .tab-bar-item {
         @apply relative flex flex-col items-center justify-center flex-1 gap-1 px-1 text-sage/60 transition-colors duration-100 active:bg-light-sage/50 no-underline;
         min-width: 0;
     }
     .tab-bar-item.active { @apply text-forest; }
-    .tab-bar-item.active::before { content: ''; @apply absolute top-0 inset-x-4 h-0.5 rounded-b-full bg-forest; }
+    /* Active tab: the icon sits in a filled Brim pill (colours inverted), which
+       reads as "you are here" from across the room — the old 2px hairline did
+       not. The pill grows into place so the change of section is visible. */
+    .tab-bar-icon {
+        @apply relative inline-flex items-center justify-center w-14 h-8 rounded-full;
+        transition: background-color 0.22s ease-out, color 0.22s ease-out, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .tab-bar-item:active .tab-bar-icon { transform: scale(0.9); }
+    .tab-bar-item.active .tab-bar-icon { @apply bg-forest text-white; }
+    .tab-bar-item.active .tab-bar-label { @apply font-semibold; }
     .tab-bar-label {
         @apply text-[11px] font-medium leading-none text-center;
         max-width: 100%;
@@ -223,6 +274,14 @@ body { overscroll-behavior-y: none; }
 .bulk-bar-above-tabs { bottom: calc(4rem + env(safe-area-inset-bottom, 0px)); }
 @media (min-width: 1024px) {
     .bulk-bar-above-tabs { bottom: 0; }
+}
+
+/* Motion: everything above degrades to an instant state change when the
+   reader has asked for less movement. */
+@media (prefers-reduced-motion: reduce) {
+    .segmented-thumb { transition: opacity 0.15s ease-out; }
+    .tab-bar-icon { transition: none; }
+    .tab-bar-item:active .tab-bar-icon { transform: none; }
 }
 
 /* Tab bar HTMX request feedback */
