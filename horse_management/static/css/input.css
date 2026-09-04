@@ -484,8 +484,20 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     @apply sticky bottom-0 border-t border-light-sage px-4 py-3 sm:px-5 sm:py-4 bg-parchment flex justify-end gap-3 z-10;
 }
 @media (max-width: 639px) {
-    .popup-footer { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)); }
+    .popup-footer { flex-wrap: wrap; padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)); }
     .popup-footer > a, .popup-footer > button { flex: 1 1 0%; }
+    /* "Save & add another" takes its own row under Cancel / Save */
+    .popup-footer > .popup-add-another { flex-basis: 100%; order: 3; }
+}
+
+/* Confirm dialog footer (includes/_confirm_sheet.html) — same look as the
+   sheet footer, but the dialog never scrolls so nothing sticks. */
+.confirm-footer {
+    @apply border-t border-light-sage px-4 py-3 sm:px-5 sm:py-4 bg-parchment flex justify-end gap-3 rounded-b-lg;
+}
+@media (max-width: 639px) {
+    .confirm-footer { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)); }
+    .confirm-footer > button { flex: 1 1 0%; }
 }
 
 /* Choice chips — a small set of mutually exclusive quick picks (e.g. Move

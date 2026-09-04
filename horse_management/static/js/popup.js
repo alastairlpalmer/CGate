@@ -7,12 +7,61 @@
  *   - asks before discarding unsaved edits,
  *   - closes and refreshes #main-content in place when a form answers
  *     204 + `HX-Trigger: popup:saved`, so the page shows the saved data
- *     and the Django message toast without a navigation.
+ *     and the Django message toast without a navigation,
+ *   - pushes one history entry while open so the phone's Back button
+ *     closes the sheet instead of leaving the page,
+ *   - owns the `confirm` store (includes/_confirm_sheet.html): a styled
+ *     Yes/No dialog used for every hx-confirm in the app and for the
+ *     sheet's own "discard changes?" question.
  */
 (function () {
     'use strict';
 
+    // ── Confirm dialog ──
+    // ask() resolves true/false. The action button's label is taken from
+    // opts.label, else from the question's leading verb ("Delete …?" →
+    // "Delete"); destructive verbs turn it red.
+    var DANGER_VERBS = /^(delete|remove|archive|deactivate|disconnect|discard)\b/i;
+    var VERBS = /^(delete|remove|archive|restore|deactivate|disconnect|discard|email|send|confirm|cancel|move|depart)\b/i;
+
     document.addEventListener('alpine:init', function () {
+        Alpine.store('confirm', {
+            open: false,
+            text: '',
+            label: 'Confirm',
+            danger: false,
+            _resolve: null,
+            _returnTo: null,
+
+            ask: function (opts) {
+                var self = this;
+                var text = (opts && opts.text) || 'Are you sure?';
+                var verb = text.match(VERBS);
+                this.text = text;
+                this.label = (opts && opts.label) || (verb ? verb[0].charAt(0).toUpperCase() + verb[0].slice(1) : 'Confirm');
+                this.danger = (opts && opts.danger !== undefined) ? !!opts.danger : DANGER_VERBS.test(text);
+                this._returnTo = document.activeElement;
+                this.open = true;
+                Alpine.nextTick(function () {
+                    var panel = document.getElementById('confirm-panel');
+                    var cancel = panel && panel.querySelector('button');
+                    (cancel || panel) && (cancel || panel).focus({ preventScroll: true });
+                });
+                return new Promise(function (resolve) { self._resolve = resolve; });
+            },
+
+            decide: function (ok) {
+                if (!this.open) { return; }
+                this.open = false;
+                var resolve = this._resolve;
+                var back = this._returnTo;
+                this._resolve = null;
+                this._returnTo = null;
+                if (back && document.body.contains(back)) { back.focus({ preventScroll: true }); }
+                if (resolve) { resolve(!!ok); }
+            }
+        });
+
         Alpine.store('popup', {
             open: false,
             title: '',
@@ -27,6 +76,9 @@
                 this.dirty = false;
                 this.open = true;
                 document.documentElement.classList.add('overflow-hidden');
+                // One history entry so the phone's Back button closes the
+                // sheet (see the popstate handler below) instead of leaving.
+                try { history.pushState({ yardwayPopup: true }, '', location.href); } catch (err) { /* ignore */ }
                 // The panel is display:none until Alpine applies x-show
                 Alpine.nextTick(function () {
                     var panel = document.getElementById('popup-panel');
@@ -35,10 +87,22 @@
             },
 
             // force=true skips the unsaved-changes check (used after a save).
-            close: function (force) {
+            // fromHistory=true means Back already popped our entry.
+            close: function (force, fromHistory) {
                 if (!this.open) { return; }
-                if (this.dirty && !force &&
-                    !window.confirm('Discard your changes?')) { return; }
+                var self = this;
+                if (this.dirty && !force) {
+                    Alpine.store('confirm').ask({ text: 'Discard your changes?', label: 'Discard', danger: true })
+                        .then(function (ok) {
+                            if (ok) {
+                                self.close(true, fromHistory);
+                            } else if (fromHistory) {
+                                // Back was pressed and refused: restore our entry
+                                try { history.pushState({ yardwayPopup: true }, '', location.href); } catch (err) { /* ignore */ }
+                            }
+                        });
+                    return;
+                }
                 var opener = this.opener;
                 if (opener && window.htmx) { htmx.trigger(opener, 'htmx:abort'); }
                 this.open = false;
@@ -50,7 +114,57 @@
                 if (opener && document.body.contains(opener)) {
                     opener.focus({ preventScroll: true });
                 }
+                if (!fromHistory && history.state && history.state.yardwayPopup) {
+                    popping = true;
+                    history.back();
+                }
             }
+        });
+    });
+
+    // ── Back button ──
+    // Capture-phase so this runs before htmx's own popstate handler, which
+    // would otherwise restore the previous page from its history cache.
+    var popping = false;
+    window.addEventListener('popstate', function (e) {
+        var s = store();
+        var onPopupEntry = e.state && e.state.yardwayPopup;
+        if (popping) {
+            // Our own history.back() after an X/backdrop close
+            popping = false;
+            e.stopImmediatePropagation();
+            return;
+        }
+        if (s && s.open && !onPopupEntry) {
+            // Back pressed while the sheet is open: close it, stay on the page
+            e.stopImmediatePropagation();
+            s.close(false, true);
+            return;
+        }
+        if (onPopupEntry && !(s && s.open)) {
+            // Landed on a stale sheet entry (e.g. Back after a boosted
+            // navigation left the sheet behind): skip over it
+            e.stopImmediatePropagation();
+            history.back();
+        }
+    }, true);
+
+    // ── Styled confirm for every hx-confirm ──
+    document.body.addEventListener('htmx:confirm', function (e) {
+        if (!e.detail.question) { return; }
+        var elt = e.detail.elt || e.target;
+        var data = (elt && elt.dataset) || {};
+        e.preventDefault();
+        Alpine.store('confirm').ask({
+            text: e.detail.question,
+            label: data.confirmLabel,
+            danger: data.confirmDanger !== undefined ? data.confirmDanger !== 'false' : undefined
+        }).then(function (ok) {
+            if (!ok) { return; }
+            // Now the request really goes: spin the button that asked
+            var btn = elt && (elt.matches('button') ? elt : elt.querySelector('button[type="submit"]'));
+            if (btn) { btn.classList.add('btn-loading'); btn.disabled = true; }
+            e.detail.issueRequest(true);
         });
     });
 
@@ -110,7 +224,8 @@
         if (!isPopupTarget(e.detail.target)) { return; }
         var s = store();
         var verb = e.detail.requestConfig && e.detail.requestConfig.verb;
-        if (s) { s.dirty = !!verb && verb !== 'get'; }
+        var fresh = !!e.detail.target.querySelector('[data-popup-fresh]');
+        if (s) { s.dirty = !!verb && verb !== 'get' && !fresh; }
         if (!window.matchMedia('(min-width: 640px)').matches) { return; }
         var first = e.detail.target.querySelector(
             'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])'

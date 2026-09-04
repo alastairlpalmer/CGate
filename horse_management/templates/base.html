@@ -433,6 +433,7 @@
 {# Shared pop-up sheet for in-page Edit/Photo/Move forms (see static/js/popup.js) #}
 {% if user.is_authenticated %}
 {% include 'includes/_popup_sheet.html' %}
+{% include 'includes/_confirm_sheet.html' %}
 
 {# Full-screen photo viewer (see static/js/lightbox.js) #}
 {% include 'includes/_photo_lightbox.html' %}
@@ -607,6 +608,9 @@
             ? e.submitter
             : e.target.querySelector('button[type="submit"]');
         if (!btn) return;
+        // Forms behind a confirm question spin only once the user confirms
+        // (static/js/popup.js takes over), not while the dialog is open.
+        if (e.target.closest('[hx-confirm]') || btn.closest('[hx-confirm]')) return;
         btn.classList.add('btn-loading');
         btn.disabled = true;
         // Safety net: re-enable after 8s
