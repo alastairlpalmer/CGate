@@ -48,7 +48,7 @@ class ArableUsageTests(TestCase):
             with self.subTest(url=url):
                 response = self.client.get(url)
                 self.assertContains(response, 'Arable')
-                self.assertContains(response, 'text-amber-800')
+                self.assertContains(response, 'text-saddle')
 
 
 class SiteChoicesTests(TestCase):

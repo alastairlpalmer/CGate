@@ -178,7 +178,7 @@
             <!-- Location Cards for this Site -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for location in site_locations %}
-                <div class="card-hover flex flex-col overflow-hidden">
+                <div class="card-raised flex flex-col overflow-hidden">
                     <div class="p-5 flex-1">
                         <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
@@ -193,7 +193,7 @@
                                         {% elif location.usage == 'mixed' %}text-saddle
                                         {% elif location.usage == 'rested' %}text-sage
                                         {% elif location.usage == 'hay' %}text-info-blue
-                                        {% elif location.usage == 'arable' %}text-amber-800
+                                        {% elif location.usage == 'arable' %}text-saddle
                                         {% else %}text-sage{% endif %}">
                                         {% if location.usage == 'horses' %}
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75"/></svg>

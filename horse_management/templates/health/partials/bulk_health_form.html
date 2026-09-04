@@ -17,7 +17,7 @@
         {% endif %}
 
         {% if action_type == 'restore' %}
-        <div class="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+        <div class="alert-warning">
             Each selected horse's most recent stay is re-opened as if the departure
             was never logged — the horse returns to that location with its original
             arrival date, and billing resumes from it.<br>
@@ -26,7 +26,7 @@
         {% endif %}
 
         {% if action_type == 'actual_departure' %}
-        <div class="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+        <div class="alert-warning">
             <strong>Past or today's date:</strong> horses will be marked as departed and moved to the Departed section.<br>
             <strong>Future date:</strong> horses remain active until the date arrives, then you'll be prompted to confirm on the dashboard.
         </div>
@@ -35,7 +35,7 @@
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {% for field in form %}
             <div class="{% if field.name == 'notes' or field.name == 'diagnosis' or field.name == 'treatment' %}sm:col-span-2{% endif %}">
-                <label for="{{ field.id_for_label }}" class="block text-xs font-semibold text-sage uppercase tracking-wider mb-1.5">
+                <label for="{{ field.id_for_label }}" class="dt-label mb-1">
                     {{ field.label }}
                     {% if field.field.required %}<span class="text-error-red">*</span>{% endif %}
                 </label>

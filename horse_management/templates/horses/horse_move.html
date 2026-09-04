@@ -24,15 +24,15 @@
     <div class="card bg-parchment border-light-sage p-4 mb-6">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
             <div>
-                <dt class="text-xs font-medium text-sage uppercase tracking-wider">Current Location</dt>
+                <dt class="dt-label">Current Location</dt>
                 <dd class="mt-0.5 font-medium text-charcoal">{{ current_placement.location.name }}</dd>
             </div>
             <div>
-                <dt class="text-xs font-medium text-sage uppercase tracking-wider">Owner</dt>
+                <dt class="dt-label">Owner</dt>
                 <dd class="mt-0.5 font-medium text-charcoal">{{ current_placement.owner.name }}</dd>
             </div>
             <div>
-                <dt class="text-xs font-medium text-sage uppercase tracking-wider">Rate</dt>
+                <dt class="dt-label">Rate</dt>
                 <dd class="mt-0.5 font-medium text-charcoal">{{ current_placement.rate_type.name }} (&pound;{{ current_placement.rate_type.daily_rate }}/day)</dd>
             </div>
         </div>
