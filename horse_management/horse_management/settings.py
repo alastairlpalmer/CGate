@@ -315,6 +315,14 @@ POSTHOG_DEBUG = env.bool('POSTHOG_DEBUG', default=False)
 POSTHOG_PROXY = env.bool('POSTHOG_PROXY', default=True)
 POSTHOG_PROXY_PATH = '/ingest'
 
+# Bulk invoice sending: queue one Celery task per invoice instead of
+# rendering every PDF and blocking on SMTP inside the request (a 40-owner
+# yard could hit the worker timeout part-way through). Off on Vercel, which
+# has no worker process — there the bulk action sends inline as before.
+INVOICE_SEND_ASYNC = env.bool(
+    'INVOICE_SEND_ASYNC', default=not bool(os.environ.get('VERCEL'))
+)
+
 # Celery Configuration
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default='django-db')

@@ -10,6 +10,8 @@ module.exports = {
     'bg-error-red', 'text-error-red', 'border-l-error-red',
     'bg-sand', 'text-sand', 'border-l-sand',
     'bg-sage', 'bg-forest',
+    // Widget class set in core/forms.py, which the content globs do not scan
+    'switch-input',
   ],
   theme: {
     extend: {
