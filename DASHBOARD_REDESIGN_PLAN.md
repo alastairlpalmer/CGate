@@ -31,6 +31,7 @@ Answers from the yard, and the effect on the plan:
 | Feed stock | Not tracked now, could be | Low-stock rows appear in the inbox only when stock data exists. |
 | Per-user or per-role layout | Your call | Per-user switches, as today, re-keyed to the six zones. |
 | Looks | Follow the UI audit; make the sections stand out | State title, domain icon sprite, coat-colour dots, staggered entrance, the yard's name in the sidebar, hover-quiet actions. |
+| Title (after the first build) | A welcoming greeting as the title, the count as subtext | The h1 is "Good morning, Sam"; "3 things need doing" or "All clear on the yard" sits under it, so the state is still the first line of text after the name. |
 
 What was built, in order: the data layer (`core/dashboard/`), the six
 zones, the health bulk form's pop-up mode for "Record for N", the Health

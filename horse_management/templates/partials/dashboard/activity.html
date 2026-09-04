@@ -2,6 +2,10 @@
 {% comment %}
 Zone F: what changed, newest first, grouped by day. Loaded after first
 paint. Context: days (core.dashboard.activity.recent), site.
+
+Each row: a tinted glyph for the kind, the horses (or owner, or location)
+as chips with their coat colour, what happened, and any money on the right.
+A farrier round or a batch of vaccinations is one row naming every horse.
 {% endcomment %}
 <div class="card overflow-hidden h-full">
     <div class="section-header">
@@ -11,13 +15,19 @@ paint. Context: days (core.dashboard.activity.recent), site.
     {% if days %}
     <div class="log">
         {% for day in days %}
-        <p class="log-day">{{ day.label }}{% if day.with_date %} <span class="text-sage/70">&middot; {{ day.date|date:"j M" }}</span>{% endif %}</p>
+        <p class="log-day"><span>{{ day.label }}{% if day.with_date %} <span class="text-sage/70">&middot; {{ day.date|date:"j M" }}</span>{% endif %}</span></p>
         {% for event in day.events %}
-        <a href="{{ event.url }}" class="log-event">
-            <i class="log-dot dot-{{ event.kind }}" aria-hidden="true"></i>
-            <span class="log-text">{{ event.text }}</span>
+        <div class="log-event">
+            <span class="log-icon log-icon-{{ event.group }}" aria-hidden="true"><svg class="w-4 h-4"><use href="#i-{{ event.kind|kind_icon }}"/></svg></span>
+            <div class="log-body">
+                {% for n in event.names %}
+                <a href="{{ n.url }}" class="log-name">{% if n.color %}{% with coat=n.color|coat_colour %}<span class="coat-dot" style="background:{{ coat.0 }}"></span>{% endwith %}{% endif %}{{ n.name }}</a>
+                {% endfor %}
+                {% if event.url %}<a href="{{ event.url }}" class="log-what link">{{ event.what }}</a>{% else %}<span class="log-what">{{ event.what }}</span>{% endif %}
+                {% if event.count > 1 %}<span class="log-count">{{ event.count }} horses</span>{% endif %}
+            </div>
             {% if event.amount is not None %}<span class="log-amount">{{ event.amount|gbp }}</span>{% endif %}
-        </a>
+        </div>
         {% endfor %}
         {% endfor %}
     </div>

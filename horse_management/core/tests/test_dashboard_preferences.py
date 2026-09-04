@@ -371,16 +371,16 @@ class DashboardPageTests(TestCase):
         self.assertNotIn('id="capacityChart"', body)
         self.assertNotIn('id="chart-data"', body)
 
-    def test_title_is_the_yards_state_and_greeting_is_the_subtitle(self):
+    def test_title_greets_and_the_subtext_is_the_yards_state(self):
         user = make_user('headeruser')
         user.first_name = 'Sam'
         user.save()
         self.client.force_login(user)
         body = self.client.get(reverse('dashboard')).content.decode()
         title = re.search(r'<h1 class="page-title">([^<]+)</h1>', body).group(1)
-        self.assertEqual(title.strip(), 'All clear on the yard')
-        self.assertIn('Sam', body)
-        self.assertRegex(body, r'Good (morning|afternoon|evening)')
+        self.assertRegex(title.strip(), r'^Good (morning|afternoon|evening), Sam$')
+        subtitle = re.search(r'<p class="page-subtitle">(.*?)</p>', body, re.S).group(1)
+        self.assertIn('All clear on the yard', subtitle)
         self.assertIn('Nothing needs doing', body)
         self.assertNotIn('Your dashboard is empty', body)
 
