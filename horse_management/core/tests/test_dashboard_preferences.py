@@ -24,7 +24,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from core.dashboard_widgets import DEFAULT_HIDDEN, DEFAULT_LAYOUT, WIDGETS
+from core.dashboard_widgets import DEFAULT_HIDDEN, DEFAULT_LAYOUT, WIDGETS, widget_available
 from core.models import DashboardPreference, Horse, Location, Owner, Placement, RateType
 from core.permissions import access_map
 from core.roles_testutils import make_admin, make_user_with_access
@@ -202,7 +202,7 @@ class SettingsPagePermissionsTests(TestCase):
         # offered (they could never render).
         levels = access_map(user)
         for w in WIDGETS:
-            if levels[w['feature']] == 'hidden':
+            if levels[w['feature']] == 'hidden' or not widget_available(w):
                 self.assertNotIn(f'data-widget-key="{w["key"]}"', body)
             else:
                 self.assertIn(w['name'], body)
@@ -221,7 +221,8 @@ class SettingsPagePermissionsTests(TestCase):
         self.assertIn('Business Details', body)
         self.assertIn('>Dashboard<', body)
         for w in WIDGETS:
-            self.assertIn(w['name'], body)
+            if widget_available(w):
+                self.assertIn(w['name'], body)
 
     def test_standalone_prefs_page_is_gone(self):
         """The old /settings/dashboard/ URL was removed; no named route exists

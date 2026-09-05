@@ -44,6 +44,23 @@
     document.addEventListener('DOMContentLoaded', scanRemember);
     document.addEventListener('htmx:afterSwap', scanRemember);
 
+    // htmx's history cache snapshots the live DOM, Alpine-expanded x-if and
+    // x-for clones and Leaflet panes included, then Alpine initialises that
+    // snapshot again on Back and expands everything a second time. A
+    // component that renders its own children registers here at init (its
+    // markup is still the server's at that point) and is reset to that
+    // markup just before each snapshot.
+    window.Yardway.volatile = function (el) {
+        if (el && el._x_serverHtml == null) { el._x_serverHtml = el.innerHTML; }
+    };
+    document.addEventListener('DOMContentLoaded', function () {
+        document.body.addEventListener('htmx:beforeHistorySave', function () {
+            document.querySelectorAll('[x-data]').forEach(function (el) {
+                if (el._x_serverHtml != null) { el.innerHTML = el._x_serverHtml; }
+            });
+        });
+    });
+
     // The last position that passed the accuracy gate, shared with the
     // Near you card so the page asks the phone once.
     window.Yardway.position = null;
@@ -58,6 +75,7 @@
 
                 init: function () {
                     var self = this;
+                    window.Yardway.volatile(this.$el);
                     var node = document.getElementById('near-you-data');
                     if (!node || !window.YardwayGeo) return;
                     try { this.data = JSON.parse(node.textContent); } catch (err) { return; }

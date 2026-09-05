@@ -10,24 +10,24 @@ one-line "Use my location" ask.
 <div x-data="nearYou" class="flex flex-wrap items-center gap-2 min-h-[36px]" data-testid="near-you">
     <template x-if="chip">
         <div class="flex flex-wrap items-center gap-1.5">
-            <a :href="chip.href" :class="chip.kind === 'last' ? 'near-chip-quiet' : 'near-chip'">
-                <template x-if="chip.kind === 'gps'">
+            <a :href="chip?.href" :class="chip?.kind === 'last' ? 'near-chip-quiet' : 'near-chip'">
+                <template x-if="chip?.kind === 'gps'">
                     <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
                 </template>
-                <template x-if="chip.kind === 'site'">
+                <template x-if="chip?.kind === 'site'">
                     <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21"/></svg>
                 </template>
-                <template x-if="chip.kind === 'last'">
+                <template x-if="chip?.kind === 'last'">
                     <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>
                 </template>
-                <span x-text="chip.label"></span>
+                <span x-text="chip?.label"></span>
             </a>
-            <template x-if="chip.alternatives && chip.alternatives.length">
+            <template x-if="chip?.alternatives?.length">
                 <button type="button" class="near-chip-ask" @click="showAlternatives = !showAlternatives" :aria-expanded="showAlternatives ? 'true' : 'false'">Not here?</button>
             </template>
             <template x-if="showAlternatives">
                 <div class="flex flex-wrap items-center gap-1.5 basis-full">
-                    <template x-for="alt in chip.alternatives" :key="alt.href">
+                    <template x-for="alt in (chip?.alternatives || [])" :key="alt.href">
                         <a :href="alt.href" class="near-chip-quiet" x-text="alt.label"></a>
                     </template>
                 </div>

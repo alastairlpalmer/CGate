@@ -735,6 +735,7 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .location-map .leaflet-container { @apply bg-sage-50 font-body; }
     .location-map .leaflet-control-attribution { display: none; }
     .location-map-badge { @apply absolute z-[500] flex items-center justify-center rounded-full bg-white/95 shadow-card border border-light-sage no-underline; width: 44px; height: 44px; transform: translate(-50%, -50%); touch-action: manipulation; }
+    .location-map-badge[hidden], .location-map-label[hidden] { display: none; }
     .location-map-badge:focus-visible { @apply outline-none ring-2 ring-forest ring-offset-1; }
     .location-map-badge.is-highlight { @apply border-forest ring-2 ring-forest/40; }
     .location-map-badge .board-count { @apply h-9 w-9 text-xs; }

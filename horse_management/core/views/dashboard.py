@@ -14,6 +14,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone
 
 from ..dashboard import activity as activity_data
@@ -79,7 +80,6 @@ def near_you_payload(request):
         return None
     if not has_feature_access(request.user, 'locations'):
         return None
-    from django.urls import reverse
     active = Location.objects.active()
     locations = [
         {'pk': pk, 'name': name, 'site': site, 'lat': float(lat), 'lng': float(lng)}
@@ -108,6 +108,42 @@ def near_you_payload(request):
         'all_pks': all_pks,
         'near_radius_m': settings.LOCATION_NEAR_RADIUS_M,
         'urls': {'horses': reverse('horse_list'), 'dashboard': reverse('dashboard')},
+    }
+
+
+def near_you_card(request, pref, sites, payload):
+    """Everything the Near you card needs, or None when it cannot show.
+
+    The card is one slot filled by two independent ladders (plan 6.7)
+    that the browser runs, because the first rung of each is GPS. The
+    server settles what it can: the dashboard's chosen site as the
+    default, the only site when there is one, the pinned location, and
+    a map payload per site (``map_locations`` — the same shaping as the
+    Map tab). With no site to fall back on and no GPS the card hides.
+    """
+    if payload is None:
+        return None
+    if not sites:
+        return None
+    default_site = pref.site if pref.site in sites else ''
+    pinned = pref.pinned_location
+    if pinned is not None and (pinned.is_archived or pinned.site not in sites):
+        pinned = None
+    maps = {name: data for name, data in board.map_locations_by_site().items() if name in sites}
+    return {
+        'locations': payload['locations'],
+        'sites': payload['sites'],
+        'near_radius_m': payload['near_radius_m'],
+        'site_names': sites,
+        'default_site': default_site,
+        'site_counts': {name: maps[name]['total'] for name in sites},
+        'unlocated': [
+            {'pk': loc['pk'], 'site': name}
+            for name in sites for loc in maps[name]['locations'] if not loc['kind']
+        ],
+        'pinned': {'pk': pinned.pk, 'name': pinned.name, 'site': pinned.site} if pinned else None,
+        'urls': {'map': reverse('location_list')},
+        'maps': maps,
     }
 
 
@@ -174,6 +210,11 @@ def _dashboard_inner(request):
         if item.kind == 'departure' and item.horse_id is not None
     ]
 
+    near_you = near_you_payload(request)
+    near_you_card_data = None
+    if 'near_you' in visible:
+        near_you_card_data = near_you_card(request, pref, sites, near_you)
+
     context = {
         'greeting': _greeting(),
         'today': today,
@@ -188,7 +229,8 @@ def _dashboard_inner(request):
         'in_foal': in_foal,
         'departure_ids': departure_ids,
         'horse_count': sum(band['horses'] for band in sites_overview) if sites_overview else None,
-        'near_you': near_you_payload(request),
+        'near_you': near_you,
+        'near_you_card': near_you_card_data,
     }
     return render(request, 'dashboard.html', context)
 

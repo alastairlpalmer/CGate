@@ -11,6 +11,8 @@ is kept for compatibility but not used for placement.
 
   attention   what needs doing: one inbox across every area
   upcoming    the next 14 days and the visits worth booking together
+  near_you    the site you are on, drawn, with the nearest location lit
+              (only with LOCATION_MAPS_ENABLED; see ``requires_setting``)
   yard_board  sites and their locations: occupancy, land use, rest
   in_foal     mares in foal (renders only when there are any)
   money       the month's billing position
@@ -26,6 +28,8 @@ GROUPS = ("main",)
 WIDGETS = [
     {"key": "attention",  "name": "Needs action",   "group": "main", "feature": "dashboard"},
     {"key": "upcoming",   "name": "Next 14 days",   "group": "main", "feature": "dashboard"},
+    {"key": "near_you",   "name": "Near you",       "group": "main", "feature": "locations",
+     "requires_setting": "LOCATION_MAPS_ENABLED"},
     {"key": "yard_board", "name": "Yard board",     "group": "main", "feature": "locations"},
     {"key": "in_foal",    "name": "In foal",        "group": "main", "feature": "breeding"},
     {"key": "money",      "name": "Money",          "group": "main", "feature": "invoices"},
@@ -42,6 +46,13 @@ DEFAULT_LAYOUT = {
     w["key"]: {"visible": w["key"] not in DEFAULT_HIDDEN, "order": i}
     for i, w in enumerate(WIDGETS)
 }
+
+
+def widget_available(widget):
+    """False for a widget behind a settings flag that is off."""
+    from django.conf import settings
+    flag = widget.get("requires_setting")
+    return not flag or bool(getattr(settings, flag, False))
 
 
 def widgets_in_group(group):

@@ -1,0 +1,37 @@
+{% comment %}
+The Near you card (plan 6.7). Context: near_you_card from
+core.views.dashboard.near_you_card. One slot, one card, never two: the
+Alpine component `nearYouCard` (static/js/location_map.js) picks the site
+(GPS → the dashboard's chosen site → the only site → hide) and the
+highlighted location (GPS → pinned → last opened → none), then aims the
+compact map for that site. One compact map is rendered per site and only
+the chosen one is shown, so no fetch is needed when GPS picks another.
+
+Two tap targets (plan 2.5): a badge opens that location's horse list;
+everywhere else on the card opens the Map tab.
+{% endcomment %}
+{{ near_you_card|json_script:"near-you-card-data" }}
+<div x-data="nearYouCard" x-show="ready" x-cloak class="card overflow-hidden cursor-pointer" data-testid="near-you-card"
+     @click="open()" @keydown.enter="open()" tabindex="0" role="link" :aria-label="'Open the map of ' + site">
+    <div class="section-header">
+        <div class="flex items-center gap-2.5 min-w-0">
+            <h2 class="section-title" id="near-you-title">Near you</h2>
+            <span class="near-chip pointer-events-none" x-text="label"></span>
+            <template x-if="highlight && data?.pinned?.pk === highlight">
+                <span class="text-[11px] text-saddle" title="Pinned to your dashboard">pinned</span>
+            </template>
+        </div>
+        <span class="text-xs text-sage" x-text="site"></span>
+    </div>
+    <div class="p-2">
+        {% for name, payload in near_you_card.maps.items %}
+        <div x-show="site === '{{ name|escapejs }}'">
+            {% include 'partials/location_map.html' with payload=payload variant='compact' pinned=near_you_card.pinned.pk %}
+        </div>
+        {% endfor %}
+    </div>
+    <div class="px-5 py-3 border-t border-light-sage flex items-center justify-between">
+        <a :href="mapTabUrl()" class="text-sm link tap-pad" @click.stop>See all <span x-text="count()"></span> locations &rarr;</a>
+        <span class="text-xs text-sage hidden sm:inline">Tap a badge for its horses</span>
+    </div>
+</div>

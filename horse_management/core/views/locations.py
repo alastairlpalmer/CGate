@@ -6,6 +6,7 @@ import calendar
 from datetime import date, timedelta
 from itertools import groupby
 
+from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -233,8 +234,11 @@ class LocationListView(FeatureAccessMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['current_tab'] = self.request.GET.get('tab', 'locations')
+        if context['current_tab'] == 'map' and not settings.LOCATION_MAPS_ENABLED:
+            # Feature off: the tab does not exist, so the URL means the list.
+            context['current_tab'] = 'locations'
 
-        if context['current_tab'] not in ('history', 'usage'):
+        if context['current_tab'] not in ('history', 'usage', 'map'):
             # Group locations by site for card display
             grouped = []
             for site, locs in groupby(context['locations'], key=lambda l: l.site):
@@ -259,6 +263,23 @@ class LocationListView(FeatureAccessMixin, ListView):
                 grouped = sort_grouped_locations(grouped)
             context['location_sort'] = sort
             context['grouped_locations'] = grouped
+
+        # Map tab: one site at a time, drawn by partials/location_map.html
+        if context['current_tab'] == 'map':
+            from ..dashboard import board
+            from ..models import DashboardPreference
+            names = board.site_names()
+            chosen = (self.request.GET.get('site') or '').strip()
+            if chosen not in names:
+                pref = DashboardPreference.objects.filter(user=self.request.user).first()
+                chosen = pref.site if pref and pref.site in names else (names[0] if names else '')
+            context['map_site'] = chosen
+            context['map_sites'] = names
+            context['map_payload'] = board.map_locations(chosen) if chosen else None
+            pref_pin = DashboardPreference.objects.filter(
+                user=self.request.user,
+            ).values_list('pinned_location_id', flat=True).first()
+            context['map_pinned'] = pref_pin
 
         # Usage analytics overview tab
         if context['current_tab'] == 'usage':

@@ -77,6 +77,13 @@
     </div>
     {% endif %}
 
+    {# ── Near you: the site you are on, drawn (plan phase 3) ── #}
+    {% if 'near_you' in visible and near_you_card %}
+    <section class="zone-enter" style="--i:3" aria-labelledby="near-you-title">
+        {% include 'partials/dashboard/near_you.html' %}
+    </section>
+    {% endif %}
+
     {# ── D. Yard board ── #}
     {% if 'yard_board' in visible and sites_overview %}
     <section class="zone-enter" style="--i:3" aria-labelledby="yard-board-title">

@@ -53,8 +53,9 @@ from base.html when a [data-map] element appears.
         </div>
     </div>
 
-    {# The hidden latitude/longitude inputs the form saves are rendered by the
-       enclosing form (its hidden_fields loop); the map and both boxes write there. #}
+    {% comment %}The hidden latitude/longitude inputs the form saves are
+    rendered by the enclosing form (its hidden_fields loop); the map and
+    both boxes write there.{% endcomment %}
 
     <div>
         <p class="text-xs font-medium text-sage mb-1">Or drop the pin</p>

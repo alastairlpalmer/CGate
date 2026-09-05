@@ -30,6 +30,7 @@
 
                 init: function () {
                     var self = this;
+                    if (window.Yardway && Yardway.volatile) { Yardway.volatile(this.$el); }
                     var form = this.$el.closest('form');
                     this.latInput = form ? form.querySelector('input[name="latitude"]') : null;
                     this.lngInput = form ? form.querySelector('input[name="longitude"]') : null;

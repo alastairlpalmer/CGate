@@ -1150,7 +1150,7 @@ class DashboardPreference(models.Model):
         Widgets tied to a feature area the user's role can't view are
         dropped regardless of stored preference.
         """
-        from .dashboard_widgets import GROUPS, WIDGETS_BY_KEY
+        from .dashboard_widgets import GROUPS, WIDGETS_BY_KEY, widget_available
         from .permissions import access_map
         levels = access_map(self.user)
         layout = self.resolved_layout()
@@ -1161,6 +1161,8 @@ class DashboardPreference(models.Model):
                 continue
             widget = WIDGETS_BY_KEY[key]
             if levels[widget["feature"]] == "hidden":
+                continue
+            if not widget_available(widget):
                 continue
             grouped[widget["group"]].append(key)
         return grouped
