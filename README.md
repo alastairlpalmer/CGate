@@ -89,6 +89,36 @@ DJANGO_SETTINGS_MODULE=horse_management.test_settings python manage.py test --pa
 `test_settings` uses an in-memory SQLite database and skips migrations, so the
 full suite runs in a couple of minutes.
 
+The location mapping helpers in `static/js/geo.js` have their own tests, run by
+Node (no npm package needed):
+
+```bash
+node --test 'static/js/tests/*.test.js'
+```
+
+## Location mapping
+
+Locations can carry a latitude/longitude and, from a Land App export, a field
+boundary. `LOCATION_MAPPING_PLAN.md` is the design; the build is behind one
+setting, `LOCATION_MAPS_ENABLED` (default off), which gates everything a user
+sees: the nearest-location chip on the dashboard, the **Map** tab on Locations,
+the **Near you** dashboard card and the Land App import. The coordinate picker
+on the location edit form, **Edit site** on the Locations page and the commands
+below work with the setting off, so data can go in first.
+
+```bash
+# Fill coordinates from the Google Maps links already in descriptions
+python manage.py backfill_location_coords            # dry run, prints a report
+python manage.py backfill_location_coords --write
+
+# Import field boundaries from a Land App / RPA GeoJSON export
+python manage.py import_boundaries plan.geojson --site Somerford            # dry run
+python manage.py import_boundaries plan.geojson --site Somerford --write --create
+```
+
+Files in British National Grid (EPSG:27700, what the RPA parcel plan exports)
+are converted to latitude/longitude on the way in (`core/bng.py`).
+
 ## Running Celery (for automated notifications)
 
 ### Start Redis

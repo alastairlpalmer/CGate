@@ -8,6 +8,9 @@ Written for an AI coding agent. Read all of it before you write any code.
 answers. Every place where the first draft did not match the code is corrected in place
 and listed in section 11.
 
+**Revision 3.** Built on 2026-09-05, all phases in one pull request at the owner's
+request. Section 12 records where the build departed from this document and why.
+
 ---
 
 ## 0. How to use this document
@@ -746,3 +749,84 @@ Corrections after reading the codebase. Each one points at the section that now 
 13. **Feature flag.** Section 3.1 defines `LOCATION_MAPS_ENABLED`.
 14. **Backfill conventions.** Section 4.3 follows `backfill_location_usage.py`: dry run by default, `--write` to save.
 15. **Site centre entry.** Section 4.4 adds an `Edit site` form, without which `SiteSettings` could never be filled.
+
+---
+
+## 12. What changed in the build (revision 3)
+
+Every phase in this document is built. These are the places where the code does
+not follow the text above, each with the reason. Where a section says one thing
+and the code another, the code is right and this list says so.
+
+1. **The real Land App export is British National Grid, not WGS84.** Both files
+   the owner supplied (RPA "Land Covers" plans from Land App) declare
+   `crs: EPSG::27700` and carry eastings and northings. Section 7.3 step 3 said
+   to reject such a file. Instead `core/bng.py` converts the grid to
+   latitude/longitude (Ordnance Survey inverse Transverse Mercator plus the
+   Helmert transformation, checked against pyproj to 0.1 m, no new dependency).
+   A file that declares 27700, or whose numbers sit inside the grid's 700 × 1300 km
+   box, is converted and the report says so; any other projected system is still
+   rejected with the message section 7.3 asks for. Section 7.2's "GeoJSON only"
+   still holds: Shapefile, KML and DXF are refused.
+
+2. **Shape names from the RPA plan.** Section 7.6's key list (`name`, `Name`,
+   `title`, `label`, `field_name`) finds nothing in an RPA export. The parser
+   also reads `sheetId` + `parcelId` ("ST9583 7616") and shows the land cover
+   `description` as a subtitle. Two shapes with one name (a parcel split by land
+   cover) get the subtitle, or a number, appended.
+
+3. **Name matching is strict.** Parcel codes look alike character by character
+   (two different codes score 0.6 on difflib), so a name suggestion needs a shared
+   word, or a difflib ratio of 0.8 with none. Spatial matching is unchanged and
+   still comes first.
+
+4. **One migration.** `core/migrations/0033_location_mapping.py` carries the
+   phase 1 columns, `SiteSettings`, `DashboardPreference.pinned_location`
+   (phase 3) and `LocationBoundaryHistory` (section 7.5's "record the previous
+   value") together, because the phases shipped together.
+
+5. **Leaflet came from npm, not a CDN.** The build environment could not reach
+   unpkg or cdnjs; `npm pack leaflet@1.9.4` supplied the same files. They are
+   vendored under `static/js/leaflet.js` and `static/css/leaflet.css` (marker
+   images under `static/css/images/`) and lazy-loaded from `base.html` as
+   section 4.4 describes.
+
+6. **The coordinate picker in the sheet.** `includes/popup_form.html` gained a
+   generic hook (`popup_extra_template`, `popup_deferred_fields`) so a form can
+   render its own block under the field grid; the picker is the first user. A
+   pasted Maps link is read by a small JSON endpoint (`/locations/parse-link/`)
+   so the parsed values show before saving, and read again by the form on save.
+
+7. **The Near you card renders one compact map per site**, all in the page, and
+   shows the one the site ladder picks. Section 6.7 wanted no second fetch when
+   GPS lands on a site other than the dashboard's; this is how. The card and the
+   chip share one position: the chip asks the phone, the card listens.
+
+8. **htmx history.** `hx-boost` snapshots the page for Back, Alpine-rendered
+   children and Leaflet panes included, and Alpine expands them again on restore.
+   Components that render their own children (`nearYou`, `nearYouCard`,
+   `locationMap`, `coordPicker`) register with `Yardway.volatile` and are reset
+   to the server's markup before each snapshot. Section 5.8's "survives an
+   hx-boost navigation away and back" needed this.
+
+9. **The ring partial has a size.** `_capacity_ring.html` takes `size=44` for
+   the Locations page and the map badges and stays 40 px on the Yard board, and
+   with no capacity it shows the count in an empty track, so the Locations page
+   could drop its inline copy (section 6.5).
+
+10. **`Near you` is hidden from Settings while the flag is off.** A widget can
+    declare `requires_setting`; `DashboardPreference` and the Settings page skip
+    it when the setting is False, so nobody toggles a card that cannot render.
+
+11. **`import_boundaries` does more than section 7.0's parser.** It also matches
+    (spatial, then `--weak` names), forces a match with `--assign`, creates a
+    location per unmatched shape with `--create`, and replaces with `--overwrite`.
+    Dry run by default, one transaction on `--write`, per the backfill conventions.
+
+12. **Verification.** Python: 1042 tests, including one file per phase under
+    `core/tests/` and the fixtures section 9.2 lists under `core/tests/fixtures/geo/`.
+    JavaScript: `node --test` on `static/js/geo.js`, run by CI. In a headless
+    browser with a faked phone position 22 m inside a real parcel, the chip read
+    the parcel's name and distance, the card lit the same badge and cropped to
+    four, and Back restored one chip and one card. What a browser cannot prove
+    (section 9.3): the checks on a real phone over HTTPS remain to do.
