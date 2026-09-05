@@ -11,7 +11,7 @@ from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from ..dashboard_widgets import WIDGETS, WIDGETS_BY_KEY
+from ..dashboard_widgets import WIDGETS, WIDGETS_BY_KEY, widget_available
 from ..permissions import feature_required, has_feature_access
 from ..models import DashboardPreference, Location
 
@@ -171,7 +171,7 @@ def _flat_prefs_items(user):
     layout = pref.resolved_layout()
     items = []
     for w in WIDGETS:
-        if levels[w['feature']] == 'hidden':
+        if levels[w['feature']] == 'hidden' or not widget_available(w):
             continue
         meta = layout.get(w['key']) or {}
         items.append({

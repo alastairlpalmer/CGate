@@ -16,6 +16,7 @@
     <div class="card">
         <form method="post" class="divide-y divide-light-sage">
             {% csrf_token %}
+            {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
 
             <!-- Location Details -->
             <fieldset class="px-4 sm:px-5 py-4 sm:py-5 space-y-4 sm:space-y-5">
@@ -25,6 +26,10 @@
                 {% include "includes/form_field.html" with field=form.usage help="What is this location currently being used for?" %}
                 {% include "includes/form_field.html" with field=form.capacity help="Maximum number of horses (optional)" %}
                 {% include "includes/form_field.html" with field=form.description %}
+                {% include 'locations/_coord_picker.html' %}
+                {% if form.pin_to_dashboard %}
+                {% include "includes/form_field.html" with field=form.pin_to_dashboard %}
+                {% endif %}
             </fieldset>
 
             <!-- Footer -->

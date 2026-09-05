@@ -40,3 +40,10 @@ jobs:
 
       - name: Tests
         run: python manage.py test --noinput --parallel auto
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: JavaScript unit tests (static/js/tests)
+        run: node --test 'static/js/tests/*.test.js'

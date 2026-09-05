@@ -40,6 +40,10 @@ class PopupFormMixin:
     # Offer "Save & add another" on create forms: the record saves and a
     # fresh form re-renders in the sheet (a farrier day is six in a row).
     popup_add_another = True
+    # A template included below the generic field grid, and the names of
+    # the fields it renders itself (skipped by the grid).
+    popup_extra_template = ''
+    popup_deferred_fields = ()
 
     @property
     def in_popup(self):
@@ -63,6 +67,8 @@ class PopupFormMixin:
         context['popup_add_another'] = bool(
             self.in_popup and self.popup_add_another and self._is_create()
         )
+        context['popup_extra_template'] = self.popup_extra_template
+        context['popup_deferred_fields'] = list(self.popup_deferred_fields)
         return context
 
     def _is_create(self):

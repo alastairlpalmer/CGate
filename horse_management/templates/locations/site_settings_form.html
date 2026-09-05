@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit site {{ site }} - Yardway{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Edit site: {{ site }}</h1>
+            <p class="page-subtitle">The site centre lets the app tell which site a phone is on.</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <form method="post" class="divide-y divide-light-sage">
+            {% csrf_token %}
+            {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+            {% include "includes/form_errors.html" %}
+            <fieldset class="px-4 sm:px-5 py-4 sm:py-5 space-y-4 sm:space-y-5">
+                <legend class="text-base font-semibold text-charcoal">Site centre</legend>
+                {% include "includes/form_field.html" with field=form.radius_m %}
+                {% include 'locations/_coord_picker.html' with picker_label='Site centre' %}
+            </fieldset>
+            <div class="form-footer">
+                <a href="{% url 'location_list' %}" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">Save site</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

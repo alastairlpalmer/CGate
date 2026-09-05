@@ -6,10 +6,12 @@ import calendar
 from datetime import date, timedelta
 from itertools import groupby
 
+from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, Exists, Min, OuterRef, Prefetch, Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -17,10 +19,11 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
-from ..forms import ArrivalForm, LocationForm, LocationUsageForm
+from ..forms import ArrivalForm, LocationForm, LocationUsageForm, SiteSettingsForm
+from ..geo import coords_from_link, site_distance_warning
 from ._popup import PopupFormMixin, is_popup_request, popup_saved_response
 from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
-from ..models import Horse, Location, LocationUsagePeriod, Placement
+from ..models import Horse, Location, LocationUsagePeriod, Placement, SiteSettings
 
 # Chart/legend colour per usage type — reuses the established design palette.
 USAGE_COLORS = {
@@ -231,8 +234,11 @@ class LocationListView(FeatureAccessMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['current_tab'] = self.request.GET.get('tab', 'locations')
+        if context['current_tab'] == 'map' and not settings.LOCATION_MAPS_ENABLED:
+            # Feature off: the tab does not exist, so the URL means the list.
+            context['current_tab'] = 'locations'
 
-        if context['current_tab'] not in ('history', 'usage'):
+        if context['current_tab'] not in ('history', 'usage', 'map'):
             # Group locations by site for card display
             grouped = []
             for site, locs in groupby(context['locations'], key=lambda l: l.site):
@@ -257,6 +263,23 @@ class LocationListView(FeatureAccessMixin, ListView):
                 grouped = sort_grouped_locations(grouped)
             context['location_sort'] = sort
             context['grouped_locations'] = grouped
+
+        # Map tab: one site at a time, drawn by partials/location_map.html
+        if context['current_tab'] == 'map':
+            from ..dashboard import board
+            from ..models import DashboardPreference
+            names = board.site_names()
+            chosen = (self.request.GET.get('site') or '').strip()
+            if chosen not in names:
+                pref = DashboardPreference.objects.filter(user=self.request.user).first()
+                chosen = pref.site if pref and pref.site in names else (names[0] if names else '')
+            context['map_site'] = chosen
+            context['map_sites'] = names
+            context['map_payload'] = board.map_locations(chosen) if chosen else None
+            pref_pin = DashboardPreference.objects.filter(
+                user=self.request.user,
+            ).values_list('pinned_location_id', flat=True).first()
+            context['map_pinned'] = pref_pin
 
         # Usage analytics overview tab
         if context['current_tab'] == 'usage':
@@ -435,15 +458,84 @@ class LocationDetailView(FeatureAccessMixin, DetailView):
         return context
 
 
-class LocationCreateView(PopupFormMixin, FeatureAccessMixin, CreateView):
+# ──────────────────────────────────────────────────────────────────────────
+# Coordinates
+#
+# Every location can carry a point (and, later, a boundary). The edit form
+# offers three ways in — a pasted pair, a Google Maps link, a dragged pin —
+# and the site header offers the site centre. The picker itself is
+# templates/locations/_coord_picker.html + static/js/coord_picker.js.
+# ──────────────────────────────────────────────────────────────────────────
+
+# Where the pin map opens when nothing better is known: roughly the middle
+# of Great Britain, zoomed out far enough to find any yard.
+PICKER_DEFAULT_CENTRE = {'lat': 52.5, 'lng': -1.9, 'zoom': 6}
+PICKER_SITE_ZOOM = 15
+
+
+def picker_centre(site, exclude_pk=None):
+    """Where to open the pin map for a location on ``site``.
+
+    The site centre when one is set; else the last saved location on the
+    same site that has coordinates; else the country-wide default.
+    """
+    settings = SiteSettings.for_site(site)
+    if settings is not None and settings.has_coordinates:
+        return {
+            'lat': float(settings.latitude), 'lng': float(settings.longitude),
+            'zoom': PICKER_SITE_ZOOM,
+        }
+    if site:
+        neighbour = Location.objects.active().filter(
+            site=site, latitude__isnull=False,
+        ).exclude(pk=exclude_pk).order_by('-updated_at').first()
+        if neighbour is not None:
+            return {
+                'lat': float(neighbour.latitude), 'lng': float(neighbour.longitude),
+                'zoom': PICKER_SITE_ZOOM,
+            }
+    return dict(PICKER_DEFAULT_CENTRE)
+
+
+class LocationFormViewMixin(PopupFormMixin):
+    """Shared by the create and edit views: the form's user, the picker's
+    centre and the after-save distance warning."""
+
+    popup_extra_template = 'locations/_coord_picker.html'
+    popup_deferred_fields = LocationForm.COORDINATE_FIELD_NAMES
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        obj = getattr(self, 'object', None)
+        site = obj.site if obj is not None and obj.pk else ''
+        context['picker_centre'] = picker_centre(site, exclude_pk=obj.pk if obj else None)
+        return context
+
+    def warn_if_far_from_site(self, location):
+        warning = site_distance_warning(location, SiteSettings.for_site(location.site))
+        if warning:
+            messages.warning(self.request, warning)
+
+
+class LocationCreateView(LocationFormViewMixin, FeatureAccessMixin, CreateView):
     feature = 'locations'
     model = Location
     form_class = LocationForm
     template_name = 'locations/location_form.html'
     success_url = reverse_lazy('location_list')
 
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        self.warn_if_far_from_site(self.object)
+        return response
 
-class LocationUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
+
+class LocationUpdateView(LocationFormViewMixin, FeatureAccessMixin, UpdateView):
     feature = 'locations'
     model = Location
     form_class = LocationForm
@@ -474,6 +566,7 @@ class LocationUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
         if old_usage is not None and new_usage != old_usage:
             form.instance.usage = old_usage
         response = super().form_valid(form)
+        self.warn_if_far_from_site(self.object)
 
         if old_usage is not None and new_usage != old_usage:
             try:
@@ -497,6 +590,77 @@ class LocationUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
                 return response
         messages.success(self.request, f"Location '{self.object.name}' saved.")
         return response
+
+
+@feature_required('locations')
+def site_settings_edit(request):
+    """Edit site: the site centre and radius for one ``Location.site`` name.
+
+    ``?site=<name>`` picks the site. Serves the pop-up sheet like the
+    other forms; the full page is the fallback.
+    """
+    site = (request.GET.get('site') or '').strip()
+    if not site or not Location.objects.filter(site=site).exists():
+        messages.error(request, f"No site named “{site}”.")
+        return redirect('location_list')
+
+    instance = SiteSettings.objects.filter(site=site).first() or SiteSettings(site=site)
+    in_popup = is_popup_request(request)
+
+    def render_form(form):
+        context = {
+            'form': form,
+            'site': site,
+            'object': instance,
+            'in_popup': in_popup,
+            'popup_submit_label': 'Save site',
+            'popup_extra_template': 'locations/_coord_picker.html',
+            'popup_deferred_fields': list(SiteSettingsForm.COORDINATE_FIELD_NAMES),
+            'picker_centre': picker_centre(site),
+            'picker_label': 'Site centre',
+        }
+        template = 'includes/popup_form.html' if in_popup else 'locations/site_settings_form.html'
+        return render(request, template, context)
+
+    if request.method != 'POST':
+        return render_form(SiteSettingsForm(instance=instance))
+
+    form = SiteSettingsForm(request.POST, instance=instance)
+    if not form.is_valid():
+        return render_form(form)
+    form.save()
+    messages.success(request, f"Site {site} saved.")
+    if in_popup:
+        return popup_saved_response()
+    return redirect('location_list')
+
+
+@feature_required('locations')
+def location_parse_link(request):
+    """JSON: the coordinates in a pasted Google Maps link, for the picker.
+
+    Follows short links server-side (a browser cannot, cross-origin), so
+    the form can show the parsed values before it is saved. The form
+    parses the link again on save — this is a convenience, not the check.
+    """
+    link = (request.GET.get('link') or '').strip()
+    if not link:
+        return JsonResponse({'ok': False, 'error': 'No link.'}, status=400)
+    try:
+        coords, url = coords_from_link(link, timeout=5)
+    except Exception:
+        return JsonResponse({
+            'ok': False,
+            'error': "That link couldn't be opened. Paste the coordinates instead.",
+        })
+    if coords is None:
+        return JsonResponse({
+            'ok': False,
+            'error': 'No coordinates in that link. Copy the two numbers after the @ '
+                     'in the Google Maps address bar.',
+        })
+    lat, lng = coords
+    return JsonResponse({'ok': True, 'latitude': str(lat), 'longitude': str(lng), 'url': url})
 
 
 @feature_required('locations')

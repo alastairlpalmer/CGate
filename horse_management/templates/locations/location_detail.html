@@ -3,7 +3,8 @@
 {% block title %}{{ location.name }} - Yardway{% endblock %}
 
 {% block content %}
-<div class="space-y-6" x-data="bulkActions">
+<div class="space-y-6" x-data="bulkActions"
+     {% if not location.is_archived %}data-remember-location="{{ location.pk }}" data-remember-name="{{ location.name }}"{% endif %}>
 
     <!-- Page Header -->
     <div class="page-header">

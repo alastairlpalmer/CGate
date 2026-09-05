@@ -11,7 +11,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.conf import settings
 from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
 from django.db import models, transaction
-from django.db.models import F
+from django.db.models import F, Q
 from django.utils import timezone
 
 
@@ -87,6 +87,57 @@ class LocationQuerySet(models.QuerySet):
         return self.filter(is_archived=True)
 
 
+class BoundarySource(models.TextChoices):
+    LANDAPP = 'landapp', 'Land App import'
+    MANUAL = 'manual', 'Drawn by hand'
+    IMPORT = 'import', 'Other import'
+
+
+def validate_coordinate_pair(latitude, longitude):
+    """The rules every coordinate pair must meet, for forms and scripts.
+
+    Mirrors ``coordinate_constraints`` so a script that skips ``clean()``
+    is still stopped at the database.
+    """
+    errors = {}
+    if (latitude is None) != (longitude is None):
+        missing = 'longitude' if longitude is None else 'latitude'
+        errors[missing] = 'Enter both a latitude and a longitude, or neither.'
+    if latitude is not None and not (-90 <= latitude <= 90):
+        errors['latitude'] = 'Latitude must be between −90 and 90.'
+    if longitude is not None and not (-180 <= longitude <= 180):
+        errors['longitude'] = 'Longitude must be between −180 and 180.'
+    if latitude is not None and longitude is not None and latitude == 0 and longitude == 0:
+        errors['latitude'] = '0, 0 is not a real position — it usually means a link did not parse.'
+    if errors:
+        raise DjangoValidationError(errors)
+
+
+def coordinate_constraints(prefix):
+    """Database checks for a ``latitude``/``longitude`` pair on a model."""
+    return [
+        models.CheckConstraint(
+            condition=Q(latitude__isnull=True) | Q(latitude__gte=-90, latitude__lte=90),
+            name=f'{prefix}_latitude_range',
+        ),
+        models.CheckConstraint(
+            condition=Q(longitude__isnull=True) | Q(longitude__gte=-180, longitude__lte=180),
+            name=f'{prefix}_longitude_range',
+        ),
+        models.CheckConstraint(
+            condition=(
+                Q(latitude__isnull=True, longitude__isnull=True)
+                | Q(latitude__isnull=False, longitude__isnull=False)
+            ),
+            name=f'{prefix}_coords_both_or_neither',
+        ),
+        models.CheckConstraint(
+            condition=~Q(latitude=0, longitude=0),
+            name=f'{prefix}_coords_not_null_island',
+        ),
+    ]
+
+
 class Location(models.Model):
     """Physical location where horses are kept."""
 
@@ -115,6 +166,23 @@ class Location(models.Model):
                   "lists and pickers.",
     )
     archived_at = models.DateTimeField(null=True, blank=True)
+    # Where the location is. A point is enough for the nearest-location
+    # chip and the map; a boundary polygon (phase 4) is optional and most
+    # locations will never have one. Both null, or both set — see clean().
+    latitude = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True,
+        help_text="WGS84 latitude, −90 to 90.",
+    )
+    longitude = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True,
+        help_text="WGS84 longitude, −180 to 180.",
+    )
+    # A GeoJSON *geometry* (Polygon or MultiPolygon), never a Feature.
+    boundary = models.JSONField(null=True, blank=True)
+    boundary_source = models.CharField(
+        max_length=10, choices=BoundarySource.choices, blank=True, default='',
+    )
+    boundary_updated_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -122,9 +190,29 @@ class Location(models.Model):
 
     class Meta:
         ordering = ['site', 'name']
+        constraints = coordinate_constraints('location')
 
     def __str__(self):
         return f"{self.site} — {self.name}"
+
+    def clean(self):
+        super().clean()
+        validate_coordinate_pair(self.latitude, self.longitude)
+        if self.boundary is not None and not isinstance(self.boundary, dict):
+            raise DjangoValidationError({'boundary': 'Boundary must be a GeoJSON geometry object.'})
+
+    @property
+    def has_coordinates(self):
+        return self.latitude is not None and self.longitude is not None
+
+    @property
+    def maps_url(self):
+        """A Google Maps link built from the stored point (the pasted link in
+        ``description`` is plain text, this one is clickable)."""
+        if not self.has_coordinates:
+            return ''
+        from .geo import format_coords
+        return "https://www.google.com/maps?q=" + format_coords(self.latitude, self.longitude).replace(' ', '')
 
     def archive_blockers(self):
         """Reasons this location cannot be archived right now.
@@ -181,6 +269,71 @@ class Location(models.Model):
         if self.capacity is not None:
             return self.capacity - self.current_horse_count
         return None
+
+
+class SiteSettings(models.Model):
+    """Per-site values keyed on the site name string used by ``Location.site``.
+
+    There is no Site table: a site is the distinct ``Location.site`` string.
+    Known limit — if a site is renamed by editing each of its locations,
+    this row keeps the old name and goes stale until it is edited too.
+    """
+
+    site = models.CharField(max_length=100, unique=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    # How far from the centre still counts as "on this site".
+    radius_m = models.PositiveIntegerField(default=1500)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['site']
+        verbose_name_plural = 'site settings'
+        constraints = coordinate_constraints('sitesettings')
+
+    def __str__(self):
+        return self.site
+
+    def clean(self):
+        super().clean()
+        validate_coordinate_pair(self.latitude, self.longitude)
+
+    @property
+    def has_coordinates(self):
+        return self.latitude is not None and self.longitude is not None
+
+    @classmethod
+    def for_site(cls, site):
+        """The row for a site name, or None. Never creates one."""
+        if not site:
+            return None
+        return cls.objects.filter(site=site).first()
+
+
+class LocationBoundaryHistory(models.Model):
+    """A boundary that an import replaced, kept so an overwrite can be undone.
+
+    Written by ``core.boundary_import.apply_boundary`` whenever a location
+    that already had a boundary receives a new one.
+    """
+
+    location = models.ForeignKey(
+        Location, on_delete=models.CASCADE, related_name='boundary_history',
+    )
+    boundary = models.JSONField()
+    source = models.CharField(max_length=10, blank=True, default='')
+    replaced_at = models.DateTimeField(auto_now_add=True)
+    replaced_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='+',
+    )
+
+    class Meta:
+        ordering = ['-replaced_at']
+        verbose_name_plural = 'location boundary history'
+
+    def __str__(self):
+        return f"{self.location} boundary replaced {self.replaced_at:%Y-%m-%d}"
 
 
 class LocationUsagePeriod(models.Model):
@@ -951,6 +1104,11 @@ class DashboardPreference(models.Model):
     layout = models.JSONField(default=dict, blank=True)
     # The site the dashboard's site switch was last set to; blank = all sites.
     site = models.CharField(max_length=100, blank=True, default='')
+    # The location the Near you card highlights when GPS has no answer.
+    pinned_location = models.ForeignKey(
+        Location, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='pinned_by',
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
@@ -992,7 +1150,7 @@ class DashboardPreference(models.Model):
         Widgets tied to a feature area the user's role can't view are
         dropped regardless of stored preference.
         """
-        from .dashboard_widgets import GROUPS, WIDGETS_BY_KEY
+        from .dashboard_widgets import GROUPS, WIDGETS_BY_KEY, widget_available
         from .permissions import access_map
         levels = access_map(self.user)
         layout = self.resolved_layout()
@@ -1003,6 +1161,8 @@ class DashboardPreference(models.Model):
                 continue
             widget = WIDGETS_BY_KEY[key]
             if levels[widget["feature"]] == "hidden":
+                continue
+            if not widget_available(widget):
                 continue
             grouped[widget["group"]].append(key)
         return grouped

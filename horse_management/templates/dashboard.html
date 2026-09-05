@@ -42,14 +42,19 @@
             </div>
             {% endif %}
         </div>
-        {% if sites|length > 1 %}
-        <nav class="site-switch" aria-label="Site">
-            <a href="{% url 'dashboard' %}?site=" class="site-switch-item{% if not site %} is-active{% endif %}" {% if not site %}aria-current="true"{% endif %}>All sites</a>
-            {% for name in sites %}
-            <a href="{% url 'dashboard' %}?site={{ name|urlencode }}" class="site-switch-item{% if site == name %} is-active{% endif %}" {% if site == name %}aria-current="true"{% endif %}>{{ name }}</a>
-            {% endfor %}
-        </nav>
-        {% endif %}
+        <div class="flex flex-wrap items-center gap-2 shrink-0">
+            {% if near_you %}
+            {% include 'partials/dashboard/near_you_chip.html' %}
+            {% endif %}
+            {% if sites|length > 1 %}
+            <nav class="site-switch" aria-label="Site">
+                <a href="{% url 'dashboard' %}?site=" class="site-switch-item{% if not site %} is-active{% endif %}" {% if not site %}aria-current="true"{% endif %}>All sites</a>
+                {% for name in sites %}
+                <a href="{% url 'dashboard' %}?site={{ name|urlencode }}" class="site-switch-item{% if site == name %} is-active{% endif %}" {% if site == name %}aria-current="true"{% endif %}>{{ name }}</a>
+                {% endfor %}
+            </nav>
+            {% endif %}
+        </div>
     </div>
 
     {% if error %}
@@ -70,6 +75,13 @@
         </section>
         {% endif %}
     </div>
+    {% endif %}
+
+    {# ── Near you: the site you are on, drawn (plan phase 3) ── #}
+    {% if 'near_you' in visible and near_you_card %}
+    <section class="zone-enter" style="--i:3" aria-labelledby="near-you-title">
+        {% include 'partials/dashboard/near_you.html' %}
+    </section>
     {% endif %}
 
     {# ── D. Yard board ── #}

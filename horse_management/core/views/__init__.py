@@ -6,6 +6,7 @@ All views are re-exported here so that urls.py imports remain unchanged.
 
 from .dashboard import dashboard, dashboard_activity, dashboard_money, quick_find  # noqa: F401
 from .analytics_proxy import posthog_proxy  # noqa: F401
+from .boundary_import import boundary_import_match, boundary_import_upload  # noqa: F401
 from .documents import document_create, document_delete  # noqa: F401
 from .finances import finances  # noqa: F401
 from .photos import horse_photo_add, horse_photo_delete, horse_photo_set_profile  # noqa: F401
@@ -33,6 +34,7 @@ from .locations import (  # noqa: F401
     LocationUpdateView,
     location_archive,
     location_delete,
+    location_parse_link,
     location_restore,
     log_arrival,
     log_departure,
@@ -40,6 +42,7 @@ from .locations import (  # noqa: F401
     site_archive,
     site_delete,
     site_restore,
+    site_settings_edit,
 )
 from .owners import (  # noqa: F401
     OwnerCreateView,

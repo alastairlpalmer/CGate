@@ -1,19 +1,27 @@
 {% comment %}
-Occupancy ring for a location group header — the same n/capacity dial the
-Locations page uses, so the two pages never disagree at a glance.
+Occupancy ring — the one n/capacity dial. The Locations page, the Yard
+board and the location map all include this partial, so the three never
+disagree on colour: over capacity red, two or fewer spaces left forest,
+otherwise sage (see core.dashboard.board.MAP_COLOURS for the same rule
+on the map's shapes).
 
 Params: count, capacity, availability.
+       size — 44 for a touch target (Locations page, map badges);
+              default 40 (the Yard board).
+With no capacity the track stays empty and only the count shows.
 {% endcomment %}
-<div class="shrink-0 relative flex items-center justify-center" style="width:40px;height:40px"
-     title="{{ count }} of {{ capacity }} spaces used">
-    <svg viewBox="0 0 36 36" class="w-10 h-10 -rotate-90" aria-hidden="true">
+<div class="shrink-0 relative flex items-center justify-center" style="width:{% if size == 44 %}44{% else %}40{% endif %}px;height:{% if size == 44 %}44{% else %}40{% endif %}px"
+     title="{% if capacity %}{{ count }} of {{ capacity }} spaces used{% else %}{{ count }} horse{{ count|pluralize }}{% endif %}">
+    <svg viewBox="0 0 36 36" class="{% if size == 44 %}w-11 h-11{% else %}w-10 h-10{% endif %} -rotate-90" aria-hidden="true">
         <circle cx="18" cy="18" r="15.5" fill="none" stroke="#E4EAEB" stroke-width="3"/>
+        {% if capacity %}
         <circle cx="18" cy="18" r="15.5" fill="none"
             stroke="{% if availability <= 0 %}#C0392B{% elif availability <= 2 %}#3D5A63{% else %}#6A8990{% endif %}"
             stroke-width="3" stroke-linecap="round"
             stroke-dasharray="{% widthratio count capacity 97 %} 97.4"/>
+        {% endif %}
     </svg>
-    <span class="absolute inset-0 flex items-center justify-center text-[11px] font-bold tabular-nums {% if availability <= 0 %}text-error-red{% else %}text-charcoal{% endif %}">
-        {{ count }}/{{ capacity }}
+    <span class="absolute inset-0 flex items-center justify-center {% if size == 44 %}text-xs{% else %}text-[11px]{% endif %} font-bold tabular-nums {% if capacity and availability <= 0 %}text-error-red{% else %}text-charcoal{% endif %}">
+        {% if capacity %}{{ count }}/{{ capacity }}{% else %}{{ count }}{% endif %}
     </span>
 </div>

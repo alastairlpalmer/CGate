@@ -132,6 +132,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'core.permissions.feature_access_context',
                 'core.analytics.template_context',
+                'core.context_processors.location_maps',
             ],
             'loaders': [
                 ('django.template.loaders.cached.Loader', [
@@ -322,6 +323,15 @@ POSTHOG_PROXY_PATH = '/ingest'
 INVOICE_SEND_ASYNC = env.bool(
     'INVOICE_SEND_ASYNC', default=not bool(os.environ.get('VERCEL'))
 )
+
+# Location mapping (coordinates, the nearest-location chip, the map tab
+# and the Near you dashboard card). Off by default in every environment;
+# the edit form's coordinate picker and the backfill command work
+# regardless, so coordinates can be entered before anything is shown.
+LOCATION_MAPS_ENABLED = env.bool('LOCATION_MAPS_ENABLED', default=False)
+# Inside this distance of a location's point the nearest-location chip
+# names it. Tune per yard once real readings are in.
+LOCATION_NEAR_RADIUS_M = env.int('LOCATION_NEAR_RADIUS_M', default=150)
 
 # Celery Configuration
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379/0')
