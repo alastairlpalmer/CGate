@@ -310,6 +310,32 @@ class SiteSettings(models.Model):
         return cls.objects.filter(site=site).first()
 
 
+class LocationBoundaryHistory(models.Model):
+    """A boundary that an import replaced, kept so an overwrite can be undone.
+
+    Written by ``core.boundary_import.apply_boundary`` whenever a location
+    that already had a boundary receives a new one.
+    """
+
+    location = models.ForeignKey(
+        Location, on_delete=models.CASCADE, related_name='boundary_history',
+    )
+    boundary = models.JSONField()
+    source = models.CharField(max_length=10, blank=True, default='')
+    replaced_at = models.DateTimeField(auto_now_add=True)
+    replaced_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='+',
+    )
+
+    class Meta:
+        ordering = ['-replaced_at']
+        verbose_name_plural = 'location boundary history'
+
+    def __str__(self):
+        return f"{self.location} boundary replaced {self.replaced_at:%Y-%m-%d}"
+
+
 class LocationUsagePeriod(models.Model):
     """A contiguous span of time during which a Location had a single usage.
 
