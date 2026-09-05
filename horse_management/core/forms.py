@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from django import forms
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import FileExtensionValidator
 from django.db.models import Q
 
 from .geo import coords_from_link, parse_coords_text
@@ -981,3 +982,45 @@ class RoleForm(forms.Form):
             description=data['description'],
             access=self.access_value(),
         )
+
+
+# ── Land App boundary import (phase 4b) ──────────────────────────────────
+
+BOUNDARY_FILE_EXTENSIONS = ('geojson', 'json')
+
+
+def validate_boundary_file_size(value):
+    """Reject uploads larger than 10MB (the boundary import's limit)."""
+    from .boundary_import import MAX_FILE_BYTES
+    try:
+        size = value.size
+    except (FileNotFoundError, OSError):
+        return
+    if size > MAX_FILE_BYTES:
+        raise DjangoValidationError('That file is over 10MB. Export one plan at a time from Land App.')
+
+
+class BoundaryUploadForm(forms.Form):
+    """Step one of the import: which site, and the exported file."""
+
+    site = forms.ChoiceField(
+        label='Site',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text='The shapes will be matched to this site\'s locations.',
+    )
+    file = forms.FileField(
+        label='Land App export (.geojson)',
+        widget=forms.ClearableFileInput(attrs={'class': 'form-input', 'accept': '.geojson,.json,application/geo+json,application/json'}),
+        validators=[
+            FileExtensionValidator(
+                BOUNDARY_FILE_EXTENSIONS,
+                message='Upload a GeoJSON file (.geojson or .json). In Land App choose '
+                        'Export → GeoJSON; Shapefile, KML and DXF are not read.',
+            ),
+            validate_boundary_file_size,
+        ],
+    )
+
+    def __init__(self, *args, sites=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['site'].choices = [(name, name) for name in sites]

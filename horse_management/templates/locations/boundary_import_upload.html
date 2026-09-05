@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Import field map - Yardway{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <div class="page-header">
+        <div>
+            <a href="{% url 'location_list' %}?tab=map" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest transition-colors duration-100 mb-1 tap-pad">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+                Map
+            </a>
+            <h1 class="page-title">Import field map</h1>
+            <p class="page-subtitle">Turn the shapes you have drawn in Land App into boundaries on the map.</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <form method="post" enctype="multipart/form-data" class="divide-y divide-light-sage">
+            {% csrf_token %}
+            <div class="px-4 sm:px-5 py-4 sm:py-5 space-y-4 sm:space-y-5">
+                {% include 'includes/form_errors.html' with intro="That file wasn't imported:" %}
+                <ol class="text-sm text-charcoal-light space-y-1.5 list-decimal pl-5">
+                    <li>In Land App open the plan that holds your field boundaries.</li>
+                    <li>Choose <b>Export</b>, then <b>GeoJSON</b>. The RPA land parcel plan works as it is.</li>
+                    <li>Upload the file here. Nothing is saved until you have matched the shapes to your locations.</li>
+                </ol>
+                {% include "includes/form_field.html" with field=form.site %}
+                {% include "includes/form_field.html" with field=form.file help="GeoJSON only (.geojson or .json), up to 10MB." %}
+            </div>
+            <div class="form-footer">
+                <a href="{% url 'location_list' %}?tab=map" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">Read the file</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

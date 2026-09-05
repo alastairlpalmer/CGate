@@ -193,6 +193,9 @@ class MatchingTests(TestCase):
         self.assertGreaterEqual(name_similarity('Top Field', 'Top'), 0.6)
         self.assertGreaterEqual(name_similarity('Grain store field', 'Grain Store'), 0.6)
         self.assertLess(name_similarity('ST9583 7616', 'Grain store field'), 0.6)
+        # Two parcel codes look alike character by character; that is not a match.
+        self.assertEqual(name_similarity('SO9820 8294', 'ST9482 4843'), 0.0)
+        self.assertGreaterEqual(name_similarity('Whitakers', 'Whitaker'), 0.8)
         self.assertEqual(name_similarity('', 'x'), 0.0)
 
     def test_spatial_beats_name_and_each_location_is_used_once(self):

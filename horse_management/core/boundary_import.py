@@ -399,14 +399,22 @@ def normalise_name(name: str) -> list[str]:
     return [t for t in tokens if t not in STOP_WORDS]
 
 
+# Without a shared word, a difflib ratio must be this high to count: two
+# RPA parcel codes ("SO9820 8294" / "ST9482 4843") score about 0.6 on
+# characters alone, and that is noise, not a match.
+NAME_RATIO_FLOOR = 0.8
+
+
 def name_similarity(a: str, b: str) -> float:
-    """0–1: token overlap or difflib ratio, whichever is stronger."""
+    """0–1: the share of shared words, else a strict difflib ratio."""
     ta, tb = normalise_name(a), normalise_name(b)
     if not ta or not tb:
         return 0.0
     overlap = len(set(ta) & set(tb)) / min(len(set(ta)), len(set(tb)))
+    if overlap:
+        return overlap
     ratio = SequenceMatcher(None, ' '.join(ta), ' '.join(tb)).ratio()
-    return max(overlap, ratio)
+    return ratio if ratio >= NAME_RATIO_FLOOR else 0.0
 
 
 def suggest_matches(shapes, locations) -> dict[int, dict]:
@@ -481,3 +489,45 @@ def apply_boundary(location, shp: ImportedShape, *, source, now, user=None):
     location.full_clean()
     location.save(update_fields=fields)
     return previous
+
+
+# ── The matching screen's preview ──────────────────────────────────────────
+
+PREVIEW_COLOUR = '#3D5A63'
+
+
+def preview_payload(site, shapes) -> dict:
+    """The uploaded shapes shaped like ``map_locations`` output, so the
+    phase 3 map partial can draw them before anything is saved. Badges show
+    the shape number; tapping one jumps to its row."""
+    locations = []
+    for shp in shapes:
+        locations.append({
+            'pk': f'shape-{shp.index}',
+            'name': shp.name,
+            'site': site,
+            'count': shp.index,
+            'capacity': None,
+            'availability': None,
+            'usage': 'other',
+            'usage_label': 'Imported shape',
+            'holds_horses': True,       # so the badge shows the number
+            'rest_days': None,
+            'lat': shp.anchor[0],
+            'lng': shp.anchor[1],
+            'boundary': shp.geometry if shp.importable else None,
+            'anchor': list(shp.anchor),
+            'kind': 'polygon' if shp.importable else 'circle',
+            'state': None,
+            'colour': '#C0392B' if not shp.importable else PREVIEW_COLOUR,
+            'radius_m': None if shp.importable else 25,
+            'urls': {'horses': f'#shape-{shp.index}', 'detail': f'#shape-{shp.index}'},
+        })
+    return {
+        'site': site,
+        'horses': 0,
+        'total': len(locations),
+        'located': len(locations),
+        'unlocated': 0,
+        'locations': locations,
+    }

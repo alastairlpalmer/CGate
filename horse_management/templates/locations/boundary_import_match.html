@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}Match fields - Yardway{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data>
+    <div class="page-header">
+        <div class="min-w-0">
+            <a href="{% url 'boundary_import_upload' %}?site={{ site|urlencode }}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest transition-colors duration-100 mb-1 tap-pad">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+                Choose another file
+            </a>
+            <h1 class="page-title">Match fields to locations</h1>
+            <p class="page-subtitle">{{ filename }} &middot; {{ importable }} shape{{ importable|pluralize }} for {{ site }}. Nothing is saved until you press Import.</p>
+        </div>
+    </div>
+
+    {% if notes %}
+    <div class="alert-info text-sm space-y-1" data-testid="import-notes">
+        {% for note in notes %}<p>{{ note }}</p>{% endfor %}
+    </div>
+    {% endif %}
+    {% if invalid %}
+    <div class="alert-warning text-sm space-y-1" data-testid="import-invalid">
+        <p class="font-medium">{{ invalid|length }} shape{{ invalid|pluralize }} cannot be imported and will be skipped:</p>
+        {% for shape in invalid %}<p>#{{ shape.index }} {{ shape.name }} &mdash; {{ shape.invalid }}</p>{% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Preview: the phase 3 map, numbered by shape -->
+    <div class="card overflow-hidden">
+        <div class="section-header">
+            <h2 class="section-title">Preview</h2>
+            <span class="text-xs text-sage">Tap a number to jump to its row</span>
+        </div>
+        <div class="p-2">
+            {% include 'partials/location_map.html' with payload=map_payload variant='full' %}
+        </div>
+    </div>
+
+    <form method="post" class="card divide-y divide-light-sage" data-testid="match-form">
+        {% csrf_token %}
+        {% if errors %}
+        <div class="m-4 rounded-lg border border-error-red/30 bg-error-red-50 p-3" role="alert">
+            <p class="text-sm font-medium text-error-red">Not imported yet:</p>
+            {% for error in errors %}<p class="text-sm text-error-red mt-1">{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+
+        {% for row in rows %}
+        <div class="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6 items-start" id="shape-{{ row.shape.index }}" data-testid="shape-row">
+            <!-- Left: the shape -->
+            <div class="flex items-start gap-3 min-w-0">
+                <span class="board-count shrink-0">{{ row.shape.index }}</span>
+                <div class="min-w-0">
+                    <p class="font-medium text-charcoal truncate">{{ row.shape.name }}</p>
+                    <p class="text-xs text-sage">
+                        {% if row.shape.subtitle %}{{ row.shape.subtitle }} &middot; {% endif %}
+                        {{ row.shape.hectares|floatformat:2 }} ha &middot; {{ row.shape.acres|floatformat:1 }} ac
+                        {% if row.shape.simplified %} &middot; simplified to {{ row.shape.vertex_count }} points{% endif %}
+                    </p>
+                    {% if row.shape.invalid %}
+                    <p class="text-xs text-error-red mt-1">Skipped: {{ row.shape.invalid }}</p>
+                    {% elif row.strength == 'strong' %}
+                    <p class="text-xs text-forest mt-1">A location's pin sits inside this shape.</p>
+                    {% elif row.strength == 'weak' %}
+                    <p class="text-xs text-saddle mt-1">Suggested by name — check it.</p>
+                    {% endif %}
+                </div>
+            </div>
+            <!-- Right: what to do with it -->
+            {% if row.shape.importable %}
+            <div x-data="{ choice: '{{ row.selected }}' }" class="space-y-2">
+                <label class="sr-only" for="shape_{{ row.shape.index }}">Location for shape {{ row.shape.index }}</label>
+                <select name="shape_{{ row.shape.index }}" id="shape_{{ row.shape.index }}" class="form-select" x-model="choice">
+                    <option value="skip">Skip this shape</option>
+                    <option value="new">Create new location…</option>
+                    <optgroup label="Locations on {{ site }}">
+                        {% for loc in locations %}
+                        <option value="{{ loc.pk }}" {% if row.selected == loc.pk|stringformat:"s" %}selected{% endif %}>{{ loc.name }}{% if loc.boundary %} (has a boundary){% endif %}{% if loc.pk == row.suggested_pk %} — suggested{% endif %}</option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
+                <input type="text" name="new_name_{{ row.shape.index }}" value="{{ row.new_name }}" class="form-input" placeholder="New location name" maxlength="200" aria-label="New location name" x-show="choice === 'new'" x-cloak>
+            </div>
+            {% else %}
+            <p class="text-sm text-sage">Skipped</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <div class="p-4 sm:p-5 space-y-3">
+            <label class="inline-flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="confirm_overwrite" value="1" class="form-checkbox">
+                <span class="text-sm text-charcoal">Replace existing boundaries on the locations I chose (the old ones are kept in the history)</span>
+            </label>
+            <p class="text-xs text-sage">A location with no position gets one from its new boundary. Locations created here are set to “Other” use until you edit them.</p>
+        </div>
+        <div class="form-footer">
+            <button type="submit" name="cancel" value="1" class="btn-secondary" formnovalidate>Cancel import</button>
+            <button type="submit" class="btn-primary">Import boundaries</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
