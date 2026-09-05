@@ -5,10 +5,15 @@ Forms for core app.
 from decimal import Decimal
 
 from django import forms
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
 
+from .geo import coords_from_link, parse_coords_text
 from .images import heic_to_jpeg
-from .models import BusinessSettings, Document, Horse, HorsePhoto, Location, Owner, OwnershipShare, Placement, RateType
+from .models import (
+    BusinessSettings, Document, Horse, HorsePhoto, Location, Owner,
+    OwnershipShare, Placement, RateType, SiteSettings, validate_coordinate_pair,
+)
 
 
 def get_grouped_location_choices():
@@ -107,10 +112,108 @@ def get_site_choices(include=None):
     return choices
 
 
-class LocationForm(forms.ModelForm):
+class CoordinateFieldsMixin(forms.Form):
+    """Three ways to enter one latitude/longitude pair.
+
+    ``latitude`` and ``longitude`` are the model fields, rendered hidden;
+    the coordinate picker (templates/locations/_coord_picker.html) writes
+    to them from a dragged pin. ``coords_text`` ("52.1, -1.2") and
+    ``maps_link`` (a Google Maps URL) are parsed here, server-side, and
+    win over the hidden pair when filled in. Every route ends in
+    ``validate_coordinate_pair``.
+
+    Mixed into a ModelForm whose model has the two coordinate columns.
+    """
+
+    # These are the names the picker's inputs use.
+    COORDINATE_FIELD_NAMES = ('coords_text', 'maps_link')
+
+    coords_text = forms.CharField(
+        required=False, label='Coordinates',
+        widget=forms.TextInput(attrs={
+            'class': 'form-input', 'placeholder': '51.5074, -0.1278',
+            'inputmode': 'decimal', 'autocomplete': 'off',
+        }),
+    )
+    maps_link = forms.CharField(
+        required=False, label='Google Maps link',
+        widget=forms.TextInput(attrs={
+            'class': 'form-input', 'placeholder': 'https://maps.app.goo.gl/…',
+            'inputmode': 'url', 'autocomplete': 'off',
+        }),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name in ('latitude', 'longitude'):
+            self.fields[name].widget = forms.HiddenInput()
+            self.fields[name].required = False
+
+    def clean(self):
+        cleaned = super().clean()
+        lat, lng = cleaned.get('latitude'), cleaned.get('longitude')
+        link = (cleaned.get('maps_link') or '').strip()
+        text = (cleaned.get('coords_text') or '').strip()
+
+        if link:
+            try:
+                coords, _url = coords_from_link(link, timeout=5)
+            except Exception:
+                coords = False
+            if coords is False:
+                self.add_error(
+                    'maps_link',
+                    "That link couldn't be opened. Check your signal, or "
+                    "paste the coordinates instead.",
+                )
+            elif coords is None:
+                self.add_error(
+                    'maps_link',
+                    "No coordinates in that link. Open it in Google Maps and "
+                    "copy the two numbers after the @ in the address bar.",
+                )
+            else:
+                lat, lng = coords
+        elif text:
+            pair = parse_coords_text(text)
+            if pair is None:
+                self.add_error(
+                    'coords_text',
+                    'Enter the latitude then the longitude, e.g. 51.5074, -0.1278.',
+                )
+            else:
+                lat, lng = pair
+
+        try:
+            validate_coordinate_pair(lat, lng)
+        except DjangoValidationError as exc:
+            # The pair fields are hidden, so their errors would surface as
+            # "(Hidden field latitude)…". Put them on the visible box, and
+            # drop the pair from cleaned_data so the model keeps its saved
+            # values and does not repeat the error from its own clean().
+            for messages in exc.message_dict.values():
+                for message in messages:
+                    self.add_error('coords_text', message)
+            cleaned.pop('latitude', None)
+            cleaned.pop('longitude', None)
+            return cleaned
+
+        cleaned['latitude'] = lat
+        cleaned['longitude'] = lng
+        return cleaned
+
+
+class LocationForm(CoordinateFieldsMixin, forms.ModelForm):
+    pin_to_dashboard = forms.BooleanField(
+        required=False, label='Pin to dashboard',
+        widget=forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+        help_text='The Near you card highlights this location when your phone '
+                  'has no position.',
+    )
+
     class Meta:
         model = Location
-        fields = ['name', 'site', 'usage', 'description', 'capacity']
+        fields = ['name', 'site', 'usage', 'description', 'capacity', 'latitude', 'longitude']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
             'site': SitePickerWidget(attrs={'class': 'form-select'}),
@@ -119,12 +222,57 @@ class LocationForm(forms.ModelForm):
             'capacity': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.user = user
         site = self.fields['site']
         current = self.instance.site if self.instance and self.instance.pk else None
         site.widget.choices = get_site_choices(include=current)
         site.help_text = 'Pick a site, or choose "Add a new site…" to type one in.'
+        # Pinning is a per-user dashboard preference, not a location
+        # attribute, so it only makes sense with a user and a saved row.
+        if user is None or not (self.instance and self.instance.pk):
+            del self.fields['pin_to_dashboard']
+        elif not self.is_bound:
+            from .models import DashboardPreference
+            pref = DashboardPreference.objects.filter(user=user).first()
+            self.fields['pin_to_dashboard'].initial = bool(
+                pref and pref.pinned_location_id == self.instance.pk
+            )
+
+    def save(self, commit=True):
+        location = super().save(commit=commit)
+        if commit and 'pin_to_dashboard' in self.fields:
+            self.save_pin(location)
+        return location
+
+    def save_pin(self, location):
+        from .models import DashboardPreference
+        pref = DashboardPreference.get_for(self.user)
+        pinned = self.cleaned_data.get('pin_to_dashboard')
+        if pinned and pref.pinned_location_id != location.pk:
+            pref.pinned_location = location
+            pref.save(update_fields=['pinned_location', 'updated_at'])
+        elif not pinned and pref.pinned_location_id == location.pk:
+            pref.pinned_location = None
+            pref.save(update_fields=['pinned_location', 'updated_at'])
+
+
+class SiteSettingsForm(CoordinateFieldsMixin, forms.ModelForm):
+    """The site centre and its "on this site" radius (Edit site)."""
+
+    class Meta:
+        model = SiteSettings
+        fields = ['latitude', 'longitude', 'radius_m']
+        widgets = {
+            'radius_m': forms.NumberInput(attrs={
+                'class': 'form-input', 'inputmode': 'numeric', 'min': 50, 'step': 50,
+            }),
+        }
+        labels = {'radius_m': 'Site radius (metres)'}
+        help_texts = {
+            'radius_m': 'Within this distance of the centre, a phone counts as on this site.',
+        }
 
 
 class LocationUsageForm(forms.Form):

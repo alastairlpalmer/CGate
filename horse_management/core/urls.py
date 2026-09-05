@@ -58,6 +58,8 @@ urlpatterns = [
     path('sites/archive/', views.site_archive, name='site_archive'),
     path('sites/restore/', views.site_restore, name='site_restore'),
     path('sites/delete/', views.site_delete, name='site_delete'),
+    path('sites/settings/', views.site_settings_edit, name='site_settings'),
+    path('locations/parse-link/', views.location_parse_link, name='location_parse_link'),
 
     # Placements (create/edit still needed; the log is the horse list's
     # Movements tab, which is where the old /placements/ URL now lands)

@@ -719,6 +719,13 @@ class HorseListView(FeatureAccessMixin, ListView):
             or self.group_by == 'all'
         )
         context['group_kind'] = self.group_kind
+        # A list filtered to one location is that location, as far as the
+        # dashboard's "Back to …" chip is concerned (plan 5.5).
+        location_filter = self.request.GET.get('location', '')
+        context['remember_location'] = (
+            Location.objects.active().filter(pk=location_filter).values('pk', 'name').first()
+            if location_filter.isdigit() else None
+        )
         context['layout'] = self.layout
         context['layout_options'] = [
             {'key': key, 'label': label, 'active': key == self.layout}

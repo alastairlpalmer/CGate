@@ -10,6 +10,10 @@
     rent for nothing. The heading stays for screen readers and for the
     document outline.{% endcomment %}
     <h1 class="sr-only">Horses</h1>
+    {% if remember_location %}
+    {# One location's list: remembered for the dashboard's "Back to …" chip #}
+    <span hidden data-remember-location="{{ remember_location.pk }}" data-remember-name="{{ remember_location.name }}"></span>
+    {% endif %}
 
     {% comment %}Filters. The toggle teleports up into the app bar, so it
     lands beside the search box instead of taking a row of its own; the panel

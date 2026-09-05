@@ -1,0 +1,64 @@
+{% comment %}
+Coordinate picker: one latitude/longitude pair, three ways in.
+
+  1. Paste "51.5074, -0.1278" into the Coordinates box (parsed here and
+     again on the server).
+  2. Paste a Google Maps link. The picker asks the server to read it
+     (short links need a redirect the browser cannot follow) and fills
+     the pair in; the form parses the link again on save regardless.
+  3. Drag the pin on the map. This map uses OpenStreetMap tiles, because
+     here the operator needs to recognise the ground.
+
+Context: form (with hidden latitude/longitude and the coords_text /
+maps_link fields), picker_centre {lat, lng, zoom}, picker_label (optional).
+The Alpine component is static/js/coord_picker.js; Leaflet loads lazily
+from base.html when a [data-map] element appears.
+{% endcomment %}
+{% load static %}
+<div class="sm:col-span-2 space-y-3 pt-1" data-map
+     x-data="coordPicker({{ picker_centre.lat }}, {{ picker_centre.lng }}, {{ picker_centre.zoom }}, '{% url 'location_parse_link' %}')"
+     data-testid="coord-picker">
+    <div class="flex items-center justify-between gap-3">
+        <p class="text-sm font-medium text-charcoal">{{ picker_label|default:"Where is it?" }}</p>
+        <p class="text-xs text-sage tabular-nums" aria-live="polite">
+            <span x-show="has()" x-cloak>
+                <span x-text="display()"></span>
+                &middot; <button type="button" class="link" @click="clear()">Clear</button>
+            </span>
+            <span x-show="!has()">Not set</span>
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div{% if form.coords_text.errors %} class="field-invalid"{% endif %}>
+            <label for="{{ form.coords_text.id_for_label }}" class="block text-xs font-medium text-sage">Paste coordinates</label>
+            <input type="text" name="{{ form.coords_text.html_name }}" id="{{ form.coords_text.id_for_label }}"
+                   value="{{ form.coords_text.value|default:'' }}" class="form-input"
+                   placeholder="51.5074, -0.1278" inputmode="decimal" autocomplete="off"
+                   x-ref="text" @change="applyText($event.target.value)">
+            {% if form.coords_text.errors %}
+            <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.coords_text.errors.0 }}</p>
+            {% endif %}
+        </div>
+        <div{% if form.maps_link.errors %} class="field-invalid"{% endif %}>
+            <label for="{{ form.maps_link.id_for_label }}" class="block text-xs font-medium text-sage">Or paste a Google Maps link</label>
+            <input type="text" name="{{ form.maps_link.html_name }}" id="{{ form.maps_link.id_for_label }}"
+                   value="{{ form.maps_link.value|default:'' }}" class="form-input"
+                   placeholder="https://maps.app.goo.gl/…" inputmode="url" autocomplete="off"
+                   x-ref="link" @change="applyLink($event.target.value)">
+            {% if form.maps_link.errors %}
+            <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.maps_link.errors.0 }}</p>
+            {% endif %}
+            <p class="mt-1 text-xs text-sage" x-show="linkNote" x-text="linkNote" x-cloak></p>
+        </div>
+    </div>
+
+    {# The hidden latitude/longitude inputs the form saves are rendered by the
+       enclosing form (its hidden_fields loop); the map and both boxes write there. #}
+
+    <div>
+        <p class="text-xs font-medium text-sage mb-1">Or drop the pin</p>
+        <div x-ref="map" class="coord-picker-map" aria-label="Map: tap or drag the pin to set the position"></div>
+        <p class="mt-1 text-[11px] text-sage/80">Tap the map to place the pin, then drag it. Tiles &copy; <a href="https://www.openstreetmap.org/copyright" class="link" target="_blank" rel="noopener">OpenStreetMap</a> contributors.</p>
+    </div>
+</div>

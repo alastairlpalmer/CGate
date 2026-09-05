@@ -20,8 +20,8 @@ from ..dashboard import activity as activity_data
 from ..dashboard import attention, board, breeding
 from ..dashboard import money as money_data
 from ..dashboard import upcoming as upcoming_data
-from ..models import DashboardPreference, Horse, Location, Owner
-from ..permissions import feature_required
+from ..models import DashboardPreference, Horse, Location, Owner, SiteSettings
+from ..permissions import feature_required, has_feature_access
 from ..search import is_fuzzy_match
 
 logger = logging.getLogger(__name__)
@@ -65,6 +65,50 @@ def _site_context(request, pref):
             pref.save(update_fields=['site', 'updated_at'])
     site = pref.site if pref.site in names else ''
     return site, names
+
+
+def near_you_payload(request):
+    """The data the nearest-location chip needs, or None when it is off.
+
+    Every active location with a point, every site centre, and the URLs
+    the chip links to. Emitted with ``json_script``; the browser does the
+    distance maths (static/js/geo.js), so there is no endpoint and no
+    fetch. Two queries, only with the feature on and Locations visible.
+    """
+    if not settings.LOCATION_MAPS_ENABLED:
+        return None
+    if not has_feature_access(request.user, 'locations'):
+        return None
+    from django.urls import reverse
+    active = Location.objects.active()
+    locations = [
+        {'pk': pk, 'name': name, 'site': site, 'lat': float(lat), 'lng': float(lng)}
+        for pk, name, site, lat, lng in active.filter(latitude__isnull=False)
+        .order_by('site', 'name').values_list('pk', 'name', 'site', 'latitude', 'longitude')
+    ]
+    counts = {}
+    all_pks = []
+    for pk, site in active.values_list('pk', 'site'):
+        all_pks.append(pk)
+        counts[site] = counts.get(site, 0) + 1
+    sites = [
+        {
+            'name': row.site,
+            'lat': float(row.latitude) if row.latitude is not None else None,
+            'lng': float(row.longitude) if row.longitude is not None else None,
+            'radius_m': row.radius_m,
+            'count': counts.get(row.site, 0),
+        }
+        for row in SiteSettings.objects.exclude(site='').order_by('site')
+        if row.site in counts
+    ]
+    return {
+        'locations': locations,
+        'sites': sites,
+        'all_pks': all_pks,
+        'near_radius_m': settings.LOCATION_NEAR_RADIUS_M,
+        'urls': {'horses': reverse('horse_list'), 'dashboard': reverse('dashboard')},
+    }
 
 
 def _empty_context(request):
@@ -144,6 +188,7 @@ def _dashboard_inner(request):
         'in_foal': in_foal,
         'departure_ids': departure_ids,
         'horse_count': sum(band['horses'] for band in sites_overview) if sites_overview else None,
+        'near_you': near_you_payload(request),
     }
     return render(request, 'dashboard.html', context)
 

@@ -27,6 +27,11 @@
     {# lightbox.js registers an Alpine store on alpine:init, so it must run before Alpine starts #}
     <script defer src="{% static_v 'js/lightbox.js' %}"></script>
     <script defer src="{% static_v 'js/photo_quick_add.js' %}"></script>
+    {# Location mapping: the coordinate picker, the nearest-location chip and the map. #}
+    <script defer src="{% static_v 'js/coord_picker.js' %}"></script>
+    <script defer src="{% static_v 'js/geo.js' %}"></script>
+    <script defer src="{% static_v 'js/near_you.js' %}"></script>
+    <script defer src="{% static_v 'js/location_map.js' %}"></script>
     <script defer src="{% static_v 'js/alpine-collapse.min.js' %}"></script>
     <script defer src="{% static_v 'js/alpine.min.js' %}"></script>
     <!-- HTMX -->
@@ -49,6 +54,33 @@
         }
         document.addEventListener('DOMContentLoaded', ensureChart);
         document.addEventListener('htmx:afterSwap', ensureChart);
+    })();
+    </script>
+    <!-- Leaflet (vendored, 144 KB + CSS) loads the same way: the first
+         time a [data-map] element appears — the coordinate picker, the map
+         tab, the Near you card — the loader injects the stylesheet and the
+         script once and announces leaflet:ready. Pages without a map never
+         pay for it. Components may call Yardway.ensureLeaflet() themselves
+         (content swapped into the pop-up sheet or refreshed in place). -->
+    <script>
+    (function () {
+        function ensureLeaflet() {
+            if (window.L || window.__leafletLoading) return;
+            if (!document.querySelector('[data-map]')) return;
+            window.__leafletLoading = true;
+            var css = document.createElement('link');
+            css.rel = 'stylesheet';
+            css.href = '{% static_v "css/leaflet.css" %}';
+            document.head.appendChild(css);
+            var s = document.createElement('script');
+            s.src = '{% static_v "js/leaflet.js" %}';
+            s.onload = function () { window.dispatchEvent(new Event('leaflet:ready')); };
+            document.head.appendChild(s);
+        }
+        window.Yardway = window.Yardway || {};
+        window.Yardway.ensureLeaflet = ensureLeaflet;
+        document.addEventListener('DOMContentLoaded', ensureLeaflet);
+        document.addEventListener('htmx:afterSwap', ensureLeaflet);
     })();
     </script>
     {% include 'includes/posthog.html' %}

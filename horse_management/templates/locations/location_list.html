@@ -173,6 +173,9 @@
                 </div>
                 <span class="badge-info">{{ site_horse_count }} horse{{ site_horse_count|pluralize }}</span>
                 <div class="flex-1 border-b border-light-sage"></div>
+                {% if feature_access.locations.full and site_name %}
+                <a href="{% url 'site_settings' %}?site={{ site_name|urlencode }}" hx-get="{% url 'site_settings' %}?site={{ site_name|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit site {{ site_name }}" class="text-xs text-sage hover:text-charcoal-light transition-colors duration-100 tap-pad shrink-0">Edit site</a>
+                {% endif %}
             </div>
 
             <!-- Location Cards for this Site -->
@@ -239,6 +242,9 @@
                             {# Browsing who is where is the horse list's job now. #}
                             <a href="{% url 'horse_list' %}?group_by=location&amp;location={{ location.pk }}" class="link text-sm tap-pad">View horses &rarr;</a>
                             <a href="{% url 'feed_out_create' location_pk=location.pk %}" hx-get="{% url 'feed_out_create' location_pk=location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Feed out at {{ location.name }}" class="text-sm text-sage hover:text-forest transition-colors duration-100 tap-pad">Feed Out</a>
+                            {% if location.has_coordinates %}
+                            <a href="{{ location.maps_url }}" target="_blank" rel="noopener" hx-boost="false" class="text-sm text-sage hover:text-forest transition-colors duration-100 tap-pad hidden sm:inline" title="Open in Google Maps">Maps</a>
+                            {% endif %}
                         </div>
                         <a href="{% url 'location_update' location.pk %}" hx-get="{% url 'location_update' location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit {{ location.name }}" class="text-sm text-sage hover:text-charcoal-light transition-colors duration-100 tap-pad">Edit</a>
                     </div>

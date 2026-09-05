@@ -33,6 +33,7 @@ from .locations import (  # noqa: F401
     LocationUpdateView,
     location_archive,
     location_delete,
+    location_parse_link,
     location_restore,
     log_arrival,
     log_departure,
@@ -40,6 +41,7 @@ from .locations import (  # noqa: F401
     site_archive,
     site_delete,
     site_restore,
+    site_settings_edit,
 )
 from .owners import (  # noqa: F401
     OwnerCreateView,

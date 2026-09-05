@@ -34,7 +34,9 @@ the generic layout leaves out (inline add-a-vet, archive/delete controls).
 
         <div class="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2">
             {% for field in form.visible_fields %}
-                {% if field.name == 'horse' and popup_horse_id %}
+                {% if field.name in popup_deferred_fields %}
+                    {# Rendered by popup_extra_template below, not in the grid #}
+                {% elif field.name == 'horse' and popup_horse_id %}
                     <input type="hidden" name="horse" value="{{ popup_horse_id }}">
                 {% elif field.field.widget.input_type == 'checkbox' %}
                     <div class="sm:col-span-2 flex items-center min-h-[44px]">
@@ -47,6 +49,11 @@ the generic layout leaves out (inline add-a-vet, archive/delete controls).
                 {% endif %}
             {% endfor %}
         </div>
+
+        {% if popup_extra_template %}
+        {# A form-specific block below the generic grid (e.g. the coordinate picker) #}
+        {% include popup_extra_template %}
+        {% endif %}
     </div>
 
     <div class="popup-footer">
