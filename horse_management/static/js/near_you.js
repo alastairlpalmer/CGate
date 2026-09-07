@@ -48,15 +48,29 @@
     // x-for clones and Leaflet panes included, then Alpine initialises that
     // snapshot again on Back and expands everything a second time. A
     // component that renders its own children registers here at init (its
-    // markup is still the server's at that point) and is reset to that
-    // markup just before each snapshot.
+    // markup is still the server's at that point): the markup is kept in an
+    // inert <template> inside the component, travels with the snapshot,
+    // and is put back when the snapshot is restored, before Alpine runs.
+    //
+    // It is restored on Back, never reset before the snapshot: resetting
+    // the live DOM then detached the very link that issued the boosted
+    // request, htmx could no longer read hx-select off its ancestors, and
+    // the whole page landed inside #main-content.
     window.Yardway.volatile = function (el) {
-        if (el && el._x_serverHtml == null) { el._x_serverHtml = el.innerHTML; }
+        if (!el || el.querySelector(':scope > template[data-pristine]')) return;
+        var keep = document.createElement('template');
+        keep.setAttribute('data-pristine', '');
+        keep.innerHTML = el.innerHTML;
+        el.appendChild(keep);
     };
     document.addEventListener('DOMContentLoaded', function () {
-        document.body.addEventListener('htmx:beforeHistorySave', function () {
-            document.querySelectorAll('[x-data]').forEach(function (el) {
-                if (el._x_serverHtml != null) { el.innerHTML = el._x_serverHtml; }
+        document.body.addEventListener('htmx:historyRestore', function () {
+            document.querySelectorAll('template[data-pristine]').forEach(function (keep) {
+                var el = keep.parentElement;
+                if (!el) return;
+                var html = keep.innerHTML;
+                el.innerHTML = html;
+                window.Yardway.volatile(el);
             });
         });
     });

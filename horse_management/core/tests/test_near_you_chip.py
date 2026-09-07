@@ -98,3 +98,27 @@ class RememberLocationMarkerTests(TestCase):
         self.assertNotContains(response, 'data-remember-location')
         response = self.client.get(reverse('horse_list'), {'location': 'abc'})
         self.assertNotContains(response, 'data-remember-location')
+
+
+class LocationFilteredHorseListTests(TestCase):
+    """The map badge and the location card link to
+    ``?group_by=location&location=<pk>``; that page must show one group."""
+
+    def setUp(self):
+        from core.roles_testutils import make_admin
+        self.client.force_login(make_admin())
+        self.a = Location.objects.create(name='Grain store field', site='Somerford', capacity=12)
+        Location.objects.create(name='Top field', site='Somerford', capacity=8)
+        Location.objects.create(name='Front field', site='Colgate', capacity=6)
+
+    def test_only_the_filtered_location_group_prints(self):
+        response = self.client.get(
+            reverse('horse_list') + f'?group_by=location&location={self.a.pk}'
+        )
+        names = [g['name'] for g in response.context['grouped_horses']]
+        self.assertEqual(names, ['Grain store field'])
+
+    def test_without_a_filter_every_location_prints(self):
+        response = self.client.get(reverse('horse_list') + '?group_by=location')
+        names = [g['name'] for g in response.context['grouped_horses']]
+        self.assertEqual(names, ['Front field', 'Grain store field', 'Top field'])

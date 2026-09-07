@@ -926,6 +926,14 @@ class HorseListView(FeatureAccessMixin, ListView):
         if use_filter:
             spine = spine.filter(usage__in=use_filter)
 
+        # A list filtered to one location (the map badge, the location
+        # card's "View horses") is that location's list: the other groups
+        # would all be empty, and every empty location on every site
+        # printed under a filter reads as the filter not working.
+        location_filter = self.request.GET.get('location', '')
+        if location_filter.isdigit():
+            spine = spine.filter(pk=location_filter)
+
         for location in spine:
             groups.append(
                 _location_group(location, by_location.pop(location.pk, []))
