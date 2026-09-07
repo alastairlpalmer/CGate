@@ -697,8 +697,8 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .coat-dot { @apply inline-block h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10; }
 
     /* Next 14 days strip */
+    .strip-wrap { container-type: inline-size; }
     .strip { @apply grid gap-1 px-4 pt-4 pb-2 lg:px-5; grid-template-columns: repeat(7, minmax(0, 1fr)); }
-    @screen sm { .strip { grid-template-columns: repeat(14, minmax(0, 1fr)); } }
     .strip-day { @apply flex flex-col items-center rounded-lg py-1.5 text-sage; }
     .strip-day-name { @apply font-mono text-[10px] uppercase tracking-wide; }
     .strip-day-num { @apply font-mono text-sm font-medium text-charcoal tabular-nums; }
@@ -750,11 +750,14 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .location-map.is-full { height: min(70vh, 640px); min-height: 20rem; }
     /* The dashboard card's map. In one column (phones, portrait tablets) it
        is square, capped so it never outgrows the screen. From lg it sits
-       beside Needs action and fills the card: at least a good screenful
-       tall, and taller when the list beside it is long. */
+       beside the Needs action and Next 14 days column and fills the card,
+       which the grid stretches to that column's height: the map is as
+       tall as the lists beside it, never much taller, so the two sides
+       end together. The floor keeps it a useful size when the column is
+       short. */
     .location-map.is-compact { aspect-ratio: 1 / 1; max-height: min(26rem, 70vh); }
     @screen lg {
-        .location-map.is-compact { aspect-ratio: auto; max-height: 48rem; flex: 1 1 auto; min-height: clamp(26rem, 60vh, 42rem); }
+        .location-map.is-compact { aspect-ratio: auto; max-height: 48rem; flex: 1 1 auto; min-height: clamp(20rem, 45vh, 32rem); }
     }
     .location-map .leaflet-container { @apply bg-white font-body; }
     .location-map .leaflet-control-attribution { display: none; }
@@ -839,6 +842,10 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 @container (min-width: 48rem) {
     .attn-sub { display: inline; }
     .attn-date { display: inline; }
+}
+/* The 14-day strip: one row from 30rem of card, two rows of seven below. */
+@container (min-width: 30rem) {
+    .strip { grid-template-columns: repeat(14, minmax(0, 1fr)); }
 }
 
 @media (pointer: coarse) {

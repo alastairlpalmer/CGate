@@ -2,11 +2,14 @@
 Zone B: one inbox across every area. Rows come from core.dashboard.attention
 and are already grouped (a shared visit, a horse with several items, or a
 loose item) and sorted most urgent first. The header chips filter rows
-client-side through the page's Alpine `filter` state. With anything
+client-side through the page's Alpine `filter` state. The card shows the
+four most urgent rows that pass the filter and folds the rest behind
+"Show N more" (static/js/dashboard.js, `attentionList`), so the list
+stays a short checklist and Next 14 days sits under it. With anything
 overdue the card takes the warm `is-hot` outline and a red count, so the
 list that needs doing stands out from the rest of the page.
 {% endcomment %}
-<div class="card overflow-hidden h-full{% if summary.overdue %} is-hot{% endif %}" id="needs-action">
+<div class="card overflow-hidden h-full{% if summary.overdue %} is-hot{% endif %}" id="needs-action" x-data="attentionList(4)">
     <div class="section-header">
         <div class="flex items-center gap-2.5">
             <h2 class="section-title" id="needs-action-title">Needs action</h2>
@@ -25,11 +28,18 @@ list that needs doing stands out from the rest of the page.
     </div>
 
     {% if rows %}
-    <ul class="attn-list">
+    <ul class="attn-list" id="needs-action-list">
         {% for row in rows %}
         {% include 'partials/dashboard/_attention_row.html' %}
         {% endfor %}
     </ul>
+    {% if rows|length > 4 %}
+    <div class="border-t border-light-sage px-4 py-2 lg:px-5" x-show="hidden() > 0" x-cloak>
+        <button type="button" class="link text-sm tap-pad" @click="expanded = !expanded"
+                :aria-expanded="expanded ? 'true' : 'false'" aria-controls="needs-action-list"
+                x-text="expanded ? 'Show fewer' : 'Show ' + hidden() + ' more'">Show {{ rows|length|add:"-4" }} more</button>
+    </div>
+    {% endif %}
     {% else %}
     <div class="px-5 py-10 text-center">
         <svg class="mx-auto h-9 w-9 text-sage" aria-hidden="true"><use href="#i-horseshoe"/></svg>

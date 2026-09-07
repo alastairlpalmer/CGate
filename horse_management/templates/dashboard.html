@@ -64,12 +64,12 @@
     {# ── Near you, Needs action, Next 14 days ── #}
     {% comment %}
     The map of the site you are on comes first: on a phone at the top, on
-    a wide screen large on the left with Needs action beside it — half
-    and half on a laptop, so the action rows stay one line each, seven
-    columns to five from 1728px. Next 14 days runs the full width beneath
-    them. The card announces whether it
-    shows (near-you:visible); Needs action takes the full width whenever
-    it does not.
+    a wide screen large on the left with a column beside it — Needs action
+    (four rows, then "Show N more") and Next 14 days under it — half and
+    half on a laptop, seven columns to five from 1728px. The map grows to
+    the column's height, so the two sides end together. The card announces
+    whether it shows (near-you:visible); without it the column opens out
+    and the two lists sit side by side.
     {% endcomment %}
     {% if 'attention' in visible or 'upcoming' in visible or near_you_card %}
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-12"
@@ -78,16 +78,19 @@
         {% if near_you_card %}
         {% include 'partials/dashboard/near_you.html' %}
         {% endif %}
-        {% if 'attention' in visible %}
-        <section class="zone-enter lg:self-start" style="--i:2" aria-labelledby="needs-action-title"
-                 :class="hasMap ? 'lg:col-span-6 min-[1728px]:col-span-5' : 'lg:col-span-12'">
-            {% include 'partials/dashboard/attention.html' %}
-        </section>
-        {% endif %}
-        {% if 'upcoming' in visible %}
-        <section class="zone-enter lg:col-span-12" style="--i:3" aria-labelledby="upcoming-title">
-            {% include 'partials/dashboard/upcoming.html' %}
-        </section>
+        {% if 'attention' in visible or 'upcoming' in visible %}
+        <div class="grid grid-cols-1 gap-6 lg:self-start" :class="hasMap ? 'lg:col-span-6 min-[1728px]:col-span-5' : 'lg:col-span-12 lg:grid-cols-2'">
+            {% if 'attention' in visible %}
+            <section class="zone-enter" style="--i:2" aria-labelledby="needs-action-title">
+                {% include 'partials/dashboard/attention.html' %}
+            </section>
+            {% endif %}
+            {% if 'upcoming' in visible %}
+            <section class="zone-enter" style="--i:3" aria-labelledby="upcoming-title">
+                {% include 'partials/dashboard/upcoming.html' %}
+            </section>
+            {% endif %}
+        </div>
         {% endif %}
     </div>
     {% endif %}

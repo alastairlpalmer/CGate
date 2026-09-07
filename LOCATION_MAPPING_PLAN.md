@@ -853,3 +853,12 @@ and the code another, the code is right and this list says so.
     from a field. The dashboard card is unchanged: a badge opens the location,
     anywhere else on the card opens the Map tab. The header chip still opens
     the horse list (section 5.7).
+
+15. **Dashboard column (2026-09-07, owner's request).** Section 6.7 put Needs
+    action beside the card and Next 14 days full width beneath both, which
+    left the right side of a wide screen empty under a short list. Now the
+    card's neighbour is a column: Needs action shows four rows and folds the
+    rest behind "Show N more" (`static/js/dashboard.js`, `attentionList`,
+    counting the rows the filter chip lets through), Next 14 days sits under
+    it, and the map takes the column's height instead of a fixed screenful.
+    Without a card (no site to show before GPS) the two lists share the row.

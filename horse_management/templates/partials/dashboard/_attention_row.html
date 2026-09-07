@@ -10,11 +10,13 @@ and the exact date join in from 48rem), narrower than that the badge and
 the buttons take a line of their own under the text. A horse with
 two things due gets one line per thing under one name. Colour says how
 urgent: the left edge and the icon are red when overdue, saddle when due
-today, sage otherwise.
+today, sage otherwise. Whether the row shows is the list's call
+(`shown`, static/js/dashboard.js): it must pass the page's filter chip and
+be among the first four that do, unless the list is expanded.
 {% endcomment %}
 <li class="attn-row is-{{ row.severity }}" id="row-{{ row.key }}"
     data-filter="{{ row.severity }}{% for item in row.items %} {% if item.category == 'documents' %}yard{% else %}{{ item.category }}{% endif %}{% endfor %}"
-    x-show="filter === 'all' || $el.dataset.filter.split(' ').includes(filter)">
+    x-show="shown($el)">
     {% if row.kind == 'visit' %}
     {% with item=row.items.0 %}
     <div class="attn-item">
