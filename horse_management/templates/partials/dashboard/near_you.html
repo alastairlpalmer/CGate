@@ -16,10 +16,7 @@ everywhere else on the card opens the Map tab.
     <div class="section-header">
         <div class="flex items-center gap-2.5 min-w-0">
             <h2 class="section-title" id="near-you-title">Near you</h2>
-            <span class="near-chip pointer-events-none" x-text="label"></span>
-            <template x-if="highlight && data?.pinned?.pk === highlight">
-                <span class="text-[11px] text-saddle" title="Pinned to your dashboard">pinned</span>
-            </template>
+            <span class="pointer-events-none truncate" :class="kind === 'gps' ? 'near-chip' : 'near-chip-quiet'" x-text="label"></span>
         </div>
         <span class="text-xs text-sage" x-text="site"></span>
     </div>
