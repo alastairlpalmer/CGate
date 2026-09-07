@@ -760,7 +760,11 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
         .location-map.is-compact { aspect-ratio: auto; max-height: 48rem; flex: 1 1 auto; min-height: clamp(20rem, 45vh, 32rem); }
     }
     .location-map .leaflet-container { @apply bg-white font-body; }
-    .location-map .leaflet-control-attribution { display: none; }
+    /* The base map (Map button): muted so the parcels stay the picture, and
+       OpenStreetMap's credit shows only while its tiles do. */
+    .location-map .leaflet-tile-pane { filter: saturate(.45) brightness(1.04); opacity: .8; }
+    .location-map .leaflet-control-attribution { @apply bg-white/80 px-1.5 text-[10px] leading-4 text-sage; }
+    .location-map .leaflet-control-attribution a { @apply text-sage underline; }
     .location-map-badge { @apply absolute z-[500] flex items-center justify-center rounded-full bg-white/95 shadow-card border border-light-sage no-underline; width: 44px; height: 44px; transform: translate(-50%, -50%); touch-action: manipulation; }
     .location-map-badge[hidden], .location-map-label[hidden] { display: none; }
     .location-map-badge:focus-visible { @apply outline-none ring-2 ring-forest ring-offset-1; }
@@ -778,6 +782,8 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     /* Fit (under Leaflet's +/-) and, on the dashboard card, Full map. A
        touch screen has no +/- on the card and opens the Map tab with a tap. */
     .location-map-fit { @apply absolute left-2.5 top-[84px] z-[510] rounded-md border border-light-sage bg-white/95 px-2 py-1 text-xs font-medium text-charcoal shadow-sm transition-colors hover:bg-sage-50; }
+    .location-map-tiles { @apply absolute left-2.5 top-[114px] z-[510] rounded-md border border-light-sage bg-white/95 px-2 py-1 text-xs font-medium text-charcoal shadow-sm transition-colors hover:bg-sage-50; }
+    .location-map-tiles[aria-pressed="true"] { @apply border-forest bg-sage-50 text-forest; }
     .location-map-open { @apply absolute right-2.5 top-2.5 z-[510] rounded-md border border-light-sage bg-white/95 px-2.5 py-1 text-xs font-medium text-forest no-underline shadow-sm transition-colors hover:bg-sage-50; }
     /* An animated zoom: the script sends badges and names to where they
        will end and CSS carries them there on Leaflet's own curve; leader
@@ -850,6 +856,8 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 
 @media (pointer: coarse) {
     .location-map-open, .location-map.is-compact .location-map-fit { display: none; }
+    /* No +/- and no Fit on the card: the Map button takes the top corner. */
+    .location-map.is-compact .location-map-tiles { top: 0.625rem; }
 }
 
 /* Motion that reports change (UI audit 3.10) */

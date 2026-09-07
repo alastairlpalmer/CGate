@@ -862,3 +862,11 @@ and the code another, the code is right and this list says so.
     counting the rows the filter chip lets through), Next 14 days sits under
     it, and the map takes the column's height instead of a fixed screenful.
     Without a card (no site to show before GPS) the two lists share the row.
+
+16. **A base map under the shapes (2026-09-07, owner's request).** The RPA
+    files hold parcel outlines and a land cover label only: no river, track
+    or wood. Section 6.2's flat surface stays the default on the dashboard
+    card; a Map button on both maps shows a muted OpenStreetMap layer (the
+    picker's tiles) under the shapes, on by default on the Map tab, the
+    last choice remembered per device. Fills lighten over the tiles and the
+    OpenStreetMap credit shows while they do.

@@ -25,7 +25,9 @@ Tapping a badge or, in the full variant, a shape opens that location;
 a tap on the full map outside every shape opens the Locations list. In
 the compact variant the card handles every tap that is not a badge.
 With a fine pointer both variants drag and zoom (see mount() in the
-script); Fit brings the whole site back, and the compact variant's Full
+script); Fit brings the whole site back, Map shows or hides a muted
+OpenStreetMap layer under the shapes (on by default on the Map tab, off
+on the card, the choice remembered per device), and the compact variant's Full
 map button opens the Map tab.
 {% endcomment %}
 {% with site_slug=payload.site|slugify %}{% with map_id="map-data-"|add:site_slug|add:"-"|add:variant %}
@@ -37,6 +39,8 @@ map button opens the Map tab.
     <svg x-ref="leaders" class="location-map-leaders" aria-hidden="true"></svg>
     <div x-ref="hint" class="location-map-hint" hidden aria-live="polite"></div>
     <button type="button" class="location-map-fit" @click.stop="focus(highlight)" title="Show the whole site again">Fit</button>
+    <button type="button" class="location-map-tiles" @click.stop="toggleTiles()" :aria-pressed="tiles ? 'true' : 'false'"
+            :title="tiles ? 'Hide the map behind the shapes' : 'Show the map behind the shapes'">Map</button>
     {% if variant == 'compact' %}<a href="{% url 'location_list' %}?tab=map&site={{ payload.site|urlencode }}" class="location-map-open" @click.stop>Full map &rarr;</a>{% endif %}
     {% for loc in payload.locations %}{% if loc.kind %}
     <a href="{{ loc.urls.detail }}" class="location-map-badge"
