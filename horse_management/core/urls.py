@@ -43,6 +43,9 @@ urlpatterns = [
     path('owners/add/', views.OwnerCreateView.as_view(), name='owner_create'),
     path('owners/<int:pk>/', views.OwnerDetailView.as_view(), name='owner_detail'),
     path('owners/<int:pk>/edit/', views.OwnerUpdateView.as_view(), name='owner_update'),
+    path('owners/<int:pk>/archive/', views.owner_archive, name='owner_archive'),
+    path('owners/<int:pk>/restore/', views.owner_restore, name='owner_restore'),
+    path('owners/<int:pk>/delete/', views.owner_delete, name='owner_delete'),
 
     # Locations
     path('locations/', views.LocationListView.as_view(), name='location_list'),

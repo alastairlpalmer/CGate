@@ -52,6 +52,22 @@ class DocumentModelTests(TestCase):
         doc.refresh_from_db()
         self.assertTrue(doc.expiry_reminder_sent)
 
+    def test_blank_title_falls_back_to_the_document_type(self):
+        doc = Document.objects.create(horse=self.horse, doc_type="passport", title="", file=_pdf())
+        self.assertEqual(doc.title, "Passport")
+        doc = Document.objects.create(horse=self.horse, doc_type="insurance", title="   ", file=_pdf())
+        self.assertEqual(doc.title, "Insurance Certificate")
+
+    def test_blank_title_on_other_uses_the_file_name(self):
+        doc = Document.objects.create(
+            horse=self.horse, doc_type="other", title="", file=_pdf("Livery agreement 2026.pdf"),
+        )
+        self.assertEqual(doc.title, "Livery agreement 2026")
+
+    def test_typed_title_is_kept(self):
+        doc = Document.objects.create(horse=self.horse, doc_type="passport", title="Weatherbys", file=_pdf())
+        self.assertEqual(doc.title, "Weatherbys")
+
     def test_is_expired(self):
         doc = Document.objects.create(
             horse=self.horse, doc_type="insurance", title="Old policy",
@@ -83,6 +99,25 @@ class DocumentViewTests(TestCase):
         doc = Document.objects.get()
         self.assertEqual(doc.horse, self.horse)
         self.assertEqual(doc.uploaded_by, self.staff)
+
+    def test_upload_without_a_title(self):
+        """The title is optional in the form and the pop-up: the type fills it."""
+        self.client.force_login(self.staff)
+        response = self.client.post(
+            reverse("document_create") + f"?horse={self.horse.pk}",
+            {"horse": self.horse.pk, "doc_type": "passport", "title": "", "file": _pdf()},
+        )
+        self.assertRedirects(response, reverse("horse_detail", args=[self.horse.pk]))
+        self.assertEqual(Document.objects.get().title, "Passport")
+        # The full form and the pop-up both show Title without the asterisk.
+        page = self.client.get(reverse("document_create") + f"?horse={self.horse.pk}").content.decode()
+        self.assertNotIn("Title *", page)
+        popup = self.client.get(
+            reverse("document_create") + f"?horse={self.horse.pk}",
+            HTTP_HX_REQUEST="true", HTTP_HX_TARGET="popup-body",
+        ).content.decode()
+        self.assertNotIn("Title *", popup)
+        self.assertIn("Leave blank to use the document type.", popup)
 
     def test_upload_against_owner(self):
         self.client.force_login(self.staff)

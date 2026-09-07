@@ -38,7 +38,7 @@ class InvoiceCreateForm(forms.Form):
     """Form for creating a new invoice."""
 
     owner = forms.ModelChoiceField(
-        queryset=Owner.objects.all(),
+        queryset=Owner.objects.active(),
         widget=forms.Select(attrs={'class': 'form-select', **PREVIEW_HTMX_ATTRS})
     )
     period_start = forms.DateField(

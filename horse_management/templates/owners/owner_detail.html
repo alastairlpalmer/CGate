@@ -15,7 +15,25 @@
                 <h1 class="page-title">{{ owner.name }}</h1>
             </div>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
+            {% if owner.is_archived %}
+            <form method="post" action="{% url 'owner_restore' owner.pk %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="btn-secondary">Restore</button>
+            </form>
+            {% elif owner_history %}
+            <form method="post" action="{% url 'owner_archive' owner.pk %}" class="inline" data-confirm-danger="false"
+                  hx-confirm="Archive {{ owner.name }}? They leave the Owners page and every picker. Their stays and invoices are kept, and you can restore them later.">
+                {% csrf_token %}
+                <button type="submit" class="btn-secondary"{% if archive_blockers %} disabled title="{{ archive_blockers|join:' ' }}"{% endif %}>Archive</button>
+            </form>
+            {% else %}
+            <form method="post" action="{% url 'owner_delete' owner.pk %}" class="inline"
+                  hx-confirm="Delete {{ owner.name }}? Nothing points at this owner, so this removes them for good.">
+                {% csrf_token %}
+                <button type="submit" class="btn-secondary text-error-red">Delete</button>
+            </form>
+            {% endif %}
             <a href="{% url 'owner_statement' owner.pk %}" class="btn-secondary">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -36,6 +54,14 @@
             </a>
         </div>
     </div>
+
+    {% if owner.is_archived %}
+    <div class="rounded-lg border border-sage/20 bg-sage-50 px-4 py-3 text-sm text-forest" role="status">
+        Archived{% if owner.archived_at %} on {{ owner.archived_at|date:"j M Y" }}{% endif %}. This owner is hidden from the Owners page and from every picker. Their stays and invoices are kept. Restore them to use them again.
+    </div>
+    {% elif archive_blockers %}
+    <p class="text-xs text-sage" id="owner-archive-note">{{ archive_blockers|join:' ' }} Then you can archive this owner.</p>
+    {% endif %}
 
     <!-- Contact + Horses Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

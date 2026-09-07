@@ -208,6 +208,30 @@ class PlacementService:
             horse.save(update_fields=['is_active'])
 
     @staticmethod
+    def sync_placement_owner(horse):
+        """Point the open stay at the horse's primary owner.
+
+        The Ownership card is the one place ownership is shown, so the
+        stay that livery is billed against follows it: whenever the shares
+        change, the open placement's owner becomes the primary contact (or
+        the largest share). Returns the new owner when something changed,
+        else None. Past stays are never touched: they were billed to
+        whoever owned the horse at the time.
+        """
+        share = (
+            horse.ownership_shares.filter(is_primary_contact=True).first()
+            or horse.ownership_shares.order_by('-share_percentage').first()
+        )
+        if share is None:
+            return None
+        placement = horse.placements.filter(end_date__isnull=True).first()
+        if placement is None or placement.owner_id == share.owner_id:
+            return None
+        placement.owner = share.owner
+        placement.save(update_fields=['owner', 'updated_at'])
+        return share.owner
+
+    @staticmethod
     def _sync_single_owner_share(horse, owner):
         """Point a singly-owned horse's ownership share at ``owner``.
 

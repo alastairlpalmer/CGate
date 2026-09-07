@@ -1565,7 +1565,13 @@ def confirm_departures_bulk(request):
 
 @feature_required('horses')
 def manage_ownership_shares(request, pk):
-    """Manage fractional ownership shares for a horse."""
+    """Manage fractional ownership shares for a horse.
+
+    The one place ownership is edited. The open stay follows the primary
+    share on save, so livery is billed to whoever the Ownership card names.
+    """
+    from ..services import PlacementService
+
     horse = get_object_or_404(Horse, pk=pk)
 
     if request.method == 'POST':
@@ -1573,8 +1579,12 @@ def manage_ownership_shares(request, pk):
         if formset.is_valid():
             with transaction.atomic():
                 formset.save()
+                billed_to = PlacementService.sync_placement_owner(horse)
             _warn_if_incomplete_ownership(request, formset)
-            messages.success(request, f"Ownership shares for {horse.name} updated.")
+            note = f"Ownership shares for {horse.name} updated."
+            if billed_to is not None:
+                note += f" The current stay is now billed to {billed_to.name}."
+            messages.success(request, note)
             return redirect('horse_detail', pk=horse.pk)
     else:
         formset = OwnershipShareFormSet(instance=horse)

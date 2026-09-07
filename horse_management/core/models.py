@@ -2,6 +2,7 @@
 Core models for horse management system.
 """
 
+import os
 from datetime import date
 from decimal import Decimal
 from functools import cached_property
@@ -28,8 +29,24 @@ def validate_file_size(value):
         raise DjangoValidationError("File size must be under 5MB.")
 
 
+class OwnerQuerySet(models.QuerySet):
+    """Owners are archived, never lost: ``active()`` is what lists and
+    pickers show, ``archived()`` what the Owners page folds away."""
+
+    def active(self):
+        return self.filter(is_archived=False)
+
+    def archived(self):
+        return self.filter(is_archived=True)
+
+
 class Owner(models.Model):
-    """Horse owner with contact information."""
+    """Horse owner with contact information.
+
+    An owner with history (stays, invoices, ownership shares) is archived
+    rather than deleted, so every invoice still names who it went to.
+    Only an owner nothing points at can be deleted outright.
+    """
 
     name = models.CharField(max_length=200)
     email = models.EmailField(blank=True)
@@ -41,14 +58,73 @@ class Owner(models.Model):
         help_text="Account code for accounting systems (e.g. Xero)"
     )
     notes = models.TextField(blank=True)
+    is_archived = models.BooleanField(
+        default=False,
+        help_text="Hidden from lists and pickers; every record is kept.",
+    )
+    archived_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    objects = OwnerQuerySet.as_manager()
 
     class Meta:
         ordering = ['name']
 
     def __str__(self):
         return self.name
+
+    # ── Archive / delete ────────────────────────────────────────────
+    def history_counts(self):
+        """What points at this owner, as ``{label: count}`` (zeros left out).
+
+        Anything here means the owner can be archived but not deleted:
+        deleting would take the stays and invoices with it, or be refused
+        by the database.
+        """
+        counts = {
+            'stays': self.placements.count(),
+            'ownership shares': self.ownership_shares.count(),
+            'invoices': self.invoices.count(),
+            'extra charges': self.extra_charges.count(),
+            'documents': self.documents.count(),
+            'legacy ownership records': self.horse_ownerships.count(),
+        }
+        if hasattr(self, 'xero_contact'):
+            counts['Xero contact link'] = 1
+        return {label: n for label, n in counts.items() if n}
+
+    @property
+    def has_history(self):
+        return bool(self.history_counts())
+
+    def archive_blockers(self):
+        """Reasons this owner cannot be archived right now: horses on the
+        yard under their name would keep being billed to someone hidden."""
+        blockers = []
+        horses = self.active_horses.count()
+        if horses:
+            blockers.append(
+                f"{horses} horse{'s are' if horses != 1 else ' is'} on the yard "
+                f"under this owner. Move or depart {'them' if horses != 1 else 'it'} first."
+            )
+        shared = self.active_horses_via_shares.exclude(
+            pk__in=self.active_horses.values('pk')
+        ).count()
+        if shared:
+            blockers.append(
+                f"This owner holds a share in {shared} active horse{'s' if shared != 1 else ''}. "
+                "Change the ownership first."
+            )
+        return blockers
+
+    def delete_blockers(self):
+        """Reasons this owner cannot be deleted: any history at all."""
+        counts = self.history_counts()
+        if not counts:
+            return []
+        parts = ', '.join(f"{n} {label}" for label, n in counts.items())
+        return [f"This owner has {parts}."]
 
     @cached_property
     def active_horses(self):
@@ -1204,7 +1280,11 @@ class Document(models.Model):
         choices=DocType.choices,
         default=DocType.OTHER,
     )
-    title = models.CharField(max_length=200)
+    title = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Leave blank to use the document type.",
+    )
     file = models.FileField(
         upload_to='documents/%Y/%m/',
         validators=[
@@ -1244,7 +1324,18 @@ class Document(models.Model):
                 "A document must be attached to a horse or an owner."
             )
 
+    def default_title(self):
+        """The title used when none is typed: the document type, or for
+        "Other" the file's own name without its extension."""
+        if self.doc_type != self.DocType.OTHER:
+            return self.get_doc_type_display()
+        name = os.path.basename(self.file.name or '') if self.file else ''
+        stem = os.path.splitext(name)[0].strip()
+        return stem or 'Document'
+
     def save(self, *args, **kwargs):
+        if not (self.title or '').strip():
+            self.title = self.default_title()
         # A changed expiry date re-arms the reminder.
         if self.pk:
             old = Document.objects.filter(pk=self.pk).values_list(
