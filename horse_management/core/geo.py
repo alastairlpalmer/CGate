@@ -28,10 +28,17 @@ SHORT_LINK_HOSTS = ('maps.app.goo.gl', 'goo.gl', 'g.co')
 _NUM = r'[-+]?\d+(?:\.\d+)?'
 COORD_PAIR_RE = re.compile(rf'^\s*({_NUM})\s*(?:,\s*|\s+)({_NUM})\s*$')
 
-# The three Google Maps URL forms, tried in order.
+# The Google Maps URL forms, tried in order.
 AT_RE = re.compile(rf'/@({_NUM}),({_NUM})')
+# /maps/search/51.5,+-2.1 and /maps/place/51.5,-2.1 — what a shared pin
+# resolves to. The "+" is a URL-encoded space, so allow it before the sign.
+PATH_RE = re.compile(rf'/maps/(?:search|place|dir)/\+?({_NUM}),\+?({_NUM})')
 DATA_RE = re.compile(rf'!3d({_NUM})!4d({_NUM})')
 QUERY_KEYS = ('q', 'query', 'll', 'destination', 'center')
+
+# Without Google cookies (a server, or a browser abroad) a maps link lands
+# on a consent page that carries the real URL in ``continue=``.
+CONSENT_HOSTS = ('consent.google.com', 'consent.youtube.com')
 
 # One row of the coordinate picker's warning: the site centre check.
 SITE_DISTANCE_WARN_M = 10_000
@@ -106,20 +113,23 @@ def resolve_short_link(url: str, timeout: float = 10) -> str:
 def parse_maps_url(url: str) -> tuple[Decimal, Decimal] | None:
     """Read a latitude/longitude pair out of a full Google Maps URL.
 
-    Handles, in order: ``/@<lat>,<lng>,<zoom>z`` in the path, ``?q=`` /
-    ``&query=`` (and the other place-query keys) holding ``<lat>,<lng>``,
-    and ``!3d<lat>!4d<lng>`` in the data segment. Returns None for a URL
-    with a place name but no coordinates, and for malformed input.
+    Handles, in order: ``/@<lat>,<lng>,<zoom>z`` in the path,
+    ``/maps/search/<lat>,<lng>`` (or ``place``), ``?q=`` / ``&query=`` (and
+    the other place-query keys) holding ``<lat>,<lng>``, and
+    ``!3d<lat>!4d<lng>`` in the data segment. A Google consent redirect is
+    unwrapped first. Returns None for a URL with a place name but no
+    coordinates, and for malformed input.
     """
     if not url:
         return None
+    url = unwrap_consent(url)
     try:
         parts = urlparse(url)
     except ValueError:
         return None
     decoded = unquote(url)
 
-    m = AT_RE.search(decoded)
+    m = AT_RE.search(decoded) or PATH_RE.search(decoded)
     if m:
         return _pair(m.group(1), m.group(2))
 
@@ -134,6 +144,18 @@ def parse_maps_url(url: str) -> tuple[Decimal, Decimal] | None:
     if m:
         return _pair(m.group(1), m.group(2))
     return None
+
+
+def unwrap_consent(url: str) -> str:
+    """The maps URL inside a Google consent redirect, else ``url`` unchanged."""
+    try:
+        parts = urlparse(url)
+    except ValueError:
+        return url
+    if (parts.hostname or '').lower() not in CONSENT_HOSTS:
+        return url
+    inner = parse_qs(parts.query).get('continue')
+    return inner[0] if inner else url
 
 
 def _pair(lat, lng):
