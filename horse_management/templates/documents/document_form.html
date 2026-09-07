@@ -43,8 +43,9 @@
                 </div>
 
                 <div>
-                    <label for="id_title" class="block text-sm font-medium text-charcoal">Title *</label>
+                    <label for="id_title" class="block text-sm font-medium text-charcoal">Title</label>
                     {{ form.title }}
+                    <p class="mt-1 text-xs text-sage">Leave blank to use the document type.</p>
                     {% if form.title.errors %}<p class="mt-1 text-sm text-error-red">{{ form.title.errors.0 }}</p>{% endif %}
                 </div>
 

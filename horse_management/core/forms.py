@@ -53,6 +53,16 @@ class OwnerForm(forms.ModelForm):
         }
 
 
+def owners_for_picker(current_pk=None):
+    """Owners a picker offers: the ones in use, plus the record's own owner
+    when that owner has since been archived, so an old stay or share can
+    still be edited without its owner vanishing from the list."""
+    owners = Owner.objects.active()
+    if current_pk:
+        owners = Owner.objects.filter(Q(is_archived=False) | Q(pk=current_pk))
+    return owners.order_by('name')
+
+
 class SitePickerWidget(forms.Select):
     """Drop-down of the sites already in use, plus an "Add a new site…" row.
 
@@ -368,6 +378,7 @@ class PlacementForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['location'].choices = get_grouped_location_choices()
+        self.fields['owner'].queryset = owners_for_picker(self.instance.owner_id)
 
     def clean(self):
         cleaned_data = super().clean()
@@ -397,11 +408,11 @@ class MoveHorseForm(forms.Form):
         # tab, back button, hand-crafted post) was still accepted.
         self.fields['new_location'].queryset = Location.objects.active()
         self.fields['new_location'].choices = get_grouped_location_choices()
-        self.fields['new_owner'].queryset = Owner.objects.all()
+        self.fields['new_owner'].queryset = Owner.objects.active()
         self.fields['new_rate_type'].queryset = RateType.objects.filter(is_active=True)
 
     new_owner = forms.ModelChoiceField(
-        queryset=Owner.objects.all(),
+        queryset=Owner.objects.active(),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'}),
         help_text="Leave empty to keep current owner"
@@ -434,7 +445,7 @@ class ArrivalForm(forms.Form):
         help_text="Select horses to arrive at this location"
     )
     owner = forms.ModelChoiceField(
-        queryset=Owner.objects.all(),
+        queryset=Owner.objects.active(),
         widget=forms.Select(attrs={'class': 'form-select'})
     )
     rate_type = forms.ModelChoiceField(
@@ -456,7 +467,7 @@ class ArrivalForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['owner'].queryset = Owner.objects.all()
+        self.fields['owner'].queryset = Owner.objects.active()
         self.fields['rate_type'].queryset = RateType.objects.filter(is_active=True)
 
 
@@ -472,11 +483,11 @@ class SingleArrivalForm(forms.Form):
         # See MoveHorseForm: .queryset is what validates, .choices only renders.
         self.fields['location'].queryset = Location.objects.active()
         self.fields['location'].choices = get_grouped_location_choices()
-        self.fields['owner'].queryset = Owner.objects.all()
+        self.fields['owner'].queryset = Owner.objects.active()
         self.fields['rate_type'].queryset = RateType.objects.filter(is_active=True)
 
     owner = forms.ModelChoiceField(
-        queryset=Owner.objects.all(),
+        queryset=Owner.objects.active(),
         widget=forms.Select(attrs={'class': 'form-select'})
     )
     rate_type = forms.ModelChoiceField(
@@ -533,7 +544,7 @@ class NewArrivalForm(forms.Form):
 
     # Owner
     owner = forms.ModelChoiceField(
-        queryset=Owner.objects.all(),
+        queryset=Owner.objects.active(),
         widget=forms.Select(attrs={'class': 'form-select'})
     )
 
@@ -563,7 +574,7 @@ class NewArrivalForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.fields['sex'].choices = [('', '---------')] + list(Horse._meta.get_field('sex').choices)
         self.fields['color'].choices = [('', '---------')] + list(Horse._meta.get_field('color').choices)
-        self.fields['owner'].queryset = Owner.objects.all()
+        self.fields['owner'].queryset = Owner.objects.active()
         # See MoveHorseForm: .queryset is what validates, .choices only renders.
         self.fields['location'].queryset = Location.objects.active()
         self.fields['location'].choices = get_grouped_location_choices()
@@ -593,6 +604,10 @@ class OwnershipShareForm(forms.ModelForm):
             'is_primary_contact': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 1}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['owner'].queryset = owners_for_picker(self.instance.owner_id)
 
 
 class BaseOwnershipShareFormSet(forms.BaseInlineFormSet):
@@ -680,7 +695,7 @@ class DocumentForm(forms.ModelForm):
         fields = ['doc_type', 'title', 'file', 'expiry_date', 'notes']
         widgets = {
             'doc_type': forms.Select(attrs={'class': 'form-select'}),
-            'title': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Passport — Weatherbys'}),
+            'title': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Optional, e.g. Weatherbys'}),
             'file': forms.ClearableFileInput(attrs={'class': 'form-input', 'accept': 'image/*,.pdf,.doc,.docx'}),
             'expiry_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),

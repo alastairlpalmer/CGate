@@ -154,7 +154,7 @@
                         </span>
                         {% if feature_access.locations.full %}
                         <a href="{% url 'placement_update' current_placement.pk %}?next={{ request.path|urlencode }}" hx-get="{% url 'placement_update' current_placement.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit placement"
-                           class="btn-ghost btn-xs" title="Correct dates, rate or owner">Edit</a>
+                           class="btn-ghost btn-xs" title="Correct dates or rate">Edit</a>
                         {% endif %}
                     </div>
                     {% endif %}
@@ -171,15 +171,11 @@
                                 <a href="{% url 'location_detail' current_placement.location.pk %}" class="link tap-pad">{{ current_placement.location.name }}</a>
                             </dd>
                         </div>
-                        <div>
-                            <dt class="dt-label flex items-center gap-1">
-                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
-                                Owner
-                            </dt>
-                            <dd class="mt-1 text-sm text-charcoal">
-                                <a href="{% url 'owner_detail' current_placement.owner.pk %}" class="link tap-pad">{{ current_placement.owner.name }}</a>
-                            </dd>
-                        </div>
+                        {% comment %}
+                        No Owner here: the Ownership card is the one place
+                        ownership is shown, and the stay's owner follows it
+                        (core.services.PlacementService.sync_placement_owner).
+                        {% endcomment %}
                         <div>
                             <dt class="dt-label">Rate</dt>
                             <dd class="mt-1 text-sm text-charcoal">
@@ -499,7 +495,7 @@
                                     <span class="flex items-center gap-2 shrink-0">
                                         {% if event.type == 'placement' and feature_access.locations.full %}
                                         <a href="{% url 'placement_update' event.obj.pk %}?next={{ request.path|urlencode }}" hx-get="{% url 'placement_update' event.obj.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit placement"
-                                           class="link text-xs tap-pad" title="Correct dates, rate or owner">Edit</a>
+                                           class="link text-xs tap-pad" title="Correct dates or rate">Edit</a>
                                         {% endif %}
                                         <span class="text-xs text-sage" title="{{ event.date|date:"d M Y" }}">{{ event.date|ago_label }}</span>
                                     </span>
@@ -510,8 +506,7 @@
                                     {% if event.type == 'placement' %}
                                     <p class="text-charcoal font-medium">{{ event.obj.location.name }}</p>
                                     <p class="text-sage text-xs mt-0.5">
-                                        Owner: {{ event.obj.owner.name }}
-                                        &middot; &pound;{{ event.obj.rate_type.daily_rate }}/day
+                                        {% if horse.current_owner and event.obj.owner_id != horse.current_owner.pk %}Billed to {{ event.obj.owner.name }} &middot; {% endif %}&pound;{{ event.obj.rate_type.daily_rate }}/day
                                         &middot; {{ event.obj.start_date|date:"d M Y" }} &ndash;
                                         {% if event.obj.end_date %}{{ event.obj.end_date|date:"d M Y" }}{% else %}<span class="text-forest font-medium">Present</span>{% endif %}
                                     </p>

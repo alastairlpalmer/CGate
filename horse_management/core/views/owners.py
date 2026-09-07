@@ -4,7 +4,11 @@ Owner views — CRUD and detail.
 
 from django.contrib import messages
 from django.db.models import Count, Prefetch, Q
-from django.urls import reverse_lazy
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse, reverse_lazy
+from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from ..forms import OwnerForm
@@ -20,8 +24,13 @@ class OwnerListView(FeatureAccessMixin, ListView):
     template_name = 'owners/owner_list.html'
     context_object_name = 'owners'
 
+    @property
+    def showing_archived(self):
+        return self.request.GET.get('archived') == '1'
+
     def get_queryset(self):
-        queryset = Owner.objects.annotate(
+        queryset = Owner.objects.archived() if self.showing_archived else Owner.objects.active()
+        queryset = queryset.annotate(
             horse_count=Count(
                 'ownership_shares__horse',
                 filter=Q(
@@ -39,6 +48,12 @@ class OwnerListView(FeatureAccessMixin, ListView):
                 | Q(phone__icontains=search)
             )
         return queryset.order_by('name')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['showing_archived'] = self.showing_archived
+        context['archived_count'] = Owner.objects.archived().count()
+        return context
 
 
 class OwnerDetailView(FeatureAccessMixin, DetailView):
@@ -87,6 +102,11 @@ class OwnerDetailView(FeatureAccessMixin, DetailView):
         context['extra_charges'] = self.object.extra_charges.filter(
             invoiced=False
         ).select_related('horse')
+        # One button, decided here: delete when nothing points at the
+        # owner, otherwise archive (or say what blocks it).
+        owner = self.object
+        context['owner_history'] = owner.history_counts()
+        context['archive_blockers'] = [] if owner.is_archived else owner.archive_blockers()
         return context
 
 
@@ -111,3 +131,97 @@ class OwnerUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
         response = super().form_valid(form)
         messages.success(self.request, f"Owner '{self.object.name}' updated.")
         return response
+
+
+# ── Archive / restore / delete ───────────────────────────────────────────
+#
+# An owner with history is archived: hidden from the Owners page and every
+# picker, with every stay and invoice kept. Only an owner nothing points at
+# is deleted. The owner page shows one button and says which it will do;
+# the delete view also falls back to archiving if history appeared since
+# the page was drawn.
+
+def _safe_next(request, fallback):
+    next_url = request.POST.get('next') or request.GET.get('next') or ''
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return next_url
+    return fallback
+
+
+def _archive_owner(owner):
+    """Archive one owner. Returns the blocking reasons (empty = archived)."""
+    blockers = owner.archive_blockers()
+    if blockers:
+        return blockers
+    owner.is_archived = True
+    owner.archived_at = timezone.now()
+    owner.save(update_fields=['is_archived', 'archived_at', 'updated_at'])
+    return []
+
+
+@feature_required('owners')
+@require_POST
+def owner_archive(request, pk):
+    """Archive an owner: hide them from lists and pickers, keep the records."""
+    owner = get_object_or_404(Owner, pk=pk)
+    fallback = reverse('owner_detail', kwargs={'pk': owner.pk})
+    if owner.is_archived:
+        messages.info(request, f"{owner.name} is already archived.")
+        return redirect(_safe_next(request, fallback))
+    blockers = _archive_owner(owner)
+    if blockers:
+        messages.error(request, f"{owner.name} can't be archived. " + ' '.join(blockers))
+    else:
+        messages.success(
+            request,
+            f"{owner.name} archived. Their stays and invoices are kept, and "
+            "you can restore them from their page.",
+        )
+    return redirect(_safe_next(request, fallback))
+
+
+@feature_required('owners')
+@require_POST
+def owner_restore(request, pk):
+    """Bring an archived owner back into lists and pickers."""
+    owner = get_object_or_404(Owner, pk=pk)
+    if owner.is_archived:
+        owner.is_archived = False
+        owner.archived_at = None
+        owner.save(update_fields=['is_archived', 'archived_at', 'updated_at'])
+        messages.success(request, f"{owner.name} restored.")
+    else:
+        messages.info(request, f"{owner.name} is already in use.")
+    return redirect(_safe_next(request, reverse('owner_detail', kwargs={'pk': owner.pk})))
+
+
+@feature_required('owners')
+@require_POST
+def owner_delete(request, pk):
+    """Delete an owner nothing points at; archive one with history instead."""
+    owner = get_object_or_404(Owner, pk=pk)
+    fallback = reverse('owner_detail', kwargs={'pk': owner.pk})
+    if owner.has_history:
+        blockers = _archive_owner(owner)
+        if blockers:
+            messages.error(
+                request,
+                f"{owner.name} has history, so they can only be archived, and "
+                "not yet: " + ' '.join(blockers),
+            )
+            return redirect(_safe_next(request, fallback))
+        messages.success(
+            request,
+            f"{owner.name} has stays or invoices, so they were archived rather "
+            "than deleted. Every record is kept.",
+        )
+        return redirect(_safe_next(request, fallback))
+
+    name = owner.name
+    owner.delete()
+    messages.success(request, f"{name} deleted.")
+    return redirect(_safe_next(request, reverse('owner_list')))

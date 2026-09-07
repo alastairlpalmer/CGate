@@ -49,6 +49,9 @@ from .owners import (  # noqa: F401
     OwnerDetailView,
     OwnerListView,
     OwnerUpdateView,
+    owner_archive,
+    owner_delete,
+    owner_restore,
 )
 from .placements import (  # noqa: F401
     PlacementCreateView,

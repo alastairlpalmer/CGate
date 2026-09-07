@@ -12,6 +12,7 @@ from ..forms import PlacementForm
 from ._popup import PopupFormMixin
 from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Location, Owner, Placement
+from ..services import PlacementService
 
 
 MOVEMENT_STATUSES = ('active', 'ended', 'all')
@@ -107,7 +108,20 @@ class PlacementListView(FeatureAccessMixin, ListView):
 class _PlacementFormViewMixin:
     """Shared next-URL handling: the validated target is used for both the
     post-save redirect and the template's Cancel link, so an off-site or
-    javascript: ?next= can never end up in a rendered href."""
+    javascript: ?next= can never end up in a rendered href.
+
+    Also keeps ownership in step: when the stay being saved is the open
+    one, a singly-owned horse's share follows its owner (the same rule as
+    arrivals and moves), so the Ownership card and the stay never
+    disagree. Past stays are history and are left alone.
+    """
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        placement = self.object
+        if placement.end_date is None:
+            PlacementService._sync_single_owner_share(placement.horse, placement.owner)
+        return response
 
     def get_success_url(self):
         return _safe_next_url(self.request) or (

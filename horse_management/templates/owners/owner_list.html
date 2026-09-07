@@ -17,7 +17,7 @@
     {% if owners %}
     <div class="card overflow-hidden">
         <div class="section-header">
-            <h2 class="section-title">{{ owners|length }} owner{{ owners|length|pluralize }}</h2>
+            <h2 class="section-title">{{ owners|length }} {% if showing_archived %}archived {% endif %}owner{{ owners|length|pluralize }}</h2>
             {% if request.GET.search %}
             <span class="text-xs text-sage">matching "<span class="text-charcoal font-medium">{{ request.GET.search }}</span>"</span>
             {% endif %}
@@ -104,6 +104,9 @@
             </table>
         </div>
     </div>
+    {% elif showing_archived %}
+    {% url 'owner_list' as owner_list_url %}
+    {% include 'includes/empty_state.html' with variant='filtered' title='No archived owners' body='Owners you archive are listed here. Their records are kept.' clear_url=owner_list_url clear_label='Back to owners' %}
     {% elif request.GET.search %}
     {% url 'owner_list' as owner_list_url %}
     {% include 'includes/empty_state.html' with variant='filtered' title='No matches for that search' body='Try a different name, email or phone number.' clear_url=owner_list_url clear_label='Clear search' %}
@@ -112,6 +115,15 @@
     {% include 'includes/empty_state.html' with icon='horse' title='No owners yet' body='Add the first owner. Their horses, invoices and statements link to them from here.' add_url=owner_create_url add_label='Add an owner' add_popup_title='Add owner' %}
     {% else %}
     {% include 'includes/empty_state.html' with icon='horse' title='No owners yet' %}
+    {% endif %}
+
+    {% if showing_archived %}
+    <p class="text-sm"><a href="{% url 'owner_list' %}" class="link tap-pad">&larr; Back to owners in use</a></p>
+    {% elif archived_count %}
+    <p class="text-sm text-sage">
+        <a href="{% url 'owner_list' %}?archived=1" class="link tap-pad">{{ archived_count }} archived owner{{ archived_count|pluralize }}</a>
+        &middot; hidden from pickers, records kept
+    </p>
     {% endif %}
 
     </div><!-- /#list-results -->
