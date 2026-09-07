@@ -188,8 +188,14 @@ def parse_geojson(data) -> ImportReport:
         in_wgs84 = all(-180 <= x <= 180 and -90 <= y <= 90 for x, y in positions)
         if declared_bng or not in_wgs84:
             if all(looks_like_bng(x, y) for x, y in positions):
-                for _, g in geometries:
-                    g['coordinates'] = _convert(g['coordinates'])
+                try:
+                    for _, g in geometries:
+                        g['coordinates'] = _convert(g['coordinates'])
+                except (TypeError, ValueError, IndexError, RecursionError):
+                    raise BoundaryImportError(
+                        'The file uses British National Grid coordinates, but some of '
+                        'them could not be read. Export the plan again from Land App.'
+                    )
                 report.converted_from_bng = True
                 report.notes.append(
                     'The file uses British National Grid coordinates (EPSG:27700); '
@@ -234,13 +240,21 @@ def _disambiguate_names(shapes):
     counts = {}
     for shp in shapes:
         counts[shp.name] = counts.get(shp.name, 0) + 1
-    seen = {}
+    taken = {shp.name for shp in shapes if counts[shp.name] < 2}
     for shp in shapes:
         if counts[shp.name] < 2:
             continue
-        seen[shp.name] = seen.get(shp.name, 0) + 1
-        suffix = shp.subtitle or str(seen[shp.name])
-        shp.name = f'{shp.name} ({suffix})'
+        base = shp.name
+        candidate = f'{base} ({shp.subtitle})' if shp.subtitle else ''
+        if not candidate or candidate in taken:
+            # Same name and same land cover twice: number them.
+            n = 2
+            candidate = f'{base} ({shp.subtitle}) {n}' if shp.subtitle else f'{base} ({n})'
+            while candidate in taken:
+                n += 1
+                candidate = f'{base} ({shp.subtitle}) {n}' if shp.subtitle else f'{base} ({n})'
+        shp.name = candidate
+        taken.add(candidate)
 
 
 def _declares_bng(doc: dict) -> bool:
@@ -264,8 +278,15 @@ def _positions(coords):
 
 
 def _convert(coords):
+    """Grid → lng/lat through a nested coordinate list, tolerating the same
+    junk ``_positions`` skips (a null or text vertex, an empty ring); those
+    are left as they are and fail shapely's build, which discards the shape."""
+    if not isinstance(coords, list) or not coords:
+        return coords
     if isinstance(coords[0], (int, float)):
-        return bng_position_to_lnglat(coords)
+        if len(coords) >= 2 and all(isinstance(v, (int, float)) for v in coords[:2]):
+            return bng_position_to_lnglat(coords)
+        return coords
     return [_convert(item) for item in coords]
 
 

@@ -151,6 +151,39 @@ class ParseGeojsonTests(TestCase):
         with self.assertRaises(BoundaryImportError):
             parse_geojson(json.dumps([1, 2]))
 
+    def test_malformed_bng_rings_are_a_clear_error_or_skipped(self):
+        # A BNG-declared file whose second polygon is junk must never 500.
+        good = json.loads(fixture('landapp_bng.geojson'))
+        for bad_ring in ([[]], [[None, [1, 2]]], [['x', [1, 2]]], [[[395000], [395001, 183000]]]):
+            doc = json.loads(json.dumps(good))
+            doc['features'][1]['geometry']['coordinates'] = bad_ring
+            try:
+                report = parse_geojson(json.dumps(doc))
+            except BoundaryImportError:
+                continue
+            # Tolerated: the broken shape is dropped, the rest survive.
+            self.assertGreaterEqual(len(report.shapes) + report.discarded, 4)
+
+    def test_duplicate_names_stay_unique(self):
+        lat, lng = 51.548, -2.0646
+        ring = [[lng, lat], [lng + 0.001, lat], [lng + 0.001, lat + 0.001], [lng, lat + 0.001], [lng, lat]]
+        doc = {'type': 'FeatureCollection', 'features': [
+            {'type': 'Feature', 'properties': {'sheetId': 'SO9820', 'parcelId': '8294', 'description': 'Permanent Grassland'},
+             'geometry': {'type': 'Polygon', 'coordinates': [ring]}}
+            for _ in range(3)
+        ] + [
+            {'type': 'Feature', 'properties': {'sheetId': 'SO9820', 'parcelId': '8294', 'description': 'Pond'},
+             'geometry': {'type': 'Polygon', 'coordinates': [ring]}},
+            {'type': 'Feature', 'properties': {'name': 'Top'}, 'geometry': {'type': 'Polygon', 'coordinates': [ring]}},
+            {'type': 'Feature', 'properties': {'name': 'Top'}, 'geometry': {'type': 'Polygon', 'coordinates': [ring]}},
+        ]}
+        names = [s.name for s in parse_geojson(json.dumps(doc)).shapes]
+        self.assertEqual(len(names), len(set(names)), names)
+        self.assertEqual(names[0], 'SO9820 8294 (Permanent Grassland)')
+        self.assertEqual(names[1], 'SO9820 8294 (Permanent Grassland) 2')
+        self.assertEqual(names[3], 'SO9820 8294 (Pond)')
+        self.assertEqual(names[4:], ['Top (2)', 'Top (3)'])
+
     def test_single_feature_is_accepted(self):
         doc = json.loads(fixture('concave_l.geojson'))['features'][0]
         report = parse_geojson(json.dumps(doc))
@@ -303,6 +336,14 @@ class ImportCommandTests(TestCase):
         self.assertEqual(created.count(), 2)
         self.assertTrue(all(loc.boundary and loc.has_coordinates for loc in created))
         self.assertEqual(created.first().usage, 'other')
+
+    def test_assigned_location_is_not_suggested_for_another_shape(self):
+        # The location inside shape 1 is forced onto shape 2: shape 1 must
+        # not also claim it, or the second write would silently win.
+        out = self.run_command('--site', 'Somerford', '--assign', f'2={self.inside.pk}')
+        self.assertIn(f'→ {self.inside.name}  [assigned]', out)
+        self.assertEqual(out.count(f'→ {self.inside.name}'), 1)
+        self.assertIn('1 boundary write(s)', out)
 
     def test_existing_boundary_is_kept_without_overwrite(self):
         self.inside.boundary = {'type': 'Polygon', 'coordinates': [[[0, 0], [1, 0], [1, 1], [0, 0]]]}

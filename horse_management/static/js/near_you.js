@@ -104,11 +104,15 @@
 
                     if (navigator.permissions && navigator.permissions.query) {
                         navigator.permissions.query({ name: 'geolocation' }).then(function (status) {
+                            // 'prompt' means asking now would pop a dialog, whatever
+                            // localStorage remembers (the user may have reset the site's
+                            // permission): only the button may do that. 'denied': nothing.
                             if (status.state === 'granted') self.locate();
-                            else if (status.state === 'prompt') self.askable = !granted ? true : (self.locate(), false);
-                            // 'denied': render nothing, do not ask again.
+                            else if (status.state === 'prompt') self.askable = true;
                         }).catch(function () { self.askable = !granted; if (granted) self.locate(); });
                     } else {
+                        // No Permissions API (older Safari): the remembered grant is
+                        // the only way to know a request will not prompt.
                         if (granted) this.locate(); else this.askable = true;
                     }
                 },

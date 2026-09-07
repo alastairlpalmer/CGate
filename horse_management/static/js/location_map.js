@@ -95,7 +95,13 @@
                     this.draw();
                     this.map.on('move zoom viewreset resize', function () { self.place(); });
                     if (window.ResizeObserver) {
-                        this._ro = new ResizeObserver(function () { if (self.map) { self.map.invalidateSize(); } });
+                        // A compact map inside a hidden card (the Near you card shows
+                        // one site at a time) has no size to fit to; fit once it appears.
+                        this._ro = new ResizeObserver(function () {
+                            if (!self.map) return;
+                            self.map.invalidateSize();
+                            if (self._needsFit && el.clientWidth > 0) { self.focus(self.highlight); }
+                        });
                         this._ro.observe(el);
                     }
                     this.focus(this.highlight);
@@ -157,7 +163,12 @@
                             self.group.removeLayer(layer);
                         }
                     });
-                    if (bounds.isValid()) {
+                    // fitBounds on a 0×0 container (display:none) computes a nonsense
+                    // zoom; remember to fit when the ResizeObserver sees a size.
+                    var el = this.$refs.map;
+                    this._needsFit = !el || el.clientWidth === 0 || el.clientHeight === 0;
+                    if (bounds.isValid() && !this._needsFit) {
+                        this.map.invalidateSize();
                         this.map.fitBounds(bounds, { padding: FIT_PADDING, animate: false });
                         this.fitZoom = this.map.getZoom();
                     }
@@ -167,7 +178,9 @@
                 // Badges and names follow their anchors; overlapping badges
                 // step aside (the lower count moves, perpendicular to the line).
                 place: function () {
-                    if (!this.map) return;
+                    // Nothing to place until the first fit gave the map a view
+                    // (a hidden compact map has none; Leaflet throws otherwise).
+                    if (!this.map || this.fitZoom == null) return;
                     var self = this;
                     var placed = [];
                     var showLabels = this.variant === 'full' && this.fitZoom != null && this.map.getZoom() >= this.fitZoom - LABEL_HIDE_BELOW;
@@ -188,7 +201,7 @@
                         placed.forEach(function (other) {
                             var dx = x - other.x, dy = y - other.y;
                             var d = Math.sqrt(dx * dx + dy * dy);
-                            if (d >= BADGE_PX || d === 0 && placed.length === 0) return;
+                            if (d >= BADGE_PX) return;
                             // Move the lighter badge sideways, off the line between them.
                             if (count <= other.count) {
                                 var nx = d === 0 ? 0 : -dy / d, ny = d === 0 ? 1 : dx / d;
@@ -265,7 +278,10 @@
                     this.highlight = highlight;
                     this.label = label || site;
                     this.ready = true;
-                    window.dispatchEvent(new CustomEvent('yardway:map-focus', { detail: { site: site, highlight: highlight } }));
+                    // After Alpine has shown the chosen site's map, so it has a size to fit.
+                    Alpine.nextTick(function () {
+                        window.dispatchEvent(new CustomEvent('yardway:map-focus', { detail: { site: site, highlight: highlight } }));
+                    });
                 },
 
                 mapTabUrl: function () {
