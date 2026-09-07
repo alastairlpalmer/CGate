@@ -93,7 +93,20 @@
         return out.map(function (p) { return { x: p.x, y: p.y }; });
     }
 
-    var api = { spreadBadges: spreadBadges };
+    // Does a circle (a badge) reach into a box (a name)? Nearest point of
+    // the box to the centre, then the distance to it.
+    function circleHitsBox(cx, cy, r, box) {
+        var nx = Math.max(box.x, Math.min(cx, box.x + box.w));
+        var ny = Math.max(box.y, Math.min(cy, box.y + box.h));
+        var dx = cx - nx, dy = cy - ny;
+        return dx * dx + dy * dy < r * r;
+    }
+
+    function boxesOverlap(a, b) {
+        return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+    }
+
+    var api = { spreadBadges: spreadBadges, circleHitsBox: circleHitsBox, boxesOverlap: boxesOverlap };
     root.YardwayMapLayout = api;
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; }
 })(typeof window !== 'undefined' ? window : globalThis);

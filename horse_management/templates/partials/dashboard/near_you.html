@@ -9,32 +9,34 @@ compact map for that site. One compact map is rendered per site and only
 the chosen one is shown, so no fetch is needed when GPS picks another.
 
 The root is the dashboard grid item itself, so a card that hides (no
-site to show) takes no room. On a phone it comes first — it is the
-reason an operator out in the yard opens the app — and the map is square. On
-a wide screen it sits square beside Needs action and Next 14 days (five
-columns of twelve from lg, four from xl, so a landscape tablet still gets
-a map worth looking at); the grid in dashboard.html listens for
-`near-you:visible` to keep that column only while the card shows.
+site to show) takes no room. It is the first zone: on a phone the map is
+square at the top; on a wide screen the card takes the left half (seven
+columns of twelve from 1728px), Needs action the rest, and the map fills
+the card's height (static/css/input.css, .location-map.is-compact). The
+grid in dashboard.html listens for `near-you:visible` and gives Needs
+action the full width whenever the card cannot show.
 
 Two tap targets (plan 2.5): a badge opens that location's horse list;
-everywhere else on the card opens the Map tab.
+everywhere else on the card opens the Map tab. With a fine pointer the
+map itself is for looking — drag, Ctrl (⌘) + scroll, +/- — and the
+header, footer and the Full map button open the Map tab.
 {% endcomment %}
 {{ near_you_card|json_script:"near-you-card-data" }}
 <section x-data="nearYouCard" x-show="ready" x-cloak
-         class="zone-enter order-first lg:order-none lg:col-span-5 xl:col-span-4 lg:self-start{% if 'attention' in visible or 'upcoming' in visible %} lg:col-start-8 xl:col-start-9 lg:row-start-1 lg:row-span-2{% endif %}"
+         class="zone-enter {% if 'attention' in visible %}lg:col-span-6 min-[1728px]:col-span-7{% else %}lg:col-span-12{% endif %}"
          style="--i:1" aria-labelledby="near-you-title" data-testid="near-you-zone">
-    <div class="card overflow-hidden cursor-pointer" data-testid="near-you-card"
-         @click="open()" @keydown.enter="open()" tabindex="0" role="link" :aria-label="'Open the map of ' + site">
+    <div class="card overflow-hidden cursor-pointer h-full flex flex-col" data-testid="near-you-card"
+         @click="open($event)" @keydown.enter="open()" tabindex="0" role="link" :aria-label="'Open the map of ' + site">
         <div class="section-header">
             <div class="flex items-center gap-2.5 min-w-0">
                 <h2 class="section-title" id="near-you-title">Near you</h2>
-                <span class="pointer-events-none truncate" :class="kind === 'gps' ? 'near-chip' : 'near-chip-quiet'" x-text="label"></span>
+                <span class="pointer-events-none truncate" x-show="kind" :class="kind === 'gps' ? 'near-chip' : 'near-chip-quiet'" x-text="label"></span>
             </div>
             <span class="text-xs text-sage" x-text="site"></span>
         </div>
-        <div class="p-2">
+        <div class="p-2 flex-1 flex flex-col min-h-0">
             {% for name, payload in near_you_maps.items %}
-            <div x-show="site === '{{ name|escapejs }}'">
+            <div x-show="site === '{{ name|escapejs }}'" class="flex-1 flex flex-col min-h-0">
                 {% include 'partials/location_map.html' with payload=payload variant='compact' pinned=near_you_card.pinned.pk %}
             </div>
             {% endfor %}

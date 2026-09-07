@@ -2,13 +2,15 @@
 Zone B: one inbox across every area. Rows come from core.dashboard.attention
 and are already grouped (a shared visit, a horse with several items, or a
 loose item) and sorted most urgent first. The header chips filter rows
-client-side through the page's Alpine `filter` state.
+client-side through the page's Alpine `filter` state. With anything
+overdue the card takes the warm `is-hot` outline and a red count, so the
+list that needs doing stands out from the rest of the page.
 {% endcomment %}
-<div class="card overflow-hidden h-full" id="needs-action">
+<div class="card overflow-hidden h-full{% if summary.overdue %} is-hot{% endif %}" id="needs-action">
     <div class="section-header">
         <div class="flex items-center gap-2.5">
             <h2 class="section-title" id="needs-action-title">Needs action</h2>
-            {% if rows %}<span class="badge-neutral">{{ rows|length }}</span>{% endif %}
+            {% if rows %}<span class="{% if summary.overdue %}badge-danger{% else %}badge-neutral{% endif %}">{{ rows|length }}</span>{% endif %}
         </div>
         {% if departure_ids|length > 1 and feature_access.horses.full %}
         <form method="post" action="{% url 'confirm_departures_bulk' %}"
@@ -23,7 +25,7 @@ client-side through the page's Alpine `filter` state.
     </div>
 
     {% if rows %}
-    <ul class="divide-y divide-light-sage">
+    <ul class="attn-list">
         {% for row in rows %}
         {% include 'partials/dashboard/_attention_row.html' %}
         {% endfor %}
