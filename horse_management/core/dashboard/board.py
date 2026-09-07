@@ -143,7 +143,7 @@ def map_locations_by_site():
 
 def _shape_band(band):
     from django.urls import reverse
-    from ..boundary_import import anchor_for
+    from ..boundary_import import anchor_for, display_geometry
 
     locations = []
     located = 0
@@ -173,7 +173,10 @@ def _shape_band(band):
             'rest_days': tile['rest_days'],
             'lat': float(loc.latitude) if loc.latitude is not None else None,
             'lng': float(loc.longitude) if loc.longitude is not None else None,
-            'boundary': loc.boundary if kind == 'polygon' else None,
+            'boundary': (
+                display_geometry(loc.boundary, key=(loc.pk, loc.boundary_updated_at))
+                if kind == 'polygon' else None
+            ),
             'anchor': list(anchor) if anchor else None,
             'kind': kind,
             'state': state,

@@ -1,6 +1,6 @@
 {% comment %}
 The Near you card (plan 6.7). Context: near_you_card from
-core.views.dashboard.near_you_card. One slot, one card, never two: the
+core.views.dashboard.near_you_card, and near_you_maps ({site: payload}). One slot, one card, never two: the
 Alpine component `nearYouCard` (static/js/location_map.js) picks the site
 (GPS → the dashboard's chosen site → the only site → hide) and the
 highlighted location (GPS → pinned → last opened → none), then aims the
@@ -24,7 +24,7 @@ everywhere else on the card opens the Map tab.
         <span class="text-xs text-sage" x-text="site"></span>
     </div>
     <div class="p-2">
-        {% for name, payload in near_you_card.maps.items %}
+        {% for name, payload in near_you_maps.items %}
         <div x-show="site === '{{ name|escapejs }}'">
             {% include 'partials/location_map.html' with payload=payload variant='compact' pinned=near_you_card.pinned.pk %}
         </div>

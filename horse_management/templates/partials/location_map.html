@@ -27,7 +27,7 @@ shape opens the location; in the compact variant the card handles the tap.
     <div x-ref="map" class="absolute inset-0" role="img" aria-label="Map of {{ payload.site|default:'the site' }}"></div>
     {% for loc in payload.locations %}{% if loc.kind %}
     <a href="{{ loc.urls.horses }}" class="location-map-badge"
-       data-map-badge="{{ loc.pk }}" data-anchor="{{ loc.anchor.0 }},{{ loc.anchor.1 }}" data-count="{{ loc.count }}"
+       data-map-badge="{{ loc.pk }}" data-anchor="{{ loc.anchor.0 }},{{ loc.anchor.1 }}" data-count="{{ loc.count }}" data-holds="{{ loc.holds_horses|yesno:'1,0' }}"
        style="left:-999px;top:-999px" @click.stop
        title="{{ loc.name }}{% if loc.holds_horses %} · {{ loc.count }} horse{{ loc.count|pluralize }}{% if loc.capacity %} of {{ loc.capacity }}{% endif %}{% else %} · {{ loc.usage_label }}{% endif %}"
        aria-label="{{ loc.name }}: {% if loc.holds_horses %}{{ loc.count }} horse{{ loc.count|pluralize }}{% if loc.capacity %} of {{ loc.capacity }}{% endif %}{% else %}{{ loc.usage_label }}{% endif %}. Open the horse list.">

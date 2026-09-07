@@ -212,8 +212,14 @@ def _dashboard_inner(request):
 
     near_you = near_you_payload(request)
     near_you_card_data = None
+    near_you_maps = {}
     if 'near_you' in visible:
         near_you_card_data = near_you_card(request, pref, sites, near_you)
+        if near_you_card_data:
+            # The maps are rendered by the compact partials, each with its
+            # own json_script; keep them out of the card's JSON or every
+            # parcel is sent twice.
+            near_you_maps = near_you_card_data.pop('maps')
 
     context = {
         'greeting': _greeting(),
@@ -231,6 +237,7 @@ def _dashboard_inner(request):
         'horse_count': sum(band['horses'] for band in sites_overview) if sites_overview else None,
         'near_you': near_you,
         'near_you_card': near_you_card_data,
+        'near_you_maps': near_you_maps,
     }
     return render(request, 'dashboard.html', context)
 

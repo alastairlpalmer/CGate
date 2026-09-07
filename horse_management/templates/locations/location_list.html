@@ -48,15 +48,15 @@
 
     {% if map_payload and map_payload.located %}
     <div class="card overflow-hidden">
-        <div class="section-header">
+        <div class="section-header flex-wrap gap-y-1">
             <div class="flex items-center gap-2.5 min-w-0">
                 <h2 class="section-title truncate">{{ map_payload.site|default:"No site" }}</h2>
-                <span class="badge-neutral">{{ map_payload.horses }} horse{{ map_payload.horses|pluralize }}</span>
+                <span class="badge-neutral whitespace-nowrap">{{ map_payload.horses }} horse{{ map_payload.horses|pluralize }}</span>
             </div>
-            <div class="flex items-center gap-3">
-                <span class="text-xs text-sage">{{ map_payload.located }} of {{ map_payload.total }} location{{ map_payload.total|pluralize }} on the map</span>
+            <div class="flex items-center gap-3 shrink-0">
+                <span class="text-xs text-sage whitespace-nowrap hidden sm:inline">{{ map_payload.located }} of {{ map_payload.total }} location{{ map_payload.total|pluralize }} on the map</span>
                 {% if feature_access.locations.full %}
-                <a href="{% url 'boundary_import_upload' %}?site={{ map_site|urlencode }}" class="text-xs link tap-pad">Import field map</a>
+                <a href="{% url 'boundary_import_upload' %}?site={{ map_site|urlencode }}" class="text-xs link tap-pad whitespace-nowrap">Import field map</a>
                 {% endif %}
             </div>
         </div>
