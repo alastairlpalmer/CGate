@@ -729,17 +729,17 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
        the whole picture. Badges are real buttons layered above the map, at
        least 44px on every device. */
     .coord-picker-map { @apply h-56 sm:h-64 w-full rounded-lg border border-light-sage bg-light-sage/60 overflow-hidden; }
-    .location-map { @apply relative w-full rounded-lg overflow-hidden bg-sage-50 border border-light-sage; }
+    .location-map { @apply relative w-full rounded-lg overflow-hidden bg-white border border-light-sage; }
     .location-map.is-full { height: min(70vh, 640px); min-height: 20rem; }
     .location-map.is-compact { @apply h-52; }
-    .location-map .leaflet-container { @apply bg-sage-50 font-body; }
+    .location-map .leaflet-container { @apply bg-white font-body; }
     .location-map .leaflet-control-attribution { display: none; }
     .location-map-badge { @apply absolute z-[500] flex items-center justify-center rounded-full bg-white/95 shadow-card border border-light-sage no-underline; width: 44px; height: 44px; transform: translate(-50%, -50%); touch-action: manipulation; }
     .location-map-badge[hidden], .location-map-label[hidden] { display: none; }
     .location-map-badge:focus-visible { @apply outline-none ring-2 ring-forest ring-offset-1; }
     .location-map-badge.is-highlight { @apply border-forest ring-2 ring-forest/40; }
     .location-map-badge .board-count { @apply h-9 w-9 text-xs; }
-    .location-map-label { @apply absolute z-[490] -translate-x-1/2 whitespace-nowrap rounded-md bg-white/85 px-1.5 py-0.5 text-[11px] font-medium leading-4 text-charcoal shadow-sm pointer-events-none; }
+    .location-map-label { @apply absolute z-[490] -translate-x-1/2 whitespace-nowrap rounded-md bg-white/90 px-1.5 py-0.5 text-xs font-medium leading-4 text-charcoal shadow-sm pointer-events-none; }
     .location-map-hint { @apply absolute inset-x-0 top-1/2 z-[510] mx-auto w-max max-w-[80%] -translate-y-1/2 rounded-full bg-charcoal/80 px-4 py-2 text-center text-sm text-white pointer-events-none; }
     .location-map-hint[hidden] { display: none; }
     .location-map-pin { @apply absolute -top-1 -right-1 z-[501] grid h-4 w-4 place-items-center rounded-full bg-saddle text-white; }

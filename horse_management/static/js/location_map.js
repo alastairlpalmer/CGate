@@ -28,7 +28,7 @@
     // the capacity rings, which are what the map is for. Their shapes stay
     // drawn and tappable.
     var LABEL_DENSE_COUNT = 12;
-    var STROKE_WEIGHT = 2;
+    var STROKE_WEIGHT = 2.5;
 
     function haversine(a, b) {
         return window.YardwayGeo ? YardwayGeo.haversineMetres(a[0], a[1], b[0], b[1]) : Infinity;
@@ -144,7 +144,7 @@
                     var self = this;
                     var full = this.variant === 'full';
                     this.payload.locations.forEach(function (loc) {
-                        var style = { color: loc.colour, weight: STROKE_WEIGHT, fillColor: loc.colour, fillOpacity: 0.12, opacity: 0.9 };
+                        var style = { color: loc.colour, weight: STROKE_WEIGHT, fillColor: loc.colour, fillOpacity: 0.2, opacity: 1 };
                         var layer = null;
                         if (loc.boundary) {
                             layer = L.geoJSON(loc.boundary, { style: style, interactive: full });
@@ -215,9 +215,17 @@
                     if (!this.map || this.fitZoom == null) return;
                     var self = this;
                     var placed = [];
-                    var shown = Object.keys(this.badges).filter(function (pk) { return !self.visible || self.visible[pk]; }).length;
-                    var dense = shown > LABEL_DENSE_COUNT && this.map.getZoom() < this.fitZoom + 1;
-                    var showLabels = this.variant === 'full' && !dense && this.map.getZoom() >= this.fitZoom - LABEL_HIDE_BELOW;
+                    var inView = Object.keys(this.badges).filter(function (pk) { return !self.visible || self.visible[pk]; });
+                    var zoomedOut = this.map.getZoom() < this.fitZoom + 1;
+                    // Dense: drop the badges of locations that hold no horses.
+                    var dense = inView.length > LABEL_DENSE_COUNT && zoomedOut;
+                    var remaining = dense
+                        ? inView.filter(function (pk) { return self.badges[pk].dataset.holds !== '0' || String(pk) === String(self.highlight); }).length
+                        : inView.length;
+                    // Names: whenever what is left fits, at or near the fit zoom.
+                    var showLabels = this.variant === 'full'
+                        && (remaining <= LABEL_DENSE_COUNT || !zoomedOut)
+                        && this.map.getZoom() >= this.fitZoom - LABEL_HIDE_BELOW;
                     Object.keys(this.badges).forEach(function (pk) {
                         var a = self.badges[pk];
                         var show = !self.visible || self.visible[pk];
@@ -263,6 +271,7 @@
                 site: '',
                 highlight: null,
                 label: '',
+                kind: '',      // 'gps' | 'pinned' | 'last' | ''
                 ready: false,
 
                 init: function () {
@@ -295,23 +304,29 @@
                     else if (d.site_names.length === 1) site = d.site_names[0];
                     if (!site || d.site_names.indexOf(site) === -1) { this.ready = false; this.site = ''; return; }
 
-                    var highlight = null, label = '';
+                    var highlight = null, label = '', kind = '';
                     var onSite = function (pk) {
                         return d.locations.concat(d.unlocated).some(function (l) { return l.pk === pk && l.site === site; });
                     };
+                    // Only a GPS match may look like one: the other two say why
+                    // they are lit, so a field you opened this morning is not
+                    // mistaken for the field you are standing in.
                     if (gps && gps.location && gps.location.site === site) {
                         highlight = gps.location.pk;
                         label = gps.location.name + ' · ' + YardwayGeo.formatDistance(gps.distance);
+                        kind = 'gps';
                     } else if (d.pinned && onSite(d.pinned.pk)) {
                         highlight = d.pinned.pk;
-                        label = d.pinned.name;
+                        label = 'Pinned · ' + d.pinned.name;
+                        kind = 'pinned';
                     } else {
                         var last = window.Yardway && Yardway.lastLocation && Yardway.lastLocation();
-                        if (last && onSite(last.pk)) { highlight = last.pk; label = last.name; }
+                        if (last && onSite(last.pk)) { highlight = last.pk; label = 'Last opened · ' + last.name; kind = 'last'; }
                     }
                     this.site = site;
                     this.highlight = highlight;
                     this.label = label || site;
+                    this.kind = kind;
                     this.ready = true;
                     // After Alpine has shown the chosen site's map, so it has a size to fit.
                     Alpine.nextTick(function () {
