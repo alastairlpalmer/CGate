@@ -107,6 +107,10 @@ if not os.environ.get('VERCEL'):
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Compress responses: the map pages carry field geometry as JSON and
+    # gzip cuts them to a fifth. Django masks the CSRF token per request,
+    # which is what makes compressing pages with forms safe (BREACH).
+    'django.middleware.gzip.GZipMiddleware',
     'core.middleware.ServerTimingMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

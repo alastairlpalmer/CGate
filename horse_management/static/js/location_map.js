@@ -22,6 +22,12 @@
     var COMPACT_LOCATIONS = 4;
     var FIT_PADDING = [36, 36];
     var LABEL_HIDE_BELOW = 1.25;   // zoom levels under the fit zoom at which names hide
+    // A dense site (more badges than this) shows names only once zoomed in
+    // a level, and until then only the badges of locations that hold
+    // horses: at the fit zoom ponds, woods and rested fields would bury
+    // the capacity rings, which are what the map is for. Their shapes stay
+    // drawn and tappable.
+    var LABEL_DENSE_COUNT = 12;
     var STROKE_WEIGHT = 2;
 
     function haversine(a, b) {
@@ -183,10 +189,13 @@
                     if (!this.map || this.fitZoom == null) return;
                     var self = this;
                     var placed = [];
-                    var showLabels = this.variant === 'full' && this.fitZoom != null && this.map.getZoom() >= this.fitZoom - LABEL_HIDE_BELOW;
+                    var shown = Object.keys(this.badges).filter(function (pk) { return !self.visible || self.visible[pk]; }).length;
+                    var dense = shown > LABEL_DENSE_COUNT && this.map.getZoom() < this.fitZoom + 1;
+                    var showLabels = this.variant === 'full' && !dense && this.map.getZoom() >= this.fitZoom - LABEL_HIDE_BELOW;
                     Object.keys(this.badges).forEach(function (pk) {
                         var a = self.badges[pk];
                         var show = !self.visible || self.visible[pk];
+                        if (show && dense && a.dataset.holds === '0' && String(pk) !== String(self.highlight)) show = false;
                         var label = self.labels[pk];
                         if (!show) {
                             a.hidden = true;

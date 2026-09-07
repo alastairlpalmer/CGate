@@ -351,11 +351,11 @@ def _vertex_count(geom) -> int:
     return sum(len(p.exterior.coords) + sum(len(r.coords) for r in p.interiors) for p in polys)
 
 
-def _rounded(geometry: dict) -> dict:
-    """GeoJSON with coordinates rounded to 7 decimals (about a centimetre)."""
+def _rounded(geometry: dict, decimals: int = 7) -> dict:
+    """GeoJSON with coordinates rounded (7 decimals is about a centimetre)."""
     def rnd(coords):
         if isinstance(coords[0], (int, float)):
-            return [round(float(coords[0]), 7), round(float(coords[1]), 7)]
+            return [round(float(coords[0]), decimals), round(float(coords[1]), decimals)]
         return [rnd(c) for c in coords]
     return {'type': geometry['type'], 'coordinates': rnd(list(geometry['coordinates']))}
 
@@ -398,6 +398,39 @@ def approx_area_m2(geom) -> float:
 
 def _project_ring(ring, k):
     return [(x * k * METRES_PER_DEGREE, y * METRES_PER_DEGREE) for x, y in ring.coords]
+
+
+# ── Display geometry ───────────────────────────────────────────────────────
+
+DISPLAY_TOLERANCE_DEG = 0.00001   # about one metre: invisible at field scale
+DISPLAY_DECIMALS = 6              # about 11 cm
+_DISPLAY_CACHE: dict = {}
+_DISPLAY_CACHE_MAX = 2000
+
+
+def display_geometry(geometry: dict, key=None) -> dict:
+    """A stored boundary thinned for the browser.
+
+    RPA parcels carry a vertex every few metres; at map scale a one-metre
+    tolerance drops about 80 % of them and no one can tell. Cached per
+    process on ``key`` (the location's pk and ``boundary_updated_at``) so
+    the dashboard does not simplify every parcel on every request.
+    """
+    if key is not None and key in _DISPLAY_CACHE:
+        return _DISPLAY_CACHE[key]
+    try:
+        geom = shape(geometry)
+        simpler = geom.simplify(DISPLAY_TOLERANCE_DEG, preserve_topology=True)
+        if simpler.is_empty:
+            simpler = geom
+        result = _rounded(mapping(simpler), DISPLAY_DECIMALS)
+    except Exception:
+        result = geometry
+    if key is not None:
+        if len(_DISPLAY_CACHE) >= _DISPLAY_CACHE_MAX:
+            _DISPLAY_CACHE.clear()
+        _DISPLAY_CACHE[key] = result
+    return result
 
 
 def anchor_for(geometry: dict) -> tuple[float, float] | None:
