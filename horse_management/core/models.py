@@ -96,7 +96,15 @@ class Owner(models.Model):
 
     @property
     def has_history(self):
-        return bool(self.history_counts())
+        """True at the first record that points at this owner: one cheap
+        query per relation until a hit, not the full counts."""
+        related = (
+            self.placements, self.ownership_shares, self.invoices,
+            self.extra_charges, self.documents, self.horse_ownerships,
+        )
+        if any(qs.exists() for qs in related):
+            return True
+        return hasattr(self, 'xero_contact')
 
     def archive_blockers(self):
         """Reasons this owner cannot be archived right now: horses on the

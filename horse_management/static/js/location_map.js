@@ -126,7 +126,6 @@
                     var self = this;
                     this.tiles = !!on;
                     if (!this.map) return;
-                    var container = this.map.getContainer();
                     if (this.tiles) {
                         if (!this._tileLayer) {
                             this._tileLayer = L.tileLayer(TILE_URL, { maxNativeZoom: 19, maxZoom: 21, attribution: TILE_ATTRIBUTION });
@@ -134,11 +133,9 @@
                         this._tileLayer.addTo(this.map);
                         if (!this._attribution) this._attribution = L.control.attribution({ prefix: false });
                         this._attribution.addTo(this.map);
-                        container.classList.add('has-tiles');
                     } else {
                         if (this._tileLayer) this.map.removeLayer(this._tileLayer);
                         if (this._attribution) this._attribution.remove();
-                        container.classList.remove('has-tiles');
                     }
                     // Lighter fills over the map so what is under a parcel shows.
                     var fill = this.tiles ? FILL_OVER_TILES : FILL_PLAIN;

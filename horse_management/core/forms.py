@@ -378,7 +378,15 @@ class PlacementForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['location'].choices = get_grouped_location_choices()
-        self.fields['owner'].queryset = owners_for_picker(self.instance.owner_id)
+        if self.instance.pk and self.instance.end_date is None:
+            # The open stay is billed to whoever the Ownership card names,
+            # and follows it (PlacementService.sync_placement_owner). An
+            # owner typed here would be undone at the next ownership save,
+            # so the field is not offered; past stays keep it, since they
+            # were billed to whoever owned the horse at the time.
+            del self.fields['owner']
+        else:
+            self.fields['owner'].queryset = owners_for_picker(self.instance.owner_id)
 
     def clean(self):
         cleaned_data = super().clean()

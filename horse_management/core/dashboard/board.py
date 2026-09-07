@@ -183,7 +183,6 @@ def _shape_band(band):
             'colour': MAP_COLOURS[state],
             'radius_m': circle_radius_m(tile['capacity']) if kind == 'circle' else None,
             'urls': {
-                'horses': f"{reverse('horse_list')}?group_by=location&location={loc.pk}",
                 'detail': reverse('location_detail', kwargs={'pk': loc.pk}),
             },
         })

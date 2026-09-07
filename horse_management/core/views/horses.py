@@ -27,7 +27,6 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.html import format_html
-from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from health.models import (
@@ -64,6 +63,7 @@ from .locations import (
     usage_days_for_locations,
 )
 from ..search import fuzzy_horse_ids
+from ._next import safe_next
 from ._popup import is_popup_request, popup_saved_response
 
 
@@ -791,7 +791,7 @@ class HorseListView(FeatureAccessMixin, ListView):
         ] if self.shows_use_filter else None
         # Location.objects.active() hides archived fields (from main).
         context['locations'] = Location.objects.active().order_by('site', 'name')
-        context['owners'] = Owner.objects.values('pk', 'name').order_by('name')
+        context['owners'] = Owner.objects.active().values('pk', 'name').order_by('name')
         context['is_searching'] = self.is_searching
         # Single query for both counts. The departed test must be
         # NOT EXISTS(open placement) — a negated multi-valued Q inside an
@@ -1008,7 +1008,7 @@ class HorseListView(FeatureAccessMixin, ListView):
                 by_owner.setdefault(owner.pk, []).append(horse)
 
         if self.show_empty:
-            spine = Owner.objects.order_by('name')
+            spine = Owner.objects.active().order_by('name')
         else:
             spine = Owner.objects.filter(pk__in=by_owner).order_by('name')
 
@@ -1240,18 +1240,6 @@ def _flash_superseded_trim(request, horse, placement):
         )
 
 
-def _safe_next_url(request):
-    """A same-origin ``next`` from the query string or POST body, else ''."""
-    candidate = request.POST.get('next') or request.GET.get('next') or ''
-    if candidate and url_has_allowed_host_and_scheme(
-        candidate,
-        allowed_hosts={request.get_host()},
-        require_https=request.is_secure(),
-    ):
-        return candidate
-    return ''
-
-
 @feature_required('horses')
 def horse_move(request, pk):
     """Move a horse to a new location.
@@ -1270,7 +1258,7 @@ def horse_move(request, pk):
     horse = get_object_or_404(Horse, pk=pk)
     current_placement = horse.current_placement
     in_popup = is_popup_request(request)
-    next_url = _safe_next_url(request)
+    next_url = safe_next(request, '')
 
     if request.method == 'POST':
         form = MoveHorseForm(request.POST)

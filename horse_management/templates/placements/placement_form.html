@@ -33,6 +33,7 @@
                         <p class="mt-1 text-xs text-error-red">{{ form.horse.errors.0 }}</p>
                         {% endif %}
                     </div>
+                    {% if form.owner %}
                     <div>
                         <label for="id_owner" class="block text-sm font-medium text-charcoal">Owner <span class="text-error-red">*</span></label>
                         {{ form.owner }}
@@ -40,6 +41,9 @@
                         <p class="mt-1 text-xs text-error-red">{{ form.owner.errors.0 }}</p>
                         {% endif %}
                     </div>
+                    {% else %}
+                    <p class="text-xs text-sage self-end pb-2">The current stay is billed to the owner on the horse's Ownership card. Change it there.</p>
+                    {% endif %}
                     <div>
                         <label for="id_location" class="block text-sm font-medium text-charcoal">Location <span class="text-error-red">*</span></label>
                         {{ form.location }}

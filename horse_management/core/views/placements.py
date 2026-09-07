@@ -5,10 +5,10 @@ Placement views — CRUD and list.
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
-from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import CreateView, ListView, UpdateView
 
 from ..forms import PlacementForm
+from ._next import safe_next
 from ._popup import PopupFormMixin
 from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Location, Owner, Placement
@@ -49,19 +49,6 @@ def movement_history(request, default_status='active'):
         placements = placements.filter(owner_id=owner)
 
     return placements.order_by('-start_date')[:50], status
-
-
-def _safe_next_url(request):
-    """Validated ?next= target so edits can return to the page they came
-    from (e.g. a horse's timeline) without becoming an open redirect."""
-    next_url = request.POST.get('next') or request.GET.get('next')
-    if next_url and url_has_allowed_host_and_scheme(
-        next_url,
-        allowed_hosts={request.get_host()},
-        require_https=request.is_secure(),
-    ):
-        return next_url
-    return None
 
 
 class PlacementListView(FeatureAccessMixin, ListView):
@@ -124,14 +111,14 @@ class _PlacementFormViewMixin:
         return response
 
     def get_success_url(self):
-        return _safe_next_url(self.request) or (
+        return safe_next(self.request) or (
             reverse('location_list') + '?tab=history'
         )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['back_url'] = (
-            _safe_next_url(self.request) or reverse('placement_list')
+            safe_next(self.request) or reverse('placement_list')
         )
         return context
 
@@ -182,5 +169,5 @@ def placement_delete(request, pk):
                 "Raise a credit/adjustment if the stay shouldn't have been billed.",
             )
     return redirect(
-        _safe_next_url(request) or reverse('horse_detail', args=[horse.pk])
+        safe_next(request) or reverse('horse_detail', args=[horse.pk])
     )

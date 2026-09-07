@@ -21,7 +21,7 @@
                 {% csrf_token %}
                 <button type="submit" class="btn-secondary">Restore</button>
             </form>
-            {% elif owner_history %}
+            {% elif owner_has_history %}
             <form method="post" action="{% url 'owner_archive' owner.pk %}" class="inline" data-confirm-danger="false"
                   hx-confirm="Archive {{ owner.name }}? They leave the Owners page and every picker. Their stays and invoices are kept, and you can restore them later.">
                 {% csrf_token %}

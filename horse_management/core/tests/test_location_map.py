@@ -70,7 +70,7 @@ class MapLocationsTests(TestCase):
         self.assertIsNone(poly['radius_m'])
         self.assertEqual(poly['state'], 'over')
         self.assertEqual(poly['colour'], '#C0392B')
-        self.assertEqual(poly['urls']['horses'], f"{reverse('horse_list')}?group_by=location&location={self.polygon.pk}")
+        self.assertEqual(set(poly['urls']), {'detail'})   # a badge opens the location, nothing reads a horses URL
 
         circle = by_name['Round pen']
         self.assertEqual(circle['kind'], 'circle')
