@@ -1,0 +1,116 @@
+{% comment %}
+Record foaling form body — shared by the full page (health/breeding_foaling.html)
+and the pop-up sheet (HX-Target: popup-body). Creates the foal's horse
+record and closes the breeding record as Born in one save.
+{% endcomment %}
+<form method="post" action="{% url 'breeding_foaling' record.pk %}"
+      {% if in_popup %}hx-post="{% url 'breeding_foaling' record.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"{% endif %}
+      x-data="{ linkExisting: {% if form.existing_foal.value %}true{% else %}false{% endif %} }">
+    {% csrf_token %}
+
+    <div class="p-4 sm:p-5 space-y-4 sm:space-y-5">
+
+        {% include 'includes/form_errors.html' with form=form intro="The foaling wasn't saved:" %}
+
+        <div class="rounded-lg bg-sand-50 border border-sand-100 px-3 py-2 text-sm text-charcoal-light">
+            <span class="font-medium text-charcoal">{{ mare.name }}</span> &times; {{ record.stallion_name }}
+            &middot; covered {{ record.date_covered|date:"d M Y" }}
+            {% if record.date_foal_due %}&middot; due {{ record.date_foal_due|date:"d M Y" }}{% endif %}
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+            <div{% if form.foal_dob.errors %} class="field-invalid"{% endif %}>
+                <label for="{{ form.foal_dob.id_for_label }}" class="block text-sm font-medium text-charcoal">Date of birth *</label>
+                {{ form.foal_dob }}
+                {% if form.foal_dob.errors %}
+                <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.foal_dob.errors.0 }}</p>
+                {% endif %}
+            </div>
+            <div{% if form.foal_sex.errors %} class="field-invalid"{% endif %}>
+                <label for="{{ form.foal_sex.id_for_label }}" class="block text-sm font-medium text-charcoal">Sex *</label>
+                {{ form.foal_sex }}
+                {% if form.foal_sex.errors %}
+                <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.foal_sex.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div{% if form.existing_foal.errors %} class="field-invalid"{% endif %}>
+            <span class="block text-sm font-medium text-charcoal" id="foal-record-label">Foal's horse record</span>
+            <div class="mt-1 flex flex-wrap items-center gap-2" role="group" aria-labelledby="foal-record-label">
+                <button type="button" class="chip" :class="!linkExisting && 'chip-on'" :aria-pressed="!linkExisting"
+                        @click="linkExisting = false; $refs.existingFoal.value = ''">
+                    Create a new record
+                </button>
+                <button type="button" class="chip" :class="linkExisting && 'chip-on'" :aria-pressed="linkExisting"
+                        @click="linkExisting = true; $nextTick(() => $refs.existingFoal.focus())">
+                    Link an existing horse
+                </button>
+            </div>
+            <div x-show="linkExisting" x-cloak class="mt-2">
+                <label for="{{ form.existing_foal.id_for_label }}" class="sr-only">Existing horse</label>
+                <select name="existing_foal" id="{{ form.existing_foal.id_for_label }}" class="form-select !mt-0" x-ref="existingFoal">
+                    {% for value, label in form.existing_foal.field.choices %}
+                    <option value="{{ value|default_if_none:'' }}" {% if form.existing_foal.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                {% if form.existing_foal.errors %}
+                <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.existing_foal.errors.0 }}</p>
+                {% endif %}
+                <p class="mt-1 text-xs text-sage">Only colts and fillies not already linked to a breeding record are listed.</p>
+            </div>
+        </div>
+
+        <div x-show="!linkExisting" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+            <div class="sm:col-span-2{% if form.foal_name.errors %} field-invalid{% endif %}">
+                <label for="{{ form.foal_name.id_for_label }}" class="block text-sm font-medium text-charcoal">Foal name *</label>
+                {{ form.foal_name }}
+                {% if form.foal_name.errors %}
+                <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.foal_name.errors.0 }}</p>
+                {% endif %}
+                <p class="mt-1 text-xs text-sage">The new horse is linked to {{ mare.name }} as dam and {{ record.stallion_name }} as sire, with {{ mare.name }}'s owners.</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+            <div{% if form.foal_colour.errors %} class="field-invalid"{% endif %}>
+                <label for="{{ form.foal_colour.id_for_label }}" class="block text-sm font-medium text-charcoal">Colour</label>
+                {{ form.foal_colour }}
+                {% if form.foal_colour.errors %}
+                <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.foal_colour.errors.0 }}</p>
+                {% endif %}
+            </div>
+            <div{% if form.foal_microchip.errors %} class="field-invalid"{% endif %}>
+                <label for="{{ form.foal_microchip.id_for_label }}" class="block text-sm font-medium text-charcoal">Microchip</label>
+                {{ form.foal_microchip }}
+                {% if form.foal_microchip.errors %}
+                <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.foal_microchip.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div{% if form.foaling_notes.errors %} class="field-invalid"{% endif %}>
+            <label for="{{ form.foaling_notes.id_for_label }}" class="block text-sm font-medium text-charcoal">Foaling notes</label>
+            {{ form.foaling_notes }}
+            {% if form.foaling_notes.errors %}
+            <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.foaling_notes.errors.0 }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="{% if in_popup %}popup-footer{% else %}form-footer{% endif %}">
+        {% if in_popup %}
+        <a href="{% url 'breeding_foaling' record.pk %}" hx-boost="false"
+           class="hidden sm:inline-flex items-center mr-auto text-xs text-sage hover:text-charcoal-light">Open the full form</a>
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        {% else %}
+        <a href="{% url 'horse_detail' mare.pk %}" class="btn-secondary">Cancel</a>
+        {% endif %}
+        <button type="submit" class="btn-primary">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+            </svg>
+            Record Foaling
+        </button>
+    </div>
+</form>

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load ui_extras %}
 
 {% block title %}Breeding Records - Yardway{% endblock %}
 
@@ -11,23 +12,49 @@
     it on desktop. The heading stays for screen readers and the outline.
     {% endcomment %}
     <h1 class="sr-only">Breeding Records</h1>
+    {% if can_edit %}
     <div class="page-header">
         <div class="flex items-center gap-3">
-            <a href="{% url 'breeding_create' %}" class="btn-primary">
+            <a href="{% url 'breeding_create' %}" hx-get="{% url 'breeding_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record a covering" class="btn-primary">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                 </svg>
-                Add Breeding Record
+                Record Covering
             </a>
         </div>
+    </div>
+    {% endif %}
+
+    <!-- Season at a glance -->
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Breeding summary">
+        <a href="{% url 'breeding_list' %}?status=confirmed" class="money-fig{% if status_filter == 'confirmed' %} is-action{% endif %}">
+            <span class="money-fig-label">In foal</span>
+            <span class="money-fig-value">{{ summary.in_foal }}</span>
+        </a>
+        <a href="{% url 'breeding_list' %}?status=covered" class="money-fig{% if status_filter == 'covered' %} is-action{% endif %}">
+            <span class="money-fig-label">Covered, awaiting scan</span>
+            <span class="money-fig-value">{{ summary.awaiting_scan }}</span>
+        </a>
+        <div class="money-fig">
+            <span class="money-fig-label">Foals due in 30 days</span>
+            <span class="money-fig-value">{{ summary.due_30 }}</span>
+        </div>
+        <div class="money-fig{% if summary.past_due %} is-action{% endif %}">
+            <span class="money-fig-label">Past due date</span>
+            <span class="money-fig-value{% if summary.past_due %} !text-error-red{% endif %}">{{ summary.past_due }}</span>
+        </div>
+        <a href="{% url 'breeding_list' %}?status=born" class="money-fig{% if status_filter == 'born' %} is-action{% endif %}">
+            <span class="money-fig-label">Born in {{ today|date:"Y" }}</span>
+            <span class="money-fig-value">{{ summary.born_this_year }}</span>
+        </a>
     </div>
 
     <!-- Filter Bar -->
     <div class="card px-4 py-3 sm:px-5 sm:py-4">
         <form method="get" class="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
-                <label class="dt-label mb-1">Mare</label>
-                <select name="horse" class="form-select"
+                <label class="dt-label mb-1" for="filter-mare">Mare</label>
+                <select name="horse" id="filter-mare" class="form-select"
                         hx-get="{{ request.path }}" hx-trigger="change"
                         hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
                         hx-include="closest form" hx-push-url="true">
@@ -38,17 +65,14 @@
                 </select>
             </div>
             <div>
-                <label class="dt-label mb-1">Status</label>
-                <select name="status" class="form-select"
+                <label class="dt-label mb-1" for="filter-status">Status</label>
+                <select name="status" id="filter-status" class="form-select"
                         hx-get="{{ request.path }}" hx-trigger="change"
                         hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
                         hx-include="closest form" hx-push-url="true">
-                    <option value="">All</option>
-                    <option value="covered" {% if request.GET.status == 'covered' %}selected{% endif %}>Covered</option>
-                    <option value="confirmed" {% if request.GET.status == 'confirmed' %}selected{% endif %}>Confirmed In-Foal</option>
-                    <option value="born" {% if request.GET.status == 'born' %}selected{% endif %}>Born</option>
-                    <option value="lost" {% if request.GET.status == 'lost' %}selected{% endif %}>Lost</option>
-                    <option value="barren" {% if request.GET.status == 'barren' %}selected{% endif %}>Barren</option>
+                    {% for value, label in status_filters %}
+                    <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
                 </select>
             </div>
             <div class="col-span-2 md:col-span-2 flex items-end justify-end">
@@ -73,34 +97,46 @@
                         <span class="list-card-title">{{ br.mare.name }}</span>
                     </a>
                     <div class="list-card-meta">&times; {{ br.stallion_name }} &middot; covered {{ br.date_covered|date:"d M Y" }}</div>
-                    <div class="list-card-meta">
-                        {% if br.date_foal_due %}foal due {{ br.date_foal_due }}{% endif %}
-                        {% if br.foal %}{% if br.date_foal_due %} &middot; {% endif %}foal: <a href="{% url 'horse_detail' br.foal.pk %}" class="relative z-10 link">{{ br.foal.name }}</a>{% endif %}
+                    {% if br.is_active_pregnancy %}
+                    <div class="foal-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ br.gestation_progress }}" aria-label="Gestation progress">
+                        <i style="width: {{ br.gestation_progress }}%"></i>
                     </div>
-                    <div class="mt-1.5">
-                        {% if br.status == 'confirmed' %}
-                        <span class="badge-info">Confirmed</span>
-                        {% elif br.status == 'born' %}
-                        <span class="badge-success">Born</span>
-                        {% elif br.status == 'covered' %}
-                        <span class="badge-warning">Covered</span>
-                        {% elif br.status == 'lost' %}
-                        <span class="badge-danger">Lost</span>
-                        {% else %}
-                        <span class="badge-neutral">Barren</span>
+                    <div class="list-card-meta mt-1.5">
+                        Day {{ br.day_of_gestation }} of 340
+                        {% if br.date_foal_due %} &middot; foal {% if br.is_past_due %}<span class="text-error-red font-medium">due date passed</span>{% else %}{{ br.date_foal_due|due_label }}{% endif %} ({{ br.date_foal_due|date:"d M Y" }}){% endif %}
+                    </div>
+                    {% with ehv=br.next_ehv %}{% if ehv %}
+                    <div class="list-card-meta">EHV month {{ ehv.month }} {{ ehv.date|due_label }} ({{ ehv.date|date:"d M" }})</div>
+                    {% endif %}{% endwith %}
+                    {% elif br.foal %}
+                    <div class="list-card-meta">
+                        Foal: <a href="{% url 'horse_detail' br.foal.pk %}" class="relative z-10 link">{{ br.foal.name }}</a>
+                        {% if br.foal_dob %} &middot; born {{ br.foal_dob|date:"d M Y" }}{% endif %}
+                    </div>
+                    {% elif br.status == 'born' and br.foal_dob %}
+                    <div class="list-card-meta">Born {{ br.foal_dob|date:"d M Y" }} &middot; no horse record linked</div>
+                    {% endif %}
+                    <div class="mt-1.5 flex items-center gap-2 flex-wrap">
+                        {% include 'health/partials/breeding_status_badge.html' with br=br %}
+                        {% if can_edit and br.can_record_foaling %}
+                        <a href="{% url 'breeding_foaling' br.pk %}" hx-get="{% url 'breeding_foaling' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ br.mare.name }}" class="relative z-10 btn-ghost btn-xs">Record foaling</a>
                         {% endif %}
                     </div>
                 </div>
+                {% if can_edit %}
                 <div class="list-card-actions self-center">
                     <a href="{% url 'breeding_update' br.pk %}" hx-get="{% url 'breeding_update' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record" class="btn-icon" title="Edit" aria-label="Edit breeding record">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
                     </a>
                 </div>
+                {% endif %}
             </li>
             {% empty %}
             <li class="py-12 text-center">
                 <p class="text-sm font-medium text-sage">No breeding records found</p>
-                <a href="{% url 'breeding_create' %}" class="btn-primary mt-4 inline-flex">Add your first breeding record</a>
+                {% if can_edit %}
+                <a href="{% url 'breeding_create' %}" hx-get="{% url 'breeding_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record a covering" class="btn-primary mt-4 inline-flex">Record the first covering</a>
+                {% endif %}
             </li>
             {% endfor %}
         </ul>
@@ -112,58 +148,83 @@
                     <tr>
                         <th>Mare</th>
                         <th>Stallion</th>
-                        <th>Date Covered</th>
-                        <th>Foal Due</th>
+                        <th>Covered</th>
                         <th>Status</th>
+                        <th>Foal due</th>
+                        <th>Next EHV</th>
                         <th>Foal</th>
-                        <th>Actions</th>
+                        {% if can_edit %}<th class="text-right">Actions</th>{% endif %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for br in breeding_records %}
-                    <tr>
+                    <tr{% if br.is_past_due %} class="bg-error-red-50/40"{% endif %}>
                         <td>
                             <a href="{% url 'horse_detail' br.mare.pk %}" class="link tap-pad">{{ br.mare.name }}</a>
                         </td>
                         <td>{{ br.stallion_name }}</td>
-                        <td class="text-sage">{{ br.date_covered|date:"d M Y" }}</td>
-                        <td class="text-sage">{{ br.date_foal_due|default:"-" }}</td>
-                        <td>
-                            {% if br.status == 'confirmed' %}
-                            <span class="badge-info">Confirmed</span>
-                            {% elif br.status == 'born' %}
-                            <span class="badge-success">Born</span>
-                            {% elif br.status == 'covered' %}
-                            <span class="badge-warning">Covered</span>
-                            {% elif br.status == 'lost' %}
-                            <span class="badge-danger">Lost</span>
-                            {% else %}
-                            <span class="badge-neutral">Barren</span>
+                        <td class="text-sage whitespace-nowrap">
+                            {{ br.date_covered|date:"d M Y" }}
+                            {% if br.is_active_pregnancy %}
+                            <div class="foal-bar !mt-1.5 w-24" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ br.gestation_progress }}" aria-label="Gestation progress">
+                                <i style="width: {{ br.gestation_progress }}%"></i>
+                            </div>
+                            <span class="text-xs">Day {{ br.day_of_gestation }} of 340</span>
                             {% endif %}
+                        </td>
+                        <td>{% include 'health/partials/breeding_status_badge.html' with br=br %}</td>
+                        <td class="whitespace-nowrap">
+                            {% if br.date_foal_due and br.is_active_pregnancy %}
+                                <span class="{% if br.is_past_due %}text-error-red font-semibold{% elif br.is_due_soon %}text-forest font-medium{% else %}text-charcoal{% endif %}">{{ br.date_foal_due|date:"d M Y" }}</span>
+                                <div class="text-xs {% if br.is_past_due %}text-error-red{% else %}text-sage{% endif %}">{% if br.is_past_due %}Due date passed{% else %}{{ br.date_foal_due|due_label }}{% endif %}</div>
+                            {% elif br.date_foal_due %}
+                                <span class="text-sage">{{ br.date_foal_due|date:"d M Y" }}</span>
+                            {% else %}<span class="text-sage">-</span>{% endif %}
+                        </td>
+                        <td class="whitespace-nowrap">
+                            {% with ehv=br.next_ehv %}
+                            {% if ehv %}
+                                <span class="text-charcoal">Month {{ ehv.month }}</span>
+                                <div class="text-xs text-sage">{{ ehv.date|date:"d M Y" }} &middot; {{ ehv.date|due_label }}{% if ehv.sent %} &middot; reminder sent{% endif %}</div>
+                            {% elif br.is_active_pregnancy %}
+                                <span class="text-sage text-xs">Course complete</span>
+                            {% else %}<span class="text-sage">-</span>{% endif %}
+                            {% endwith %}
                         </td>
                         <td>
                             {% if br.foal %}
                             <a href="{% url 'horse_detail' br.foal.pk %}" class="link tap-pad">{{ br.foal.name }}</a>
+                            {% if br.foal_dob %}<div class="text-xs text-sage">born {{ br.foal_dob|date:"d M Y" }}</div>{% endif %}
+                            {% elif br.status == 'born' and br.foal_dob %}
+                            <span class="text-charcoal">born {{ br.foal_dob|date:"d M Y" }}</span>
+                            <div class="text-xs text-sage">no horse record linked</div>
                             {% else %}<span class="text-sage">-</span>{% endif %}
                         </td>
-                        <td>
+                        {% if can_edit %}
+                        <td class="text-right whitespace-nowrap">
+                            {% if br.can_record_foaling %}
+                            <a href="{% url 'breeding_foaling' br.pk %}" hx-get="{% url 'breeding_foaling' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ br.mare.name }}" class="btn-secondary btn-xs">Record foaling</a>
+                            {% endif %}
                             <a href="{% url 'breeding_update' br.pk %}" hx-get="{% url 'breeding_update' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record" class="btn-ghost btn-xs">Edit</a>
                         </td>
+                        {% endif %}
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7">
+                        <td colspan="{% if can_edit %}8{% else %}7{% endif %}">
                             <div class="py-12 text-center">
                                 <svg class="mx-auto h-12 w-12 text-sage/50" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/>
                                 </svg>
                                 <p class="mt-3 text-sm font-medium text-sage">No breeding records found</p>
-                                <a href="{% url 'breeding_create' %}" class="btn-primary mt-4 inline-flex">
+                                {% if can_edit %}
+                                <a href="{% url 'breeding_create' %}" hx-get="{% url 'breeding_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record a covering" class="btn-primary mt-4 inline-flex">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                                     </svg>
-                                    Add your first breeding record
+                                    Record the first covering
                                 </a>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>

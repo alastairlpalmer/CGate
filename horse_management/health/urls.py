@@ -53,6 +53,7 @@ urlpatterns = [
     path('breeding/', views.BreedingRecordListView.as_view(), name='breeding_list'),
     path('breeding/add/', views.BreedingRecordCreateView.as_view(), name='breeding_create'),
     path('breeding/<int:pk>/edit/', views.BreedingRecordUpdateView.as_view(), name='breeding_update'),
+    path('breeding/<int:pk>/foaling/', views.breeding_foaling, name='breeding_foaling'),
 
     # Quick-add helpers
     path('quick-add-vet/', views.quick_add_vet, name='quick_add_vet'),
