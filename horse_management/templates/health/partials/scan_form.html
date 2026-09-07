@@ -1,0 +1,88 @@
+{% comment %}
+Scan result form body — shared by the full page (health/breeding_scan.html)
+and the pop-up sheet (HX-Target: popup-body). In foal confirms the
+pregnancy; not in foal closes the record as Barren (14-day) or Lost
+(heartbeat).
+{% endcomment %}
+<form method="post" action="{% url 'breeding_scan' record.pk %}"
+      {% if in_popup %}hx-post="{% url 'breeding_scan' record.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"{% endif %}
+      x-data="{ scanType: '{{ form.scan_type.value|default:'14_day' }}', result: '{{ form.result.value|default:'in_foal' }}' }">
+    {% csrf_token %}
+
+    <div class="p-4 sm:p-5 space-y-4 sm:space-y-5">
+
+        {% include 'includes/form_errors.html' with form=form intro="The scan wasn't saved:" %}
+
+        <div class="rounded-lg bg-sand-50 border border-sand-100 px-3 py-2 text-sm text-charcoal-light">
+            <span class="font-medium text-charcoal">{{ mare.name }}</span> &times; {{ record.stallion_name }}
+            &middot; covered {{ record.date_covered|date:"d M Y" }}
+            {% if record.day_of_gestation is not None %}&middot; day {{ record.day_of_gestation }}{% endif %}
+            {% if record.date_scanned_14_days %}&middot; 14-day scan {{ record.date_scanned_14_days|date:"d M Y" }}{% endif %}
+            {% if record.date_scanned_heartbeat %}&middot; heartbeat scan {{ record.date_scanned_heartbeat|date:"d M Y" }}{% endif %}
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+            <div{% if form.scan_type.errors %} class="field-invalid"{% endif %}>
+                <label for="{{ form.scan_type.id_for_label }}" class="block text-sm font-medium text-charcoal">Scan *</label>
+                <select name="scan_type" id="{{ form.scan_type.id_for_label }}" class="form-select" x-model="scanType">
+                    {% for value, label in form.scan_type.field.choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+                {% if form.scan_type.errors %}
+                <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.scan_type.errors.0 }}</p>
+                {% endif %}
+            </div>
+            <div{% if form.scan_date.errors %} class="field-invalid"{% endif %}>
+                <label for="{{ form.scan_date.id_for_label }}" class="block text-sm font-medium text-charcoal">Scan date *</label>
+                {{ form.scan_date }}
+                {% if form.scan_date.errors %}
+                <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.scan_date.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div{% if form.result.errors %} class="field-invalid"{% endif %}>
+            <span class="block text-sm font-medium text-charcoal" id="scan-result-label">Result *</span>
+            <div class="mt-1 flex flex-wrap items-center gap-2" role="group" aria-labelledby="scan-result-label">
+                <button type="button" class="chip" :class="result === 'in_foal' && 'chip-on'" :aria-pressed="result === 'in_foal'"
+                        @click="result = 'in_foal'">In foal</button>
+                <button type="button" class="chip" :class="result === 'not_in_foal' && 'chip-on'" :aria-pressed="result === 'not_in_foal'"
+                        @click="result = 'not_in_foal'">Not in foal</button>
+            </div>
+            <input type="hidden" name="result" :value="result">
+            {% if form.result.errors %}
+            <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.result.errors.0 }}</p>
+            {% endif %}
+            <p class="mt-2 text-xs text-sage">
+                <span x-show="result === 'in_foal'">The record is set to Confirmed In-Foal. EHV reminders and the foal due date follow from it.</span>
+                <span x-show="result === 'not_in_foal' && scanType === '14_day'" x-cloak>The record is closed as Barren: the mare did not hold to this covering.</span>
+                <span x-show="result === 'not_in_foal' && scanType === 'heartbeat'" x-cloak>The record is closed as Lost: the mare held, then lost the pregnancy.</span>
+            </p>
+        </div>
+
+        <div{% if form.notes.errors %} class="field-invalid"{% endif %}>
+            <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-charcoal">Notes</label>
+            {{ form.notes }}
+            {% if form.notes.errors %}
+            <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.notes.errors.0 }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="{% if in_popup %}popup-footer{% else %}form-footer{% endif %}">
+        {% if in_popup %}
+        <a href="{% url 'breeding_scan' record.pk %}" hx-boost="false"
+           class="hidden sm:inline-flex items-center mr-auto text-xs text-sage hover:text-charcoal-light">Open the full form</a>
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        {% else %}
+        <a href="{% url 'horse_detail' mare.pk %}" class="btn-secondary">Cancel</a>
+        {% endif %}
+        <button type="submit" class="btn-primary">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+            </svg>
+            Record Scan
+        </button>
+    </div>
+</form>

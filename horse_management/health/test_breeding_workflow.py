@@ -276,3 +276,105 @@ class BreedingWorkflowTestCase(TestCase):
         self.assertContains(response, 'Record foaling')
         self.record.refresh_from_db()
         self.assertEqual(self.record.status, 'confirmed')
+
+
+class ScanResultTestCase(TestCase):
+    def setUp(self):
+        self.today = timezone.localdate()
+        self.client.force_login(make_admin())
+        self.mare = Horse.objects.create(name='Clover', sex='mare')
+        self.record = BreedingRecord.objects.create(
+            mare=self.mare, stallion_name='Hip Hop',
+            date_covered=self.today - timedelta(days=16),
+            status=BreedingRecord.Status.COVERED,
+        )
+
+    def _post(self, **data):
+        base = {'scan_type': '14_day', 'scan_date': self.today.isoformat(), 'result': 'in_foal'}
+        base.update(data)
+        return self.client.post(reverse('breeding_scan', args=[self.record.pk]), base, **POPUP)
+
+    def test_next_scan_helper(self):
+        self.assertEqual(self.record.next_scan, '14-day')
+        self.record.date_scanned_14_days = self.today
+        self.assertEqual(self.record.next_scan, 'heartbeat')
+        self.record.date_scanned_heartbeat = self.today
+        self.assertIsNone(self.record.next_scan)
+        self.record.status = 'barren'
+        self.record.date_scanned_heartbeat = None
+        self.assertIsNone(self.record.next_scan)
+
+    def test_14_day_in_foal_confirms(self):
+        response = self._post(notes='Single, vet Jones')
+        self.assertEqual(response.status_code, 204)
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.status, 'confirmed')
+        self.assertEqual(self.record.date_scanned_14_days, self.today)
+        self.assertIsNone(self.record.date_scanned_heartbeat)
+        self.assertIn('scan: Single, vet Jones', self.record.foaling_notes)
+
+    def test_14_day_not_in_foal_closes_as_barren(self):
+        self._post(result='not_in_foal')
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.status, 'barren')
+        self.assertEqual(self.record.date_scanned_14_days, self.today)
+
+    def test_heartbeat_not_in_foal_closes_as_lost(self):
+        self.record.date_scanned_14_days = self.today - timedelta(days=2)
+        self.record.status = 'confirmed'
+        self.record.save()
+        self._post(scan_type='heartbeat', result='not_in_foal')
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.status, 'lost')
+        self.assertEqual(self.record.date_scanned_heartbeat, self.today)
+
+    def test_form_defaults_to_the_next_scan(self):
+        response = self.client.get(reverse('breeding_scan', args=[self.record.pk]), **POPUP)
+        self.assertEqual(response.context['form'].initial['scan_type'], '14_day')
+        self.record.date_scanned_14_days = self.today
+        self.record.save()
+        response = self.client.get(reverse('breeding_scan', args=[self.record.pk]), **POPUP)
+        self.assertEqual(response.context['form'].initial['scan_type'], 'heartbeat')
+        self.assertTemplateUsed(response, 'health/partials/scan_form.html')
+
+    def test_scan_rejects_bad_dates(self):
+        response = self._post(scan_date=(self.record.date_covered - timedelta(days=1)).isoformat())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'before the mare was covered')
+        response = self._post(scan_date=(self.today + timedelta(days=1)).isoformat())
+        self.assertContains(response, 'cannot be in the future')
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.status, 'covered')
+
+    def test_scan_on_a_closed_record_bounces(self):
+        self.record.status = 'barren'
+        self.record.save()
+        response = self.client.get(reverse('breeding_scan', args=[self.record.pk]))
+        self.assertRedirects(response, reverse('horse_detail', args=[self.mare.pk]))
+        self.assertEqual(self._post().status_code, 204)
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.status, 'barren')
+
+    def test_scan_needs_breeding_write_access(self):
+        self.client.force_login(make_user_with_access('viewer_only', breeding='view', horses='view'))
+        response = self._post()
+        self.assertNotEqual(response.status_code, 204)
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.status, 'covered')
+
+    def test_scan_action_is_offered_where_a_scan_is_due(self):
+        url = reverse('breeding_scan', args=[self.record.pk])
+        response = self.client.get(reverse('breeding_list'))
+        self.assertContains(response, url)
+        self.assertContains(response, '14-day scan due')
+        response = self.client.get(reverse('horse_detail', args=[self.mare.pk]))
+        self.assertContains(response, url)
+        self.assertContains(response, 'Scan result')
+        # Both scans in: no scan action, foaling stays.
+        self.record.date_scanned_14_days = self.today - timedelta(days=1)
+        self.record.date_scanned_heartbeat = self.today
+        self.record.status = 'confirmed'
+        self.record.save()
+        response = self.client.get(reverse('breeding_list'))
+        self.assertNotContains(response, url)
+        self.assertContains(response, reverse('breeding_foaling', args=[self.record.pk]))

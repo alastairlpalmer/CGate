@@ -37,6 +37,7 @@ from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_resp
 from .forms import (
     BreedingRecordForm,
     FoalingForm,
+    ScanResultForm,
     BulkActualDepartureForm,
     BulkExpectedDepartureForm,
     BulkFarrierVisitForm,
@@ -1328,6 +1329,72 @@ def breeding_foaling(request, pk):
         form = FoalingForm(initial=initial, record=record)
 
     template = 'health/partials/foaling_form.html' if in_popup else 'health/breeding_foaling.html'
+    return render(request, template, {
+        'record': record,
+        'mare': record.mare,
+        'form': form,
+        'in_popup': in_popup,
+        'today': today,
+    })
+
+
+@feature_required('breeding')
+def breeding_scan(request, pk):
+    """Record a scan result: confirm the pregnancy, or close it as Barren/Lost.
+
+    Serves the pop-up sheet too (HX-Target: popup-body).
+    """
+    from .services import record_scan
+
+    record = get_object_or_404(BreedingRecord.objects.select_related('mare'), pk=pk)
+    in_popup = is_popup_request(request)
+    today = timezone.localdate()
+
+    if not record.is_active_pregnancy:
+        messages.info(
+            request,
+            f"{record.mare.name}'s record with {record.stallion_name} is "
+            f"{record.get_status_display().lower()}, so there is no scan to record.",
+        )
+        if in_popup:
+            return popup_saved_response()
+        return redirect('horse_detail', pk=record.mare_id)
+
+    if request.method == 'POST':
+        form = ScanResultForm(request.POST, record=record)
+        if form.is_valid():
+            try:
+                status = record_scan(
+                    record,
+                    scan_type=form.cleaned_data['scan_type'],
+                    scan_date=form.cleaned_data['scan_date'],
+                    result=form.cleaned_data['result'],
+                    notes=form.cleaned_data['notes'],
+                )
+            except ValidationError as e:
+                form.add_error(None, e)
+            else:
+                label = dict(BreedingRecord.Status.choices)[status]
+                messages.success(
+                    request,
+                    f"Scan recorded for {record.mare.name}: {label.lower()}.",
+                )
+                if in_popup:
+                    return popup_saved_response()
+                return redirect('horse_detail', pk=record.mare_id)
+    else:
+        # The first scan is the 14-day one; once that is in, the next is
+        # the heartbeat scan.
+        scan_type = (
+            ScanResultForm.SCAN_HEARTBEAT if record.date_scanned_14_days
+            else ScanResultForm.SCAN_14
+        )
+        form = ScanResultForm(
+            initial={'scan_type': scan_type, 'scan_date': today, 'result': 'in_foal'},
+            record=record,
+        )
+
+    template = 'health/partials/scan_form.html' if in_popup else 'health/breeding_scan.html'
     return render(request, template, {
         'record': record,
         'mare': record.mare,

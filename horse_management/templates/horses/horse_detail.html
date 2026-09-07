@@ -294,7 +294,10 @@
                     </div>
                     {% if feature_access.breeding.full %}
                     <div class="flex items-center gap-2">
-                        <a href="{% url 'breeding_foaling' active_pregnancy.pk %}" hx-get="{% url 'breeding_foaling' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ horse.name }}" class="btn-primary btn-xs">Record foaling</a>
+                        {% if active_pregnancy.next_scan %}
+                        <a href="{% url 'breeding_scan' active_pregnancy.pk %}" hx-get="{% url 'breeding_scan' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Scan result for {{ horse.name }}" class="{% if active_pregnancy.status == 'covered' %}btn-primary{% else %}btn-secondary{% endif %} btn-xs">Scan result</a>
+                        {% endif %}
+                        <a href="{% url 'breeding_foaling' active_pregnancy.pk %}" hx-get="{% url 'breeding_foaling' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ horse.name }}" class="{% if active_pregnancy.status == 'covered' %}btn-secondary{% else %}btn-primary{% endif %} btn-xs">Record foaling</a>
                         <a href="{% url 'breeding_update' active_pregnancy.pk %}" hx-get="{% url 'breeding_update' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record" class="btn-ghost btn-xs">Edit</a>
                     </div>
                     {% endif %}
@@ -334,7 +337,7 @@
                         <p class="mt-1.5 text-xs text-sage">Day {{ active_pregnancy.day_of_gestation }} of 340</p>
                         {% endif %}
                         {% if active_pregnancy.status == 'covered' %}
-                        <p class="mt-3 text-xs text-charcoal-light">Awaiting the in-foal scan. When the mare scans in foal, edit the record, add the scan date and set the status to Confirmed In-Foal; EHV reminders start from there.</p>
+                        <p class="mt-3 text-xs text-charcoal-light">Awaiting the 14-day scan. Use <strong>Scan result</strong> to confirm the pregnancy (EHV reminders start from there) or close the record if the mare did not hold.</p>
                         {% endif %}
                         {% with ehv_dates=active_pregnancy.ehv_vaccination_dates %}
                         {% if ehv_dates %}

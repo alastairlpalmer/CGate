@@ -12,7 +12,10 @@
             <p class="page-subtitle">{% if object %}{{ object.mare.name }} &times; {{ object.stallion_name }}{% else %}Record a covering; scans, EHV doses and the foal due date follow from it.{% endif %}</p>
         </div>
         {% if object.can_record_foaling %}
-        <a href="{% url 'breeding_foaling' object.pk %}" class="btn-primary">Record foaling</a>
+        <div class="flex items-center gap-2">
+            {% if object.next_scan %}<a href="{% url 'breeding_scan' object.pk %}" class="btn-secondary">Scan result</a>{% endif %}
+            <a href="{% url 'breeding_foaling' object.pk %}" class="btn-primary">Record foaling</a>
+        </div>
         {% endif %}
     </div>
 

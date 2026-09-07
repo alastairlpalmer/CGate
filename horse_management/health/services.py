@@ -82,3 +82,43 @@ def record_foaling(record, *, foal_dob, foal_sex, foal_colour='', foal_name='',
         record.status = BreedingRecord.Status.BORN
         record.save()
     return foal
+
+
+def record_scan(record, *, scan_type, scan_date, result, notes=''):
+    """Apply a scan result to an open breeding record.
+
+    ``scan_type`` is ``'14_day'`` or ``'heartbeat'``; ``result`` is
+    ``'in_foal'`` or ``'not_in_foal'``. In foal confirms the pregnancy.
+    Not in foal closes the record: Barren on the 14-day scan (the mare
+    never held), Lost on the heartbeat scan (she held, then lost it).
+    Returns the record's new status.
+    """
+    if not record.is_active_pregnancy:
+        raise ValidationError(
+            'This breeding record is not an open pregnancy, so a scan '
+            'cannot be recorded on it.'
+        )
+    if scan_type == '14_day':
+        record.date_scanned_14_days = scan_date
+    elif scan_type == 'heartbeat':
+        record.date_scanned_heartbeat = scan_date
+    else:
+        raise ValidationError('Unknown scan type.')
+
+    if result == 'in_foal':
+        record.status = BreedingRecord.Status.CONFIRMED
+    elif result == 'not_in_foal':
+        record.status = (
+            BreedingRecord.Status.BARREN if scan_type == '14_day'
+            else BreedingRecord.Status.LOST
+        )
+    else:
+        raise ValidationError('Unknown scan result.')
+
+    if notes:
+        line = f"{scan_date:%d %b %Y} scan: {notes}"
+        record.foaling_notes = (
+            f"{record.foaling_notes}\n{line}".strip() if record.foaling_notes else line
+        )
+    record.save()
+    return record.status

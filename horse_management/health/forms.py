@@ -569,3 +569,52 @@ class FoalingForm(forms.Form):
         if not cleaned.get('existing_foal') and not (cleaned.get('foal_name') or '').strip():
             self.add_error('foal_name', 'Give the foal a name, or pick an existing horse record.')
         return cleaned
+
+
+class ScanResultForm(forms.Form):
+    """Record a pregnancy scan on an open breeding record.
+
+    A 14-day scan that shows in foal confirms the pregnancy; one that does
+    not closes the record as Barren. A later heartbeat scan that finds no
+    foal closes it as Lost.
+    """
+
+    SCAN_14 = '14_day'
+    SCAN_HEARTBEAT = 'heartbeat'
+    SCAN_CHOICES = [
+        (SCAN_14, '14-day scan (in-foal check)'),
+        (SCAN_HEARTBEAT, 'Heartbeat scan'),
+    ]
+    RESULT_CHOICES = [
+        ('in_foal', 'In foal'),
+        ('not_in_foal', 'Not in foal'),
+    ]
+
+    scan_type = forms.ChoiceField(
+        label='Scan', choices=SCAN_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    scan_date = forms.DateField(
+        label='Scan date',
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+    )
+    result = forms.ChoiceField(
+        label='Result', choices=RESULT_CHOICES, widget=forms.RadioSelect,
+    )
+    notes = forms.CharField(
+        label='Notes', required=False,
+        widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2,
+                                     'placeholder': 'Vet, twin check, anything to remember…'}),
+    )
+
+    def __init__(self, *args, record, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.record = record
+
+    def clean_scan_date(self):
+        scan_date = self.cleaned_data['scan_date']
+        if self.record.date_covered and scan_date < self.record.date_covered:
+            raise forms.ValidationError('The scan cannot be before the mare was covered.')
+        if scan_date > timezone.localdate():
+            raise forms.ValidationError('The scan date cannot be in the future.')
+        return scan_date
