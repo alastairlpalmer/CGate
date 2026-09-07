@@ -64,8 +64,10 @@
     {# ── Near you, Needs action, Next 14 days ── #}
     {% comment %}
     The map of the site you are on comes first: on a phone at the top, on
-    a wide screen large on the left with Needs action beside it. Next 14
-    days runs the full width beneath them. The card announces whether it
+    a wide screen large on the left with Needs action beside it — half
+    and half on a laptop, so the action rows stay one line each, seven
+    columns to five from 1728px. Next 14 days runs the full width beneath
+    them. The card announces whether it
     shows (near-you:visible); Needs action takes the full width whenever
     it does not.
     {% endcomment %}
@@ -78,7 +80,7 @@
         {% endif %}
         {% if 'attention' in visible %}
         <section class="zone-enter lg:self-start" style="--i:2" aria-labelledby="needs-action-title"
-                 :class="hasMap ? 'lg:col-span-5' : 'lg:col-span-12'">
+                 :class="hasMap ? 'lg:col-span-6 min-[1728px]:col-span-5' : 'lg:col-span-12'">
             {% include 'partials/dashboard/attention.html' %}
         </section>
         {% endif %}

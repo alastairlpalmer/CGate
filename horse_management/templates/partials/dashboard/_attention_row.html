@@ -3,9 +3,11 @@
 One inbox row (core.dashboard.attention.Row): a horse, a shared visit, or
 a loose item such as an invoice. One line per thing to do — what it is,
 how late, the button — so the list scans like a checklist. The list is a
-CSS container (.attn-list, static/css/input.css): in a narrow column (a
-phone, or beside the map on a laptop) the badge and the buttons drop to a
-line of their own under the text; the viewport has no say. A horse with
+CSS container (.attn-list, static/css/input.css) and the row lays itself
+out by the width it has, whatever the viewport: from 34rem it is one
+line (the name, what is due, how late, the button; where the horse is
+and the exact date join in from 48rem), narrower than that the badge and
+the buttons take a line of their own under the text. A horse with
 two things due gets one line per thing under one name. Colour says how
 urgent: the left edge and the icon are red when overdue, saddle when due
 today, sage otherwise.
@@ -21,8 +23,7 @@ today, sage otherwise.
         </div>
         <div class="attn-text" title="{{ row.title }} · {{ row.subtitle }} · {{ row.horses|length }} horses, one visit">
             <a href="{{ row.url }}" class="attn-title">{{ row.title }}</a>
-            <span class="attn-sub">{{ row.subtitle }}</span>
-            <span class="attn-detail">{{ row.horses|length }} horses, one visit</span>
+            <span class="attn-detail">{{ row.subtitle }} · {{ row.horses|length }} horses, one visit</span>
         </div>
         <div class="attn-foot">
             <div class="attn-when">
