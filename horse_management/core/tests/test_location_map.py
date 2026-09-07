@@ -245,12 +245,12 @@ class NearYouCardTests(TestCase):
         self.assertContains(response, 'x-data="{ hasMap: true }"')
         self.assertContains(response, 'data-testid="near-you-zone"')
         zone = response.content[response.content.index(b'data-testid="near-you-zone"') - 400:response.content.index(b'data-testid="near-you-zone"')]
-        self.assertIn(b'order-first', zone)          # top of the page on a phone
-        self.assertIn(b'xl:col-start-9', zone)       # beside the lists on a wide screen
-        self.assertIn(b'lg:row-span-2', zone)
+        self.assertIn(b'lg:col-span-7', zone)        # seven columns of twelve beside Needs action
         self.assertIn(b'x-show="ready"', zone)       # a hidden card takes no grid cell
-        # The lists give the card its column only while it shows.
-        self.assertContains(response, "hasMap ? 'lg:col-span-7 xl:col-span-8 lg:col-start-1' : 'lg:col-span-7'")
+        # The map is the first zone: before Needs action in the page, which
+        # keeps five columns for itself only while the card shows.
+        self.assertLess(response.content.index(b'near-you-title'), response.content.index(b'needs-action-title'))
+        self.assertContains(response, "hasMap ? 'lg:col-span-5' : 'lg:col-span-12'")
         # The card comes before the Yard board in the page
         self.assertLess(response.content.index(b'near-you-title'), response.content.index(b'yard-board-title'))
         # The compact map carries the names (the highlighted one shows) and the leader-line layer.

@@ -450,3 +450,23 @@ Grouped. The first group changes the plan most.
 - Why reminders run Monday to Friday only (`REMINDER_DAYS_OF_WEEK`).
 - Worming has no due date in the data model, so the dashboard cannot show
   "worming due". Adding one is a small model change if wanted.
+
+## Revision — 2026-09-07: the map, and one line per thing to do
+
+Built after the first phone use of the location map (`LOCATION_MAPPING_PLAN.md`,
+section 12, item 13). Where this differs from the sections above, this is right.
+
+- **Order.** Near you (the map of the site you are on) is the first zone. On a
+  phone: Headline → Near you → Needs action → Next 14 days → Yard board → Money
+  → What changed. On a wide screen the map takes seven columns of twelve on the
+  left and fills its card's height (at least a screenful), Needs action the five
+  beside it, and Next 14 days runs the full width under both. When the card
+  cannot show (All sites chosen and no GPS fix) Needs action takes the full width.
+- **Zone B rows are one line each**: what it is, how late, the button. The list
+  is a CSS size container, so in a narrow column (a phone, or beside the map on
+  a laptop) the badge and buttons drop to a second line; the viewport has no
+  say. A horse with two things due gets one line per thing under one name. The
+  row's left edge and icon are red when overdue, saddle when due today, sage
+  otherwise, and the card takes a warm outline and a red count whenever
+  anything is overdue.
+

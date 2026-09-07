@@ -22,11 +22,17 @@
     var BADGE_GAP = 4;             // clear space kept between two badges
     var LEADER_MIN_PX = 6;         // a badge pushed further than this off its anchor gets a leader line
     var LABEL_H = 20;              // a name label's height (text-xs, leading-4, py-0.5)
-    var COMPACT_LOCATIONS = 4;
-    // The compact card is a glance at where the horses are. Past this many
-    // badges it drops the rings of empty locations (their shapes stay drawn),
-    // so the counts that matter are readable on a phone.
-    var COMPACT_BADGE_MAX = 6;
+    var COMPACT_LOCATIONS = 4;       // the compact crop around a highlight, on a phone
+    var COMPACT_LOCATIONS_WIDE = 8;  // ... and on a map at least COMPACT_WIDE_PX wide
+    var COMPACT_WIDE_PX = 480;
+    // How much fits depends on the map's size. One badge per BADGE_CELL
+    // square keeps counts readable; one name per LABEL_CELL_W × LABEL_CELL_H
+    // keeps names apart. The compact card is a glance at where the horses
+    // are: past its room (never fewer than COMPACT_BADGE_MIN) it drops the
+    // rings of empty locations, their shapes staying drawn.
+    var BADGE_CELL = 110;
+    var LABEL_CELL_W = 170, LABEL_CELL_H = 90;
+    var COMPACT_BADGE_MIN = 6;
     var FIT_PADDING = [36, 36];
     var LABEL_HIDE_BELOW = 1.25;   // zoom levels under the fit zoom at which names hide
     // A dense site (more badges than this) shows names only once zoomed in
@@ -182,12 +188,14 @@
                         self.badges[pk].classList.toggle('is-highlight', String(pk) === String(self.highlight));
                     });
                     this.visible = null;
+                    var el = this.$refs.map;
                     if (this.variant === 'compact' && this.highlight) {
                         var target = this.payload.locations.filter(function (l) { return l.pk === self.highlight && l.anchor; })[0];
                         if (target) {
+                            var crop = el && el.clientWidth >= COMPACT_WIDE_PX ? COMPACT_LOCATIONS_WIDE : COMPACT_LOCATIONS;
                             var nearest = this.payload.locations.filter(function (l) { return l.anchor; })
                                 .sort(function (a, b) { return haversine(target.anchor, a.anchor) - haversine(target.anchor, b.anchor); })
-                                .slice(0, COMPACT_LOCATIONS);
+                                .slice(0, crop);
                             this.visible = {};
                             nearest.forEach(function (l) { self.visible[l.pk] = true; });
                         }
@@ -205,7 +213,6 @@
                     });
                     // fitBounds on a 0×0 container (display:none) computes a nonsense
                     // zoom; remember to fit when the ResizeObserver sees a size.
-                    var el = this.$refs.map;
                     this._needsFit = !el || el.clientWidth === 0 || el.clientHeight === 0;
                     if (bounds.isValid() && !this._needsFit) {
                         this.map.invalidateSize();
@@ -226,11 +233,17 @@
                     var compact = this.variant === 'compact';
                     var isHighlight = function (pk) { return String(pk) === String(self.highlight); };
                     var inView = Object.keys(this.badges).filter(function (pk) { return !self.visible || self.visible[pk]; });
-                    var zoomedOut = this.map.getZoom() < this.fitZoom + 1;
+                    var zoom = this.map.getZoom();
+                    var zoomedOut = zoom < this.fitZoom + 1;
+                    var size = this.map.getSize();
+                    // Room at this size: how many badges, and how many names,
+                    // can sit on the map without burying each other.
+                    var badgeRoom = Math.floor(size.x / BADGE_CELL) * Math.floor(size.y / BADGE_CELL);
+                    var labelRoom = Math.floor(size.x / LABEL_CELL_W) * Math.floor(size.y / LABEL_CELL_H);
                     // Dense: drop the badges of locations that hold no horses.
                     var dense = inView.length > LABEL_DENSE_COUNT && zoomedOut;
                     // Crowded (compact only): drop the rings of empty locations too.
-                    var crowded = compact && inView.length > COMPACT_BADGE_MAX;
+                    var crowded = compact && inView.length > Math.max(COMPACT_BADGE_MIN, badgeRoom);
                     var shown = inView.filter(function (pk) {
                         if (isHighlight(pk)) return true;
                         var a = self.badges[pk];
@@ -238,13 +251,13 @@
                         if (crowded && !(Number(a.dataset.count) > 0)) return false;
                         return true;
                     });
-                    // Names: on the full map whenever what is left fits, at or
-                    // near the fit zoom; the highlighted location is always named.
-                    var showLabels = !compact
-                        && (shown.length <= LABEL_DENSE_COUNT || !zoomedOut)
-                        && this.map.getZoom() >= this.fitZoom - LABEL_HIDE_BELOW;
+                    // Names: when they have room at this size; on the full map
+                    // also whenever what is left is few, or once zoomed in a
+                    // level. Never far below the fit zoom. The highlighted
+                    // location is always named.
+                    var showLabels = zoom >= this.fitZoom - LABEL_HIDE_BELOW
+                        && (labelRoom >= shown.length || (!compact && (shown.length <= LABEL_DENSE_COUNT || !zoomedOut)));
 
-                    var size = this.map.getSize();
                     var items = shown.map(function (pk) {
                         var a = self.badges[pk];
                         var parts = a.dataset.anchor.split(',');
@@ -268,7 +281,13 @@
                         ? YardwayMapLayout.spreadBadges(items.concat(obstacles), { size: BADGE_PX, gap: BADGE_GAP, width: size.x, height: size.y })
                         : items;
                     var placed = {};
-                    items.forEach(function (it, i) {
+                    var layout = window.YardwayMapLayout;
+                    var nameBoxes = [];   // names already placed; a name another badge or name would cover stays hidden
+                    // The highlighted badge first, so its name is never the one that gives way.
+                    var order = items.map(function (it, i) { return i; })
+                        .sort(function (a, b) { return (items[b].fixed ? 1 : 0) - (items[a].fixed ? 1 : 0); });
+                    order.forEach(function (i) {
+                        var it = items[i];
                         var a = self.badges[it.pk];
                         var p = spread[i];
                         placed[it.pk] = true;
@@ -278,11 +297,19 @@
                         var dx = p.x - it.x, dy = p.y - it.y;
                         self.leader(it.pk, Math.sqrt(dx * dx + dy * dy) > LEADER_MIN_PX ? { x1: it.x, y1: it.y, x2: p.x, y2: p.y, colour: a.dataset.colour } : null);
                         var label = self.labels[it.pk];
-                        if (label) {
-                            label.hidden = !(showLabels || it.fixed);
-                            label.style.left = p.x + 'px';
-                            label.style.top = (p.y + BADGE_PX / 2 + 2) + 'px';
+                        if (!label) return;
+                        var show = showLabels || it.fixed;
+                        if (show) {
+                            var box = { x: p.x - self.labelWidth(label) / 2, y: p.y + BADGE_PX / 2 + 2, w: self.labelWidth(label), h: LABEL_H };
+                            if (!it.fixed && layout) {
+                                show = !items.some(function (other, j) { return j !== i && layout.circleHitsBox(spread[j].x, spread[j].y, BADGE_PX / 2, box); })
+                                    && !nameBoxes.some(function (b) { return layout.boxesOverlap(b, box); });
+                            }
+                            if (show) nameBoxes.push(box);
                         }
+                        label.hidden = !show;
+                        label.style.left = p.x + 'px';
+                        label.style.top = (p.y + BADGE_PX / 2 + 2) + 'px';
                     });
                     Object.keys(this.badges).forEach(function (pk) {
                         if (placed[pk]) return;
