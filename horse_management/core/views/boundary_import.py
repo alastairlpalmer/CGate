@@ -8,6 +8,10 @@ preview drawn by the phase 3 map partial; a confirmed post writes the
 boundaries in one transaction.
 """
 
+import time
+import uuid
+from pathlib import Path
+
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -18,8 +22,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from ..boundary_import import (
-    BoundaryImportError, ImportedShape, apply_boundary, parse_geojson,
-    preview_payload, suggest_matches,
+    BoundaryImportError, apply_boundary, parse_geojson, preview_payload, suggest_matches,
 )
 from ..dashboard import board
 from ..forms import BoundaryUploadForm
@@ -29,9 +32,54 @@ from ..permissions import feature_required
 SESSION_KEY = 'boundary_import'
 NEW, SKIP = 'new', 'skip'
 
+# The uploaded file waits on disk between the two steps, under MEDIA_ROOT
+# (a persistent volume in production), and the session holds only a
+# token. Putting the parsed geometry in the session made every later
+# request rewrite megabytes of JSON into the sessions table (the session
+# saves on every request) until the import was committed or cancelled.
+UPLOAD_DIR = 'boundary_imports'
+UPLOAD_MAX_AGE_S = 24 * 60 * 60
+
 
 def _maps_on():
     return settings.LOCATION_MAPS_ENABLED
+
+
+def _upload_dir() -> Path:
+    path = Path(settings.MEDIA_ROOT) / UPLOAD_DIR
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _store_upload(data: bytes) -> str:
+    """Write the file, sweep uploads older than a day, return the token."""
+    folder = _upload_dir()
+    cutoff = time.time() - UPLOAD_MAX_AGE_S
+    for old in folder.glob('*.geojson'):
+        try:
+            if old.stat().st_mtime < cutoff:
+                old.unlink()
+        except OSError:
+            pass
+    token = uuid.uuid4().hex
+    (folder / f'{token}.geojson').write_bytes(data)
+    return token
+
+
+def _upload_path(token: str) -> Path | None:
+    if not token or not all(c in '0123456789abcdef' for c in token):
+        return None
+    return _upload_dir() / f'{token}.geojson'
+
+
+def _discard(request):
+    data = request.session.pop(SESSION_KEY, None)
+    path = _upload_path((data or {}).get('token', ''))
+    if path is not None:
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 @feature_required('locations')
@@ -50,17 +98,17 @@ def boundary_import_upload(request):
         form = BoundaryUploadForm(request.POST, request.FILES, sites=sites)
         if form.is_valid():
             upload = form.cleaned_data['file']
+            raw = upload.read()
             try:
-                report = parse_geojson(upload.read())
+                parse_geojson(raw)
             except BoundaryImportError as exc:
                 form.add_error('file', str(exc))
             else:
+                _discard(request)   # a previous upload left behind
                 request.session[SESSION_KEY] = {
                     'site': form.cleaned_data['site'],
                     'filename': upload.name,
-                    'shapes': [shape.as_dict() for shape in report.shapes],
-                    'notes': report.notes,
-                    'converted': report.converted_from_bng,
+                    'token': _store_upload(raw),
                 }
                 return redirect('boundary_import_match')
     else:
@@ -69,11 +117,20 @@ def boundary_import_upload(request):
 
 
 def _load(request):
+    """The pending import: ``(session data, shapes)``, re-parsed from the
+    stored file (fast: it already passed validation), or None."""
     data = request.session.get(SESSION_KEY)
-    if not data or not data.get('shapes'):
+    path = _upload_path((data or {}).get('token', ''))
+    if path is None or not path.exists():
+        request.session.pop(SESSION_KEY, None)
         return None
-    shapes = [ImportedShape.from_dict(item) for item in data['shapes']]
-    return data, shapes
+    try:
+        report = parse_geojson(path.read_bytes())
+    except BoundaryImportError:
+        _discard(request)
+        return None
+    data = dict(data, notes=report.notes, converted=report.converted_from_bng)
+    return data, report.shapes
 
 
 def _parse_choices(post, shapes, by_pk):
@@ -124,7 +181,7 @@ def boundary_import_match(request):
 
     if request.method == 'POST':
         if 'cancel' in request.POST:
-            request.session.pop(SESSION_KEY, None)
+            _discard(request)
             messages.info(request, 'Import cancelled. Nothing was saved.')
             return redirect(f"{reverse('location_list')}?tab=map&site={site}")
         choices, errors = _parse_choices(request.POST, shapes, by_pk)
@@ -150,7 +207,7 @@ def boundary_import_match(request):
                 request, data, shapes, locations, suggestions, choices,
                 ['Nothing was saved: ' + '; '.join(exc.messages)],
             )
-        request.session.pop(SESSION_KEY, None)
+        _discard(request)
         messages.success(
             request,
             f"{written} boundar{'ies' if written != 1 else 'y'} imported"

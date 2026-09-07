@@ -24,10 +24,25 @@ def upload(name, filename=None):
     return SimpleUploadedFile(filename or name, (FIXTURES / name).read_bytes(), content_type='application/geo+json')
 
 
-@override_settings(LOCATION_MAPS_ENABLED=True)
-class UploadTests(TestCase):
+class TempMediaMixin:
+    """Uploads wait under MEDIA_ROOT/boundary_imports; keep tests out of media/."""
 
     def setUp(self):
+        import shutil
+        import tempfile
+        self._media = tempfile.mkdtemp(prefix='yardway-media-')
+        self._media_override = override_settings(MEDIA_ROOT=self._media)
+        self._media_override.enable()
+        self.addCleanup(self._media_override.disable)
+        self.addCleanup(shutil.rmtree, self._media, True)
+        super().setUp()
+
+
+@override_settings(LOCATION_MAPS_ENABLED=True)
+class UploadTests(TempMediaMixin, TestCase):
+
+    def setUp(self):
+        super().setUp()
         self.client.force_login(make_admin())
         Location.objects.create(name='Grain store field', site='Somerford')
         self.url = reverse('boundary_import_upload')
@@ -67,14 +82,38 @@ class UploadTests(TestCase):
         self.assertRedirects(response, reverse('boundary_import_match'))
         data = self.client.session['boundary_import']
         self.assertEqual(data['site'], 'Somerford')
-        self.assertEqual(len(data['shapes']), 4)
-        self.assertTrue(data['converted'])
+        # The geometry waits on disk, not in the session.
+        self.assertNotIn('shapes', data)
+        stored = Path(self._media) / 'boundary_imports' / f"{data['token']}.geojson"
+        self.assertTrue(stored.exists())
+        self.assertEqual(len(parse_geojson(stored.read_bytes()).shapes), 4)
+
+    def test_lost_file_sends_you_back_to_upload(self):
+        self.client.post(self.url, {'site': 'Somerford', 'file': upload('landapp_bng.geojson')})
+        token = self.client.session['boundary_import']['token']
+        (Path(self._media) / 'boundary_imports' / f'{token}.geojson').unlink()
+        response = self.client.get(reverse('boundary_import_match'))
+        self.assertRedirects(response, reverse('boundary_import_upload'))
+        self.assertNotIn('boundary_import', self.client.session)
+
+    def test_old_uploads_are_swept(self):
+        import os
+        import time
+        folder = Path(self._media) / 'boundary_imports'
+        folder.mkdir(parents=True, exist_ok=True)
+        stale = folder / ('a' * 32 + '.geojson')
+        stale.write_bytes(b'{}')
+        old = time.time() - 2 * 24 * 3600
+        os.utime(stale, (old, old))
+        self.client.post(self.url, {'site': 'Somerford', 'file': upload('landapp_bng.geojson')})
+        self.assertFalse(stale.exists())
 
 
 @override_settings(LOCATION_MAPS_ENABLED=True)
-class MatchTests(TestCase):
+class MatchTests(TempMediaMixin, TestCase):
 
     def setUp(self):
+        super().setUp()
         self.user = make_admin()
         self.client.force_login(self.user)
         self.report = parse_geojson((FIXTURES / 'landapp_bng.geojson').read_bytes())

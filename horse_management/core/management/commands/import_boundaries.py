@@ -90,7 +90,10 @@ class Command(BaseCommand):
             if forced[int(shape_no)] not in by_pk:
                 raise CommandError(f'No active location with pk {pk}' + (f' on {site}' if site else ''))
 
-        suggestions = suggest_matches(report.shapes, locations)
+        # A location named in --assign is spoken for; do not suggest it again.
+        suggestions = suggest_matches(
+            report.shapes, [loc for loc in locations if loc.pk not in forced.values()],
+        )
 
         for note in report.notes:
             self.stdout.write(self.style.NOTICE(note))
