@@ -30,6 +30,14 @@
                 <legend class="section-title">Vaccination Details</legend>
 
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <div class="sm:col-span-2{% if form.service_item.errors %} field-invalid{% endif %}">
+                        <label for="{{ form.service_item.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.service_item.label }}</label>
+                        {{ form.service_item }}
+                        {% if form.service_item.errors %}
+                          <p class="mt-1 text-sm text-error-red">{{ form.service_item.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-xs text-sage mt-1">Pick a service to fill in the price. Choose Other to enter everything yourself.</p>
+                    </div>
                     <div class="sm:col-span-2">
                         <label for="{{ form.horse.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.horse.label }}</label>
                         {{ form.horse }}

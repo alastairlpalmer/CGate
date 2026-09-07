@@ -9,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import connection, models
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from ..dashboard_widgets import WIDGETS, WIDGETS_BY_KEY, widget_available
@@ -70,7 +71,7 @@ def app_settings(request):
     ctx = {'flat_items': _flat_prefs_items(request.user)}
 
     if has_feature_access(request.user, 'settings', 'full'):
-        from billing.models import ServiceProvider
+        from billing.models import ServiceItem, ServiceProvider
         from health.models import VaccinationType
 
         from ..forms import BusinessSettingsForm
@@ -90,6 +91,12 @@ def app_settings(request):
             'providers': ServiceProvider.objects.filter(is_active=True).order_by('name'),
             'biz_form': biz_form,
             'rate_types': RateType.objects.all(),
+            # Grouped in the order the work happens (Category order), not
+            # alphabetically by code.
+            'service_items': sorted(
+                ServiceItem.objects.select_related('vaccination_type'),
+                key=lambda i: (ServiceItem.Category.values.index(i.category), i.sort_order, i.name),
+            ),
             'vaccination_types': VaccinationType.objects.all(),
             'location_groups': _location_groups(
                 Location.objects.active().order_by('site', 'name')
@@ -151,6 +158,38 @@ def rate_type_update(request, pk):
     else:
         form = RateTypeForm(instance=rate)
     return render(request, 'settings/rate_type_form.html', {'form': form, 'object': rate})
+
+
+@feature_required('settings')
+def service_item_create(request):
+    """Add a priced service to the directory."""
+    from billing.forms import ServiceItemForm
+    if request.method == 'POST':
+        form = ServiceItemForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Service added.")
+            return redirect(f"{reverse('app_settings')}#services")
+    else:
+        form = ServiceItemForm()
+    return render(request, 'settings/service_item_form.html', {'form': form})
+
+
+@feature_required('settings')
+def service_item_update(request, pk):
+    """Edit a priced service (change the price, retire it, and so on)."""
+    from billing.forms import ServiceItemForm
+    from billing.models import ServiceItem
+    item = get_object_or_404(ServiceItem, pk=pk)
+    if request.method == 'POST':
+        form = ServiceItemForm(request.POST, instance=item)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Service updated.")
+            return redirect(f"{reverse('app_settings')}#services")
+    else:
+        form = ServiceItemForm(instance=item)
+    return render(request, 'settings/service_item_form.html', {'form': form, 'object': item})
 
 
 # ──────────────────────────────────────────────────────────────────────────

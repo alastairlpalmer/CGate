@@ -29,6 +29,7 @@ from django.utils.html import format_html
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
+from billing.forms import BulkChargeForm
 from billing.models import ExtraCharge
 from core.models import Horse, Placement
 from core.views._popup import PopupFormMixin, popup_saved_response
@@ -255,6 +256,7 @@ BULK_FORM_MAP = {
     'actual_departure': BulkActualDepartureForm,
     'move': BulkMoveForm,
     'restore': BulkRestoreForm,
+    'charge': BulkChargeForm,
 }
 
 BULK_MODEL_MAP = {
@@ -277,6 +279,7 @@ BULK_LABELS = {
     'actual_departure': 'Departure Date',
     'move': 'Move to Location',
     'restore': 'Undo Departure',
+    'charge': 'Charge',
 }
 
 def _charge_details(record):
@@ -297,6 +300,10 @@ def _charge_details(record):
     if isinstance(record, WormingTreatment):
         return {'charge_type': 'medication', 'service_provider': None,
                 'description': f"Worming - {record.product_name}",
+                'date': record.date}
+    if isinstance(record, WormEggCount):
+        return {'charge_type': 'vet', 'service_provider': None,
+                'description': f"Worm egg count - {record.get_sample_type_display()}",
                 'date': record.date}
     return None
 
@@ -385,6 +392,8 @@ PLACEMENT_BULK_ACTIONS = ('move', 'restore', 'expected_departure', 'actual_depar
 def _bulk_action_allowed(user, action_type):
     if action_type in PLACEMENT_BULK_ACTIONS:
         return has_feature_access(user, 'horses', LEVEL_FULL)
+    if action_type == 'charge':
+        return has_feature_access(user, 'charges', LEVEL_FULL)
     return has_feature_access(user, 'health', LEVEL_FULL)
 
 
@@ -566,6 +575,23 @@ def bulk_health_apply(request):
                     action_errors.append(
                         f"Not set — {horse.name}: {'; '.join(e.messages)}"
                     )
+        elif action_type == 'charge':
+            # A plain charge (transport, worm test, anything in the services
+            # directory) per horse, billed to its current owner — the same
+            # owner rule sync_record_charge applies to health records.
+            for horse in horses:
+                owner = horse.current_owner
+                if not owner:
+                    action_errors.append(
+                        f"Not charged — {horse.name} has no current owner to bill."
+                    )
+                    continue
+                charge = form.save(commit=False)
+                charge.pk = None
+                charge.horse = horse
+                charge.owner = owner
+                charge.save()
+                count += 1
         else:
             for horse in horses:
                 obj = form.save(commit=False)
@@ -600,6 +626,11 @@ def bulk_health_apply(request):
         )
     elif action_type in ('expected_departure', 'actual_departure'):
         success_msg = f"{label} set for {count} horse{plural}."
+    elif action_type == 'charge':
+        success_msg = (
+            f"£{form.cleaned_data['amount']:,.2f} charged to the owner"
+            f"{'s' if count != 1 else ''} of {count} horse{plural}."
+        )
     else:
         success_msg = f"{label} recorded for {count} horse{plural}."
     if count or not (action_errors or restore_skipped):
@@ -981,8 +1012,13 @@ class WormEggCountCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, Featur
         return initial
 
     def form_valid(self, form):
+        response = super().form_valid(form)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
         messages.success(self.request, "Egg count recorded successfully.")
-        return super().form_valid(form)
+        return response
 
 
 class WormEggCountUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
@@ -993,6 +1029,14 @@ class WormEggCountUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
 
     def get_success_url(self):
         return reverse('health_dashboard') + '?type=egg_counts'
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        _report_charge_sync(
+            self.request, form.instance,
+            sync_record_charge(form.instance),
+        )
+        return response
 
 
 # ─── Medical Condition Views ─────────────────────────────────────────

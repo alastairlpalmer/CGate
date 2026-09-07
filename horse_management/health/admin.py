@@ -86,9 +86,8 @@ class WormEggCountAdmin(admin.ModelAdmin):
     readonly_fields = ['created_at', 'updated_at']
 
     def is_high_display(self, obj):
-        if obj.is_high:
-            return format_html('<span style="color: red;">High (&gt;200)</span>')
-        return format_html('<span style="color: green;">Normal</span>')
+        colour = 'red' if obj.is_high else 'green'
+        return format_html('<span style="color: {};">{}</span>', colour, obj.level_label)
     is_high_display.short_description = 'Level'
 
 

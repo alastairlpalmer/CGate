@@ -28,6 +28,14 @@
             <fieldset class="p-4 sm:p-5 space-y-4">
                 <legend class="section-title">Service Details</legend>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
+                    <div class="sm:col-span-2{% if form.service_item.errors %} field-invalid{% endif %}">
+                        <label for="{{ form.service_item.id_for_label }}" class="block text-sm font-medium text-charcoal">{{ form.service_item.label }}</label>
+                        {{ form.service_item }}
+                        {% if form.service_item.errors %}
+                          <p class="mt-1 text-sm text-error-red">{{ form.service_item.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-xs text-sage mt-1">Pick a service to fill in the type, description and amount. Choose Other to enter everything yourself.</p>
+                    </div>
                     <div>
                         <label for="id_horse" class="block text-sm font-medium text-charcoal">Horse *</label>
                         {{ form.horse }}

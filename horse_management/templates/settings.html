@@ -445,6 +445,42 @@
             <span class="settings-band-rule"></span>
         </div>
 
+        <!-- ── Services & Prices ── -->
+        <div id="services" class="card overflow-hidden scroll-mt-24">
+            <div class="section-header">
+                <div>
+                    <h3 class="section-title">Services &amp; Prices</h3>
+                    <p class="text-xs text-sage mt-0.5">Set prices once. On a record form you pick the service and the price is filled in.</p>
+                </div>
+                <a href="{% url 'service_item_create' %}" class="btn-primary btn-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
+                    Add Service
+                </a>
+            </div>
+            <div class="settings-rows">
+                {% regroup service_items by get_category_display as service_groups %}
+                {% for group in service_groups %}
+                <p class="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-sage">{{ group.grouper }}</p>
+                {% for item in group.list %}
+                <div class="settings-row">
+                    <div class="min-w-0">
+                        <p class="settings-row-title">{{ item.name }}</p>
+                        <p class="settings-row-meta font-mono tabular-nums">{{ item.price_label }} per horse{% if item.farrier_work %} &middot; {{ item.get_farrier_work_display }}{% endif %}{% if item.vaccination_type %} &middot; {{ item.vaccination_type.name }}{% endif %}</p>
+                    </div>
+                    <div class="settings-actions">
+                        {% if not item.is_active %}<span class="badge-warning">Inactive</span>{% endif %}
+                        <a href="{% url 'service_item_update' item.pk %}" class="settings-action">Edit</a>
+                    </div>
+                </div>
+                {% endfor %}
+                {% empty %}
+                <p class="settings-empty">No services yet. Add one and it appears on the record forms.</p>
+                {% endfor %}
+            </div>
+        </div>
+
         <!-- ── Rate Types ── -->
         <div class="card overflow-hidden">
             <div class="section-header">

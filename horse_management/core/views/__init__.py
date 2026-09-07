@@ -65,6 +65,8 @@ from .settings import (  # noqa: F401
     health_check,
     rate_type_create,
     rate_type_update,
+    service_item_create,
+    service_item_update,
 )
 from .users import (  # noqa: F401
     user_create,

@@ -338,3 +338,94 @@ class FeedStock(models.Model):
 
     def __str__(self):
         return f"{self.get_entry_type_display()}: {self.quantity} {self.get_unit_display()} {self.get_feed_type_display()} ({self.date})"
+
+
+class ServiceItem(models.Model):
+    """A priced entry in the services directory (Settings → Services & Prices).
+
+    Picking one on an Actions form (vaccination, farrier, worming, egg
+    count, vet visit, charge — single horse or bulk) fills in the price and
+    the record's defaults, so staff choose the service and nothing else.
+    The price can still be overridden per record, and "Other" leaves every
+    field free-form. ``category`` decides which forms offer the item and
+    which ExtraCharge type its bill gets.
+    """
+
+    class Category(models.TextChoices):
+        VACCINATION = 'vaccination', 'Vaccination'
+        EGG_COUNT = 'egg_count', 'Worm egg count'
+        WORMING = 'worming', 'Wormer'
+        FARRIER = 'farrier', 'Farrier'
+        VET = 'vet', 'Vet'
+        TRANSPORT = 'transport', 'Transport'
+        OTHER = 'other', 'Other'
+
+    # ExtraCharge.ChargeType for a bill raised from this category.
+    CHARGE_TYPE_FOR_CATEGORY = {
+        Category.VACCINATION: 'vaccination',
+        Category.EGG_COUNT: 'vet',
+        Category.WORMING: 'medication',
+        Category.FARRIER: 'farrier',
+        Category.VET: 'vet',
+        Category.TRANSPORT: 'transport',
+        Category.OTHER: 'other',
+    }
+
+    # Mirrors health.FarrierVisit.WorkType; kept as literals so the billing
+    # app does not import health at module load.
+    FARRIER_WORK_CHOICES = [
+        ('', '— not set —'),
+        ('trim', 'Trim Only'),
+        ('front_shoes', 'Front Shoes'),
+        ('full_set', 'Full Set'),
+        ('remedial', 'Remedial Work'),
+        ('remove', 'Shoe Removal'),
+    ]
+
+    name = models.CharField(max_length=120)
+    category = models.CharField(
+        max_length=20, choices=Category.choices, default=Category.OTHER,
+        help_text="Decides which record forms offer this service.",
+    )
+    price = models.DecimalField(
+        max_digits=8, decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.00'))],
+        help_text="Charged per horse. Can be overridden when recording.",
+    )
+    farrier_work = models.CharField(
+        max_length=20, choices=FARRIER_WORK_CHOICES, blank=True,
+        help_text="Farrier items only: the work type the visit is recorded as.",
+    )
+    vaccination_type = models.ForeignKey(
+        'health.VaccinationType', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='service_items',
+        help_text="Vaccination items only: the type the record is filed under.",
+    )
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['category', 'sort_order', 'name']
+
+    def __str__(self):
+        return f"{self.name} (£{self.price})"
+
+    @property
+    def charge_type(self):
+        return self.CHARGE_TYPE_FOR_CATEGORY.get(self.category, 'other')
+
+    @property
+    def price_label(self):
+        return f"£{self.price:,.2f}"
+
+    def fill_value(self, attr):
+        """The value a record form field takes from this item, or None.
+
+        ``attr`` names an attribute on the item (``name``, ``farrier_work``,
+        ``vaccination_type``, ``charge_type``); blank values are skipped so
+        a wormer with no farrier work set never blanks a form field.
+        """
+        value = getattr(self, attr, None)
+        return value if value not in (None, '') else None

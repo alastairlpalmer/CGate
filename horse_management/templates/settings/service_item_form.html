@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Edit Service{% else %}Add Service{% endif %} - Yardway{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto space-y-6">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{% if object %}Edit Service{% else %}Add Service{% endif %}</h1>
+            <p class="page-subtitle">A priced service staff can pick on a record form. The price fills in by itself and can be overridden per record.</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <form method="post" x-data="{ category: '{{ form.category.value|default:'other' }}' }">
+            {% csrf_token %}
+            <fieldset class="p-4 sm:p-5 space-y-4">
+                {% if form.non_field_errors %}
+                <div class="rounded-md bg-error-red-50 border border-error-red/20 p-3" role="alert">
+                    {% for error in form.non_field_errors %}<p class="text-sm text-error-red">{{ error }}</p>{% endfor %}
+                </div>
+                {% endif %}
+                <div>
+                    <label for="{{ form.name.id_for_label }}" class="text-sm font-medium text-charcoal">Name</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}<p class="mt-1 text-sm text-error-red">{{ form.name.errors.0 }}</p>{% endif %}
+                </div>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label for="{{ form.category.id_for_label }}" class="text-sm font-medium text-charcoal">Category</label>
+                        <select name="{{ form.category.html_name }}" id="{{ form.category.id_for_label }}" class="form-select" x-model="category">
+                            {% for value, label in form.fields.category.choices %}
+                            <option value="{{ value }}"{% if form.category.value|stringformat:"s" == value|stringformat:"s" %} selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.category.errors %}<p class="mt-1 text-sm text-error-red">{{ form.category.errors.0 }}</p>{% endif %}
+                        <p class="mt-1 text-xs text-sage">{{ form.category.help_text }}</p>
+                    </div>
+                    <div>
+                        <label for="{{ form.price.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.price.label }}</label>
+                        {{ form.price }}
+                        {% if form.price.errors %}<p class="mt-1 text-sm text-error-red">{{ form.price.errors.0 }}</p>{% endif %}
+                        <p class="mt-1 text-xs text-sage">{{ form.price.help_text }}</p>
+                    </div>
+                </div>
+                <div x-show="category === 'farrier'" x-cloak>
+                    <label for="{{ form.farrier_work.id_for_label }}" class="text-sm font-medium text-charcoal">Recorded as</label>
+                    {{ form.farrier_work }}
+                    {% if form.farrier_work.errors %}<p class="mt-1 text-sm text-error-red">{{ form.farrier_work.errors.0 }}</p>{% endif %}
+                    <p class="mt-1 text-xs text-sage">{{ form.farrier_work.help_text }}</p>
+                </div>
+                <div x-show="category === 'vaccination'" x-cloak>
+                    <label for="{{ form.vaccination_type.id_for_label }}" class="text-sm font-medium text-charcoal">Vaccination type</label>
+                    {{ form.vaccination_type }}
+                    {% if form.vaccination_type.errors %}<p class="mt-1 text-sm text-error-red">{{ form.vaccination_type.errors.0 }}</p>{% endif %}
+                    <p class="mt-1 text-xs text-sage">{{ form.vaccination_type.help_text }}</p>
+                </div>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label for="{{ form.sort_order.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.sort_order.label }}</label>
+                        {{ form.sort_order }}
+                        {% if form.sort_order.errors %}<p class="mt-1 text-sm text-error-red">{{ form.sort_order.errors.0 }}</p>{% endif %}
+                        <p class="mt-1 text-xs text-sage">{{ form.sort_order.help_text }}</p>
+                    </div>
+                    <div class="flex items-center gap-2 sm:pt-6">
+                        {{ form.is_active }}
+                        <label for="{{ form.is_active.id_for_label }}" class="text-sm font-medium text-charcoal">Active</label>
+                    </div>
+                </div>
+            </fieldset>
+            <footer class="form-footer">
+                <a href="{% url 'app_settings' %}#services" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">{% if object %}Save Changes{% else %}Add Service{% endif %}</button>
+            </footer>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

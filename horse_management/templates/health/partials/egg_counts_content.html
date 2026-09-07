@@ -54,7 +54,7 @@
                 </a>
                 <div class="list-card-meta">{{ ec.date|date:"d M Y" }} &middot; {{ ec.get_sample_type_display }}{% if ec.lab_name %} &middot; {{ ec.lab_name }}{% endif %}</div>
                 <div class="mt-1.5 flex items-center gap-1.5">
-                    {% if ec.is_high %}<span class="badge-danger">High</span>{% else %}<span class="badge-success">Normal</span>{% endif %}
+                    <span class="{{ ec.level_badge_class }}">{{ ec.level_label }}</span>
                     <span class="text-xs font-semibold {% if ec.is_high %}text-error-red{% else %}text-charcoal{% endif %}">{{ ec.count }} EPG</span>
                 </div>
             </div>
@@ -99,11 +99,7 @@
                     <td class="text-sage">{{ ec.get_sample_type_display }}</td>
                     <td class="text-sage">{{ ec.lab_name|default:"-" }}</td>
                     <td>
-                        {% if ec.is_high %}
-                        <span class="badge-danger">High</span>
-                        {% else %}
-                        <span class="badge-success">Normal</span>
-                        {% endif %}
+                        <span class="{{ ec.level_badge_class }}">{{ ec.level_label }}</span>
                     </td>
                     <td>
                         <a href="{% url 'egg_count_update' ec.pk %}" hx-get="{% url 'egg_count_update' ec.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit egg count" class="btn-ghost btn-xs">Edit</a>
