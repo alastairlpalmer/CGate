@@ -118,6 +118,9 @@
                     {% endif %}
                     <div class="mt-1.5 flex items-center gap-2 flex-wrap">
                         {% include 'health/partials/breeding_status_badge.html' with br=br %}
+                        {% if can_edit and br.next_scan %}
+                        <a href="{% url 'breeding_scan' br.pk %}" hx-get="{% url 'breeding_scan' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Scan result for {{ br.mare.name }}" class="relative z-10 btn-ghost btn-xs">Scan</a>
+                        {% endif %}
                         {% if can_edit and br.can_record_foaling %}
                         <a href="{% url 'breeding_foaling' br.pk %}" hx-get="{% url 'breeding_foaling' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ br.mare.name }}" class="relative z-10 btn-ghost btn-xs">Record foaling</a>
                         {% endif %}
@@ -172,7 +175,10 @@
                             <span class="text-xs">Day {{ br.day_of_gestation }} of 340</span>
                             {% endif %}
                         </td>
-                        <td>{% include 'health/partials/breeding_status_badge.html' with br=br %}</td>
+                        <td>
+                            {% include 'health/partials/breeding_status_badge.html' with br=br %}
+                            {% if br.next_scan %}<div class="mt-1 text-xs text-sage">{{ br.next_scan }} scan due</div>{% endif %}
+                        </td>
                         <td class="whitespace-nowrap">
                             {% if br.date_foal_due and br.is_active_pregnancy %}
                                 <span class="{% if br.is_past_due %}text-error-red font-semibold{% elif br.is_due_soon %}text-forest font-medium{% else %}text-charcoal{% endif %}">{{ br.date_foal_due|date:"d M Y" }}</span>
@@ -202,6 +208,9 @@
                         </td>
                         {% if can_edit %}
                         <td class="text-right whitespace-nowrap">
+                            {% if br.next_scan %}
+                            <a href="{% url 'breeding_scan' br.pk %}" hx-get="{% url 'breeding_scan' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Scan result for {{ br.mare.name }}" class="{% if br.status == 'covered' %}btn-secondary{% else %}btn-ghost{% endif %} btn-xs">Scan</a>
+                            {% endif %}
                             {% if br.can_record_foaling %}
                             <a href="{% url 'breeding_foaling' br.pk %}" hx-get="{% url 'breeding_foaling' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ br.mare.name }}" class="btn-secondary btn-xs">Record foaling</a>
                             {% endif %}

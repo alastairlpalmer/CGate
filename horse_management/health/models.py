@@ -529,6 +529,18 @@ class BreedingRecord(models.Model):
         return self.is_active_pregnancy and self.foal_id is None
 
     @property
+    def next_scan(self):
+        """Which scan is still to come on an open pregnancy: '14-day',
+        'heartbeat', or None when both are in (or the record is closed)."""
+        if not self.is_active_pregnancy:
+            return None
+        if not self.date_scanned_14_days:
+            return '14-day'
+        if not self.date_scanned_heartbeat:
+            return 'heartbeat'
+        return None
+
+    @property
     def day_of_gestation(self):
         """Days since covering (today), or None when not applicable."""
         if not self.date_covered or not self.is_active_pregnancy:
