@@ -44,6 +44,25 @@ class GeoParserTests(TestCase):
         url = 'https://www.google.com/maps/place/x/data=!4m5!3m4!1s0x0:0x0!8m2!3d51.885515!4d-2.020603'
         self.assertEqual(geo.parse_maps_url(url), (Decimal('51.885515'), Decimal('-2.020603')))
 
+    def test_search_path_form(self):
+        url = 'https://www.google.com/maps/search/51.539094,+-2.077638?entry=tts'
+        self.assertEqual(geo.parse_maps_url(url), (Decimal('51.539094'), Decimal('-2.077638')))
+        url = 'https://www.google.com/maps/place/51.5,-2.1/@51.6,-2.2,15z'
+        self.assertEqual(geo.parse_maps_url(url), (Decimal('51.6'), Decimal('-2.2')))
+        url = 'https://www.google.com/maps/search/51.539094,%2B-2.077638?entry=tts'
+        self.assertEqual(geo.parse_maps_url(url), (Decimal('51.539094'), Decimal('-2.077638')))
+
+    def test_consent_redirect_is_unwrapped(self):
+        # What a short link resolves to on a server with no Google cookies.
+        url = (
+            'https://consent.google.com/ml?continue=https://www.google.com/maps/search/'
+            '51.539094,%2B-2.077638?entry%3Dtts%26g_ep%3DEgoyMDI2MDkwMS4wIPu8ASoASAFQAw%253D%253D'
+            '%26skid%3Da85e456c-68a0-466b-a636-2b6fc493dd9f&gl=NL&m=0&pc=m&uxe=eomtm&cm=2&hl=nl&src=1'
+        )
+        self.assertEqual(geo.parse_maps_url(url), (Decimal('51.539094'), Decimal('-2.077638')))
+        self.assertEqual(geo.unwrap_consent('https://www.google.com/maps/@51,-2,15z'), 'https://www.google.com/maps/@51,-2,15z')
+        self.assertIsNone(geo.parse_maps_url('https://consent.google.com/ml?gl=NL'))
+
     def test_at_wins_over_data(self):
         url = 'https://www.google.com/maps/place/x/@51.1,-2.1,15z/data=!3d51.2!4d-2.2'
         self.assertEqual(geo.parse_maps_url(url), (Decimal('51.1'), Decimal('-2.1')))
