@@ -42,6 +42,16 @@
     // drawn and tappable.
     var LABEL_DENSE_COUNT = 12;
     var STROKE_WEIGHT = 2.5;
+    // The base map behind the shapes: OpenStreetMap, muted by CSS so the
+    // river, woods, tracks and buildings read as context under the parcels
+    // (the same tiles the coordinate picker uses). Off by default on the
+    // dashboard card, on by default on the Map tab; the last choice on each
+    // is remembered on this device.
+    var TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+    var TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+    var TILE_KEY = 'yardway.mapTiles.';
+    var FILL_PLAIN = 0.2;
+    var FILL_OVER_TILES = 0.12;
 
     function haversine(a, b) {
         return window.YardwayGeo ? YardwayGeo.haversineMetres(a[0], a[1], b[0], b[1]) : Infinity;
@@ -53,6 +63,7 @@
             return {
                 variant: opts.variant || 'full',
                 highlight: opts.highlight || null,
+                tiles: false,     // the base map is showing
                 payload: null,
                 map: null,
                 group: null,
@@ -91,6 +102,50 @@
                     window.removeEventListener('yardway:map-focus', this._onFocus);
                     if (this._ro) { this._ro.disconnect(); }
                     if (this.map) { this.map.remove(); this.map = null; }
+                    this._tileLayer = null;
+                    this._attribution = null;
+                },
+
+                // ── The base map ──
+                tilesWanted: function () {
+                    var fallback = this.variant === 'full';
+                    try {
+                        var saved = localStorage.getItem(TILE_KEY + this.variant);
+                        if (saved === '1') return true;
+                        if (saved === '0') return false;
+                    } catch (err) { /* private mode */ }
+                    return fallback;
+                },
+
+                toggleTiles: function () {
+                    this.setTiles(!this.tiles);
+                    try { localStorage.setItem(TILE_KEY + this.variant, this.tiles ? '1' : '0'); } catch (err) { /* ignore */ }
+                },
+
+                setTiles: function (on) {
+                    var self = this;
+                    this.tiles = !!on;
+                    if (!this.map) return;
+                    var container = this.map.getContainer();
+                    if (this.tiles) {
+                        if (!this._tileLayer) {
+                            this._tileLayer = L.tileLayer(TILE_URL, { maxNativeZoom: 19, maxZoom: 21, attribution: TILE_ATTRIBUTION });
+                        }
+                        this._tileLayer.addTo(this.map);
+                        if (!this._attribution) this._attribution = L.control.attribution({ prefix: false });
+                        this._attribution.addTo(this.map);
+                        container.classList.add('has-tiles');
+                    } else {
+                        if (this._tileLayer) this.map.removeLayer(this._tileLayer);
+                        if (this._attribution) this._attribution.remove();
+                        container.classList.remove('has-tiles');
+                    }
+                    // Lighter fills over the map so what is under a parcel shows.
+                    var fill = this.tiles ? FILL_OVER_TILES : FILL_PLAIN;
+                    Object.keys(this.layers).forEach(function (pk) {
+                        var layer = self.layers[pk];
+                        if (layer && layer.setStyle) layer.setStyle({ fillOpacity: fill });
+                    });
                 },
 
                 mount: function () {
@@ -123,6 +178,7 @@
                         maxZoom: 21,
                         minZoom: 3
                     });
+                    this.setTiles(this.tilesWanted());
                     if (fine && !full) {
                         // Plain wheel: the page scrolls and a hint says how to
                         // zoom. Leaflet's own wheel listener sits on this element
@@ -204,7 +260,7 @@
                     var self = this;
                     var full = this.variant === 'full';
                     this.payload.locations.forEach(function (loc) {
-                        var style = { color: loc.colour, weight: STROKE_WEIGHT, fillColor: loc.colour, fillOpacity: 0.2, opacity: 1 };
+                        var style = { color: loc.colour, weight: STROKE_WEIGHT, fillColor: loc.colour, fillOpacity: self.tiles ? FILL_OVER_TILES : FILL_PLAIN, opacity: 1 };
                         var layer = null;
                         if (loc.boundary) {
                             layer = L.geoJSON(loc.boundary, { style: style, interactive: full });
