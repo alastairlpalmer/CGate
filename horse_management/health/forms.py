@@ -13,6 +13,8 @@ from core.forms import MoveHorseForm
 from core.models import Horse
 from .models import (
     BreedingRecord,
+    Covering,
+    PregnancyScan,
     FarrierVisit,
     MedicalCondition,
     Vaccination,
@@ -447,7 +449,8 @@ class BreedingRecordForm(ActiveHorseFormMixin, forms.ModelForm):
             'foal_dob': 'Foal date of birth',
         }
         help_texts = {
-            'date_covered': 'Foal due is worked out as 340 days from this date.',
+            'date_covered': 'The latest covering. Foal due is worked out as 340 days '
+                            'from it unless you type a due date.',
             'foal': 'Only foals are listed. Use "Record foaling" to create the '
                     'foal and link it in one step.',
         }
@@ -491,6 +494,11 @@ class BreedingRecordForm(ActiveHorseFormMixin, forms.ModelForm):
         # Auto-calculate foal due date if not provided
         if date_covered and not date_foal_due:
             cleaned_data['date_foal_due'] = date_covered + timedelta(days=340)
+        # A typed-in due date that is not 340 days from covering is kept as
+        # is; a blank or matching one follows the latest covering.
+        if date_covered:
+            auto_due = date_covered + timedelta(days=BreedingRecord.GESTATION_DAYS)
+            self.instance.due_date_is_manual = bool(date_foal_due) and date_foal_due != auto_due
         mare = cleaned_data.get('mare')
         foal = cleaned_data.get('foal')
         if mare and foal and foal.pk == mare.pk:
@@ -547,6 +555,23 @@ class FoalingForm(forms.Form):
                                      'placeholder': 'Foaling ease, time of birth, vet attendance…'}),
     )
 
+    # Yard and billing: what happens on the board and the invoice from the
+    # date of birth. Both default to "no change" so a back-dated foaling on
+    # an old record never rewrites placement history by accident.
+    mare_rate_type = forms.ModelChoiceField(
+        label="Mare's rate from foaling", required=False, queryset=None,
+        empty_label='Keep the current rate',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    place_foal = forms.BooleanField(
+        label='Place the foal with the mare on the yard board', required=False,
+    )
+    foal_rate_type = forms.ModelChoiceField(
+        label="Foal's rate", required=False, queryset=None,
+        empty_label='— choose a rate —',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+
     def __init__(self, *args, record, **kwargs):
         super().__init__(*args, **kwargs)
         self.record = record
@@ -555,6 +580,42 @@ class FoalingForm(forms.Form):
         self.fields['existing_foal'].queryset = Horse.objects.filter(
             Q(sex__in=(Horse.Sex.COLT, Horse.Sex.FILLY)) | Q(dam=record.mare_id),
         ).exclude(pk=record.mare_id).filter(birth_record__isnull=True).order_by('-date_of_birth', 'name')
+        from core.models import RateType
+        rates = RateType.objects.filter(is_active=True).order_by('name')
+        self.fields['mare_rate_type'].queryset = rates
+        self.fields['foal_rate_type'].queryset = rates
+        self.mare_placement = record.mare.current_placement
+        if not self.mare_placement:
+            # Nothing on the board to switch or place beside.
+            self.fields['mare_rate_type'].disabled = True
+            self.fields['place_foal'].disabled = True
+            self.fields['foal_rate_type'].disabled = True
+
+    @property
+    def suggested_mare_rate(self):
+        """A rate whose name mentions the mare and foal together, if the
+        yard has one; else any rate that mentions a foal."""
+        rates = self.fields['mare_rate_type'].queryset
+        return (
+            rates.filter(name__icontains='mare', name__regex=r'(?i)foal').first()
+            or rates.filter(name__icontains='foal').first()
+        )
+
+    def clean(self):
+        cleaned = super().clean()
+        if not cleaned.get('existing_foal') and not (cleaned.get('foal_name') or '').strip():
+            self.add_error('foal_name', 'Give the foal a name, or pick an existing horse record.')
+        if cleaned.get('place_foal') and not cleaned.get('foal_rate_type'):
+            self.add_error('foal_rate_type', 'Pick the rate the foal is charged at.')
+        if (cleaned.get('mare_rate_type') or cleaned.get('place_foal')) and self.mare_placement \
+                and cleaned.get('foal_dob') and cleaned['foal_dob'] <= self.mare_placement.start_date:
+            self.add_error(
+                'foal_dob',
+                f"The mare's current placement started {self.mare_placement.start_date:%d %b %Y}; "
+                "a rate change or foal placement must start after that. Leave both "
+                "unset to record the foaling only.",
+            )
+        return cleaned
 
     def clean_foal_dob(self):
         dob = self.cleaned_data['foal_dob']
@@ -564,34 +625,22 @@ class FoalingForm(forms.Form):
             raise forms.ValidationError('The date of birth cannot be in the future.')
         return dob
 
-    def clean(self):
-        cleaned = super().clean()
-        if not cleaned.get('existing_foal') and not (cleaned.get('foal_name') or '').strip():
-            self.add_error('foal_name', 'Give the foal a name, or pick an existing horse record.')
-        return cleaned
 
 
 class ScanResultForm(forms.Form):
     """Record a pregnancy scan on an open breeding record.
 
-    A 14-day scan that shows in foal confirms the pregnancy; one that does
-    not closes the record as Barren. A later heartbeat scan that finds no
-    foal closes it as Lost.
+    In foal (or twins) confirms the pregnancy. Not in foal closes the record
+    as Barren on the 14-day scan (add a covering to try again) or Lost on a
+    later scan. Any date back to the covering is accepted, so old seasons
+    can be reconciled.
     """
 
-    SCAN_14 = '14_day'
-    SCAN_HEARTBEAT = 'heartbeat'
-    SCAN_CHOICES = [
-        (SCAN_14, '14-day scan (in-foal check)'),
-        (SCAN_HEARTBEAT, 'Heartbeat scan'),
-    ]
-    RESULT_CHOICES = [
-        ('in_foal', 'In foal'),
-        ('not_in_foal', 'Not in foal'),
-    ]
+    SCAN_14 = PregnancyScan.ScanType.DAY_14
+    SCAN_HEARTBEAT = PregnancyScan.ScanType.HEARTBEAT
 
     scan_type = forms.ChoiceField(
-        label='Scan', choices=SCAN_CHOICES,
+        label='Scan', choices=PregnancyScan.ScanType.choices,
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
     scan_date = forms.DateField(
@@ -599,22 +648,72 @@ class ScanResultForm(forms.Form):
         widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
     )
     result = forms.ChoiceField(
-        label='Result', choices=RESULT_CHOICES, widget=forms.RadioSelect,
+        label='Result', choices=PregnancyScan.Result.choices, widget=forms.RadioSelect,
+    )
+    vet = forms.ModelChoiceField(
+        label='Vet', required=False, queryset=None, empty_label='— not recorded —',
+        widget=forms.Select(attrs={'class': 'form-select'}),
     )
     notes = forms.CharField(
         label='Notes', required=False,
         widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2,
-                                     'placeholder': 'Vet, twin check, anything to remember…'}),
+                                     'placeholder': 'Twin check, anything to remember…'}),
     )
 
     def __init__(self, *args, record, **kwargs):
         super().__init__(*args, **kwargs)
         self.record = record
+        from billing.models import ServiceProvider
+        self.fields['vet'].queryset = ServiceProvider.objects.filter(
+            provider_type='vet', is_active=True,
+        ).order_by('name')
 
     def clean_scan_date(self):
         scan_date = self.cleaned_data['scan_date']
-        if self.record.date_covered and scan_date < self.record.date_covered:
-            raise forms.ValidationError('The scan cannot be before the mare was covered.')
+        if self.record.date_covered and scan_date < self.record.first_covering_date:
+            raise forms.ValidationError('The scan cannot be before the mare was first covered.')
         if scan_date > timezone.localdate():
             raise forms.ValidationError('The scan date cannot be in the future.')
         return scan_date
+
+
+class CoveringForm(forms.Form):
+    """Add a covering to a breeding record (first, repeat, or re-cover)."""
+
+    date = forms.DateField(
+        label='Date covered',
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+    )
+    method = forms.ChoiceField(
+        label='Method', required=False, choices=Covering.Method.choices,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    stallion_name = forms.CharField(
+        label='Stallion', max_length=200, required=False,
+        widget=forms.TextInput(attrs={'class': 'form-input'}),
+        help_text="Leave as is unless a different stallion was used",
+    )
+    vet = forms.ModelChoiceField(
+        label='Vet / technician', required=False, queryset=None, empty_label='— not recorded —',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    notes = forms.CharField(
+        label='Notes', required=False,
+        widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+    )
+
+    def __init__(self, *args, record, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.record = record
+        from billing.models import ServiceProvider
+        self.fields['vet'].queryset = ServiceProvider.objects.filter(
+            provider_type='vet', is_active=True,
+        ).order_by('name')
+
+    def clean_date(self):
+        covered = self.cleaned_data['date']
+        if covered > timezone.localdate():
+            raise forms.ValidationError('The covering date cannot be in the future.')
+        if self.record.coverings.filter(date=covered).exists():
+            raise forms.ValidationError('A covering on this date is already recorded.')
+        return covered

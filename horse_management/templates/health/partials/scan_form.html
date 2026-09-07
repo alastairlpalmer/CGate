@@ -16,6 +16,7 @@ pregnancy; not in foal closes the record as Barren (14-day) or Lost
         <div class="rounded-lg bg-sand-50 border border-sand-100 px-3 py-2 text-sm text-charcoal-light">
             <span class="font-medium text-charcoal">{{ mare.name }}</span> &times; {{ record.stallion_name }}
             &middot; covered {{ record.date_covered|date:"d M Y" }}
+            {% if record.covering_count > 1 %}&middot; {{ record.covering_count }} coverings{% endif %}
             {% if record.day_of_gestation is not None %}&middot; day {{ record.day_of_gestation }}{% endif %}
             {% if record.date_scanned_14_days %}&middot; 14-day scan {{ record.date_scanned_14_days|date:"d M Y" }}{% endif %}
             {% if record.date_scanned_heartbeat %}&middot; heartbeat scan {{ record.date_scanned_heartbeat|date:"d M Y" }}{% endif %}
@@ -45,10 +46,10 @@ pregnancy; not in foal closes the record as Barren (14-day) or Lost
         <div{% if form.result.errors %} class="field-invalid"{% endif %}>
             <span class="block text-sm font-medium text-charcoal" id="scan-result-label">Result *</span>
             <div class="mt-1 flex flex-wrap items-center gap-2" role="group" aria-labelledby="scan-result-label">
-                <button type="button" class="chip" :class="result === 'in_foal' && 'chip-on'" :aria-pressed="result === 'in_foal'"
-                        @click="result = 'in_foal'">In foal</button>
-                <button type="button" class="chip" :class="result === 'not_in_foal' && 'chip-on'" :aria-pressed="result === 'not_in_foal'"
-                        @click="result = 'not_in_foal'">Not in foal</button>
+                {% for value, label in form.result.field.choices %}
+                <button type="button" class="chip" :class="result === '{{ value }}' && 'chip-on'" :aria-pressed="result === '{{ value }}'"
+                        @click="result = '{{ value }}'">{{ label }}</button>
+                {% endfor %}
             </div>
             <input type="hidden" name="result" :value="result">
             {% if form.result.errors %}
@@ -56,9 +57,19 @@ pregnancy; not in foal closes the record as Barren (14-day) or Lost
             {% endif %}
             <p class="mt-2 text-xs text-sage">
                 <span x-show="result === 'in_foal'">The record is set to Confirmed In-Foal. EHV reminders and the foal due date follow from it.</span>
-                <span x-show="result === 'not_in_foal' && scanType === '14_day'" x-cloak>The record is closed as Barren: the mare did not hold to this covering.</span>
-                <span x-show="result === 'not_in_foal' && scanType === 'heartbeat'" x-cloak>The record is closed as Lost: the mare held, then lost the pregnancy.</span>
+                <span x-show="result === 'twins'" x-cloak>Recorded as twins and Confirmed In-Foal. Add a note on the vet's plan for reduction.</span>
+                <span x-show="result === 'not_in_foal' && (scanType === '14_day' || '{{ record.status }}' === 'covered')" x-cloak>The record is closed as Barren. Use <strong>Add covering</strong> to try again on the next cycle; the scan stays in the history.</span>
+                <span x-show="result === 'not_in_foal' && scanType !== '14_day' && '{{ record.status }}' !== 'covered'" x-cloak>The record is closed as Lost: the mare held, then lost the pregnancy.</span>
+                <span x-show="result === 'inconclusive'" x-cloak>The scan is kept in the history; the status does not change. Book a re-scan.</span>
             </p>
+        </div>
+
+        <div{% if form.vet.errors %} class="field-invalid"{% endif %}>
+            <label for="{{ form.vet.id_for_label }}" class="block text-sm font-medium text-charcoal">Vet</label>
+            {{ form.vet }}
+            {% if form.vet.errors %}
+            <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.vet.errors.0 }}</p>
+            {% endif %}
         </div>
 
         <div{% if form.notes.errors %} class="field-invalid"{% endif %}>

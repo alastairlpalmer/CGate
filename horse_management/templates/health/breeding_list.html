@@ -12,18 +12,19 @@
     it on desktop. The heading stays for screen readers and the outline.
     {% endcomment %}
     <h1 class="sr-only">Breeding Records</h1>
-    {% if can_edit %}
     <div class="page-header">
         <div class="flex items-center gap-3">
+            <a href="{% url 'breeding_results' %}" class="btn-secondary">Season results</a>
+            {% if can_edit %}
             <a href="{% url 'breeding_create' %}" hx-get="{% url 'breeding_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record a covering" class="btn-primary">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                 </svg>
                 Record Covering
             </a>
+            {% endif %}
         </div>
     </div>
-    {% endif %}
 
     <!-- Season at a glance -->
     <div class="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Breeding summary">
@@ -75,8 +76,20 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-span-2 md:col-span-2 flex items-end justify-end">
-                {% if request.GET.horse or request.GET.status %}
+            <div>
+                <label class="dt-label mb-1" for="filter-season">Season</label>
+                <select name="season" id="filter-season" class="form-select"
+                        hx-get="{{ request.path }}" hx-trigger="change"
+                        hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
+                        hx-include="closest form" hx-push-url="true">
+                    <option value="">All seasons</option>
+                    {% for yr in seasons %}
+                    <option value="{{ yr }}" {% if season_filter == yr|stringformat:"s" %}selected{% endif %}>{{ yr }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-end justify-end">
+                {% if request.GET.horse or request.GET.status or request.GET.season %}
                 <a href="{% url 'breeding_list' %}" class="btn-ghost text-xs">Clear filters</a>
                 {% endif %}
             </div>
@@ -118,6 +131,9 @@
                     {% endif %}
                     <div class="mt-1.5 flex items-center gap-2 flex-wrap">
                         {% include 'health/partials/breeding_status_badge.html' with br=br %}
+                        {% if can_edit and br.can_add_covering %}
+                        <a href="{% url 'breeding_covering_add' br.pk %}" hx-get="{% url 'breeding_covering_add' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add covering for {{ br.mare.name }}" class="relative z-10 btn-ghost btn-xs">+ Covering</a>
+                        {% endif %}
                         {% if can_edit and br.next_scan %}
                         <a href="{% url 'breeding_scan' br.pk %}" hx-get="{% url 'breeding_scan' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Scan result for {{ br.mare.name }}" class="relative z-10 btn-ghost btn-xs">Scan</a>
                         {% endif %}
@@ -168,6 +184,7 @@
                         <td>{{ br.stallion_name }}</td>
                         <td class="text-sage whitespace-nowrap">
                             {{ br.date_covered|date:"d M Y" }}
+                            {% with n=br.coverings.all|length %}{% if n > 1 %}<div class="text-xs">{{ n }} coverings</div>{% endif %}{% endwith %}
                             {% if br.is_active_pregnancy %}
                             <div class="foal-bar !mt-1.5 w-24" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ br.gestation_progress }}" aria-label="Gestation progress">
                                 <i style="width: {{ br.gestation_progress }}%"></i>
@@ -208,6 +225,9 @@
                         </td>
                         {% if can_edit %}
                         <td class="text-right whitespace-nowrap">
+                            {% if br.can_add_covering %}
+                            <a href="{% url 'breeding_covering_add' br.pk %}" hx-get="{% url 'breeding_covering_add' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add covering for {{ br.mare.name }}" class="btn-ghost btn-xs">+ Covering</a>
+                            {% endif %}
                             {% if br.next_scan %}
                             <a href="{% url 'breeding_scan' br.pk %}" hx-get="{% url 'breeding_scan' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Scan result for {{ br.mare.name }}" class="{% if br.status == 'covered' %}btn-secondary{% else %}btn-ghost{% endif %} btn-xs">Scan</a>
                             {% endif %}

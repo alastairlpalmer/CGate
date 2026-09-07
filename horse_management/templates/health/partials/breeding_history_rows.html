@@ -1,0 +1,48 @@
+{% comment %}
+Coverings and scans of one breeding record, oldest first, with remove
+buttons for reconciliation. Context: br, can_edit.
+{% endcomment %}
+{% with coverings=br.coverings.all scans=br.scans.all %}
+{% if coverings or scans %}
+<div class="mt-3 pt-3 border-t border-sand grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs">
+    <div>
+        <h5 class="font-semibold text-forest uppercase tracking-wider mb-1.5">Coverings</h5>
+        <ul class="space-y-1">
+            {% for c in coverings %}
+            <li class="flex items-center justify-between gap-2">
+                <span class="text-charcoal">{{ c.date|date:"d M Y" }}{% if c.method %} &middot; {{ c.get_method_display }}{% endif %}{% if c.stallion_name %} &middot; {{ c.stallion_name }}{% endif %}{% if c.vet %} &middot; {{ c.vet.name }}{% endif %}{% if c.notes %} &middot; <span class="text-sage">{{ c.notes }}</span>{% endif %}</span>
+                {% if can_edit and coverings|length > 1 %}
+                <form method="post" action="{% url 'breeding_covering_delete' c.pk %}" onsubmit="return confirm('Remove the covering on {{ c.date|date:"d M Y" }}?')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-ghost btn-xs text-error-red" aria-label="Remove covering">Remove</button>
+                </form>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div>
+        <h5 class="font-semibold text-forest uppercase tracking-wider mb-1.5">Scans</h5>
+        {% if scans %}
+        <ul class="space-y-1">
+            {% for sc in scans %}
+            <li class="flex items-center justify-between gap-2">
+                <span class="text-charcoal">{{ sc.date|date:"d M Y" }} &middot; {{ sc.get_scan_type_display }} &middot;
+                    {% if sc.positive %}<span class="badge-success">{{ sc.get_result_display }}</span>{% elif sc.result == 'not_in_foal' %}<span class="badge-danger">{{ sc.get_result_display }}</span>{% else %}<span class="badge-neutral">{{ sc.get_result_display }}</span>{% endif %}
+                    {% if sc.vet %} &middot; {{ sc.vet.name }}{% endif %}{% if sc.notes %} &middot; <span class="text-sage">{{ sc.notes }}</span>{% endif %}</span>
+                {% if can_edit %}
+                <form method="post" action="{% url 'breeding_scan_delete' sc.pk %}" onsubmit="return confirm('Remove this scan?')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-ghost btn-xs text-error-red" aria-label="Remove scan">Remove</button>
+                </form>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-sage">No scans yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endwith %}

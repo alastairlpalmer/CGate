@@ -1065,8 +1065,16 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
         context['vet_visits'] = horse.vet_visits.select_related('vet').all()[:10]
         # Breeding (mare only) — single query, filter active in Python
         if horse.is_mare:
-            breeding_records = list(horse.breeding_records.select_related('foal').all())
+            breeding_records = list(
+                horse.breeding_records.select_related('foal')
+                .prefetch_related('coverings', 'scans', 'coverings__vet', 'scans__vet').all()
+            )
             context['breeding_records'] = breeding_records
+            # Every record but the open one, newest season first: the open
+            # one has its own card above.
+            context['breeding_history'] = [
+                br for br in breeding_records if br.status not in ('covered', 'confirmed')
+            ]
             context['active_pregnancy'] = next(
                 (br for br in breeding_records if br.status in ('covered', 'confirmed')), None
             )

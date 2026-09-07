@@ -1,0 +1,35 @@
+{% extends "notifications/email/_base.html" %}
+
+{% block extra_styles %}
+        .alert {
+            background-color: #dbeafe;
+            border: 1px solid #3b82f6;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .item { border-bottom: 1px solid #e5e7eb; padding: 10px 0; }
+{% endblock %}
+
+{% block content %}
+    <p>Dear {{ owner.name }},</p>
+
+    <div class="alert">
+        <strong>Breeding reminder{{ entries|length|pluralize }}</strong><br>
+        {% if entries|length == 1 %}One item needs your attention this week.{% else %}{{ entries|length }} items need your attention this week.{% endif %}
+    </div>
+
+    {% for e in entries %}
+    <div class="item">
+        <p><strong>{{ e.record.mare.name }}</strong> &times; {{ e.record.stallion_name }}</p>
+        <p><strong>{{ e.label }}:</strong> {{ e.due|date:"d/m/Y" }}</p>
+        {% if e.key == 'scan14' or e.key == 'heartbeat' %}
+        <p>Last covered {{ e.record.date_covered|date:"d/m/Y" }}. Please book the scan with your vet and let us know the result.</p>
+        {% else %}
+        <p>Expected foaling date {{ e.record.date_foal_due|date:"d/m/Y" }}. Please make sure we have your instructions for the foaling and the vet on call.</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    <p>Kind regards,<br>{{ business.business_name }}</p>
+{% endblock %}

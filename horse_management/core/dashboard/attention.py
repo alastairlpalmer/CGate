@@ -48,6 +48,9 @@ KIND_LABELS = {
     'egg_count': 'Egg count',
     'ehv': 'EHV vaccination',
     'foal': 'Foal due',
+    'scan': 'Pregnancy scan',
+    'foal_check': 'Newborn check',
+    'foal_passport': 'Foal passport',
     'document': 'Document',
     'departure': 'Departure to confirm',
     'departure_expected': 'Expected departure',
@@ -59,6 +62,7 @@ CATEGORY_OF_KIND = {
     'vaccination': 'health', 'farrier': 'health', 'vet': 'health',
     'egg_count': 'health', 'ehv': 'health',
     'foal': 'yard', 'departure': 'yard', 'departure_expected': 'yard',
+    'scan': 'health', 'foal_check': 'health', 'foal_passport': 'documents',
     'feed': 'yard',
     'document': 'documents',
     'invoice': 'money',
@@ -336,13 +340,38 @@ def _breeding(ctx):
     from health.models import BreedingRecord
 
     records = BreedingRecord.objects.filter(
-        status=BreedingRecord.Status.CONFIRMED, mare__is_active=True,
+        status__in=BreedingRecord.ACTIVE_STATUSES, mare__is_active=True,
     ).select_related('mare')
     health_full = ctx.can('health', LEVEL_FULL)
+    breeding_full = ctx.can('breeding', LEVEL_FULL)
     include_ehv = ctx.can('health')
     items = []
     for record in records:
         mare = record.mare
+        # Scans: the 14-day scan 14 days after the last covering, the
+        # heartbeat scan 28 days after it. Shown from the day they fall due.
+        scan_due = None
+        next_scan = record.next_scan
+        if next_scan == '14-day':
+            scan_due = (record.date_covered + timedelta(days=SCAN_14_DAYS), '14-day scan')
+        elif next_scan == 'heartbeat':
+            scan_due = (record.date_covered + timedelta(days=SCAN_HEARTBEAT_DAYS), 'Heartbeat scan')
+        if scan_due and scan_due[0] <= ctx.horizon:
+            due, label = scan_due
+            actions = []
+            if breeding_full:
+                actions.append(Action(
+                    label='Scan result', url=reverse('breeding_scan', args=[record.pk]),
+                    popup_title=f'Scan result for {mare.name}',
+                    style='primary' if due <= ctx.today else 'ghost',
+                ))
+            items.append(ctx.horse_item(
+                'scan', mare, due=due,
+                detail=f'{label} · covered {record.date_covered:%d %b}',
+                actions=actions, key=f'scan-{record.pk}',
+            ))
+        if record.status != BreedingRecord.Status.CONFIRMED:
+            continue
         if include_ehv:
             for month, due in sorted(record.ehv_vaccination_dates.items()):
                 if due - timedelta(days=14) <= ctx.today <= due + timedelta(days=7):
@@ -361,11 +390,11 @@ def _breeding(ctx):
         if due and due <= ctx.horizon:
             overdue = due < ctx.today
             actions = []
-            if ctx.can('breeding', LEVEL_FULL):
+            if breeding_full:
                 actions.append(Action(
-                    label='Update record' if overdue else 'Open record',
-                    url=reverse('breeding_update', args=[record.pk]),
-                    popup_title=f'Breeding record for {mare.name}',
+                    label='Record foaling',
+                    url=reverse('breeding_foaling', args=[record.pk]),
+                    popup_title=f'Record foaling for {mare.name}',
                     style='primary' if overdue else 'ghost',
                 ))
             items.append(ctx.horse_item(
@@ -377,7 +406,73 @@ def _breeding(ctx):
                 ),
                 actions=actions, key=f'foal-{record.pk}',
             ))
+    items.extend(_foals(ctx))
     return items
+
+
+# Pregnancy scan timing from the last covering, and the foal deadlines.
+SCAN_14_DAYS = 14
+SCAN_HEARTBEAT_DAYS = 28
+FOAL_CHECK_DAYS = 1
+FOAL_PASSPORT_MONTHS = 6
+
+
+def _foals(ctx):
+    """This season's foals: a newborn vet check within a day of birth, and
+    the passport and microchip due six months from birth."""
+    from ..models import Horse
+    from health.models import VetVisit
+
+    season_start = ctx.today - timedelta(days=FOAL_PASSPORT_MONTHS * 31 + 7)
+    foals = Horse.objects.filter(
+        is_active=True, birth_record__isnull=False, date_of_birth__gte=season_start,
+    ).annotate(
+        checked=Exists(VetVisit.objects.filter(
+            horse=OuterRef('pk'), date__gte=OuterRef('date_of_birth'),
+        )),
+    ).distinct()
+    health_full = ctx.can('health', LEVEL_FULL)
+    horses_full = ctx.can('horses', LEVEL_FULL)
+    items = []
+    for foal in foals:
+        dob = foal.date_of_birth
+        check_due = dob + timedelta(days=FOAL_CHECK_DAYS)
+        if not foal.checked and check_due <= ctx.horizon and ctx.can('health'):
+            actions = []
+            if health_full:
+                actions.append(ctx.record_action(
+                    'vet_visit_create', foal, 'Record', f'Vet visit for {foal.name}',
+                    primary=True,
+                ))
+            items.append(ctx.horse_item(
+                'foal_check', foal, due=check_due,
+                detail='Newborn vet check · IgG and first examination',
+                actions=actions, key=f'foal-check-{foal.pk}',
+            ))
+        if not foal.has_passport and ctx.can('horses'):
+            passport_due = _add_months(dob, FOAL_PASSPORT_MONTHS)
+            if passport_due <= ctx.horizon + timedelta(days=30):
+                actions = []
+                if horses_full:
+                    actions.append(Action(
+                        label='Add passport', url=reverse('horse_photo_add', args=[foal.pk]) + '?category=passport',
+                        popup_title=f'Add passport for {foal.name}',
+                        style='primary' if passport_due <= ctx.today else 'ghost',
+                    ))
+                items.append(ctx.horse_item(
+                    'foal_passport', foal, due=passport_due,
+                    detail=f'Passport and microchip · within 6 months of birth ({dob:%d %b %Y})',
+                    actions=actions, key=f'foal-passport-{foal.pk}',
+                ))
+    return items
+
+
+def _add_months(day, months):
+    month = day.month - 1 + months
+    year = day.year + month // 12
+    month = month % 12 + 1
+    import calendar
+    return day.replace(year=year, month=month, day=min(day.day, calendar.monthrange(year, month)[1]))
 
 
 def _documents(ctx):

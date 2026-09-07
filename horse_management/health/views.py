@@ -36,6 +36,7 @@ from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_resp
 
 from .forms import (
     BreedingRecordForm,
+    CoveringForm,
     FoalingForm,
     ScanResultForm,
     BulkActualDepartureForm,
@@ -58,6 +59,8 @@ from .forms import (
 )
 from .models import (
     BreedingRecord,
+    Covering,
+    PregnancyScan,
     FarrierVisit,
     MedicalCondition,
     Vaccination,
@@ -1169,6 +1172,84 @@ class VetVisitUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
 
 # ─── Breeding Record Views ───────────────────────────────────────────
 
+def breeding_seasons():
+    """Years with at least one covering, newest first."""
+    return sorted({
+        d.year for d in Covering.objects.values_list('date', flat=True)
+    }, reverse=True)
+
+
+def season_results(season):
+    """Outcome figures for one season: mares, pregnancies, foals, rates,
+    and the same broken down by stallion. Backdated records count too, so
+    old seasons can be reconciled and compared."""
+    records = list(
+        BreedingRecord.objects.filter(coverings__date__year=season)
+        .select_related('mare', 'foal').prefetch_related('coverings', 'scans').distinct()
+    )
+    open_statuses = set(BreedingRecord.ACTIVE_STATUSES)
+
+    def tally(rows):
+        mares = {r.mare_id for r in rows}
+        covers = sum(r.covering_count for r in rows)
+        held = [r for r in rows if r.status in ('confirmed', 'born', 'lost')]
+        born = [r for r in rows if r.status == 'born']
+        lost = [r for r in rows if r.status == 'lost']
+        barren = [r for r in rows if r.status == 'barren']
+        still_open = [r for r in rows if r.status in open_statuses]
+        settled = len(rows) - len([r for r in rows if r.status == 'covered'])
+        return {
+            'records': len(rows),
+            'mares': len(mares),
+            'covers': covers,
+            'covers_per_record': round(covers / len(rows), 1) if rows else 0,
+            'held': len(held),
+            'born': len(born),
+            'lost': len(lost),
+            'barren': len(barren),
+            'open': len(still_open),
+            'conception_rate': round(100 * len(held) / settled) if settled else None,
+            'live_foal_rate': round(100 * len(born) / len(rows)) if rows else None,
+            'colts': sum(1 for r in born if r.foal_sex == 'colt'),
+            'fillies': sum(1 for r in born if r.foal_sex == 'filly'),
+        }
+
+    by_stallion = {}
+    for r in records:
+        by_stallion.setdefault(r.stallion_name or '(no stallion)', []).append(r)
+    stallions = [
+        {'name': name, **tally(rows)}
+        for name, rows in sorted(by_stallion.items(), key=lambda kv: kv[0].lower())
+    ]
+    records.sort(key=lambda r: (r.mare.name.lower(), r.date_covered))
+    return {'season': season, 'totals': tally(records), 'stallions': stallions, 'records': records}
+
+
+@feature_required('breeding', LEVEL_VIEW)
+def breeding_results(request):
+    """Season results: conception and live-foal rates, by stallion, with
+    every record of the season listed so the figures can be checked."""
+    seasons = breeding_seasons()
+    season = request.GET.get('season', '')
+    if season.isdigit() and int(season) in seasons:
+        season = int(season)
+    else:
+        season = seasons[0] if seasons else timezone.localdate().year
+    results = season_results(season)
+    # Year-on-year comparison line for the previous seasons.
+    history = [
+        {'season': yr, **season_results(yr)['totals']}
+        for yr in seasons if yr != season
+    ][:5]
+    return render(request, 'health/breeding_results.html', {
+        'seasons': seasons,
+        'season': season,
+        'results': results,
+        'history': history,
+        'can_edit': has_feature_access(request.user, 'breeding', LEVEL_FULL),
+    })
+
+
 BREEDING_STATUS_FILTERS = [
     ('', 'All'),
     ('active', 'Active (covered or in foal)'),
@@ -1195,6 +1276,9 @@ class BreedingRecordListView(FeatureAccessMixin, ListView):
         horse = self.request.GET.get('horse')
         if horse and horse.isdigit():
             queryset = queryset.filter(mare_id=horse)
+        season = self.request.GET.get('season', '')
+        if season.isdigit():
+            queryset = queryset.filter(coverings__date__year=int(season)).distinct()
         status = self.request.GET.get('status', '')
         if status == 'active':
             queryset = queryset.filter(status__in=BreedingRecord.ACTIVE_STATUSES)
@@ -1202,7 +1286,7 @@ class BreedingRecordListView(FeatureAccessMixin, ListView):
             queryset = queryset.filter(status=status)
         # Open pregnancies first, soonest foal at the top; closed records
         # follow, newest covering first.
-        return queryset.order_by(
+        return queryset.prefetch_related('coverings', 'scans').order_by(
             Case(
                 When(status__in=BreedingRecord.ACTIVE_STATUSES, then=Value(0)),
                 default=Value(1), output_field=IntegerField(),
@@ -1218,6 +1302,8 @@ class BreedingRecordListView(FeatureAccessMixin, ListView):
         context['horses'] = Horse.objects.filter(is_active=True, sex='mare').order_by('name')
         context['status_filters'] = BREEDING_STATUS_FILTERS
         context['status_filter'] = self.request.GET.get('status', '')
+        context['season_filter'] = self.request.GET.get('season', '')
+        context['seasons'] = breeding_seasons()
         context['can_edit'] = has_feature_access(self.request.user, 'breeding', LEVEL_FULL)
 
         # Season at a glance — unfiltered, so the tiles read the same
@@ -1305,17 +1391,21 @@ def breeding_foaling(request, pk):
                     foal_microchip=form.cleaned_data['foal_microchip'],
                     foaling_notes=form.cleaned_data['foaling_notes'],
                     existing_foal=form.cleaned_data['existing_foal'],
+                    mare_rate_type=form.cleaned_data.get('mare_rate_type'),
+                    place_foal=bool(form.cleaned_data.get('place_foal')),
+                    foal_rate_type=form.cleaned_data.get('foal_rate_type'),
                 )
             except ValidationError as e:
                 form.add_error(None, e)
             else:
                 messages.success(request, format_html(
                     'Foaling recorded: <a href="{}" class="underline font-semibold">{}</a> '
-                    'born {} to {}.',
+                    'born {} to {}. <a href="{}?category=foaling" class="underline font-semibold">Add foaling photos</a>',
                     reverse('horse_detail', args=[foal.pk]),
                     foal.name,
                     form.cleaned_data['foal_dob'].strftime('%d %b %Y'),
                     record.mare.name,
+                    reverse('horse_photo_add', args=[record.mare.pk]),
                 ))
                 if in_popup:
                     return popup_saved_response()
@@ -1370,6 +1460,7 @@ def breeding_scan(request, pk):
                     scan_date=form.cleaned_data['scan_date'],
                     result=form.cleaned_data['result'],
                     notes=form.cleaned_data['notes'],
+                    vet=form.cleaned_data['vet'],
                 )
             except ValidationError as e:
                 form.add_error(None, e)
@@ -1402,6 +1493,112 @@ def breeding_scan(request, pk):
         'in_popup': in_popup,
         'today': today,
     })
+
+
+@feature_required('breeding')
+def breeding_covering_add(request, pk):
+    """Add a covering (first, repeat or re-cover) to a breeding record.
+
+    Serves the pop-up sheet too (HX-Target: popup-body).
+    """
+    from .services import add_covering
+
+    record = get_object_or_404(BreedingRecord.objects.select_related('mare'), pk=pk)
+    in_popup = is_popup_request(request)
+    today = timezone.localdate()
+
+    if not record.can_add_covering:
+        messages.info(
+            request,
+            f"{record.mare.name}'s record with {record.stallion_name} is "
+            f"{record.get_status_display().lower()}; start a new record for another covering.",
+        )
+        if in_popup:
+            return popup_saved_response()
+        return redirect('horse_detail', pk=record.mare_id)
+
+    if request.method == 'POST':
+        form = CoveringForm(request.POST, record=record)
+        if form.is_valid():
+            try:
+                add_covering(
+                    record,
+                    date=form.cleaned_data['date'],
+                    method=form.cleaned_data['method'],
+                    stallion_name=form.cleaned_data['stallion_name'].strip(),
+                    vet=form.cleaned_data['vet'],
+                    notes=form.cleaned_data['notes'],
+                )
+            except ValidationError as e:
+                form.add_error(None, e)
+            else:
+                messages.success(
+                    request,
+                    f"Covering recorded for {record.mare.name} on "
+                    f"{form.cleaned_data['date']:%d %b %Y}. "
+                    f"Foal due {record.date_foal_due:%d %b %Y}.",
+                )
+                if in_popup:
+                    return popup_saved_response()
+                return redirect('horse_detail', pk=record.mare_id)
+    else:
+        form = CoveringForm(
+            initial={'date': today, 'stallion_name': record.stallion_name,
+                     'method': record.coverings.order_by('-date').values_list('method', flat=True).first() or ''},
+            record=record,
+        )
+
+    template = 'health/partials/covering_form.html' if in_popup else 'health/breeding_covering.html'
+    return render(request, template, {
+        'record': record,
+        'mare': record.mare,
+        'form': form,
+        'in_popup': in_popup,
+        'today': today,
+    })
+
+
+@feature_required('breeding')
+def breeding_covering_delete(request, pk):
+    """Remove a covering added by mistake (POST). The record's dates follow
+    the remaining coverings; the last covering cannot be removed."""
+    covering = get_object_or_404(Covering.objects.select_related('record__mare'), pk=pk)
+    record = covering.record
+    if request.method != 'POST':
+        return HttpResponseBadRequest("POST required")
+    if record.coverings.count() <= 1:
+        messages.error(request, "A record needs at least one covering; edit the date instead.")
+    else:
+        covering.delete()
+        messages.success(request, f"Covering on {covering.date:%d %b %Y} removed.")
+    return redirect('horse_detail', pk=record.mare_id)
+
+
+@feature_required('breeding')
+def breeding_scan_delete(request, pk):
+    """Remove a scan entered by mistake (POST). The status is not rewound;
+    use Edit if the outcome needs changing too."""
+    scan = get_object_or_404(PregnancyScan.objects.select_related('record__mare'), pk=pk)
+    record = scan.record
+    if request.method != 'POST':
+        return HttpResponseBadRequest("POST required")
+    scan.delete()
+    # Keep the denormalised positive dates in step with what is left.
+    changed = []
+    for scan_type, field_name in (
+        (PregnancyScan.ScanType.DAY_14, 'date_scanned_14_days'),
+        (PregnancyScan.ScanType.HEARTBEAT, 'date_scanned_heartbeat'),
+    ):
+        latest = record.scans.filter(
+            scan_type=scan_type, result__in=('in_foal', 'twins'),
+        ).order_by('-date').values_list('date', flat=True).first()
+        if getattr(record, field_name) != latest:
+            setattr(record, field_name, latest)
+            changed.append(field_name)
+    if changed:
+        record.save(update_fields=changed + ['updated_at'])
+    messages.success(request, f"{scan.get_scan_type_display()} on {scan.date:%d %b %Y} removed.")
+    return redirect('horse_detail', pk=record.mare_id)
 
 
 # ─── Quick-add vet (HTMX) ───────────────────────────────────────────
