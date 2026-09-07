@@ -772,6 +772,16 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .location-map-leader circle { fill: #6A8990; stroke: #fff; stroke-width: 1.5; }
     .location-map-hint { @apply absolute inset-x-0 top-1/2 z-[510] mx-auto w-max max-w-[80%] -translate-y-1/2 rounded-full bg-charcoal/80 px-4 py-2 text-center text-sm text-white pointer-events-none; }
     .location-map-hint[hidden] { display: none; }
+    /* Fit (under Leaflet's +/-) and, on the dashboard card, Full map. A
+       touch screen has no +/- on the card and opens the Map tab with a tap. */
+    .location-map-fit { @apply absolute left-2.5 top-[84px] z-[510] rounded-md border border-light-sage bg-white/95 px-2 py-1 text-xs font-medium text-charcoal shadow-sm transition-colors hover:bg-sage-50; }
+    .location-map-open { @apply absolute right-2.5 top-2.5 z-[510] rounded-md border border-light-sage bg-white/95 px-2.5 py-1 text-xs font-medium text-forest no-underline shadow-sm transition-colors hover:bg-sage-50; }
+    /* An animated zoom: the script sends badges and names to where they
+       will end and CSS carries them there on Leaflet's own curve; leader
+       lines cannot follow and sit the zoom out. */
+    .location-map.is-zooming .location-map-badge,
+    .location-map.is-zooming .location-map-label { transition: left .25s cubic-bezier(0, 0, .25, 1), top .25s cubic-bezier(0, 0, .25, 1); }
+    .location-map.is-zooming .location-map-leaders { opacity: 0; }
     .location-map-pin { @apply absolute -top-1 -right-1 z-[501] grid h-4 w-4 place-items-center rounded-full bg-saddle text-white; }
     .near-chip { @apply inline-flex items-center gap-1.5 rounded-full border border-forest bg-sage-50 px-3 py-1.5 text-xs font-medium text-forest no-underline transition-colors hover:bg-white min-h-[36px]; }
     .near-chip-quiet { @apply inline-flex items-center gap-1.5 rounded-full border border-light-sage bg-white px-3 py-1.5 text-xs text-sage no-underline transition-colors hover:text-forest hover:border-sage min-h-[36px]; }
@@ -807,19 +817,32 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 }
 
 /* Needs action rows decide their shape by the width of their list, not the
-   viewport (see .attn-list): one line when there is room for it. */
-@container (min-width: 40rem) {
+   viewport (see .attn-list). From 34rem a row is one line: the name, what
+   is due, how late, the button. The text block is a flex line whose parts
+   give way in order — where the horse is first, then what is due, the
+   name last — so the words that matter survive a narrow column. Where the
+   horse is and the exact date join in from 48rem. */
+@container (min-width: 34rem) {
     .attn-item { grid-template-columns: 2.25rem minmax(0, 1fr) auto auto; align-items: center; }
-    .attn-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .attn-sub { margin-left: 0; }
-    .attn-detail { display: inline; }
-    .attn-text > .attn-sub:not(:first-child)::before,
-    .attn-text > .attn-detail:not(:first-child)::before { content: '·'; margin: 0 .45em; color: #6A8990; }
+    .attn-text { display: flex; align-items: baseline; min-width: 0; white-space: nowrap; }
+    .attn-text > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .attn-text > .coat-dot { flex: 0 0 auto; overflow: visible; }
+    .attn-title { order: 1; flex: 0 1 auto; }
+    .attn-detail { order: 2; display: inline; flex: 0 2 auto; }
+    .attn-sub { order: 3; display: none; flex: 0 20 auto; margin-left: 0; }
+    .attn-text > .attn-detail:not(:first-child)::before,
+    .attn-text > .attn-sub::before { content: '·'; margin: 0 .45em; color: #6A8990; }
     .attn-foot { display: contents; }
     .attn-when { justify-content: flex-end; }
-}
-@container (min-width: 40rem) and (max-width: 48rem) {
     .attn-date { display: none; }
+}
+@container (min-width: 48rem) {
+    .attn-sub { display: inline; }
+    .attn-date { display: inline; }
+}
+
+@media (pointer: coarse) {
+    .location-map-open, .location-map.is-compact .location-map-fit { display: none; }
 }
 
 /* Motion that reports change (UI audit 3.10) */

@@ -10,21 +10,23 @@ the chosen one is shown, so no fetch is needed when GPS picks another.
 
 The root is the dashboard grid item itself, so a card that hides (no
 site to show) takes no room. It is the first zone: on a phone the map is
-square at the top; on a wide screen the card takes seven columns of
-twelve on the left, Needs action the five beside it, and the map fills
+square at the top; on a wide screen the card takes the left half (seven
+columns of twelve from 1728px), Needs action the rest, and the map fills
 the card's height (static/css/input.css, .location-map.is-compact). The
 grid in dashboard.html listens for `near-you:visible` and gives Needs
 action the full width whenever the card cannot show.
 
 Two tap targets (plan 2.5): a badge opens that location's horse list;
-everywhere else on the card opens the Map tab.
+everywhere else on the card opens the Map tab. With a fine pointer the
+map itself is for looking — drag, Ctrl (⌘) + scroll, +/- — and the
+header, footer and the Full map button open the Map tab.
 {% endcomment %}
 {{ near_you_card|json_script:"near-you-card-data" }}
 <section x-data="nearYouCard" x-show="ready" x-cloak
-         class="zone-enter {% if 'attention' in visible %}lg:col-span-7{% else %}lg:col-span-12{% endif %}"
+         class="zone-enter {% if 'attention' in visible %}lg:col-span-6 min-[1728px]:col-span-7{% else %}lg:col-span-12{% endif %}"
          style="--i:1" aria-labelledby="near-you-title" data-testid="near-you-zone">
     <div class="card overflow-hidden cursor-pointer h-full flex flex-col" data-testid="near-you-card"
-         @click="open()" @keydown.enter="open()" tabindex="0" role="link" :aria-label="'Open the map of ' + site">
+         @click="open($event)" @keydown.enter="open()" tabindex="0" role="link" :aria-label="'Open the map of ' + site">
         <div class="section-header">
             <div class="flex items-center gap-2.5 min-w-0">
                 <h2 class="section-title" id="near-you-title">Near you</h2>
