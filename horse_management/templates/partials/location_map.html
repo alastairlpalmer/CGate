@@ -25,6 +25,7 @@ shape opens the location; in the compact variant the card handles the tap.
      data-site="{{ payload.site }}">
     {{ payload|json_script:map_id }}
     <div x-ref="map" class="absolute inset-0" role="img" aria-label="Map of {{ payload.site|default:'the site' }}"></div>
+    {% if variant == 'full' %}<div x-ref="hint" class="location-map-hint" hidden aria-live="polite"></div>{% endif %}
     {% for loc in payload.locations %}{% if loc.kind %}
     <a href="{{ loc.urls.horses }}" class="location-map-badge"
        data-map-badge="{{ loc.pk }}" data-anchor="{{ loc.anchor.0 }},{{ loc.anchor.1 }}" data-count="{{ loc.count }}" data-holds="{{ loc.holds_horses|yesno:'1,0' }}"

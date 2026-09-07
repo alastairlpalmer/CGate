@@ -740,6 +740,8 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .location-map-badge.is-highlight { @apply border-forest ring-2 ring-forest/40; }
     .location-map-badge .board-count { @apply h-9 w-9 text-xs; }
     .location-map-label { @apply absolute z-[490] -translate-x-1/2 whitespace-nowrap rounded-md bg-white/85 px-1.5 py-0.5 text-[11px] font-medium leading-4 text-charcoal shadow-sm pointer-events-none; }
+    .location-map-hint { @apply absolute inset-x-0 top-1/2 z-[510] mx-auto w-max max-w-[80%] -translate-y-1/2 rounded-full bg-charcoal/80 px-4 py-2 text-center text-sm text-white pointer-events-none; }
+    .location-map-hint[hidden] { display: none; }
     .location-map-pin { @apply absolute -top-1 -right-1 z-[501] grid h-4 w-4 place-items-center rounded-full bg-saddle text-white; }
     .near-chip { @apply inline-flex items-center gap-1.5 rounded-full border border-forest bg-sage-50 px-3 py-1.5 text-xs font-medium text-forest no-underline transition-colors hover:bg-white min-h-[36px]; }
     .near-chip-quiet { @apply inline-flex items-center gap-1.5 rounded-full border border-light-sage bg-white px-3 py-1.5 text-xs text-sage no-underline transition-colors hover:text-forest hover:border-sage min-h-[36px]; }

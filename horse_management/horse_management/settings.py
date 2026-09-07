@@ -522,7 +522,11 @@ if not DEBUG:
 # Debug toolbar (only in DEBUG mode)
 if DEBUG:
     INSTALLED_APPS += ['debug_toolbar']
-    MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
+    # After GZipMiddleware, or the toolbar cannot read compressed responses.
+    MIDDLEWARE.insert(
+        MIDDLEWARE.index('django.middleware.gzip.GZipMiddleware') + 1,
+        'debug_toolbar.middleware.DebugToolbarMiddleware',
+    )
     INTERNAL_IPS = ['127.0.0.1']
 # QA runs: keep DEBUG on but drop the toolbar so it can't intercept clicks.
 if DEBUG and os.environ.get('QA_NO_TOOLBAR'):

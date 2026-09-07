@@ -83,11 +83,17 @@
                     var el = this.$refs.map;
                     if (this.map || !el || !window.L || !document.body.contains(el)) return;
                     var full = this.variant === 'full';
+                    // Scrolling must stay the page's. On a touch screen one
+                    // finger scrolls the page and two fingers move and zoom the
+                    // map (Leaflet's touchZoom pans as it pinches). On a desktop
+                    // the wheel zooms the map only after a click, and stops
+                    // when the pointer leaves, so a page scroll never sticks.
+                    var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
                     this.map = L.map(el, {
                         attributionControl: false,
                         zoomControl: full,
-                        dragging: full,
-                        scrollWheelZoom: full,
+                        dragging: full && !coarse,
+                        scrollWheelZoom: false,
                         touchZoom: full,
                         doubleClickZoom: full,
                         boxZoom: false,
@@ -97,6 +103,15 @@
                         maxZoom: 21,
                         minZoom: 3
                     });
+                    if (full) {
+                        el.addEventListener('click', function () { if (self.map) self.map.scrollWheelZoom.enable(); });
+                        el.addEventListener('mouseleave', function () { if (self.map) self.map.scrollWheelZoom.disable(); });
+                        if (coarse) {
+                            el.addEventListener('touchstart', function (e) {
+                                if (e.touches.length === 1) self.hint('Use two fingers to move the map');
+                            }, { passive: true });
+                        }
+                    }
                     this.group = L.featureGroup().addTo(this.map);
                     this.draw();
                     this.map.on('move zoom viewreset resize', function () { self.place(); });
@@ -111,6 +126,17 @@
                         this._ro.observe(el);
                     }
                     this.focus(this.highlight);
+                },
+
+                // A short notice over the map (how to move it on a phone).
+                hint: function (text) {
+                    var self = this;
+                    var node = this.$refs.hint;
+                    if (!node) return;
+                    node.textContent = text;
+                    node.hidden = false;
+                    clearTimeout(this._hintTimer);
+                    this._hintTimer = setTimeout(function () { node.hidden = true; }, 1600);
                 },
 
                 // The rendering rule, once.
