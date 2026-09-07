@@ -11,10 +11,11 @@ the chosen one is shown, so no fetch is needed when GPS picks another.
 The root is the dashboard grid item itself, so a card that hides (no
 site to show) takes no room. It is the first zone: on a phone the map is
 square at the top; on a wide screen the card takes the left half (seven
-columns of twelve from 1728px), Needs action the rest, and the map fills
-the card's height (static/css/input.css, .location-map.is-compact). The
-grid in dashboard.html listens for `near-you:visible` and gives Needs
-action the full width whenever the card cannot show.
+columns of twelve from 1728px), the Needs action and Next 14 days column
+the rest, and the map fills the card's height, which the grid matches to
+that column (static/css/input.css, .location-map.is-compact). The grid
+in dashboard.html listens for `near-you:visible` and gives the column
+the full width whenever the card cannot show.
 
 Two tap targets (plan 2.5): a badge opens that location's horse list;
 everywhere else on the card opens the Map tab. With a fine pointer the

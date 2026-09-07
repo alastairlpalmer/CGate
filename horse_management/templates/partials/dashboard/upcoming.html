@@ -1,7 +1,10 @@
 {% load ui_extras %}
 {% comment %}
 Zone C: a 14-day strip from today, then the visits worth booking together.
-Context: upcoming (core.dashboard.upcoming.build).
+Context: upcoming (core.dashboard.upcoming.build). The card sits under
+Needs action in a column on a wide screen, so the strip lays itself out
+by the width it has (.strip-wrap, a size container): one row of 14 days
+from 30rem, two rows of 7 narrower than that.
 {% endcomment %}
 <div class="card overflow-hidden h-full">
     <div class="section-header">
@@ -12,6 +15,7 @@ Context: upcoming (core.dashboard.upcoming.build).
         <span class="font-mono text-xs text-sage">{{ upcoming.start|date:"j M" }} &ndash; {{ upcoming.end|date:"j M" }}</span>
     </div>
 
+    <div class="strip-wrap">
     <div class="strip" role="list" aria-label="Days">
         {% for day in upcoming.days %}
         <div class="strip-day{% if day.is_today %} is-today{% elif day.is_weekend %} is-weekend{% endif %}{% if day.count %} has-items{% endif %}" role="listitem"
@@ -30,6 +34,7 @@ Context: upcoming (core.dashboard.upcoming.build).
         {% for entry in upcoming.legend %}<span><i class="strip-dot dot-{{ entry.kind }}"></i>{{ entry.label }}</span>{% endfor %}
     </div>
     {% endif %}
+    </div>
 
     {% if upcoming.visits %}
     <ul class="divide-y divide-light-sage border-t border-light-sage">

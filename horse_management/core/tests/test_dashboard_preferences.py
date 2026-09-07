@@ -396,6 +396,39 @@ class DashboardPageTests(TestCase):
         self.assertIn('badge-neutral">1</span>', body)
         self.assertNotIn('is-hot', body)
 
+    def test_list_shows_four_rows_then_folds_the_rest(self):
+        """Zone B keeps to four rows: each row defers to the list (shown),
+        and a 'Show N more' button appears only when there are more than
+        four, counting the rows the page's filter chip lets through."""
+        field = Location.objects.create(name='Top Paddock', site='Main')
+        user = make_user('folduser')
+        self.client.force_login(user)
+        for i in range(4):
+            horse = self._horse(f'Horse{i}', field)
+            Vaccination.objects.create(
+                horse=horse, vaccination_type=self.flu,
+                date_given=self.today - timedelta(days=300),
+                next_due_date=self.today - timedelta(days=i + 1),
+            )
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('x-data="attentionList(4)"', body)
+        self.assertIn('id="needs-action-list"', body)
+        self.assertEqual(body.count('x-show="shown($el)"'), 4)
+        self.assertNotIn('aria-controls="needs-action-list"', body)
+
+        horse = self._horse('Horse4', field)
+        Vaccination.objects.create(
+            horse=horse, vaccination_type=self.flu,
+            date_given=self.today - timedelta(days=300),
+            next_due_date=self.today - timedelta(days=9),
+        )
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertEqual(body.count('x-show="shown($el)"'), 5)
+        self.assertIn('aria-controls="needs-action-list"', body)
+        self.assertIn('>Show 1 more</button>', body)
+        # Next 14 days sits under Needs action in the same column.
+        self.assertLess(body.index('needs-action-title'), body.index('upcoming-title'))
+
     def test_dashboard_has_no_charts(self):
         user = make_user('nochartuser')
         self.client.force_login(user)
