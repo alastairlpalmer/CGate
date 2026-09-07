@@ -159,6 +159,22 @@ Log into admin and configure:
 - Bank details for invoices
 - Default payment terms
 
+## Services & Prices
+
+Settings → Services & Prices holds a directory of priced services (flu
+vaccination, wormers, worm egg count, farrier work, transport…). A starter
+list is seeded on first migrate; edit prices or add items there.
+
+On any record form — single horse or the bulk "Apply to Selected" sheet —
+pick the service and the price (and the record's details, such as the
+wormer name or the farrier work type) fill in. **Override price** unlocks
+the cost for a one-off change; **Other** leaves every field free-form.
+The bulk bar also has **Add Charge** for one-off priced items such as
+transport, billed to each selected horse's owner.
+
+Worm egg counts are read against this key (eggs per gram): low < 200,
+mild 200–499, moderate 500–999, high 1000+.
+
 ## Rate Types
 
 The system supports different livery rates:

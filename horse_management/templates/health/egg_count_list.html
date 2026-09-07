@@ -68,11 +68,7 @@
                         <td class="text-sage" data-label="Sample Type">{{ ec.get_sample_type_display }}</td>
                         <td class="text-sage" data-label="Lab">{{ ec.lab_name|default:"-" }}</td>
                         <td data-label="Level">
-                            {% if ec.is_high %}
-                            <span class="badge-danger">High</span>
-                            {% else %}
-                            <span class="badge-success">Normal</span>
-                            {% endif %}
+                            <span class="{{ ec.level_badge_class }}">{{ ec.level_label }}</span>
                         </td>
                         <td>
                             <a href="{% url 'egg_count_update' ec.pk %}" hx-get="{% url 'egg_count_update' ec.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit egg count" class="btn-ghost btn-xs">Edit</a>

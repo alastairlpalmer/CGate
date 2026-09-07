@@ -6,6 +6,7 @@ from datetime import timedelta
 
 from django import forms
 
+from billing.forms import ServicePickerMixin
 from core.forms import MoveHorseForm
 from core.models import Horse
 from .models import (
@@ -42,7 +43,10 @@ class ActiveHorseFormMixin:
             self.fields['mare'].queryset = Horse.objects.filter(is_active=True)
 
 
-class VaccinationForm(OptionalCostMixin, ActiveHorseFormMixin, forms.ModelForm):
+class VaccinationForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFormMixin, forms.ModelForm):
+    service_category = 'vaccination'
+    service_fill = (('vaccination_type', 'vaccination_type'),)
+
     class Meta:
         model = Vaccination
         fields = [
@@ -109,7 +113,10 @@ class VaccinationForm(OptionalCostMixin, ActiveHorseFormMixin, forms.ModelForm):
         return cleaned_data
 
 
-class FarrierVisitForm(ActiveHorseFormMixin, forms.ModelForm):
+class FarrierVisitForm(ServicePickerMixin, ActiveHorseFormMixin, forms.ModelForm):
+    service_category = 'farrier'
+    service_fill = (('work_done', 'farrier_work'),)
+
     class Meta:
         model = FarrierVisit
         fields = [
@@ -167,7 +174,10 @@ class VaccinationTypeForm(forms.ModelForm):
         return interval
 
 
-class WormingTreatmentForm(OptionalCostMixin, ActiveHorseFormMixin, forms.ModelForm):
+class WormingTreatmentForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFormMixin, forms.ModelForm):
+    service_category = 'worming'
+    service_fill = (('product_name', 'name'),)
+
     class Meta:
         model = WormingTreatment
         fields = [
@@ -186,16 +196,20 @@ class WormingTreatmentForm(OptionalCostMixin, ActiveHorseFormMixin, forms.ModelF
         }
 
 
-class WormEggCountForm(ActiveHorseFormMixin, forms.ModelForm):
+class WormEggCountForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFormMixin, forms.ModelForm):
+    service_category = 'egg_count'
+
     class Meta:
         model = WormEggCount
-        fields = ['horse', 'date', 'count', 'lab_name', 'sample_type', 'notes']
+        fields = ['horse', 'date', 'count', 'lab_name', 'sample_type', 'cost', 'notes']
+        help_texts = {'count': WormEggCount.LEVEL_KEY}
         widgets = {
             'horse': forms.Select(attrs={'class': 'form-select'}),
             'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'count': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
             'lab_name': forms.TextInput(attrs={'class': 'form-input'}),
             'sample_type': forms.Select(attrs={'class': 'form-select'}),
+            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -213,7 +227,10 @@ class MedicalConditionForm(ActiveHorseFormMixin, forms.ModelForm):
         }
 
 
-class VetVisitForm(ActiveHorseFormMixin, forms.ModelForm):
+class VetVisitForm(ServicePickerMixin, ActiveHorseFormMixin, forms.ModelForm):
+    service_category = 'vet'
+    service_fill = (('reason', 'name'),)
+
     class Meta:
         model = VetVisit
         fields = [
@@ -243,7 +260,10 @@ class VetVisitForm(ActiveHorseFormMixin, forms.ModelForm):
 
 # ─── Bulk Forms (no horse field) ──────────────────────────────────────
 
-class BulkVaccinationForm(OptionalCostMixin, forms.ModelForm):
+class BulkVaccinationForm(ServicePickerMixin, OptionalCostMixin, forms.ModelForm):
+    service_category = 'vaccination'
+    service_fill = (('vaccination_type', 'vaccination_type'),)
+
     class Meta:
         model = Vaccination
         fields = ['vaccination_type', 'date_given', 'next_due_date', 'vet', 'batch_number', 'cost', 'notes']
@@ -269,7 +289,10 @@ class BulkVaccinationForm(OptionalCostMixin, forms.ModelForm):
         self.fields['vet'].empty_label = "Select vet..."
 
 
-class BulkFarrierVisitForm(forms.ModelForm):
+class BulkFarrierVisitForm(ServicePickerMixin, forms.ModelForm):
+    service_category = 'farrier'
+    service_fill = (('work_done', 'farrier_work'),)
+
     class Meta:
         model = FarrierVisit
         fields = ['date', 'service_provider', 'work_done', 'next_due_date', 'cost', 'notes']
@@ -288,7 +311,10 @@ class BulkFarrierVisitForm(forms.ModelForm):
         }
 
 
-class BulkWormingTreatmentForm(OptionalCostMixin, forms.ModelForm):
+class BulkWormingTreatmentForm(ServicePickerMixin, OptionalCostMixin, forms.ModelForm):
+    service_category = 'worming'
+    service_fill = (('product_name', 'name'),)
+
     class Meta:
         model = WormingTreatment
         fields = ['date', 'product_name', 'active_ingredient', 'dose', 'administered_by', 'cost', 'notes']
@@ -305,20 +331,31 @@ class BulkWormingTreatmentForm(OptionalCostMixin, forms.ModelForm):
         }
 
 
-class BulkWormEggCountForm(forms.ModelForm):
+class BulkWormEggCountForm(ServicePickerMixin, OptionalCostMixin, forms.ModelForm):
+    service_category = 'egg_count'
+
     class Meta:
         model = WormEggCount
-        fields = ['date', 'count', 'lab_name', 'sample_type', 'notes']
+        fields = ['date', 'count', 'lab_name', 'sample_type', 'cost', 'notes']
+        labels = {'cost': 'Cost per horse (£)'}
+        help_texts = {
+            'count': WormEggCount.LEVEL_KEY,
+            'cost': 'Charged in full to each selected horse’s owner.',
+        }
         widgets = {
             'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'count': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
             'lab_name': forms.TextInput(attrs={'class': 'form-input'}),
             'sample_type': forms.Select(attrs={'class': 'form-select'}),
+            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
 
-class BulkVetVisitForm(forms.ModelForm):
+class BulkVetVisitForm(ServicePickerMixin, forms.ModelForm):
+    service_category = 'vet'
+    service_fill = (('reason', 'name'),)
+
     class Meta:
         model = VetVisit
         fields = ['date', 'vet', 'reason', 'diagnosis', 'treatment', 'follow_up_date', 'cost', 'notes']

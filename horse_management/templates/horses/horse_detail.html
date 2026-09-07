@@ -567,7 +567,7 @@
                                     {% elif event.type == 'egg_count' %}
                                     <p class="font-medium {% if event.obj.is_high %}text-error-red{% else %}text-charcoal{% endif %}">
                                         {{ event.obj.count }} EPG
-                                        {% if event.obj.is_high %}<span class="badge-danger ml-1">High</span>{% else %}<span class="badge-success ml-1">Normal</span>{% endif %}
+                                        <span class="{{ event.obj.level_badge_class }} ml-1">{{ event.obj.level_label }}</span>
                                     </p>
                                     <p class="text-sage text-xs mt-0.5">{{ event.obj.get_sample_type_display }}</p>
                                     {% endif %}

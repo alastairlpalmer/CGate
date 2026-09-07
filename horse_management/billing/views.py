@@ -199,6 +199,7 @@ class ExtraChargeDeleteView(FeatureAccessMixin, DeleteView):
     # sticks.
     HEALTH_RECORD_ACCESSORS = (
         'vaccination', 'farrier_visit', 'worming_treatment', 'vet_visit',
+        'worm_egg_count',
     )
 
     def dispatch(self, request, *args, **kwargs):

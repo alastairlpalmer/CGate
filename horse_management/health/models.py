@@ -306,9 +306,33 @@ class WormEggCount(models.Model):
     sample_type = models.CharField(
         max_length=20, choices=SampleType.choices, default=SampleType.FEC
     )
+    cost = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Leave 0 if not billable; a cost creates a charge for the owner",
+    )
     notes = models.TextField(blank=True)
+    extra_charge = models.OneToOneField(
+        'billing.ExtraCharge',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='worm_egg_count'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # The egg-count key, in eggs per gram (EPG): the upper bound (exclusive)
+    # of each band, its code, its label and the badge class the lists use.
+    # low < 200, mild < 500, moderate < 1000, high from 1000 up.
+    LEVELS = (
+        (200, 'low', 'Low', 'badge-success'),
+        (500, 'mild', 'Mild', 'badge-warning'),
+        (1000, 'moderate', 'Moderate', 'badge-warning'),
+        (None, 'high', 'High', 'badge-danger'),
+    )
+    LEVEL_KEY = "Key (EPG): low < 200 · mild 200–499 · moderate 500–999 · high 1000+"
 
     class Meta:
         ordering = ['-date']
@@ -319,9 +343,29 @@ class WormEggCount(models.Model):
     def __str__(self):
         return f"{self.horse.name} - {self.count} EPG ({self.date})"
 
+    def _level_row(self):
+        for upper, code, label, badge in self.LEVELS:
+            if upper is None or self.count < upper:
+                return code, label, badge
+        return self.LEVELS[-1][1:]
+
+    @property
+    def level(self):
+        """'low' | 'mild' | 'moderate' | 'high' per the egg-count key."""
+        return self._level_row()[0]
+
+    @property
+    def level_label(self):
+        return self._level_row()[1]
+
+    @property
+    def level_badge_class(self):
+        return self._level_row()[2]
+
     @property
     def is_high(self):
-        return self.count > 200
+        """Above the treatment threshold (200 EPG) — anything but 'low'."""
+        return self.count >= 200
 
 
 class MedicalCondition(models.Model):

@@ -39,6 +39,9 @@ title and the accent outline that marks it out from the page behind.
                 <option value="vet_visit">Record Vet Visit</option>
                 <option value="condition">Record Condition</option>
                 {% endif %}
+                {% if feature_access.charges.full %}
+                <option value="charge">Add Charge (transport, other)</option>
+                {% endif %}
                 {% if feature_access.horses.full %}
                 <option value="move">Move to Location</option>
                 <option value="expected_departure">Set Expected Departure</option>
