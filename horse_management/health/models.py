@@ -512,3 +512,66 @@ class BreedingRecord(models.Model):
         if not self.ehv_reminders_sent:
             return set()
         return {int(m) for m in self.ehv_reminders_sent.split(',') if m.strip()}
+
+    # ── Operational helpers (used by the breeding list and the mare page) ──
+
+    GESTATION_DAYS = 340
+    ACTIVE_STATUSES = ('covered', 'confirmed')
+
+    @property
+    def is_active_pregnancy(self):
+        """Covered or confirmed: the mare is (or may be) carrying."""
+        return self.status in self.ACTIVE_STATUSES
+
+    @property
+    def can_record_foaling(self):
+        """Foaling can be recorded while the pregnancy is still open."""
+        return self.is_active_pregnancy and self.foal_id is None
+
+    @property
+    def day_of_gestation(self):
+        """Days since covering (today), or None when not applicable."""
+        if not self.date_covered or not self.is_active_pregnancy:
+            return None
+        return (timezone.localdate() - self.date_covered).days
+
+    @property
+    def gestation_progress(self):
+        """0-100 percent of a 340-day gestation, clamped."""
+        day = self.day_of_gestation
+        if day is None:
+            return 0
+        return max(0, min(100, round(day * 100 / self.GESTATION_DAYS)))
+
+    @property
+    def days_to_foal_due(self):
+        """Signed days until the due date (negative = past)."""
+        if not self.date_foal_due or not self.is_active_pregnancy:
+            return None
+        return (self.date_foal_due - timezone.localdate()).days
+
+    @property
+    def is_due_soon(self):
+        days = self.days_to_foal_due
+        return days is not None and 0 <= days <= 14
+
+    @property
+    def is_past_due(self):
+        days = self.days_to_foal_due
+        return days is not None and days < 0
+
+    @property
+    def next_ehv(self):
+        """The next EHV-1,4 dose still to come: {'month', 'date', 'sent'}.
+
+        Only for open pregnancies. ``sent`` says whether the owner reminder
+        for that month has already gone out.
+        """
+        if not self.is_active_pregnancy:
+            return None
+        today = timezone.localdate()
+        sent = self.sent_ehv_months
+        for month, ehv_date in sorted(self.ehv_vaccination_dates.items()):
+            if ehv_date >= today:
+                return {'month': month, 'date': ehv_date, 'sent': month in sent}
+        return None

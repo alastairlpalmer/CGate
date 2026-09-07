@@ -19,7 +19,7 @@ from core.permissions import (
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Case, F, IntegerField, Q, Value, When
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -32,10 +32,11 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 from billing.forms import BulkChargeForm
 from billing.models import ExtraCharge
 from core.models import Horse, Placement
-from core.views._popup import PopupFormMixin, popup_saved_response
+from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_response
 
 from .forms import (
     BreedingRecordForm,
+    FoalingForm,
     BulkActualDepartureForm,
     BulkExpectedDepartureForm,
     BulkFarrierVisitForm,
@@ -1167,6 +1168,17 @@ class VetVisitUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
 
 # ─── Breeding Record Views ───────────────────────────────────────────
 
+BREEDING_STATUS_FILTERS = [
+    ('', 'All'),
+    ('active', 'Active (covered or in foal)'),
+    ('covered', 'Covered — awaiting scan'),
+    ('confirmed', 'Confirmed in foal'),
+    ('born', 'Born'),
+    ('lost', 'Lost'),
+    ('barren', 'Barren'),
+]
+
+
 class BreedingRecordListView(FeatureAccessMixin, ListView):
     feature = 'breeding'
     access_level = LEVEL_VIEW
@@ -1182,14 +1194,46 @@ class BreedingRecordListView(FeatureAccessMixin, ListView):
         horse = self.request.GET.get('horse')
         if horse and horse.isdigit():
             queryset = queryset.filter(mare_id=horse)
-        status = self.request.GET.get('status')
-        if status:
+        status = self.request.GET.get('status', '')
+        if status == 'active':
+            queryset = queryset.filter(status__in=BreedingRecord.ACTIVE_STATUSES)
+        elif status in BreedingRecord.Status.values:
             queryset = queryset.filter(status=status)
-        return queryset.order_by('-date_covered')
+        # Open pregnancies first, soonest foal at the top; closed records
+        # follow, newest covering first.
+        return queryset.order_by(
+            Case(
+                When(status__in=BreedingRecord.ACTIVE_STATUSES, then=Value(0)),
+                default=Value(1), output_field=IntegerField(),
+            ),
+            F('date_foal_due').asc(nulls_last=True),
+            '-date_covered',
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['horses'] = Horse.objects.filter(is_active=True, sex='mare')
+        today = timezone.localdate()
+        context['today'] = today
+        context['horses'] = Horse.objects.filter(is_active=True, sex='mare').order_by('name')
+        context['status_filters'] = BREEDING_STATUS_FILTERS
+        context['status_filter'] = self.request.GET.get('status', '')
+        context['can_edit'] = has_feature_access(self.request.user, 'breeding', LEVEL_FULL)
+
+        # Season at a glance — unfiltered, so the tiles read the same
+        # whatever the list below is narrowed to.
+        live = BreedingRecord.objects.filter(mare__is_active=True)
+        open_records = live.filter(status__in=BreedingRecord.ACTIVE_STATUSES)
+        context['summary'] = {
+            'in_foal': open_records.filter(status=BreedingRecord.Status.CONFIRMED).count(),
+            'awaiting_scan': open_records.filter(status=BreedingRecord.Status.COVERED).count(),
+            'due_30': open_records.filter(
+                date_foal_due__gte=today, date_foal_due__lte=today + timedelta(days=30),
+            ).count(),
+            'past_due': open_records.filter(date_foal_due__lt=today).count(),
+            'born_this_year': live.filter(
+                status=BreedingRecord.Status.BORN, foal_dob__year=today.year,
+            ).count(),
+        }
         return context
 
 
@@ -1218,6 +1262,79 @@ class BreedingRecordUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
     form_class = BreedingRecordForm
     template_name = 'health/breeding_form.html'
     success_url = reverse_lazy('breeding_list')
+
+    def form_valid(self, form):
+        messages.success(self.request, "Breeding record updated.")
+        return super().form_valid(form)
+
+
+@feature_required('breeding')
+def breeding_foaling(request, pk):
+    """Record a foaling: create (or link) the foal and close the record as Born.
+
+    Serves the pop-up sheet too (HX-Target: popup-body): the form partial
+    alone, 204 + ``popup:saved`` on success.
+    """
+    from .services import record_foaling
+
+    record = get_object_or_404(BreedingRecord.objects.select_related('mare'), pk=pk)
+    in_popup = is_popup_request(request)
+    today = timezone.localdate()
+
+    if not record.can_record_foaling:
+        messages.info(
+            request,
+            f"{record.mare.name}'s record with {record.stallion_name} is "
+            f"{record.get_status_display().lower()}, so there is no foaling to record.",
+        )
+        if in_popup:
+            return popup_saved_response()
+        return redirect('horse_detail', pk=record.mare_id)
+
+    if request.method == 'POST':
+        form = FoalingForm(request.POST, record=record)
+        if form.is_valid():
+            try:
+                foal = record_foaling(
+                    record,
+                    foal_dob=form.cleaned_data['foal_dob'],
+                    foal_sex=form.cleaned_data['foal_sex'],
+                    foal_colour=form.cleaned_data['foal_colour'],
+                    foal_name=form.cleaned_data['foal_name'],
+                    foal_microchip=form.cleaned_data['foal_microchip'],
+                    foaling_notes=form.cleaned_data['foaling_notes'],
+                    existing_foal=form.cleaned_data['existing_foal'],
+                )
+            except ValidationError as e:
+                form.add_error(None, e)
+            else:
+                messages.success(request, format_html(
+                    'Foaling recorded: <a href="{}" class="underline font-semibold">{}</a> '
+                    'born {} to {}.',
+                    reverse('horse_detail', args=[foal.pk]),
+                    foal.name,
+                    form.cleaned_data['foal_dob'].strftime('%d %b %Y'),
+                    record.mare.name,
+                ))
+                if in_popup:
+                    return popup_saved_response()
+                return redirect('horse_detail', pk=foal.pk)
+    else:
+        initial = {'foal_dob': today}
+        if record.foal_sex:
+            initial['foal_sex'] = record.foal_sex
+        if record.foal_colour:
+            initial['foal_colour'] = record.foal_colour
+        form = FoalingForm(initial=initial, record=record)
+
+    template = 'health/partials/foaling_form.html' if in_popup else 'health/breeding_foaling.html'
+    return render(request, template, {
+        'record': record,
+        'mare': record.mare,
+        'form': form,
+        'in_popup': in_popup,
+        'today': today,
+    })
 
 
 # ─── Quick-add vet (HTMX) ───────────────────────────────────────────

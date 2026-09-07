@@ -1,0 +1,12 @@
+{% comment %}Status pill for a breeding record. Context: br.{% endcomment %}
+{% if br.status == 'confirmed' %}
+<span class="badge-info">In foal</span>
+{% elif br.status == 'born' %}
+<span class="badge-success">Born</span>
+{% elif br.status == 'covered' %}
+<span class="badge-warning">Covered</span>
+{% elif br.status == 'lost' %}
+<span class="badge-danger">Lost</span>
+{% else %}
+<span class="badge-neutral">Barren</span>
+{% endif %}

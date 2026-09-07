@@ -5,6 +5,8 @@ Forms for health app.
 from datetime import timedelta
 
 from django import forms
+from django.db.models import Q
+from django.utils import timezone
 
 from billing.forms import ServicePickerMixin
 from core.forms import MoveHorseForm
@@ -432,11 +434,23 @@ class BreedingRecordForm(ActiveHorseFormMixin, forms.ModelForm):
     class Meta:
         model = BreedingRecord
         fields = [
-            'mare', 'stallion_name', 'date_covered',
+            'mare', 'stallion_name', 'date_covered', 'status',
             'date_scanned_14_days', 'date_scanned_heartbeat', 'date_foal_due',
             'foal', 'foal_dob', 'foal_sex', 'foal_colour', 'foal_microchip',
-            'foaling_notes', 'status'
+            'foaling_notes',
         ]
+        labels = {
+            'date_scanned_14_days': '14-day scan',
+            'date_scanned_heartbeat': 'Heartbeat scan',
+            'date_foal_due': 'Foal due',
+            'foal': 'Foal (existing record)',
+            'foal_dob': 'Foal date of birth',
+        }
+        help_texts = {
+            'date_covered': 'Foal due is worked out as 340 days from this date.',
+            'foal': 'Only foals are listed. Use "Record foaling" to create the '
+                    'foal and link it in one step.',
+        }
         widgets = {
             'mare': forms.Select(attrs={'class': 'form-select'}),
             'stallion_name': forms.TextInput(attrs={'class': 'form-input'}),
@@ -453,6 +467,23 @@ class BreedingRecordForm(ActiveHorseFormMixin, forms.ModelForm):
             'status': forms.Select(attrs={'class': 'form-select'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The mare picker lists mares only (the model says so too, but the
+        # ActiveHorseFormMixin reset the queryset to every active horse).
+        self.fields['mare'].queryset = Horse.objects.filter(
+            is_active=True, sex=Horse.Sex.MARE,
+        ).order_by('name')
+        # The foal picker used to list every horse on the yard; a foal is
+        # a colt/filly, a horse with a dam on record, or the one already
+        # linked here.
+        current_foal = getattr(self.instance, 'foal_id', None)
+        foal_q = Q(sex__in=(Horse.Sex.COLT, Horse.Sex.FILLY)) | Q(dam__isnull=False)
+        if current_foal:
+            foal_q |= Q(pk=current_foal)
+        self.fields['foal'].queryset = Horse.objects.filter(foal_q).order_by('-date_of_birth', 'name')
+        self.fields['foal'].required = False
+
     def clean(self):
         cleaned_data = super().clean()
         date_covered = cleaned_data.get('date_covered')
@@ -460,4 +491,81 @@ class BreedingRecordForm(ActiveHorseFormMixin, forms.ModelForm):
         # Auto-calculate foal due date if not provided
         if date_covered and not date_foal_due:
             cleaned_data['date_foal_due'] = date_covered + timedelta(days=340)
+        mare = cleaned_data.get('mare')
+        foal = cleaned_data.get('foal')
+        if mare and foal and foal.pk == mare.pk:
+            self.add_error('foal', 'The foal cannot be the mare herself.')
+        foal_dob = cleaned_data.get('foal_dob')
+        if date_covered and foal_dob and foal_dob < date_covered:
+            self.add_error('foal_dob', 'The foal cannot be born before the mare was covered.')
+        status = cleaned_data.get('status')
+        if status == BreedingRecord.Status.BORN and not (foal or foal_dob):
+            self.add_error(
+                'status',
+                'Add the foal\'s date of birth (or use Record foaling) before marking this as Born.',
+            )
         return cleaned_data
+
+
+class FoalingForm(forms.Form):
+    """Record a foaling on an open breeding record.
+
+    Creates the foal's horse record (linked to the mare as dam, the stallion
+    as sire, and the mare's owners as owners) and closes the breeding record
+    as Born. Pick an existing horse instead when the foal was already added.
+    """
+
+    foal_dob = forms.DateField(
+        label='Date of birth',
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+    )
+    foal_name = forms.CharField(
+        label='Foal name', max_length=200, required=False,
+        widget=forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Vivian 2026 foal'}),
+    )
+    foal_sex = forms.ChoiceField(
+        label='Sex', choices=BreedingRecord.FoalSex.choices,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    foal_colour = forms.ChoiceField(
+        label='Colour', required=False,
+        choices=[('', '— not yet known —')] + list(BreedingRecord.FoalColour.choices),
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    foal_microchip = forms.CharField(
+        label='Microchip', max_length=100, required=False,
+        widget=forms.TextInput(attrs={'class': 'form-input'}),
+    )
+    existing_foal = forms.ModelChoiceField(
+        label='Or link a horse already on the system', required=False,
+        queryset=Horse.objects.none(), empty_label='— create a new horse record —',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    foaling_notes = forms.CharField(
+        label='Foaling notes', required=False,
+        widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3,
+                                     'placeholder': 'Foaling ease, time of birth, vet attendance…'}),
+    )
+
+    def __init__(self, *args, record, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.record = record
+        # Horses that could be this foal: colts/fillies (or anything with a
+        # dam on record) not already linked to another breeding record.
+        self.fields['existing_foal'].queryset = Horse.objects.filter(
+            Q(sex__in=(Horse.Sex.COLT, Horse.Sex.FILLY)) | Q(dam=record.mare_id),
+        ).exclude(pk=record.mare_id).filter(birth_record__isnull=True).order_by('-date_of_birth', 'name')
+
+    def clean_foal_dob(self):
+        dob = self.cleaned_data['foal_dob']
+        if self.record.date_covered and dob < self.record.date_covered:
+            raise forms.ValidationError('The foal cannot be born before the mare was covered.')
+        if dob > timezone.localdate():
+            raise forms.ValidationError('The date of birth cannot be in the future.')
+        return dob
+
+    def clean(self):
+        cleaned = super().clean()
+        if not cleaned.get('existing_foal') and not (cleaned.get('foal_name') or '').strip():
+            self.add_error('foal_name', 'Give the foal a name, or pick an existing horse record.')
+        return cleaned

@@ -194,7 +194,7 @@ class PopupGenericTriggerTests(PopupGenericFormTestCase):
         for title in (
             'Vaccination for Dobbin', 'Farrier visit for Dobbin', 'Worming for Dobbin',
             'Egg count for Dobbin', 'Condition for Dobbin', 'Vet visit for Dobbin',
-            'Breeding record for Dobbin', 'Charge for Dobbin',
+            'Record a covering for Dobbin', 'Charge for Dobbin',
         ):
             with self.subTest(title=title):
                 self.assertContains(response, f'data-popup-title="{title}"')

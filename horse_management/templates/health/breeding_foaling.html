@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}Record Foaling for {{ mare.name }} - Yardway{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Record Foaling</h1>
+            <p class="page-subtitle">{{ mare.name }} &times; {{ record.stallion_name }}</p>
+        </div>
+    </div>
+
+    <!-- Foaling Form (same partial the pop-up sheet loads) -->
+    <div class="card">
+        {% include 'health/partials/foaling_form.html' %}
+    </div>
+
+</div>
+{% endblock %}

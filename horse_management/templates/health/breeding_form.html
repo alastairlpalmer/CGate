@@ -8,9 +8,12 @@
     <!-- Page Header -->
     <div class="page-header">
         <div>
-            <h1 class="page-title">{% if object %}Edit Breeding Record{% else %}Add Breeding Record{% endif %}</h1>
-            <p class="page-subtitle">{% if object %}Update breeding record details below.{% else %}Record a new breeding event.{% endif %}</p>
+            <h1 class="page-title">{% if object %}Edit Breeding Record{% else %}Record a Covering{% endif %}</h1>
+            <p class="page-subtitle">{% if object %}{{ object.mare.name }} &times; {{ object.stallion_name }}{% else %}Record a covering; scans, EHV doses and the foal due date follow from it.{% endif %}</p>
         </div>
+        {% if object.can_record_foaling %}
+        <a href="{% url 'breeding_foaling' object.pk %}" class="btn-primary">Record foaling</a>
+        {% endif %}
     </div>
 
     <!-- Form -->
@@ -93,7 +96,7 @@
                         {% if form.date_foal_due.errors %}
                           <p class="mt-1 text-sm text-error-red">{{ form.date_foal_due.errors.0 }}</p>
                         {% endif %}
-                        <p class="text-xs text-sage mt-1">Leave blank to auto-calculate (~340 days from covering)</p>
+                        <p class="text-xs text-sage mt-1">Leave blank to work it out as 340 days from covering</p>
                     </div>
                 </div>
             </fieldset>
@@ -109,7 +112,7 @@
                         {% if form.foal.errors %}
                           <p class="mt-1 text-sm text-error-red">{{ form.foal.errors.0 }}</p>
                         {% endif %}
-                        <p class="text-xs text-sage mt-1">Link to the foal's horse record</p>
+                        <p class="text-xs text-sage mt-1">{{ form.foal.help_text }}</p>
                     </div>
 
                     <div>
