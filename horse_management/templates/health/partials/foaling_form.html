@@ -89,6 +89,38 @@ record and closes the breeding record as Born in one save.
             </div>
         </div>
 
+        <details class="group" {% if form.mare_rate_type.value or form.place_foal.value or form.foal_rate_type.errors or form.mare_rate_type.errors %}open{% endif %}>
+            <summary class="inline-flex items-center gap-1.5 min-h-[44px] sm:min-h-0 text-sm font-medium text-forest cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                <svg class="w-4 h-4 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                </svg>
+                Yard board &amp; billing
+                <span class="font-normal text-sage">&middot; {% if form.mare_placement %}{{ mare.name }} is at {{ form.mare_placement.location.name }} on {{ form.mare_placement.rate_type.name }}{% else %}{{ mare.name }} has no placement, so nothing to change{% endif %}</span>
+            </summary>
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5" x-data="{ placeFoal: {% if form.place_foal.value %}true{% else %}false{% endif %} }">
+                <div class="sm:col-span-2{% if form.mare_rate_type.errors %} field-invalid{% endif %}">
+                    <label for="{{ form.mare_rate_type.id_for_label }}" class="block text-sm font-medium text-charcoal">{{ form.mare_rate_type.label }}</label>
+                    {{ form.mare_rate_type }}
+                    {% if form.mare_rate_type.errors %}
+                    <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.mare_rate_type.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-sage">Ends the mare's placement the day before the date of birth and starts a new one at this rate.{% if form.suggested_mare_rate %} Suggested: {{ form.suggested_mare_rate.name }}.{% endif %}</p>
+                </div>
+                <div class="sm:col-span-2 flex items-center gap-2 min-h-[44px]">
+                    <input type="checkbox" name="place_foal" id="{{ form.place_foal.id_for_label }}" class="form-checkbox" x-model="placeFoal" {% if form.place_foal.field.disabled %}disabled{% endif %}>
+                    <label for="{{ form.place_foal.id_for_label }}" class="text-sm text-charcoal">{{ form.place_foal.label }}</label>
+                </div>
+                <div class="sm:col-span-2{% if form.foal_rate_type.errors %} field-invalid{% endif %}" x-show="placeFoal" x-cloak>
+                    <label for="{{ form.foal_rate_type.id_for_label }}" class="block text-sm font-medium text-charcoal">{{ form.foal_rate_type.label }}</label>
+                    {{ form.foal_rate_type }}
+                    {% if form.foal_rate_type.errors %}
+                    <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.foal_rate_type.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-sage">Skip this when the mare's rate already covers the foal.</p>
+                </div>
+            </div>
+        </details>
+
         <div{% if form.foaling_notes.errors %} class="field-invalid"{% endif %}>
             <label for="{{ form.foaling_notes.id_for_label }}" class="block text-sm font-medium text-charcoal">Foaling notes</label>
             {{ form.foaling_notes }}

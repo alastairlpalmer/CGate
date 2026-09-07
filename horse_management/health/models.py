@@ -482,6 +482,16 @@ class BreedingRecord(models.Model):
         max_length=20, blank=True,
         help_text="Comma-separated list of EHV reminder months already sent (e.g. 5,7)"
     )
+    due_date_is_manual = models.BooleanField(
+        default=False,
+        help_text="True when the foal due date was typed in rather than worked "
+                  "out as 340 days from the last covering.",
+    )
+    breeding_reminders_sent = models.CharField(
+        max_length=200, blank=True,
+        help_text="Comma-separated keys of owner reminders already sent "
+                  "(scan14, heartbeat, foal30, foal7)",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -491,10 +501,60 @@ class BreedingRecord(models.Model):
     def __str__(self):
         return f"{self.mare.name} x {self.stallion_name} ({self.date_covered})"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._loaded_date_covered = self.date_covered
+
     def save(self, *args, **kwargs):
-        if not self.date_foal_due and self.date_covered:
-            self.date_foal_due = self.date_covered + timedelta(days=340)
+        if self.date_covered and not self.due_date_is_manual:
+            self.date_foal_due = self.date_covered + timedelta(days=self.GESTATION_DAYS)
+        elif not self.date_foal_due and self.date_covered:
+            self.date_foal_due = self.date_covered + timedelta(days=self.GESTATION_DAYS)
         super().save(*args, **kwargs)
+        self._sync_coverings_from_date()
+        self._loaded_date_covered = self.date_covered
+
+    def _sync_coverings_from_date(self):
+        """Keep the covering history and ``date_covered`` in step.
+
+        A record created straight from the form (one date) gets its first
+        Covering row; editing that date on a record with a single covering
+        moves the row. Records with several coverings are driven the other
+        way round: their ``date_covered`` follows the latest Covering.
+        """
+        if getattr(self, '_syncing_coverings', False) or not self.date_covered:
+            return
+        coverings = list(self.coverings.all())
+        if not coverings:
+            Covering(record=self, date=self.date_covered).save(_skip_sync=True)
+        elif (len(coverings) == 1
+              and self._loaded_date_covered != self.date_covered
+              and coverings[0].date != self.date_covered):
+            coverings[0].date = self.date_covered
+            coverings[0].save(update_fields=['date'], _skip_sync=True)
+
+    def sync_from_coverings(self):
+        """Recompute ``date_covered`` (and the due date unless typed in)
+        from the covering rows. Called by Covering.save/delete."""
+        latest = self.coverings.order_by('-date').values_list('date', flat=True).first()
+        if latest is None:
+            return
+        changed = []
+        if self.date_covered != latest:
+            self.date_covered = latest
+            changed.append('date_covered')
+        if not self.due_date_is_manual:
+            due = latest + timedelta(days=self.GESTATION_DAYS)
+            if self.date_foal_due != due:
+                self.date_foal_due = due
+                changed.append('date_foal_due')
+        if changed:
+            self._syncing_coverings = True
+            try:
+                super().save(update_fields=changed + ['updated_at'])
+            finally:
+                self._syncing_coverings = False
+            self._loaded_date_covered = self.date_covered
 
     @property
     def ehv_vaccination_dates(self):
@@ -517,6 +577,49 @@ class BreedingRecord(models.Model):
 
     GESTATION_DAYS = 340
     ACTIVE_STATUSES = ('covered', 'confirmed')
+    HEARTBEAT_SCAN_BY_DAY = 60
+
+    @property
+    def season(self):
+        """The breeding season (year of the first covering)."""
+        first = self.first_covering_date
+        return first.year if first else (self.date_covered.year if self.date_covered else None)
+
+    @property
+    def first_covering_date(self):
+        dates = [c.date for c in self.coverings.all()]
+        return min(dates) if dates else self.date_covered
+
+    @property
+    def covering_count(self):
+        return self.coverings.count()
+
+    @property
+    def sent_reminder_keys(self):
+        if not self.breeding_reminders_sent:
+            return set()
+        return {k.strip() for k in self.breeding_reminders_sent.split(',') if k.strip()}
+
+    @property
+    def can_add_covering(self):
+        """A covering can be added while the mare is not confirmed in foal
+        and has not foaled: first covers, repeat covers in the same cycle,
+        and re-covers after a negative scan."""
+        return self.status in ('covered', 'barren')
+
+    @property
+    def scan_14_result(self):
+        return self._latest_scan_result(PregnancyScan.ScanType.DAY_14)
+
+    @property
+    def scan_heartbeat_result(self):
+        return self._latest_scan_result(PregnancyScan.ScanType.HEARTBEAT)
+
+    def _latest_scan_result(self, scan_type):
+        scans = [s for s in self.scans.all() if s.scan_type == scan_type]
+        if not scans:
+            return ''
+        return max(scans, key=lambda s: (s.date, s.pk)).result
 
     @property
     def is_active_pregnancy(self):
@@ -534,9 +637,12 @@ class BreedingRecord(models.Model):
         'heartbeat', or None when both are in (or the record is closed)."""
         if not self.is_active_pregnancy:
             return None
-        if not self.date_scanned_14_days:
+        if self.status == self.Status.COVERED and not self.date_scanned_14_days:
             return '14-day'
-        if not self.date_scanned_heartbeat:
+        # A confirmed record without a heartbeat scan wants one early on; a
+        # reconciled older record well past that point is left alone.
+        day = self.day_of_gestation
+        if not self.date_scanned_heartbeat and day is not None and day <= self.HEARTBEAT_SCAN_BY_DAY:
             return 'heartbeat'
         return None
 
@@ -587,3 +693,100 @@ class BreedingRecord(models.Model):
             if ehv_date >= today:
                 return {'month': month, 'date': ehv_date, 'sent': month in sent}
         return None
+
+class Covering(models.Model):
+    """One covering (or insemination) of a mare within a breeding record.
+
+    A mare is usually covered two or three times in a cycle, and covered
+    again after a negative scan. The record's ``date_covered`` follows the
+    latest covering, and the foal due date follows it unless typed in.
+    """
+
+    class Method(models.TextChoices):
+        NATURAL = 'natural', 'Natural cover'
+        AI_FRESH = 'ai_fresh', 'AI — fresh'
+        AI_CHILLED = 'ai_chilled', 'AI — chilled'
+        AI_FROZEN = 'ai_frozen', 'AI — frozen'
+        UNKNOWN = '', 'Not recorded'
+
+    record = models.ForeignKey(
+        BreedingRecord, on_delete=models.CASCADE, related_name='coverings',
+    )
+    date = models.DateField()
+    method = models.CharField(max_length=20, choices=Method.choices, blank=True)
+    stallion_name = models.CharField(
+        max_length=200, blank=True,
+        help_text="Leave blank when it is the record's stallion",
+    )
+    vet = models.ForeignKey(
+        'billing.ServiceProvider', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='coverings',
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['date', 'pk']
+
+    def __str__(self):
+        return f"{self.record.mare.name} covered {self.date}"
+
+    @property
+    def stallion(self):
+        return self.stallion_name or self.record.stallion_name
+
+    def save(self, *args, _skip_sync=False, **kwargs):
+        super().save(*args, **kwargs)
+        if not _skip_sync:
+            self.record.sync_from_coverings()
+
+    def delete(self, *args, **kwargs):
+        record = self.record
+        super().delete(*args, **kwargs)
+        record.sync_from_coverings()
+
+
+class PregnancyScan(models.Model):
+    """One pregnancy scan on a breeding record, with its result.
+
+    The record keeps ``date_scanned_14_days`` / ``date_scanned_heartbeat``
+    as the latest positive dates (the EHV schedule and older screens use
+    them); this is the full history, negatives included, so a season with
+    a re-cover reads as one story.
+    """
+
+    class ScanType(models.TextChoices):
+        DAY_14 = '14_day', '14-day scan'
+        HEARTBEAT = 'heartbeat', 'Heartbeat scan'
+        SEX = 'sex', 'Sexing scan'
+        OTHER = 'other', 'Other scan'
+
+    class Result(models.TextChoices):
+        IN_FOAL = 'in_foal', 'In foal'
+        NOT_IN_FOAL = 'not_in_foal', 'Not in foal'
+        TWINS = 'twins', 'Twins'
+        INCONCLUSIVE = 'inconclusive', 'Inconclusive'
+
+    record = models.ForeignKey(
+        BreedingRecord, on_delete=models.CASCADE, related_name='scans',
+    )
+    date = models.DateField()
+    scan_type = models.CharField(max_length=20, choices=ScanType.choices)
+    result = models.CharField(max_length=20, choices=Result.choices)
+    vet = models.ForeignKey(
+        'billing.ServiceProvider', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='pregnancy_scans',
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['date', 'pk']
+
+    def __str__(self):
+        return f"{self.record.mare.name} {self.get_scan_type_display()} {self.date}: {self.get_result_display()}"
+
+    @property
+    def positive(self):
+        return self.result in (self.Result.IN_FOAL, self.Result.TWINS)
+

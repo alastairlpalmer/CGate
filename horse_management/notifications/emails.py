@@ -287,3 +287,37 @@ def send_document_expiry_summary(to_email, documents, today):
     except Exception:
         logger.exception("Failed to send document expiry summary to %s", to_email)
         return False
+
+
+def send_breeding_digest(owner, entries):
+    """One email per owner listing this week's breeding reminders: a scan
+    due, or a foal due in 30 or 7 days. ``entries`` is a list of dicts with
+    ``record``, ``kind`` ('scan14', 'heartbeat', 'foal30', 'foal7') and
+    ``due``."""
+    if not owner or not owner.email or not entries:
+        return False
+
+    business = BusinessSettings.get_settings()
+    if len(entries) == 1:
+        e = entries[0]
+        subject = f"Breeding reminder: {e['record'].mare.name} - {e['label']}"
+    else:
+        subject = f"Breeding reminders: {len(entries)} items"
+
+    html_content = render_to_string(
+        'notifications/email/breeding_digest.html',
+        {'entries': entries, 'owner': owner, 'business': business},
+    )
+    email = EmailMessage(
+        subject=subject,
+        body=html_content,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[owner.email],
+    )
+    email.content_subtype = 'html'
+    try:
+        email.send()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send email: {e}")
+        return False

@@ -294,6 +294,9 @@
                     </div>
                     {% if feature_access.breeding.full %}
                     <div class="flex items-center gap-2">
+                        {% if active_pregnancy.can_add_covering %}
+                        <a href="{% url 'breeding_covering_add' active_pregnancy.pk %}" hx-get="{% url 'breeding_covering_add' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add covering for {{ horse.name }}" class="btn-ghost btn-xs">+ Covering</a>
+                        {% endif %}
                         {% if active_pregnancy.next_scan %}
                         <a href="{% url 'breeding_scan' active_pregnancy.pk %}" hx-get="{% url 'breeding_scan' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Scan result for {{ horse.name }}" class="{% if active_pregnancy.status == 'covered' %}btn-primary{% else %}btn-secondary{% endif %} btn-xs">Scan result</a>
                         {% endif %}
@@ -336,6 +339,7 @@
                         </div>
                         <p class="mt-1.5 text-xs text-sage">Day {{ active_pregnancy.day_of_gestation }} of 340</p>
                         {% endif %}
+                        {% include 'health/partials/breeding_history_rows.html' with br=active_pregnancy can_edit=feature_access.breeding.full %}
                         {% if active_pregnancy.status == 'covered' %}
                         <p class="mt-3 text-xs text-charcoal-light">Awaiting the 14-day scan. Use <strong>Scan result</strong> to confirm the pregnancy (EHV reminders start from there) or close the record if the mare did not hold.</p>
                         {% endif %}
@@ -378,6 +382,64 @@
                 </div>
             </div>
             {% endif %}
+            {% endif %}
+
+            {% if horse.is_mare and breeding_history %}
+            <!-- Breeding history -->
+            <div class="card">
+                <div class="section-header">
+                    <div class="flex items-center gap-2.5">
+                        <h3 class="section-title">Breeding History</h3>
+                        <span class="badge-neutral">{{ breeding_history|length }}</span>
+                    </div>
+                    <a href="{% url 'breeding_list' %}?horse={{ horse.pk }}" class="text-xs link tap-pad">All records &rarr;</a>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Season</th>
+                                <th>Stallion</th>
+                                <th>Coverings</th>
+                                <th>Scans</th>
+                                <th>Outcome</th>
+                                <th>Foal</th>
+                                {% if feature_access.breeding.full %}<th class="text-right">Actions</th>{% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for br in breeding_history %}
+                            <tr>
+                                <td class="whitespace-nowrap">{{ br.season }}</td>
+                                <td>{{ br.stallion_name }}</td>
+                                <td class="whitespace-nowrap text-sage">
+                                    {% with cs=br.coverings.all %}
+                                    {{ cs|length }} &middot; {{ br.first_covering_date|date:"d M" }}{% if cs|length > 1 %} &ndash; {{ br.date_covered|date:"d M" }}{% endif %}
+                                    {% endwith %}
+                                </td>
+                                <td class="whitespace-nowrap text-xs">
+                                    14d: {% include 'health/partials/scan_result_label.html' with result=br.scan_14_result %}
+                                    &middot; HB: {% include 'health/partials/scan_result_label.html' with result=br.scan_heartbeat_result %}
+                                </td>
+                                <td>{% include 'health/partials/breeding_status_badge.html' with br=br %}</td>
+                                <td class="whitespace-nowrap">
+                                    {% if br.foal %}<a href="{% url 'horse_detail' br.foal.pk %}" class="link tap-pad">{{ br.foal.name }}</a>{% if br.foal_dob %}<div class="text-xs text-sage">{{ br.foal_dob|date:"d M Y" }}</div>{% endif %}
+                                    {% elif br.foal_dob %}<span class="text-charcoal">{{ br.foal_dob|date:"d M Y" }}</span><div class="text-xs text-sage">not linked</div>
+                                    {% else %}<span class="text-sage">-</span>{% endif %}
+                                </td>
+                                {% if feature_access.breeding.full %}
+                                <td class="text-right whitespace-nowrap">
+                                    {% if br.can_add_covering %}<a href="{% url 'breeding_covering_add' br.pk %}" hx-get="{% url 'breeding_covering_add' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add covering for {{ horse.name }}" class="btn-ghost btn-xs">+ Covering</a>{% endif %}
+                                    {% if br.can_record_foaling %}<a href="{% url 'breeding_foaling' br.pk %}" hx-get="{% url 'breeding_foaling' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ horse.name }}" class="btn-ghost btn-xs">Foaling</a>{% endif %}
+                                    <a href="{% url 'breeding_update' br.pk %}" hx-get="{% url 'breeding_update' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record" class="btn-ghost btn-xs">Edit</a>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
             {% endif %}
 
             {% if horse.is_mare and foals %}

@@ -311,13 +311,17 @@ class ScanResultTestCase(TestCase):
         self.assertEqual(self.record.status, 'confirmed')
         self.assertEqual(self.record.date_scanned_14_days, self.today)
         self.assertIsNone(self.record.date_scanned_heartbeat)
-        self.assertIn('scan: Single, vet Jones', self.record.foaling_notes)
+        scan = self.record.scans.get()
+        self.assertEqual((scan.scan_type, scan.result, scan.notes), ('14_day', 'in_foal', 'Single, vet Jones'))
 
     def test_14_day_not_in_foal_closes_as_barren(self):
         self._post(result='not_in_foal')
         self.record.refresh_from_db()
         self.assertEqual(self.record.status, 'barren')
-        self.assertEqual(self.record.date_scanned_14_days, self.today)
+        # A negative scan lives in the history; the record's positive-scan
+        # date stays empty so a re-cover asks for the scan again.
+        self.assertIsNone(self.record.date_scanned_14_days)
+        self.assertEqual(self.record.scans.get().result, 'not_in_foal')
 
     def test_heartbeat_not_in_foal_closes_as_lost(self):
         self.record.date_scanned_14_days = self.today - timedelta(days=2)
@@ -326,7 +330,8 @@ class ScanResultTestCase(TestCase):
         self._post(scan_type='heartbeat', result='not_in_foal')
         self.record.refresh_from_db()
         self.assertEqual(self.record.status, 'lost')
-        self.assertEqual(self.record.date_scanned_heartbeat, self.today)
+        self.assertIsNone(self.record.date_scanned_heartbeat)
+        self.assertEqual(self.record.scans.get().scan_type, 'heartbeat')
 
     def test_form_defaults_to_the_next_scan(self):
         response = self.client.get(reverse('breeding_scan', args=[self.record.pk]), **POPUP)
@@ -340,7 +345,7 @@ class ScanResultTestCase(TestCase):
     def test_scan_rejects_bad_dates(self):
         response = self._post(scan_date=(self.record.date_covered - timedelta(days=1)).isoformat())
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'before the mare was covered')
+        self.assertContains(response, 'before the mare was first covered')
         response = self._post(scan_date=(self.today + timedelta(days=1)).isoformat())
         self.assertContains(response, 'cannot be in the future')
         self.record.refresh_from_db()

@@ -19,6 +19,7 @@ from health.models import (
 )
 
 from .emails import (
+    send_breeding_digest,
     send_ehv_reminder,
     send_farrier_digest,
     send_invoice_overdue_reminder,
@@ -276,6 +277,83 @@ def send_ehv_reminders():
             logger.exception("Error processing EHV reminder for record pk=%s", record.pk)
 
     return f"Sent {reminders_sent} EHV reminders"
+
+
+# Owner reminders on open breeding records, keyed so each goes once.
+SCAN_14_DAYS = 14
+SCAN_HEARTBEAT_DAYS = 28
+
+
+def breeding_reminder_entries(record, today):
+    """The reminders due today for one open record that have not been sent."""
+    sent = record.sent_reminder_keys
+    entries = []
+    if record.date_covered and record.status == 'covered' and not record.date_scanned_14_days:
+        due = record.date_covered + timedelta(days=SCAN_14_DAYS)
+        if 'scan14' not in sent and due - timedelta(days=2) <= today <= due + timedelta(days=14):
+            entries.append({'key': 'scan14', 'label': '14-day pregnancy scan due', 'due': due, 'record': record})
+    if record.date_covered and record.next_scan == 'heartbeat':
+        due = record.date_covered + timedelta(days=SCAN_HEARTBEAT_DAYS)
+        if 'heartbeat' not in sent and due - timedelta(days=2) <= today <= due + timedelta(days=14):
+            entries.append({'key': 'heartbeat', 'label': 'Heartbeat scan due', 'due': due, 'record': record})
+    if record.date_foal_due and record.status == 'confirmed':
+        for key, days, label in (('foal30', 30, 'Foal due in 30 days'), ('foal7', 7, 'Foal due in 7 days')):
+            window_open = record.date_foal_due - timedelta(days=days)
+            if key not in sent and window_open <= today <= record.date_foal_due:
+                entries.append({'key': key, 'label': label, 'due': record.date_foal_due, 'record': record})
+    return entries
+
+
+@shared_task
+def send_breeding_reminders():
+    """
+    Owner reminders for open pregnancies: scan due, foal due in 30 and 7 days.
+    One digest per owner. Run daily via Celery Beat.
+    """
+    today = timezone.localdate()
+    records = BreedingRecord.objects.filter(
+        status__in=('covered', 'confirmed'), mare__is_active=True,
+    ).select_related('mare')
+
+    by_owner = {}
+    for record in records:
+        entries = breeding_reminder_entries(record, today)
+        if not entries:
+            continue
+        owner = record.mare.current_owner
+        if not owner or not owner.email:
+            continue
+        by_owner.setdefault(owner.pk, (owner, []))[1].extend(entries)
+
+    reminders_sent = 0
+    for owner, entries in by_owner.values():
+        # Claim the keys first so a concurrent run cannot send twice; roll
+        # back on a failed send so it is retried tomorrow.
+        claimed = []
+        with transaction.atomic():
+            for entry in entries:
+                locked = BreedingRecord.objects.select_for_update().get(pk=entry['record'].pk)
+                keys = locked.sent_reminder_keys
+                if entry['key'] in keys:
+                    continue
+                keys.add(entry['key'])
+                locked.breeding_reminders_sent = ','.join(sorted(keys))
+                locked.save(update_fields=['breeding_reminders_sent'])
+                claimed.append(entry)
+        if not claimed:
+            continue
+        if send_breeding_digest(owner, claimed):
+            reminders_sent += len(claimed)
+        else:
+            with transaction.atomic():
+                for entry in claimed:
+                    locked = BreedingRecord.objects.select_for_update().get(pk=entry['record'].pk)
+                    keys = locked.sent_reminder_keys
+                    keys.discard(entry['key'])
+                    locked.breeding_reminders_sent = ','.join(sorted(keys))
+                    locked.save(update_fields=['breeding_reminders_sent'])
+
+    return f"Sent {reminders_sent} breeding reminders"
 
 
 @shared_task

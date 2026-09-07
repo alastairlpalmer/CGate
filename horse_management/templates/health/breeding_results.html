@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Breeding Results {{ season }} - Yardway{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Season Results</h1>
+            <p class="page-subtitle">Conception and live-foal rates for the {{ season }} season, by stallion.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <form method="get" class="flex items-center gap-2">
+                <label for="season" class="dt-label">Season</label>
+                <select name="season" id="season" class="form-select !mt-0" onchange="this.form.submit()">
+                    {% for yr in seasons %}
+                    <option value="{{ yr }}" {% if yr == season %}selected{% endif %}>{{ yr }}</option>
+                    {% empty %}
+                    <option value="{{ season }}">{{ season }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            <a href="{% url 'breeding_list' %}?season={{ season }}" class="btn-secondary">Breeding list</a>
+        </div>
+    </div>
+
+    {% with t=results.totals %}
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-6" aria-label="Season totals">
+        <div class="money-fig"><span class="money-fig-label">Mares covered</span><span class="money-fig-value">{{ t.mares }}</span></div>
+        <div class="money-fig"><span class="money-fig-label">Coverings</span><span class="money-fig-value">{{ t.covers }}</span><span class="text-xs text-sage mt-1">{{ t.covers_per_record }} per record</span></div>
+        <div class="money-fig"><span class="money-fig-label">Conception rate</span><span class="money-fig-value">{% if t.conception_rate is not None %}{{ t.conception_rate }}%{% else %}-{% endif %}</span><span class="text-xs text-sage mt-1">{{ t.held }} held of {{ t.records }}</span></div>
+        <div class="money-fig"><span class="money-fig-label">Live foals</span><span class="money-fig-value">{{ t.born }}</span><span class="text-xs text-sage mt-1">{% if t.live_foal_rate is not None %}{{ t.live_foal_rate }}% &middot; {% endif %}{{ t.colts }} colt{{ t.colts|pluralize }}, {{ t.fillies }} fill{{ t.fillies|pluralize:"y,ies" }}</span></div>
+        <div class="money-fig"><span class="money-fig-label">Lost / barren</span><span class="money-fig-value">{{ t.lost }} / {{ t.barren }}</span></div>
+        <div class="money-fig{% if t.open %} is-action{% endif %}"><span class="money-fig-label">Still open</span><span class="money-fig-value">{{ t.open }}</span></div>
+    </div>
+    {% endwith %}
+
+    <div class="card overflow-hidden">
+        <div class="section-header"><h2 class="section-title">By stallion</h2></div>
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Stallion</th>
+                        <th class="text-right">Mares</th>
+                        <th class="text-right">Coverings</th>
+                        <th class="text-right">Held</th>
+                        <th class="text-right">Conception</th>
+                        <th class="text-right">Foals</th>
+                        <th class="text-right">Lost</th>
+                        <th class="text-right">Barren</th>
+                        <th class="text-right">Open</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for st in results.stallions %}
+                    <tr>
+                        <td>{{ st.name }}</td>
+                        <td class="text-right">{{ st.mares }}</td>
+                        <td class="text-right">{{ st.covers }} <span class="text-xs text-sage">({{ st.covers_per_record }})</span></td>
+                        <td class="text-right">{{ st.held }}</td>
+                        <td class="text-right">{% if st.conception_rate is not None %}{{ st.conception_rate }}%{% else %}-{% endif %}</td>
+                        <td class="text-right">{{ st.born }}</td>
+                        <td class="text-right">{{ st.lost }}</td>
+                        <td class="text-right">{{ st.barren }}</td>
+                        <td class="text-right">{{ st.open }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="9" class="py-8 text-center text-sm text-sage">No coverings recorded in {{ season }}.{% if can_edit %} Add records with past dates to reconcile the season.{% endif %}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card overflow-hidden">
+        <div class="section-header"><h2 class="section-title">Records in {{ season }}</h2></div>
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Mare</th>
+                        <th>Stallion</th>
+                        <th>Coverings</th>
+                        <th>14-day</th>
+                        <th>Heartbeat</th>
+                        <th>Outcome</th>
+                        <th>Foal</th>
+                        {% if can_edit %}<th class="text-right">Actions</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for br in results.records %}
+                    <tr>
+                        <td><a href="{% url 'horse_detail' br.mare.pk %}" class="link tap-pad">{{ br.mare.name }}</a></td>
+                        <td>{{ br.stallion_name }}</td>
+                        <td class="whitespace-nowrap text-sage">{{ br.covering_count }} &middot; {{ br.first_covering_date|date:"d M" }}{% if br.covering_count > 1 %} &ndash; {{ br.date_covered|date:"d M" }}{% endif %}</td>
+                        <td class="text-xs">{% include 'health/partials/scan_result_label.html' with result=br.scan_14_result %}</td>
+                        <td class="text-xs">{% include 'health/partials/scan_result_label.html' with result=br.scan_heartbeat_result %}</td>
+                        <td>{% include 'health/partials/breeding_status_badge.html' with br=br %}</td>
+                        <td class="whitespace-nowrap">{% if br.foal %}<a href="{% url 'horse_detail' br.foal.pk %}" class="link tap-pad">{{ br.foal.name }}</a>{% elif br.foal_dob %}{{ br.foal_dob|date:"d M Y" }}{% else %}<span class="text-sage">-</span>{% endif %}</td>
+                        {% if can_edit %}
+                        <td class="text-right whitespace-nowrap">
+                            <a href="{% url 'breeding_update' br.pk %}" hx-get="{% url 'breeding_update' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record" class="btn-ghost btn-xs">Edit</a>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="{% if can_edit %}8{% else %}7{% endif %}" class="py-8 text-center text-sm text-sage">No records.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if history %}
+    <div class="card overflow-hidden">
+        <div class="section-header"><h2 class="section-title">Previous seasons</h2></div>
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Season</th><th class="text-right">Mares</th><th class="text-right">Coverings</th><th class="text-right">Conception</th><th class="text-right">Live foals</th><th class="text-right">Lost / barren</th></tr>
+                </thead>
+                <tbody>
+                    {% for h in history %}
+                    <tr>
+                        <td><a href="{% url 'breeding_results' %}?season={{ h.season }}" class="link tap-pad">{{ h.season }}</a></td>
+                        <td class="text-right">{{ h.mares }}</td>
+                        <td class="text-right">{{ h.covers }}</td>
+                        <td class="text-right">{% if h.conception_rate is not None %}{{ h.conception_rate }}%{% else %}-{% endif %}</td>
+                        <td class="text-right">{{ h.born }}{% if h.live_foal_rate is not None %} <span class="text-xs text-sage">({{ h.live_foal_rate }}%)</span>{% endif %}</td>
+                        <td class="text-right">{{ h.lost }} / {{ h.barren }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

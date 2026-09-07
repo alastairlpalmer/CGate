@@ -1373,6 +1373,7 @@ class HorsePhoto(models.Model):
         MARKINGS = 'markings', 'Markings'
         INJURY = 'injury', 'Injury'
         ARRIVAL = 'arrival', 'Arrival / check-in'
+        FOALING = 'foaling', 'Foaling'
         OTHER = 'other', 'Other'
 
     horse = models.ForeignKey(
