@@ -845,3 +845,11 @@ and the code another, the code is right and this list says so.
     badge and its neighbours keep clear of the name; past six badges the compact
     card drops the rings of empty locations (their outlines stay). Section 6.4's
     "offset the lower-count badge" rule is what the relaxation generalises.
+
+14. **What a tap on the map opens (2026-09-07, owner's decision).** Section 2.5
+    sent a badge to the horse list. On the Map tab a badge now opens the
+    location's page, the same as its shape, and a tap outside every shape opens
+    the Locations list. The owner found the horse list a strange place to land
+    from a field. The dashboard card is unchanged: a badge opens the location,
+    anywhere else on the card opens the Map tab. The header chip still opens
+    the horse list (section 5.7).

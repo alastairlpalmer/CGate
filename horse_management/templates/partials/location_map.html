@@ -21,8 +21,9 @@ Badges whose anchors are closer than a badge is wide are pushed apart
 the SVG below, back to its anchor. Each location's name sits under its
 badge: on the full map whenever they fit, on the compact card for the
 highlighted location only.
-Tapping a badge opens that location's horse list. In the full variant a
-shape opens the location; in the compact variant the card handles the tap.
+Tapping a badge or, in the full variant, a shape opens that location;
+a tap on the full map outside every shape opens the Locations list. In
+the compact variant the card handles every tap that is not a badge.
 With a fine pointer both variants drag and zoom (see mount() in the
 script); Fit brings the whole site back, and the compact variant's Full
 map button opens the Map tab.
@@ -38,11 +39,11 @@ map button opens the Map tab.
     <button type="button" class="location-map-fit" @click.stop="focus(highlight)" title="Show the whole site again">Fit</button>
     {% if variant == 'compact' %}<a href="{% url 'location_list' %}?tab=map&site={{ payload.site|urlencode }}" class="location-map-open" @click.stop>Full map &rarr;</a>{% endif %}
     {% for loc in payload.locations %}{% if loc.kind %}
-    <a href="{{ loc.urls.horses }}" class="location-map-badge"
+    <a href="{{ loc.urls.detail }}" class="location-map-badge"
        data-map-badge="{{ loc.pk }}" data-anchor="{{ loc.anchor.0 }},{{ loc.anchor.1 }}" data-count="{{ loc.count }}" data-holds="{{ loc.holds_horses|yesno:'1,0' }}" data-colour="{{ loc.colour }}"
        style="left:-999px;top:-999px" @click.stop
        title="{{ loc.name }}{% if loc.holds_horses %} · {{ loc.count }} horse{{ loc.count|pluralize }}{% if loc.capacity %} of {{ loc.capacity }}{% endif %}{% else %} · {{ loc.usage_label }}{% endif %}"
-       aria-label="{{ loc.name }}: {% if loc.holds_horses %}{{ loc.count }} horse{{ loc.count|pluralize }}{% if loc.capacity %} of {{ loc.capacity }}{% endif %}{% else %}{{ loc.usage_label }}{% endif %}. Open the horse list.">
+       aria-label="{{ loc.name }}: {% if loc.holds_horses %}{{ loc.count }} horse{{ loc.count|pluralize }}{% if loc.capacity %} of {{ loc.capacity }}{% endif %}{% else %}{{ loc.usage_label }}{% endif %}. Open the location.">
         {% if loc.holds_horses and loc.capacity %}
         {% include 'horses/_capacity_ring.html' with count=loc.count capacity=loc.capacity availability=loc.availability size=44 %}
         {% elif loc.holds_horses %}
