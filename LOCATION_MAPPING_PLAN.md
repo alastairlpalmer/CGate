@@ -830,3 +830,18 @@ and the code another, the code is right and this list says so.
     the parcel's name and distance, the card lit the same badge and cropped to
     four, and Back restored one chip and one card. What a browser cannot prove
     (section 9.3): the checks on a real phone over HTTPS remain to do.
+
+13. **The card's place and shape (2026-09-07, after the first phone use).** Section
+    6.2 gave the compact map a fixed height of about 200 px and section 6.7 put the
+    card above the Yard board. On a phone that was a wide, short strip below the
+    fold with every badge of the site piled into it. Now the card is the first zone
+    on a phone and its map is square (capped at 26 rem on a tablet's single
+    column); on a wide screen it sits square beside Needs action and Next 14 days
+    (five columns of twelve from lg, four from xl), and the two lists take the full
+    width whenever the card cannot show. Readability, both variants: badges whose
+    anchors are closer than a badge is wide are pushed apart
+    (`static/js/map_layout.js`, pure and unit-tested) and a moved badge keeps a
+    leader line back to its anchor; the highlighted location is named under its
+    badge and its neighbours keep clear of the name; past six badges the compact
+    card drops the rings of empty locations (their outlines stay). Section 6.4's
+    "offset the lower-count badge" rule is what the relaxation generalises.

@@ -12,6 +12,8 @@ module.exports = {
     'bg-sage', 'bg-forest',
     // Widget class set in core/forms.py, which the content globs do not scan
     'switch-input',
+    // Leader lines are drawn by static/js/location_map.js, not a template
+    'location-map-leader',
   ],
   theme: {
     // The palette is defined here (not under `extend`) on purpose: Tailwind's

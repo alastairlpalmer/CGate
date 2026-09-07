@@ -61,39 +61,45 @@
     <div class="alert-error">The dashboard could not load its data. The error has been logged; try again in a moment.</div>
     {% endif %}
 
-    {# ── B + C. Needs action, and the next 14 days ── #}
-    {% if 'attention' in visible or 'upcoming' in visible %}
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
+    {# ── B + C, and Near you: Needs action, the next 14 days, and the map ── #}
+    {% comment %}
+    The map of the site you are on comes first on a phone and sits square
+    beside the two lists on a wide screen. The card announces whether it
+    shows (near-you:visible); the lists take the full width whenever it
+    does not.
+    {% endcomment %}
+    {% if 'attention' in visible or 'upcoming' in visible or near_you_card %}
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-12"
+         x-data="{ hasMap: {{ near_you_card.shows_without_gps|yesno:'true,false' }} }"
+         @near-you:visible="hasMap = $event.detail">
         {% if 'attention' in visible %}
-        <section class="zone-enter {% if 'upcoming' in visible %}lg:col-span-7{% else %}lg:col-span-12{% endif %}" style="--i:1" aria-labelledby="needs-action-title">
+        <section class="zone-enter" style="--i:2" aria-labelledby="needs-action-title"
+                 :class="hasMap ? 'lg:col-span-7 xl:col-span-8 lg:col-start-1' : '{% if 'upcoming' in visible %}lg:col-span-7{% else %}lg:col-span-12{% endif %}'">
             {% include 'partials/dashboard/attention.html' %}
         </section>
         {% endif %}
         {% if 'upcoming' in visible %}
-        <section class="zone-enter {% if 'attention' in visible %}lg:col-span-5{% else %}lg:col-span-12{% endif %}" style="--i:2" aria-labelledby="upcoming-title">
+        <section class="zone-enter" style="--i:3" aria-labelledby="upcoming-title"
+                 :class="hasMap ? 'lg:col-span-7 xl:col-span-8 lg:col-start-1' : '{% if 'attention' in visible %}lg:col-span-5{% else %}lg:col-span-12{% endif %}'">
             {% include 'partials/dashboard/upcoming.html' %}
         </section>
+        {% endif %}
+        {% if near_you_card %}
+        {% include 'partials/dashboard/near_you.html' %}
         {% endif %}
     </div>
     {% endif %}
 
-    {# ── Near you: the site you are on, drawn (plan phase 3) ── #}
-    {% if 'near_you' in visible and near_you_card %}
-    <section class="zone-enter" style="--i:3" aria-labelledby="near-you-title">
-        {% include 'partials/dashboard/near_you.html' %}
-    </section>
-    {% endif %}
-
     {# ── D. Yard board ── #}
     {% if 'yard_board' in visible and sites_overview %}
-    <section class="zone-enter" style="--i:3" aria-labelledby="yard-board-title">
+    <section class="zone-enter" style="--i:4" aria-labelledby="yard-board-title">
         {% include 'partials/dashboard/board.html' %}
     </section>
     {% endif %}
 
     {# ── Seasonal: mares in foal (renders only when there are any) ── #}
     {% if 'in_foal' in visible and in_foal %}
-    <section class="zone-enter" style="--i:4" aria-labelledby="in-foal-title">
+    <section class="zone-enter" style="--i:5" aria-labelledby="in-foal-title">
         {% include 'partials/dashboard/in_foal.html' %}
     </section>
     {% endif %}

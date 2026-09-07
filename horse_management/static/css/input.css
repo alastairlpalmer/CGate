@@ -731,7 +731,10 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .coord-picker-map { @apply h-56 sm:h-64 w-full rounded-lg border border-light-sage bg-light-sage/60 overflow-hidden; }
     .location-map { @apply relative w-full rounded-lg overflow-hidden bg-white border border-light-sage; }
     .location-map.is-full { height: min(70vh, 640px); min-height: 20rem; }
-    .location-map.is-compact { @apply h-52; }
+    /* The dashboard card's map is square (a site is roughly as tall as it is
+       wide, so a wide, short map wasted most of its width), capped so a
+       tablet's single column does not get a map taller than the screen. */
+    .location-map.is-compact { aspect-ratio: 1 / 1; max-height: min(26rem, 70vh); }
     .location-map .leaflet-container { @apply bg-white font-body; }
     .location-map .leaflet-control-attribution { display: none; }
     .location-map-badge { @apply absolute z-[500] flex items-center justify-center rounded-full bg-white/95 shadow-card border border-light-sage no-underline; width: 44px; height: 44px; transform: translate(-50%, -50%); touch-action: manipulation; }
@@ -740,6 +743,12 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .location-map-badge.is-highlight { @apply border-forest ring-2 ring-forest/40; }
     .location-map-badge .board-count { @apply h-9 w-9 text-xs; }
     .location-map-label { @apply absolute z-[490] -translate-x-1/2 whitespace-nowrap rounded-md bg-white/90 px-1.5 py-0.5 text-xs font-medium leading-4 text-charcoal shadow-sm pointer-events-none; }
+    /* Leader lines: a badge pushed off its anchor by a neighbour keeps a thin
+       line (and a dot on the spot) back to the location it stands for. Above
+       the shapes (Leaflet panes are 400), under the labels and badges. */
+    .location-map-leaders { @apply absolute inset-0 z-[480] h-full w-full pointer-events-none; }
+    .location-map-leader line { stroke: #6A8990; stroke-width: 1.5; stroke-opacity: .85; }
+    .location-map-leader circle { fill: #6A8990; stroke: #fff; stroke-width: 1.5; }
     .location-map-hint { @apply absolute inset-x-0 top-1/2 z-[510] mx-auto w-max max-w-[80%] -translate-y-1/2 rounded-full bg-charcoal/80 px-4 py-2 text-center text-sm text-white pointer-events-none; }
     .location-map-hint[hidden] { display: none; }
     .location-map-pin { @apply absolute -top-1 -right-1 z-[501] grid h-4 w-4 place-items-center rounded-full bg-saddle text-white; }

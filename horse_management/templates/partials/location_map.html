@@ -16,6 +16,11 @@ Rendering rule (plan 2.2), applied by static/js/location_map.js per location:
 The badges are real links layered above the map — the capacity ring
 partial at 44 px, or the count / land-use badge exactly as the Yard board
 tile shows them — positioned by the script at the server-computed anchor.
+Badges whose anchors are closer than a badge is wide are pushed apart
+(static/js/map_layout.js) and a moved badge keeps a leader line, drawn in
+the SVG below, back to its anchor. Each location's name sits under its
+badge: on the full map whenever they fit, on the compact card for the
+highlighted location only.
 Tapping a badge opens that location's horse list. In the full variant a
 shape opens the location; in the compact variant the card handles the tap.
 {% endcomment %}
@@ -25,10 +30,11 @@ shape opens the location; in the compact variant the card handles the tap.
      data-site="{{ payload.site }}">
     {{ payload|json_script:map_id }}
     <div x-ref="map" class="absolute inset-0" role="img" aria-label="Map of {{ payload.site|default:'the site' }}"></div>
+    <svg x-ref="leaders" class="location-map-leaders" aria-hidden="true"></svg>
     {% if variant == 'full' %}<div x-ref="hint" class="location-map-hint" hidden aria-live="polite"></div>{% endif %}
     {% for loc in payload.locations %}{% if loc.kind %}
     <a href="{{ loc.urls.horses }}" class="location-map-badge"
-       data-map-badge="{{ loc.pk }}" data-anchor="{{ loc.anchor.0 }},{{ loc.anchor.1 }}" data-count="{{ loc.count }}" data-holds="{{ loc.holds_horses|yesno:'1,0' }}"
+       data-map-badge="{{ loc.pk }}" data-anchor="{{ loc.anchor.0 }},{{ loc.anchor.1 }}" data-count="{{ loc.count }}" data-holds="{{ loc.holds_horses|yesno:'1,0' }}" data-colour="{{ loc.colour }}"
        style="left:-999px;top:-999px" @click.stop
        title="{{ loc.name }}{% if loc.holds_horses %} · {{ loc.count }} horse{{ loc.count|pluralize }}{% if loc.capacity %} of {{ loc.capacity }}{% endif %}{% else %} · {{ loc.usage_label }}{% endif %}"
        aria-label="{{ loc.name }}: {% if loc.holds_horses %}{{ loc.count }} horse{{ loc.count|pluralize }}{% if loc.capacity %} of {{ loc.capacity }}{% endif %}{% else %}{{ loc.usage_label }}{% endif %}. Open the horse list.">
@@ -45,9 +51,7 @@ shape opens the location; in the compact variant the card handles the tap.
         </span>
         {% endif %}
     </a>
-    {% if variant == 'full' %}
-    <span class="location-map-label" data-map-label="{{ loc.pk }}" style="left:-999px;top:-999px">{{ loc.name }}</span>
-    {% endif %}
+    <span class="location-map-label" data-map-label="{{ loc.pk }}" style="left:-999px;top:-999px" hidden>{{ loc.name }}</span>
     {% endif %}{% endfor %}
 </div>
 {% endwith %}{% endwith %}

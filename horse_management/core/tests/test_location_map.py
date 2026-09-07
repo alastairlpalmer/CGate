@@ -238,6 +238,38 @@ class NearYouCardTests(TestCase):
         # The card sits above the Yard board
         self.assertLess(response.content.index(b'near-you-title'), response.content.index(b'yard-board-title'))
 
+    def test_card_is_the_first_zone_on_a_phone_and_a_column_on_a_wide_screen(self):
+        response = self.client.get(reverse('dashboard'))
+        # One site: the card shows without GPS, so the grid keeps it a column from first paint.
+        self.assertTrue(response.context['near_you_card']['shows_without_gps'])
+        self.assertContains(response, 'x-data="{ hasMap: true }"')
+        self.assertContains(response, 'data-testid="near-you-zone"')
+        zone = response.content[response.content.index(b'data-testid="near-you-zone"') - 400:response.content.index(b'data-testid="near-you-zone"')]
+        self.assertIn(b'order-first', zone)          # top of the page on a phone
+        self.assertIn(b'xl:col-start-9', zone)       # beside the lists on a wide screen
+        self.assertIn(b'lg:row-span-2', zone)
+        self.assertIn(b'x-show="ready"', zone)       # a hidden card takes no grid cell
+        # The lists give the card its column only while it shows.
+        self.assertContains(response, "hasMap ? 'lg:col-span-7 xl:col-span-8 lg:col-start-1' : 'lg:col-span-7'")
+        # The card comes before the Yard board in the page
+        self.assertLess(response.content.index(b'near-you-title'), response.content.index(b'yard-board-title'))
+        # The compact map carries the names (the highlighted one shows) and the leader-line layer.
+        self.assertContains(response, 'location-map-leaders')
+        self.assertContains(response, f'data-map-label="{self.a.pk}"')
+
+    def test_card_column_waits_for_gps_when_all_sites_are_chosen(self):
+        Location.objects.create(name='Far', site='Colgate', latitude=Decimal('52'), longitude=Decimal('-1'))
+        response = self.client.get(reverse('dashboard'))
+        # Two sites and no chosen one: only GPS can pick a site, so the lists start full width.
+        self.assertFalse(response.context['near_you_card']['shows_without_gps'])
+        self.assertContains(response, 'x-data="{ hasMap: false }"')
+        pref = DashboardPreference.get_for(self.user)
+        pref.site = 'Somerford'
+        pref.save()
+        response = self.client.get(reverse('dashboard'))
+        self.assertTrue(response.context['near_you_card']['shows_without_gps'])
+        self.assertContains(response, 'x-data="{ hasMap: true }"')
+
     def test_default_site_and_pin(self):
         pref = DashboardPreference.get_for(self.user)
         pref.site = 'Somerford'

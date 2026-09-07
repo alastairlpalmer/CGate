@@ -142,6 +142,10 @@ def near_you_card(request, pref, sites, payload):
             for name in sites for loc in maps[name]['locations'] if not loc['kind']
         ],
         'pinned': {'pk': pinned.pk, 'name': pinned.name, 'site': pinned.site} if pinned else None,
+        # True when the site ladder settles without GPS (a chosen site, or one
+        # site): the dashboard then lays out around the card from first paint
+        # instead of waiting for the browser to say whether it shows.
+        'shows_without_gps': bool(default_site) or len(sites) == 1,
         'urls': {'map': reverse('location_list')},
         'maps': maps,
     }

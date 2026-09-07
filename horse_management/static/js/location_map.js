@@ -19,7 +19,14 @@
     'use strict';
 
     var BADGE_PX = 44;
+    var BADGE_GAP = 4;             // clear space kept between two badges
+    var LEADER_MIN_PX = 6;         // a badge pushed further than this off its anchor gets a leader line
+    var LABEL_H = 20;              // a name label's height (text-xs, leading-4, py-0.5)
     var COMPACT_LOCATIONS = 4;
+    // The compact card is a glance at where the horses are. Past this many
+    // badges it drops the rings of empty locations (their shapes stay drawn),
+    // so the counts that matter are readable on a phone.
+    var COMPACT_BADGE_MAX = 6;
     var FIT_PADDING = [36, 36];
     var LABEL_HIDE_BELOW = 1.25;   // zoom levels under the fit zoom at which names hide
     // A dense site (more badges than this) shows names only once zoomed in
@@ -47,6 +54,7 @@
                 bounds: {},       // pk → LatLngBounds (known without a map view)
                 badges: {},       // pk → <a>
                 labels: {},       // pk → <span>
+                leaders: {},      // pk → <g> (line + dot back to the anchor)
                 visible: null,    // set of pks shown (compact crop) or null for all
                 fitZoom: null,
 
@@ -207,60 +215,122 @@
                     this.place();
                 },
 
-                // Badges and names follow their anchors; overlapping badges
-                // step aside (the lower count moves, perpendicular to the line).
+                // Badges follow their anchors. Overlapping badges are pushed
+                // apart (static/js/map_layout.js) and a moved badge keeps a
+                // leader line back to its anchor. Names sit under the badges.
                 place: function () {
                     // Nothing to place until the first fit gave the map a view
                     // (a hidden compact map has none; Leaflet throws otherwise).
                     if (!this.map || this.fitZoom == null) return;
                     var self = this;
-                    var placed = [];
+                    var compact = this.variant === 'compact';
+                    var isHighlight = function (pk) { return String(pk) === String(self.highlight); };
                     var inView = Object.keys(this.badges).filter(function (pk) { return !self.visible || self.visible[pk]; });
                     var zoomedOut = this.map.getZoom() < this.fitZoom + 1;
                     // Dense: drop the badges of locations that hold no horses.
                     var dense = inView.length > LABEL_DENSE_COUNT && zoomedOut;
-                    var remaining = dense
-                        ? inView.filter(function (pk) { return self.badges[pk].dataset.holds !== '0' || String(pk) === String(self.highlight); }).length
-                        : inView.length;
-                    // Names: whenever what is left fits, at or near the fit zoom.
-                    var showLabels = this.variant === 'full'
-                        && (remaining <= LABEL_DENSE_COUNT || !zoomedOut)
-                        && this.map.getZoom() >= this.fitZoom - LABEL_HIDE_BELOW;
-                    Object.keys(this.badges).forEach(function (pk) {
+                    // Crowded (compact only): drop the rings of empty locations too.
+                    var crowded = compact && inView.length > COMPACT_BADGE_MAX;
+                    var shown = inView.filter(function (pk) {
+                        if (isHighlight(pk)) return true;
                         var a = self.badges[pk];
-                        var show = !self.visible || self.visible[pk];
-                        if (show && dense && a.dataset.holds === '0' && String(pk) !== String(self.highlight)) show = false;
-                        var label = self.labels[pk];
-                        if (!show) {
-                            a.hidden = true;
-                            if (label) label.hidden = true;
-                            return;
-                        }
-                        a.hidden = false;
+                        if (dense && a.dataset.holds === '0') return false;
+                        if (crowded && !(Number(a.dataset.count) > 0)) return false;
+                        return true;
+                    });
+                    // Names: on the full map whenever what is left fits, at or
+                    // near the fit zoom; the highlighted location is always named.
+                    var showLabels = !compact
+                        && (shown.length <= LABEL_DENSE_COUNT || !zoomedOut)
+                        && this.map.getZoom() >= this.fitZoom - LABEL_HIDE_BELOW;
+
+                    var size = this.map.getSize();
+                    var items = shown.map(function (pk) {
+                        var a = self.badges[pk];
                         var parts = a.dataset.anchor.split(',');
                         var pt = self.map.latLngToContainerPoint([Number(parts[0]), Number(parts[1])]);
-                        var x = pt.x, y = pt.y;
-                        var count = Number(a.dataset.count) || 0;
-                        placed.forEach(function (other) {
-                            var dx = x - other.x, dy = y - other.y;
-                            var d = Math.sqrt(dx * dx + dy * dy);
-                            if (d >= BADGE_PX) return;
-                            // Move the lighter badge sideways, off the line between them.
-                            if (count <= other.count) {
-                                var nx = d === 0 ? 0 : -dy / d, ny = d === 0 ? 1 : dx / d;
-                                x = other.x + nx * BADGE_PX + dx * 0.5;
-                                y = other.y + ny * BADGE_PX + dy * 0.5;
-                            }
-                        });
-                        a.style.left = x + 'px';
-                        a.style.top = y + 'px';
-                        placed.push({ x: x, y: y, count: count });
+                        return { pk: pk, x: pt.x, y: pt.y, count: Number(a.dataset.count) || 0, fixed: isHighlight(pk) };
+                    });
+                    // The highlighted location's name always shows, so its
+                    // neighbours must keep clear of it: a row of small fixed
+                    // obstacles stands in for the label under the badge.
+                    var obstacles = [];
+                    var hi = items.filter(function (it) { return it.fixed; })[0];
+                    var hiLabel = hi && this.labels[hi.pk];
+                    if (hiLabel) {
+                        var w = this.labelWidth(hiLabel);
+                        var cy = hi.y + BADGE_PX / 2 + 2 + LABEL_H / 2;
+                        for (var lx = hi.x - w / 2 + LABEL_H / 2; lx <= hi.x + w / 2 - LABEL_H / 2 + 0.01; lx += LABEL_H) {
+                            obstacles.push({ x: lx, y: cy, count: 0, fixed: true, r: LABEL_H / 2 + 2 });
+                        }
+                    }
+                    var spread = window.YardwayMapLayout
+                        ? YardwayMapLayout.spreadBadges(items.concat(obstacles), { size: BADGE_PX, gap: BADGE_GAP, width: size.x, height: size.y })
+                        : items;
+                    var placed = {};
+                    items.forEach(function (it, i) {
+                        var a = self.badges[it.pk];
+                        var p = spread[i];
+                        placed[it.pk] = true;
+                        a.hidden = false;
+                        a.style.left = p.x + 'px';
+                        a.style.top = p.y + 'px';
+                        var dx = p.x - it.x, dy = p.y - it.y;
+                        self.leader(it.pk, Math.sqrt(dx * dx + dy * dy) > LEADER_MIN_PX ? { x1: it.x, y1: it.y, x2: p.x, y2: p.y, colour: a.dataset.colour } : null);
+                        var label = self.labels[it.pk];
                         if (label) {
-                            label.hidden = !showLabels;
-                            label.style.left = x + 'px';
-                            label.style.top = (y + BADGE_PX / 2 + 2) + 'px';
+                            label.hidden = !(showLabels || it.fixed);
+                            label.style.left = p.x + 'px';
+                            label.style.top = (p.y + BADGE_PX / 2 + 2) + 'px';
                         }
                     });
+                    Object.keys(this.badges).forEach(function (pk) {
+                        if (placed[pk]) return;
+                        self.badges[pk].hidden = true;
+                        if (self.labels[pk]) self.labels[pk].hidden = true;
+                        self.leader(pk, null);
+                    });
+                },
+
+                // A label's rendered width, measured once it can be (a hidden
+                // element, or one inside a hidden card, measures 0: try again later).
+                labelWidth: function (label) {
+                    if (label._w == null) {
+                        var wasHidden = label.hidden;
+                        label.hidden = false;
+                        var w = label.offsetWidth || 0;
+                        label.hidden = wasHidden;
+                        if (w > 0) label._w = w;
+                        return w;
+                    }
+                    return label._w;
+                },
+
+                // The thin line (and dot on the anchor) that ties a moved
+                // badge to the spot it stands for; null hides it.
+                leader: function (pk, seg) {
+                    var svg = this.$refs.leaders;
+                    if (!svg) return;
+                    var g = this.leaders[pk];
+                    if (!seg) {
+                        if (g) g.style.display = 'none';
+                        return;
+                    }
+                    var NS = 'http://www.w3.org/2000/svg';
+                    if (!g) {
+                        g = document.createElementNS(NS, 'g');
+                        g.setAttribute('class', 'location-map-leader');
+                        g.appendChild(document.createElementNS(NS, 'line'));
+                        g.appendChild(document.createElementNS(NS, 'circle'));
+                        svg.appendChild(g);
+                        this.leaders[pk] = g;
+                    }
+                    var line = g.firstChild, dot = g.lastChild;
+                    line.setAttribute('x1', seg.x1); line.setAttribute('y1', seg.y1);
+                    line.setAttribute('x2', seg.x2); line.setAttribute('y2', seg.y2);
+                    dot.setAttribute('cx', seg.x1); dot.setAttribute('cy', seg.y1); dot.setAttribute('r', 3);
+                    if (seg.colour) { line.style.stroke = seg.colour; dot.style.fill = seg.colour; }
+                    g.style.display = '';
                 }
             };
         });
@@ -302,7 +372,12 @@
                     else if (gps && gps.location) site = gps.location.site;
                     else if (d.default_site) site = d.default_site;
                     else if (d.site_names.length === 1) site = d.site_names[0];
-                    if (!site || d.site_names.indexOf(site) === -1) { this.ready = false; this.site = ''; return; }
+                    if (!site || d.site_names.indexOf(site) === -1) {
+                        this.ready = false;
+                        this.site = '';
+                        this.$dispatch('near-you:visible', false);
+                        return;
+                    }
 
                     var highlight = null, label = '', kind = '';
                     var onSite = function (pk) {
@@ -328,6 +403,8 @@
                     this.label = label || site;
                     this.kind = kind;
                     this.ready = true;
+                    // The dashboard grid keeps a column for the card only while it shows.
+                    this.$dispatch('near-you:visible', true);
                     // After Alpine has shown the chosen site's map, so it has a size to fit.
                     Alpine.nextTick(function () {
                         window.dispatchEvent(new CustomEvent('yardway:map-focus', { detail: { site: site, highlight: highlight } }));
