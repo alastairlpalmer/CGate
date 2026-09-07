@@ -61,31 +61,31 @@
     <div class="alert-error">The dashboard could not load its data. The error has been logged; try again in a moment.</div>
     {% endif %}
 
-    {# ── B + C, and Near you: Needs action, the next 14 days, and the map ── #}
+    {# ── Near you, Needs action, Next 14 days ── #}
     {% comment %}
-    The map of the site you are on comes first on a phone and sits square
-    beside the two lists on a wide screen. The card announces whether it
-    shows (near-you:visible); the lists take the full width whenever it
-    does not.
+    The map of the site you are on comes first: on a phone at the top, on
+    a wide screen large on the left with Needs action beside it. Next 14
+    days runs the full width beneath them. The card announces whether it
+    shows (near-you:visible); Needs action takes the full width whenever
+    it does not.
     {% endcomment %}
     {% if 'attention' in visible or 'upcoming' in visible or near_you_card %}
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-12"
          x-data="{ hasMap: {{ near_you_card.shows_without_gps|yesno:'true,false' }} }"
          @near-you:visible="hasMap = $event.detail">
+        {% if near_you_card %}
+        {% include 'partials/dashboard/near_you.html' %}
+        {% endif %}
         {% if 'attention' in visible %}
-        <section class="zone-enter" style="--i:2" aria-labelledby="needs-action-title"
-                 :class="hasMap ? 'lg:col-span-7 xl:col-span-8 lg:col-start-1' : '{% if 'upcoming' in visible %}lg:col-span-7{% else %}lg:col-span-12{% endif %}'">
+        <section class="zone-enter lg:self-start" style="--i:2" aria-labelledby="needs-action-title"
+                 :class="hasMap ? 'lg:col-span-5' : 'lg:col-span-12'">
             {% include 'partials/dashboard/attention.html' %}
         </section>
         {% endif %}
         {% if 'upcoming' in visible %}
-        <section class="zone-enter" style="--i:3" aria-labelledby="upcoming-title"
-                 :class="hasMap ? 'lg:col-span-7 xl:col-span-8 lg:col-start-1' : '{% if 'attention' in visible %}lg:col-span-5{% else %}lg:col-span-12{% endif %}'">
+        <section class="zone-enter lg:col-span-12" style="--i:3" aria-labelledby="upcoming-title">
             {% include 'partials/dashboard/upcoming.html' %}
         </section>
-        {% endif %}
-        {% if near_you_card %}
-        {% include 'partials/dashboard/near_you.html' %}
         {% endif %}
     </div>
     {% endif %}

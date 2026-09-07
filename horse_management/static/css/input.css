@@ -662,17 +662,34 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .site-switch-item.is-active { @apply bg-white font-semibold text-forest shadow-sm; }
 
     /* Needs action rows */
-    .attn-row { @apply grid items-start gap-3 px-4 py-3 lg:px-5; grid-template-columns: 2.25rem minmax(0, 1fr); }
+    /* Needs action: one line per thing to do. The list is a size container
+       and the row lays itself out by the width it has (rules below the
+       layer): narrow, the badge and buttons take a second line; from 40rem
+       the row is one line. The left edge says how urgent. */
+    .card.is-hot { @apply border-saddle/40 shadow-card; }
+    .card.is-hot > .section-header { @apply bg-saddle-50 border-saddle/20; }
+    .attn-list { container-type: inline-size; }
+    .attn-row { @apply border-l-[3px] border-l-transparent px-4 py-2.5 lg:px-5; }
+    /* The divider lives here, not in divide-y on the list: divide-* sets
+       border-color on every row after the first and would wash out the
+       coloured left edge. */
+    .attn-row + .attn-row { @apply border-t border-t-light-sage; }
+    .attn-row.is-overdue { @apply border-l-error-red bg-error-red-50/40; }
+    .attn-row.is-due { @apply border-l-saddle bg-saddle-50/60; }
+    .attn-row.is-info { @apply border-l-sage-200; }
+    .attn-item { @apply grid items-start gap-x-3 gap-y-1.5; grid-template-columns: 2.25rem minmax(0, 1fr); }
+    .attn-item + .attn-item { @apply mt-2 border-t border-light-sage/70 pt-2; }
     .attn-icon { @apply grid h-9 w-9 shrink-0 place-items-center rounded-lg; }
     .attn-icon-overdue { @apply bg-error-red-50 text-error-red; }
     .attn-icon-due { @apply bg-saddle-50 text-saddle; }
     .attn-icon-info { @apply bg-sage-50 text-sage; }
-    .attn-head { @apply flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5; }
-    .attn-title { @apply text-sm font-semibold text-charcoal no-underline hover:text-forest; }
-    .attn-sub { @apply truncate text-xs text-sage; }
-    .attn-line { @apply mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5; }
-    .attn-line + .attn-line { @apply border-t border-light-sage/70 pt-1.5; }
-    .attn-line-text { @apply text-sm text-charcoal-light; }
+    .attn-text { @apply min-w-0 self-center text-sm leading-5; }
+    .attn-text .coat-dot { @apply mr-1 align-middle; }
+    .attn-title { @apply font-semibold text-charcoal no-underline hover:text-forest; }
+    .attn-sub { @apply ml-1 text-xs text-sage; }
+    .attn-detail { @apply block text-charcoal-light; }
+    .attn-foot { @apply col-start-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5; }
+    .attn-when { @apply flex items-center gap-2; }
     .attn-date { @apply font-mono text-xs text-sage tabular-nums; }
     .attn-actions { @apply ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1; }
 
@@ -731,10 +748,14 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .coord-picker-map { @apply h-56 sm:h-64 w-full rounded-lg border border-light-sage bg-light-sage/60 overflow-hidden; }
     .location-map { @apply relative w-full rounded-lg overflow-hidden bg-white border border-light-sage; }
     .location-map.is-full { height: min(70vh, 640px); min-height: 20rem; }
-    /* The dashboard card's map is square (a site is roughly as tall as it is
-       wide, so a wide, short map wasted most of its width), capped so a
-       tablet's single column does not get a map taller than the screen. */
+    /* The dashboard card's map. In one column (phones, portrait tablets) it
+       is square, capped so it never outgrows the screen. From lg it sits
+       beside Needs action and fills the card: at least a good screenful
+       tall, and taller when the list beside it is long. */
     .location-map.is-compact { aspect-ratio: 1 / 1; max-height: min(26rem, 70vh); }
+    @screen lg {
+        .location-map.is-compact { aspect-ratio: auto; max-height: 48rem; flex: 1 1 auto; min-height: clamp(26rem, 60vh, 42rem); }
+    }
     .location-map .leaflet-container { @apply bg-white font-body; }
     .location-map .leaflet-control-attribution { display: none; }
     .location-map-badge { @apply absolute z-[500] flex items-center justify-center rounded-full bg-white/95 shadow-card border border-light-sage no-underline; width: 44px; height: 44px; transform: translate(-50%, -50%); touch-action: manipulation; }
@@ -783,6 +804,22 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 
     /* What changed (row styles live in the follow-ups block below) */
     .log { @apply px-4 pb-4 pt-1 lg:px-5; }
+}
+
+/* Needs action rows decide their shape by the width of their list, not the
+   viewport (see .attn-list): one line when there is room for it. */
+@container (min-width: 40rem) {
+    .attn-item { grid-template-columns: 2.25rem minmax(0, 1fr) auto auto; align-items: center; }
+    .attn-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .attn-sub { margin-left: 0; }
+    .attn-detail { display: inline; }
+    .attn-text > .attn-sub:not(:first-child)::before,
+    .attn-text > .attn-detail:not(:first-child)::before { content: '·'; margin: 0 .45em; color: #6A8990; }
+    .attn-foot { display: contents; }
+    .attn-when { justify-content: flex-end; }
+}
+@container (min-width: 40rem) and (max-width: 48rem) {
+    .attn-date { display: none; }
 }
 
 /* Motion that reports change (UI audit 3.10) */

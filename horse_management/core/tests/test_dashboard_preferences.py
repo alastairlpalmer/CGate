@@ -364,6 +364,38 @@ class DashboardPageTests(TestCase):
         )
         return horse
 
+    def test_rows_are_one_line_each_and_colour_coded_by_urgency(self):
+        """Zone B rows: one .attn-item per thing to do, the row marked with
+        its severity, and the card outlined (is-hot) with a red count while
+        anything is overdue."""
+        field = Location.objects.create(name='Top Paddock', site='Main')
+        horse = self._horse('Latebloomer', field)
+        Vaccination.objects.create(
+            horse=horse, vaccination_type=self.flu,
+            date_given=self.today - timedelta(days=300),
+            next_due_date=self.today - timedelta(days=3),
+        )
+        user = make_user('rowuser')
+        self.client.force_login(user)
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('class="attn-list"', body)
+        self.assertIn('class="attn-row is-overdue"', body)
+        self.assertEqual(body.count('class="attn-item"'), 1)
+        self.assertIn('class="attn-icon attn-icon-overdue"', body)
+        self.assertIn('class="attn-title">Latebloomer</a>', body)
+        self.assertIn('class="attn-sub">Top Paddock · Main</span>', body)
+        self.assertIn('class="attn-detail">', body)
+        self.assertIn('class="card overflow-hidden h-full is-hot" id="needs-action"', body)
+        self.assertIn('badge-danger">1</span>', body)
+
+        # Nothing overdue: a plain card, a neutral count, and a due-today row in saddle.
+        Vaccination.objects.filter(horse=horse).update(next_due_date=self.today)
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('class="attn-row is-due"', body)
+        self.assertIn('class="card overflow-hidden h-full" id="needs-action"', body)
+        self.assertIn('badge-neutral">1</span>', body)
+        self.assertNotIn('is-hot', body)
+
     def test_dashboard_has_no_charts(self):
         user = make_user('nochartuser')
         self.client.force_login(user)
