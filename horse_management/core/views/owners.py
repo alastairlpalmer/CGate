@@ -7,11 +7,11 @@ from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
-from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from ..forms import OwnerForm
+from ._next import safe_next
 from ._popup import PopupFormMixin
 from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Horse, Owner, OwnershipShare, Placement
@@ -105,7 +105,7 @@ class OwnerDetailView(FeatureAccessMixin, DetailView):
         # One button, decided here: delete when nothing points at the
         # owner, otherwise archive (or say what blocks it).
         owner = self.object
-        context['owner_history'] = owner.history_counts()
+        context['owner_has_history'] = owner.has_history
         context['archive_blockers'] = [] if owner.is_archived else owner.archive_blockers()
         return context
 
@@ -141,17 +141,6 @@ class OwnerUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
 # the delete view also falls back to archiving if history appeared since
 # the page was drawn.
 
-def _safe_next(request, fallback):
-    next_url = request.POST.get('next') or request.GET.get('next') or ''
-    if next_url and url_has_allowed_host_and_scheme(
-        next_url,
-        allowed_hosts={request.get_host()},
-        require_https=request.is_secure(),
-    ):
-        return next_url
-    return fallback
-
-
 def _archive_owner(owner):
     """Archive one owner. Returns the blocking reasons (empty = archived)."""
     blockers = owner.archive_blockers()
@@ -171,7 +160,7 @@ def owner_archive(request, pk):
     fallback = reverse('owner_detail', kwargs={'pk': owner.pk})
     if owner.is_archived:
         messages.info(request, f"{owner.name} is already archived.")
-        return redirect(_safe_next(request, fallback))
+        return redirect(safe_next(request, fallback))
     blockers = _archive_owner(owner)
     if blockers:
         messages.error(request, f"{owner.name} can't be archived. " + ' '.join(blockers))
@@ -181,7 +170,7 @@ def owner_archive(request, pk):
             f"{owner.name} archived. Their stays and invoices are kept, and "
             "you can restore them from their page.",
         )
-    return redirect(_safe_next(request, fallback))
+    return redirect(safe_next(request, fallback))
 
 
 @feature_required('owners')
@@ -196,7 +185,7 @@ def owner_restore(request, pk):
         messages.success(request, f"{owner.name} restored.")
     else:
         messages.info(request, f"{owner.name} is already in use.")
-    return redirect(_safe_next(request, reverse('owner_detail', kwargs={'pk': owner.pk})))
+    return redirect(safe_next(request, reverse('owner_detail', kwargs={'pk': owner.pk})))
 
 
 @feature_required('owners')
@@ -213,15 +202,15 @@ def owner_delete(request, pk):
                 f"{owner.name} has history, so they can only be archived, and "
                 "not yet: " + ' '.join(blockers),
             )
-            return redirect(_safe_next(request, fallback))
+            return redirect(safe_next(request, fallback))
         messages.success(
             request,
             f"{owner.name} has stays or invoices, so they were archived rather "
             "than deleted. Every record is kept.",
         )
-        return redirect(_safe_next(request, fallback))
+        return redirect(safe_next(request, fallback))
 
     name = owner.name
     owner.delete()
     messages.success(request, f"{name} deleted.")
-    return redirect(_safe_next(request, reverse('owner_list')))
+    return redirect(safe_next(request, reverse('owner_list')))

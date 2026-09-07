@@ -88,16 +88,27 @@ class OwnershipSyncTests(TestCase):
         old.refresh_from_db()
         self.assertEqual(old.owner, self.milly)
 
-    def test_editing_the_open_stay_moves_a_single_share(self):
+    def test_the_open_stay_does_not_offer_an_owner(self):
+        """The Ownership screen is the one place the current owner changes:
+        the open stay's edit form has no owner field, and an owner sent
+        anyway is ignored. A past stay keeps its owner field."""
         OwnershipShare.objects.create(horse=self.horse, owner=self.milly, share_percentage=100, is_primary_contact=True)
+        page = self.client.get(reverse('placement_update', args=[self.stay.pk])).content.decode()
+        self.assertNotIn('name="owner"', page)
+        self.assertIn("billed to the owner on the horse's Ownership card", page)
         self.client.post(reverse('placement_update', args=[self.stay.pk]), {
             'horse': self.horse.pk, 'owner': self.maite.pk, 'location': self.location.pk,
             'rate_type': self.rate.pk, 'start_date': self.stay.start_date.isoformat(),
-            'end_date': '', 'expected_departure': '', 'notes': '',
+            'end_date': '', 'expected_departure': '', 'notes': 'gate fixed',
         })
         self.stay.refresh_from_db()
-        self.assertEqual(self.stay.owner, self.maite)
-        self.assertEqual(self.horse.ownership_shares.get().owner, self.maite)
+        self.assertEqual(self.stay.owner, self.milly)
+        self.assertEqual(self.stay.notes, 'gate fixed')
+        self.assertEqual(self.horse.ownership_shares.get().owner, self.milly)
+
+    def test_a_new_stay_still_takes_an_owner(self):
+        page = self.client.get(reverse('placement_create')).content.decode()
+        self.assertIn('name="owner"', page)
 
     def test_editing_a_past_stay_leaves_the_share(self):
         OwnershipShare.objects.create(horse=self.horse, owner=self.milly, share_percentage=100, is_primary_contact=True)

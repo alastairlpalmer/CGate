@@ -21,6 +21,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from ..forms import ArrivalForm, LocationForm, LocationUsageForm, SiteSettingsForm
 from ..geo import coords_from_link, site_distance_warning
+from ._next import safe_next
 from ._popup import PopupFormMixin, is_popup_request, popup_saved_response
 from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 from ..models import Horse, Location, LocationUsagePeriod, Placement, SiteSettings
@@ -853,18 +854,6 @@ def set_location_usage(request, pk):
 # at the location.
 # ──────────────────────────────────────────────────────────────────────────
 
-def _safe_next(request, fallback):
-    """Return the POSTed ``next`` URL when it is a safe local path."""
-    next_url = request.POST.get('next', '')
-    if next_url and url_has_allowed_host_and_scheme(
-        next_url,
-        allowed_hosts={request.get_host()},
-        require_https=request.is_secure(),
-    ):
-        return next_url
-    return fallback
-
-
 def _archive_location(location):
     """Archive one location. Returns the blocking reasons (empty = archived)."""
     blockers = location.archive_blockers()
@@ -885,7 +874,7 @@ def location_archive(request, pk):
 
     if location.is_archived:
         messages.info(request, f"{location.name} is already archived.")
-        return redirect(_safe_next(request, fallback))
+        return redirect(safe_next(request, fallback))
 
     blockers = _archive_location(location)
     if blockers:
@@ -899,7 +888,7 @@ def location_archive(request, pk):
             f"{location.name} archived. Its history is kept, and you can "
             "restore it from Settings.",
         )
-    return redirect(_safe_next(request, fallback))
+    return redirect(safe_next(request, fallback))
 
 
 @feature_required('locations')
@@ -914,7 +903,7 @@ def location_restore(request, pk):
         messages.success(request, f"{location.name} restored.")
     else:
         messages.info(request, f"{location.name} is already in use.")
-    return redirect(_safe_next(
+    return redirect(safe_next(
         request, reverse('location_detail', kwargs={'pk': location.pk})
     ))
 
@@ -931,14 +920,14 @@ def location_delete(request, pk):
             f"{location.name} can't be deleted. " + ' '.join(blockers)
             + " Archive it instead to keep the records.",
         )
-        return redirect(_safe_next(
+        return redirect(safe_next(
             request, reverse('location_detail', kwargs={'pk': location.pk})
         ))
 
     name = location.name
     location.delete()
     messages.success(request, f"{name} deleted.")
-    return redirect(_safe_next(request, reverse('location_list')))
+    return redirect(safe_next(request, reverse('location_list')))
 
 
 @feature_required('locations')
@@ -951,7 +940,7 @@ def site_archive(request):
 
     if not locations:
         messages.error(request, f"No locations in use on site “{site}”.")
-        return redirect(_safe_next(request, fallback))
+        return redirect(safe_next(request, fallback))
 
     archived, blocked = 0, []
     for location in locations:
@@ -971,7 +960,7 @@ def site_archive(request):
             "These locations still have horses on them, so they stay in use: "
             f"{', '.join(blocked)}.",
         )
-    return redirect(_safe_next(request, fallback))
+    return redirect(safe_next(request, fallback))
 
 
 @feature_required('locations')
@@ -989,7 +978,7 @@ def site_restore(request):
         )
     else:
         messages.error(request, f"No archived locations on site “{site}”.")
-    return redirect(_safe_next(request, reverse('location_list')))
+    return redirect(safe_next(request, reverse('location_list')))
 
 
 @feature_required('locations')
@@ -1002,7 +991,7 @@ def site_delete(request):
 
     if not locations:
         messages.error(request, f"No site named “{site}”.")
-        return redirect(_safe_next(request, fallback))
+        return redirect(safe_next(request, fallback))
 
     blocked = [loc.name for loc in locations if loc.delete_blockers()]
     if blocked:
@@ -1011,7 +1000,7 @@ def site_delete(request):
             f"{site} can't be deleted — these locations have records: "
             f"{', '.join(blocked)}. Archive the site instead.",
         )
-        return redirect(_safe_next(request, fallback))
+        return redirect(safe_next(request, fallback))
 
     count = len(locations)
     with transaction.atomic():
@@ -1020,4 +1009,4 @@ def site_delete(request):
         request,
         f"Site {site} deleted with its {count} location{'s' if count != 1 else ''}.",
     )
-    return redirect(_safe_next(request, fallback))
+    return redirect(safe_next(request, fallback))

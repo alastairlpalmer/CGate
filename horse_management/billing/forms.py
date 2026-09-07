@@ -6,6 +6,7 @@ import json
 
 from django import forms
 
+from core.forms import owners_for_picker
 from core.images import heic_to_jpeg
 
 from .models import ExtraCharge, FeedOut, FeedStock, ServiceItem, ServiceProvider, YardCost
@@ -207,6 +208,12 @@ class ExtraChargeForm(ServicePickerMixin, forms.ModelForm):
             'receipt_image': forms.FileInput(attrs={'class': 'form-input'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Archived owners leave every picker; a charge already billed to
+        # one keeps that owner in its own list so it can still be edited.
+        self.fields['owner'].queryset = owners_for_picker(self.instance.owner_id)
 
     def clean_receipt_image(self):
         return heic_to_jpeg(self.cleaned_data.get('receipt_image'))

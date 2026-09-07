@@ -13,6 +13,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from billing.forms import ExtraChargeForm
 from core.forms import ArrivalForm, OwnershipShareFormSet, PlacementForm
 from core.models import Horse, Location, Owner, OwnershipShare, Placement, RateType
 from core.roles_testutils import make_admin
@@ -133,6 +134,16 @@ class OwnerArchiveTests(TestCase):
         self.assertNotIn(gone, form.fields['owner'].queryset)
         # An archived pk is refused, not just hidden.
         self.assertFalse(PlacementForm(data={'owner': gone.pk}).is_valid())
+
+    def test_archived_owners_leave_the_charge_picker_and_the_owner_groups(self):
+        live = Owner.objects.create(name='Still Here')
+        gone = Owner.objects.create(name='Gone Away', is_archived=True)
+        form = ExtraChargeForm()
+        self.assertIn(live, form.fields['owner'].queryset)
+        self.assertNotIn(gone, form.fields['owner'].queryset)
+        page = self.client.get(reverse('horse_list') + '?group_by=owner&show_empty=1').content.decode()
+        self.assertIn('Still Here', page)
+        self.assertNotIn('Gone Away', page)
 
     def test_an_old_stay_can_still_be_edited_with_its_archived_owner(self):
         gone = Owner.objects.create(name='Gone Away', is_archived=True)
