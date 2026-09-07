@@ -87,6 +87,7 @@
                 },
 
                 destroy: function () {
+                    clearTimeout(this._bgTimer);
                     window.removeEventListener('yardway:map-focus', this._onFocus);
                     if (this._ro) { this._ro.disconnect(); }
                     if (this.map) { this.map.remove(); this.map = null; }
@@ -138,6 +139,19 @@
                         el.addEventListener('touchstart', function (e) {
                             if (e.touches.length === 1) self.hint('Use two fingers to move the map');
                         }, { passive: true });
+                    }
+                    if (full) {
+                        // A tap outside every shape opens the Locations list. It
+                        // waits a beat so a double click still zooms instead;
+                        // shape and badge taps never reach here (stopped below,
+                        // and badges sit outside Leaflet's container).
+                        this.map.on('click', function () {
+                            clearTimeout(self._bgTimer);
+                            self._bgTimer = setTimeout(function () {
+                                if (self.payload.urls && self.payload.urls.list) window.location.assign(self.payload.urls.list);
+                            }, 300);
+                        });
+                        this.map.on('dblclick', function () { clearTimeout(self._bgTimer); });
                     }
                     this.group = L.featureGroup().addTo(this.map);
                     this.draw();
@@ -199,7 +213,10 @@
                         }
                         if (!layer) return;   // no point: draw nothing, not even a placeholder
                         if (full) {
-                            layer.on('click', function () { window.location.assign(loc.urls.detail); });
+                            layer.on('click', function (e) {
+                                L.DomEvent.stopPropagation(e);   // not a background tap
+                                window.location.assign(loc.urls.detail);
+                            });
                         }
                         // Leaflet only attaches layers once the map has a view, and a
                         // circle's getBounds() needs the map, so keep bounds of our own.

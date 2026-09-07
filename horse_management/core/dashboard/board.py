@@ -188,6 +188,7 @@ def _shape_band(band):
             },
         })
     return {
+        'urls': {'list': reverse('location_list')},
         'site': band['name'],
         'horses': band['horses'],
         'total': len(locations),

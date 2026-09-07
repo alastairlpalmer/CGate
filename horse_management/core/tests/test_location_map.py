@@ -151,9 +151,11 @@ class MapTabTests(TestCase):
         self.assertContains(response, '0 horses')
         # Site selector, both sites
         self.assertContains(response, '?tab=map&site=Colgate')
-        # Badge is the ring partial at 44 px and links to the horse list
+        # Badge is the ring partial at 44 px
         self.assertContains(response, 'width:44px;height:44px')
-        self.assertContains(response, f'group_by=location&amp;location={self.a.pk}')
+        # A badge opens the location; the list URL is there for a background tap.
+        self.assertContains(response, f'href="{reverse("location_detail", args=[self.a.pk])}" class="location-map-badge"')
+        self.assertEqual(response.context['map_payload']['urls']['list'], reverse('location_list'))
 
     def test_default_site_follows_the_dashboard_preference(self):
         pref = DashboardPreference.get_for(self.user)
