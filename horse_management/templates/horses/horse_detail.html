@@ -42,10 +42,10 @@
                         {% endif %}
                     </div>
                     <p class="mt-1.5 text-sm text-sage">
-                        {% if horse.calculated_age %}<span class="text-charcoal-light font-medium">{{ horse.calculated_age }}yo</span> &middot; {% endif %}
+                        {% if horse.is_youngster %}<span class="text-charcoal-light font-medium">{{ horse.age_label }}</span> &middot; {% elif horse.calculated_age %}<span class="text-charcoal-light font-medium">{{ horse.calculated_age }}yo</span> &middot; {% endif %}
                         {{ horse.get_color_display }} &middot;
                         {{ horse.get_sex_display }}
-                        {% if horse.date_of_birth %}<span class="ml-1 text-sage/80">· born {{ horse.date_of_birth|date:"d M Y" }}</span>{% endif %}
+                        {% if horse.date_of_birth %}<span class="ml-1 text-sage/80">· {% if horse.is_youngster %}foaled{% else %}born{% endif %} {{ horse.date_of_birth|date:"d M Y" }}</span>{% endif %}
                     </p>
                     {% if horse.current_owner %}
                     <p class="mt-2 text-sm text-charcoal-light flex items-center gap-1.5">
@@ -139,6 +139,10 @@
 
         <!-- Left Column -->
         <div class="lg:col-span-2 space-y-6">
+
+            {% if foal_record %}
+            {% include 'horses/partials/foal_record.html' %}
+            {% endif %}
 
             <!-- Current Placement -->
             <div class="card">
@@ -454,19 +458,32 @@
                             <thead>
                                 <tr>
                                     <th>Name</th>
-                                    <th>DOB</th>
-                                    <th>Sex</th>
-                                    <th>Colour</th>
+                                    <th>Foaled</th>
+                                    <th>Age</th>
+                                    <th>Sex &amp; colour</th>
+                                    <th>Sire</th>
+                                    <th>Status</th>
+                                    {% if feature_access.breeding.full %}<th class="text-right">Actions</th>{% endif %}
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for foal in foals %}
+                                {% with fr=foal.birth_record.all.0 %}
                                 <tr>
-                                    <td><a href="{% url 'horse_detail' foal.pk %}" class="link tap-pad">{{ foal.name }}</a></td>
-                                    <td class="text-sage">{{ foal.date_of_birth|default:"-" }}</td>
-                                    <td class="text-sage">{{ foal.get_sex_display }}</td>
-                                    <td class="text-sage">{{ foal.get_color_display }}</td>
+                                    <td class="whitespace-nowrap"><a href="{% url 'horse_detail' foal.pk %}" class="link tap-pad">{{ foal.name }}</a></td>
+                                    <td class="text-sage whitespace-nowrap">{% if foal.date_of_birth %}{{ foal.date_of_birth|date:"d M Y" }}{% else %}-{% endif %}</td>
+                                    <td class="text-charcoal whitespace-nowrap">{{ foal.age_label|default:"-" }}</td>
+                                    <td class="text-sage">{{ foal.get_sex_display|default:"-" }}{% if foal.color %} &middot; {{ foal.get_color_display }}{% endif %}</td>
+                                    <td class="text-sage">{{ foal.sire_name|default:"-" }}</td>
+                                    <td>{% if fr %}{% if fr.is_weaned %}<span class="badge-neutral">Weaned {{ fr.weaned_date|date:"d M Y" }}</span>{% else %}<span class="badge-success">At foot</span>{% endif %}{% else %}<span class="text-sage">-</span>{% endif %}</td>
+                                    {% if feature_access.breeding.full %}
+                                    <td class="text-right whitespace-nowrap">
+                                        {% if fr.can_wean %}<a href="{% url 'breeding_wean' fr.pk %}" hx-get="{% url 'breeding_wean' fr.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Wean {{ foal.name }}" class="btn-secondary btn-xs">Wean</a>{% endif %}
+                                        {% if fr %}<a href="{% url 'breeding_foal_edit' fr.pk %}" hx-get="{% url 'breeding_foal_edit' fr.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Foal details for {{ foal.name }}" class="btn-ghost btn-xs">Details</a>{% endif %}
+                                    </td>
+                                    {% endif %}
                                 </tr>
+                                {% endwith %}
                                 {% endfor %}
                             </tbody>
                         </table>

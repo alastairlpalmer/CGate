@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Wean {% if foal %}{{ foal.name }}{% else %}foal{% endif %} - Yardway{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Wean</h1>
+            <p class="page-subtitle">{% if foal %}{{ foal.name }} from {% endif %}{{ mare.name }}</p>
+        </div>
+    </div>
+    <div class="card">{% include 'health/partials/wean_form.html' %}</div>
+</div>
+{% endblock %}

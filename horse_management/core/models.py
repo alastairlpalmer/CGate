@@ -634,6 +634,38 @@ class Horse(models.Model):
         return self.age
 
     @property
+    def days_old(self):
+        """Whole days since birth, or None without a date of birth."""
+        if not self.date_of_birth:
+            return None
+        return (timezone.localdate() - self.date_of_birth).days
+
+    @property
+    def age_label(self):
+        """'3 days old', '6 weeks old', '4 months old' for youngsters;
+        '5yo' once a horse is a year old; '' with no age on record."""
+        days = self.days_old
+        if days is None:
+            return f'{self.age}yo' if self.age is not None else ''
+        if days < 0:
+            return ''
+        if days < 14:
+            return f'{days} day{"s" if days != 1 else ""} old'
+        if days < 90:
+            weeks = days // 7
+            return f'{weeks} week{"s" if weeks != 1 else ""} old'
+        if days < 365:
+            months = days // 30
+            return f'{months} month{"s" if months != 1 else ""} old'
+        return f'{self.calculated_age}yo'
+
+    @property
+    def is_youngster(self):
+        """Under a year old: the header shows days/weeks/months, not '0yo'."""
+        days = self.days_old
+        return days is not None and 0 <= days < 365
+
+    @property
     def is_mare(self):
         return self.sex == self.Sex.MARE
 

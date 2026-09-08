@@ -1,0 +1,54 @@
+{% comment %}
+Foal details form body — the full page (health/breeding_foal_edit.html) and
+the pop-up sheet share it. Edits the breeding record and the foal's horse
+record together.
+{% endcomment %}
+<form method="post" action="{% url 'breeding_foal_edit' record.pk %}"
+      {% if in_popup %}hx-post="{% url 'breeding_foal_edit' record.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"{% endif %}>
+    {% csrf_token %}
+    <div class="p-4 sm:p-5 space-y-4 sm:space-y-5">
+        {% include 'includes/form_errors.html' with form=form intro="The details weren't saved:" %}
+        <div class="rounded-lg bg-sand-50 border border-sand-100 px-3 py-2 text-sm text-charcoal-light">
+            Out of <span class="font-medium text-charcoal">{{ mare.name }}</span> by {{ record.stallion_name }} &middot; covered {{ record.date_covered|date:"d M Y" }}
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+            <div class="sm:col-span-2{% if form.foal_name.errors %} field-invalid{% endif %}">
+                <label for="{{ form.foal_name.id_for_label }}" class="block text-sm font-medium text-charcoal">Name *</label>
+                {{ form.foal_name }}
+                {% if form.foal_name.errors %}<p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.foal_name.errors.0 }}</p>{% endif %}
+            </div>
+            <div{% if form.foal_dob.errors %} class="field-invalid"{% endif %}>
+                <label for="{{ form.foal_dob.id_for_label }}" class="block text-sm font-medium text-charcoal">Date foaled *</label>
+                {{ form.foal_dob }}
+                {% if form.foal_dob.errors %}<p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.foal_dob.errors.0 }}</p>{% endif %}
+            </div>
+            <div{% if form.foal_sex.errors %} class="field-invalid"{% endif %}>
+                <label for="{{ form.foal_sex.id_for_label }}" class="block text-sm font-medium text-charcoal">Sex *</label>
+                {{ form.foal_sex }}
+                {% if form.foal_sex.errors %}<p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.foal_sex.errors.0 }}</p>{% endif %}
+            </div>
+            <div{% if form.foal_colour.errors %} class="field-invalid"{% endif %}>
+                <label for="{{ form.foal_colour.id_for_label }}" class="block text-sm font-medium text-charcoal">Colour</label>
+                {{ form.foal_colour }}
+            </div>
+            <div{% if form.foal_microchip.errors %} class="field-invalid"{% endif %}>
+                <label for="{{ form.foal_microchip.id_for_label }}" class="block text-sm font-medium text-charcoal">Microchip</label>
+                {{ form.foal_microchip }}
+            </div>
+            <div class="sm:col-span-2{% if form.foaling_notes.errors %} field-invalid{% endif %}">
+                <label for="{{ form.foaling_notes.id_for_label }}" class="block text-sm font-medium text-charcoal">Foaling notes</label>
+                {{ form.foaling_notes }}
+                <p class="mt-1 text-xs text-sage">{{ form.foaling_notes.help_text }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="{% if in_popup %}popup-footer{% else %}form-footer{% endif %}">
+        {% if in_popup %}
+        <a href="{% url 'breeding_foal_edit' record.pk %}" hx-boost="false" class="hidden sm:inline-flex items-center mr-auto text-xs text-sage hover:text-charcoal-light">Open the full form</a>
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        {% else %}
+        <a href="{% url 'horse_detail' foal.pk|default:mare.pk %}" class="btn-secondary">Cancel</a>
+        {% endif %}
+        <button type="submit" class="btn-primary">Save Changes</button>
+    </div>
+</form>

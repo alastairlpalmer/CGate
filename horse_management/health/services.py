@@ -180,3 +180,102 @@ def add_covering(record, *, date, method='', stallion_name='', vet=None, notes='
             record.save(update_fields=changed + ['updated_at'])
     record.refresh_from_db()
     return covering
+
+
+def update_foal_details(record, *, foal_name, foal_dob, foal_sex, foal_colour='',
+                        foal_microchip='', foaling_notes=''):
+    """Edit the foal's birth details on the record and its horse record."""
+    with transaction.atomic():
+        record.foal_dob = foal_dob
+        record.foal_sex = foal_sex
+        record.foal_colour = foal_colour
+        record.foal_microchip = foal_microchip
+        record.foaling_notes = foaling_notes
+        record.save()
+        foal = record.foal
+        if foal is not None:
+            foal.name = foal_name.strip() or foal.name
+            foal.date_of_birth = foal_dob
+            foal.sex = foal_sex
+            foal.color = foal_colour
+            foal.save(update_fields=['name', 'date_of_birth', 'sex', 'color', 'updated_at'])
+    return record
+
+
+def record_weaning(record, *, weaned_date, foal_location=None, foal_rate_type=None,
+                   mare_rate_type=None, weaning_notes=''):
+    """Wean the foal: date it, and optionally move the foal and re-rate the
+    mare and foal from that date. Board changes are opt-in so a back-dated
+    weaning on an old record changes nothing but the date."""
+    if not record.can_wean:
+        raise ValidationError(
+            'Weaning can only be recorded on a foal that has been born and not yet weaned.'
+        )
+    foal = record.foal
+    mare = record.mare
+    with transaction.atomic():
+        record.weaned_date = weaned_date
+        record.weaning_notes = weaning_notes
+        record.save(update_fields=['weaned_date', 'weaning_notes', 'updated_at'])
+
+        from core.services import PlacementService
+        if foal is not None:
+            foal_placement = foal.current_placement
+            if foal_location is not None or (foal_rate_type and foal_placement):
+                location = foal_location or foal_placement.location
+                rate = foal_rate_type or (foal_placement.rate_type if foal_placement else None)
+                owner = foal_placement.owner if foal_placement else foal.primary_owner
+                if foal_placement:
+                    PlacementService.move_horse(
+                        foal, new_location=location, move_date=weaned_date,
+                        new_owner=owner, new_rate_type=rate,
+                        notes=f"Weaned from {mare.name}",
+                    )
+                elif owner and rate:
+                    PlacementService.arrive_horse(
+                        foal, owner=owner, location=location, rate_type=rate,
+                        arrival_date=weaned_date, notes=f"Weaned from {mare.name}",
+                    )
+        mare_placement = mare.current_placement
+        if mare_rate_type and mare_placement and mare_rate_type != mare_placement.rate_type:
+            PlacementService.move_horse(
+                mare, new_location=mare_placement.location, move_date=weaned_date,
+                new_owner=mare_placement.owner, new_rate_type=mare_rate_type,
+                expected_departure=mare_placement.expected_departure,
+                notes="Rate changed at weaning",
+            )
+    return record
+
+
+def foal_milestones(record):
+    """The foal's first-year milestones as [(key, label, done, date, hint)].
+
+    Read from what the yard already records (vet visits, farrier, passport,
+    vaccinations) plus the weaning date, so nothing has to be ticked twice.
+    """
+    from .models import FarrierVisit, Vaccination, VetVisit
+
+    foal = record.foal
+    dob = record.foal_dob
+    milestones = []
+    if foal is None or dob is None:
+        return milestones
+
+    def first(qs, field):
+        return qs.order_by(field).values_list(field, flat=True).first()
+
+    vet = first(VetVisit.objects.filter(horse=foal, date__gte=dob), 'date')
+    milestones.append(('vet_check', 'Newborn vet check', vet is not None, vet,
+                       'IgG and first examination, within a day of birth'))
+    passport_done = bool(foal.has_passport)
+    milestones.append(('passport', 'Passport & microchip', passport_done,
+                       None, f'Due by {Vaccination._add_months(dob, 6):%d %b %Y}'))
+    farrier = first(FarrierVisit.objects.filter(horse=foal, date__gte=dob), 'date')
+    milestones.append(('farrier', 'First farrier visit', farrier is not None, farrier,
+                       'Feet trimmed from about four to six weeks'))
+    vax = first(Vaccination.objects.filter(horse=foal, date_given__gte=dob), 'date_given')
+    milestones.append(('vaccination', 'First vaccination', vax is not None, vax,
+                       'Primary course from about five to six months'))
+    milestones.append(('weaned', 'Weaned', record.is_weaned, record.weaned_date,
+                       f'Usually from {record.weaning_due:%b %Y}' if record.weaning_due else ''))
+    return milestones

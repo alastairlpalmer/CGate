@@ -74,7 +74,7 @@
                     <a href="{% url 'horse_detail' row.mare.pk %}" class="foal-cal-label link" style="left: {{ row.left }}%;">
                         {{ row.mare.name }}
                         <span class="font-normal text-sage">&times; {{ row.record.stallion_name }}
-                        &middot; {% if row.record.status == 'born' %}foaled {{ row.end|date:"j M" }}{% if row.record.foal %}: {{ row.record.foal.name }}{% endif %}{% elif row.past_due %}<span class="text-error-red">due date passed</span>{% else %}due {{ row.due|date:"j M" }}{% endif %}</span>
+                        &middot; {% if row.record.status == 'born' %}foaled {{ row.end|date:"j M" }}{% if row.record.foal %}: {{ row.record.foal.name }}{% endif %}{% if row.record.foal_age_label %} ({{ row.record.foal_age_label }}){% endif %}{% elif row.past_due %}<span class="text-error-red">due date passed</span>{% else %}due {{ row.due|date:"j M" }}{% endif %}</span>
                     </a>
                 </div>
                 {% empty %}

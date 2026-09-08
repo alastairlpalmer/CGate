@@ -125,7 +125,7 @@
                     {% elif br.foal %}
                     <div class="list-card-meta">
                         Foal: <a href="{% url 'horse_detail' br.foal.pk %}" class="relative z-10 link">{{ br.foal.name }}</a>
-                        {% if br.foal_dob %} &middot; born {{ br.foal_dob|date:"d M Y" }}{% endif %}
+                        {% if br.foal_dob %} &middot; foaled {{ br.foal_dob|date:"d M Y" }} &middot; {{ br.foal_age_label }}{% endif %}
                     </div>
                     {% elif br.status == 'born' and br.foal_dob %}
                     <div class="list-card-meta">Born {{ br.foal_dob|date:"d M Y" }} &middot; no horse record linked</div>
@@ -218,7 +218,7 @@
                         <td>
                             {% if br.foal %}
                             <a href="{% url 'horse_detail' br.foal.pk %}" class="link tap-pad">{{ br.foal.name }}</a>
-                            {% if br.foal_dob %}<div class="text-xs text-sage">born {{ br.foal_dob|date:"d M Y" }}</div>{% endif %}
+                            {% if br.foal_dob %}<div class="text-xs text-sage">foaled {{ br.foal_dob|date:"d M Y" }} &middot; {{ br.foal_age_label }}{% if br.is_weaned %} &middot; weaned{% endif %}</div>{% endif %}
                             {% elif br.status == 'born' and br.foal_dob %}
                             <span class="text-charcoal">born {{ br.foal_dob|date:"d M Y" }}</span>
                             <div class="text-xs text-sage">no horse record linked</div>

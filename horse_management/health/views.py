@@ -37,8 +37,11 @@ from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_resp
 from .forms import (
     BreedingRecordForm,
     CoveringForm,
+    FoalDetailsForm,
+    FoalNoteForm,
     FoalingForm,
     ScanResultForm,
+    WeaningForm,
     BulkActualDepartureForm,
     BulkExpectedDepartureForm,
     BulkFarrierVisitForm,
@@ -60,6 +63,7 @@ from .forms import (
 from .models import (
     BreedingRecord,
     Covering,
+    FoalNote,
     PregnancyScan,
     FarrierVisit,
     MedicalCondition,
@@ -1651,6 +1655,144 @@ def breeding_scan_delete(request, pk):
         record.save(update_fields=changed + ['updated_at'])
     messages.success(request, f"{scan.get_scan_type_display()} on {scan.date:%d %b %Y} removed.")
     return redirect('horse_detail', pk=record.mare_id)
+
+
+# ─── Foal record: details, weaning, notes ─────────────────────────
+
+def _foal_return(record):
+    """Where the foal workflows go back to: the foal's page, else the mare's."""
+    return redirect('horse_detail', pk=record.foal_id or record.mare_id)
+
+
+@feature_required('breeding')
+def breeding_foal_edit(request, pk):
+    """Edit the foal's birth details (date foaled, sex, colour, microchip,
+    notes) on the record and the foal's horse record together."""
+    from .services import update_foal_details
+
+    record = get_object_or_404(BreedingRecord.objects.select_related('mare', 'foal'), pk=pk)
+    in_popup = is_popup_request(request)
+    if record.status != BreedingRecord.Status.BORN:
+        messages.info(request, f"{record.mare.name}'s record has no foal yet; use Record foaling first.")
+        if in_popup:
+            return popup_saved_response()
+        return redirect('horse_detail', pk=record.mare_id)
+
+    if request.method == 'POST':
+        form = FoalDetailsForm(request.POST, record=record)
+        if form.is_valid():
+            update_foal_details(record, **form.cleaned_data)
+            messages.success(request, "Foal details updated.")
+            if in_popup:
+                return popup_saved_response()
+            return _foal_return(record)
+    else:
+        form = FoalDetailsForm(initial={
+            'foal_name': record.foal.name if record.foal else '',
+            'foal_dob': record.foal_dob,
+            'foal_sex': record.foal_sex or (record.foal.sex if record.foal else ''),
+            'foal_colour': record.foal_colour or (record.foal.color if record.foal else ''),
+            'foal_microchip': record.foal_microchip,
+            'foaling_notes': record.foaling_notes,
+        }, record=record)
+
+    template = 'health/partials/foal_details_form.html' if in_popup else 'health/breeding_foal_edit.html'
+    return render(request, template, {
+        'record': record, 'mare': record.mare, 'foal': record.foal,
+        'form': form, 'in_popup': in_popup, 'today': timezone.localdate(),
+    })
+
+
+@feature_required('breeding')
+def breeding_wean(request, pk):
+    """Wean the foal: date it, optionally move the foal and re-rate the
+    mare and foal from that date."""
+    from .services import record_weaning
+
+    record = get_object_or_404(BreedingRecord.objects.select_related('mare', 'foal'), pk=pk)
+    in_popup = is_popup_request(request)
+    today = timezone.localdate()
+    if not record.can_wean:
+        messages.info(
+            request,
+            f"{record.mare.name}'s foal "
+            f"{'is already weaned' if record.is_weaned else 'has not been born yet'}.",
+        )
+        if in_popup:
+            return popup_saved_response()
+        return _foal_return(record)
+
+    if request.method == 'POST':
+        form = WeaningForm(request.POST, record=record)
+        if form.is_valid():
+            try:
+                record_weaning(record, **form.cleaned_data)
+            except ValidationError as e:
+                form.add_error(None, e)
+            else:
+                foal_name = record.foal.name if record.foal else 'The foal'
+                messages.success(
+                    request,
+                    f"{foal_name} weaned from {record.mare.name} on {form.cleaned_data['weaned_date']:%d %b %Y}.",
+                )
+                if in_popup:
+                    return popup_saved_response()
+                return _foal_return(record)
+    else:
+        form = WeaningForm(initial={'weaned_date': today}, record=record)
+
+    template = 'health/partials/wean_form.html' if in_popup else 'health/breeding_wean.html'
+    return render(request, template, {
+        'record': record, 'mare': record.mare, 'foal': record.foal,
+        'form': form, 'in_popup': in_popup, 'today': today,
+    })
+
+
+def _foal_notes_response(request, record):
+    """The notes block, re-rendered after a change (htmx) or a redirect."""
+    if request.headers.get('HX-Request') == 'true':
+        return render(request, 'health/partials/foal_notes.html', {
+            'record': record, 'notes': record.foal_notes.all(),
+            'note_form': FoalNoteForm(initial={'date': timezone.localdate()}),
+            'can_edit': True, 'today': timezone.localdate(),
+        })
+    return _foal_return(record)
+
+
+@feature_required('breeding')
+def breeding_foal_note_add(request, pk):
+    """Add a dated note on the foal (POST)."""
+    record = get_object_or_404(BreedingRecord.objects.select_related('mare', 'foal'), pk=pk)
+    if request.method != 'POST':
+        return HttpResponseBadRequest("POST required")
+    form = FoalNoteForm(request.POST)
+    if form.is_valid():
+        note = form.save(commit=False)
+        note.record = record
+        note.save()
+        if request.headers.get('HX-Request') != 'true':
+            messages.success(request, "Note added.")
+    elif request.headers.get('HX-Request') == 'true':
+        return render(request, 'health/partials/foal_notes.html', {
+            'record': record, 'notes': record.foal_notes.all(),
+            'note_form': form, 'can_edit': True, 'today': timezone.localdate(),
+        })
+    else:
+        messages.error(request, "The note wasn't saved: " + '; '.join(
+            f'{field}: {errs[0]}' for field, errs in form.errors.items()
+        ))
+    return _foal_notes_response(request, record)
+
+
+@feature_required('breeding')
+def breeding_foal_note_delete(request, pk):
+    """Remove a foal note (POST)."""
+    note = get_object_or_404(FoalNote.objects.select_related('record__mare'), pk=pk)
+    record = note.record
+    if request.method != 'POST':
+        return HttpResponseBadRequest("POST required")
+    note.delete()
+    return _foal_notes_response(request, record)
 
 
 # ─── Quick-add vet (HTMX) ───────────────────────────────────────────
