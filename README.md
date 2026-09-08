@@ -4,6 +4,8 @@ A web application for managing horse livery operations including tracking horses
 
 ## Documentation
 
+- [`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md) — the setup work
+  outstanding, in order, with time estimates.
 - [`SECURITY.md`](SECURITY.md) — controls in place, known gaps, and how to
   report a vulnerability.
 - [`docs/`](docs/README.md) — architecture, the reviewer pack, the backup
