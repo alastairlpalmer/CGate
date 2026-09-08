@@ -3,6 +3,14 @@ Django~=5.2.12
 django-environ~=0.13.0
 whitenoise~=6.12.0
 
+# Security
+# Brute-force protection on sign-in (lockout after repeated failures).
+django-axes~=8.3
+# Content-Security-Policy header. Report-only until CSP_ENFORCE=True.
+django-csp~=4.0
+# Fernet encryption for the Xero OAuth tokens at rest.
+cryptography~=46.0
+
 # WSGI server (Railway / any always-on host; not used by Vercel)
 gunicorn~=23.0
 

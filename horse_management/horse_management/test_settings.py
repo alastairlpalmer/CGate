@@ -36,6 +36,17 @@ DATABASES = {
 # Analytics must never fire from a test run, whatever is in the environment.
 POSTHOG_API_KEY = ''
 
+# django-axes off by default in tests.
+#
+# ``Client.login()`` calls ``authenticate()`` with no request object, and
+# AxesStandaloneBackend refuses to run without one — that would break every
+# existing test that signs a user in that way, for no security benefit.
+#
+# The lockout behaviour itself is covered in core/tests/test_login_lockout.py,
+# which turns axes back on with @override_settings and drives the real
+# sign-in *view* (which does pass a request, exactly as a browser does).
+AXES_ENABLED = False
+
 # Run queued tasks inline so the async bulk-send path is exercised without
 # a broker. INVOICE_SEND_ASYNC stays on so tests cover the queued code.
 CELERY_TASK_ALWAYS_EAGER = True

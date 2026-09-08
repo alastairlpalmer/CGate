@@ -3,6 +3,7 @@ Django settings for horse_management project.
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -88,6 +89,7 @@ INSTALLED_APPS = [
     'django_htmx',
     'crispy_forms',
     'crispy_tailwind',
+    'axes',
 
     # Local apps
     'core.apps.CoreConfig',
@@ -120,6 +122,12 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
+    # Content-Security-Policy. Report-only for now (see CSP settings below),
+    # so it adds a header and never blocks a response.
+    'csp.middleware.CSPMiddleware',
+    # django-axes must be LAST: it wraps the response to record the outcome
+    # of a sign-in attempt, so every other middleware has to have run first.
+    'axes.middleware.AxesMiddleware',
 ]
 
 ROOT_URLCONF = 'horse_management.urls'
@@ -274,6 +282,12 @@ EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@yardway.local')
+
+# Encryption of secrets stored in the database (core/encryption.py).
+# Comma-separated Fernet keys, newest first. The first key encrypts; all of
+# them are tried when decrypting, which is what allows rotation. Leave it
+# empty to derive a key from SECRET_KEY instead.
+FIELD_ENCRYPTION_KEYS = env.list('FIELD_ENCRYPTION_KEYS', default=[])
 
 # Xero OAuth2
 XERO_CLIENT_ID = env('XERO_CLIENT_ID', default='')
@@ -455,7 +469,13 @@ CELERY_BEAT_SCHEDULE = {
 
 # Login settings
 # Users can sign in with their email address (or legacy username).
-AUTHENTICATION_BACKENDS = ['core.auth_backends.EmailOrUsernameBackend']
+# AxesStandaloneBackend must come first. It refuses a locked-out identity
+# before any password is checked, so a lockout cannot be bypassed by a
+# backend further down the list.
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
+    'core.auth_backends.EmailOrUsernameBackend',
+]
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 LOGIN_URL = '/accounts/login/'
@@ -473,6 +493,102 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 
 # Clickjacking protection
 X_FRAME_OPTIONS = 'DENY'
+
+# Brute-force protection (django-axes)
+# -----------------------------------
+# Before this, sign-in accepted unlimited password guesses. A yard's owner
+# email addresses are on its invoices, so the username half of a guess is
+# not secret and only the password stands in the way.
+#
+# Locking on the username (not the IP address) is the deliberate choice
+# here. The app sits behind Railway and, usually, Cloudflare, so the IP
+# address Django sees is a proxy's unless the forwarded-header chain is
+# configured exactly right — a lockout keyed on it is either useless (every
+# request looks like one IP) or wrong (it locks out a whole office). The
+# username is always accurate.
+#
+# The cost of that choice: someone who knows a colleague's email address can
+# lock them out on purpose. AXES_COOLOFF_TIME bounds the damage — the lock
+# lifts by itself, and an administrator can clear it sooner with
+# `python manage.py axes_reset_username <email>`.
+AXES_ENABLED = env.bool('AXES_ENABLED', default=True)
+AXES_FAILURE_LIMIT = env.int('AXES_FAILURE_LIMIT', default=5)
+AXES_COOLOFF_TIME = timedelta(minutes=env.int('AXES_COOLOFF_MINUTES', default=30))
+AXES_LOCKOUT_PARAMETERS = ['username']
+# A correct password clears the counter, so five typos spread over a month
+# never add up to a lockout.
+AXES_RESET_ON_SUCCESS = True
+# Sign-in accepts an email address or a username, case-insensitively (see
+# core.auth_backends). Without this, 'Sam@yard.co' and 'sam@yard.co' would
+# count as two separate identities and each get its own five attempts.
+AXES_USERNAME_FORM_FIELD = 'username'
+AXES_USERNAME_CALLABLE = 'core.axes_username.normalise_username'
+AXES_LOCKOUT_TEMPLATE = 'registration/lockout.html'
+# 429 is the honest status for "too many attempts, try later". The default
+# is 403, which reads as "forbidden forever".
+AXES_HTTP_RESPONSE_CODE = 429
+# axes.W006 warns that AXES_LOCKOUT_PARAMETERS has no 'ip_address', on the
+# grounds that an attacker could rotate identifiers to dodge the limit.
+# That warning does not apply to a username-only lockout: rotating IP
+# address, user agent or cookies changes nothing, because the counter keys
+# on the account being attacked. The real trade-off (deliberate lockout of
+# a known colleague) is documented above and bounded by AXES_COOLOFF_TIME.
+SILENCED_SYSTEM_CHECKS = ['axes.W006']
+
+# Content-Security-Policy (django-csp)
+# -----------------------------------
+# REPORT-ONLY on purpose. The browser reports what a policy WOULD block and
+# blocks nothing, so this cannot break a page. Watch the browser console for
+# a week, then move this dict to CONTENT_SECURITY_POLICY to enforce it.
+#
+# Every script this app serves is self-hosted (htmx, Alpine and Leaflet are
+# vendored under static/js), and PostHog is proxied through /ingest/ on this
+# origin, so 'self' covers almost everything.
+#
+# KNOWN WEAK POINT: script-src still allows 'unsafe-inline' and
+# 'unsafe-eval'. base.html and six other templates carry inline <script>
+# blocks and Django's json_script filter emits more, and Alpine.js evaluates
+# its x- attributes with new Function(). Removing these two needs per-tag
+# nonces and Alpine's CSP build. Until then the real protection comes from
+# the other directives: connect-src and img-src stop an injected script
+# sending data anywhere off this origin, and form-action stops it retargeting
+# a form post.
+CSP_POLICY = {
+    'DIRECTIVES': {
+        'default-src': ["'self'"],
+        'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        # Inline style="..." attributes appear across the templates.
+        'style-src': ["'self'", "'unsafe-inline'"],
+        # data: for inline SVG icons, blob: for the client-side image
+        # preview on photo upload, and the OpenStreetMap tile server for
+        # the optional map layer (see static/js/location_map.js).
+        'img-src': ["'self'", 'data:', 'blob:', 'https://tile.openstreetmap.org'],
+        'font-src': ["'self'"],
+        # This is the directive that matters most against an injected
+        # script: it decides where the page may send data.
+        'connect-src': ["'self'"],
+        'frame-src': ["'none'"],
+        'object-src': ["'none'"],
+        'base-uri': ["'self'"],
+        # Stops an injected <form> posting credentials to another host.
+        'form-action': ["'self'"],
+        # Same intent as X_FRAME_OPTIONS above, in the modern header.
+        'frame-ancestors': ["'none'"],
+    },
+}
+
+# When the PostHog proxy is off, browsers talk to posthog.com directly and
+# need those hosts allowed. With the proxy on (the default) they never do.
+if POSTHOG_API_KEY and not POSTHOG_PROXY:
+    CSP_POLICY['DIRECTIVES']['connect-src'] += [POSTHOG_HOST, POSTHOG_ASSET_HOST]
+    CSP_POLICY['DIRECTIVES']['script-src'] += [POSTHOG_ASSET_HOST]
+
+# Set CSP_ENFORCE=True to switch from reporting to blocking. Do that only
+# after the report-only console is quiet.
+if env.bool('CSP_ENFORCE', default=False):
+    CONTENT_SECURITY_POLICY = CSP_POLICY
+else:
+    CONTENT_SECURITY_POLICY_REPORT_ONLY = CSP_POLICY
 
 # Logging — surface slow-request warnings AND unhandled-exception
 # tracebacks in the host's console logs. Django's default console handler
@@ -519,12 +635,27 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    # SSL redirect disabled - Vercel handles HTTPS at the edge
-    SECURE_SSL_REDIRECT = False
+    # Both Railway and Vercel terminate TLS at the edge and forward the
+    # original scheme in X-Forwarded-Proto, so this header is what makes
+    # request.is_secure() correct behind them. It must be set *before*
+    # SECURE_SSL_REDIRECT, or every HTTPS request looks like plain HTTP
+    # and redirects to itself forever.
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    # Redirect plain HTTP to HTTPS. On by default; set SECURE_SSL_REDIRECT=False
+    # in the environment to switch it off without a deploy if a proxy in front
+    # ever stops sending X-Forwarded-Proto.
+    SECURE_SSL_REDIRECT = env.bool('SECURE_SSL_REDIRECT', default=True)
+    # Railway's platform healthcheck reaches the container over plain HTTP
+    # with no X-Forwarded-Proto. Without this exemption it gets a 301 and
+    # the deploy is marked unhealthy. Paths are regexes without the leading
+    # slash. The view returns no data beyond {"status": "ok"}.
+    SECURE_REDIRECT_EXEMPT = [r'^_health/$']
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+    # Trim the referer sent to third parties (the PostHog CDN, any external
+    # link) to the origin. Full URLs here carry record IDs.
+    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
 # Debug toolbar (only in DEBUG mode)
 if DEBUG:
