@@ -117,11 +117,6 @@ const isLong = (s: Slide) => s.heading.length > 45;
     overflow: hidden;
     scroll-snap-align: start;
   }
-  @media (max-width: 879px) {
-    .hero {
-      margin-top: calc(-1 * (var(--header-h) + 2.5rem));
-    }
-  }
   .hero__frame,
   .hero__viewport,
   .hero__track,
@@ -235,7 +230,12 @@ const isLong = (s: Slide) => s.heading.length > 45;
   }
   @media (max-width: 879px) {
     .hero__still {
-      top: calc(var(--header-h) + 2.5rem + var(--s-5));
+      top: calc(var(--header-h) + var(--s-5));
+    }
+    .hero__media :global(.ph__note) {
+      inset: calc(var(--header-h) + var(--s-5) + 2rem) var(--gutter) auto var(--gutter);
+      max-width: none;
+      text-align: left;
     }
   }
 

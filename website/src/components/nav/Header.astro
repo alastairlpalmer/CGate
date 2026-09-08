@@ -84,6 +84,7 @@ const site = await getSite();
     align-items: center;
     gap: 0 var(--s-4);
     width: min(100% - 2 * var(--gutter), var(--w-content));
+    min-height: var(--header-h);
     margin-inline: auto;
     padding-block: var(--s-2);
   }
@@ -131,7 +132,6 @@ const site = await getSite();
     .site-header__inner {
       grid-template-columns: 1fr minmax(0, 3fr) 1fr;
       grid-template-areas: 'mark index contact';
-      min-height: var(--header-h);
       padding-block: 0;
     }
   }

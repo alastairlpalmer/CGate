@@ -72,12 +72,14 @@
   --dial-one: 520ms;
   --dial-two: 700ms;
 
-  /* Header height, used for scroll padding and the sticky offset. */
-  --header-h: 4.5rem;
+  /* Header height, used for scroll padding and the sticky offset.
+     Two rows below 880px, one row above. */
+  --header-h: 6rem;
 }
 
 @media (min-width: 880px) {
   :root {
     --gutter: var(--s-6);
+    --header-h: 4.5rem;
   }
 }
