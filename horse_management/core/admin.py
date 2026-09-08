@@ -9,6 +9,7 @@ from django.utils.html import format_html
 from invoicing.models import Invoice, InvoiceLineItem
 
 from .models import (
+    BackupRun,
     BusinessSettings,
     Horse,
     Location,
@@ -17,6 +18,52 @@ from .models import (
     Placement,
     RateType,
 )
+
+
+@admin.register(BackupRun)
+class BackupRunAdmin(admin.ModelAdmin):
+    """Read-only history of the nightly off-site backup.
+
+    The column that matters is the date of the newest successful row. A
+    backup job that quietly stopped three weeks ago looks exactly like one
+    that is working, until the day you need it.
+    """
+
+    list_display = ('started_at', 'status', 'took', 'database_size', 'media_size', 'objects_pruned')
+    list_filter = ('status',)
+    readonly_fields = (
+        'started_at', 'finished_at', 'status', 'database_bytes',
+        'media_bytes', 'objects_pruned', 'keys', 'error',
+    )
+
+    def has_add_permission(self, request):
+        # Rows are written by the backup job, never by hand.
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    @staticmethod
+    def _size(count):
+        if not count:
+            return '—'
+        for unit in ('B', 'KB', 'MB', 'GB'):
+            if count < 1024 or unit == 'GB':
+                return f'{count:.0f} {unit}' if unit == 'B' else f'{count:.1f} {unit}'
+            count /= 1024
+        return f'{count:.1f} GB'
+
+    @admin.display(description='Database')
+    def database_size(self, obj):
+        return self._size(obj.database_bytes)
+
+    @admin.display(description='Media')
+    def media_size(self, obj):
+        return self._size(obj.media_bytes)
+
+    @admin.display(description='Took')
+    def took(self, obj):
+        return obj.duration or '—'
 
 
 @admin.register(Owner)

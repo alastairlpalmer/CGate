@@ -1518,6 +1518,59 @@ class UserRole(models.Model):
         return f"{self.user} → {self.role}"
 
 
+class BackupRun(models.Model):
+    """One attempt at an off-site backup, successful or not.
+
+    The point of this table is staleness. A backup job that quietly stopped
+    running three weeks ago looks exactly like one that is working, right
+    up until you need it. With a row per attempt you can ask "when did a
+    backup last succeed?" and get an answer.
+
+    Rows are small and one is written per night, so they are never pruned.
+    """
+
+    STATUS_RUNNING = 'running'
+    STATUS_SUCCESS = 'success'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_RUNNING, 'Running'),
+        (STATUS_SUCCESS, 'Success'),
+        (STATUS_FAILED, 'Failed'),
+    ]
+
+    started_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default=STATUS_RUNNING,
+    )
+    database_bytes = models.BigIntegerField(default=0)
+    media_bytes = models.BigIntegerField(default=0)
+    objects_pruned = models.PositiveIntegerField(default=0)
+    # What was written, so a restore does not need a bucket listing to
+    # find the right file.
+    keys = models.TextField(blank=True, help_text='One object key per line.')
+    # Truncated on write: a traceback can be long, and this is a summary
+    # table rather than a log.
+    error = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-started_at']
+        verbose_name = 'Backup run'
+
+    def __str__(self):
+        return f'{self.get_status_display()} backup at {self.started_at:%Y-%m-%d %H:%M}'
+
+    @property
+    def duration(self):
+        if not self.finished_at:
+            return None
+        return self.finished_at - self.started_at
+
+    @classmethod
+    def last_success(cls):
+        return cls.objects.filter(status=cls.STATUS_SUCCESS).first()
+
+
 # Invoice and InvoiceLineItem have been moved to invoicing.models.
 # Re-exported here for backward compatibility with existing imports.
 from invoicing.models import Invoice, InvoiceLineItem  # noqa: F401
