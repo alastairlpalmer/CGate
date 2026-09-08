@@ -34,7 +34,7 @@ jobs:
       DJANGO_SETTINGS_MODULE: horse_management.settings
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
           cache: pip
@@ -59,7 +59,7 @@ jobs:
         working-directory: horse_management
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - run: pip install pip-audit
@@ -79,7 +79,7 @@ jobs:
         working-directory: horse_management
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - run: pip install bandit
