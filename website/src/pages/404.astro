@@ -1,0 +1,27 @@
+---
+import Base from '../layouts/Base.astro';
+import Text from '../components/ui/Text.astro';
+import Button from '../components/ui/Button.astro';
+import { getSite } from '../lib/site';
+import { inline } from '../lib/text';
+
+const site = await getSite();
+const nf = site.notFound;
+---
+
+<Base title={nf.title}>
+  <section class="section wrap">
+    <h1><Fragment set:html={inline(nf.title)} /></h1>
+    <Text text={nf.text} class="notfound__text" />
+    <Button link={nf.link} tone="line" class="notfound__link" />
+  </section>
+</Base>
+
+<style>
+  .notfound__text {
+    margin-top: var(--s-4);
+  }
+  .notfound__link {
+    margin-top: var(--s-5);
+  }
+</style>

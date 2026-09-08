@@ -1,0 +1,52 @@
+---
+/*
+  Stands in for a photograph that does not exist yet. Shows the brief as a
+  visible [[TODO]] so nobody mistakes it for finished work. Never a stock,
+  external or generated image.
+*/
+import { getSite } from '../../lib/site';
+import { inline } from '../../lib/text';
+
+interface Props {
+  alt: string;
+  brief?: string;
+  owner?: string;
+  aspect?: 'landscape' | 'portrait' | 'square' | 'wide';
+  /* Where the photograph belongs, for the placeholder text. */
+  ref?: string;
+  class?: string;
+}
+
+const { alt, brief, owner, aspect = 'landscape', ref = 'page', class: className } = Astro.props;
+const site = await getSite();
+const what = brief ? `${site.ui.imageNeeded}: ${brief}` : site.ui.imageNeeded;
+const todo = `[[TODO: ${what} | owner: ${owner ?? 'unknown'} | ref: ${ref}]]`;
+---
+
+<div class:list={['ph', `ph--${aspect}`, className]} role="img" aria-label={alt} data-image-needed>
+  <p class="ph__note" aria-hidden="true"><Fragment set:html={inline(todo)} /></p>
+</div>
+
+<style>
+  .ph {
+    position: relative;
+    width: 100%;
+    background: var(--mist);
+    overflow: hidden;
+  }
+  .ph--landscape { aspect-ratio: 3 / 2; }
+  .ph--portrait { aspect-ratio: 4 / 5; }
+  .ph--square { aspect-ratio: 1; }
+  .ph--wide { aspect-ratio: 16 / 9; }
+
+  .ph__note {
+    position: absolute;
+    inset: auto var(--s-3) var(--s-3) var(--s-3);
+    max-width: none;
+    font-size: var(--t-small);
+    line-height: var(--lh-small);
+  }
+  .ph__note :global(.todo) {
+    background: var(--paper);
+  }
+</style>

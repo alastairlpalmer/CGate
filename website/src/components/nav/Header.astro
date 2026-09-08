@@ -1,0 +1,190 @@
+---
+/*
+  The site header. Mark on the left, the index in the centre, Contact on the
+  right. It sits over the banner in a translucent bar and turns solid once the
+  visitor scrolls past. transition:persist carries it across page swaps so the
+  dial can turn during navigation.
+*/
+import { getSite } from '../../lib/site';
+import { inline } from '../../lib/text';
+import Dial from './Dial.astro';
+import StaticIndex from './StaticIndex.astro';
+import Picture from '../ui/Picture.astro';
+
+interface Props {
+  pathname: string;
+}
+
+const { pathname } = Astro.props;
+const site = await getSite();
+---
+
+<header class="site-header" data-header data-scrolled="false" transition:persist="site-header" transition:persist-props>
+  <div class="site-header__inner">
+    <a class="site-header__mark" href="/">
+      {
+        site.mark?.src ? (
+          <Picture image={site.mark} loading="eager" class="site-header__logo" />
+        ) : (
+          <span class="site-header__name"><Fragment set:html={inline(site.name)} /></span>
+        )
+      }
+    </a>
+    <div class="site-header__index">
+      {site.nav.dial ? <Dial pathname={pathname} /> : <StaticIndex pathname={pathname} />}
+    </div>
+    <a class="site-header__contact" href={site.contactLink.href}>
+      <Fragment set:html={inline(site.contactLink.label)} />
+    </a>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    isolation: isolate;
+  }
+  /* The ground and the rule sit in pseudo-elements so only opacity moves. */
+  .site-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--paper);
+    opacity: 0.78;
+  }
+  .site-header::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: var(--stone);
+    opacity: 0;
+  }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .site-header::before {
+      opacity: 0.7;
+    }
+    .site-header {
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+    }
+  }
+
+  .site-header__inner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'mark contact'
+      'index index';
+    align-items: center;
+    gap: 0 var(--s-4);
+    width: min(100% - 2 * var(--gutter), var(--w-content));
+    min-height: var(--header-h);
+    margin-inline: auto;
+    padding-block: var(--s-2);
+  }
+  .site-header__mark {
+    grid-area: mark;
+    justify-self: start;
+    display: inline-block;
+    color: var(--ink);
+    text-decoration: none;
+    transform-origin: 0 50%;
+  }
+  .site-header__name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-stretch: 88%;
+    font-size: var(--t-h3);
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+  .site-header__logo {
+    width: auto;
+    height: 2.5rem;
+    aspect-ratio: auto;
+  }
+  .site-header__index {
+    grid-area: index;
+    min-width: 0;
+  }
+  .site-header__contact {
+    grid-area: contact;
+    justify-self: end;
+    font-family: var(--font-display);
+    font-size: var(--t-nav);
+    font-weight: 500;
+    letter-spacing: var(--ls-nav);
+    color: var(--ink);
+    text-decoration: none;
+    padding: var(--s-2) 0;
+  }
+  .site-header__contact:hover {
+    color: var(--teal-deep);
+  }
+
+  @media (min-width: 880px) {
+    .site-header__inner {
+      grid-template-columns: 1fr minmax(0, 3fr) 1fr;
+      grid-template-areas: 'mark index contact';
+      padding-block: 0;
+    }
+  }
+
+  /* Scroll behaviour, the CSS way: solid ground and a rule as the banner leaves,
+     and the mark shrinks over the first 200px. */
+  @supports (animation-timeline: scroll()) {
+    :global(html[data-has-hero]) .site-header::before {
+      animation: header-ground linear both;
+      animation-timeline: scroll(root);
+      animation-range: calc(100vh - 12rem) calc(100vh - 4rem);
+    }
+    :global(html[data-has-hero]) .site-header::after {
+      animation: header-rule linear both;
+      animation-timeline: scroll(root);
+      animation-range: calc(100vh - 12rem) calc(100vh - 4rem);
+    }
+    :global(html[data-has-hero]) .site-header__mark {
+      animation: header-mark linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 200px;
+    }
+  }
+  @keyframes header-ground {
+    to { opacity: 1; }
+  }
+  @keyframes header-rule {
+    to { opacity: 1; }
+  }
+  @keyframes header-mark {
+    to { transform: scale(0.85); }
+  }
+
+  /* Fallback: the class the IntersectionObserver sets. */
+  @supports not (animation-timeline: scroll()) {
+    .site-header::before,
+    .site-header::after,
+    .site-header__mark {
+      transition:
+        opacity var(--dur-mid) var(--ease),
+        transform var(--dur-mid) var(--ease);
+    }
+    .site-header[data-scrolled='true']::before,
+    .site-header[data-scrolled='true']::after {
+      opacity: 1;
+    }
+    .site-header[data-scrolled='true'] .site-header__mark {
+      transform: scale(0.85);
+    }
+  }
+  /* No banner on the page: solid from the start. */
+  :global(html:not([data-has-hero])) .site-header::before,
+  :global(html:not([data-has-hero])) .site-header::after {
+    opacity: 1;
+  }
+</style>

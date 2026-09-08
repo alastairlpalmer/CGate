@@ -1,0 +1,58 @@
+{
+  "name": "Colgate Farm",
+  "description": "[[TODO: one line that says what Colgate Farm is, for search results | owner: family | ref: site settings, description]]",
+  "nav": {
+    "items": [
+      { "label": "Livery", "href": "/livery/", "marker": "livery" },
+      { "label": "Software", "href": "/software/", "marker": "software" },
+      { "label": "About us", "href": "/" },
+      { "label": "Farm", "href": "/farm/", "marker": "farm" },
+      { "label": "Camping", "href": "/camping/", "marker": "camping" }
+    ],
+    "dial": true,
+    "label": "Site",
+    "announce": "{label}. Selected.",
+    "help": "Use the left and right arrow keys to turn the dial. Press Home to return to About us. Press Enter to open the selected page."
+  },
+  "contactLink": { "label": "Contact", "href": "/#contact" },
+  "ui": {
+    "skipLabel": "Skip to content",
+    "scrollCue": "Scroll",
+    "bannerLabel": "The four parts of the business",
+    "pauseLabel": "Pause the banner",
+    "playLabel": "Play the banner",
+    "slideLabel": "Show {heading}",
+    "previousLabel": "Previous photograph",
+    "nextLabel": "Next photograph",
+    "openLabel": "Open the photograph full size",
+    "closeLabel": "Close",
+    "galleryCount": "{n} of {total}",
+    "imageNeeded": "Photograph needed"
+  },
+  "contact": {
+    "addressLines": [
+      "[[TODO: postal address, line by line | owner: family | ref: site settings, contact]]"
+    ],
+    "phone": "[[TODO: telephone number | owner: family | ref: site settings, contact]]",
+    "email": "[[TODO: email address | owner: family | ref: site settings, contact]]"
+  },
+  "social": [],
+  "footer": {
+    "companyLines": [
+      "[[TODO: registered company name and number, or trading name if not a company | owner: family | ref: footer]]",
+      "[[TODO: registered address | owner: family | ref: footer]]",
+      "[[TODO: VAT number, if registered | owner: family | ref: footer]]"
+    ],
+    "links": [
+      { "label": "Privacy", "href": "/privacy/" },
+      { "label": "Cookies", "href": "/cookies/" },
+      { "label": "Terms", "href": "/terms/" }
+    ],
+    "text": "Colgate Farm"
+  },
+  "notFound": {
+    "title": "That page does not exist",
+    "text": "The address may be wrong, or the page has moved.",
+    "link": { "label": "Go to the home page", "href": "/" }
+  }
+}

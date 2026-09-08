@@ -1,0 +1,46 @@
+---
+import { inline } from '../../lib/text';
+
+interface Props {
+  block: { text: string; name?: string; detail?: string };
+}
+
+const { block } = Astro.props;
+---
+
+<figure class="block block--quote reading">
+  <blockquote class="quote">
+    <p class="quote__text"><Fragment set:html={inline(block.text)} /></p>
+  </blockquote>
+  {
+    (block.name || block.detail) && (
+      <figcaption class="quote__who small">
+        {block.name && <span class="quote__name"><Fragment set:html={inline(block.name)} /></span>}
+        {block.name && block.detail && ', '}
+        {block.detail && <span><Fragment set:html={inline(block.detail)} /></span>}
+      </figcaption>
+    )
+  }
+</figure>
+
+<style>
+  /* The left rule marks the words as somebody else's. */
+  .block--quote {
+    padding-left: var(--s-4);
+    border-left: 2px solid var(--teal);
+  }
+  .quote__text {
+    font-size: var(--t-h3);
+    line-height: var(--lh-h3);
+    font-style: italic;
+  }
+  .quote__who {
+    margin-top: var(--s-3);
+    color: var(--stone);
+  }
+  .quote__name {
+    font-family: var(--font-display);
+    font-style: normal;
+    font-weight: 600;
+  }
+</style>

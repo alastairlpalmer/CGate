@@ -43,6 +43,24 @@ updates:
     labels:
       - dependencies
 
+  - package-ecosystem: npm
+    directory: /website
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/London
+    open-pull-requests-limit: 3
+    groups:
+      website-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    labels:
+      - dependencies
+
   # Pinned action versions go stale silently and are a real supply-chain
   # risk (a compromised tag runs with the workflow's token).
   - package-ecosystem: github-actions

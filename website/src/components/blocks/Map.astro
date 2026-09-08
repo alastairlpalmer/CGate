@@ -1,0 +1,67 @@
+---
+/*
+  Map and directions without an external embed: the address, directions in
+  words, a link to a map service, and a photograph of the entrance.
+*/
+import Heading from './Heading.astro';
+import Text from '../ui/Text.astro';
+import Picture from '../ui/Picture.astro';
+import { inline } from '../../lib/text';
+
+interface Props {
+  block: {
+    heading?: string;
+    addressLines: string[];
+    directions?: string;
+    mapLink?: { label: string; href: string };
+    image?: Parameters<typeof Picture>[0]['image'];
+  };
+  level?: 2 | 3 | 4;
+  ref: string;
+}
+
+const { block, level, ref } = Astro.props;
+---
+
+<div class="block block--map">
+  <div class="map__words">
+    <Heading text={block.heading} level={level} />
+    {
+      block.addressLines.length > 0 && (
+        <p class="map__address">
+          {block.addressLines.map((line, i) => (
+            <>
+              <Fragment set:html={inline(line)} />
+              {i < block.addressLines.length - 1 && <br />}
+            </>
+          ))}
+        </p>
+      )
+    }
+    <Text text={block.directions} class="map__directions" />
+    {block.mapLink && <p class="map__link"><a href={block.mapLink.href}><Fragment set:html={inline(block.mapLink.label)} /></a></p>}
+  </div>
+  {block.image && <div class="map__image"><Picture image={block.image} ref={ref} sizes="(min-width: 880px) 40vw, 100vw" /></div>}
+</div>
+
+<style>
+  .block--map {
+    display: grid;
+    gap: var(--s-4);
+    align-items: start;
+  }
+  .map__address {
+    font-family: var(--font-display);
+    font-weight: 500;
+  }
+  .map__address + :global(.map__directions),
+  .map__link {
+    margin-top: var(--s-3);
+  }
+  @media (min-width: 880px) {
+    .block--map {
+      grid-template-columns: 1fr 1fr;
+      gap: var(--s-6);
+    }
+  }
+</style>

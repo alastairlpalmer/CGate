@@ -1,0 +1,21 @@
+---
+/* A block heading at the level the page hands down. Renders nothing when there is no heading. */
+import { inline } from '../../lib/text';
+
+interface Props {
+  text?: string;
+  level?: 2 | 3 | 4;
+  class?: string;
+}
+
+const { text, level = 3, class: className } = Astro.props;
+const Tag = `h${level}` as 'h2' | 'h3' | 'h4';
+---
+
+{text && <Tag class:list={['block__heading', className]}><Fragment set:html={inline(text)} /></Tag>}
+
+<style>
+  .block__heading {
+    margin-bottom: var(--s-3);
+  }
+</style>

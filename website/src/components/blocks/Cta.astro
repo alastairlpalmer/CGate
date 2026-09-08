@@ -1,0 +1,42 @@
+---
+import Heading from './Heading.astro';
+import Text from '../ui/Text.astro';
+import Button from '../ui/Button.astro';
+
+interface Props {
+  block: { heading: string; text?: string; link: { label: string; href: string } };
+  level?: 2 | 3 | 4;
+}
+
+const { block, level } = Astro.props;
+---
+
+<div class="block block--cta">
+  <div class="cta">
+    <div class="cta__words">
+      <Heading text={block.heading} level={level} />
+      <Text text={block.text} />
+    </div>
+    <Button link={block.link} tone="light" />
+  </div>
+</div>
+
+<style>
+  .cta {
+    display: grid;
+    gap: var(--s-4);
+    align-items: center;
+    padding: var(--s-5) var(--s-4);
+    background: var(--green);
+    color: var(--white);
+  }
+  .cta__words :global(.block__heading) {
+    margin-bottom: var(--s-2);
+  }
+  @media (min-width: 880px) {
+    .cta {
+      grid-template-columns: 1fr auto;
+      padding: var(--s-5) var(--s-6);
+    }
+  }
+</style>

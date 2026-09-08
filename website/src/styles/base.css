@@ -1,0 +1,198 @@
+/*
+  Base styles. Fonts, reset, document type, links, focus, form controls,
+  the placeholder mark, and a few shared utilities.
+  No component styling here. No content here.
+*/
+
+/* Fonts. Self-hosted, see public/fonts/README.md. */
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+  src: url('/fonts/archivo-latin-wdth-normal.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/source-serif-4-latin-opsz-normal.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: italic;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/source-serif-4-latin-opsz-italic.woff2') format('woff2-variations');
+}
+
+/* Reset. Small on purpose. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 112.5%; /* 18px */
+  -webkit-text-size-adjust: 100%;
+  scroll-snap-type: y proximity;
+  scroll-padding-top: var(--header-h);
+  background: var(--paper);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  color: var(--ink);
+  background: var(--paper);
+}
+
+h1, h2, h3, h4, p, ul, ol, dl, dd, figure, blockquote {
+  margin: 0;
+}
+
+img, picture, svg, video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Type. Display face for headings, serif for reading. */
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-stretch: 96%;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+h1 { font-size: var(--t-h1); line-height: var(--lh-h1); }
+h2 { font-size: var(--t-h2); line-height: var(--lh-h2); }
+h3 { font-size: var(--t-h3); line-height: var(--lh-h3); }
+h4 { font-size: var(--t-body); line-height: var(--lh-body); }
+
+p, li, dd, dt {
+  max-width: 75ch;
+}
+
+small, .small {
+  font-size: var(--t-small);
+  line-height: var(--lh-small);
+}
+
+/* Links. */
+a {
+  color: var(--teal-deep);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+  transition: color var(--dur-fast) var(--ease);
+}
+a:hover {
+  color: var(--green);
+}
+
+/* Focus. Always visible. */
+:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
+}
+
+/* Form controls. 2px radius is the only radius on the site. */
+input:not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+  width: 100%;
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--stone);
+  border-radius: var(--radius-control);
+  background: var(--white);
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline-offset: 0;
+  border-color: var(--teal);
+}
+
+/* A visible placeholder for a fact nobody has supplied yet.
+   The text is [[TODO: what | owner: who | ref: where]] and it must stay readable. */
+.todo {
+  display: inline;
+  padding: 0 0.3em;
+  background: var(--mist);
+  color: var(--stone);
+  font-family: var(--font-body);
+  font-style: italic;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Utilities. */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.wrap {
+  width: min(100% - 2 * var(--gutter), var(--w-content));
+  margin-inline: auto;
+}
+
+.reading {
+  max-width: var(--w-reading);
+}
+
+/* Section rhythm. A section is a run of content with one heading. */
+.section {
+  padding-block: var(--s-6);
+}
+@media (min-width: 880px) {
+  .section {
+    padding-block: var(--s-7);
+  }
+}
+
+/* The skip link, shown only when focused. */
+.skip {
+  position: absolute;
+  top: var(--s-2);
+  left: var(--s-2);
+  z-index: 100;
+  padding: var(--s-2) var(--s-3);
+  background: var(--white);
+  color: var(--ink);
+  transform: translateY(-200%);
+}
+.skip:focus {
+  transform: none;
+}
+
+/* Reduced motion. Components set their end state as the default and wrap
+   their keyframes. This is the backstop for anything that slips through. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

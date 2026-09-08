@@ -1,0 +1,51 @@
+---
+import Heading from './Heading.astro';
+import Text from '../ui/Text.astro';
+import Picture from '../ui/Picture.astro';
+import Button from '../ui/Button.astro';
+
+interface Props {
+  block: {
+    heading?: string;
+    text: string;
+    image: Parameters<typeof Picture>[0]['image'];
+    imageSide: 'left' | 'right';
+    link?: { label: string; href: string };
+  };
+  level?: 2 | 3 | 4;
+  ref: string;
+}
+
+const { block, level, ref } = Astro.props;
+---
+
+<div class:list={['block', 'block--imagetext', `block--image-${block.imageSide}`]}>
+  <div class="block--imagetext__text">
+    <Heading text={block.heading} level={level} />
+    <Text text={block.text} />
+    {block.link && <Button link={block.link} tone="line" class="block--imagetext__link" />}
+  </div>
+  <div class="block--imagetext__image">
+    <Picture image={block.image} ref={ref} sizes="(min-width: 880px) 40vw, 100vw" />
+  </div>
+</div>
+
+<style>
+  .block--imagetext {
+    display: grid;
+    gap: var(--s-4);
+    align-items: start;
+  }
+  .block--imagetext__link {
+    margin-top: var(--s-4);
+  }
+  @media (min-width: 880px) {
+    .block--imagetext {
+      grid-template-columns: 1fr 1fr;
+      gap: var(--s-6);
+    }
+    .block--image-left .block--imagetext__image {
+      order: -1;
+    }
+  }
+</style>

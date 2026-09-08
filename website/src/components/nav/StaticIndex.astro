@@ -1,0 +1,81 @@
+---
+/*
+  The plain centre index. The fallback for the dial: set nav.dial to false in
+  src/content/settings/site.json and this renders instead. Same links, same
+  marker, no turn.
+*/
+import { getSite } from '../../lib/site';
+import { inline } from '../../lib/text';
+import { markerStyle } from '../../lib/marker';
+
+interface Props {
+  pathname: string;
+}
+
+const { pathname } = Astro.props;
+const site = await getSite();
+const norm = (p: string) => p.replace(/\/+$/, '') || '/';
+const path = norm(pathname);
+---
+
+<nav class="index index--static" aria-label={site.nav.label} data-index>
+  <ul class="static">
+    {
+      site.nav.items.map((item) => (
+        <li class="static__item" data-marker={item.marker} style={markerStyle(item.marker)}>
+          <a href={item.href} aria-current={norm(item.href) === path ? 'page' : undefined}>
+            <Fragment set:html={inline(item.label)} />
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+<style>
+  .static {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--s-2) var(--s-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .static__item {
+    position: relative;
+    max-width: none;
+    font-family: var(--font-display);
+    font-size: var(--t-nav);
+    font-weight: 500;
+    line-height: var(--lh-nav);
+    letter-spacing: var(--ls-nav);
+    white-space: nowrap;
+  }
+  .static__item a {
+    display: block;
+    padding: var(--s-2) 0;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .static__item a::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: var(--marker, var(--teal));
+    transform: scaleX(0);
+    transition: transform var(--dur-fast) var(--ease);
+  }
+  .static__item a:hover::after,
+  .static__item a:focus-visible::after,
+  .static__item a[aria-current]::after,
+  .static__item[data-active] a::after {
+    transform: scaleX(1);
+  }
+  .static__item[data-active] a::after {
+    transition-duration: var(--dur-mid);
+  }
+</style>

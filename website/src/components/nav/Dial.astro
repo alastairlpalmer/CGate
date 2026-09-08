@@ -1,0 +1,156 @@
+---
+/*
+  The centre index as a dial. docs/plan.md, Section 12.
+  A <nav> with a <ul> of five links. The dial is presentation. The items are
+  rendered already in ring order for this route, so the page does not snap
+  after load. Positioning comes from data-slot; JavaScript only changes it.
+*/
+import { getSite } from '../../lib/site';
+import { inline } from '../../lib/text';
+import { markerStyle } from '../../lib/marker';
+
+interface Props {
+  pathname: string;
+}
+
+const { pathname } = Astro.props;
+const site = await getSite();
+const nav = site.nav;
+const list = nav.items;
+const n = list.length;
+
+const norm = (p: string) => p.replace(/\/+$/, '') || '/';
+const path = norm(pathname);
+let centre = list.findIndex((i) => norm(i.href) === path);
+if (centre < 0) centre = list.findIndex((i) => norm(i.href) !== '/' && path.startsWith(norm(i.href) + '/'));
+if (centre < 0) centre = list.findIndex((i) => norm(i.href) === '/');
+if (centre < 0) centre = Math.floor(n / 2);
+
+/* Rotate so the centre item sits in the middle of the DOM. */
+const shift = (centre - Math.floor(n / 2) + n) % n;
+const ordered = [...list.slice(shift), ...list.slice(0, shift)];
+const mid = Math.floor(n / 2);
+---
+
+<nav class="index index--dial" aria-label={nav.label} data-index data-dial data-state="rest">
+  <p id="dial-help" class="visually-hidden">{nav.help}</p>
+  <ul class="dial" aria-describedby="dial-help" data-dial-ring>
+    {
+      ordered.map((item, i) => (
+        <li
+          class="dial__item"
+          data-slot={i - mid}
+          data-marker={item.marker}
+          data-href={item.href}
+          style={markerStyle(item.marker)}
+        >
+          <a href={item.href} aria-current={i === mid && norm(item.href) === path ? 'page' : undefined}>
+            <Fragment set:html={inline(item.label)} />
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+  <p class="visually-hidden" aria-live="polite" data-dial-announce data-announce-template={nav.announce}></p>
+</nav>
+
+<style>
+  .index--dial {
+    min-width: 0;
+  }
+  .dial {
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    gap: var(--s-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow: hidden;
+    /* Items dissolve into the ends of the bar instead of being cut. This also hides the seam. */
+    mask-image: linear-gradient(to right, transparent 0, black 11%, black 89%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, black 11%, black 89%, transparent 100%);
+    touch-action: pan-y;
+  }
+  .dial__item {
+    position: relative;
+    flex: 0 0 auto;
+    max-width: none;
+    font-family: var(--font-display);
+    font-size: var(--t-nav);
+    font-weight: 500;
+    line-height: var(--lh-nav);
+    letter-spacing: var(--ls-nav);
+    white-space: nowrap;
+    opacity: var(--slot-opacity, 1);
+    transform-origin: 50% 100%;
+    will-change: auto;
+  }
+  /* Slot treatment. The horizontal squeeze is what makes it a dial, not a slider. */
+  .dial__item[data-slot='0'] {
+    --slot-opacity: 1;
+    font-weight: 600;
+    transform: none;
+  }
+  .dial__item[data-slot='1'],
+  .dial__item[data-slot='-1'] {
+    --slot-opacity: 0.8;
+    transform: translateY(1px) scale(0.96) scaleX(0.98);
+  }
+  .dial__item[data-slot='2'],
+  .dial__item[data-slot='-2'] {
+    --slot-opacity: 0.52;
+    transform: translateY(3px) scale(0.9) scaleX(0.94);
+  }
+  .dial__item[data-active] {
+    --slot-opacity: 1;
+  }
+
+  .dial__item a {
+    display: block;
+    padding: var(--s-2) 0;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  /* The marker: a hairline that draws out from the centre. Its colour is the business marker. */
+  .dial__item a::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: var(--marker, var(--teal));
+    transform: scaleX(0);
+    transform-origin: 50% 50%;
+    transition: transform var(--dur-fast) var(--ease);
+  }
+  .dial__item a:hover::after,
+  .dial__item a:focus-visible::after {
+    transform: scaleX(1);
+  }
+  .dial__item[data-active] a::after {
+    transform: scaleX(1);
+    transition-duration: var(--dur-mid);
+  }
+  .dial__item a:focus-visible {
+    outline-offset: 0;
+  }
+
+  @media (max-width: 879px) {
+    .dial {
+      gap: var(--s-4);
+    }
+    .dial__item {
+      font-size: 0.8125rem;
+    }
+  }
+  /* Below 620px: three slots, the outer two half under the mask. */
+  @media (max-width: 619px) {
+    .dial {
+      gap: var(--s-4);
+      mask-image: linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%);
+    }
+  }
+</style>

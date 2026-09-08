@@ -1,0 +1,66 @@
+---
+/*
+  Renders a stack of page blocks from content. Add a block type here and in
+  src/content.config.ts; nothing else changes.
+  `ref` names the page or section, for placeholder text.
+*/
+import RichText from './RichText.astro';
+import ImageText from './ImageText.astro';
+import Gallery from './Gallery.astro';
+import Facts from './Facts.astro';
+import Prices from './Prices.astro';
+import Questions from './Questions.astro';
+import Form from './Form.astro';
+import Cta from './Cta.astro';
+import Quote from './Quote.astro';
+import Map from './Map.astro';
+
+interface Props {
+  blocks: any[];
+  level?: 2 | 3 | 4;
+  ref: string;
+}
+
+const { blocks = [], level = 3, ref } = Astro.props;
+---
+
+{
+  blocks.length > 0 && (
+    <div class="blocks">
+      {blocks.map((block, i) => {
+        const r = `${ref}, block ${i + 1}`;
+        switch (block.type) {
+          case 'richText':
+            return <RichText block={block} level={level} />;
+          case 'imageText':
+            return <ImageText block={block} level={level} ref={r} />;
+          case 'gallery':
+            return <Gallery block={block} level={level} ref={r} />;
+          case 'facts':
+            return <Facts block={block} level={level} />;
+          case 'prices':
+            return <Prices block={block} level={level} />;
+          case 'questions':
+            return <Questions block={block} level={level} />;
+          case 'form':
+            return <Form block={block} level={level} ref={r} />;
+          case 'cta':
+            return <Cta block={block} level={level} />;
+          case 'quote':
+            return <Quote block={block} />;
+          case 'map':
+            return <Map block={block} level={level} ref={r} />;
+          default:
+            return null;
+        }
+      })}
+    </div>
+  )
+}
+
+<style>
+  .blocks {
+    display: grid;
+    gap: var(--s-6);
+  }
+</style>

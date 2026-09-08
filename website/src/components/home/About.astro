@@ -1,0 +1,119 @@
+---
+/*
+  About us. The lead paragraph rises line by line, once, on the whole site
+  (docs/plan.md, Section 11.4 H). Then stacked blocks, then the latest posts.
+*/
+import { inline } from '../../lib/text';
+import { markerStyle } from '../../lib/marker';
+import Blocks from '../blocks/Blocks.astro';
+import Picture from '../ui/Picture.astro';
+
+interface Post {
+  id: string;
+  data: {
+    title: string;
+    date: Date;
+    summary: string;
+    marker?: 'livery' | 'software' | 'farm' | 'camping';
+    image?: Parameters<typeof Picture>[0]['image'];
+  };
+}
+
+interface Props {
+  about: {
+    id: string;
+    heading: string;
+    lead: string;
+    blocks: any[];
+    posts: { heading: string; count: number; emptyText: string; link?: { label: string; href: string } };
+  };
+  posts: Post[];
+}
+
+const { about, posts } = Astro.props;
+const latest = posts.slice(0, about.posts.count);
+const dateText = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+---
+
+<section class="about section" id={about.id} aria-labelledby={`${about.id}-heading`}>
+  <div class="wrap">
+    <h2 class="about__heading" id={`${about.id}-heading`}><Fragment set:html={inline(about.heading)} /></h2>
+    <p class="about__lead" data-about-lead><Fragment set:html={inline(about.lead)} /></p>
+    <div class="about__blocks">
+      <Blocks blocks={about.blocks} level={3} ref="home page, About us" />
+    </div>
+
+    <div class="about__posts" data-posts>
+      <h3 class="about__posts-heading"><Fragment set:html={inline(about.posts.heading)} /></h3>
+      {
+        latest.length === 0 ? (
+          <p class="about__posts-empty"><Fragment set:html={inline(about.posts.emptyText)} /></p>
+        ) : (
+          <ul class="posts">
+            {latest.map((post) => (
+              <li class="post" data-marker={post.data.marker} style={markerStyle(post.data.marker)}>
+                <p class="post__date small">
+                  <time datetime={post.data.date.toISOString().slice(0, 10)}>{dateText(post.data.date)}</time>
+                </p>
+                <h4 class="post__title">
+                  <a href={`/news/${post.id}/`}><Fragment set:html={inline(post.data.title)} /></a>
+                </h4>
+                <p class="post__summary"><Fragment set:html={inline(post.data.summary)} /></p>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+      {about.posts.link && <p class="about__posts-link"><a href={about.posts.link.href}><Fragment set:html={inline(about.posts.link.label)} /></a></p>}
+    </div>
+  </div>
+</section>
+
+<style>
+  .about__lead {
+    max-width: 30ch;
+    margin-top: var(--s-4);
+    font-size: var(--t-h3);
+    line-height: var(--lh-h3);
+  }
+  .about__blocks {
+    margin-top: var(--s-5);
+  }
+  .about__posts {
+    margin-top: var(--s-6);
+    max-width: var(--w-reading);
+  }
+  .about__posts-heading {
+    margin-bottom: var(--s-3);
+  }
+  .posts {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  /* The rule above each post separates one from the next; its colour is the post's business. */
+  .post {
+    padding-block: var(--s-3);
+    border-top: 2px solid var(--marker, var(--stone));
+    max-width: none;
+  }
+  .post__date {
+    color: var(--stone);
+  }
+  .post__title a {
+    color: var(--ink);
+  }
+  .post__summary {
+    margin-top: var(--s-1);
+  }
+  .about__posts-link {
+    margin-top: var(--s-3);
+  }
+  @media (min-width: 880px) {
+    .about__lead {
+      max-width: 34ch;
+      font-size: var(--t-h2);
+      line-height: var(--lh-h2);
+    }
+  }
+</style>

@@ -1,0 +1,70 @@
+---
+/* Company details, legal links, social links. All from site settings. */
+import { getSite } from '../../lib/site';
+import { inline } from '../../lib/text';
+
+const site = await getSite();
+---
+
+<footer class="site-footer">
+  <div class="site-footer__inner wrap">
+    <div class="site-footer__company">
+      {site.footer.text && <p class="site-footer__name"><Fragment set:html={inline(site.footer.text)} /></p>}
+      {site.footer.companyLines.map((line) => <p class="small"><Fragment set:html={inline(line)} /></p>)}
+    </div>
+    {
+      (site.footer.links.length > 0 || site.social.length > 0) && (
+        <ul class="site-footer__links">
+          {site.footer.links.map((l) => (
+            <li><a href={l.href}><Fragment set:html={inline(l.label)} /></a></li>
+          ))}
+          {site.social.map((l) => (
+            <li><a href={l.href} rel="me"><Fragment set:html={inline(l.label)} /></a></li>
+          ))}
+        </ul>
+      )
+    }
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    background: var(--green);
+    color: var(--white);
+    padding-block: var(--s-6);
+  }
+  .site-footer__inner {
+    display: grid;
+    gap: var(--s-4);
+  }
+  .site-footer__name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    margin-bottom: var(--s-2);
+  }
+  .site-footer__company :global(.todo) {
+    background: var(--teal-deep);
+    color: var(--white);
+  }
+  .site-footer__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2) var(--s-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--t-small);
+  }
+  .site-footer a {
+    color: var(--white);
+  }
+  .site-footer a:hover {
+    color: var(--mist);
+  }
+  @media (min-width: 880px) {
+    .site-footer__inner {
+      grid-template-columns: 1fr auto;
+      align-items: end;
+    }
+  }
+</style>

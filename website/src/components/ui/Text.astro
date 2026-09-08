@@ -1,0 +1,28 @@
+---
+/* Editor paragraphs as HTML. See src/lib/text.js for what editors may write. */
+import { paragraphs } from '../../lib/text';
+
+interface Props {
+  text?: string;
+  class?: string;
+}
+
+const { text, class: className } = Astro.props;
+const html = paragraphs(text);
+---
+
+{html && <div class:list={['text', className]} set:html={html} />}
+
+<style>
+  .text :global(p + p),
+  .text :global(ul + p),
+  .text :global(p + ul) {
+    margin-top: var(--s-3);
+  }
+  .text :global(ul) {
+    padding-left: 1.2em;
+  }
+  .text :global(li + li) {
+    margin-top: var(--s-1);
+  }
+</style>
