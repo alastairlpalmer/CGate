@@ -28,7 +28,6 @@ jobs:
       # Production-shaped settings so `check --deploy` sees the real
       # branch of settings.py. DEBUG stays False here on purpose — the CI
       # workflow's DEBUG=True run would silence every one of these checks.
-      SECRET_KEY: 5rnobnw3pOvtFy4sLrkqjQhhLXMCRJ2imQoeYuqKO6v_jHQEOCdobsUbDemq50YHaxU
       DEBUG: 'False'
       DATABASE_URL: postgres://user:pass@localhost:5432/ci
       ALLOWED_HOSTS: example.com
@@ -42,7 +41,15 @@ jobs:
           cache-dependency-path: horse_management/requirements.txt
       - run: pip install -r requirements.txt
       - name: manage.py check --deploy
-        run: python manage.py check --deploy --fail-level WARNING
+        run: |
+          # Generated per run rather than written into this file. The value
+          # is not a secret — security.W009 only checks that the key is long
+          # and varied, so any throwaway string passes. But a 50-character
+          # random literal committed to the repository is indistinguishable
+          # from a real leaked key, and the secret-scan job below rightly
+          # flagged it.
+          SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(50))') \
+            python manage.py check --deploy --fail-level WARNING
 
   dependency-audit:
     name: Dependency CVE audit

@@ -69,6 +69,10 @@ no cross-customer isolation boundary to get wrong.
 - `.github/workflows/security.yml` — `manage.py check --deploy` at
   production settings, `pip-audit`, `npm audit`, bandit, gitleaks. Also on
   a weekly timer, because a clean dependency today gets a CVE next month.
+- `.gitleaksignore` lists the findings the secret scan may pass over. Each
+  entry is a single fingerprint (commit, file, rule, line) with a written
+  reason. A new secret in the same file still fails the scan. Review this
+  file — a suppression is a decision, not a fix.
 - Dependabot for pip, npm and GitHub Actions.
 
 ## Known gaps
