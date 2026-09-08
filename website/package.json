@@ -1,0 +1,21 @@
+{
+  "name": "farm-website",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "astro": "6.4.8",
+    "embla-carousel": "8.6.0",
+    "embla-carousel-autoplay": "8.6.0",
+    "embla-carousel-class-names": "8.6.0",
+    "embla-carousel-fade": "8.6.0",
+    "gsap": "3.15.0"
+  }
+}
