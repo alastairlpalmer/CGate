@@ -1,9 +1,9 @@
 ---
 /*
-  The site header. Mark on the left, the index in the centre, Contact on the
-  right. It sits over the banner in a translucent bar and turns solid once the
-  visitor scrolls past. transition:persist carries it across page swaps so the
-  dial can turn during navigation.
+  The site header. The mark centred on the top row with Contact at the right,
+  the index centred beneath it. It sits over the banner in a translucent bar
+  and turns solid once the visitor scrolls past. transition:persist carries it
+  across page swaps so the dial can turn during navigation.
 */
 import { getSite } from '../../lib/site';
 import { inline } from '../../lib/text';
@@ -77,24 +77,24 @@ const site = await getSite();
 
   .site-header__inner {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto 1fr;
     grid-template-areas:
-      'mark contact'
-      'index index';
+      '. mark contact'
+      'index index index';
     align-items: center;
-    gap: 0 var(--s-4);
+    gap: var(--s-2) var(--s-4);
     width: min(100% - 2 * var(--gutter), var(--w-content));
     min-height: var(--header-h);
     margin-inline: auto;
-    padding-block: var(--s-2);
+    padding-block: var(--s-3) var(--s-2);
   }
   .site-header__mark {
     grid-area: mark;
-    justify-self: start;
+    justify-self: center;
     display: inline-block;
     color: var(--ink);
     text-decoration: none;
-    transform-origin: 0 50%;
+    transform-origin: 50% 50%;
   }
   .site-header__name {
     font-family: var(--font-display);
@@ -128,13 +128,6 @@ const site = await getSite();
     color: var(--teal-deep);
   }
 
-  @media (min-width: 880px) {
-    .site-header__inner {
-      grid-template-columns: 1fr minmax(0, 3fr) 1fr;
-      grid-template-areas: 'mark index contact';
-      padding-block: 0;
-    }
-  }
 
   /* Scroll behaviour, the CSS way: solid ground and a rule as the banner leaves,
      and the mark shrinks over the first 200px. */

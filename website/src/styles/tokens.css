@@ -73,13 +73,12 @@
   --dial-two: 700ms;
 
   /* Header height, used for scroll padding and the sticky offset.
-     Two rows below 880px, one row above. */
-  --header-h: 6rem;
+     Two rows: the mark, then the index. */
+  --header-h: 6.5rem;
 }
 
 @media (min-width: 880px) {
   :root {
     --gutter: var(--s-6);
-    --header-h: 4.5rem;
   }
 }
