@@ -492,6 +492,10 @@ class BreedingRecord(models.Model):
         help_text="Comma-separated keys of owner reminders already sent "
                   "(scan14, heartbeat, foal30, foal7)",
     )
+    foaling_watch = models.JSONField(
+        default=dict, blank=True,
+        help_text='Foaling-watch checklist: {"items": {key: true}, "notes": ""}',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -606,6 +610,37 @@ class BreedingRecord(models.Model):
         and has not foaled: first covers, repeat covers in the same cycle,
         and re-covers after a negative scan."""
         return self.status in ('covered', 'barren')
+
+    # Foaling-watch checklist, in the order the yard works through it.
+    FOALING_WATCH_ITEMS = (
+        ('foaling_box', 'Moved to foaling box / paddock'),
+        ('udder', 'Udder filling or waxing seen'),
+        ('milk', 'Milk calcium test started'),
+        ('vet', 'Vet on call confirmed'),
+        ('kit', 'Foaling kit and camera ready'),
+        ('owner', 'Owner informed of the plan'),
+    )
+    FOALING_WATCH_DAYS = 21
+
+    @property
+    def watch_items(self):
+        """[(key, label, done)] for the foaling-watch checklist."""
+        done = (self.foaling_watch or {}).get('items', {})
+        return [(key, label, bool(done.get(key))) for key, label in self.FOALING_WATCH_ITEMS]
+
+    @property
+    def watch_done_count(self):
+        return sum(1 for _, _, done in self.watch_items if done)
+
+    @property
+    def watch_notes(self):
+        return (self.foaling_watch or {}).get('notes', '')
+
+    @property
+    def on_foaling_watch(self):
+        """Within three weeks of the due date, or past it, and still carrying."""
+        days = self.days_to_foal_due
+        return days is not None and days <= self.FOALING_WATCH_DAYS
 
     @property
     def scan_14_result(self):

@@ -1250,6 +1250,58 @@ def breeding_results(request):
     })
 
 
+@feature_required('breeding', LEVEL_VIEW)
+def breeding_calendar(request):
+    """The foaling calendar: one season on a month timeline, and the
+    foaling watch (mares due within three weeks) with its checklist."""
+    from .calendar import default_season, foaling_watch, season_calendar, seasons_with_foalings
+
+    today = timezone.localdate()
+    seasons = seasons_with_foalings()
+    season = request.GET.get('season', '')
+    if season.isdigit() and int(season) in seasons:
+        season = int(season)
+    else:
+        season = default_season(today, seasons)
+    cal = season_calendar(season, today=today)
+    return render(request, 'health/breeding_calendar.html', {
+        'seasons': seasons or [season],
+        'season': season,
+        'cal': cal,
+        'watch': foaling_watch(today=today),
+        'today': today,
+        'can_edit': has_feature_access(request.user, 'breeding', LEVEL_FULL),
+    })
+
+
+@feature_required('breeding')
+def breeding_watch_update(request, pk):
+    """Tick or untick a foaling-watch item, or save the watch notes (POST).
+
+    Answers the refreshed watch card for htmx; a plain post goes back to
+    the calendar.
+    """
+    record = get_object_or_404(BreedingRecord.objects.select_related('mare'), pk=pk)
+    if request.method != 'POST':
+        return HttpResponseBadRequest("POST required")
+    watch = dict(record.foaling_watch or {})
+    items = dict(watch.get('items', {}))
+    item = request.POST.get('item', '')
+    valid = {key for key, _ in BreedingRecord.FOALING_WATCH_ITEMS}
+    if item in valid:
+        items[item] = not items.get(item, False)
+    if 'notes' in request.POST:
+        watch['notes'] = request.POST.get('notes', '').strip()[:1000]
+    watch['items'] = items
+    record.foaling_watch = watch
+    record.save(update_fields=['foaling_watch', 'updated_at'])
+    if request.headers.get('HX-Request') == 'true':
+        return render(request, 'health/partials/foaling_watch_card.html', {
+            'br': record, 'today': timezone.localdate(), 'can_edit': True,
+        })
+    return redirect('breeding_calendar')
+
+
 BREEDING_STATUS_FILTERS = [
     ('', 'All'),
     ('active', 'Active (covered or in foal)'),
