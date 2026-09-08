@@ -54,25 +54,104 @@ class InvoiceService:
         ).first()
 
     @staticmethod
-    def _build_livery_charge(placement, period_start, period_end,
-                             *, share_percentage, amount=None):
-        """Build a single livery charge dict for a placement, or None.
+    def _billing_key(placement):
+        """What makes two placements the same thing to bill.
 
-        ``amount`` is this owner's already-reconciled share of the charge; if
-        omitted the owner is billed the full charge (single-owner case).
-        Returns None when the placement has no billable days in the period.
+        Deliberately excludes the location: a horse that moves field keeps the
+        same price, so the move must not start a new line. Rate type name is
+        part of the key because it is printed on the line — two rate types at
+        the same price would otherwise be merged under one name.
         """
-        days = placement.get_days_in_period(period_start, period_end)
-        if days <= 0:
-            return None
-
-        full_amount = placement.calculate_charge(period_start, period_end)
-        owner_amount = full_amount if amount is None else amount
-        eff_start, eff_end = placement.get_effective_dates_in_period(
-            period_start, period_end
+        return (
+            placement.horse_id,
+            placement.owner_id,
+            placement.rate_type.name,
+            placement.daily_rate,
         )
 
-        rate_str = f"£{placement.daily_rate:g}"
+    @classmethod
+    def _merge_placement_runs(cls, placements, period_start, period_end):
+        """Collapse each horse's back-to-back placements into billing runs.
+
+        Every field movement ends one placement and opens another, so a horse
+        moved twice in a month has three placements at one price. Billed one
+        per placement, the invoice shows three near-identical lines and owners
+        read that as a fault. Placements that follow each other with no gap and
+        price the same become a single run, so a new line starts only when the
+        price (or rate type) changes.
+
+        A real gap — the horse left and came back — still breaks the run, so
+        the days billed always match the dates printed.
+
+        Returns a list of runs; each run is a list of placements in date order.
+        """
+        runs = []
+        billable = [
+            p for p in placements
+            if p.get_days_in_period(period_start, period_end) > 0
+        ]
+        for placement in sorted(
+            billable, key=lambda p: (p.horse_id, p.start_date, p.pk)
+        ):
+            eff_start, eff_end = placement.get_effective_dates_in_period(
+                period_start, period_end
+            )
+            key = cls._billing_key(placement)
+            if runs:
+                last = runs[-1]
+                contiguous = eff_start <= last['end'] + timedelta(days=1)
+                if last['key'] == key and contiguous:
+                    last['placements'].append(placement)
+                    last['end'] = max(last['end'], eff_end)
+                    continue
+            runs.append({
+                'key': key,
+                'placements': [placement],
+                'end': eff_end,
+            })
+        return [run['placements'] for run in runs]
+
+    @staticmethod
+    def _run_full_amount(run, period_start, period_end):
+        """Total charge for a run of placements, before any ownership split."""
+        return sum(
+            (p.calculate_charge(period_start, period_end) for p in run),
+            Decimal('0.00'),
+        )
+
+    @classmethod
+    def _build_livery_charge(cls, run, period_start, period_end,
+                             *, share_percentage, amount=None):
+        """Build a single livery charge dict for a run of placements, or None.
+
+        ``run`` is one or more consecutive placements at the same price (see
+        ``_merge_placement_runs``); they bill as one line.
+        ``amount`` is this owner's already-reconciled share of the charge; if
+        omitted the owner is billed the full charge (single-owner case).
+        Returns None when the run has no billable days in the period.
+        """
+        segments = [
+            p for p in run
+            if p.get_days_in_period(period_start, period_end) > 0
+        ]
+        if not segments:
+            return None
+
+        days = sum(
+            p.get_days_in_period(period_start, period_end) for p in segments
+        )
+        full_amount = cls._run_full_amount(segments, period_start, period_end)
+        owner_amount = full_amount if amount is None else amount
+
+        effective = [
+            p.get_effective_dates_in_period(period_start, period_end)
+            for p in segments
+        ]
+        eff_start = min(s for s, _ in effective)
+        eff_end = max(e for _, e in effective)
+
+        first = segments[0]
+        rate_str = f"£{first.daily_rate:g}"
         date_from = format_date_short(eff_start)
         date_to = format_date_short_year(eff_end)
 
@@ -81,15 +160,18 @@ class InvoiceService:
             share_note = f" ({share_percentage:g}% share)"
 
         description = (
-            f"{placement.rate_type.name} {rate_str} per day "
+            f"{first.rate_type.name} {rate_str} per day "
             f"- {days} days ({date_from} to {date_to}){share_note}"
         )
         return {
-            'horse': placement.horse,
-            'placement': placement,
+            'horse': first.horse,
+            # The line item keeps one placement FK; the first of the run is the
+            # one the period started on.
+            'placement': first,
+            'placements': segments,
             'description': description,
             'days': days,
-            'daily_rate': placement.daily_rate,
+            'daily_rate': first.daily_rate,
             'full_amount': full_amount,
             'amount': owner_amount,
             'share_percentage': share_percentage,
@@ -156,7 +238,11 @@ class InvoiceService:
 
     @classmethod
     def calculate_livery_charges(cls, owner, period_start, period_end):
-        """Calculate livery charges for an owner, per placement.
+        """Calculate livery charges for an owner.
+
+        Consecutive placements at the same price bill as one line: a field
+        movement must not split the charge into several lines (see
+        ``_merge_placement_runs``).
 
         Two ownership models coexist:
 
@@ -189,12 +275,16 @@ class InvoiceService:
                 continue  # single/partial share handled as single-owner below
             all_shares = list(share.horse.ownership_shares.all())
             pct = cls._effective_share_percentage(share, all_shares)
-            for placement in overlapping(
-                Placement.objects.filter(horse_id=share.horse_id)
-            ):
-                full = placement.calculate_charge(period_start, period_end)
+            runs = cls._merge_placement_runs(
+                overlapping(Placement.objects.filter(horse_id=share.horse_id)),
+                period_start, period_end,
+            )
+            for run in runs:
+                # Reconcile the split once per run, not per placement — the
+                # penny remainder is settled against the whole line.
+                full = cls._run_full_amount(run, period_start, period_end)
                 charge = cls._build_livery_charge(
-                    placement, period_start, period_end,
+                    run, period_start, period_end,
                     share_percentage=pct,
                     amount=cls._reconciled_amount(full, owner.id, all_shares),
                 )
@@ -202,11 +292,16 @@ class InvoiceService:
                     charges.append(charge)
 
         # --- Single-owner horses: bill each placement's owner at 100% ---
-        for placement in overlapping(
-            Placement.objects.filter(owner=owner).exclude(horse_id__in=co_owned_ids)
-        ):
+        single_owner_runs = cls._merge_placement_runs(
+            overlapping(
+                Placement.objects.filter(owner=owner)
+                .exclude(horse_id__in=co_owned_ids)
+            ),
+            period_start, period_end,
+        )
+        for run in single_owner_runs:
             charge = cls._build_livery_charge(
-                placement, period_start, period_end,
+                run, period_start, period_end,
                 share_percentage=Decimal('100.00'),
             )
             if charge:
