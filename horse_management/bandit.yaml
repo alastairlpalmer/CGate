@@ -1,0 +1,26 @@
+# Bandit configuration. Run: bandit --configfile bandit.yaml --recursive .
+#
+# Bandit finds unsafe Python patterns (weak hashes, shell injection, unsafe
+# deserialisation, hardcoded credentials). It is a useful net, not a
+# verdict — every skip below is a deliberate decision, not noise removal.
+
+exclude_dirs:
+  - ./node_modules
+  - ./staticfiles
+  - ./media
+  - ./venv
+  - ./.venv
+  # Test files are full of throwaway passwords ("testpass123") that trip
+  # B105/B106/B107. They are test fixtures and never reach a real user.
+  - ./core/tests
+  # Django writes these; a finding here belongs upstream, not to us.
+  - "*/migrations"
+  # One-off QA scripts, never deployed. See tools/qa/README.md.
+  - ./tools/qa
+
+skips:
+  # B101 assert_used — Django test suites are built on assertions.
+  - B101
+
+# Fail the build on MEDIUM and above. LOW findings still print, so they are
+# visible in the job log without blocking a merge on a test password.

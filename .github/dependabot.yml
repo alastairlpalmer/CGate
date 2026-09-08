@@ -1,0 +1,56 @@
+# Dependency updates. Dependabot opens a PR when a package has a new
+# version, and a security PR immediately when one has a published CVE.
+#
+# Grouped so a routine week is one PR per ecosystem rather than fifteen.
+# Security updates are never grouped — they arrive on their own so they
+# can be reviewed and merged fast.
+version: 2
+
+updates:
+  - package-ecosystem: pip
+    directory: /horse_management
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/London
+    open-pull-requests-limit: 5
+    groups:
+      python-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    labels:
+      - dependencies
+
+  - package-ecosystem: npm
+    directory: /horse_management
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/London
+    open-pull-requests-limit: 3
+    groups:
+      npm-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    labels:
+      - dependencies
+
+  # Pinned action versions go stale silently and are a real supply-chain
+  # risk (a compromised tag runs with the workflow's token).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/London
+    labels:
+      - dependencies
