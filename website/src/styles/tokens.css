@@ -1,0 +1,83 @@
+/*
+  Design tokens. The only file that may contain a hex value.
+  Source: docs/plan.md, Sections 4.3 and 4.3a.
+*/
+:root {
+  /* Colour. One family, used at different depths. */
+  --ink: #0f2a24;        /* body text, headings; near-black, but green */
+  --green: #14453a;      /* dark grounds, footer, hero scrim */
+  --teal-deep: #1c5c57;  /* links, accent text */
+  --teal: #2e7f78;       /* button fills with white text, the active marker */
+  --teal-light: #4a9e93; /* graphics and markers only, never body text */
+  --stone: #5a6b66;      /* secondary text, captions, rules that mean something */
+  --mist: #e4e9e6;       /* surface tints, hairlines, placeholder blocks; never a meaningful rule */
+  --paper: #fafaf8;      /* page ground */
+  --white: #ffffff;      /* panels that must lift off the ground */
+
+  /* Business markers. Each arm takes one step on the same ramp. */
+  --marker-livery: var(--green);
+  --marker-farm: var(--teal-deep);
+  --marker-software: var(--teal);
+  --marker-camping: var(--teal-light);
+
+  /* Type. 1.25 ratio, 18px base. */
+  --font-display: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  --font-body: 'Source Serif 4', Georgia, serif;
+
+  --t-hero: clamp(2.75rem, 7vw, 5.5rem);
+  --t-h1: clamp(2.25rem, 5vw, 3.5rem);
+  --t-h2: 2rem;
+  --t-h3: 1.5rem;
+  --t-body: 1.125rem;
+  --t-small: 0.9375rem;
+  --t-nav: 0.875rem;
+
+  --lh-hero: 0.95;
+  --lh-h1: 1.05;
+  --lh-h2: 1.15;
+  --lh-h3: 1.25;
+  --lh-body: 1.6;
+  --lh-small: 1.5;
+  --lh-nav: 1;
+
+  --ls-nav: 0.08em;
+
+  /* Spacing. 4px base. */
+  --s-1: 0.25rem;  /* 4px */
+  --s-2: 0.5rem;   /* 8px */
+  --s-3: 1rem;     /* 16px */
+  --s-4: 1.5rem;   /* 24px */
+  --s-5: 2.5rem;   /* 40px */
+  --s-6: 4rem;     /* 64px */
+  --s-7: 6.5rem;   /* 104px */
+  --s-8: 10.5rem;  /* 168px */
+
+  /* Layout. */
+  --w-content: 72rem;
+  --w-reading: 38rem;
+  --gutter: var(--s-4);
+
+  /* Radius. This site is not made of cards. */
+  --radius: 0;
+  --radius-control: 2px;
+
+  /* Motion. One shared ease for the whole site. */
+  --dur-fast: 200ms;
+  --dur-mid: 400ms;
+  --dur-slow: 900ms;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* The banner. */
+  --hero-hold: 6s;
+  --dial-one: 520ms;
+  --dial-two: 700ms;
+
+  /* Header height, used for scroll padding and the sticky offset. */
+  --header-h: 4.5rem;
+}
+
+@media (min-width: 880px) {
+  :root {
+    --gutter: var(--s-6);
+  }
+}
