@@ -836,6 +836,18 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .watch-item.is-done button { @apply bg-forest border-forest; }
     .watch-item.is-done span { @apply line-through text-sage; }
 
+    /* Foal record milestones (templates/horses/partials/foal_record.html) */
+    .milestones { @apply divide-y divide-light-sage rounded-lg border border-light-sage overflow-hidden; }
+    .milestone { @apply flex items-center gap-3 px-3 py-2 min-h-[48px]; }
+    .milestone.is-done { @apply bg-sage-50; }
+    .milestone-dot { @apply h-5 w-5 shrink-0 rounded-full border-2 border-sage/40 flex items-center justify-center text-white; }
+    .milestone.is-done .milestone-dot { @apply bg-forest border-forest; }
+    .milestone-text { @apply min-w-0 flex-1; }
+    .milestone-label { @apply block text-sm font-medium text-charcoal; }
+    .milestone.is-done .milestone-label { @apply text-forest; }
+    .milestone-meta { @apply block text-xs text-sage; }
+    .milestone-action { @apply shrink-0; }
+
     /* Money */
     .money-grid { @apply grid grid-cols-2 gap-3 p-4 lg:grid-cols-4 lg:p-5; }
     .money-fig { @apply flex flex-col rounded-lg bg-sand-50 px-4 py-3 no-underline transition-colors; }

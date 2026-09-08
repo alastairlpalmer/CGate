@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Foal details - Yardway{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Foal Details</h1>
+            <p class="page-subtitle">{% if foal %}{{ foal.name }}, {% endif %}out of {{ mare.name }}</p>
+        </div>
+    </div>
+    <div class="card">{% include 'health/partials/foal_details_form.html' %}</div>
+</div>
+{% endblock %}

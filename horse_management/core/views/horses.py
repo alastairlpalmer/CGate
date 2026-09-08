@@ -1078,11 +1078,26 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
             context['active_pregnancy'] = next(
                 (br for br in breeding_records if br.status in ('covered', 'confirmed')), None
             )
-            context['foals'] = Horse.objects.filter(dam=horse).only(
-                'pk', 'name', 'date_of_birth', 'sex', 'color'
+            context['foals'] = list(
+                Horse.objects.filter(dam=horse)
+                .prefetch_related('birth_record')
+                .order_by('-date_of_birth', 'name')
             )
         else:
             context['foals'] = []
+
+        # The foal's own record: its birth record, milestones and notes.
+        foal_record = (
+            horse.birth_record.select_related('mare', 'foal')
+            .prefetch_related('foal_notes').first()
+        )
+        context['foal_record'] = foal_record
+        if foal_record is not None:
+            from health.forms import FoalNoteForm
+            from health.services import foal_milestones
+            context['foal_milestones'] = foal_milestones(foal_record)
+            context['foal_notes'] = list(foal_record.foal_notes.all())
+            context['foal_note_form'] = FoalNoteForm(initial={'date': timezone.localdate()})
 
         # Build unified timeline
         timeline = []

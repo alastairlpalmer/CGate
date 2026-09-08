@@ -1,0 +1,75 @@
+{% comment %}
+Weaning form body — the full page (health/breeding_wean.html) and the
+pop-up sheet share it. The date is the only required field; moving the
+foal and re-rating the mare and foal are opt-in.
+{% endcomment %}
+<form method="post" action="{% url 'breeding_wean' record.pk %}"
+      {% if in_popup %}hx-post="{% url 'breeding_wean' record.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"{% endif %}
+      x-data="{ moveFoal: {% if form.foal_location.value %}true{% else %}false{% endif %} }">
+    {% csrf_token %}
+    <div class="p-4 sm:p-5 space-y-4 sm:space-y-5">
+        {% include 'includes/form_errors.html' with form=form intro="The weaning wasn't saved:" %}
+        <div class="rounded-lg bg-sand-50 border border-sand-100 px-3 py-2 text-sm text-charcoal-light">
+            <span class="font-medium text-charcoal">{% if foal %}{{ foal.name }}{% else %}The foal{% endif %}</span>
+            &middot; foaled {{ record.foal_dob|date:"d M Y" }} ({{ record.foal_age_label }})
+            &middot; out of <span class="font-medium text-charcoal">{{ mare.name }}</span>
+            {% if form.foal_placement %}&middot; foal at {{ form.foal_placement.location.name }} on {{ form.foal_placement.rate_type.name }}{% endif %}
+        </div>
+
+        <div{% if form.weaned_date.errors %} class="field-invalid"{% endif %}>
+            <label for="{{ form.weaned_date.id_for_label }}" class="block text-sm font-medium text-charcoal">Weaning date *</label>
+            {{ form.weaned_date }}
+            {% if form.weaned_date.errors %}<p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.weaned_date.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div>
+            <span class="block text-sm font-medium text-charcoal" id="wean-move-label">Where does the foal go?</span>
+            <div class="mt-1 flex flex-wrap items-center gap-2" role="group" aria-labelledby="wean-move-label">
+                <button type="button" class="chip" :class="!moveFoal && 'chip-on'" :aria-pressed="!moveFoal" @click="moveFoal = false; $refs.foalLocation.value = ''">Stays where it is</button>
+                <button type="button" class="chip" :class="moveFoal && 'chip-on'" :aria-pressed="moveFoal" @click="moveFoal = true; $nextTick(() => $refs.foalLocation.focus())">Move to another location</button>
+            </div>
+            <div x-show="moveFoal" x-cloak class="mt-2{% if form.foal_location.errors %} field-invalid{% endif %}">
+                <label for="{{ form.foal_location.id_for_label }}" class="sr-only">Location</label>
+                <select name="foal_location" id="{{ form.foal_location.id_for_label }}" class="form-select !mt-0" x-ref="foalLocation">
+                    {% for value, label in form.foal_location.field.choices %}
+                    <option value="{{ value|default_if_none:'' }}" {% if form.foal_location.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                {% if form.foal_location.errors %}<p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.foal_location.errors.0 }}</p>{% endif %}
+                <p class="mt-1 text-xs text-sage">Ends the foal's placement the day before and starts one at the new location on the weaning date.</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+            <div{% if form.foal_rate_type.errors %} class="field-invalid"{% endif %}>
+                <label for="{{ form.foal_rate_type.id_for_label }}" class="block text-sm font-medium text-charcoal">{{ form.foal_rate_type.label }}</label>
+                {{ form.foal_rate_type }}
+                {% if form.foal_rate_type.errors %}<p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.foal_rate_type.errors.0 }}</p>{% endif %}
+                {% if not form.foal_placement %}<p class="mt-1 text-xs text-sage">The foal is not on the yard board.</p>{% endif %}
+            </div>
+            <div{% if form.mare_rate_type.errors %} class="field-invalid"{% endif %}>
+                <label for="{{ form.mare_rate_type.id_for_label }}" class="block text-sm font-medium text-charcoal">{{ form.mare_rate_type.label }}</label>
+                {{ form.mare_rate_type }}
+                {% if form.mare_rate_type.errors %}<p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.mare_rate_type.errors.0 }}</p>{% endif %}
+                {% if form.mare_placement %}<p class="mt-1 text-xs text-sage">Now on {{ form.mare_placement.rate_type.name }}.{% if form.suggested_mare_rate %} Suggested: {{ form.suggested_mare_rate.name }}.{% endif %}</p>{% else %}<p class="mt-1 text-xs text-sage">The mare is not on the yard board.</p>{% endif %}
+            </div>
+        </div>
+
+        <div{% if form.weaning_notes.errors %} class="field-invalid"{% endif %}>
+            <label for="{{ form.weaning_notes.id_for_label }}" class="block text-sm font-medium text-charcoal">Notes</label>
+            {{ form.weaning_notes }}
+        </div>
+    </div>
+    <div class="{% if in_popup %}popup-footer{% else %}form-footer{% endif %}">
+        {% if in_popup %}
+        <a href="{% url 'breeding_wean' record.pk %}" hx-boost="false" class="hidden sm:inline-flex items-center mr-auto text-xs text-sage hover:text-charcoal-light">Open the full form</a>
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        {% else %}
+        <a href="{% url 'horse_detail' foal.pk|default:mare.pk %}" class="btn-secondary">Cancel</a>
+        {% endif %}
+        <button type="submit" class="btn-primary">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+            Record Weaning
+        </button>
+    </div>
+</form>

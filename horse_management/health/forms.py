@@ -14,6 +14,7 @@ from core.models import Horse
 from .models import (
     BreedingRecord,
     Covering,
+    FoalNote,
     PregnancyScan,
     FarrierVisit,
     MedicalCondition,
@@ -717,3 +718,149 @@ class CoveringForm(forms.Form):
         if self.record.coverings.filter(date=covered).exists():
             raise forms.ValidationError('A covering on this date is already recorded.')
         return covered
+
+
+class FoalDetailsForm(forms.Form):
+    """Edit the foal's birth details in one place: the breeding record and
+    the foal's horse record are kept in step."""
+
+    foal_name = forms.CharField(
+        label='Name', max_length=200,
+        widget=forms.TextInput(attrs={'class': 'form-input'}),
+    )
+    foal_dob = forms.DateField(
+        label='Date foaled',
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+    )
+    foal_sex = forms.ChoiceField(
+        label='Sex', choices=BreedingRecord.FoalSex.choices,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    foal_colour = forms.ChoiceField(
+        label='Colour', required=False,
+        choices=[('', '— not yet known —')] + list(BreedingRecord.FoalColour.choices),
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    foal_microchip = forms.CharField(
+        label='Microchip', max_length=100, required=False,
+        widget=forms.TextInput(attrs={'class': 'form-input'}),
+    )
+    foaling_notes = forms.CharField(
+        label='Foaling notes', required=False,
+        widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
+        help_text='How the foaling went: ease, time, vet attendance, placenta passed.',
+    )
+
+    def __init__(self, *args, record, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.record = record
+
+    def clean_foal_dob(self):
+        dob = self.cleaned_data['foal_dob']
+        if self.record.date_covered and dob < self.record.date_covered:
+            raise forms.ValidationError('The foal cannot be born before the mare was covered.')
+        if dob > timezone.localdate():
+            raise forms.ValidationError('The date cannot be in the future.')
+        if self.record.weaned_date and dob > self.record.weaned_date:
+            raise forms.ValidationError('The foal was weaned before this date; fix the weaning date first.')
+        return dob
+
+
+class WeaningForm(forms.Form):
+    """Wean the foal: the date, and optionally where the foal goes and
+    what the mare and foal are charged at afterwards."""
+
+    weaned_date = forms.DateField(
+        label='Weaning date',
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+    )
+    foal_location = forms.ModelChoiceField(
+        label='Move the foal to', required=False, queryset=None,
+        empty_label='— choose a location —',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    foal_rate_type = forms.ModelChoiceField(
+        label="Foal's rate from weaning", required=False, queryset=None,
+        empty_label='Keep the current rate',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    mare_rate_type = forms.ModelChoiceField(
+        label="Mare's rate from weaning", required=False, queryset=None,
+        empty_label='Keep the current rate',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    weaning_notes = forms.CharField(
+        label='Notes', required=False,
+        widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2,
+                                     'placeholder': 'Method, how the foal settled, anything to watch…'}),
+    )
+
+    def __init__(self, *args, record, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.record = record
+        from core.models import Location, RateType
+        rates = RateType.objects.filter(is_active=True).order_by('name')
+        self.fields['foal_rate_type'].queryset = rates
+        self.fields['mare_rate_type'].queryset = rates
+        self.fields['foal_location'].queryset = Location.objects.filter(is_archived=False).order_by('site', 'name')
+        self.foal = record.foal
+        self.foal_placement = self.foal.current_placement if self.foal else None
+        self.mare_placement = record.mare.current_placement
+        if not self.foal_placement:
+            self.fields['foal_rate_type'].disabled = True
+        if not self.mare_placement:
+            self.fields['mare_rate_type'].disabled = True
+
+    @property
+    def suggested_mare_rate(self):
+        """A rate that does not mention a foal, for the mare on her own."""
+        return self.fields['mare_rate_type'].queryset.exclude(name__icontains='foal').first()
+
+    def clean_weaned_date(self):
+        day = self.cleaned_data['weaned_date']
+        if self.record.foal_dob and day < self.record.foal_dob:
+            raise forms.ValidationError('Weaning cannot be before the foal was born.')
+        if day > timezone.localdate():
+            raise forms.ValidationError('The date cannot be in the future.')
+        return day
+
+    def clean(self):
+        cleaned = super().clean()
+        day = cleaned.get('weaned_date')
+        if not day:
+            return cleaned
+        if cleaned.get('foal_location') and not self.foal:
+            self.add_error('foal_location', 'The foal has no horse record to move. Link one first.')
+        if (cleaned.get('foal_location') or cleaned.get('foal_rate_type')) and self.foal_placement \
+                and day <= self.foal_placement.start_date:
+            self.add_error(
+                'weaned_date',
+                f"The foal's current placement started {self.foal_placement.start_date:%d %b %Y}; "
+                "a move or rate change must be after that.",
+            )
+        if cleaned.get('foal_location') and not self.foal_placement and not cleaned.get('foal_rate_type'):
+            self.add_error('foal_rate_type', 'Pick the rate for the foal at its new location.')
+        if cleaned.get('mare_rate_type') and self.mare_placement and day <= self.mare_placement.start_date:
+            self.add_error(
+                'weaned_date',
+                f"The mare's current placement started {self.mare_placement.start_date:%d %b %Y}; "
+                "a rate change must be after that.",
+            )
+        return cleaned
+
+
+class FoalNoteForm(forms.ModelForm):
+    class Meta:
+        model = FoalNote
+        fields = ['date', 'note']
+        widgets = {
+            'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input !mt-0 text-sm', 'type': 'date'}),
+            'note': forms.TextInput(attrs={'class': 'form-input !mt-0 text-sm',
+                                           'placeholder': 'Nursing well, turned out with the mare…'}),
+        }
+
+    def clean_date(self):
+        day = self.cleaned_data['date']
+        if day > timezone.localdate():
+            raise forms.ValidationError('The date cannot be in the future.')
+        return day

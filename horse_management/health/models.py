@@ -475,6 +475,10 @@ class BreedingRecord(models.Model):
     foal_colour = models.CharField(max_length=20, choices=FoalColour.choices, blank=True)
     foal_microchip = models.CharField(max_length=100, blank=True)
     foaling_notes = models.TextField(blank=True)
+    weaned_date = models.DateField(
+        null=True, blank=True, help_text="When the foal was weaned (split from the mare)",
+    )
+    weaning_notes = models.TextField(blank=True)
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.COVERED
     )
@@ -610,6 +614,45 @@ class BreedingRecord(models.Model):
         and has not foaled: first covers, repeat covers in the same cycle,
         and re-covers after a negative scan."""
         return self.status in ('covered', 'barren')
+
+    # ── Foal helpers (the foal's own page and the mare's Foals table) ──
+
+    @property
+    def foal_days_old(self):
+        if not self.foal_dob:
+            return None
+        return (timezone.localdate() - self.foal_dob).days
+
+    @property
+    def foal_age_label(self):
+        days = self.foal_days_old
+        if days is None or days < 0:
+            return ''
+        if days < 14:
+            return f'{days} day{"s" if days != 1 else ""} old'
+        if days < 90:
+            weeks = days // 7
+            return f'{weeks} week{"s" if weeks != 1 else ""} old'
+        months = days // 30
+        if days < 365:
+            return f'{months} month{"s" if months != 1 else ""} old'
+        years = days // 365
+        return f'{years} year{"s" if years != 1 else ""} old'
+
+    @property
+    def is_weaned(self):
+        return self.weaned_date is not None
+
+    @property
+    def can_wean(self):
+        return self.status == self.Status.BORN and self.foal_dob is not None and not self.is_weaned
+
+    @property
+    def weaning_due(self):
+        """A guide date: six months from birth."""
+        if not self.foal_dob:
+            return None
+        return Vaccination._add_months(self.foal_dob, 6)
 
     # Foaling-watch checklist, in the order the yard works through it.
     FOALING_WATCH_ITEMS = (
@@ -779,6 +822,25 @@ class Covering(models.Model):
         record = self.record
         super().delete(*args, **kwargs)
         record.sync_from_coverings()
+
+
+class FoalNote(models.Model):
+    """A dated note on a foal: how it is doing, what was done, what to
+    watch. Kept on the breeding record so the foal's story stays with its
+    birth even before it has a horse record of its own."""
+
+    record = models.ForeignKey(
+        BreedingRecord, on_delete=models.CASCADE, related_name='foal_notes',
+    )
+    date = models.DateField()
+    note = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date', '-pk']
+
+    def __str__(self):
+        return f"{self.record.mare.name}'s foal, {self.date}: {self.note[:40]}"
 
 
 class PregnancyScan(models.Model):
