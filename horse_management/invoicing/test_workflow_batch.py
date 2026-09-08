@@ -1,4 +1,4 @@
-"""Regression tests for the workflow-friction batch (CODEBASE_REVIEW.md Part 2).
+"""Regression tests for the workflow-friction batch (docs/CODEBASE_REVIEW.md Part 2).
 
 Covers:
   #1 Bulk send / bulk mark-paid on the invoice list.

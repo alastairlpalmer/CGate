@@ -2,6 +2,13 @@
 
 A web application for managing horse livery operations including tracking horses by location, owner management, and automated invoicing.
 
+## Documentation
+
+- [`SECURITY.md`](SECURITY.md) — controls in place, known gaps, and how to
+  report a vulnerability.
+- [`docs/`](docs/README.md) — architecture, the reviewer pack, the backup
+  and restore runbook, design plans and QA history.
+
 ## Features
 
 - **Horse Management**: Track horses with details (age, color, sex, breeding, notes)
@@ -99,7 +106,7 @@ node --test 'static/js/tests/*.test.js'
 ## Location mapping
 
 Locations can carry a latitude/longitude and, from a Land App export, a field
-boundary. `LOCATION_MAPPING_PLAN.md` is the design; the build is behind one
+boundary. `docs/LOCATION_MAPPING_PLAN.md` is the design; the build is behind one
 setting, `LOCATION_MAPS_ENABLED` (default off), which gates everything a user
 sees: the nearest-location chip on the dashboard, the **Map** tab on Locations,
 the **Near you** dashboard card and the Land App import. The coordinate picker
