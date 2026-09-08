@@ -10,6 +10,8 @@ A web application for managing horse livery operations including tracking horses
   report a vulnerability.
 - [`docs/`](docs/README.md) — architecture, the reviewer pack, the backup
   and restore runbook, design plans and QA history.
+- [`website/`](website/README.md) — the public farm website (Astro, static).
+  Separate from the app; see its own README and `website/CONTENT.md`.
 
 ## Features
 
