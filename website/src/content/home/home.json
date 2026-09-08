@@ -1,0 +1,162 @@
+{
+  "title": "Colgate Farm",
+  "description": "[[TODO: one line that says what Colgate Farm is, for search results | owner: family | ref: home page, description]]",
+  "h1": "Colgate Farm",
+  "slides": [
+    {
+      "marker": "livery",
+      "heading": "Foaling down, night and day",
+      "text": "[[TODO: one line on livery and foaling, under 140 characters | owner: livery | ref: home banner, slide 1]]",
+      "image": {
+        "alt": "[[TODO: describe the photograph | owner: livery | ref: home banner, slide 1]]",
+        "brief": "The yard or a mare and foal. Wide, landscape, at least 2400 px, taken in good light. This is the first thing a visitor sees.",
+        "owner": "livery",
+        "aspect": "wide"
+      },
+      "link": { "label": "Read more", "href": "/livery/" }
+    },
+    {
+      "marker": "software",
+      "heading": "[[TODO: software slide heading, under 45 characters | owner: software | ref: home banner, slide 2]]",
+      "text": "[[TODO: one line on the software, under 140 characters | owner: software | ref: home banner, slide 2]]",
+      "image": {
+        "alt": "[[TODO: describe the photograph | owner: software | ref: home banner, slide 2]]",
+        "brief": "The software in use on the yard, for example a phone or tablet in a hand with a stable behind. Not a screenshot on its own. Wide, landscape, at least 2400 px.",
+        "owner": "software",
+        "aspect": "wide"
+      },
+      "link": { "label": "Read more", "href": "/software/" }
+    },
+    {
+      "marker": "farm",
+      "heading": "[[TODO: farm slide heading, under 45 characters | owner: farm | ref: home banner, slide 3]]",
+      "text": "[[TODO: one line on contracting, beef and lamb, under 140 characters | owner: farm | ref: home banner, slide 3]]",
+      "image": {
+        "alt": "[[TODO: describe the photograph | owner: farm | ref: home banner, slide 3]]",
+        "brief": "Cattle or sheep on the land, or machinery at work in a field. Wide, landscape, at least 2400 px.",
+        "owner": "farm",
+        "aspect": "wide"
+      },
+      "link": { "label": "Read more", "href": "/farm/" }
+    },
+    {
+      "marker": "camping",
+      "heading": "[[TODO: camping slide heading, under 45 characters | owner: camping | ref: home banner, slide 4]]",
+      "text": "[[TODO: one line on the campsite, under 140 characters | owner: camping | ref: home banner, slide 4]]",
+      "image": {
+        "alt": "[[TODO: describe the photograph | owner: camping | ref: home banner, slide 4]]",
+        "brief": "The camping field with tents up, in evening or morning light. Wide, landscape, at least 2400 px.",
+        "owner": "camping",
+        "aspect": "wide"
+      },
+      "link": { "label": "Read more", "href": "/camping/" }
+    }
+  ],
+  "shelves": [
+    {
+      "marker": "livery",
+      "id": "livery",
+      "heading": "Livery and foaling",
+      "text": "[[TODO: about 40 words on the livery yard and foaling down: what is offered, who it is for, how to enquire | owner: livery | ref: home page, livery shelf]]",
+      "image": {
+        "alt": "[[TODO: describe the photograph | owner: livery | ref: home page, livery shelf]]",
+        "brief": "Stables, the yard, or a horse being handled. Landscape.",
+        "owner": "livery"
+      },
+      "link": { "label": "Livery and foaling", "href": "/livery/" }
+    },
+    {
+      "marker": "software",
+      "id": "software",
+      "heading": "Software for yards",
+      "text": "[[TODO: about 40 words on the equine management software: what it does, who it is for, how to see it | owner: software | ref: home page, software shelf]]",
+      "image": {
+        "alt": "[[TODO: describe the photograph | owner: software | ref: home page, software shelf]]",
+        "brief": "The software on a screen in a real setting: the tack room, the office, a hand in the yard. Landscape.",
+        "owner": "software"
+      },
+      "link": { "label": "Software for yards", "href": "/software/" }
+    },
+    {
+      "marker": "farm",
+      "id": "farm",
+      "heading": "Contracting, beef and lamb",
+      "text": "[[TODO: about 40 words on farm contracting and the beef and lamb: what is offered, who it is for, how to order or get a quote | owner: farm | ref: home page, farm shelf]]",
+      "image": {
+        "alt": "[[TODO: describe the photograph | owner: farm | ref: home page, farm shelf]]",
+        "brief": "Machinery in a field, or the cattle and sheep. Landscape.",
+        "owner": "farm"
+      },
+      "link": { "label": "Contracting, beef and lamb", "href": "/farm/" }
+    },
+    {
+      "marker": "camping",
+      "id": "camping",
+      "heading": "Camping at Colgate Farm",
+      "text": "[[TODO: about 40 words on the campsite: pitches, season, how to book | owner: camping | ref: home page, camping shelf]]",
+      "image": {
+        "alt": "[[TODO: describe the photograph | owner: camping | ref: home page, camping shelf]]",
+        "brief": "The camping field, or the view from it. Landscape.",
+        "owner": "camping"
+      },
+      "link": { "label": "Camping at Colgate Farm", "href": "/camping/" }
+    }
+  ],
+  "about": {
+    "id": "about",
+    "heading": "About us",
+    "lead": "[[TODO: one paragraph on the family, the land and the history, and that one family runs all four parts | owner: family | ref: home page, About us]]",
+    "blocks": [
+      {
+        "type": "richText",
+        "text": "[[TODO: the family: who is who, and who runs which part | owner: family | ref: home page, About us]]\n\n[[TODO: the land: where it is, how much, what it is used for | owner: family | ref: home page, About us]]\n\n[[TODO: the history: how long the family has farmed here, and how each part started | owner: family | ref: home page, About us]]"
+      }
+    ],
+    "posts": {
+      "heading": "News from the farm",
+      "count": 3,
+      "emptyText": "[[TODO: the first post. Anything that happened on the farm this month | owner: family | ref: blog]]"
+    }
+  },
+  "contact": {
+    "id": "contact",
+    "heading": "Contact",
+    "blocks": [
+      {
+        "type": "facts",
+        "items": [
+          { "label": "Address", "value": "[[TODO: postal address | owner: family | ref: home page, Contact]]" },
+          { "label": "Telephone", "value": "[[TODO: telephone number, and when it is answered | owner: family | ref: home page, Contact]]" },
+          { "label": "Email", "value": "[[TODO: email address | owner: family | ref: home page, Contact]]" }
+        ]
+      },
+      {
+        "type": "map",
+        "heading": "Finding the farm",
+        "addressLines": ["[[TODO: postal address for the map | owner: family | ref: home page, Contact]]"],
+        "directions": "[[TODO: directions in words from the nearest main road, and where to park | owner: family | ref: home page, Contact]]",
+        "image": {
+          "alt": "[[TODO: describe the photograph | owner: family | ref: home page, Contact]]",
+          "brief": "The farm entrance from the road, so a visitor recognises it.",
+          "owner": "family"
+        }
+      },
+      {
+        "type": "form",
+        "heading": "Send a message",
+        "text": "[[TODO: who reads the messages and how quickly they reply | owner: family | ref: home page, Contact form]]",
+        "name": "enquiry",
+        "fields": [
+          { "name": "name", "label": "Your name", "kind": "text", "required": true },
+          { "name": "email", "label": "Email address", "kind": "email", "required": true },
+          { "name": "phone", "label": "Telephone", "kind": "tel" },
+          { "name": "about", "label": "What is this about?", "kind": "select", "options": ["Livery and foaling", "Software", "Contracting, beef and lamb", "Camping", "Something else"] },
+          { "name": "message", "label": "Your message", "kind": "textarea", "required": true }
+        ],
+        "submitLabel": "Send",
+        "successText": "Thank you. Your message has been sent.",
+        "errorText": "The message did not send. Please try again, or telephone."
+      }
+    ]
+  }
+}

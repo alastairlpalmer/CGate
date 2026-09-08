@@ -1,4 +1,11 @@
 ---
-// Temporary. Replaced by the real home page once the layout and content exist.
+// Temporary. Loads every collection so the schema is checked at build time.
+import { getCollection } from 'astro:content';
+const settings = await getCollection('settings');
+const home = await getCollection('home');
+const businesses = await getCollection('businesses');
+const pages = await getCollection('pages');
+const posts = await getCollection('posts');
 ---
-<html lang="en-GB"><head><meta charset="utf-8" /><title>Setup</title></head><body></body></html>
+<html lang="en-GB"><head><meta charset="utf-8" /><title>{settings[0]?.data.name}</title></head>
+<body>{home.length} {businesses.length} {pages.length} {posts.length}</body></html>
