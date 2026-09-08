@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load ui_extras %}
+
+{% block title %}Foaling Calendar {{ season }} - Yardway{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Foaling Calendar</h1>
+            <p class="page-subtitle">Every pregnancy due in {{ season }} on one timeline, and the mares on foaling watch.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <form method="get" class="flex items-center gap-2">
+                <label for="season" class="dt-label">Foaling year</label>
+                <select name="season" id="season" class="form-select !mt-0" onchange="this.form.submit()">
+                    {% for yr in seasons %}
+                    <option value="{{ yr }}" {% if yr == season %}selected{% endif %}>{{ yr }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            <a href="{% url 'breeding_list' %}" class="btn-secondary">Breeding list</a>
+        </div>
+    </div>
+
+    <!-- Foaling watch -->
+    <section aria-labelledby="watch-title" class="space-y-3">
+        <div class="flex items-center gap-2.5">
+            <h2 class="section-title" id="watch-title">Foaling watch</h2>
+            <span class="badge-neutral">{{ watch|length }}</span>
+            <span class="text-xs text-sage">due within three weeks, or past due</span>
+        </div>
+        {% if watch %}
+        <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {% for br in watch %}
+            {% include 'health/partials/foaling_watch_card.html' with br=br today=today can_edit=can_edit %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="card p-5 text-sm text-sage">No mare is within three weeks of foaling.</div>
+        {% endif %}
+    </section>
+
+    <!-- Timeline -->
+    <div class="card overflow-hidden">
+        <div class="section-header">
+            <div class="flex items-center gap-2.5">
+                <h2 class="section-title">{{ season }} season</h2>
+                <span class="badge-neutral">{{ cal.rows|length }} mare{{ cal.rows|length|pluralize }}</span>
+            </div>
+            <span class="text-xs text-sage">{{ cal.window_start|date:"M Y" }} &ndash; {{ cal.window_end|date:"M Y" }}</span>
+        </div>
+        <div class="foal-cal px-4 py-3">
+            <div class="foal-cal-grid">
+                <div class="foal-cal-months">
+                    {% for m in cal.months %}
+                    <div class="foal-cal-month{% if m.is_current %} is-current{% endif %}" style="left: {{ m.left }}%; width: {{ m.width }}%;" title="{{ m.date|date:'F Y' }}">
+                        {{ m.label }}{% if m.date.month == 1 or forloop.first %} <span class="font-normal">{{ m.year }}</span>{% endif %}
+                        {% if m.due or m.born %}<span class="foal-cal-month-count">{% if m.due %}{{ m.due }} due{% endif %}{% if m.due and m.born %} &middot; {% endif %}{% if m.born %}{{ m.born }} foaled{% endif %}</span>{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% for row in cal.rows %}
+                <div class="foal-cal-row">
+                    <div class="foal-cal-bar{% if row.record.status == 'born' %} is-born{% endif %}{% if row.past_due %} is-past-due{% endif %}"
+                         style="left: {{ row.left }}%; width: {{ row.width }}%;"
+                         role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ row.progress }}"
+                         aria-label="{{ row.mare.name }}: {% if row.record.status == 'born' %}foaled {{ row.end|date:'d M Y' }}{% else %}day {{ row.record.day_of_gestation }} of 340, due {{ row.due|date:'d M Y' }}{% endif %}">
+                        <i style="width: {{ row.progress }}%"></i>
+                    </div>
+                    {% for mk in row.markers %}
+                    <span class="foal-cal-mark foal-cal-mark-{{ mk.kind }}" style="left: {{ mk.left }}%;" title="{{ mk.title }}"></span>
+                    {% endfor %}
+                    <a href="{% url 'horse_detail' row.mare.pk %}" class="foal-cal-label link" style="left: {{ row.left }}%;">
+                        {{ row.mare.name }}
+                        <span class="font-normal text-sage">&times; {{ row.record.stallion_name }}
+                        &middot; {% if row.record.status == 'born' %}foaled {{ row.end|date:"j M" }}{% if row.record.foal %}: {{ row.record.foal.name }}{% endif %}{% elif row.past_due %}<span class="text-error-red">due date passed</span>{% else %}due {{ row.due|date:"j M" }}{% endif %}</span>
+                    </a>
+                </div>
+                {% empty %}
+                <div class="py-10 text-center text-sm text-sage">No pregnancies due in {{ season }}.</div>
+                {% endfor %}
+                {% if cal.today_pct is not None %}
+                <div class="foal-cal-today" style="left: {{ cal.today_pct }}%;" aria-hidden="true"></div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="px-4 pb-4 foal-cal-legend">
+            <span><i class="bg-charcoal"></i>Covering</span>
+            <span><i class="bg-forest"></i>Positive scan</span>
+            <span><i class="bg-error-red"></i>Negative scan</span>
+            <span><i class="bg-info-blue !rounded-sm"></i>EHV dose</span>
+            <span><i class="bg-saddle"></i>Foaled</span>
+            <span><i class="bg-saddle/70 !rounded-sm !w-5"></i>Gestation so far</span>
+        </div>
+        {% if cal.not_carrying %}
+        <div class="px-4 pb-4 text-xs text-sage">
+            Not carrying this season:
+            {% for br in cal.not_carrying %}<a href="{% url 'horse_detail' br.mare.pk %}" class="link">{{ br.mare.name }}</a> ({{ br.get_status_display|lower }}){% if not forloop.last %}, {% endif %}{% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

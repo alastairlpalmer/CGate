@@ -803,6 +803,39 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .foal-bar { @apply mt-2 h-1.5 w-full overflow-hidden rounded-full bg-light-sage; }
     .foal-bar i { @apply block h-full rounded-full bg-saddle; }
 
+    /* Foaling calendar (templates/health/breeding_calendar.html) */
+    .foal-cal { @apply relative overflow-x-auto; }
+    .foal-cal-grid { @apply relative min-w-[720px]; }
+    .foal-cal-months { @apply relative h-9 border-b border-light-sage; }
+    .foal-cal-month { @apply absolute top-0 h-full border-l border-light-sage px-1.5 text-[11px] font-semibold uppercase tracking-wider text-sage; }
+    .foal-cal-month.is-current { @apply bg-sand-50 text-forest; }
+    .foal-cal-month-count { @apply block text-[10px] font-normal normal-case tracking-normal text-charcoal-light; }
+    .foal-cal-row { @apply relative h-14 border-b border-light-sage/70; }
+    .foal-cal-row:hover { @apply bg-sand-50/60; }
+    /* Label on the top line, bar and markers on the bottom line, so the
+       name never covers the covering marker at the start of the bar. */
+    .foal-cal-bar { @apply absolute top-[68%] h-3 -translate-y-1/2 rounded-full bg-light-sage overflow-hidden; }
+    .foal-cal-bar i { @apply block h-full rounded-full bg-saddle/70; }
+    .foal-cal-bar.is-born i { @apply bg-forest/70; }
+    .foal-cal-bar.is-past-due { @apply ring-2 ring-error-red/40; }
+    .foal-cal-mark { @apply absolute top-[68%] h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-sm; }
+    .foal-cal-mark-covering { @apply bg-charcoal; }
+    .foal-cal-mark-scan_pos { @apply bg-forest; }
+    .foal-cal-mark-scan_neg { @apply bg-error-red; }
+    .foal-cal-mark-scan_other { @apply bg-sage; }
+    .foal-cal-mark-ehv { @apply h-3.5 w-1.5 rounded-sm bg-info-blue; }
+    .foal-cal-mark-ehv_sent { @apply h-3.5 w-1.5 rounded-sm bg-info-blue/40; }
+    .foal-cal-mark-born { @apply h-3.5 w-3.5 bg-saddle; }
+    .foal-cal-today { @apply absolute top-0 bottom-0 w-px bg-error-red/60 pointer-events-none; }
+    .foal-cal-today::after { content: 'today'; @apply absolute bottom-0 left-1 text-[10px] text-error-red; }
+    .foal-cal-label { @apply absolute top-[26%] -translate-y-1/2 text-xs font-medium text-charcoal whitespace-nowrap; }
+    .foal-cal-legend { @apply flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-sage; }
+    .foal-cal-legend i { @apply inline-block h-2.5 w-2.5 rounded-full align-middle mr-1; }
+    .watch-item { @apply flex items-center gap-2 min-h-[36px] text-sm; }
+    .watch-item button { @apply h-5 w-5 rounded-sm border border-sage/40 flex items-center justify-center text-white; }
+    .watch-item.is-done button { @apply bg-forest border-forest; }
+    .watch-item.is-done span { @apply line-through text-sage; }
+
     /* Money */
     .money-grid { @apply grid grid-cols-2 gap-3 p-4 lg:grid-cols-4 lg:p-5; }
     .money-fig { @apply flex flex-col rounded-lg bg-sand-50 px-4 py-3 no-underline transition-colors; }

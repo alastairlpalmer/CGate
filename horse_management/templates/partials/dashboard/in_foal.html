@@ -9,7 +9,10 @@ Context: in_foal (core.dashboard.breeding.in_foal).
             <h2 class="section-title" id="in-foal-title">In foal</h2>
             <span class="badge-neutral">{{ in_foal|length }}</span>
         </div>
-        <a href="{% url 'breeding_list' %}" class="text-xs link tap-pad">Breeding &rarr;</a>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'breeding_calendar' %}" class="text-xs link tap-pad">Calendar &rarr;</a>
+            <a href="{% url 'breeding_list' %}" class="text-xs link tap-pad">Breeding &rarr;</a>
+        </div>
     </div>
     <ul class="grid grid-cols-1 divide-y divide-light-sage md:grid-cols-2 md:divide-y-0 xl:grid-cols-3">
         {% for entry in in_foal %}
