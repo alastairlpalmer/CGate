@@ -139,17 +139,17 @@ const site = await getSite();
   /* Scroll behaviour, the CSS way: solid ground and a rule as the banner leaves,
      and the mark shrinks over the first 200px. */
   @supports (animation-timeline: scroll()) {
-    :global(html[data-hero]) .site-header::before {
+    :global(html[data-has-hero]) .site-header::before {
       animation: header-ground linear both;
       animation-timeline: scroll(root);
       animation-range: calc(100vh - 12rem) calc(100vh - 4rem);
     }
-    :global(html[data-hero]) .site-header::after {
+    :global(html[data-has-hero]) .site-header::after {
       animation: header-rule linear both;
       animation-timeline: scroll(root);
       animation-range: calc(100vh - 12rem) calc(100vh - 4rem);
     }
-    :global(html[data-hero]) .site-header__mark {
+    :global(html[data-has-hero]) .site-header__mark {
       animation: header-mark linear both;
       animation-timeline: scroll(root);
       animation-range: 0 200px;
@@ -183,8 +183,8 @@ const site = await getSite();
     }
   }
   /* No banner on the page: solid from the start. */
-  :global(html:not([data-hero])) .site-header::before,
-  :global(html:not([data-hero])) .site-header::after {
+  :global(html:not([data-has-hero])) .site-header::before,
+  :global(html:not([data-has-hero])) .site-header::after {
     opacity: 1;
   }
 </style>
