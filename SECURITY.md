@@ -58,10 +58,23 @@ no cross-customer isolation boundary to get wrong.
 - No secret is committed to the repository. CI runs gitleaks over the full
   history on every push.
 
-**Data integrity**
+**Data integrity and recovery**
 - `DATABASE_URL` missing with `DEBUG=False` stops the boot. There is no
   silent SQLite fallback that would accept data and lose it on redeploy.
 - Upload limits: 10 MB per file, 12 MB per request.
+- Nightly off-site backup of the database **and** the uploaded media, with
+  grandfather-father-son retention (`core/backup/`). Off until
+  `BACKUP_ENABLED` and the storage credentials are set. Every attempt is
+  recorded in `BackupRun`, so a job that stops running is visible rather
+  than assumed. See `docs/BACKUP_RESTORE.md`.
+
+**Monitoring**
+- Sentry reports unhandled errors from both the web process and the Celery
+  worker. Off until `SENTRY_DSN` is set.
+- `send_default_pii` is False, and `core/monitoring.py` scrubs this app's
+  own secrets and strips query strings before an event is sent. The app
+  holds personal data; the default Sentry configuration would send more of
+  it than is acceptable.
 
 **Supply chain and CI**
 - `.github/workflows/ci.yml` — lint, missing migrations, Django checks,
@@ -87,9 +100,9 @@ Listed on purpose. A reviewer should not have to discover these.
 | **Sessions last 30 days and roll forward.** A stolen session cookie stays valid a long time. | Medium | Shorten to 7 days once staff habits are known. |
 | **Django admin is at the default `/admin/`.** | Low | Move the path, or restrict by IP at the proxy. |
 | **No per-request rate limiting** outside sign-in. Report generation and PDF export are unthrottled. | Medium | Rate-limit at Cloudflare, or add `django-ratelimit` on the expensive views. |
-| **Media files are on a single volume** with no replication. | High (availability) | Move to object storage. See `docs/BACKUP_RESTORE.md`. |
+| **Media files are on a single volume** with no replication. The nightly backup copies them off-box, but a lost volume still means an outage until a restore. | Medium (availability) | Move to object storage (`django-storages`). |
 | **Python dependencies are version ranges (`~=`), not a lockfile.** Two builds can differ. (JavaScript has `package-lock.json`.) | Low | Add `pip-compile` or `uv lock`. |
-| **No automated restore test.** | High (availability) | See `docs/BACKUP_RESTORE.md`. |
+| **The restore has never been tested.** Backups now run, but a backup nobody has restored is not proven. | High (availability) | Work through the five-point restore test in `docs/BACKUP_RESTORE.md` and record the date. |
 
 ## Running the security checks locally
 

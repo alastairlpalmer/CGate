@@ -3,5 +3,10 @@
   "provider": "python",
   "packages": {
     "python": "3.11"
+  },
+  "deploy": {
+    "aptPackages": [
+      "postgresql-client"
+    ]
   }
 }

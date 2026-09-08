@@ -5,6 +5,11 @@
     "python": "3.11",
     "node": "22"
   },
+  "deploy": {
+    "aptPackages": [
+      "postgresql-client"
+    ]
+  },
   "steps": {
     "build": {
       "commands": [

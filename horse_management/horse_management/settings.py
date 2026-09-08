@@ -283,6 +283,73 @@ EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@yardway.local')
 
+# Off-site backups (core/backup/)
+# ------------------------------
+# A database backup does NOT include the uploaded media — horse photos,
+# passports, insurance documents and receipts live on a volume. Both are
+# backed up here, and both are needed for a restore that works.
+#
+# Use an object store from a DIFFERENT provider than the database. One
+# provider is one suspended account away from losing both copies.
+BACKUP_ENABLED = env.bool('BACKUP_ENABLED', default=False)
+BACKUP_INCLUDE_MEDIA = env.bool('BACKUP_INCLUDE_MEDIA', default=True)
+
+# S3-compatible destination. Cloudflare R2 and Backblaze B2 both work.
+# Leave BACKUP_S3_ENDPOINT empty for plain AWS S3.
+BACKUP_S3_ENDPOINT = env('BACKUP_S3_ENDPOINT', default='')
+BACKUP_S3_BUCKET = env('BACKUP_S3_BUCKET', default='')
+BACKUP_S3_ACCESS_KEY = env('BACKUP_S3_ACCESS_KEY', default='')
+BACKUP_S3_SECRET_KEY = env('BACKUP_S3_SECRET_KEY', default='')
+BACKUP_S3_REGION = env('BACKUP_S3_REGION', default='auto')
+
+# pg_dump connects with this if set. Useful when the app talks to the
+# database through a connection pooler (Supabase's pgbouncer) that
+# pg_dump cannot use — point this at the direct connection instead.
+BACKUP_DATABASE_URL = env('BACKUP_DATABASE_URL', default='')
+
+# Seconds. A yard-sized database dumps in seconds; this is the backstop
+# for a wedged connection, not a target.
+BACKUP_PG_DUMP_TIMEOUT = env.int('BACKUP_PG_DUMP_TIMEOUT', default=1800)
+
+# Grandfather-father-son retention: every backup from the last week, then
+# one a week, then one a month. Answers both "undo yesterday" and "we only
+# noticed two months later" without keeping 365 copies.
+BACKUP_KEEP_DAILY = env.int('BACKUP_KEEP_DAILY', default=7)
+BACKUP_KEEP_WEEKLY = env.int('BACKUP_KEEP_WEEKLY', default=4)
+BACKUP_KEEP_MONTHLY = env.int('BACKUP_KEEP_MONTHLY', default=12)
+
+# When the nightly backup runs (Europe/London). Before the 05:00 Xero
+# sweep and the 06:00-07:00 invoice and reminder window, so the copy is of
+# a quiet database.
+BACKUP_HOUR = env.int('BACKUP_HOUR', default=2)
+
+# Error monitoring (Sentry)
+# ------------------------
+# Off entirely until SENTRY_DSN is set, so local runs and the test suite
+# report nothing. See core/monitoring.py for what is scrubbed before an
+# event leaves this process — the app holds personal data and the default
+# Sentry configuration would send more of it than is acceptable.
+SENTRY_DSN = env('SENTRY_DSN', default='')
+
+# Which deployment an error came from. Without this, a staging stack trace
+# and a production one land in the same list and read the same.
+SENTRY_ENVIRONMENT = env(
+    'SENTRY_ENVIRONMENT',
+    default='production' if not DEBUG else 'development',
+)
+
+# Ties an error to the commit that caused it. Railway injects the SHA, so
+# this needs no configuration there.
+SENTRY_RELEASE = env(
+    'SENTRY_RELEASE',
+    default=os.environ.get('RAILWAY_GIT_COMMIT_SHA', ''),
+)
+
+# Performance tracing. 0.0 = errors only, which is what a yard-sized app
+# needs; tracing every request burns the free-tier quota in days and the
+# ServerTimingMiddleware already reports slow requests.
+SENTRY_TRACES_SAMPLE_RATE = env.float('SENTRY_TRACES_SAMPLE_RATE', default=0.0)
+
 # Encryption of secrets stored in the database (core/encryption.py).
 # Comma-separated Fernet keys, newest first. The first key encrypts; all of
 # them are tried when decrypting, which is what allows rotation. Leave it
@@ -401,6 +468,14 @@ XERO_SYNC_HOUR = env.int('XERO_SYNC_HOUR', default=5)
 MONTHLY_INVOICE_HOUR = env.int('MONTHLY_INVOICE_HOUR', default=5)
 
 CELERY_BEAT_SCHEDULE = {
+    # Off-site backup of the database and the uploaded media. First in the
+    # night's run so it copies a quiet database, before the Xero sweep and
+    # the invoice and reminder window touch anything. A no-op unless
+    # BACKUP_ENABLED is set.
+    'nightly-backup': {
+        'task': 'core.tasks.run_nightly_backup',
+        'schedule': crontab(hour=BACKUP_HOUR, minute=0),
+    },
     # Poll Xero for payments on pushed invoices. Runs daily before the
     # invoice-status promotion and reminder windows, so freshly-paid
     # invoices are marked paid before any overdue email could go out.
@@ -670,3 +745,15 @@ if DEBUG:
 if DEBUG and os.environ.get('QA_NO_TOOLBAR'):
     INSTALLED_APPS = [a for a in INSTALLED_APPS if a != 'debug_toolbar']
     MIDDLEWARE = [m for m in MIDDLEWARE if 'debug_toolbar' not in m]
+
+
+# Start Sentry last, so every setting it reads is already defined. A no-op
+# when SENTRY_DSN is empty.
+from core import monitoring as _monitoring  # noqa: E402
+
+_monitoring.init(
+    dsn=SENTRY_DSN,
+    environment=SENTRY_ENVIRONMENT,
+    release=SENTRY_RELEASE,
+    traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
+)

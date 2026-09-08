@@ -36,23 +36,79 @@ Write down the retention period here once you have set it:
 
     Provider backups retained for: ______ days
 
-### Your own dump, to a second provider
+### The built-in nightly backup
 
-One provider is one point of failure. If the account is suspended or the
-project is deleted by mistake, the provider's own backups go with it.
+The app takes its own backup of **both** the database and the media files,
+to an object store of your choosing. This is the part that covers the two
+rows above that a provider backup does not.
+
+It is **off by default.** Turn it on with these variables on the `worker`
+service (see `.env.example` for the full list):
+
+```
+BACKUP_ENABLED=True
+BACKUP_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+BACKUP_S3_BUCKET=yardway-backups
+BACKUP_S3_ACCESS_KEY=...
+BACKUP_S3_SECRET_KEY=...
+```
+
+Use a provider **different from the one hosting the database**. One
+provider is one suspended account away from losing both copies.
+
+If the app reaches PostgreSQL through a pooler — Supabase's pgbouncer does
+this — also set `BACKUP_DATABASE_URL` to the **direct** connection string.
+`pg_dump` cannot work through a transaction-mode pooler.
+
+**What it does**, nightly at 02:00 Europe/London:
+
+1. `pg_dump --format=custom` of the database.
+2. A `tar.gz` of `MEDIA_ROOT`.
+3. Uploads both to `backups/database/` and `backups/media/`.
+4. Deletes backups the retention policy has expired.
+
+**Retention** is grandfather-father-son: every backup from the last 7 days,
+then one per week for 4 weeks, then one per month for 12 months. About 23
+copies. That covers both "undo yesterday" and "we only noticed two months
+later".
+
+**Run one by hand** — do this before any risky change:
 
 ```bash
-# Weekly, from anywhere with the database URL
+python manage.py backup              # database and media
+python manage.py backup --no-media   # database only
+python manage.py backup --prune-only # apply retention, back nothing up
+```
+
+The command exits non-zero if the backup fails, so a cron or CI step can
+tell.
+
+### Checking it is actually running
+
+This is the part people skip. A backup job that stopped three weeks ago
+looks exactly like one that is working.
+
+Every attempt writes a row to **`BackupRun`**, visible in the Django admin
+under *Core → Backup runs*. Look at the newest row with status *Success*.
+If it is not from last night, the backup is not working.
+
+A failure does three things: it records the row, it emails the business
+address in Settings, and it re-raises so Celery marks the task failed and
+Sentry reports it.
+
+### If you prefer to run it outside the app
+
+```bash
 pg_dump --format=custom --no-owner --no-privileges \
   "$DATABASE_URL" \
   --file "yardway-$(date +%Y-%m-%d).dump"
+
+# rclone configured with a remote called "backup"
+rclone sync /data/media backup:yardway-media --backup-dir backup:yardway-media-old
 ```
 
-Upload the file to storage held by a *different* company — Cloudflare R2,
-Backblaze B2, or an encrypted copy in cloud storage you already pay for.
-
-Keep: 7 daily, 4 weekly, 12 monthly. That is about 23 files and covers
-"we noticed the problem two months later".
+`--backup-dir` matters: a plain `sync` propagates a deletion. With it, a
+file deleted by mistake is still recoverable.
 
 ## 2. Media files
 
@@ -60,21 +116,14 @@ Keep: 7 daily, 4 weekly, 12 monthly. That is about 23 files and covers
 **not** included in a database backup. If the volume is lost, every horse
 photo and every uploaded passport is gone.
 
-**Preferred fix — move media to object storage.** Add `django-storages` and
-point the `default` entry of `STORAGES` in `settings.py` at Cloudflare R2 or
-S3. Object storage is replicated by the provider, versioned if you turn
-versioning on, and removes the volume as a single point of failure.
+The nightly backup above copies the volume off-box, which removes the
+"one disk, one copy" problem.
 
-**Interim fix — copy the volume off-box.** Until then, run a weekly sync
-from a machine that can reach the volume:
-
-```bash
-# rclone configured with a remote called "backup"
-rclone sync /data/media backup:yardway-media --backup-dir backup:yardway-media-old
-```
-
-`--backup-dir` matters: a plain `sync` propagates a deletion. With it, a
-file deleted by mistake is still recoverable.
+It does **not** remove the volume as a single point of failure for
+*serving* those files: if the volume dies, the app cannot show a photo
+until you restore the archive. **Moving media to object storage** — add
+`django-storages` and point the `default` entry of `STORAGES` at R2 or S3 —
+fixes that too, and is still the better end state.
 
 ## 3. The restore test
 
