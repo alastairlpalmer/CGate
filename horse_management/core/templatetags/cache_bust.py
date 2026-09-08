@@ -34,7 +34,10 @@ def static_digest(roots=None):
         roots = list(getattr(settings, 'STATICFILES_DIRS', None) or [])
         if not roots and getattr(settings, 'STATIC_ROOT', None):
             roots = [settings.STATIC_ROOT]
-    digest = hashlib.sha1()
+    # usedforsecurity=False: this digest is a cache-busting version
+    # string, never a security control. The flag tells static
+    # analysis (and a FIPS build of OpenSSL) that SHA-1 is fine here.
+    digest = hashlib.sha1(usedforsecurity=False)
     found = False
     for root in roots:
         root = Path(root)

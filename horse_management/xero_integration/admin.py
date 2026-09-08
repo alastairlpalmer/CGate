@@ -6,11 +6,31 @@ from .models import XeroConnection, XeroContactMapping, XeroInvoiceSync
 @admin.register(XeroConnection)
 class XeroConnectionAdmin(admin.ModelAdmin):
     list_display = ('__str__', 'is_active', 'xero_tenant_name', 'connected_at', 'updated_at')
+    # The tokens are shown masked, never in full. They are encrypted in the
+    # database (see core/encryption.py), and printing them on an admin page
+    # would undo that for anyone who reaches the page or screen-shares it.
+    # Their state — present, absent, expired — is what an administrator
+    # actually needs, and that is what these two methods report.
     readonly_fields = (
-        'access_token', 'refresh_token', 'token_expires_at',
+        'access_token_state', 'refresh_token_state', 'token_expires_at',
         'xero_tenant_id', 'xero_tenant_name', 'connected_at',
         'last_refreshed_at', 'oauth_state', 'created_at', 'updated_at',
     )
+    exclude = ('access_token', 'refresh_token')
+
+    @staticmethod
+    def _describe(token):
+        if not token:
+            return 'Not set'
+        return f'Set ({len(token)} characters, ending {token[-4:]})'
+
+    @admin.display(description='Access token')
+    def access_token_state(self, obj):
+        return self._describe(obj.access_token)
+
+    @admin.display(description='Refresh token')
+    def refresh_token_state(self, obj):
+        return self._describe(obj.refresh_token)
 
     def has_add_permission(self, request):
         # Singleton — only one instance allowed

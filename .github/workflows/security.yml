@@ -1,0 +1,101 @@
+name: Security
+
+# Runs alongside CI (.github/workflows/ci.yml), which covers lint, tests and
+# migrations. This workflow covers the checks a security reviewer expects:
+# hardened deploy settings, known CVEs in dependencies, unsafe Python
+# patterns, and secrets committed to git.
+#
+# The weekly schedule matters: a dependency that is clean today gets a CVE
+# next month, and nothing would tell you without a run on a timer.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1'  # Mondays, 06:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-check:
+    name: Django deploy checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: horse_management
+    env:
+      # Production-shaped settings so `check --deploy` sees the real
+      # branch of settings.py. DEBUG stays False here on purpose — the CI
+      # workflow's DEBUG=True run would silence every one of these checks.
+      DEBUG: 'False'
+      DATABASE_URL: postgres://user:pass@localhost:5432/ci
+      ALLOWED_HOSTS: example.com
+      DJANGO_SETTINGS_MODULE: horse_management.settings
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: horse_management/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: manage.py check --deploy
+        run: |
+          # Generated per run rather than written into this file. The value
+          # is not a secret — security.W009 only checks that the key is long
+          # and varied, so any throwaway string passes. But a 50-character
+          # random literal committed to the repository is indistinguishable
+          # from a real leaked key, and the secret-scan job below rightly
+          # flagged it.
+          SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(50))') \
+            python manage.py check --deploy --fail-level WARNING
+
+  dependency-audit:
+    name: Dependency CVE audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: horse_management
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install pip-audit
+      - name: pip-audit (Python)
+        run: pip-audit --requirement requirements.txt --strict --progress-spinner off
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: npm audit (JavaScript build tooling)
+        run: npm audit --audit-level=high
+
+  static-analysis:
+    name: Bandit static analysis
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: horse_management
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install bandit
+      - name: bandit
+        run: bandit --configfile bandit.yaml --recursive . --severity-level medium
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gitleaks needs the whole history: a key deleted in a later
+          # commit is still readable in the commit that added it.
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

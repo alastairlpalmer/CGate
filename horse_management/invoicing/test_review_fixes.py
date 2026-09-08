@@ -1,6 +1,6 @@
 """Regression tests for the 2026-07 codebase-review fixes.
 
-Covers (numbering matches CODEBASE_REVIEW.md, Part 1):
+Covers (numbering matches docs/CODEBASE_REVIEW.md, Part 1):
   #1/#8 Xero API push must bill the owner's fractional share (not days x full
         rate) and post to the sales GL account, not the owner's customer code.
   #2    Split extra charges on horses with no OwnershipShare must fall back to

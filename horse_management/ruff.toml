@@ -9,10 +9,8 @@ extend-exclude = [
     "staticfiles",
     "node_modules",
     # One-off QA / verification scripts, not part of the app.
-    "verify_*.py",
-    "mobile_*.py",
-    "qa_playwright.py",
-    "seed_qa.py",
+    # See tools/qa/README.md.
+    "tools/qa",
 ]
 
 [lint]

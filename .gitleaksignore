@@ -1,0 +1,17 @@
+# Findings the secret scan should not fail on.
+#
+# Each line is a gitleaks fingerprint: commit:path:rule:line. That is as
+# narrow as a suppression gets — it pins one finding in one commit. A new
+# secret in the same file, or the same string on another line, still fails
+# the scan.
+#
+# Add an entry only for a value that is genuinely not a secret, and say why.
+
+# A throwaway SECRET_KEY that was written into the deploy-check job.
+# Django's security.W009 only checks that the key is long and varied, so any
+# random string passes it; this one was generated for that single purpose and
+# never used by any deployment. It is high-entropy, so the scanner correctly
+# could not tell it apart from a real key. The workflow now generates the
+# value at run time instead, but the original commit stays in this branch's
+# history and would keep failing the scan.
+4ca48e392c39cdefb9947466644ab25d768afd41:.github/workflows/security.yml:generic-api-key:31

@@ -3,12 +3,17 @@ from datetime import timedelta
 from django.db import models
 from django.utils import timezone
 
+from core.fields import EncryptedTextField
+
 
 class XeroConnection(models.Model):
     """Singleton: stores the Xero OAuth2 connection for this business."""
 
-    access_token = models.TextField(blank=True)
-    refresh_token = models.TextField(blank=True)
+    # Encrypted at rest. The refresh token in particular is a long-lived
+    # bearer credential for the yard's Xero accounting data, so it must not
+    # sit in plain text in a database backup. See core/encryption.py.
+    access_token = EncryptedTextField(blank=True)
+    refresh_token = EncryptedTextField(blank=True)
     token_expires_at = models.DateTimeField(null=True, blank=True)
     xero_tenant_id = models.CharField(max_length=100, blank=True)
     xero_tenant_name = models.CharField(max_length=200, blank=True)
