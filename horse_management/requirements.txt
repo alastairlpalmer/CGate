@@ -9,7 +9,8 @@ django-axes~=8.3
 # Content-Security-Policy header. Report-only until CSP_ENFORCE=True.
 django-csp~=4.0
 # Fernet encryption for the Xero OAuth tokens at rest.
-cryptography~=46.0
+# Floor is 50.0.0: everything below it carries PYSEC-2026-3552.
+cryptography~=50.0
 
 # WSGI server (Railway / any always-on host; not used by Vercel)
 gunicorn~=23.0
@@ -27,15 +28,21 @@ django-celery-beat~=2.9.0
 django-celery-results~=2.6.0
 
 # Image handling
-Pillow~=12.1.1
+# Floor is 12.3.0. Pillow decodes files that people upload, so a decoder
+# CVE here is reachable by anyone who can add a horse photo. 12.1.1
+# carried 27 of them.
+Pillow~=12.3
 pillow-heif~=1.4.0  # decode iPhone HEIC uploads (converted to JPEG on save)
 
 # Development
 django-debug-toolbar~=6.2.0
 
 # Testing
-pytest~=8.0.0
-pytest-django~=4.12.0
+# The suite runs on Django's own test runner (`python manage.py test`).
+# pytest and pytest-django were declared but never used — no imports, no
+# pytest.ini, no CI step — and pytest 8.0.2 carries PYSEC-2026-1845.
+# Removed rather than upgraded: an unused dependency is attack surface
+# and audit noise for no benefit.
 
 # HTMX support
 django-htmx~=1.27.0

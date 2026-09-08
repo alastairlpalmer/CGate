@@ -88,7 +88,7 @@ Listed on purpose. A reviewer should not have to discover these.
 | **Django admin is at the default `/admin/`.** | Low | Move the path, or restrict by IP at the proxy. |
 | **No per-request rate limiting** outside sign-in. Report generation and PDF export are unthrottled. | Medium | Rate-limit at Cloudflare, or add `django-ratelimit` on the expensive views. |
 | **Media files are on a single volume** with no replication. | High (availability) | Move to object storage. See `docs/BACKUP_RESTORE.md`. |
-| **Dependencies are version ranges (`~=`), not a lockfile.** Two builds can differ. | Low | Add `pip-compile` or `uv lock`. |
+| **Python dependencies are version ranges (`~=`), not a lockfile.** Two builds can differ. (JavaScript has `package-lock.json`.) | Low | Add `pip-compile` or `uv lock`. |
 | **No automated restore test.** | High (availability) | See `docs/BACKUP_RESTORE.md`. |
 
 ## Running the security checks locally
