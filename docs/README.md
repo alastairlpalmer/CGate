@@ -4,6 +4,7 @@
 
 | Document | What it covers |
 |---|---|
+| [`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) | **Start here.** The dashboard work that is left, in the order to do it, with time estimates. |
 | [`../SECURITY.md`](../SECURITY.md) | How to report a vulnerability, the controls in place, and the known gaps. |
 | [`REVIEWER_PACK.md`](REVIEWER_PACK.md) | Orientation for an external code or security reviewer: architecture, data map, threat list. |
 | [`BACKUP_RESTORE.md`](BACKUP_RESTORE.md) | What to back up, how, and how to prove a restore works. |
