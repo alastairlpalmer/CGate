@@ -1,0 +1,76 @@
+---
+/*
+  A photograph from the content, or a placeholder when the file is not there yet.
+  `ref` says where the picture belongs so the placeholder text can name it.
+*/
+import ImagePlaceholder from './ImagePlaceholder.astro';
+
+interface ImageData {
+  src?: string;
+  alt: string;
+  brief?: string;
+  owner?: string;
+  aspect?: 'landscape' | 'portrait' | 'square' | 'wide';
+  width?: number;
+  height?: number;
+}
+
+interface Props {
+  image: ImageData;
+  ref?: string;
+  loading?: 'lazy' | 'eager';
+  fetchpriority?: 'high' | 'low' | 'auto';
+  sizes?: string;
+  class?: string;
+  /* View transition name, so the photograph can carry between pages. */
+  transitionName?: string;
+}
+
+const {
+  image,
+  ref,
+  loading = 'lazy',
+  fetchpriority = 'auto',
+  sizes,
+  class: className,
+  transitionName,
+} = Astro.props;
+---
+
+{
+  image.src ? (
+    <img
+      class:list={['pic', `pic--${image.aspect ?? 'landscape'}`, className]}
+      src={image.src}
+      alt={image.alt}
+      width={image.width}
+      height={image.height}
+      loading={loading}
+      fetchpriority={fetchpriority}
+      decoding="async"
+      sizes={sizes}
+      transition:name={transitionName}
+    />
+  ) : (
+    <ImagePlaceholder
+      alt={image.alt}
+      brief={image.brief}
+      owner={image.owner}
+      aspect={image.aspect}
+      ref={ref}
+      class={className}
+    />
+  )
+}
+
+<style>
+  .pic {
+    width: 100%;
+    object-fit: cover;
+    background: var(--mist);
+  }
+  .pic--landscape { aspect-ratio: 3 / 2; }
+  .pic--portrait { aspect-ratio: 4 / 5; }
+  .pic--square { aspect-ratio: 1; }
+  .pic--wide { aspect-ratio: 16 / 9; }
+</style>

@@ -1,0 +1,56 @@
+---
+import Heading from './Heading.astro';
+import { inline, paragraphs } from '../../lib/text';
+
+interface Props {
+  block: { heading?: string; items: { label: string; value: string }[] };
+  level?: 2 | 3 | 4;
+}
+
+const { block, level } = Astro.props;
+---
+
+<div class="block block--facts">
+  <Heading text={block.heading} level={level} />
+  {
+    block.items.length > 0 && (
+      <dl class="facts">
+        {block.items.map((item) => (
+          <div class="facts__row">
+            <dt class="facts__label"><Fragment set:html={inline(item.label)} /></dt>
+            <dd class="facts__value"><Fragment set:html={paragraphs(item.value)} /></dd>
+          </div>
+        ))}
+      </dl>
+    )
+  }
+</div>
+
+<style>
+  .facts {
+    max-width: var(--w-reading);
+  }
+  /* The rule between rows separates one fact from the next. */
+  .facts__row {
+    display: grid;
+    gap: var(--s-1) var(--s-4);
+    padding-block: var(--s-3);
+    border-top: 1px solid var(--stone);
+  }
+  .facts__row:last-child {
+    border-bottom: 1px solid var(--stone);
+  }
+  .facts__label {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--stone);
+  }
+  .facts__value :global(p + p) {
+    margin-top: var(--s-2);
+  }
+  @media (min-width: 620px) {
+    .facts__row {
+      grid-template-columns: 10rem 1fr;
+    }
+  }
+</style>

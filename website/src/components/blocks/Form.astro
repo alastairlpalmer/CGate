@@ -1,0 +1,135 @@
+---
+/*
+  Enquiry form. Posts to the host's form handling once `action` is set.
+  Until then the page shows a [[TODO]] and the form still renders.
+  Success and error states are driven by src/scripts/form.ts.
+*/
+import Heading from './Heading.astro';
+import Text from '../ui/Text.astro';
+import { inline } from '../../lib/text';
+
+interface Field {
+  name: string;
+  label: string;
+  kind: 'text' | 'email' | 'tel' | 'textarea' | 'select';
+  required: boolean;
+  options?: string[];
+}
+
+interface Props {
+  block: {
+    heading?: string;
+    text?: string;
+    action?: string;
+    name: string;
+    fields: Field[];
+    submitLabel: string;
+    successText: string;
+    errorText: string;
+  };
+  level?: 2 | 3 | 4;
+  ref: string;
+}
+
+const { block, level, ref } = Astro.props;
+const id = `form-${block.name}`;
+const actionTodo = `[[TODO: form handling. Choose the host (docs/plan.md, Section 5.3) and set the form's action | owner: developer | ref: ${ref}]]`;
+---
+
+<div class="block block--form reading">
+  <Heading text={block.heading} level={level} />
+  <Text text={block.text} />
+  {!block.action && <p class="form__todo"><Fragment set:html={inline(actionTodo)} /></p>}
+  <form class="form" name={block.name} method="post" action={block.action} data-form data-form-ready={block.action ? 'true' : 'false'}>
+    {
+      block.fields.map((field) => {
+        const fid = `${id}-${field.name}`;
+        return (
+          <div class="form__field">
+            <label class="form__label" for={fid}>
+              <Fragment set:html={inline(field.label)} />
+              {field.required && <span class="form__req" aria-hidden="true"> *</span>}
+            </label>
+            {field.kind === 'textarea' ? (
+              <textarea id={fid} name={field.name} rows="6" required={field.required} />
+            ) : field.kind === 'select' ? (
+              <select id={fid} name={field.name} required={field.required}>
+                <option value=""></option>
+                {(field.options ?? []).map((o) => <option value={o}>{o}</option>)}
+              </select>
+            ) : (
+              <input id={fid} name={field.name} type={field.kind} required={field.required} autocomplete={field.kind === 'email' ? 'email' : field.kind === 'tel' ? 'tel' : field.name === 'name' ? 'name' : undefined} />
+            )}
+          </div>
+        );
+      })
+    }
+    <button class="form__submit" type="submit"><Fragment set:html={inline(block.submitLabel)} /></button>
+    <p class="form__status form__status--ok" data-form-success hidden role="status"><Fragment set:html={inline(block.successText)} /></p>
+    <p class="form__status form__status--error" data-form-error hidden role="alert"><Fragment set:html={inline(block.errorText)} /></p>
+  </form>
+</div>
+
+<style>
+  .form__todo {
+    margin-top: var(--s-3);
+  }
+  .form {
+    margin-top: var(--s-4);
+    display: grid;
+    gap: var(--s-4);
+  }
+  .form__field {
+    display: grid;
+    gap: var(--s-1);
+  }
+  .form__label {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--t-small);
+  }
+  .form__req {
+    color: var(--teal-deep);
+  }
+  .form__submit {
+    justify-self: start;
+    padding: 0.7em 1.4em;
+    border: 1px solid var(--teal);
+    border-radius: var(--radius-control);
+    background: var(--teal);
+    color: var(--white);
+    font-family: var(--font-display);
+    font-size: var(--t-small);
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease);
+  }
+  .form__submit:hover {
+    background: var(--teal-deep);
+  }
+  .form__submit:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+
+  /* The status appears with a short transition, from display: none. */
+  .form__status {
+    padding: var(--s-3);
+    border-left: 2px solid var(--teal);
+    background: var(--white);
+    opacity: 1;
+    transition: opacity var(--dur-mid) var(--ease);
+    transition-behavior: allow-discrete;
+  }
+  .form__status--error {
+    border-left-color: var(--stone);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    @starting-style {
+      .form__status {
+        opacity: 0;
+      }
+    }
+  }
+</style>

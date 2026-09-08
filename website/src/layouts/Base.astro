@@ -1,0 +1,49 @@
+---
+/*
+  The base layout. Head, skip link, header, the page, footer.
+  `hero` tells the header it starts over a full-height banner.
+*/
+import { ClientRouter } from 'astro:transitions';
+import '../styles/tokens.css';
+import '../styles/base.css';
+import { getSite } from '../lib/site';
+import Header from '../components/nav/Header.astro';
+import Footer from '../components/nav/Footer.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  hero?: boolean;
+}
+
+const { title, description, hero = false } = Astro.props;
+const site = await getSite();
+const pathname = Astro.url.pathname;
+const fullTitle = title === site.name ? title : `${title}, ${site.name}`;
+const plain = (s: string) => s.replace(/\[\[TODO:[^\]]*\]\]/g, '').trim();
+---
+
+<html lang="en-GB" data-hero={hero ? '' : undefined}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{plain(fullTitle)}</title>
+    {description && plain(description) && <meta name="description" content={plain(description)} />}
+    <link rel="icon" href="data:," />
+    <link rel="preload" href="/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="canonical" href={new URL(pathname, Astro.site)} />
+    <ClientRouter />
+  </head>
+  <body>
+    <a class="skip" href="#main">{site.ui.skipLabel}</a>
+    <Header pathname={pathname} />
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <Footer />
+    <script>
+      import '../scripts/header';
+      import '../scripts/dial';
+    </script>
+  </body>
+</html>

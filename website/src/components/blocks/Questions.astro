@@ -1,0 +1,66 @@
+---
+import Heading from './Heading.astro';
+import { inline, paragraphs } from '../../lib/text';
+
+interface Props {
+  block: { heading?: string; items: { question: string; answer: string }[] };
+  level?: 2 | 3 | 4;
+}
+
+const { block, level } = Astro.props;
+---
+
+<div class="block block--questions reading">
+  <Heading text={block.heading} level={level} />
+  {
+    block.items.map((item) => (
+      <details class="qa">
+        <summary class="qa__q"><Fragment set:html={inline(item.question)} /></summary>
+        <div class="qa__a"><Fragment set:html={paragraphs(item.answer)} /></div>
+      </details>
+    ))
+  }
+</div>
+
+<style>
+  /* One rule per question: it marks where the next question starts. */
+  .qa {
+    border-top: 1px solid var(--stone);
+  }
+  .qa:last-child {
+    border-bottom: 1px solid var(--stone);
+  }
+  .qa__q {
+    padding-block: var(--s-3);
+    font-family: var(--font-display);
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-3);
+  }
+  .qa__q::-webkit-details-marker {
+    display: none;
+  }
+  .qa__q::after {
+    content: '';
+    flex: 0 0 auto;
+    width: 0.75rem;
+    height: 0.75rem;
+    margin-top: 0.4em;
+    border-right: 1px solid var(--stone);
+    border-bottom: 1px solid var(--stone);
+    transform: rotate(45deg);
+    transition: transform var(--dur-fast) var(--ease);
+  }
+  .qa[open] .qa__q::after {
+    transform: rotate(225deg);
+  }
+  .qa__a {
+    padding-bottom: var(--s-4);
+  }
+  .qa__a :global(p + p) {
+    margin-top: var(--s-3);
+  }
+</style>

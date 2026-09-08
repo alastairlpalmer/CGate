@@ -1,0 +1,16 @@
+---
+import Heading from './Heading.astro';
+import Text from '../ui/Text.astro';
+
+interface Props {
+  block: { heading?: string; text: string };
+  level?: 2 | 3 | 4;
+}
+
+const { block, level } = Astro.props;
+---
+
+<div class="block block--rich reading">
+  <Heading text={block.heading} level={level} />
+  <Text text={block.text} />
+</div>

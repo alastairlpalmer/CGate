@@ -26,6 +26,7 @@
     "nextLabel": "Next photograph",
     "openLabel": "Open the photograph full size",
     "closeLabel": "Close",
+    "galleryCount": "{n} of {total}",
     "imageNeeded": "Photograph needed"
   },
   "contact": {

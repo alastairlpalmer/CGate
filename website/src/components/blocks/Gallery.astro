@@ -1,0 +1,150 @@
+---
+/*
+  Photograph gallery. Swipe and arrow navigation, lightbox on click.
+  One photograph: no controls. Driven by src/scripts/gallery.ts.
+*/
+import Heading from './Heading.astro';
+import Picture from '../ui/Picture.astro';
+import { getSite } from '../../lib/site';
+
+interface Props {
+  block: { heading?: string; images: Parameters<typeof Picture>[0]['image'][] };
+  level?: 2 | 3 | 4;
+  ref: string;
+}
+
+const { block, level, ref } = Astro.props;
+const site = await getSite();
+const many = block.images.length > 1;
+---
+
+<div class="block block--gallery" data-gallery data-gallery-count={site.ui.galleryCount}>
+  <Heading text={block.heading} level={level} />
+  {
+    block.images.length === 0 ? null : (
+      <div class="gallery">
+        <div class="gallery__viewport" data-gallery-viewport>
+          <ul class="gallery__track" role="list">
+            {block.images.map((image, i) => (
+              <li class="gallery__slide">
+                {image.src ? (
+                  <button class="gallery__open" type="button" data-gallery-open={i} aria-label={site.ui.openLabel}>
+                    <Picture image={image} ref={`${ref}, photograph ${i + 1}`} sizes="(min-width: 880px) 72rem, 100vw" />
+                  </button>
+                ) : (
+                  <Picture image={image} ref={`${ref}, photograph ${i + 1}`} />
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+        {many && (
+          <div class="gallery__controls">
+            <button class="gallery__button" type="button" data-gallery-prev aria-label={site.ui.previousLabel}>
+              <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 3 5 10l7 7" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+            </button>
+            <span class="gallery__count" data-gallery-count aria-live="polite"></span>
+            <button class="gallery__button" type="button" data-gallery-next aria-label={site.ui.nextLabel}>
+              <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="m8 3 7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+            </button>
+          </div>
+        )}
+        <dialog class="gallery__lightbox" data-gallery-lightbox>
+          <form method="dialog" class="gallery__close-form">
+            <button class="gallery__close" type="submit" aria-label={site.ui.closeLabel}>
+              <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5 5 19" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+            </button>
+          </form>
+          <div class="gallery__lightbox-body" data-gallery-lightbox-body></div>
+        </dialog>
+      </div>
+    )
+  }
+</div>
+
+<style>
+  .gallery__viewport {
+    overflow: hidden;
+  }
+  .gallery__track {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    touch-action: pan-y pinch-zoom;
+  }
+  .gallery__slide {
+    flex: 0 0 100%;
+    min-width: 0;
+    max-width: none;
+    padding-right: var(--s-2);
+  }
+  .gallery__open {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: zoom-in;
+  }
+  .gallery__controls {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    margin-top: var(--s-3);
+    color: var(--stone);
+    font-size: var(--t-small);
+  }
+  .gallery__button {
+    display: inline-grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border: 1px solid var(--stone);
+    border-radius: var(--radius-control);
+    background: var(--paper);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .gallery__button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .gallery__lightbox {
+    width: min(100vw, 100%);
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    padding: var(--s-4);
+    border: 0;
+    background: var(--green);
+    color: var(--white);
+  }
+  .gallery__lightbox::backdrop {
+    background: var(--green);
+  }
+  .gallery__close-form {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .gallery__close {
+    padding: var(--s-2);
+    border: 0;
+    background: none;
+    color: var(--white);
+    cursor: pointer;
+  }
+  .gallery__lightbox-body {
+    display: grid;
+    place-items: center;
+    height: calc(100% - 3rem);
+  }
+  .gallery__lightbox-body :global(img) {
+    max-height: 100%;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+  }
+</style>

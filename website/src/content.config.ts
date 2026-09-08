@@ -261,6 +261,8 @@ const settings = defineCollection({
       nextLabel: z.string(),
       openLabel: z.string(),
       closeLabel: z.string(),
+      // Gallery position. {n} and {total} are replaced.
+      galleryCount: z.string(),
       // Word shown before a placeholder image brief.
       imageNeeded: z.string(),
     }),

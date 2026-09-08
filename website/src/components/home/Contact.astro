@@ -1,0 +1,30 @@
+---
+/* Contact: address, directions, form. All blocks, all from content. */
+import { inline } from '../../lib/text';
+import Blocks from '../blocks/Blocks.astro';
+
+interface Props {
+  contact: { id: string; heading: string; blocks: any[] };
+}
+
+const { contact } = Astro.props;
+---
+
+<section class="contact section" id={contact.id} aria-labelledby={`${contact.id}-heading`}>
+  <div class="wrap">
+    <h2 class="contact__heading" id={`${contact.id}-heading`}><Fragment set:html={inline(contact.heading)} /></h2>
+    <div class="contact__blocks">
+      <Blocks blocks={contact.blocks} level={3} ref="home page, Contact" />
+    </div>
+  </div>
+</section>
+
+<style>
+  .contact {
+    /* The rule marks the change from the family's story to how to reach them. */
+    border-top: 1px solid var(--stone);
+  }
+  .contact__blocks {
+    margin-top: var(--s-5);
+  }
+</style>

@@ -1,0 +1,108 @@
+---
+/*
+  Four short blocks under the banner, one per business, all on screen at once.
+  docs/plan.md, Section 2.2 D and 11.4 G. The image settles from 1.06 to 1.00
+  as the shelf crosses the viewport. Nothing else moves.
+*/
+import { inline } from '../../lib/text';
+import { markerStyle } from '../../lib/marker';
+import Picture from '../ui/Picture.astro';
+import Text from '../ui/Text.astro';
+
+interface Shelf {
+  marker: 'livery' | 'software' | 'farm' | 'camping';
+  id: string;
+  heading: string;
+  text: string;
+  image: Parameters<typeof Picture>[0]['image'];
+  link: { label: string; href: string };
+}
+
+interface Props {
+  shelves: Shelf[];
+}
+
+const { shelves } = Astro.props;
+---
+
+{
+  shelves.map((shelf) => (
+    <section class="shelf" id={shelf.id} data-marker={shelf.marker} style={markerStyle(shelf.marker)} aria-labelledby={`${shelf.id}-heading`}>
+      <div class="shelf__inner wrap">
+        <div class="shelf__words">
+          <h2 class="shelf__heading" id={`${shelf.id}-heading`}>
+            <a class="shelf__heading-link" href={shelf.link.href}><Fragment set:html={inline(shelf.heading)} /></a>
+          </h2>
+          <Text text={shelf.text} class="shelf__text" />
+          <p class="shelf__link">
+            <a href={shelf.link.href}><Fragment set:html={inline(shelf.link.label)} /></a>
+          </p>
+        </div>
+        <div class="shelf__image">
+          <div class="shelf__image-frame">
+            <Picture image={shelf.image} ref={`home page, ${shelf.id} shelf`} sizes="(min-width: 880px) 45vw, 100vw" />
+          </div>
+        </div>
+      </div>
+    </section>
+  ))
+}
+
+<style>
+  .shelf {
+    scroll-snap-align: start;
+    scroll-margin-top: var(--header-h);
+    padding-block: var(--s-6);
+  }
+  /* The rule above each shelf is the business marker, in that business's colour. */
+  .shelf__inner {
+    display: grid;
+    gap: var(--s-4);
+    padding-top: var(--s-4);
+    border-top: 2px solid var(--marker, var(--teal));
+  }
+  .shelf__heading-link {
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .shelf__heading-link:hover {
+    color: var(--teal-deep);
+  }
+  .shelf__text {
+    margin-top: var(--s-3);
+  }
+  .shelf__link {
+    margin-top: var(--s-4);
+    font-family: var(--font-display);
+    font-weight: 500;
+  }
+  .shelf__image-frame {
+    overflow: hidden;
+  }
+  .shelf__image-frame > :global(*) {
+    transform: scale(1);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .shelf__image-frame > :global(*) {
+        animation: shelf-settle linear both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 100%;
+      }
+    }
+  }
+  @keyframes shelf-settle {
+    from { transform: scale(1.06); }
+    to { transform: scale(1); }
+  }
+  @media (min-width: 880px) {
+    .shelf {
+      padding-block: var(--s-7);
+    }
+    .shelf__inner {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+      gap: var(--s-6);
+      align-items: start;
+    }
+  }
+</style>

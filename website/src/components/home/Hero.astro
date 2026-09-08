@@ -1,0 +1,364 @@
+---
+/*
+  The rotating banner. docs/plan.md, Sections 2.2 B, 3.1 and 11.4 C.
+  One full-height section, four slides, a 6-second hold, a 900 ms cross-fade.
+  The H1 holds still; the slide headings are H2. Driven by src/scripts/hero.ts.
+*/
+import { getSite } from '../../lib/site';
+import { inline } from '../../lib/text';
+import { markerStyle } from '../../lib/marker';
+import Picture from '../ui/Picture.astro';
+import Button from '../ui/Button.astro';
+
+interface Slide {
+  marker: 'livery' | 'software' | 'farm' | 'camping';
+  heading: string;
+  text: string;
+  image: Parameters<typeof Picture>[0]['image'];
+  link: { label: string; href: string };
+}
+
+interface Props {
+  h1: string;
+  slides: Slide[];
+}
+
+const { h1, slides } = Astro.props;
+const site = await getSite();
+const ui = site.ui;
+const plain = (s: string) => s.replace(/\[\[TODO:[^\]]*\]\]/g, '').trim();
+const dotLabel = (s: Slide, i: number) => ui.slideLabel.replace('{heading}', plain(s.heading) || String(i + 1));
+/* A heading over 45 characters drops a size so it still fits the banner. */
+const isLong = (s: Slide) => s.heading.length > 45;
+---
+
+<section class="hero" data-hero-section data-hero aria-roledescription="carousel" aria-label={ui.bannerLabel}>
+  <div class="hero__frame" data-hero-frame>
+    <div class="hero__viewport" data-hero-viewport>
+      <ul class="hero__track">
+        {
+          slides.map((slide, i) => (
+            <li
+              class="hero__slide"
+              data-marker={slide.marker}
+              style={markerStyle(slide.marker)}
+              aria-roledescription="slide"
+              aria-label={`${i + 1} of ${slides.length}`}
+            >
+              <div class="hero__media">
+                <Picture
+                  image={{ ...slide.image, aspect: 'wide' }}
+                  ref={`home banner, slide ${i + 1}`}
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  fetchpriority={i === 0 ? 'high' : 'auto'}
+                  sizes="100vw"
+                  class="hero__pic"
+                  transitionName={`hero-${slide.marker}`}
+                />
+              </div>
+              <div class="hero__scrim" aria-hidden="true"></div>
+              <div class="hero__words wrap">
+                <h2 class:list={['hero__heading', { 'hero__heading--long': isLong(slide) }]}><Fragment set:html={inline(slide.heading)} /></h2>
+                <p class="hero__text"><Fragment set:html={inline(slide.text)} /></p>
+                <Button link={slide.link} tone="light" class="hero__button" />
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </div>
+
+  <div class="hero__still wrap">
+    <h1 class="hero__h1"><Fragment set:html={inline(h1)} /></h1>
+  </div>
+
+  <div class="hero__controls wrap">
+    <ul class="hero__dots" role="list">
+      {
+        slides.map((slide, i) => (
+          <li>
+            <button
+              class="hero__dot"
+              type="button"
+              data-hero-dot={i}
+              aria-label={dotLabel(slide, i)}
+              aria-pressed={i === 0 ? 'true' : 'false'}
+              style={markerStyle(slide.marker)}
+            />
+          </li>
+        ))
+      }
+    </ul>
+    <button
+      class="hero__pause"
+      type="button"
+      data-hero-pause
+      data-pause-label={ui.pauseLabel}
+      data-play-label={ui.playLabel}
+      aria-label={ui.pauseLabel}
+      aria-pressed="false"
+    >
+      <svg class="hero__pause-icon hero__pause-icon--pause" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2h2.5v12H4zM9.5 2H12v12H9.5z" fill="currentColor" /></svg>
+      <svg class="hero__pause-icon hero__pause-icon--play" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2l10 6-10 6z" fill="currentColor" /></svg>
+    </button>
+  </div>
+
+  <p class="cue" aria-hidden="true"><span class="cue__word">{ui.scrollCue}</span><span class="cue__line"></span></p>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    min-height: 100dvh;
+    margin-top: calc(-1 * var(--header-h));
+    background: var(--green);
+    color: var(--white);
+    overflow: hidden;
+    scroll-snap-align: start;
+  }
+  @media (max-width: 879px) {
+    .hero {
+      margin-top: calc(-1 * (var(--header-h) + 2.5rem));
+    }
+  }
+  .hero__frame,
+  .hero__viewport,
+  .hero__track,
+  .hero__slide {
+    height: 100%;
+    min-height: 100dvh;
+  }
+  .hero__frame {
+    transform-origin: 50% 50%;
+  }
+  .hero__viewport {
+    overflow: hidden;
+  }
+  .hero__track {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    touch-action: pan-y pinch-zoom;
+  }
+  .hero__slide {
+    position: relative;
+    flex: 0 0 100%;
+    min-width: 0;
+    max-width: none;
+    display: flex;
+    align-items: flex-end;
+  }
+  .hero__media {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+  .hero__media > :global(*) {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    transform: scale(1);
+  }
+  /* The placeholder brief sits at the top right, clear of the words and the controls. */
+  .hero__media :global(.ph__note) {
+    inset: calc(var(--header-h) + var(--s-6)) var(--gutter) auto auto;
+    max-width: 28rem;
+    text-align: right;
+  }
+  /* The active photograph scales slowly across its hold. Cut under reduced motion. */
+  @media (prefers-reduced-motion: no-preference) {
+    .hero__media > :global(*) {
+      transition: transform var(--hero-hold) linear;
+    }
+    .hero__slide.is-snapped .hero__media > :global(*) {
+      transform: scale(1.04);
+    }
+  }
+  /* Dark ground behind the text zone only, so the words pass 4.5:1 over any sky. */
+  .hero__scrim {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 70%;
+    background: linear-gradient(to top, color-mix(in srgb, var(--green) 92%, transparent) 0%, color-mix(in srgb, var(--green) 70%, transparent) 45%, transparent 100%);
+  }
+  .hero__words {
+    position: relative;
+    padding-bottom: var(--s-7);
+    padding-top: var(--s-8);
+  }
+  .hero__heading {
+    max-width: 14ch;
+    font-size: var(--t-hero);
+    line-height: var(--lh-hero);
+    font-weight: 600;
+    font-stretch: 92%;
+    letter-spacing: -0.02em;
+    color: var(--white);
+  }
+  .hero__heading--long {
+    max-width: 24ch;
+    font-size: var(--t-h1);
+    line-height: var(--lh-h1);
+  }
+  .hero__text {
+    max-width: 44ch;
+    margin-top: var(--s-4);
+    font-size: var(--t-h3);
+    line-height: var(--lh-h3);
+  }
+  .hero__button {
+    margin-top: var(--s-5);
+  }
+  .hero__words :global(.todo) {
+    background: color-mix(in srgb, var(--white) 18%, transparent);
+    color: var(--white);
+  }
+
+  /* The still line. The words hold their place; the land moves behind them. */
+  .hero__still {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(var(--header-h) + var(--s-6));
+    pointer-events: none;
+  }
+  .hero__h1 {
+    font-size: var(--t-nav);
+    font-weight: 500;
+    letter-spacing: var(--ls-nav);
+    line-height: var(--lh-nav);
+    color: var(--white);
+  }
+  @media (max-width: 879px) {
+    .hero__still {
+      top: calc(var(--header-h) + 2.5rem + var(--s-5));
+    }
+  }
+
+  .hero__controls {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: var(--s-4);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--s-4);
+  }
+  .hero__dots {
+    display: flex;
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .hero__dot {
+    display: block;
+    width: 2rem;
+    height: 1.5rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    position: relative;
+  }
+  .hero__dot::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 2px;
+    background: var(--white);
+    opacity: 0.4;
+    transform: scaleY(1);
+    transition: opacity var(--dur-mid) var(--ease);
+  }
+  .hero__dot[aria-pressed='true']::before {
+    opacity: 1;
+  }
+  .hero__pause {
+    display: inline-grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--white) 50%, transparent);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--white);
+    cursor: pointer;
+  }
+  .hero__pause-icon--play,
+  .hero__pause[aria-pressed='true'] .hero__pause-icon--pause {
+    display: none;
+  }
+  .hero__pause[aria-pressed='true'] .hero__pause-icon--play {
+    display: block;
+  }
+  .hero__pause[hidden] {
+    display: none;
+  }
+
+  /* The scroll cue. The line breathes. It fades over the first 100px of scroll. */
+  .cue {
+    position: absolute;
+    left: 50%;
+    bottom: var(--s-4);
+    display: grid;
+    justify-items: center;
+    gap: var(--s-2);
+    transform: translateX(-50%);
+    font-family: var(--font-display);
+    font-size: var(--t-small);
+    letter-spacing: var(--ls-nav);
+    color: var(--white);
+    max-width: none;
+  }
+  .cue__line {
+    display: block;
+    width: 1px;
+    height: var(--s-5);
+    background: var(--white);
+    transform-origin: 50% 0;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .cue__line {
+      animation: cue-breathe 2.4s var(--ease) infinite alternate;
+    }
+  }
+  @keyframes cue-breathe {
+    from { transform: scaleY(0.4); }
+    to { transform: scaleY(1); }
+  }
+  @supports (animation-timeline: scroll()) {
+    .cue {
+      animation: cue-fade linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 100px;
+    }
+  }
+  @keyframes cue-fade {
+    to { opacity: 0; }
+  }
+  @supports not (animation-timeline: scroll()) {
+    .cue {
+      transition: opacity var(--dur-mid) var(--ease);
+    }
+    :global(html[data-scrolled='true']) .cue {
+      opacity: 0;
+    }
+  }
+  @media (max-width: 619px) {
+    .cue {
+      display: none;
+    }
+    .hero__controls {
+      justify-content: flex-start;
+    }
+  }
+</style>

@@ -1,0 +1,76 @@
+---
+import Heading from './Heading.astro';
+import { inline } from '../../lib/text';
+
+interface Props {
+  block: {
+    heading?: string;
+    note?: string;
+    rows: { label: string; price: string; detail?: string }[];
+  };
+  level?: 2 | 3 | 4;
+}
+
+const { block, level } = Astro.props;
+const hasDetail = block.rows.some((r) => r.detail);
+---
+
+<div class="block block--prices">
+  <Heading text={block.heading} level={level} />
+  {
+    block.rows.length > 0 && (
+      <div class="prices__scroll">
+        <table class="prices">
+          <tbody>
+            {block.rows.map((row) => (
+              <tr>
+                <th scope="row"><Fragment set:html={inline(row.label)} /></th>
+                <td class="prices__price"><Fragment set:html={inline(row.price)} /></td>
+                {hasDetail && <td class="prices__detail"><Fragment set:html={inline(row.detail ?? '')} /></td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+  {block.note && <p class="prices__note small"><Fragment set:html={inline(block.note)} /></p>}
+</div>
+
+<style>
+  .prices__scroll {
+    overflow-x: auto;
+  }
+  .prices {
+    width: 100%;
+    max-width: var(--w-content);
+    border-collapse: collapse;
+  }
+  /* Each rule separates one priced item from the next. */
+  .prices th,
+  .prices td {
+    padding: var(--s-3) var(--s-4) var(--s-3) 0;
+    border-top: 1px solid var(--stone);
+    text-align: left;
+    vertical-align: top;
+  }
+  .prices tr:last-child th,
+  .prices tr:last-child td {
+    border-bottom: 1px solid var(--stone);
+  }
+  .prices th {
+    font-family: var(--font-display);
+    font-weight: 600;
+  }
+  .prices__price {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .prices__detail {
+    color: var(--stone);
+  }
+  .prices__note {
+    margin-top: var(--s-3);
+    color: var(--stone);
+  }
+</style>
