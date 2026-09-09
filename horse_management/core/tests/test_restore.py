@@ -95,6 +95,60 @@ class MediaBucketGuardTests(TestCase):
         self.assertEqual(restore.target_media_bucket(), 'yardway-restore-test')
 
 
+@override_settings(
+    MEDIA_S3_BUCKET='yardway-media',
+    BACKUP_S3_BUCKET='yardway-backup',
+    RESTORE_TEST_MEDIA_BUCKET='yardway-restore-test',
+)
+class MediaCredentialTests(TestCase):
+    """The scratch bucket gets its own token, not production's.
+
+    An R2 token scoped to one bucket cannot write another, so falling
+    back to the live media credentials only works if that token was
+    widened to cover the scratch bucket — which would leave production
+    media writable by a testing credential long after the test.
+    """
+
+    @override_settings(
+        RESTORE_TEST_S3_ACCESS_KEY='',
+        RESTORE_TEST_S3_SECRET_KEY='',
+    )
+    def test_refuses_when_there_are_no_credentials_at_all(self):
+        with self.assertRaises(restore.RestoreNotPermitted):
+            restore.restore_media()
+
+    @override_settings(
+        RESTORE_TEST_S3_ENDPOINT='https://scratch.example.com',
+        RESTORE_TEST_S3_ACCESS_KEY='scratch-key',
+        RESTORE_TEST_S3_SECRET_KEY='scratch-secret',
+        RESTORE_TEST_S3_REGION='auto',
+        MEDIA_S3_ACCESS_KEY='live-key',
+        MEDIA_S3_SECRET_KEY='live-secret',
+    )
+    def test_the_scratch_token_is_used_not_the_live_media_one(self):
+        made = {}
+
+        def fake_client(**kwargs):
+            made.update(kwargs)
+            return mock.Mock()
+
+        with mock.patch('core.s3.client', side_effect=fake_client):
+            with mock.patch.object(restore, 'newest_key', return_value='backups/media/x.tar.gz'):
+                with mock.patch.object(restore.storage, 'download') as download:
+                    download.side_effect = self._write_empty_archive
+                    restore.restore_media()
+
+        self.assertEqual(made['access_key'], 'scratch-key')
+        self.assertEqual(made['secret_key'], 'scratch-secret')
+        self.assertEqual(made['endpoint_url'], 'https://scratch.example.com')
+
+    @staticmethod
+    def _write_empty_archive(key, local_path):
+        with tarfile.open(local_path, 'w:gz'):
+            pass
+        return local_path.stat().st_size
+
+
 class NewestKeyTests(TestCase):
     def test_picks_the_latest_by_name_not_by_upload_time(self):
         """Names carry the timestamp. An object re-uploaded later would

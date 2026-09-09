@@ -369,6 +369,17 @@ BACKUP_DATABASE_URL = env('BACKUP_DATABASE_URL', default='')
 RESTORE_TEST_DATABASE_URL = env('RESTORE_TEST_DATABASE_URL', default='')
 RESTORE_TEST_MEDIA_BUCKET = env('RESTORE_TEST_MEDIA_BUCKET', default='')
 
+# Credentials for writing the scratch media bucket. They default to the
+# live media ones so a single-bucket setup needs no extra configuration,
+# but a token scoped to one bucket cannot write another — so give the
+# restore test its own scoped token rather than widening the live one,
+# which would leave production media writable by a testing credential
+# long after the test finished.
+RESTORE_TEST_S3_ENDPOINT = env('RESTORE_TEST_S3_ENDPOINT', default='') or MEDIA_S3_ENDPOINT
+RESTORE_TEST_S3_ACCESS_KEY = env('RESTORE_TEST_S3_ACCESS_KEY', default='') or MEDIA_S3_ACCESS_KEY
+RESTORE_TEST_S3_SECRET_KEY = env('RESTORE_TEST_S3_SECRET_KEY', default='') or MEDIA_S3_SECRET_KEY
+RESTORE_TEST_S3_REGION = env('RESTORE_TEST_S3_REGION', default='') or MEDIA_S3_REGION
+
 # Seconds. A yard-sized database dumps in seconds; this is the backstop
 # for a wedged connection, not a target.
 BACKUP_PG_DUMP_TIMEOUT = env.int('BACKUP_PG_DUMP_TIMEOUT', default=1800)
