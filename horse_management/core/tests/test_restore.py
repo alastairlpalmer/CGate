@@ -170,6 +170,55 @@ class NewestKeyTests(TestCase):
                 restore.newest_key('backups/database/')
 
 
+@override_settings(**LIVE, RESTORE_TEST_DATABASE_URL=SCRATCH)
+class PgRestoreExitCodeTests(TestCase):
+    """pg_restore exits 1 whenever it ignored ANY error.
+
+    A Supabase dump carries CREATE EXTENSION supabase_vault, which plain
+    PostgreSQL does not have, so restoring one into a scratch database
+    always reports three errors and carries on. Trusting the exit code
+    called that a failed restore; ignoring it would call a genuinely
+    broken one a success.
+    """
+
+    VAULT_NOISE = (
+        'pg_restore: error: could not execute query: ERROR:  extension '
+        '"supabase_vault" is not available\n'
+        'pg_restore: warning: errors ignored on restore: 3'
+    )
+
+    def _run(self, returncode, stderr, complete=True):
+        completed = mock.Mock(returncode=returncode, stderr=stderr)
+        with mock.patch.object(restore, 'target_is_empty', return_value=True), \
+             mock.patch.object(restore, 'restored_looks_complete', return_value=complete), \
+             mock.patch.object(restore, 'newest_key', return_value='backups/database/x.dump'), \
+             mock.patch.object(restore.storage, 'download', return_value=1234), \
+             mock.patch.object(restore.shutil, 'which', return_value='/usr/bin/pg_restore'), \
+             mock.patch.object(restore.subprocess, 'run', return_value=completed):
+            return restore.restore_database()
+
+    def test_a_clean_restore_succeeds(self):
+        result = self._run(0, '')
+        self.assertFalse(result['ignored_errors'])
+
+    def test_ignored_errors_stand_when_the_data_arrived(self):
+        """The exact case that stopped the first real restore."""
+        result = self._run(1, self.VAULT_NOISE, complete=True)
+        self.assertTrue(result['ignored_errors'])
+        self.assertIn('supabase_vault', result['warnings'])
+
+    def test_ignored_errors_fail_when_the_data_did_not_arrive(self):
+        """Exit 1 is only forgiven because the tables were checked."""
+        with self.assertRaises(restore.RestoreError) as caught:
+            self._run(1, self.VAULT_NOISE, complete=False)
+        self.assertIn('missing the app tables', str(caught.exception))
+
+    def test_a_hard_failure_is_still_a_failure(self):
+        """Exit 2 and above is pg_restore giving up. No second-guessing."""
+        with self.assertRaises(restore.RestoreError):
+            self._run(2, 'pg_restore: error: could not open input file')
+
+
 class ArchiveExtractionTests(TestCase):
     def test_a_member_pointing_outside_the_target_is_refused(self):
         """Our own archives never do this. The archive is fetched from

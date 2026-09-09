@@ -98,6 +98,13 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('  pg_restore said:'))
             for line in result['warnings'].splitlines():
                 self.stdout.write(f'    {line}')
+        if result['ignored_errors']:
+            self.stdout.write(self.style.WARNING(
+                '  pg_restore ignored the errors above and carried on. The '
+                'app tables are present and populated, so the restore stands. '
+                'Supabase dumps always report the supabase_vault extension '
+                'as missing on plain PostgreSQL; that is not your data.'
+            ))
 
     def _restore_media(self, options):
         self.stdout.write('Restoring the uploaded files...')

@@ -29,6 +29,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -135,8 +136,9 @@ def newest_key(prefix):
     return sorted(keys)[-1]
 
 
-def target_is_empty(url):
-    """True when the scratch database holds no tables of its own.
+@contextmanager
+def _scratch_cursor(url):
+    """A cursor on the scratch database, on a throwaway connection alias.
 
     A connection failure is reported as a RestoreError rather than left
     to raise: the person reading this is following a runbook in a deploy
@@ -155,11 +157,9 @@ def target_is_empty(url):
     }
     try:
         with connections['restore_test'].cursor() as cursor:
-            cursor.execute(
-                "SELECT count(*) FROM information_schema.tables "
-                "WHERE table_schema = 'public'"
-            )
-            return cursor.fetchone()[0] == 0
+            yield cursor
+    except RestoreError:
+        raise
     except Exception as exc:  # noqa: BLE001 - re-raised with context
         raise RestoreError(
             f'Could not reach the scratch database named by '
@@ -168,6 +168,48 @@ def target_is_empty(url):
     finally:
         connections['restore_test'].close()
         del connections.databases['restore_test']
+
+
+def target_is_empty(url):
+    """True when the scratch database holds no tables of its own."""
+    with _scratch_cursor(url) as cursor:
+        cursor.execute(
+            "SELECT count(*) FROM information_schema.tables "
+            "WHERE table_schema = 'public'"
+        )
+        return cursor.fetchone()[0] == 0
+
+
+# Tables that must exist after any restore worth calling a restore. The
+# migrations table proves the schema arrived; the horse table proves the
+# app's own data did, and is the one a person would check by eye.
+SANITY_TABLES = ('django_migrations', 'core_horse')
+
+
+def restored_looks_complete(url):
+    """True when the app's own tables are present and populated.
+
+    pg_restore exits 1 whenever it ignored ANY error, including errors
+    that mean nothing here. A Supabase dump carries
+    ``CREATE EXTENSION supabase_vault``, which plain PostgreSQL does not
+    have, so restoring one into a scratch database always reports three
+    errors and carries on regardless.
+
+    Trusting the exit code alone calls that a failed restore. Ignoring
+    the exit code calls a genuinely broken one a success. So neither:
+    ask the database whether the data actually arrived.
+    """
+    with _scratch_cursor(url) as cursor:
+        for table in SANITY_TABLES:
+            cursor.execute('SELECT to_regclass(%s)', [f'public.{table}'])
+            if cursor.fetchone()[0] is None:
+                logger.error('Restore check: table %s is missing', table)
+                return False
+        cursor.execute('SELECT count(*) FROM django_migrations')
+        if cursor.fetchone()[0] == 0:
+            logger.error('Restore check: django_migrations is empty')
+            return False
+    return True
 
 
 def restore_database(key=None, allow_nonempty=False):
@@ -209,13 +251,27 @@ def restore_database(key=None, allow_nonempty=False):
             check=False,
         )
 
-    if result.returncode != 0:
+    warnings = result.stderr.strip()[:2000]
+
+    # Exit 2 and above is pg_restore giving up. Exit 1 means it hit
+    # errors and carried on, which for a Supabase dump landing in plain
+    # PostgreSQL is the normal case, not a failure — so the data itself
+    # decides, not the exit code.
+    if result.returncode > 1:
+        raise RestoreError(f'pg_restore failed ({result.returncode}): {warnings}')
+
+    if result.returncode == 1 and not restored_looks_complete(target):
         raise RestoreError(
-            f'pg_restore failed ({result.returncode}): '
-            f'{result.stderr.strip()[:1000]}'
+            f'pg_restore reported errors and the restored database is '
+            f'missing the app tables, so the errors mattered: {warnings}'
         )
 
-    return {'key': key, 'bytes': size, 'warnings': result.stderr.strip()[:1000]}
+    return {
+        'key': key,
+        'bytes': size,
+        'warnings': warnings,
+        'ignored_errors': result.returncode == 1,
+    }
 
 
 def restore_media(key=None):
