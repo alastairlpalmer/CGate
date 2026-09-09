@@ -40,7 +40,7 @@ urlpatterns = [
     path('settings/roles/<int:pk>/edit/', role_update, name='role_update'),
     path('settings/roles/<int:pk>/delete/', role_delete, name='role_delete'),
     path('settings/dashboard/toggle/', dashboard_toggle, name='dashboard_toggle'),
-    path('admin/', admin.site.urls),
+    path(settings.ADMIN_URL, admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
     path('', include('core.urls')),
     path('invoicing/', include('invoicing.urls')),

@@ -609,10 +609,41 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 LOGIN_URL = '/accounts/login/'
 
+# Where the Django admin is mounted.
+# ----------------------------------
+# The admin is the one place a single compromised account reaches every
+# table at once, and at the default path every scanner on the internet
+# already knows to try it. Moving it does not make the admin safe — the
+# password and the role checks still do that — but it takes the site out
+# of the untargeted sweeps that fill the django-axes lockout table.
+#
+# Set ADMIN_URL in production to something unguessable, e.g.
+# ADMIN_URL=yard-office-7f3a/. The default keeps existing links working.
+# A trailing slash is added if it is missing; a leading one is stripped,
+# because Django's path() wants neither.
+ADMIN_URL = env('ADMIN_URL', default='admin/').strip().lstrip('/')
+if not ADMIN_URL:
+    # An empty value would mount the admin at the site root, shadowing the
+    # dashboard. Refuse it rather than serve the admin from '/'.
+    ADMIN_URL = 'admin/'
+if not ADMIN_URL.endswith('/'):
+    ADMIN_URL += '/'
+
 # Session security
-SESSION_COOKIE_AGE = 2592000  # 30 days
+# ----------------
+# Seven days of inactivity, not thirty. A session cookie is a bearer
+# credential: whoever holds it is signed in, with no password prompt. The
+# window in which a cookie copied from a shared or lost device still works
+# is what this setting controls, and a month of it is more than a yard
+# needs — staff who use the app weekly are not signed out.
+#
+# Rolling expiry stays on, so the seven days count from the last request
+# rather than from sign-in. That means an attacker actively using a stolen
+# cookie keeps it alive; what this closes is the far more likely case of a
+# cookie sitting unused on a device somebody else now has.
+SESSION_COOKIE_AGE = env.int('SESSION_COOKIE_AGE', default=7 * 24 * 60 * 60)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
-SESSION_SAVE_EVERY_REQUEST = True  # rolling expiry — each request resets the 30-day window
+SESSION_SAVE_EVERY_REQUEST = True  # rolling expiry — each request resets the window
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 

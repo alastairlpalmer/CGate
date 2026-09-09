@@ -39,9 +39,16 @@ no cross-customer isolation boundary to get wrong.
 - Every feature area is gated by a role (`core/permissions.py`). Templates
   hide what a role cannot use, and every view re-checks — hiding is not
   enforcement.
-- Uploaded files under `/media/` are gated by the same roles, not only by
-  being signed in (`horse_management/urls.py`). Passports and receipts are
-  not reachable by guessing a path.
+- Sessions expire after 7 days without a request (`SESSION_COOKIE_AGE`).
+  Expiry rolls forward, so weekly users are not signed out.
+- The Django admin path is set by `ADMIN_URL`, so it can be moved off the
+  default that untargeted scanners try first.
+- Uploaded files served from a local disk are gated by the same roles, not
+  only by being signed in (`horse_management/urls.py`). Passports and
+  receipts are not reachable by guessing a path.
+- With uploads in a bucket (`MEDIA_S3_BUCKET`), the bucket is private and
+  every file is served through a signed link that expires after
+  `MEDIA_S3_SIGNED_URL_TTL` seconds.
 
 **Transport and browser**
 - HTTPS redirect, HSTS for one year with subdomains and preload.
@@ -96,11 +103,10 @@ Listed on purpose. A reviewer should not have to discover these.
 |---|---|---|
 | **No multi-factor authentication.** A stolen password is enough. | High | Add `django-otp` for administrator accounts. |
 | **CSP allows `unsafe-inline` and `unsafe-eval` for scripts.** Inline `<script>` blocks and Alpine.js need them today. | Medium | Move to per-tag nonces and Alpine's CSP build, then set `CSP_ENFORCE=True`. |
-| **Encryption key derives from `SECRET_KEY` by default.** Rotating `SECRET_KEY` forces a Xero reconnect. | Low | Set `FIELD_ENCRYPTION_KEYS` in production. |
-| **Sessions last 30 days and roll forward.** A stolen session cookie stays valid a long time. | Medium | Shorten to 7 days once staff habits are known. |
-| **Django admin is at the default `/admin/`.** | Low | Move the path, or restrict by IP at the proxy. |
+| **Sessions have no absolute lifetime.** Seven days of inactivity ends one, but an attacker actively using a stolen cookie keeps it alive indefinitely. | Low | Add an absolute cap alongside the rolling one. |
+| **`ADMIN_URL` still defaults to `admin/`.** The setting exists; a deployment that does not set it gains nothing. | Low | Set `ADMIN_URL` in production, or restrict by IP at the proxy. |
 | **No per-request rate limiting** outside sign-in. Report generation and PDF export are unthrottled. | Medium | Rate-limit at Cloudflare, or add `django-ratelimit` on the expensive views. |
-| **Media files are on a single volume** with no replication. The nightly backup copies them off-box, but a lost volume still means an outage until a restore. | Medium (availability) | Move to object storage (`django-storages`). |
+| **Uploads on a local volume are a single point of failure** where `MEDIA_S3_BUCKET` is not set. Worse, a volume attaches to one service, so the backup job on the worker cannot read files written by the web service and archives nothing while still reporting success. | Medium (availability) | Set the `MEDIA_S3_*` settings so uploads go to a private bucket. |
 | **Python dependencies are version ranges (`~=`), not a lockfile.** Two builds can differ. (JavaScript has `package-lock.json`.) | Low | Add `pip-compile` or `uv lock`. |
 | **The restore has never been tested.** Backups now run, but a backup nobody has restored is not proven. | High (availability) | Work through the five-point restore test in `docs/BACKUP_RESTORE.md` and record the date. |
 
