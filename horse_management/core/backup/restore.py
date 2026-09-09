@@ -212,9 +212,32 @@ def restored_looks_complete(url):
     return True
 
 
-def restore_database(key=None, allow_nonempty=False):
+def reset_scratch_database():
+    """Drop and recreate the public schema of the scratch database.
+
+    The most destructive thing in this codebase, so it is reachable only
+    through an explicit flag and only after target_database_url() has
+    proved the target is not production or the backup connection.
+
+    It exists because the restore test is meant to be repeated — every
+    six months, per docs/BACKUP_RESTORE.md — and a second run otherwise
+    means emptying a database by hand, which is both a chore and an
+    invitation to do it to the wrong one.
+    """
+    target = target_database_url()
+    logger.warning('Restore: dropping the public schema of the scratch database')
+    with _scratch_cursor(target) as cursor:
+        cursor.execute('DROP SCHEMA IF EXISTS public CASCADE')
+        cursor.execute('CREATE SCHEMA public')
+    return target
+
+
+def restore_database(key=None, allow_nonempty=False, reset=False):
     """Restore one database dump into the scratch database."""
     target = target_database_url()
+
+    if reset:
+        reset_scratch_database()
 
     if shutil.which('pg_restore') is None:
         raise RestoreError(

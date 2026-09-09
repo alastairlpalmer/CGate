@@ -219,6 +219,36 @@ class PgRestoreExitCodeTests(TestCase):
             self._run(2, 'pg_restore: error: could not open input file')
 
 
+@override_settings(**LIVE)
+class ResetTests(TestCase):
+    """The most destructive operation here, so the guards come first."""
+
+    @override_settings(RESTORE_TEST_DATABASE_URL='')
+    def test_reset_refuses_without_an_explicit_target(self):
+        with self.assertRaises(restore.RestoreNotPermitted):
+            restore.reset_scratch_database()
+
+    @override_settings(RESTORE_TEST_DATABASE_URL=LIVE['BACKUP_DATABASE_URL'])
+    def test_reset_refuses_a_production_target(self):
+        """Dropping the public schema of the live database would end the
+        business. The same guard that protects the restore protects this."""
+        with self.assertRaises(restore.RestoreNotPermitted):
+            restore.reset_scratch_database()
+
+    @override_settings(RESTORE_TEST_DATABASE_URL=SCRATCH)
+    def test_reset_drops_and_recreates_the_public_schema(self):
+        cursor = mock.MagicMock()
+        holder = mock.MagicMock()
+        holder.__enter__.return_value = cursor
+        with mock.patch.object(restore, '_scratch_cursor', return_value=holder):
+            restore.reset_scratch_database()
+        statements = [call.args[0] for call in cursor.execute.call_args_list]
+        self.assertEqual(statements, [
+            'DROP SCHEMA IF EXISTS public CASCADE',
+            'CREATE SCHEMA public',
+        ])
+
+
 class ArchiveExtractionTests(TestCase):
     def test_a_member_pointing_outside_the_target_is_refused(self):
         """Our own archives never do this. The archive is fetched from
