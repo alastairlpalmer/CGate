@@ -219,6 +219,65 @@ TIME_ZONE = 'Europe/London'
 USE_I18N = True
 USE_TZ = True
 
+# Media files (uploads)
+# ---------------------
+# Two ways to hold uploads, chosen by whether MEDIA_S3_BUCKET is set.
+#
+# Object store (preferred in production). Uploads go straight to an
+# S3-compatible bucket, so no service holds the only copy on a local disk.
+# That matters here for a specific reason: a host volume attaches to ONE
+# service, so with uploads on a volume the backup job — which runs on the
+# worker — cannot read files written by the web service, and quietly backs
+# up nothing. An object store is reachable from every service.
+#
+# Local disk (development, and any deployment that has not moved yet).
+# MEDIA_ROOT can point at a mounted volume, e.g. MEDIA_ROOT=/data/media.
+MEDIA_URL = '/media/'
+MEDIA_ROOT = Path(env('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
+
+# Uploads include passports, insurance documents and vet records. The
+# bucket MUST be private: no public development URL, no custom domain.
+# Access is through short-lived signed links generated per request, which
+# is what querystring_auth below turns on.
+MEDIA_S3_BUCKET = env('MEDIA_S3_BUCKET', default='')
+MEDIA_S3_ENDPOINT = env('MEDIA_S3_ENDPOINT', default='')
+MEDIA_S3_ACCESS_KEY = env('MEDIA_S3_ACCESS_KEY', default='')
+MEDIA_S3_SECRET_KEY = env('MEDIA_S3_SECRET_KEY', default='')
+MEDIA_S3_REGION = env('MEDIA_S3_REGION', default='auto')
+# Seconds a signed media link stays valid. Long enough for a page to load
+# and a document to open, short enough that a copied link is not a lasting
+# handout of someone's passport.
+MEDIA_S3_SIGNED_URL_TTL = env.int('MEDIA_S3_SIGNED_URL_TTL', default=900)
+
+MEDIA_ON_S3 = bool(MEDIA_S3_BUCKET and MEDIA_S3_ACCESS_KEY and MEDIA_S3_SECRET_KEY)
+
+if MEDIA_ON_S3:
+    _media_storage = {
+        'BACKEND': 'storages.backends.s3.S3Storage',
+        'OPTIONS': {
+            'bucket_name': MEDIA_S3_BUCKET,
+            # Cloudflare R2 and Backblaze B2 need an endpoint; plain AWS S3
+            # works it out from the region.
+            'endpoint_url': MEDIA_S3_ENDPOINT or None,
+            'access_key': MEDIA_S3_ACCESS_KEY,
+            'secret_key': MEDIA_S3_SECRET_KEY,
+            'region_name': MEDIA_S3_REGION,
+            # R2 has no ACL support, and an ACL is the wrong tool anyway —
+            # the bucket is private and links are signed. Sending one makes
+            # R2 reject the upload outright.
+            'default_acl': None,
+            'querystring_auth': True,
+            'querystring_expire': MEDIA_S3_SIGNED_URL_TTL,
+            # Keep Django's collision handling: a second upload of the same
+            # name gets a suffix rather than overwriting the first.
+            'file_overwrite': False,
+            'signature_version': 's3v4',
+            'addressing_style': 'path',
+        },
+    }
+else:
+    _media_storage = {'BACKEND': 'django.core.files.storage.FileSystemStorage'}
+
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
@@ -227,9 +286,7 @@ STORAGES = {
     # Defining STORAGES replaces Django's built-in dict entirely, so the
     # 'default' media storage must be declared too — without it every
     # file upload save raises InvalidStorageError.
-    'default': {
-        'BACKEND': 'django.core.files.storage.FileSystemStorage',
-    },
+    'default': _media_storage,
     'staticfiles': {
         'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
     },
@@ -237,18 +294,15 @@ STORAGES = {
 WHITENOISE_USE_FINDERS = True
 WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0  # 1 year in production, no cache in dev
 
-# Media files (uploads)
-# Point MEDIA_ROOT at a persistent disk in production (e.g. a Railway volume
-# mounted at /data — set MEDIA_ROOT=/data/media). Defaults to the local
-# media/ folder for development.
-MEDIA_URL = '/media/'
-MEDIA_ROOT = Path(env('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
-
 # Serve media files through Django even when DEBUG=False. WhiteNoise only
 # handles static files, so on hosts without an object store / CDN in front
 # (e.g. Railway with a volume) set SERVE_MEDIA=True. Off by default; never
 # needed on Vercel.
-SERVE_MEDIA = env.bool('SERVE_MEDIA', default=False)
+#
+# Forced off once uploads are on S3: there is no local file to serve, and
+# leaving the route wired would answer every media URL with a 404 that
+# looks like a missing document rather than a misconfiguration.
+SERVE_MEDIA = env.bool('SERVE_MEDIA', default=False) and not MEDIA_ON_S3
 
 # Upload limits — 10MB max per file, 12MB max request body
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB

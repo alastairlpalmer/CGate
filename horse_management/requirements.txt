@@ -10,6 +10,10 @@ sentry-sdk[django]~=2.69
 # Off-site backups: upload to any S3-compatible store (core/backup/).
 boto3~=1.43
 
+# Uploads held in an S3-compatible bucket rather than a local disk, so
+# every service can read them (settings.STORAGES / MEDIA_S3_*).
+django-storages~=1.14
+
 # Security
 # Brute-force protection on sign-in (lockout after repeated failures).
 django-axes~=8.3
