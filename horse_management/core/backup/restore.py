@@ -221,16 +221,28 @@ def restore_database(key=None, allow_nonempty=False):
 def restore_media(key=None):
     """Unpack one media archive into the scratch media bucket."""
     bucket = target_media_bucket()
-    key = key or newest_key(runner.MEDIA_PREFIX)
 
     from core.s3 import client as s3_client
 
+    # Configuration first, network second: a missing credential should be
+    # reported as itself, not as whatever the first remote call happens to
+    # fail with.
+    if not settings.RESTORE_TEST_S3_ACCESS_KEY or not settings.RESTORE_TEST_S3_SECRET_KEY:
+        raise RestoreNotPermitted(
+            'No credentials for the scratch media bucket. Set '
+            'RESTORE_TEST_S3_ACCESS_KEY and RESTORE_TEST_S3_SECRET_KEY '
+            '(they fall back to the MEDIA_S3_* ones, which will only work '
+            'if that token can write this bucket).'
+        )
+
     target = s3_client(
-        endpoint_url=settings.MEDIA_S3_ENDPOINT,
-        access_key=settings.MEDIA_S3_ACCESS_KEY,
-        secret_key=settings.MEDIA_S3_SECRET_KEY,
-        region=settings.MEDIA_S3_REGION,
+        endpoint_url=settings.RESTORE_TEST_S3_ENDPOINT,
+        access_key=settings.RESTORE_TEST_S3_ACCESS_KEY,
+        secret_key=settings.RESTORE_TEST_S3_SECRET_KEY,
+        region=settings.RESTORE_TEST_S3_REGION,
     )
+
+    key = key or newest_key(runner.MEDIA_PREFIX)
 
     restored = 0
     total = 0

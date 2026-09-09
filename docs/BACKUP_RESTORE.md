@@ -193,8 +193,16 @@ command refuses to run without them:
 
 ```
 RESTORE_TEST_DATABASE_URL=<a scratch database, not production>
-RESTORE_TEST_MEDIA_BUCKET=yardway-restore-test
+RESTORE_TEST_MEDIA_BUCKET=<a scratch bucket, not the live one>
+RESTORE_TEST_S3_ACCESS_KEY=<a token scoped to that scratch bucket>
+RESTORE_TEST_S3_SECRET_KEY=
 ```
+
+The scratch bucket needs its own token. The credentials fall back to the
+`MEDIA_S3_*` ones, but a token scoped to a single bucket cannot write a
+different one — and widening the live media token to cover the scratch
+bucket would leave production uploads writable by a testing credential
+long after the test finished.
 
 The guards in `core/backup/restore.py` refuse a target that names the
 same host and database as `DATABASE_URL` or `BACKUP_DATABASE_URL` — the
