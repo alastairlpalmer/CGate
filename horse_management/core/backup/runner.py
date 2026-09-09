@@ -6,6 +6,7 @@ because you stop worrying about it.
 """
 
 import logging
+import posixpath
 import shutil
 import subprocess
 import tarfile
@@ -13,6 +14,7 @@ import tempfile
 from pathlib import Path
 
 from django.conf import settings
+from django.core.files.storage import default_storage
 from django.utils import timezone
 
 from . import retention, storage
@@ -93,22 +95,63 @@ def _dsn_from_settings():
 
 
 def archive_media(destination_dir, now=None):
-    """Tar and gzip MEDIA_ROOT. Returns the path, or None if there is
-    nothing to archive.
+    """Tar and gzip the uploaded media. Returns the path, or None if there
+    is nothing to archive.
 
-    None rather than an error when the directory is missing or empty: a
-    brand-new deployment has no uploads yet, and that is not a failure.
+    Reads through Django's storage backend rather than the filesystem, so
+    the same job works whether uploads live on a local disk or in an
+    object store. That distinction is not academic: a host volume attaches
+    to one service, so when uploads sit on the web service's volume this
+    job — which runs on the worker — sees an empty directory and would
+    report success having copied nothing.
+
+    None rather than an error when there are no uploads: a brand-new
+    deployment has none, and that is not a failure.
     """
-    media_root = Path(settings.MEDIA_ROOT)
-    if not media_root.is_dir() or not any(media_root.iterdir()):
-        logger.info('Backup: %s is empty, no media archive made', media_root)
+    names = sorted(_stored_media_names())
+    if not names:
+        logger.info('Backup: no uploaded media found, no media archive made')
         return None
 
     path = Path(destination_dir) / f'yardway-media-{stamp(now)}.tar.gz'
-    logger.info('Backup: archiving %s', media_root)
+    logger.info('Backup: archiving %s media files', len(names))
     with tarfile.open(path, 'w:gz') as archive:
-        archive.add(media_root, arcname='media')
+        for name in names:
+            _add_stored_file(archive, name)
     return path
+
+
+def _stored_media_names(prefix=''):
+    """Every file in the media storage, as storage-relative paths.
+
+    Walks with ``listdir`` so it works on any storage backend. A missing
+    directory yields nothing — on a local disk an absent MEDIA_ROOT simply
+    means no uploads yet.
+    """
+    try:
+        directories, files = default_storage.listdir(prefix)
+    except (FileNotFoundError, NotADirectoryError):
+        return
+
+    for name in files:
+        # Object stores list a zero-byte marker for a "directory" key.
+        # Nothing writes one here, but a bucket made by hand can carry
+        # them, and tarring one would restore a file where a folder goes.
+        if name:
+            yield posixpath.join(prefix, name)
+
+    for directory in directories:
+        if directory:
+            yield from _stored_media_names(posixpath.join(prefix, directory))
+
+
+def _add_stored_file(archive, name):
+    """Copy one stored file into the open tar, under ``media/``."""
+    with default_storage.open(name, 'rb') as handle:
+        info = tarfile.TarInfo(name=posixpath.join('media', name))
+        info.size = default_storage.size(name)
+        info.mtime = int(timezone.now().timestamp())
+        archive.addfile(info, handle)
 
 
 def prune(prefix, today=None):

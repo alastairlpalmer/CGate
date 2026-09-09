@@ -9,7 +9,7 @@ to back up, how, and how to prove it works.
 |---|---|---|
 | Horses, owners, placements, invoices, health records, users, roles | PostgreSQL | Yes |
 | Celery beat schedule, task results | PostgreSQL | Yes |
-| **Horse photos, passports, insurance documents, receipts, business logo** | `MEDIA_ROOT` — a Railway volume at `/data/media` | **No** |
+| **Horse photos, passports, insurance documents, receipts, business logo** | A private media bucket (`MEDIA_S3_BUCKET`), or `MEDIA_ROOT` on a volume where that is not set | **No** |
 | Environment variables (`SECRET_KEY`, `FIELD_ENCRYPTION_KEYS`, database URL, Xero credentials, SMTP credentials) | The host's dashboard | **No** |
 
 The second and third rows are the ones that get forgotten. A perfect
@@ -57,13 +57,29 @@ Use a provider **different from the one hosting the database**. One
 provider is one suspended account away from losing both copies.
 
 If the app reaches PostgreSQL through a pooler — Supabase's pgbouncer does
-this — also set `BACKUP_DATABASE_URL` to the **direct** connection string.
-`pg_dump` cannot work through a transaction-mode pooler.
+this — also set `BACKUP_DATABASE_URL`. `pg_dump` cannot work through a
+transaction-mode pooler (port 6543).
+
+Which string to use, on Supabase:
+
+| Option | Port | Use for `BACKUP_DATABASE_URL`? |
+|---|---|---|
+| Direct connection (`db.<ref>.supabase.co`) | 5432 | **Only if the host has outbound IPv6.** Supabase resolves this name to an IPv6 address only, and Railway cannot route to it: `Network is unreachable`. |
+| **Session pooler** (`<region>.pooler.supabase.com`) | **5432** | **Yes.** IPv4, and session mode is what `pg_dump` needs. |
+| Transaction pooler | 6543 | No. `pg_dump` cannot use it. |
+
+The reliable way to build it: copy `DATABASE_URL` and change the port from
+`6543` to `5432`. The username and password come across correct, which
+avoids the trap that the pooler's username is `postgres.<project-ref>` and
+not plain `postgres` — and that the error for a wrong username reads
+`password authentication failed`, which sends you hunting the wrong thing.
 
 **What it does**, nightly at 02:00 Europe/London:
 
 1. `pg_dump --format=custom` of the database.
-2. A `tar.gz` of `MEDIA_ROOT`.
+2. A `tar.gz` of the uploaded media, read through Django's storage
+   backend — the media bucket when one is configured, `MEDIA_ROOT`
+   otherwise.
 3. Uploads both to `backups/database/` and `backups/media/`.
 4. Deletes backups the retention policy has expired.
 
@@ -112,18 +128,51 @@ file deleted by mistake is still recoverable.
 
 ## 2. Media files
 
-`MEDIA_ROOT` is a Railway volume. Railway volumes are **not** replicated and
-**not** included in a database backup. If the volume is lost, every horse
-photo and every uploaded passport is gone.
+Uploads are **not** in a database backup, whichever way they are stored.
 
-The nightly backup above copies the volume off-box, which removes the
-"one disk, one copy" problem.
+### On a media bucket (the supported end state)
 
-It does **not** remove the volume as a single point of failure for
-*serving* those files: if the volume dies, the app cannot show a photo
-until you restore the archive. **Moving media to object storage** — add
-`django-storages` and point the `default` entry of `STORAGES` at R2 or S3 —
-fixes that too, and is still the better end state.
+Set `MEDIA_S3_BUCKET`, `MEDIA_S3_ENDPOINT`, `MEDIA_S3_ACCESS_KEY` and
+`MEDIA_S3_SECRET_KEY` and the app reads and writes uploads there instead of
+a local disk. The nightly job then archives from the bucket.
+
+**The bucket must be private.** No public development URL, no custom
+domain. It holds passports, insurance documents and vet records. The app
+serves them through signed links that expire after
+`MEDIA_S3_SIGNED_URL_TTL` seconds (default 900).
+
+### Why a volume is not enough
+
+A host volume attaches to **one service**. With uploads on the web
+service's volume, the nightly backup — which runs on the worker — sees an
+empty directory, archives nothing, and still records **Success**. A restore
+from such a backup gives you every record with no documents attached.
+
+The symptom is a `Success` row in **Core → Backup runs** with a database
+size and a dash under Media. Treat that dash as a failure.
+
+A volume is also a single point of failure for *serving*: if it dies, the
+app cannot show a photo until the archive is restored. A bucket is
+reachable from every service and removes both problems.
+
+### Moving existing uploads to the bucket
+
+Once the four `MEDIA_S3_*` settings are in place, copy what is already on
+the volume. Run this **on the service the volume is attached to**:
+
+```bash
+python manage.py migrate_media_to_s3 --dry-run   # list what would move
+python manage.py migrate_media_to_s3             # move it
+```
+
+Files are written under the same relative paths the database already
+stores, so every existing record keeps working and no data migration is
+needed. The command skips anything already in the bucket, so running it
+twice is harmless.
+
+Without a shell on that service, put it in front of the start command for
+one deploy — `python manage.py migrate_media_to_s3 && gunicorn ...` — then
+take it out again. It is safe to repeat on every restart in the meantime.
 
 ## 3. The restore test
 

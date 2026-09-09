@@ -9,7 +9,7 @@ one leaves the app in a working state.
 | Phase | What | Time |
 |---|---|---|
 | 1 | Quick wins | 20 min |
-| 2 | Turn backups on | 30 min |
+| 2 | Turn backups on | 1 hour |
 | 3 | **Prove the restore works** | 1 hour |
 | 4 | Get down to one host | 1–2 hours |
 | 5 | Real domain and email | 1 hour + DNS wait |
@@ -73,7 +73,7 @@ in Sentry. Nothing after a few minutes means the DSN did not take.
 
 ---
 
-## Phase 2 — Turn backups on (30 min)
+## Phase 2 — Turn backups on (1 hour)
 
 ### 2.1 Create the bucket
 
@@ -101,15 +101,24 @@ BACKUP_S3_SECRET_KEY=<secret access key>
 ```
 
 - [ ] Set those five
-- [ ] **If your `DATABASE_URL` contains `pooler.supabase.com`**, also set:
+- [ ] **If your `DATABASE_URL` contains `pooler.supabase.com`**, also set
+      `BACKUP_DATABASE_URL`.
 
-  ```
-  BACKUP_DATABASE_URL=<the DIRECT connection string>
-  ```
+  The safe way to build it: **copy `DATABASE_URL` and change the port from
+  `6543` to `5432`.** Change nothing else. The username and password come
+  across correct, which is the point.
 
-  Get it from Supabase → **Connect** → **Direct connection** (port 5432,
-  not 6543). `pg_dump` cannot work through a transaction-mode pooler, and
-  the error it gives is not obvious.
+  Do **not** use Supabase's *Direct connection* here. That name resolves to
+  an IPv6 address only, and Railway has no route to it — you get
+  `Network is unreachable`. The **Session pooler** (port 5432) is IPv4 and
+  is what `pg_dump` needs.
+
+  Two errors worth recognising:
+
+  | Error | Cause |
+  |---|---|
+  | `Network is unreachable` | Using the direct connection. Switch to the session pooler. |
+  | `password authentication failed for user "postgres"` | The username, not the password. The pooler needs `postgres.<project-ref>`. |
 
 - [ ] Redeploy
 
@@ -128,10 +137,62 @@ Do not wait until 02:00 to find out whether it works.
 - [ ] Check the bucket in Cloudflare — two files, under
       `backups/database/` and `backups/media/`
 
+**No shell?** Django admin can run it instead: **Periodic Tasks → Periodic
+tasks**, tick `nightly-backup`, action **Run selected tasks**, **Go**. The
+result appears under **Core → Backup runs**.
+
 **If it fails**, the error says which of the three causes it is: no
 `pg_dump` in the image, wrong credentials, or the pooler problem above.
 
-### 2.4 Set a reminder to check it
+**A `Success` row with a dash under Media is not a pass.** It means the
+media archive found nothing. Do 2.4 before ticking this phase off.
+
+### 2.4 Put uploads in a bucket, not on a volume
+
+Skip this only if **Core → Backup runs** shows a real size under Media.
+
+A host volume attaches to **one service**. Uploads written by `web` sit on
+`web`'s volume, and the backup runs on `worker` — which sees an empty
+directory, archives nothing, and still records **Success**. A restore from
+that backup gives you every record with no documents attached.
+
+- [ ] Cloudflare R2 → **Create bucket** → name it `yardway-media`
+- [ ] Leave it **private**. No public development URL, no custom domain —
+      it holds passports and insurance documents
+- [ ] **Manage R2 API Tokens** → **Create API token** → **Object Read &
+      Write**, scoped to that one bucket
+- [ ] Set these on **web, worker and beat**:
+
+  ```
+  MEDIA_S3_BUCKET=yardway-media
+  MEDIA_S3_ENDPOINT=https://<your-account-id>.r2.cloudflarestorage.com
+  MEDIA_S3_ACCESS_KEY=<access key id>
+  MEDIA_S3_SECRET_KEY=<secret access key>
+  ```
+
+- [ ] Copy the files already on the volume across, **on the service the
+      volume is attached to**:
+
+  ```bash
+  python manage.py migrate_media_to_s3 --dry-run
+  python manage.py migrate_media_to_s3
+  ```
+
+  No shell on that service? Put it in front of the start command for one
+  deploy — `python manage.py migrate_media_to_s3 && gunicorn ...` — then
+  take it out. Running it twice is harmless; it skips what is already
+  there.
+
+- [ ] Redeploy all three
+- [ ] Open a horse with a photo and a document. Both must still load.
+- [ ] Run the backup again. **Core → Backup runs** must now show a size
+      under Media, not a dash.
+- [ ] Once that passes, detach the volume
+
+Uploads are then reachable from every service, and `web` holds no data —
+which makes phase 4 considerably easier.
+
+### 2.5 Set a reminder to check it
 
 - [ ] Django admin → **Core → Backup runs**
 - [ ] Confirm there is a row with status **Success**
