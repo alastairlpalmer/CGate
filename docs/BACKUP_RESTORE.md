@@ -179,6 +179,48 @@ take it out again. It is safe to repeat on every restart in the meantime.
 Do this **before** the security review, and then every six months. Put the
 date in the table at the end of this file.
 
+Two ways to run it. The first needs no local tooling and is the one to
+reach for on a hosted deployment; the second is quicker if you already
+have PostgreSQL and Python on your machine.
+
+### Route A — from the host, no local tooling
+
+`python manage.py restore_test` downloads the newest backup and puts it
+back, into somewhere that is explicitly marked as scratch.
+
+**Set up the scratch targets first.** Neither has a default, and the
+command refuses to run without them:
+
+```
+RESTORE_TEST_DATABASE_URL=<a scratch database, not production>
+RESTORE_TEST_MEDIA_BUCKET=yardway-restore-test
+```
+
+The guards in `core/backup/restore.py` refuse a target that names the
+same host and database as `DATABASE_URL` or `BACKUP_DATABASE_URL` — the
+port is ignored in that comparison, because a pooler on 6543 and one on
+5432 are two doors into the same database — a media bucket that is the
+live one or the backup one, and a scratch database that already holds
+tables.
+
+```bash
+python manage.py restore_test --list        # what is in the bucket
+python manage.py restore_test               # database and media
+python manage.py restore_test --database    # one or the other
+```
+
+Then point a throwaway copy of the app at the scratch database and media
+bucket, and work through the five checks below. On a host where services
+are created from a dashboard, that is a second web service using the same
+repository with `DATABASE_URL` and `MEDIA_S3_BUCKET` set to the scratch
+values — and the **production** `SECRET_KEY` and `FIELD_ENCRYPTION_KEYS`,
+which is what makes the Xero check mean anything.
+
+Delete the scratch service, database and bucket afterwards. The dump
+holds every owner's details in plain text.
+
+### Route B — on your own machine
+
 1. Create a scratch database. Do not touch production.
 
    ```bash
@@ -203,7 +245,10 @@ date in the table at the end of this file.
    DEBUG=True python manage.py runserver
    ```
 
-4. Check all five of these. Any one failing means the backup is incomplete.
+### The five checks — either route
+
+Any one failing means the backup is incomplete. Finding that out here is
+the entire point of the exercise.
 
    - [ ] Sign in with a real account.
    - [ ] Open the horse list. The count matches production.

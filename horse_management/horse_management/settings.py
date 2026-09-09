@@ -361,6 +361,14 @@ BACKUP_S3_REGION = env('BACKUP_S3_REGION', default='auto')
 # pg_dump cannot use — point this at the direct connection instead.
 BACKUP_DATABASE_URL = env('BACKUP_DATABASE_URL', default='')
 
+# The restore test (core/backup/restore.py). Both must name somewhere
+# scratch: the module refuses to run if the database matches DATABASE_URL
+# or BACKUP_DATABASE_URL by host and name, or if the bucket is the live
+# media or backup one. There is no default and no fallback — a restore
+# overwrites whatever it is aimed at, so it must be aimed deliberately.
+RESTORE_TEST_DATABASE_URL = env('RESTORE_TEST_DATABASE_URL', default='')
+RESTORE_TEST_MEDIA_BUCKET = env('RESTORE_TEST_MEDIA_BUCKET', default='')
+
 # Seconds. A yard-sized database dumps in seconds; this is the backstop
 # for a wedged connection, not a target.
 BACKUP_PG_DUMP_TIMEOUT = env.int('BACKUP_PG_DUMP_TIMEOUT', default=1800)

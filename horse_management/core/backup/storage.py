@@ -31,26 +31,13 @@ def _client():
             'BACKUP_S3_SECRET_KEY. See docs/BACKUP_RESTORE.md.'
         )
 
-    import boto3
-    from botocore.config import Config
+    from core.s3 import client
 
-    return boto3.client(
-        's3',
-        # Cloudflare R2 and Backblaze B2 need an endpoint; plain AWS S3
-        # does not, and boto3 works out the right one from the region.
-        endpoint_url=settings.BACKUP_S3_ENDPOINT or None,
-        aws_access_key_id=settings.BACKUP_S3_ACCESS_KEY,
-        aws_secret_access_key=settings.BACKUP_S3_SECRET_KEY,
-        region_name=settings.BACKUP_S3_REGION,
-        config=Config(
-            # R2 requires the v4 signature and path-style addressing.
-            signature_version='s3v4',
-            s3={'addressing_style': 'path'},
-            # A backup that hangs would hold a worker slot all night.
-            connect_timeout=30,
-            read_timeout=300,
-            retries={'max_attempts': 3, 'mode': 'standard'},
-        ),
+    return client(
+        endpoint_url=settings.BACKUP_S3_ENDPOINT,
+        access_key=settings.BACKUP_S3_ACCESS_KEY,
+        secret_key=settings.BACKUP_S3_SECRET_KEY,
+        region=settings.BACKUP_S3_REGION,
     )
 
 
@@ -61,6 +48,14 @@ def upload(local_path, key):
     logger.info('Backup: uploading %s (%s bytes) to %s', local_path.name, size, key)
     client.upload_file(str(local_path), settings.BACKUP_S3_BUCKET, key)
     return size
+
+
+def download(key, local_path):
+    """Fetch one object into ``local_path``. Returns the byte count."""
+    client = _client()
+    logger.info('Backup: downloading %s', key)
+    client.download_file(settings.BACKUP_S3_BUCKET, key, str(local_path))
+    return local_path.stat().st_size
 
 
 def list_keys(prefix):
