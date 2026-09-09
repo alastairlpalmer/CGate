@@ -71,4 +71,4 @@ shapely~=2.1
 
 # Product analytics (server-side sign in / sign out events).
 # The browser half loads posthog-js from the PostHog CDN.
-posthog~=7.45
+posthog~=7.47
