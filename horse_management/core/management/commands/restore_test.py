@@ -42,6 +42,13 @@ class Command(BaseCommand):
                  'Only valid with one of --database or --media.',
         )
         parser.add_argument(
+            '--reset', action='store_true',
+            help='Empty the scratch database first, by dropping and '
+                 'recreating its public schema. Makes the test repeatable. '
+                 'Destructive, so it runs only after the guards have proved '
+                 'the target is not production.',
+        )
+        parser.add_argument(
             '--allow-nonempty', action='store_true',
             help='Restore even though the scratch database already holds '
                  'tables. Off by default: that guard is what stops a '
@@ -89,15 +96,27 @@ class Command(BaseCommand):
 
     def _restore_database(self, options):
         self.stdout.write('Restoring the database...')
+        if options['reset']:
+            self.stdout.write(self.style.WARNING(
+                '  emptying the scratch database first (--reset)'
+            ))
         result = restore.restore_database(
             key=options['key'] if options['database'] else None,
             allow_nonempty=options['allow_nonempty'],
+            reset=options['reset'],
         )
         self.stdout.write(f"  from {result['key']} ({result['bytes']} bytes)")
         if result['warnings']:
             self.stdout.write(self.style.WARNING('  pg_restore said:'))
             for line in result['warnings'].splitlines():
                 self.stdout.write(f'    {line}')
+        if result['ignored_errors']:
+            self.stdout.write(self.style.WARNING(
+                '  pg_restore ignored the errors above and carried on. The '
+                'app tables are present and populated, so the restore stands. '
+                'Supabase dumps always report the supabase_vault extension '
+                'as missing on plain PostgreSQL; that is not your data.'
+            ))
 
     def _restore_media(self, options):
         self.stdout.write('Restoring the uploaded files...')

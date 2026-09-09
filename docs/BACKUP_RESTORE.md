@@ -215,7 +215,22 @@ tables.
 python manage.py restore_test --list        # what is in the bucket
 python manage.py restore_test               # database and media
 python manage.py restore_test --database    # one or the other
+python manage.py restore_test --reset       # empty the scratch database first
 ```
+
+`--reset` drops and recreates the scratch database's public schema before
+restoring, which is what makes a second run possible without emptying a
+database by hand. It is the most destructive thing here, so it happens
+only behind that flag and only after the guards above have proved the
+target is not production.
+
+**Expect errors from a Supabase dump.** It carries
+`CREATE EXTENSION supabase_vault`, which plain PostgreSQL does not have,
+so `pg_restore` reports three errors, ignores them, and exits 1. That is
+not a failed restore, and none of it is the yard's data. The command
+does not take the exit code at face value either way: on exit 1 it checks
+that the app's own tables arrived and are populated, and fails if they
+did not.
 
 Then point a throwaway copy of the app at the scratch database and media
 bucket, and work through the five checks below. On a host where services
