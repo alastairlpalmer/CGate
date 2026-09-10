@@ -90,7 +90,7 @@ does from the horse page, so nothing here has to know it is in a pane.
         {% if current_placement %}
         <a href="{% url 'horse_move' horse.pk %}" hx-get="{% url 'horse_move' horse.pk %}"
            hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-           data-popup-title="Move {{ horse.name }}" class="btn-primary">Move to location</a>
+           data-popup-title="Move {{ horse.name }}" class="btn-primary">Move</a>
         <button type="button" x-show="!departing" @click="departing = true"
                 class="btn-secondary text-error-red border-error-red/30 hover:bg-error-red-50">Depart</button>
         <form x-show="departing" x-cloak method="post" action="{% url 'horse_depart' horse.pk %}?next={{ request.get_full_path|urlencode }}"
