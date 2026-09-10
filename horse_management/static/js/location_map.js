@@ -355,18 +355,16 @@
                 },
 
                 // How much of the container the shapes must keep clear.
-                // On the phone the map fills the screen and the chrome and
-                // the sheet lie over it, so a plain inset would fit the
-                // yard into ground nobody can see. Their real edges are
-                // measured rather than repeated as numbers here.
+                // On the phone the sheet lies over the bottom of the map,
+                // so a plain inset would fit the yard into ground nobody
+                // can see. The sheet's real edge is measured rather than
+                // repeated as a number here.
                 fitPadding: function (el) {
                     if (this.variant !== 'phone' || !el) { return { padding: FIT_PADDING }; }
                     var box = el.getBoundingClientRect();
-                    var chrome = document.querySelector('.loc-phone-chrome');
                     var sheet = document.querySelector('[data-loc-sheet]');
-                    var top = chrome ? chrome.getBoundingClientRect().bottom - box.top : 0;
                     var bottom = sheet ? box.bottom - sheet.getBoundingClientRect().top : 0;
-                    top = Math.max(FIT_PADDING[1], top + 12);
+                    var top = FIT_PADDING[1];
                     bottom = Math.max(FIT_PADDING[1], bottom + 12);
                     // A sheet pulled up to full would leave no band at all.
                     if (top + bottom > box.height * 0.7) { return { padding: FIT_PADDING }; }

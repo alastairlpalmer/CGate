@@ -245,11 +245,13 @@
     // also a link would start navigating before a bubbling handler ran.
     document.addEventListener('click', function (e) {
         var p = page();
-        if (!p || !p.contains(e.target) || !e.target.closest) { return; }
+        if (!p || !e.target.closest) { return; }
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) { return; }
 
+        // The site selector is teleported into the app bar, so it sits
+        // outside the page element: match on the hooks, not on ancestry.
         var action = e.target.closest('[data-loc-action]');
-        if (action && p.contains(action)) {
+        if (action) {
             var what = action.getAttribute('data-loc-action');
             if (what === 'cycle') { e.preventDefault(); e.stopPropagation(); setSnap(nextSnap(state.snap)); return; }
             if (what === 'sites') { e.preventDefault(); e.stopPropagation(); toggleSites(); return; }
@@ -257,7 +259,7 @@
         }
 
         var filter = e.target.closest('[data-loc-filter]');
-        if (filter) {
+        if (filter && p.contains(filter)) {
             e.preventDefault();
             state.filter = filter.getAttribute('data-loc-filter');
             p.querySelectorAll('[data-loc-filter]').forEach(function (b) {
@@ -268,7 +270,7 @@
         }
 
         var sort = e.target.closest('[data-loc-sort]');
-        if (sort) {
+        if (sort && p.contains(sort)) {
             e.preventDefault();
             state.sort = sort.getAttribute('data-loc-sort');
             p.querySelectorAll('[data-loc-sort]').forEach(function (b) {
@@ -279,7 +281,7 @@
         }
 
         var badge = e.target.closest('[data-map-badge]');
-        if (badge) {
+        if (badge && p.contains(badge)) {
             e.preventDefault();
             e.stopPropagation();
             select(badge.dataset.mapBadge);
@@ -287,7 +289,7 @@
         }
 
         var row = e.target.closest('[data-loc-row]');
-        if (row) {
+        if (row && p.contains(row)) {
             e.preventDefault();
             e.stopPropagation();
             select(row.getAttribute('data-pk'));
@@ -305,7 +307,7 @@
     document.addEventListener('click', function (e) {
         var menu = document.getElementById('loc-site-menu');
         if (!menu || menu.hidden) { return; }
-        if (e.target.closest && e.target.closest('.loc-phone-chrome')) { return; }
+        if (e.target.closest && e.target.closest('.loc-site-slot')) { return; }
         toggleSites(false);
     });
 

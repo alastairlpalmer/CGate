@@ -163,10 +163,19 @@ class PhoneMapPageTests(PhoneMapFixture):
         self.assertIn('data-site="Colgate"', self.body())
 
     def test_the_selector_says_how_much_of_each_site_is_mapped(self):
+        """The pill names the site; the list behind it says, for every
+        site including this one, how much of it is drawn — which is what
+        you need before you switch, not after."""
         body = self.body()
-        self.assertIn('2/3 mapped', body)             # the chosen site's pill
         self.assertIn('3 locations &middot; 2 mapped', body)
         self.assertIn('1 location &middot; 0 mapped', body)
+
+    def test_the_selector_rides_in_the_app_bar_rather_than_a_row_of_its_own(self):
+        """One row of chrome over the map, using the same teleport the
+        list filters use."""
+        body = self.body()
+        self.assertIn('x-teleport="#app-bar-slot"', body)
+        self.assertIn('data-loc-action="sites"', body)
 
     def test_locations_with_no_boundary_are_listed_apart(self):
         body = self.body()

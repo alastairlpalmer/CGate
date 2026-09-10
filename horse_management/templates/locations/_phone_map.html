@@ -43,50 +43,52 @@ nothing.
         {% endif %}
     </div>
 
-    <!-- ── Which site ── -->
-    <div class="loc-phone-chrome">
-        <button type="button" data-loc-action="sites" class="loc-site-pill"
-                aria-expanded="false" aria-controls="loc-site-menu">
-            <span class="loc-site-initial" aria-hidden="true">{{ phone_site|slice:":1"|upper|default:"?" }}</span>
-            <span class="min-w-0 flex-1 text-left">
+    {% comment %}The site selector rides in the app bar's page-action
+    slot (the same teleport the list filters use), so the map keeps a
+    single row of chrome over it rather than two. The stylesheet shrinks
+    the search box beside it to its icon until it is tapped.{% endcomment %}
+    <template x-teleport="#app-bar-slot">
+        <div class="loc-site-slot lg:hidden">
+            <button type="button" data-loc-action="sites" class="loc-site-pill"
+                    aria-expanded="false" aria-controls="loc-site-menu">
+                <span class="loc-site-initial" aria-hidden="true">{{ phone_site|slice:":1"|upper|default:"?" }}</span>
                 <span class="loc-site-name">{{ phone_site|default:"No site" }}</span>
-                <span class="loc-site-meta">{{ phone_payload.located }}/{{ phone_payload.total }} mapped &middot; {{ phone_payload.horses }} horse{{ phone_payload.horses|pluralize }}</span>
-            </span>
-            <svg class="w-4 h-4 shrink-0 text-sage transition-transform duration-150" data-loc-chevron
-                 fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
-            </svg>
-        </button>
+                <svg class="w-4 h-4 shrink-0 text-sage transition-transform duration-150" data-loc-chevron
+                     fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+                </svg>
+            </button>
 
-        {% comment %}Each site says how many of its locations are mapped
-        before you switch, so a site with no boundaries is never a
-        surprise. Ordinary links: without JavaScript this is still a
-        working site switch.{% endcomment %}
-        <div id="loc-site-menu" class="loc-site-menu" hidden>
-            <p class="loc-sheet-label px-3.5 pt-3 pb-2">Sites</p>
-            {% for site in phone_sites %}
-            <a href="{% url 'location_list' %}?site={{ site.name|urlencode }}"
-               class="loc-site-item{% if site.is_current %} is-current{% endif %}"
-               {% if site.is_current %}aria-current="true"{% endif %}>
-                <span class="loc-site-initial{% if site.is_current %} is-current{% endif %}" aria-hidden="true">{{ site.name|slice:":1"|upper }}</span>
-                <span class="min-w-0 flex-1">
-                    <span class="loc-site-name">{{ site.name }}</span>
-                    <span class="loc-site-meta">{{ site.total }} location{{ site.total|pluralize }} &middot; {{ site.located }} mapped</span>
-                </span>
-                <span class="shrink-0 text-right">
-                    <span class="loc-site-count">{{ site.horses }}</span>
-                    <span class="loc-site-meta">horses</span>
-                </span>
-            </a>
-            {% endfor %}
-            {% if feature_access.locations.full %}
-            <a href="{% url 'location_create' %}"
-               hx-get="{% url 'location_create' %}" hx-target="#popup-body"
-               hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-               data-popup-title="Add location" class="loc-site-add">+ Add a location</a>
-            {% endif %}
+            {% comment %}Each site says how many of its locations are mapped
+            before you switch, so a site with no boundaries is never a
+            surprise. Ordinary links: without JavaScript this is still a
+            working site switch.{% endcomment %}
+            <div id="loc-site-menu" class="loc-site-menu" hidden>
+                <p class="loc-sheet-label px-3.5 pt-3 pb-2">Sites</p>
+                {% for site in phone_sites %}
+                <a href="{% url 'location_list' %}?site={{ site.name|urlencode }}"
+                   class="loc-site-item{% if site.is_current %} is-current{% endif %}"
+                   {% if site.is_current %}aria-current="true"{% endif %}>
+                    <span class="loc-site-initial{% if site.is_current %} is-current{% endif %}" aria-hidden="true">{{ site.name|slice:":1"|upper }}</span>
+                    <span class="min-w-0 flex-1">
+                        <span class="loc-site-name">{{ site.name }}</span>
+                        <span class="loc-site-meta">{{ site.total }} location{{ site.total|pluralize }} &middot; {{ site.located }} mapped</span>
+                    </span>
+                    <span class="shrink-0 text-right">
+                        <span class="loc-site-count">{{ site.horses }}</span>
+                        <span class="loc-site-meta">horses</span>
+                    </span>
+                </a>
+                {% endfor %}
+                {% if feature_access.locations.full %}
+                <a href="{% url 'location_create' %}"
+                   hx-get="{% url 'location_create' %}" hx-target="#popup-body"
+                   hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                   data-popup-title="Add location" class="loc-site-add">+ Add a location</a>
+                {% endif %}
+            </div>
         </div>
-    </div>
+    </template>
 
     <!-- ── The sheet ── -->
     <div class="loc-sheet is-peek" data-loc-sheet>

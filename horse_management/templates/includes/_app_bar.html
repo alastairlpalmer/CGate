@@ -23,7 +23,9 @@ them gets no box.{% endcomment %}
         reaches; from two on it shows the matches.{% endcomment %}
         {% comment %}static below sm: the panel then positions against the
         row and spans the whole bar, not just the box.{% endcomment %}
-        <div class="static sm:relative flex-1 min-w-0 group"
+        {# data-app-search: the phone Locations page collapses this to its #}
+        {# icon so the site selector can share the row (static/css/input.css). #}
+        <div data-app-search class="static sm:relative flex-1 min-w-0 group"
              x-data="{ open: false, focused: false, q: '', compact: false,
                        get short() { return this.q.trim().length < 2 },
                        init() { var mq = window.matchMedia('(max-width: 639px)'); this.compact = mq.matches; mq.addEventListener('change', function (e) { this.compact = e.matches }.bind(this)) } }"

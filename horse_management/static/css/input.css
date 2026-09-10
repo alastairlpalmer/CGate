@@ -1173,7 +1173,36 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
        say it twice — and cost 44px of map to do it. */
     body:has([data-phone-map]) [data-mobile-brand] { display: none; }
     body:has([data-phone-map]) .app-bar { top: 0; }
+
+    /* One row of chrome, not two. The site selector is teleported into
+       the app bar's page-action slot, so the slot has to give it the
+       room and the search box has to stand aside — down to its icon
+       until it is tapped, which is what the design asks for. Both rules
+       are scoped to this page: anywhere else the bar is untouched, and a
+       browser without :has() simply keeps the search box open. */
+    body:has([data-phone-map]) #app-bar-slot { flex: 1 1 auto; min-width: 0; order: -1; }
+    body:has([data-phone-map]) [data-app-search] {
+        flex: 0 0 2.75rem;
+        transition: flex-basis 180ms ease-out;
+    }
+    body:has([data-phone-map]) [data-app-search]:focus-within { flex: 1 1 auto; }
+    body:has([data-phone-map]) [data-app-search]:not(:focus-within) .app-search-input {
+        padding-left: 0;
+        padding-right: 0;
+        color: transparent;
+    }
+    body:has([data-phone-map]) [data-app-search]:not(:focus-within) .app-search-input::placeholder {
+        color: transparent;
+    }
+    /* The magnifier centres itself in the collapsed box. */
+    body:has([data-phone-map]) [data-app-search]:not(:focus-within) > div > svg:first-child {
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
 }
+
+/* The teleported site selector. */
+.loc-site-slot { @apply relative flex-1 min-w-0; }
 
 .loc-phone {
     position: relative;
@@ -1192,12 +1221,14 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
 .loc-phone-nomap { @apply absolute inset-x-0 top-0 px-5 pt-28 pb-6; }
 
 /* Chrome: one row, on a fade so the map reads under it. */
-.loc-phone-chrome { @apply relative z-30 px-3 pt-2 pb-4; background: linear-gradient(theme('colors.parchment') 62%, transparent); }
-
 .loc-site-pill {
-    @apply w-full min-h-[52px] flex items-center gap-3 px-3 py-2 bg-white
-           border border-light-sage rounded-card shadow-card text-left;
+    @apply w-full min-h-[44px] flex items-center gap-2 px-2 py-1 bg-white
+           border border-light-sage rounded-btn text-left;
 }
+.loc-site-pill .loc-site-initial { @apply w-7 h-7 text-xs rounded-md; }
+/* The name takes the room and the chevron holds the right edge, so the
+   pill reads as one control rather than a label adrift in a box. */
+.loc-site-pill .loc-site-name { @apply flex-1 min-w-0 text-[15px] truncate; }
 .loc-site-initial {
     @apply w-9 h-9 shrink-0 grid place-items-center rounded-btn bg-sage-50 text-forest text-sm font-bold;
 }
@@ -1206,8 +1237,10 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
 .loc-site-meta { @apply block text-xs text-sage truncate; }
 .loc-site-count { @apply block text-base font-bold text-charcoal tabular-nums; }
 
+/* Dropped from the bar, wide enough to read, and clear of the page. */
 .loc-site-menu {
-    @apply mt-2 bg-white border border-light-sage rounded-card shadow-float overflow-hidden
+    @apply absolute right-0 top-full mt-2 z-50 w-[17rem] max-w-[80vw]
+           bg-white border border-light-sage rounded-card shadow-float overflow-hidden
            max-h-[60dvh] overflow-y-auto overscroll-contain;
 }
 .loc-site-item {
@@ -1303,10 +1336,10 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
 .loc-horse-since { @apply shrink-0 text-[13px] text-sage tabular-nums; }
 .loc-sheet-more { @apply block mt-3 text-sm font-medium text-forest; }
 
-/* The map's own controls move to the right, under the site selector, so
-   they never sit beneath the chrome or under a thumb on the sheet. */
-.loc-phone-map .location-map-fit { top: 8.75rem; left: auto; right: 0.625rem; }
-.loc-phone-map .location-map-tiles { top: 11.25rem; left: auto; right: 0.625rem; }
+/* The chrome is a bar above the map now, not an overlay on it, so the
+   controls only need to stay out of the corners a thumb reaches for. */
+.loc-phone-map .location-map-fit { top: 0.625rem; left: auto; right: 0.625rem; }
+.loc-phone-map .location-map-tiles { top: 3.125rem; left: auto; right: 0.625rem; }
 
 @media (prefers-reduced-motion: reduce) {
     .loc-sheet { transition: none; }
