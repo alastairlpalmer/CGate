@@ -320,7 +320,7 @@ class HorseForm(forms.ModelForm):
         fields = [
             'name', 'date_of_birth', 'age', 'sex', 'color',
             'dam_name', 'sire_name', 'breeding', 'photo',
-            'notes', 'passport_number', 'has_passport', 'is_active'
+            'notes', 'passport_number', 'has_passport', 'microchip', 'is_active'
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
@@ -334,6 +334,7 @@ class HorseForm(forms.ModelForm):
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
             'passport_number': forms.TextInput(attrs={'class': 'form-input'}),
             'has_passport': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+            'microchip': forms.TextInput(attrs={'class': 'form-input'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
         }
 
@@ -356,7 +357,7 @@ class QuickHorseForm(HorseForm):
     class Meta(HorseForm.Meta):
         fields = [
             'name', 'sex', 'color', 'date_of_birth', 'age',
-            'passport_number', 'has_passport', 'notes', 'is_active',
+            'passport_number', 'has_passport', 'microchip', 'notes', 'is_active',
         ]
 
 

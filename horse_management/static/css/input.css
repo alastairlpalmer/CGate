@@ -959,3 +959,188 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .data-table tbody tr:focus-within .btn-icon,
     .data-table tbody tr:focus-within .btn-icon-danger { opacity: 1; }
 }
+
+/* ── Horse list split view ─────────────────────────────────────────────
+   The list and one horse's record, side by side (horses/horse_list.html,
+   horses/partials/preview.html, static/js/split_view.js).
+
+   One set of markup, two shapes. From `lg` the pane is a sticky column
+   beside the list. Below `lg` the same element is a bottom sheet that
+   opens at a peek height and is dragged up for the rest — the list above
+   it keeps scrolling, because the sheet is not modal and has no scrim. */
+
+.split-view { position: relative; }
+.split-view-main { min-width: 0; }
+
+/* Columns the pane makes redundant. Location and status are in the pane
+   the moment it opens, so the list gives the space back to the names.
+   Only where the pane is a column: below lg it is a sheet over the list,
+   which takes none of the table's width. */
+@media (min-width: 1024px) {
+    .split-view.is-open .split-optional { display: none; }
+}
+
+/* Tick boxes wait for the Select switch (the selectMode flag on the
+   bulkActions component in base.html). Hidden only — the inputs stay in
+   the form, so nothing has to be rebuilt when Select is switched on. */
+.split-view:not(.is-selecting) [data-select-cell] { display: none; }
+
+/* Rows. The whole row is the target — split_view.js turns a click
+   anywhere on it into a selection — so it has to look like one. */
+[data-horse-row] { cursor: pointer; }
+[data-horse-row].is-selected,
+.data-table tbody tr[data-horse-row].is-selected { @apply bg-sage-50; }
+li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddle.DEFAULT'); }
+/* The bar goes on the row's leading cell — which is the tick box only
+   while Select is on, and the horse's name the rest of the time. */
+.split-view.is-selecting tr[data-horse-row].is-selected td:first-child,
+.split-view:not(.is-selecting) tr[data-horse-row].is-selected td:nth-child(2) {
+    box-shadow: inset 3px 0 0 0 theme('colors.saddle.DEFAULT');
+}
+
+/* ── The pane: a sheet on a phone ── */
+.split-view-pane {
+    --sheet-peek: 34dvh;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(4rem + max(env(safe-area-inset-bottom, 0px), 8px));
+    z-index: 40;
+    height: min(78dvh, 40rem);
+    display: flex;
+    flex-direction: column;
+    @apply bg-white border border-light-sage shadow-float;
+    border-bottom: 0;
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+    transform: translateY(100%);
+    transition: transform 250ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+/* The pane carries `hidden` until a horse is picked. An author
+   `display: flex` beats the browser's own [hidden] rule, so it has to be
+   said here or the empty pane sits under the list from the first paint. */
+.split-view-pane[hidden] { display: none; }
+.split-view-pane.is-peek { transform: translateY(calc(100% - var(--sheet-peek))); }
+.split-view-pane.is-full { transform: translateY(0); }
+.split-view-pane.is-dragging { transition: none; }
+
+.split-view-handle { @apply flex justify-center pt-2.5 pb-1 shrink-0; touch-action: none; }
+.split-view-handle span { @apply block w-10 h-1 rounded-full bg-sage/30; }
+
+.split-view-chrome {
+    @apply flex items-center gap-2 px-3 py-2 border-b border-light-sage shrink-0;
+    touch-action: none;
+}
+.split-view-body { @apply flex-1 min-h-0 overflow-y-auto overscroll-contain; }
+.split-view-hint { @apply hidden; }
+
+/* ── The pane: a column from lg ── */
+@media (min-width: 1024px) {
+    .split-view.is-open {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(21rem, 26rem);
+        gap: 1rem;
+        align-items: start;
+    }
+    .split-view-pane {
+        position: sticky;
+        top: 1rem;
+        bottom: auto;
+        left: auto;
+        right: auto;
+        z-index: 10;
+        height: auto;
+        max-height: calc(100dvh - 2rem);
+        transform: none;
+        transition: none;
+        @apply rounded-card border border-light-sage shadow-card;
+    }
+    .split-view-handle { display: none; }
+    .split-view-chrome { touch-action: auto; }
+    .split-view-hint {
+        @apply flex items-center justify-center gap-1 px-3 py-1.5 border-t border-light-sage text-[11px] text-sage shrink-0;
+    }
+}
+
+.split-view-counter { @apply text-xs text-sage tabular-nums; }
+.split-view-step {
+    @apply inline-flex items-center justify-center w-8 h-8 rounded-btn text-sage transition-colors duration-100;
+}
+.split-view-step:hover:not(:disabled) { @apply bg-light-sage text-charcoal; }
+.split-view-step:disabled { @apply opacity-30 cursor-not-allowed; }
+
+/* ── Preview body (horses/partials/preview.html) ── */
+.pane-body { @apply p-4 space-y-4; }
+
+.pane-stats { @apply grid grid-cols-3 divide-x divide-light-sage rounded-card border border-light-sage bg-parchment/60; }
+.pane-stat { @apply px-3 py-2.5 min-w-0; }
+.pane-stat-label { @apply block text-[10px] font-semibold text-sage uppercase tracking-widest; }
+.pane-stat-value { @apply mt-0.5 text-sm font-medium text-charcoal; }
+.pane-stat-note { @apply block text-xs font-normal text-sage truncate; }
+
+.pane-section { @apply border-t border-light-sage pt-3; }
+.pane-section-head { @apply flex items-center justify-between gap-2; }
+.pane-section-title { @apply text-[11px] font-semibold text-sage uppercase tracking-widest; }
+.pane-section-action { @apply text-xs font-medium text-forest hover:text-forest-light transition-colors duration-100; }
+
+/* One column on a phone: two of them squeeze a microchip number until
+   the label beside it is elided. */
+.pane-grid { @apply mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5; }
+.pane-row { @apply flex items-baseline justify-between gap-2 min-w-0; }
+.pane-row-label { @apply text-sm text-sage truncate; }
+.pane-row-value { @apply text-sm font-medium text-charcoal text-right; }
+.pane-row-value.is-alert { @apply text-error-red; }
+.pane-row-value.is-muted { @apply text-sage font-normal; }
+
+.pane-doc-icon {
+    @apply inline-flex items-center justify-center w-8 h-8 shrink-0 rounded border border-light-sage bg-parchment
+           text-[9px] font-semibold tracking-wider text-sage;
+}
+
+.pane-chips { @apply mt-2 flex flex-wrap gap-1.5; }
+.pane-chip {
+    @apply px-2.5 py-1 rounded-btn border border-light-sage text-xs font-medium text-charcoal-light
+           hover:bg-parchment transition-colors duration-100;
+}
+.pane-chip.is-active { @apply bg-forest border-forest text-white hover:bg-forest; }
+
+.pane-event { @apply flex items-start gap-2.5; }
+.pane-event-dot { @apply w-2 h-2 rounded-full shrink-0 mt-1.5; }
+.pane-event-title { @apply block text-sm font-medium text-charcoal; }
+.pane-event-note { @apply block text-xs text-sage; }
+.pane-event-date { @apply text-xs text-sage tabular-nums shrink-0 whitespace-nowrap; }
+
+.pane-dot-placement { @apply bg-info-blue; }
+.pane-dot-vaccination { @apply bg-sage; }
+.pane-dot-farrier { @apply bg-saddle; }
+.pane-dot-worming { @apply bg-sand; }
+.pane-dot-egg_count { @apply bg-sand; }
+.pane-dot-vet_visit { @apply bg-error-red; }
+.pane-dot-breeding { @apply bg-forest; }
+
+/* ── Collapsible sidebar (base.html) ──────────────────────────────────
+   The rail is the same nav at 4rem: icons only, names as tooltips. The
+   choice is written to localStorage and re-applied on <html> before the
+   first paint, so a reload does not flash the wide sidebar first. */
+.sidebar-collapsed .app-sidebar { width: 4rem; }
+.sidebar-collapsed .app-shell { padding-left: 4rem; }
+.sidebar-collapsed .sidebar-label,
+.sidebar-collapsed .nav-group-label,
+.sidebar-collapsed .sidebar-user-name { display: none; }
+.sidebar-collapsed .app-sidebar nav a,
+.sidebar-collapsed .sidebar-brand,
+.sidebar-collapsed .sidebar-user { justify-content: center; }
+.sidebar-collapsed .app-sidebar nav a { padding-left: 0; padding-right: 0; }
+.sidebar-collapsed .sidebar-user-actions { display: none; }
+.sidebar-collapsed .sidebar-toggle svg { transform: rotate(180deg); }
+
+.app-sidebar { transition: width 150ms ease-out; }
+.app-shell { transition: padding-left 150ms ease-out; }
+.sidebar-toggle {
+    @apply inline-flex items-center justify-center w-8 h-8 rounded-btn text-white/50
+           hover:text-white hover:bg-white/10 transition-colors duration-100 shrink-0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-sidebar, .app-shell, .split-view-pane { transition: none; }
+}

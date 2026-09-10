@@ -78,6 +78,15 @@
         </form>
     </div>
 
+    {% comment %}The split view. The list keeps its own id so the filter
+    controls can still swap it on its own; the pane sits outside that id,
+    so a filter change never takes the record you are reading with it.
+    The preview URL carries a 0 where the horse's key goes —
+    static/js/split_view.js puts the real one in.{% endcomment %}
+    <div class="split-view" data-split-view data-preview-url="{% url 'horse_preview' 0 %}"
+         :class="selectMode && 'is-selecting'">
+    <div class="split-view-main">
+
     <div id="list-results" class="space-y-4">
 
     {% comment %}Toolbar. One segmented "View" rail: how the Active list
@@ -161,6 +170,16 @@
                 {% include 'horses/_sort_menu.html' with menu_align='left' %}
             </div>
             {% endif %}
+            {% if not shows_movements %}
+            {% comment %}Select turns the tick boxes and the bulk bar on.
+            Off by default: a row is for reading, and a click on one opens
+            the pane.{% endcomment %}
+            <button type="button" @click="toggleSelectMode()"
+                    :aria-pressed="selectMode ? 'true' : 'false'"
+                    class="btn-ghost btn-xs shrink-0 whitespace-nowrap ml-auto"
+                    :class="selectMode && 'bg-light-sage text-charcoal'"
+                    x-text="selectMode ? 'Done' : 'Select'">Select</button>
+            {% endif %}
         </div>
     </div>
 
@@ -182,13 +201,13 @@
         <!-- Mobile cards -->
         <ul class="divide-y divide-light-sage md:hidden">
             {% for horse in horses %}
-            <li class="list-card{% if not horse.is_active %} opacity-60{% endif %}">
-                <label class="relative z-10 inline-flex items-center justify-center w-11 h-11 -ml-2 -my-1.5 shrink-0 cursor-pointer">
+            <li class="list-card{% if not horse.is_active %} opacity-60{% endif %}" data-horse-row data-horse-pk="{{ horse.pk }}">
+                <label data-select-cell class="relative z-10 inline-flex items-center justify-center w-11 h-11 -ml-2 -my-1.5 shrink-0 cursor-pointer">
                     <input type="checkbox" data-horse-checkbox value="{{ horse.pk }}"
                            @change="toggleHorse({{ horse.pk }})" :checked="isSelected({{ horse.pk }})"
                            class="form-checkbox rounded">
                 </label>
-                <a href="{% url 'horse_detail' horse.pk %}" class="list-card-link flex items-center gap-3 flex-1 min-w-0">
+                <a href="{% url 'horse_detail' horse.pk %}" data-horse-link class="list-card-link flex items-center gap-3 flex-1 min-w-0">
                     {% include 'horses/_horse_avatar.html' with horse=horse size='sm' %}
                     <span class="min-w-0">
                         <span class="list-card-title block">{{ horse.name }}</span>
@@ -205,12 +224,13 @@
                         </span>
                     </span>
                 </a>
-                <span class="shrink-0 self-center">
+                <span class="shrink-0 self-center flex flex-col items-end gap-1">
                     {% if horse.is_active %}
                     <span class="badge-success"><span class="w-1.5 h-1.5 rounded-full bg-forest mr-1.5"></span>Active</span>
                     {% else %}
                     <span class="badge-neutral">Departed</span>
                     {% endif %}
+                    {% if not horse.has_passport %}<span class="badge-warning">No passport</span>{% endif %}
                 </span>
             </li>
             {% endfor %}
@@ -221,25 +241,25 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th class="w-10">
+                        <th class="w-10" data-select-cell>
                             <input type="checkbox" data-select-all @change="toggleAll($event)" class="form-checkbox rounded">
                         </th>
                         <th>Horse</th>
                         <th>Owner</th>
-                        <th>Location</th>
-                        <th>Status</th>
+                        <th class="split-optional">Location</th>
+                        <th class="split-optional">Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for horse in horses %}
-                    <tr class="group{% if not horse.is_active %} opacity-60{% endif %}">
-                        <td>
+                    <tr class="group{% if not horse.is_active %} opacity-60{% endif %}" data-horse-row data-horse-pk="{{ horse.pk }}">
+                        <td data-select-cell>
                             <input type="checkbox" data-horse-checkbox value="{{ horse.pk }}"
                                    @change="toggleHorse({{ horse.pk }})" :checked="isSelected({{ horse.pk }})"
                                    class="form-checkbox rounded">
                         </td>
                         <td>
-                            <a href="{% url 'horse_detail' horse.pk %}" class="flex items-center gap-3 group/name">
+                            <a href="{% url 'horse_detail' horse.pk %}" data-horse-link class="flex items-center gap-3 group/name">
                                 {% include 'horses/_horse_avatar.html' with horse=horse size='sm' %}
                                 <div class="min-w-0">
                                     <div class="font-medium text-charcoal group-hover/name:text-forest transition-colors">{{ horse.name }}</div>
@@ -250,9 +270,12 @@
                             </a>
                         </td>
                         <td class="text-sm">
-                            {% if horse.resolved_owner %}<a href="{% url 'owner_detail' horse.resolved_owner.pk %}" class="link tap-pad">{{ horse.resolved_owner.name }}</a>{% else %}<span class="text-sage/70">—</span>{% endif %}
+                            <div class="flex items-center gap-2 min-w-0">
+                                {% if horse.resolved_owner %}<a href="{% url 'owner_detail' horse.resolved_owner.pk %}" class="link tap-pad truncate">{{ horse.resolved_owner.name }}</a>{% else %}<span class="text-sage/70">—</span>{% endif %}
+                                {% if not horse.has_passport %}<span class="badge-warning shrink-0 ml-auto">No passport</span>{% endif %}
+                            </div>
                         </td>
-                        <td class="text-sm">
+                        <td class="text-sm split-optional">
                             {% if horse.is_active %}
                                 {% with p=horse.active_placements.0 %}
                                 {% if p and p.location %}<a href="{% url 'location_detail' p.location.pk %}" class="link tap-pad">{{ p.location.name }}</a>{% else %}<span class="text-sage/70">—</span>{% endif %}
@@ -263,7 +286,7 @@
                                 {% endwith %}
                             {% endif %}
                         </td>
-                        <td>
+                        <td class="split-optional">
                             {% if horse.is_active %}
                             <span class="badge-success">
                                 <span class="w-1.5 h-1.5 rounded-full bg-forest mr-1.5"></span>Active
@@ -301,13 +324,13 @@
         <!-- Mobile cards -->
         <ul class="divide-y divide-light-sage md:hidden">
             {% for horse in horses %}
-            <li class="list-card">
-                <label class="relative z-10 inline-flex items-center justify-center w-11 h-11 -ml-2 -my-1.5 shrink-0 cursor-pointer">
+            <li class="list-card" data-horse-row data-horse-pk="{{ horse.pk }}">
+                <label data-select-cell class="relative z-10 inline-flex items-center justify-center w-11 h-11 -ml-2 -my-1.5 shrink-0 cursor-pointer">
                     <input type="checkbox" data-horse-checkbox value="{{ horse.pk }}"
                            @change="toggleHorse({{ horse.pk }})" :checked="isSelected({{ horse.pk }})"
                            class="form-checkbox rounded">
                 </label>
-                <a href="{% url 'horse_detail' horse.pk %}" class="list-card-link flex items-center gap-3 flex-1 min-w-0">
+                <a href="{% url 'horse_detail' horse.pk %}" data-horse-link class="list-card-link flex items-center gap-3 flex-1 min-w-0">
                     <span class="opacity-70">{% include 'horses/_horse_avatar.html' with horse=horse size='sm' %}</span>
                     <span class="min-w-0">
                         <span class="list-card-title block text-charcoal-light">{{ horse.name }}</span>
@@ -331,25 +354,25 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th class="w-10">
+                        <th class="w-10" data-select-cell>
                             <input type="checkbox" data-select-all @change="toggleAll($event)" class="form-checkbox rounded">
                         </th>
                         <th>Horse</th>
                         <th>Owner</th>
-                        <th>Last Location</th>
-                        <th>Departed</th>
+                        <th class="split-optional">Last Location</th>
+                        <th class="split-optional">Departed</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for horse in horses %}
-                    <tr class="group">
-                        <td>
+                    <tr class="group" data-horse-row data-horse-pk="{{ horse.pk }}">
+                        <td data-select-cell>
                             <input type="checkbox" data-horse-checkbox value="{{ horse.pk }}"
                                    @change="toggleHorse({{ horse.pk }})" :checked="isSelected({{ horse.pk }})"
                                    class="form-checkbox rounded">
                         </td>
                         <td>
-                            <a href="{% url 'horse_detail' horse.pk %}" class="flex items-center gap-3 group/name">
+                            <a href="{% url 'horse_detail' horse.pk %}" data-horse-link class="flex items-center gap-3 group/name">
                                 <div class="opacity-70">
                                     {% include 'horses/_horse_avatar.html' with horse=horse size='sm' %}
                                 </div>
@@ -364,12 +387,12 @@
                         <td class="text-sm text-sage">
                             {% if horse.resolved_owner %}{{ horse.resolved_owner.name }}{% else %}—{% endif %}
                         </td>
-                        <td class="text-sm text-sage">
+                        <td class="text-sm text-sage split-optional">
                             {% with p=horse.last_placements.0 %}
                             {% if p and p.location %}{{ p.location.name }}{% else %}—{% endif %}
                             {% endwith %}
                         </td>
-                        <td class="text-sm text-sage tabular-nums">
+                        <td class="text-sm text-sage tabular-nums split-optional">
                             {% with p=horse.last_placements.0 %}
                             {% if p and p.end_date %}{{ p.end_date|date:"d M Y" }}{% else %}&mdash;{% endif %}
                             {% endwith %}
@@ -464,7 +487,9 @@
                 {% if group.kind == 'location' and group.capacity %}
                 {% include 'horses/_capacity_ring.html' with count=group.count capacity=group.capacity availability=group.availability %}
                 {% else %}
-                <span class="badge-info shrink-0">{{ group.count }}</span>
+                {# The flat list's count says what it is counting; a group's #}
+                {# heading already does, so there the bare number is enough. #}
+                <span class="badge-info shrink-0">{{ group.count }}{% if group_kind == 'all' %} horse{{ group.count|pluralize }}{% endif %}</span>
                 {% endif %}
             </div>
             <div x-show="!collapsed" x-collapse>
@@ -495,7 +520,7 @@
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th class="w-10">
+                            <th class="w-10" data-select-cell>
                                 <input type="checkbox" data-select-all @change="toggleAll($event)" class="form-checkbox rounded" @click.stop>
                             </th>
                             <th>Horse</th>
@@ -503,9 +528,9 @@
                             <th>Owner</th>
                             {% endif %}
                             {% if group_kind != 'location' %}
-                            <th>Location</th>
+                            <th class="split-optional">Location</th>
                             {% endif %}
-                            <th class="w-24 text-right pr-5">Actions</th>
+                            <th class="w-24 text-right pr-5 split-optional">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -534,6 +559,49 @@
     {% endif %}
 
     </div><!-- /#list-results -->
+
+    </div><!-- /.split-view-main -->
+
+    {% comment %}The pane. Its chrome stays put across swaps — only
+    #horse-preview-body is replaced when another horse is picked — so the
+    counter and the arrows never flicker.{% endcomment %}
+    {% comment %}hx-select and hx-push-url sit here, not on a trigger:
+    split_view.js names this element as the request's source, and htmx
+    reads both off it. Without that the request inherits the boosted
+    body's hx-push-url="true" and the address bar becomes the preview
+    URL — which then breaks the Back button and the pop-up sheet's
+    in-place refresh, since that refetches whatever the address bar
+    says.{% endcomment %}
+    <aside id="horse-preview" class="split-view-pane" hidden
+           hx-select="unset" hx-push-url="false" hx-swap="innerHTML"
+           aria-label="Horse preview">
+        <div class="split-view-handle" aria-hidden="true"><span></span></div>
+        <div class="split-view-chrome">
+            <button type="button" class="split-view-step" id="horse-preview-prev"
+                    data-split-action="prev" aria-label="Previous horse">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5"/>
+                </svg>
+            </button>
+            <button type="button" class="split-view-step" id="horse-preview-next"
+                    data-split-action="next" aria-label="Next horse">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+                </svg>
+            </button>
+            <span class="split-view-counter" id="horse-preview-counter" aria-live="polite"></span>
+            <a href="#" id="horse-preview-open-full" class="ml-auto text-xs font-medium text-forest hover:text-forest-light">Open full page</a>
+            <button type="button" class="split-view-step" data-split-action="close" aria-label="Close the preview">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="split-view-body" id="horse-preview-body"></div>
+        <p class="split-view-hint">&uarr; &darr; or J K to flick through &middot; Esc to close</p>
+    </aside>
+
+    </div><!-- /.split-view -->
 
     <!-- Bulk Action Bar -->
     {% include 'health/partials/bulk_action_bar.html' %}

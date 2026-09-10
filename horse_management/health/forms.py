@@ -187,7 +187,7 @@ class WormingTreatmentForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFor
         model = WormingTreatment
         fields = [
             'horse', 'date', 'product_name', 'active_ingredient',
-            'dose', 'administered_by', 'cost', 'notes'
+            'dose', 'administered_by', 'next_due_date', 'cost', 'notes'
         ]
         widgets = {
             'horse': forms.Select(attrs={'class': 'form-select'}),
@@ -196,9 +196,18 @@ class WormingTreatmentForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFor
             'active_ingredient': forms.TextInput(attrs={'class': 'form-input'}),
             'dose': forms.TextInput(attrs={'class': 'form-input'}),
             'administered_by': forms.TextInput(attrs={'class': 'form-input'}),
+            'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        dose_date = cleaned_data.get('date')
+        next_due = cleaned_data.get('next_due_date')
+        if dose_date and next_due and next_due <= dose_date:
+            self.add_error('next_due_date', "Next due date must be after the dose date.")
+        return cleaned_data
 
 
 class WormEggCountForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFormMixin, forms.ModelForm):

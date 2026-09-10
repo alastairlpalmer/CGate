@@ -6,36 +6,40 @@ groups and the Location column under location groups.
   row_attrs (optional) — extra attributes for the <tr>; the owner table
   passes an x-show so its owner row can fold the horses under it.
 {% endcomment %}
-<tr class="group" id="horse-{{ horse.pk }}" {{ row_attrs|default:''|safe }}>
-    <td>
+<tr class="group" id="horse-{{ horse.pk }}" data-horse-row data-horse-pk="{{ horse.pk }}" {{ row_attrs|default:''|safe }}>
+    <td data-select-cell>
         <input type="checkbox" data-horse-checkbox value="{{ horse.pk }}"
                @change="toggleHorse({{ horse.pk }})" :checked="isSelected({{ horse.pk }})"
                class="form-checkbox rounded">
     </td>
     <td>
-        <a href="{% url 'horse_detail' horse.pk %}" class="flex items-center gap-3 group/name">
+        <a href="{% url 'horse_detail' horse.pk %}" data-horse-link class="flex items-center gap-3 group/name">
             {% include 'horses/_horse_avatar.html' with horse=horse size='sm' %}
             <div class="min-w-0">
                 <div class="font-medium text-charcoal group-hover/name:text-forest transition-colors">{{ horse.name }}</div>
                 <div class="text-xs text-sage">
                     {% if horse.calculated_age %}{{ horse.calculated_age }}yo · {% endif %}{{ horse.get_color_display }} · {{ horse.get_sex_display }}
+                    {% if group_kind == 'owner' and not horse.has_passport %} · <span class="text-error-red font-medium">No passport</span>{% endif %}
                 </div>
             </div>
         </a>
     </td>
     {% if group_kind != 'owner' %}
     <td class="text-sm">
-        {% if horse.resolved_owner %}<a href="{% url 'owner_detail' horse.resolved_owner.pk %}" class="link tap-pad">{{ horse.resolved_owner.name }}</a>{% else %}<span class="text-sage/70">—</span>{% endif %}
+        <div class="flex items-center gap-2 min-w-0">
+            {% if horse.resolved_owner %}<a href="{% url 'owner_detail' horse.resolved_owner.pk %}" class="link tap-pad truncate">{{ horse.resolved_owner.name }}</a>{% else %}<span class="text-sage/70">—</span>{% endif %}
+            {% if not horse.has_passport %}<span class="badge-warning shrink-0 ml-auto">No passport</span>{% endif %}
+        </div>
     </td>
     {% endif %}
     {% if group_kind != 'location' %}
-    <td class="text-sm">
+    <td class="text-sm split-optional">
         {% with p=horse.active_placements.0 %}
         {% if p and p.location %}<a href="{% url 'location_detail' p.location.pk %}" class="link tap-pad">{{ p.location.name }}</a>{% else %}<span class="text-sage/70">—</span>{% endif %}
         {% endwith %}
     </td>
     {% endif %}
-    <td class="pr-5">
+    <td class="pr-5 split-optional">
         <div class="flex items-center justify-end gap-1">
             {% if feature_access.horses.full %}
             <a href="{% url 'horse_photo_add' horse.pk %}" hx-get="{% url 'horse_photo_add' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"

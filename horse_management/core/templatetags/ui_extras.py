@@ -69,6 +69,43 @@ def ago_label(value):
         return f'{years} year{"s" if years != 1 else ""} ago'
 
 
+@register.filter
+def stay_length(value):
+    """How long a stay has run, from its start date: '1 week 4 days'.
+
+    The horse list's preview pane prints this beside the arrival date, so
+    "how long has this one been here" is answered without arithmetic.
+    """
+    if not value:
+        return ''
+    days = (timezone.localdate() - value).days
+    if days < 0:
+        return 'Not yet arrived'
+    if days == 0:
+        return 'Today'
+    if days < 7:
+        return f'{days} day{"s" if days != 1 else ""}'
+    if days < 56:
+        weeks, rest = divmod(days, 7)
+        label = f'{weeks} week{"s" if weeks != 1 else ""}'
+        if rest:
+            label += f' {rest} day{"s" if rest != 1 else ""}'
+        return label
+    if days < 365:
+        months, rest = divmod(days, 30)
+        label = f'{months} month{"s" if months != 1 else ""}'
+        weeks = rest // 7
+        if weeks:
+            label += f' {weeks} week{"s" if weeks != 1 else ""}'
+        return label
+    years, rest = divmod(days, 365)
+    label = f'{years} year{"s" if years != 1 else ""}'
+    months = rest // 30
+    if months:
+        label += f' {months} month{"s" if months != 1 else ""}'
+    return label
+
+
 # ── Dashboard and identity helpers ─────────────────────────────────────────
 
 # Coat colour → (fill, text). A horse with no photo gets its coat colour, not

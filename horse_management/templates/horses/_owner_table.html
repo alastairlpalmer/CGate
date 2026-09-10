@@ -53,7 +53,7 @@ group_kind ('owner'), feature_access.
     <table class="data-table">
         <thead>
             <tr>
-                <th class="w-10"><span class="sr-only">Select</span></th>
+                <th class="w-10" data-select-cell><span class="sr-only">Select</span></th>
                 <th>Horse</th>
                 <th>Location</th>
                 <th class="w-24 text-right pr-5">Actions</th>
@@ -63,7 +63,7 @@ group_kind ('owner'), feature_access.
         <tbody x-data="{ collapsed: {{ groups_collapsed|yesno:'true,false' }} }"
                @groups-toggle.window="collapsed = !$event.detail">
             <tr class="bg-sand-50 hover:bg-sand-100 cursor-pointer select-none" @click="collapsed = !collapsed">
-                <td class="!py-2">
+                <td class="!py-2" data-select-cell>
                     {% if group.horses %}
                     <input type="checkbox" data-select-all @change="toggleAll($event)" class="form-checkbox rounded" @click.stop
                            aria-label="Select every horse of {{ group.name }}">

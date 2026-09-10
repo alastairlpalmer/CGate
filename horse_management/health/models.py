@@ -48,6 +48,13 @@ def current_farrier_visits(queryset):
     )
 
 
+def current_worming_treatments(queryset):
+    """Latest worming treatment per horse."""
+    return exclude_superseded(
+        queryset, date_field='date', group_fields=('horse',),
+    )
+
+
 class VaccinationType(models.Model):
     """Types of vaccinations with their schedules."""
 
@@ -261,6 +268,10 @@ class WormingTreatment(models.Model):
         'core.Horse', on_delete=models.CASCADE, related_name='worming_treatments'
     )
     date = models.DateField()
+    next_due_date = models.DateField(
+        null=True, blank=True,
+        help_text="Left blank, this is set to 13 weeks after the dose",
+    )
     product_name = models.CharField(max_length=200, help_text="Brand name of wormer")
     active_ingredient = models.CharField(max_length=200, blank=True)
     dose = models.CharField(max_length=100, blank=True)
@@ -284,9 +295,35 @@ class WormingTreatment(models.Model):
 
     class Meta:
         ordering = ['-date']
+        indexes = [
+            models.Index(fields=['horse', 'next_due_date'], name='worming_horse_nextdue'),
+            models.Index(fields=['next_due_date'], name='worming_nextdue'),
+        ]
 
     def __str__(self):
         return f"{self.horse.name} - {self.product_name} ({self.date})"
+
+    def save(self, *args, **kwargs):
+        # A 13-week interval is the common yard routine, and it is only a
+        # starting point: the field is editable, so a vet's own programme
+        # (or an egg count) overrides it.
+        if not self.next_due_date:
+            self.next_due_date = self.date + timedelta(weeks=13)
+        super().save(*args, **kwargs)
+
+    @property
+    def is_due_soon(self):
+        """Due within a fortnight."""
+        if not self.next_due_date:
+            return False
+        days_until = (self.next_due_date - timezone.localdate()).days
+        return 0 <= days_until <= 14
+
+    @property
+    def is_overdue(self):
+        if not self.next_due_date:
+            return False
+        return timezone.localdate() > self.next_due_date
 
 
 class WormEggCount(models.Model):

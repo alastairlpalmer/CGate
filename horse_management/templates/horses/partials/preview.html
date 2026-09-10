@@ -1,0 +1,221 @@
+{% load ui_extras %}
+{% comment %}
+Horse preview — the body of the horse list's side pane, and of its sheet
+on a phone (core.views.horses.horse_preview).
+
+One partial serves both because they are the same thing in two shapes: a
+column beside the list on a wide screen, a sheet over it on a narrow one.
+The pane's own chrome (previous/next, the counter, Open full page, close)
+is in horse_list.html and stays put across swaps — only this body is
+replaced when you pick another horse.
+
+Every action opens the shared pop-up sheet over the top, exactly as it
+does from the horse page, so nothing here has to know it is in a pane.
+{% endcomment %}
+<div id="horse-preview-content" class="pane-body" data-preview-for="{{ horse.pk }}">
+
+    <!-- ── Who ── -->
+    <div class="flex items-start gap-4">
+        {% include 'horses/_horse_avatar.html' with horse=horse size='lg' %}
+        <div class="min-w-0 flex-1">
+            <h2 class="text-xl font-semibold font-heading text-charcoal leading-tight">{{ horse.name }}</h2>
+            <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                {% if horse.is_active %}
+                <span class="badge-success"><span class="w-1.5 h-1.5 rounded-full bg-forest mr-1.5"></span>Active</span>
+                {% else %}
+                <span class="badge-neutral">Departed</span>
+                {% endif %}
+                {% if not horse.has_passport %}
+                <span class="badge-warning">No passport</span>
+                {% endif %}
+            </div>
+            <p class="mt-2 text-sm text-sage">
+                {% if horse.calculated_age %}<span class="text-charcoal-light font-medium">{{ horse.calculated_age }}yo</span> · {% endif %}{{ horse.get_color_display|default:"Colour not set" }} · {{ horse.get_sex_display|default:"Sex not set" }}{% if horse.date_of_birth %} · born {{ horse.date_of_birth|date:"d M Y" }}{% endif %}
+            </p>
+            {% if ownership_shares %}
+            <p class="mt-1 text-sm text-sage">
+                {% for share in ownership_shares %}{% if not forloop.first %} · {% endif %}{% if feature_access.owners.view %}<a href="{% url 'owner_detail' share.owner.pk %}" class="link">{{ share.owner.name }}</a>{% else %}<span class="text-charcoal-light">{{ share.owner.name }}</span>{% endif %}{% if share.is_primary_contact %} · Primary{% endif %} · {{ share.share_percentage|floatformat:"-2" }}%{% endfor %}
+            </p>
+            {% elif owner %}
+            <p class="mt-1 text-sm text-sage">
+                {% if feature_access.owners.view %}<a href="{% url 'owner_detail' owner.pk %}" class="link">{{ owner.name }}</a>{% else %}<span class="text-charcoal-light">{{ owner.name }}</span>{% endif %}
+            </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ── Where, what it costs, how long ── -->
+    <dl class="pane-stats">
+        <div class="pane-stat">
+            <dt class="pane-stat-label">Location</dt>
+            <dd class="pane-stat-value">
+                {% if current_placement %}
+                {% if feature_access.locations.view %}<a href="{% url 'location_detail' current_placement.location.pk %}" class="link">{{ current_placement.location.name }}</a>{% else %}{{ current_placement.location.name }}{% endif %}
+                {% elif last_placement %}
+                <span class="text-sage">Left {{ last_placement.location.name }}</span>
+                {% else %}
+                <span class="text-sage">Not on the yard</span>
+                {% endif %}
+            </dd>
+        </div>
+        <div class="pane-stat">
+            <dt class="pane-stat-label">Rate</dt>
+            <dd class="pane-stat-value">
+                {% if current_placement.rate_type %}
+                <span class="font-mono">{{ current_placement.rate_type.daily_rate|gbp }}/day</span>
+                <span class="pane-stat-note">{{ current_placement.rate_type.name }}</span>
+                {% else %}
+                <span class="text-sage">&mdash;</span>
+                {% endif %}
+            </dd>
+        </div>
+        <div class="pane-stat">
+            <dt class="pane-stat-label">On site</dt>
+            <dd class="pane-stat-value">
+                {% if current_placement %}
+                {{ current_placement.start_date|stay_length }}
+                <span class="pane-stat-note">from {{ current_placement.start_date|date:"d M Y" }}</span>
+                {% elif last_placement.end_date %}
+                <span class="text-sage">Left {{ last_placement.end_date|date:"d M Y" }}</span>
+                {% else %}
+                <span class="text-sage">&mdash;</span>
+                {% endif %}
+            </dd>
+        </div>
+    </dl>
+
+    <!-- ── Day-to-day actions ── -->
+    {% if feature_access.horses.full %}
+    <div class="flex flex-wrap items-center gap-2" x-data="{ departing: false }">
+        {% if current_placement %}
+        <a href="{% url 'horse_move' horse.pk %}" hx-get="{% url 'horse_move' horse.pk %}"
+           hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Move {{ horse.name }}" class="btn-primary">Move to location</a>
+        <button type="button" x-show="!departing" @click="departing = true"
+                class="btn-secondary text-error-red border-error-red/30 hover:bg-error-red-50">Depart</button>
+        <form x-show="departing" x-cloak method="post" action="{% url 'horse_depart' horse.pk %}?next={{ request.get_full_path|urlencode }}"
+              class="flex flex-wrap items-center gap-1.5 bg-error-red-50 border border-error-red/20 rounded-btn p-1 pl-2.5">
+            {% csrf_token %}
+            <label class="text-xs font-medium text-error-red" for="depart-on-{{ horse.pk }}">Depart on</label>
+            <input id="depart-on-{{ horse.pk }}" type="date" name="departure_date" required
+                   class="form-input !mt-0 text-sm py-1 px-2 w-auto" value="{{ today|date:'Y-m-d' }}">
+            <button type="submit" class="btn bg-error-red text-white hover:bg-error-red/90 text-xs px-2.5 py-1">Confirm</button>
+            <button type="button" @click="departing = false" class="btn-ghost btn-xs" aria-label="Cancel departure">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </form>
+        {% else %}
+        <a href="{% url 'horse_arrive' horse.pk %}" hx-get="{% url 'horse_arrive' horse.pk %}"
+           hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Log arrival for {{ horse.name }}" class="btn-primary">Log arrival</a>
+        {% endif %}
+        <a href="{% url 'horse_update' horse.pk %}" hx-get="{% url 'horse_quick_edit' horse.pk %}"
+           hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Edit {{ horse.name }}" class="btn-secondary">Edit</a>
+    </div>
+    {% endif %}
+
+    <!-- ── Credentials ── -->
+    <section class="pane-section">
+        <h3 class="pane-section-title">Credentials</h3>
+        <dl class="pane-grid">
+            {% for row in credential_rows %}
+            <div class="pane-row">
+                <dt class="pane-row-label">{{ row.label }}</dt>
+                <dd class="pane-row-value{% if row.tone == 'alert' %} is-alert{% elif row.tone == 'muted' %} is-muted{% endif %}">{{ row.value }}</dd>
+            </div>
+            {% endfor %}
+        </dl>
+    </section>
+
+    <!-- ── Documents ── -->
+    <section class="pane-section">
+        <div class="pane-section-head">
+            <h3 class="pane-section-title">Documents</h3>
+            {% if feature_access.horses.full %}
+            <a href="{% url 'document_create' %}?horse={{ horse.pk }}" hx-get="{% url 'document_create' %}?horse={{ horse.pk }}"
+               hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Add a document for {{ horse.name }}" class="pane-section-action">+ Add</a>
+            {% endif %}
+        </div>
+        {% if documents %}
+        <ul class="divide-y divide-light-sage">
+            {% for document in documents %}
+            <li class="flex items-center gap-3 py-2">
+                <span class="pane-doc-icon" aria-hidden="true">DOC</span>
+                <span class="min-w-0 flex-1">
+                    <a href="{{ document.file.url }}" target="_blank" rel="noopener" class="block text-sm font-medium text-charcoal hover:text-forest truncate">{{ document.title }}</a>
+                    <span class="block text-xs text-sage truncate">
+                        {{ document.get_doc_type_display }} · Added {{ document.uploaded_at|date:"d M Y" }}{% if document.expiry_date %} · {% if document.is_expired %}<span class="text-error-red">Expired {{ document.expiry_date|date:"d M Y" }}</span>{% else %}Expires {{ document.expiry_date|date:"d M Y" }}{% endif %}{% endif %}
+                    </span>
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-sm text-sage py-2">Nothing on file.</p>
+        {% endif %}
+    </section>
+
+    <!-- ── Timeline ── -->
+    <section class="pane-section" x-data="{ filter: 'all' }">
+        <div class="pane-section-head">
+            <h3 class="pane-section-title">Timeline</h3>
+            {% if feature_access.health.full %}
+            <a href="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vet_visit_create' %}?horse={{ horse.pk }}"
+               hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Vet visit for {{ horse.name }}" class="pane-section-action">+ Record</a>
+            {% endif %}
+        </div>
+
+        {% comment %}Egg counts ride under Worming: they are the reason a
+        worming date moves, so splitting them off would hide the answer
+        from the question.{% endcomment %}
+        <div class="pane-chips" role="group" aria-label="Filter the timeline">
+            <button type="button" class="pane-chip" :class="filter === 'all' && 'is-active'" @click="filter = 'all'">All</button>
+            <button type="button" class="pane-chip" :class="filter === 'placement' && 'is-active'" @click="filter = 'placement'">Placements</button>
+            <button type="button" class="pane-chip" :class="filter === 'vaccination' && 'is-active'" @click="filter = 'vaccination'">Vaccinations</button>
+            <button type="button" class="pane-chip" :class="filter === 'farrier' && 'is-active'" @click="filter = 'farrier'">Farrier</button>
+            <button type="button" class="pane-chip" :class="filter === 'vet_visit' && 'is-active'" @click="filter = 'vet_visit'">Vet visits</button>
+            {% if horse.is_mare %}
+            <button type="button" class="pane-chip" :class="filter === 'breeding' && 'is-active'" @click="filter = 'breeding'">Breeding</button>
+            {% endif %}
+            <button type="button" class="pane-chip" :class="filter === 'worming' && 'is-active'" @click="filter = 'worming'">Worming</button>
+        </div>
+
+        {% if timeline_events %}
+        <ul class="mt-3 space-y-3">
+            {% for event in timeline_events %}
+            <li class="pane-event" x-show="filter === 'all' || filter === '{{ event.type }}'{% if event.type == 'egg_count' %} || filter === 'worming'{% endif %}">
+                <span class="pane-event-dot pane-dot-{{ event.type }}" aria-hidden="true"></span>
+                <span class="min-w-0 flex-1">
+                    <span class="pane-event-title">
+                        {% if event.type == 'placement' %}Moved to {{ event.obj.location.name }}
+                        {% elif event.type == 'vaccination' %}{{ event.obj.vaccination_type.name }}
+                        {% elif event.type == 'farrier' %}{{ event.obj.get_work_done_display }}
+                        {% elif event.type == 'worming' %}Worming dose
+                        {% elif event.type == 'egg_count' %}Worm egg count
+                        {% elif event.type == 'vet_visit' %}{{ event.obj.reason|default:"Vet visit" }}
+                        {% elif event.type == 'breeding' %}Covered by {{ event.obj.stallion_name|default:"stallion" }}
+                        {% endif %}
+                    </span>
+                    <span class="pane-event-note">
+                        {% if event.type == 'placement' %}{% if event.obj.rate_type %}{{ event.obj.rate_type.name }} · {{ event.obj.rate_type.daily_rate|gbp }}/day{% else %}No rate set{% endif %}
+                        {% elif event.type == 'vaccination' %}{% if event.obj.vet %}Given by {{ event.obj.vet.name }}{% else %}Vaccination{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"d M Y" }}{% endif %}
+                        {% elif event.type == 'farrier' %}{% if event.obj.service_provider %}{{ event.obj.service_provider.name }}{% else %}Farrier visit{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"d M Y" }}{% endif %}
+                        {% elif event.type == 'worming' %}{{ event.obj.product_name }}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"d M Y" }}{% endif %}
+                        {% elif event.type == 'egg_count' %}{{ event.obj.count }} eggs per gram
+                        {% elif event.type == 'vet_visit' %}{% if event.obj.vet %}{{ event.obj.vet.name }}{% else %}Vet visit{% endif %}
+                        {% elif event.type == 'breeding' %}{{ event.obj.get_status_display }}
+                        {% endif %}
+                    </span>
+                </span>
+                <span class="pane-event-date">{{ event.date|date:"d M Y" }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-sm text-sage py-2">Nothing recorded yet.</p>
+        {% endif %}
+    </section>
+</div>
