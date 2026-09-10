@@ -87,6 +87,15 @@
                     </div>
 
                     <div>
+                        <label for="{{ form.next_due_date.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.next_due_date.label }}</label>
+                        {{ form.next_due_date }}
+                        <p class="mt-1 text-xs text-sage">Leave blank for 13 weeks after the dose.</p>
+                        {% if form.next_due_date.errors %}
+                          <p class="mt-1 text-sm text-error-red">{{ form.next_due_date.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
                         <label for="{{ form.cost.id_for_label }}" class="text-sm font-medium text-charcoal">Cost (&pound;)</label>
                         {{ form.cost }}
                         <p class="mt-1 text-xs text-sage">A cost above 0 adds a charge to the owner's next invoice.</p>

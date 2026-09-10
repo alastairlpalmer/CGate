@@ -546,6 +546,10 @@ class Horse(models.Model):
     notes = models.TextField(blank=True, help_text="Special notes (e.g., first winter, lame, needs rug)")
     passport_number = models.CharField(max_length=100, blank=True)
     has_passport = models.BooleanField(default=True)
+    microchip = models.CharField(
+        max_length=50, blank=True,
+        help_text="Microchip number, if the horse is chipped",
+    )
     is_active = models.BooleanField(default=True, db_index=True, help_text="False if horse has left permanently")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
