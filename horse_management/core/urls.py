@@ -53,6 +53,7 @@ urlpatterns = [
     path('locations/add/', views.LocationCreateView.as_view(), name='location_create'),
     path('locations/<int:pk>/', views.LocationDetailView.as_view(), name='location_detail'),
     path('locations/<int:pk>/edit/', views.LocationUpdateView.as_view(), name='location_update'),
+    path('locations/<int:pk>/preview/', views.location_preview, name='location_preview'),
     path('locations/<int:pk>/arrive/', views.log_arrival, name='location_arrive'),
     path('locations/<int:pk>/depart/', views.log_departure, name='location_depart'),
     path('locations/<int:pk>/set-usage/', views.set_location_usage, name='location_set_usage'),

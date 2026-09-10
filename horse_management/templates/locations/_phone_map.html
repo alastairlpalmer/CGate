@@ -1,0 +1,169 @@
+{% comment %}
+Locations on a phone: the map is the page.
+
+Rendered by LocationListView on the default tab only, and hidden from
+`lg` up, where the tabs and cards below still run the page. The chrome is
+one row — the site selector — floating on a gradient over the map; the
+app bar above it keeps the yard search and Add, so nothing here is a
+second copy of a control that already exists.
+
+The sheet has three heights: peek (the map is the point), half (the list
+of fields) and full (the whole site). Tap the handle to cycle, or drag
+it. Tapping a location, a badge or a row opens that location's detail at
+half height — the list and the detail share the sheet, so the map never
+moves under your thumb.
+
+Filtering and sorting the list are done in the browser
+(static/js/locations_mobile.js): every row is already on the page, and a
+round trip to reorder ten rows would cost a second of yard 4G for
+nothing.
+{% endcomment %}
+<div id="locations-phone" class="loc-phone lg:hidden" data-phone-map
+     data-preview-url="{% url 'location_preview' 0 %}"
+     data-site="{{ phone_site }}">
+
+    <!-- ── The map, or an honest account of why there isn't one ── -->
+    <div class="loc-phone-map">
+        {% if phone_mapped %}
+        {% include 'partials/location_map.html' with payload=phone_payload variant='phone' %}
+        {% else %}
+        <div class="loc-phone-nomap">
+            <p class="loc-sheet-label">No boundaries</p>
+            <h2 class="text-lg font-semibold text-charcoal leading-snug mt-1">No boundaries drawn for {{ phone_site|default:"this site" }} yet</h2>
+            <p class="mt-1.5 text-sm text-sage">
+                {{ phone_payload.total }} location{{ phone_payload.total|pluralize }} here {{ phone_payload.total|pluralize:"is,are" }} tracked by name only. Occupancy and rest still work in the list below.
+            </p>
+            {% if feature_access.locations.full %}
+            <div class="mt-3 flex flex-col gap-2">
+                <a href="{% url 'boundary_import_upload' %}?site={{ phone_site|urlencode }}" class="btn-primary justify-center">Import field map</a>
+                <a href="{% url 'location_list' %}?tab=map&amp;site={{ phone_site|urlencode }}" class="btn-secondary justify-center">Open the full map</a>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ── Which site ── -->
+    <div class="loc-phone-chrome">
+        <button type="button" data-loc-action="sites" class="loc-site-pill"
+                aria-expanded="false" aria-controls="loc-site-menu">
+            <span class="loc-site-initial" aria-hidden="true">{{ phone_site|slice:":1"|upper|default:"?" }}</span>
+            <span class="min-w-0 flex-1 text-left">
+                <span class="loc-site-name">{{ phone_site|default:"No site" }}</span>
+                <span class="loc-site-meta">{{ phone_payload.located }}/{{ phone_payload.total }} mapped &middot; {{ phone_payload.horses }} horse{{ phone_payload.horses|pluralize }}</span>
+            </span>
+            <svg class="w-4 h-4 shrink-0 text-sage transition-transform duration-150" data-loc-chevron
+                 fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+            </svg>
+        </button>
+
+        {% comment %}Each site says how many of its locations are mapped
+        before you switch, so a site with no boundaries is never a
+        surprise. Ordinary links: without JavaScript this is still a
+        working site switch.{% endcomment %}
+        <div id="loc-site-menu" class="loc-site-menu" hidden>
+            <p class="loc-sheet-label px-3.5 pt-3 pb-2">Sites</p>
+            {% for site in phone_sites %}
+            <a href="{% url 'location_list' %}?site={{ site.name|urlencode }}"
+               class="loc-site-item{% if site.is_current %} is-current{% endif %}"
+               {% if site.is_current %}aria-current="true"{% endif %}>
+                <span class="loc-site-initial{% if site.is_current %} is-current{% endif %}" aria-hidden="true">{{ site.name|slice:":1"|upper }}</span>
+                <span class="min-w-0 flex-1">
+                    <span class="loc-site-name">{{ site.name }}</span>
+                    <span class="loc-site-meta">{{ site.total }} location{{ site.total|pluralize }} &middot; {{ site.located }} mapped</span>
+                </span>
+                <span class="shrink-0 text-right">
+                    <span class="loc-site-count">{{ site.horses }}</span>
+                    <span class="loc-site-meta">horses</span>
+                </span>
+            </a>
+            {% endfor %}
+            {% if feature_access.locations.full %}
+            <a href="{% url 'location_create' %}"
+               hx-get="{% url 'location_create' %}" hx-target="#popup-body"
+               hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Add location" class="loc-site-add">+ Add a location</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ── The sheet ── -->
+    <div class="loc-sheet is-peek" data-loc-sheet>
+        <button type="button" class="loc-sheet-handle" data-loc-action="cycle"
+                aria-label="Change the height of the list">
+            <span aria-hidden="true"></span>
+        </button>
+
+        {# The detail's htmx target. Empty until a location is picked. #}
+        <div id="loc-sheet-detail" class="loc-sheet-scroll" hidden></div>
+
+        <div class="loc-sheet-list" data-loc-list>
+            <div class="loc-sheet-controls">
+                <div class="loc-seg" role="group" aria-label="Filter locations">
+                    <button type="button" class="loc-seg-item is-active" data-loc-filter="all">All</button>
+                    <button type="button" class="loc-seg-item" data-loc-filter="occupied">Occupied</button>
+                    <button type="button" class="loc-seg-item" data-loc-filter="rested">Rested</button>
+                </div>
+                <button type="button" class="loc-sheet-hint" data-loc-action="cycle" data-loc-hint>Full list</button>
+            </div>
+
+            <div class="loc-sheet-controls">
+                <span class="loc-sheet-label shrink-0">Sort</span>
+                <button type="button" class="loc-sort is-active" data-loc-sort="horses">Most horses</button>
+                <button type="button" class="loc-sort" data-loc-sort="rest">Longest rested</button>
+                <a href="{% url 'location_list' %}?tab=usage" class="loc-sheet-hint ml-auto">Usage &rarr;</a>
+            </div>
+
+            <div class="loc-sheet-scroll" data-loc-rows>
+                {# Its own box so sorting is an append, and the unmapped #}
+                {# block below never moves with it.                      #}
+                <div data-loc-mapped>
+                {% for loc in phone_mapped %}
+                <button type="button" class="loc-row" data-loc-row data-pk="{{ loc.pk }}"
+                        data-count="{{ loc.count }}" data-rest="{{ loc.rest_days|default_if_none:"-1" }}"
+                        data-state="{{ loc.rest_state }}" data-name="{{ loc.name }}">
+                    <span class="loc-row-bar" style="background: {{ loc.rest_colour }}" aria-hidden="true"></span>
+                    <span class="min-w-0 flex-1 text-left">
+                        <span class="loc-row-name">{{ loc.name }}</span>
+                        {# "Rested 26 days", not "Rested · rested 26 days": #}
+                        {# the state already carries the word.                #}
+                        <span class="loc-row-sub">
+                            {{ loc.rest_label }}{% if loc.rest_days is not None %} {{ loc.rest_days }} day{{ loc.rest_days|pluralize }}{% elif loc.count %} &middot; in use{% endif %}
+                        </span>
+                    </span>
+                    <span class="shrink-0 text-right">
+                        <span class="loc-row-count{% if loc.capacity and loc.count > loc.capacity %} is-over{% elif not loc.count %} is-quiet{% endif %}">{{ loc.count }}{% if loc.capacity %}/{{ loc.capacity }}{% endif %}</span>
+                        <span class="loc-row-pin">on map</span>
+                    </span>
+                </button>
+                {% endfor %}
+                </div>
+
+                <p class="loc-empty" data-loc-empty hidden>Nothing matches that filter.</p>
+
+                {% if phone_unmapped %}
+                {% comment %}Unmapped locations sit at the end, never mixed
+                in: the list above answers "where on this map", and one
+                with no boundary cannot. The filter still reaches them —
+                "show me what is rested" must not quietly mean "of the
+                ones that are drawn".{% endcomment %}
+                <div data-loc-unmapped>
+                <p class="loc-sheet-label pt-4 pb-2">Not on the map (<span data-loc-unmapped-count>{{ phone_unmapped|length }}</span>)</p>
+                {% for loc in phone_unmapped %}
+                <button type="button" class="loc-row is-unmapped" data-loc-row data-pk="{{ loc.pk }}"
+                        data-count="{{ loc.count }}" data-rest="{{ loc.rest_days|default_if_none:"-1" }}"
+                        data-state="{{ loc.rest_state }}" data-name="{{ loc.name }}" data-unmapped>
+                    <span class="min-w-0 flex-1 text-left">
+                        <span class="loc-row-name">{{ loc.name }}</span>
+                        <span class="loc-row-sub">{{ loc.rest_label }}</span>
+                    </span>
+                    <span class="loc-row-count{% if not loc.count %} is-quiet{% endif %}">{{ loc.count }}{% if loc.capacity %}/{{ loc.capacity }}{% endif %}</span>
+                </button>
+                {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>

@@ -32,6 +32,7 @@ from .locations import (  # noqa: F401
     LocationCreateView,
     LocationDetailView,
     LocationListView,
+    location_preview,
     LocationUpdateView,
     location_archive,
     location_delete,

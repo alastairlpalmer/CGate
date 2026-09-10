@@ -3,7 +3,15 @@
 {% block title %}Locations - Yardway{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+{% comment %}Phone: the map is the page (locations/_phone_map.html). It is
+built for the default tab only, so Usage and Map keep their own layouts,
+and everything below is hidden under `lg` when it is on screen.
+{% endcomment %}
+{% if phone_payload %}
+{% include 'locations/_phone_map.html' %}
+{% endif %}
+
+<div class="space-y-6{% if phone_payload %} hidden lg:block{% endif %}">
 
     {% comment %}No visible <h1>: the tab bar and sidebar both name this
     section. The heading stays for screen readers and the outline.{% endcomment %}
