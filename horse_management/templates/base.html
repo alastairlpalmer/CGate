@@ -705,6 +705,22 @@
         window.Yardway.afterMainSwap(main, responseText);
     });
 
+    // ── Browser Back and Forward ──
+    // A history restore is not a boosted swap: htmx puts the cached
+    // #main-content back itself and Alpine initialises it, so the handler
+    // above never runs. The app bar sits outside that swap, so the page
+    // action teleported by the page being left stayed where it was and the
+    // restored page teleported a second one in beside it — three Back
+    // presses, three filter buttons. Worse, the click went to the stale one,
+    // which is bound to a scope that no longer exists, so the filter panel
+    // stopped opening at all and Alpine reported its expressions undefined.
+    // Empty the slot and let the restored page fill it, as a boosted swap
+    // does.
+    document.body.addEventListener('htmx:historyRestore', function () {
+        var slot = document.getElementById('app-bar-slot');
+        if (slot) slot.innerHTML = '';
+    });
+
     // ── Stale-target guard for overlapping boosted navigations ──
     // Two boosted navigations in flight at once: the first response to
     // land outerHTML-swaps #main-content, detaching the element the
