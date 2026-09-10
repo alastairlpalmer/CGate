@@ -317,6 +317,26 @@ class SiteSwitchTests(BoardFixture):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['board_site'], 'Bicknoller')
 
+    def test_the_site_links_carry_no_htmx_of_their_own(self):
+        """Ordinary boosted links. An hx-select reaching them from the
+        shell is what swapped the whole page into #main-content, one more
+        app bar and sidebar per switch."""
+        body = self.body()
+        panel = body[body.index('data-rail-sites'):]
+        panel = panel[:panel.index('loc-rail-list')]
+        # The site rows only. "+ Add a location" is a pop-up and carries
+        # its own htmx, on itself, which is the pattern this is defending.
+        rows = [
+            chunk for chunk in panel.split('<a ')[1:]
+            if 'loc-site-item' in chunk[:chunk.index('>')]
+        ]
+        self.assertEqual(len(rows), 2)
+        for row in rows:
+            with self.subTest(row=row[:60]):
+                self.assertNotIn('hx-select', row[:row.index('>')])
+                self.assertNotIn('hx-push-url', row[:row.index('>')])
+        self.assertIn('?view=map&amp;site=Bicknoller', panel)
+
     def test_one_site_gets_no_switch(self):
         """A control with one place to go is worse than no control."""
         Location.objects.filter(site='Bicknoller').delete()
@@ -361,21 +381,18 @@ class PreviewUrlTests(BoardFixture):
     def setUp(self):
         self.client.force_login(make_admin())
 
-    def shell(self, marker):
+    def test_neither_shell_pushes_the_preview_url(self):
+        """The override rides on a leaf inside each shell.
+
+        On the shell itself it reached the links inside it too — see
+        ShellInheritanceTests, which is the bug that taught us.
+        """
         body = self.client.get(self.url).content.decode()
-        # The opening tag of the shell, up to the first '>'.
-        start = body.index(marker)
-        return body[body.rindex('<div', 0, start):body.index('>', start) + 1]
-
-    def test_the_board_does_not_push_the_preview_url(self):
-        tag = self.shell('data-site-board')
-        self.assertIn('hx-push-url="false"', tag)
-        self.assertIn('hx-select="unset"', tag)
-
-    def test_the_phone_shell_does_not_push_the_preview_url(self):
-        tag = self.shell('data-phone-map')
-        self.assertIn('hx-push-url="false"', tag)
-        self.assertIn('hx-select="unset"', tag)
+        self.assertEqual(
+            body.count('<span hidden data-preview-source hx-push-url="false"></span>'),
+            2,
+            'one source for the rail, one for the sheet',
+        )
 
     def test_a_direct_visit_to_a_preview_still_goes_to_the_page(self):
         """The fallback that makes the pushed URL survivable at all."""
@@ -385,3 +402,75 @@ class PreviewUrlTests(BoardFixture):
         self.assertRedirects(
             response, reverse('location_detail', args=[self.grazing.pk]),
         )
+
+
+@override_settings(LOCATION_MAPS_ENABLED=True)
+class ShellInheritanceTests(BoardFixture):
+    """What the shells must not hand to the links inside them.
+
+    htmx reads hx-select and hx-push-url off the requesting element AND
+    its ancestors. Putting the detail request's overrides on the shell
+    gave them to every ordinary link inside it as well: switching site
+    then swapped the whole response into #main-content, so the page grew
+    a second app bar and sidebar with every switch and the address never
+    changed. The overrides belong on a leaf.
+    """
+
+    def setUp(self):
+        self.client.force_login(make_admin())
+
+    def opening_tag(self, marker):
+        body = self.client.get(self.url).content.decode()
+        start = body.index(marker)
+        return body[body.rindex('<div', 0, start):body.index('>', start) + 1]
+
+    def test_neither_shell_carries_an_override_for_its_links(self):
+        for marker in ('data-site-board', 'data-phone-map'):
+            with self.subTest(shell=marker):
+                tag = self.opening_tag(marker)
+                self.assertNotIn('hx-push-url', tag)
+                self.assertNotIn('hx-select', tag)
+
+    def test_each_shell_carries_a_leaf_to_make_the_request_from(self):
+        body = self.client.get(self.url).content.decode()
+        self.assertEqual(body.count('data-preview-source'), 2)
+        self.assertIn('<span hidden data-preview-source hx-push-url="false"></span>', body)
+
+
+
+@override_settings(LOCATION_MAPS_ENABLED=True)
+class DetailActionTests(BoardFixture):
+    """An action may only ask for the pop-up if its view can fill it.
+
+    Logging an arrival is a page of its own — locations/location_arrive.html
+    extends base.html — so asking for it in the pop-up put the whole
+    application, app bar and sidebar included, inside the sheet.
+    """
+
+    def setUp(self):
+        self.client.force_login(make_admin())
+
+    def detail(self):
+        url = reverse('location_preview', args=[self.grazing.pk])
+        return self.client.get(url, **RAIL).content.decode()
+
+    def test_moving_horses_is_an_ordinary_link(self):
+        body = self.detail()
+        move = body[body.index('Move horses') - 400:body.index('Move horses')]
+        self.assertNotIn('popup-body', move.split('<a ')[-1])
+
+    def test_the_actions_that_do_open_the_popup_have_a_partial_to_show(self):
+        """Each of these views answers a pop-up request with a form only."""
+        for name, args in (
+            ('feed_out_create', {'location_pk': self.grazing.pk}),
+            ('location_set_usage', {'pk': self.grazing.pk}),
+            ('location_update', {'pk': self.grazing.pk}),
+            ('location_create', {}),
+        ):
+            with self.subTest(view=name):
+                response = self.client.get(
+                    reverse(name, kwargs=args),
+                    HTTP_HX_REQUEST='true', HTTP_HX_TARGET='popup-body',
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertNotContains(response, 'data-app-search')

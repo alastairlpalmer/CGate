@@ -10,9 +10,10 @@ which is a phone's answer and a desktop's dead end.
 The shell's own chrome stays put; only this body is replaced when
 another location is picked, so neither ever flickers.
 
-Every action opens the shared pop-up sheet over the top, the same way it
-does from the location's own page, so nothing here has to know where it
-is being shown.
+The actions behave as they do from the location's own page: the ones
+whose views serve a partial open the shared pop-up over the top, and the
+ones that are a page of their own are ordinary links. Nothing here has
+to know which shell it is being shown in.
 {% endcomment %}
 <div id="loc-sheet-content" data-preview-for="{{ location.pk }}">
 
@@ -66,11 +67,12 @@ is being shown.
     {% endcomment %}
     <div class="loc-sheet-actions">
         {% if feature_access.locations.full %}
-        <a href="{% url 'location_arrive' location.pk %}"
-           hx-get="{% url 'location_arrive' location.pk %}" hx-target="#popup-body"
-           hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-           data-popup-title="Move horses to {{ location.name }}"
-           class="loc-action is-primary">Move horses</a>
+        {% comment %}An ordinary link, as this action is everywhere else in
+        the app. Logging an arrival is a page of its own — it has no partial
+        to serve a pop-up — so asking for one put the whole application,
+        app bar and sidebar included, inside the sheet.
+        {% endcomment %}
+        <a href="{% url 'location_arrive' location.pk %}" class="loc-action is-primary">Move horses</a>
         {% else %}
         <a href="{% url 'horse_list' %}?group_by=location&amp;location={{ location.pk }}" class="loc-action is-primary">View horses</a>
         {% endif %}
