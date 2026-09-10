@@ -19,10 +19,67 @@ buttons are the ones it has always had.
         {# The detail's htmx target. Empty until a location is picked. #}
         <div id="loc-rail-detail" class="loc-rail-detail" hidden></div>
 
+        {% comment %}Switching site. The phone drops a menu out of the app
+        bar; the rail has no room to float one — it clips its own corners —
+        so the sites take the rail over instead, the way the detail does.
+        Ordinary links, so this still switches site without JavaScript.
+        {% endcomment %}
+        {% if board_sites|length > 1 %}
+        <div id="loc-rail-sites" class="loc-rail-sites" data-rail-sites hidden>
+            {# Back above the title, the same way round as the detail. #}
+            <div class="loc-rail-head">
+                <button type="button" class="loc-sheet-back" data-board-action="close-sites">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+                    </svg>
+                    {{ board_site|default:"Back" }}
+                </button>
+                <h2 class="text-[22px] font-bold font-heading text-charcoal leading-tight">Sites</h2>
+                <p class="mt-1 text-[13px] text-sage">{{ board_sites|length }} sites &middot; how much of each is drawn</p>
+            </div>
+            <div class="loc-rail-sites-rows">
+                {% for site in board_sites %}
+                <a href="{% url 'location_list' %}?view=map&amp;site={{ site.name|urlencode }}"
+                   class="loc-site-item{% if site.is_current %} is-current{% endif %}"
+                   {% if site.is_current %}aria-current="true"{% endif %}>
+                    <span class="loc-site-initial{% if site.is_current %} is-current{% endif %}" aria-hidden="true">{{ site.name|slice:":1"|upper }}</span>
+                    <span class="min-w-0 flex-1">
+                        <span class="loc-site-name">{{ site.name }}</span>
+                        <span class="loc-site-meta">{{ site.total }} location{{ site.total|pluralize }} &middot; {{ site.located }} mapped</span>
+                    </span>
+                    <span class="shrink-0 text-right">
+                        <span class="loc-site-count">{{ site.horses }}</span>
+                        <span class="loc-site-meta">horses</span>
+                    </span>
+                </a>
+                {% endfor %}
+                {% if feature_access.locations.full %}
+                <a href="{% url 'location_create' %}"
+                   hx-get="{% url 'location_create' %}" hx-target="#popup-body"
+                   hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                   data-popup-title="Add location" class="loc-site-add">+ Add a location</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
         <div class="loc-rail-list" data-rail-list>
             <div class="loc-rail-head">
                 <div class="flex items-baseline gap-2.5 flex-wrap">
+                    {% if board_sites|length > 1 %}
+                    <h1 class="min-w-0 flex-1">
+                        <button type="button" class="loc-board-site" data-board-action="sites"
+                                aria-expanded="false" aria-controls="loc-rail-sites"
+                                title="Switch site">
+                            <span class="truncate">{{ board_site|default:"No site" }}</span>
+                            <svg class="w-4 h-4 shrink-0 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+                            </svg>
+                        </button>
+                    </h1>
+                    {% else %}
                     <h1 class="text-[22px] font-bold font-heading text-charcoal leading-tight">{{ board_site|default:"No site" }}</h1>
+                    {% endif %}
                     <span class="loc-chip">{{ board_payload.horses }} horse{{ board_payload.horses|pluralize }}</span>
                 </div>
                 <p class="mt-1 text-[13px] text-sage">

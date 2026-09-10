@@ -276,3 +276,71 @@ class BoardDetailTests(BoardFixture):
             reverse('location_preview', args=[self.grazing.pk]), **SHEET,
         ).content.decode()
         self.assertIn('Somerford', sheet)
+
+
+@override_settings(LOCATION_MAPS_ENABLED=True)
+class SiteSwitchTests(BoardFixture):
+    """Switching site on a wide screen.
+
+    The phone drops a menu out of the app bar; that markup is `lg:hidden`,
+    so before this the rail was the one shape of the page with no way off
+    its own site.
+    """
+
+    def setUp(self):
+        self.client.force_login(make_admin())
+        Location.objects.create(
+            name='Long Acre', site='Bicknoller', capacity=8,
+            usage=Location.Usage.HORSES,
+        )
+
+    def body(self, **params):
+        return self.client.get(self.url, params).content.decode()
+
+    def test_the_rail_offers_the_other_site(self):
+        body = self.body()
+        self.assertIn('data-rail-sites', body)
+        self.assertIn('data-board-action="sites"', body)
+        self.assertIn('Bicknoller', body)
+
+    def test_switching_stays_on_the_map(self):
+        """A site link that dropped ?view=map would land on the cards."""
+        self.assertIn('?view=map&amp;site=Bicknoller', self.body())
+
+    def test_each_site_says_how_much_of_it_is_drawn_before_you_go(self):
+        body = self.body()
+        self.assertIn('mapped', body)
+        self.assertIn('horses', body)
+
+    def test_the_links_work_without_javascript(self):
+        response = self.client.get(self.url, {'view': 'map', 'site': 'Bicknoller'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['board_site'], 'Bicknoller')
+
+    def test_one_site_gets_no_switch(self):
+        """A control with one place to go is worse than no control."""
+        Location.objects.filter(site='Bicknoller').delete()
+        body = self.body()
+        self.assertNotIn('data-rail-sites', body)
+        self.assertNotIn('data-board-action="sites"', body)
+
+
+@override_settings(LOCATION_MAPS_ENABLED=True)
+class ChromeTests(BoardFixture):
+    """The two switches above the board share one row.
+
+    Stacked, they cost the board a band of empty page before it started.
+    """
+
+    def setUp(self):
+        self.client.force_login(make_admin())
+
+    def test_both_switches_sit_in_one_row(self):
+        body = self.client.get(self.url).content.decode()
+        row = body.split('loc-chrome')[1].split('{# /chrome #}')[0]
+        self.assertIn('aria-label="Locations view"', row)
+        self.assertIn('aria-label="Locations layout"', row)
+
+    def test_the_usage_tab_has_no_layout_switch_to_show(self):
+        body = self.client.get(self.url, {'tab': 'usage'}).content.decode()
+        self.assertNotIn('aria-label="Locations layout"', body)

@@ -176,6 +176,7 @@
         if (!b || !detail || !pk) { return; }
         var changed = state.pk !== String(pk);
         state.pk = String(pk);
+        showSites(false);
         detail.hidden = false;
         if (list) { list.hidden = true; }
         if (changed && window.htmx) {
@@ -196,6 +197,34 @@
         }));
     }
 
+    // ── Switching site ──
+    // The sites take the rail over rather than floating above it: the
+    // rail clips its own corners, so a dropdown would be cut in half.
+
+    function showSites(on) {
+        var b = board();
+        if (!b) { return; }
+        var panel = b.querySelector('[data-rail-sites]');
+        var list = b.querySelector('[data-rail-list]');
+        var detail = document.getElementById('loc-rail-detail');
+        var pill = b.querySelector('[data-board-action="sites"]');
+        if (!panel) { return; }
+        panel.hidden = !on;
+        if (list) { list.hidden = on || state.pk !== null; }
+        if (detail && on) { detail.hidden = true; }
+        if (pill) { pill.setAttribute('aria-expanded', on ? 'true' : 'false'); }
+        if (on) {
+            var current = panel.querySelector('.loc-site-item.is-current');
+            if (current && current.scrollIntoView) { current.scrollIntoView({ block: 'nearest' }); }
+        }
+    }
+
+    function sitesOpen() {
+        var b = board();
+        var panel = b && b.querySelector('[data-rail-sites]');
+        return !!panel && !panel.hidden;
+    }
+
     function clearSelection() {
         var b = board();
         var detail = document.getElementById('loc-rail-detail');
@@ -214,6 +243,14 @@
         var b = board();
         if (!b || !e.target.closest) { return; }
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) { return; }
+
+        var site = e.target.closest('[data-board-action]');
+        if (site && b.contains(site)) {
+            e.preventDefault();
+            e.stopPropagation();
+            showSites(site.getAttribute('data-board-action') === 'sites');
+            return;
+        }
 
         var back = e.target.closest('[data-loc-action="back"]');
         if (back && b.contains(back)) {
@@ -267,7 +304,9 @@
     });
 
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && board() && state.pk) { clearSelection(); }
+        if (e.key !== 'Escape' || !board()) { return; }
+        if (sitesOpen()) { showSites(false); return; }
+        if (state.pk) { clearSelection(); }
     });
 
     // ── Setting up, and doing it again after a swap ──
@@ -277,6 +316,7 @@
         state.pk = null;
         state.query = '';
         state.sort = 'horses';
+        showSites(false);
         fillSummary();
         applyList();
     }

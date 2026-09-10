@@ -1350,10 +1350,14 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
    by static/js/locations_board.js). Below `lg` the same site is the
    phone map with its sheet, above. */
 
+/* Section switch and layout switch on one line where there is room. */
+.loc-chrome { @apply flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3; }
+
 .loc-board {
     /* Tall enough to be a working surface, never taller than the window:
-       the rail scrolls inside itself and the map holds its shape. */
-    height: min(calc(100dvh - 16rem), 46rem);
+       the rail scrolls inside itself and the map holds its shape. The
+       subtraction is the chrome above it — one row now, not two. */
+    height: min(calc(100dvh - 12rem), 46rem);
     min-height: 30rem;
     gap: 1rem;
 }
@@ -1364,6 +1368,16 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
     @apply flex flex-col min-h-0 bg-white border border-light-sage rounded-card overflow-hidden;
 }
 .loc-rail-list { @apply flex flex-col min-h-0 flex-1; }
+.loc-rail-sites { @apply flex flex-col min-h-0 flex-1; }
+.loc-rail-sites-rows { @apply flex-1 min-h-0 overflow-y-auto overscroll-contain; }
+
+/* The site name doubles as the way to another site, so it has to read as
+   a control without shouting louder than the heading it already is. */
+.loc-board-site {
+    @apply inline-flex items-center gap-1.5 max-w-full -ml-1.5 px-1.5 py-0.5 rounded-btn
+           text-[22px] font-bold font-heading text-charcoal leading-tight text-left
+           transition-colors duration-100 hover:bg-sage-50;
+}
 .loc-rail-detail { @apply flex-1 min-h-0 overflow-y-auto overscroll-contain; }
 .loc-rail-head { @apply px-4 pt-4 pb-3 border-b border-light-sage shrink-0; }
 
