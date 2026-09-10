@@ -331,6 +331,12 @@
     .switch-input:focus-visible ~ .switch-track { @apply ring-2 ring-sage ring-offset-2; }
 }
 
+/* An author `display` outranks the browser's own [hidden] rule, so any
+   element given one — every .flex, .grid or .block utility — stays on
+   screen while carrying the attribute. Saying it once here is what makes
+   `el.hidden = true` mean what it says, everywhere. */
+[hidden] { display: none !important; }
+
 /* Safe area insets for notched phones (iPhone X+).
    On iOS Safari the floating URL pill overlays fixed-bottom elements;
    env(safe-area-inset-bottom) does NOT cover that chrome, so we
@@ -1143,4 +1149,198 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
 
 @media (prefers-reduced-motion: reduce) {
     .app-sidebar, .app-shell, .split-view-pane { transition: none; }
+}
+
+/* ── Locations on a phone ──────────────────────────────────────────────
+   The map is the page (templates/locations/_phone_map.html, driven by
+   static/js/locations_mobile.js). Everything here is under `lg`; from
+   there up the page is the tabs and cards it always was. */
+
+@media (max-width: 1023px) {
+    /* The page takes the whole screen, so the main column's padding and
+       its entrance transform both have to go — a transform on an ancestor
+       makes a containing block, and the fixed tab bar clearance below
+       would then be measured from the wrong box. */
+    body:has([data-phone-map]) #main-content {
+        padding: 0;
+        max-width: none;
+        transform: none;
+        animation: none;
+        display: flex;
+        flex-direction: column;
+    }
+    /* The site selector names the yard, so the brand bar above it would
+       say it twice — and cost 44px of map to do it. */
+    body:has([data-phone-map]) [data-mobile-brand] { display: none; }
+    body:has([data-phone-map]) .app-bar { top: 0; }
+
+    /* One row of chrome, not two. The site selector is teleported into
+       the app bar's page-action slot, so the slot has to give it the
+       room and the search box has to stand aside — down to its icon
+       until it is tapped, which is what the design asks for. Both rules
+       are scoped to this page: anywhere else the bar is untouched, and a
+       browser without :has() simply keeps the search box open. */
+    body:has([data-phone-map]) #app-bar-slot { flex: 1 1 auto; min-width: 0; order: -1; }
+    body:has([data-phone-map]) [data-app-search] {
+        flex: 0 0 2.75rem;
+        transition: flex-basis 180ms ease-out;
+    }
+    body:has([data-phone-map]) [data-app-search]:focus-within { flex: 1 1 auto; }
+    body:has([data-phone-map]) [data-app-search]:not(:focus-within) .app-search-input {
+        padding-left: 0;
+        padding-right: 0;
+        color: transparent;
+    }
+    body:has([data-phone-map]) [data-app-search]:not(:focus-within) .app-search-input::placeholder {
+        color: transparent;
+    }
+    /* The magnifier centres itself in the collapsed box. */
+    body:has([data-phone-map]) [data-app-search]:not(:focus-within) > div > svg:first-child {
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* The teleported site selector. */
+.loc-site-slot { @apply relative flex-1 min-w-0; }
+
+.loc-phone {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    @apply bg-parchment;
+}
+
+/* Its own stacking context: the map's badges and controls sit at z-500
+   and up so they clear Leaflet's panes, and without this they would rise
+   over the chrome and the sheet as well. */
+.loc-phone-map { position: absolute; inset: 0; z-index: 0; isolation: isolate; }
+.loc-phone-map .location-map { position: absolute; inset: 0; height: 100%; border: 0; border-radius: 0; }
+.loc-phone-nomap { @apply absolute inset-x-0 top-0 px-5 pt-28 pb-6; }
+
+/* Chrome: one row, on a fade so the map reads under it. */
+.loc-site-pill {
+    @apply w-full min-h-[44px] flex items-center gap-2 px-2 py-1 bg-white
+           border border-light-sage rounded-btn text-left;
+}
+.loc-site-pill .loc-site-initial { @apply w-7 h-7 text-xs rounded-md; }
+/* The name takes the room and the chevron holds the right edge, so the
+   pill reads as one control rather than a label adrift in a box. */
+.loc-site-pill .loc-site-name { @apply flex-1 min-w-0 text-[15px] truncate; }
+.loc-site-initial {
+    @apply w-9 h-9 shrink-0 grid place-items-center rounded-btn bg-sage-50 text-forest text-sm font-bold;
+}
+.loc-site-initial.is-current { @apply bg-forest text-white; }
+.loc-site-name { @apply block text-[17px] font-bold text-charcoal leading-tight truncate; }
+.loc-site-meta { @apply block text-xs text-sage truncate; }
+.loc-site-count { @apply block text-base font-bold text-charcoal tabular-nums; }
+
+/* Dropped from the bar, wide enough to read, and clear of the page. */
+.loc-site-menu {
+    @apply absolute right-0 top-full mt-2 z-50 w-[17rem] max-w-[80vw]
+           bg-white border border-light-sage rounded-card shadow-float overflow-hidden
+           max-h-[60dvh] overflow-y-auto overscroll-contain;
+}
+.loc-site-item {
+    @apply flex items-center gap-3 px-3.5 py-2.5 min-h-[60px] border-b border-light-sage
+           transition-colors duration-100 active:bg-parchment;
+}
+.loc-site-item.is-current { @apply bg-sand-50; }
+.loc-site-add { @apply flex items-center min-h-[52px] px-3.5 text-[15px] font-semibold text-forest; }
+
+/* ── The sheet ── */
+.loc-sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(4rem + max(env(safe-area-inset-bottom, 0px), 8px));
+    z-index: 35;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    @apply bg-white shadow-float;
+    border-top-left-radius: 1.125rem;
+    border-top-right-radius: 1.125rem;
+    transition: height 220ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.loc-sheet.is-peek { height: 24%; }
+.loc-sheet.is-half { height: 58%; }
+.loc-sheet.is-full { height: 92%; }
+
+.loc-sheet-handle { @apply w-full grid place-items-center pt-2.5 pb-1.5 shrink-0; touch-action: none; }
+.loc-sheet-handle > span { @apply block w-11 h-1.5 rounded-full bg-sage/30; }
+
+.loc-sheet-list { @apply flex flex-col min-h-0 flex-1; }
+.loc-sheet-scroll { @apply flex-1 min-h-0 overflow-y-auto overscroll-contain px-3.5 pb-4; }
+.loc-sheet-controls { @apply flex items-center gap-2 px-3.5 pb-2.5 shrink-0; }
+.loc-sheet-label { @apply text-[11px] font-semibold text-sage uppercase tracking-widest; }
+.loc-sheet-hint { @apply shrink-0 min-h-[40px] px-2 flex items-center text-[13px] font-bold text-saddle whitespace-nowrap; }
+
+.loc-seg { @apply flex gap-1 p-1 rounded-btn bg-parchment flex-1 min-w-0; }
+.loc-seg-item {
+    @apply flex-1 min-h-[40px] grid place-items-center rounded-[6px] text-sm font-bold
+           text-sage whitespace-nowrap transition-colors duration-100;
+}
+.loc-seg-item.is-active { @apply bg-white text-charcoal shadow-sm; }
+
+.loc-sort {
+    @apply min-h-[38px] px-3 flex items-center rounded-btn bg-parchment text-sm font-bold
+           text-charcoal-light whitespace-nowrap transition-colors duration-100;
+}
+.loc-sort.is-active { @apply bg-forest text-white; }
+
+/* ── One location in the list ── */
+.loc-row {
+    @apply w-full flex items-center gap-3 px-3 py-3 min-h-[62px] border-b border-light-sage
+           text-left transition-colors duration-100 active:bg-sand-50/60;
+}
+.loc-row.is-selected { @apply bg-sage-50; }
+.loc-row.is-unmapped {
+    @apply border border-dashed border-sand rounded-card mb-2 bg-parchment/60 min-h-[58px];
+}
+.loc-row-bar { @apply w-2 h-10 rounded shrink-0; }
+.loc-row-name { @apply block text-[16.5px] font-semibold text-charcoal leading-tight truncate; }
+.loc-row-sub { @apply block text-[13px] text-sage truncate mt-0.5; }
+.loc-row-count { @apply block text-base font-bold text-charcoal tabular-nums; }
+.loc-row-count.is-over { @apply text-error-red; }
+.loc-row-count.is-quiet { @apply text-sage; }
+.loc-row-pin { @apply block text-[11px] text-sage/70; }
+.loc-empty { @apply px-3 py-6 text-sm text-sage text-center; }
+
+/* ── One location, opened ── */
+#loc-sheet-detail { @apply px-0; }
+.loc-sheet-head { @apply px-4 pb-3 border-b border-light-sage shrink-0; }
+.loc-sheet-back { @apply flex items-center gap-1 text-[13px] font-bold text-sage mb-1 min-h-[28px]; }
+.loc-sheet-title { @apply text-xl font-bold font-heading text-charcoal leading-tight; }
+.loc-sheet-count { @apply shrink-0 w-[62px] h-[62px] grid place-items-center rounded-full border-[3px] border-light-sage text-center; }
+.loc-sheet-count-number { @apply block text-[17px] font-bold text-charcoal tabular-nums leading-none; }
+.loc-sheet-count-label { @apply block text-[10px] text-sage; }
+
+.loc-chip { @apply text-[13px] font-semibold px-2.5 py-1 rounded-full bg-sage-50 text-forest; }
+.loc-chip.is-over { @apply bg-error-red-50 text-error-red; }
+
+.loc-sheet-actions { @apply grid grid-cols-2 gap-2 px-4 py-3 border-b border-light-sage shrink-0; }
+.loc-action {
+    @apply min-h-[52px] flex items-center justify-center px-3 rounded-btn bg-white
+           border-[1.5px] border-sand text-[15px] font-bold text-charcoal text-center
+           transition-colors duration-100 active:bg-parchment;
+}
+.loc-action.is-primary { @apply bg-forest border-forest text-white active:bg-forest-light; }
+
+.loc-sheet-body { @apply px-4 py-3; }
+.loc-horse-row { @apply flex items-center gap-3 py-2.5 min-h-[52px]; }
+.loc-horse-name { @apply block text-base font-medium text-charcoal truncate; }
+.loc-horse-owner { @apply block text-[13px] text-sage truncate; }
+.loc-horse-since { @apply shrink-0 text-[13px] text-sage tabular-nums; }
+.loc-sheet-more { @apply block mt-3 text-sm font-medium text-forest; }
+
+/* The chrome is a bar above the map now, not an overlay on it, so the
+   controls only need to stay out of the corners a thumb reaches for. */
+.loc-phone-map .location-map-fit { top: 0.625rem; left: auto; right: 0.625rem; }
+.loc-phone-map .location-map-tiles { top: 3.125rem; left: auto; right: 0.625rem; }
+
+@media (prefers-reduced-motion: reduce) {
+    .loc-sheet { transition: none; }
 }

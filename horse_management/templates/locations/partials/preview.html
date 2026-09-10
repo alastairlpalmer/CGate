@@ -1,0 +1,123 @@
+{% comment %}
+One location, inside the phone map's sheet
+(core.views.locations.location_preview).
+
+The sheet's chrome — the handle, the back link and the snap heights —
+belongs to locations/_phone_map.html and stays put; only this body is
+replaced when another location is picked, so the sheet never flickers.
+
+Every action opens the shared pop-up sheet over the top, the same way it
+does from the location's own page, so nothing here has to know where it
+is being shown.
+{% endcomment %}
+<div id="loc-sheet-content" data-preview-for="{{ location.pk }}">
+
+    <!-- ── Which field, and how full ── -->
+    <div class="loc-sheet-head">
+        <div class="flex items-start gap-3">
+            <div class="min-w-0 flex-1">
+                <button type="button" data-loc-action="back" class="loc-sheet-back">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+                    </svg>
+                    {{ location.site|default:"All locations" }}
+                </button>
+                <h2 class="loc-sheet-title">{{ location.name }}</h2>
+            </div>
+            {% if capacity %}
+            {% include 'horses/_capacity_ring.html' with count=count capacity=capacity availability=availability size=62 %}
+            {% else %}
+            <div class="loc-sheet-count" aria-label="{{ count }} horse{{ count|pluralize }}">
+                <span class="loc-sheet-count-number">{{ count }}</span>
+                <span class="loc-sheet-count-label">horse{{ count|pluralize }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="mt-2.5 flex flex-wrap gap-1.5">
+            {# One chip, not two: "Rested" beside "Rested 21 days" reads #}
+            {# as a stutter rather than as two facts.                    #}
+            <span class="loc-chip{% if rest_state == 'over' %} is-over{% endif %}">{{ rest_label }}{% if rest_days is not None %} {{ rest_days }} day{{ rest_days|pluralize }}{% endif %}</span>
+            {% if rest_days is None and count %}
+            <span class="loc-chip">In use</span>
+            {% endif %}
+            {% if capacity_line %}
+            <span class="loc-chip">{{ capacity_line }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ── The four things you do here ── -->
+    {% comment %}A fixed grid, in a fixed order: on a phone in a gateway,
+    muscle memory is worth more than fitting the buttons to the state.
+    {% endcomment %}
+    <div class="loc-sheet-actions">
+        {% if feature_access.locations.full %}
+        <a href="{% url 'location_arrive' location.pk %}"
+           hx-get="{% url 'location_arrive' location.pk %}" hx-target="#popup-body"
+           hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Move horses to {{ location.name }}"
+           class="loc-action is-primary">Move horses</a>
+        {% else %}
+        <a href="{% url 'horse_list' %}?group_by=location&amp;location={{ location.pk }}" class="loc-action is-primary">View horses</a>
+        {% endif %}
+
+        {% if feature_access.feed.full %}
+        <a href="{% url 'feed_out_create' location_pk=location.pk %}"
+           hx-get="{% url 'feed_out_create' location_pk=location.pk %}" hx-target="#popup-body"
+           hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Feed out at {{ location.name }}"
+           class="loc-action">Feed out</a>
+        {% else %}
+        <a href="{% url 'location_detail' location.pk %}" class="loc-action">Open</a>
+        {% endif %}
+
+        {% comment %}"Mark rested" opens the land-use sheet rather than
+        writing straight away: the change is dated and can be backdated,
+        and a mis-tap in a gateway must not invent a rest period.
+        {% endcomment %}
+        {% if feature_access.locations.full %}
+        <a href="{% url 'location_set_usage' location.pk %}"
+           hx-get="{% url 'location_set_usage' location.pk %}" hx-target="#popup-body"
+           hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Land use at {{ location.name }}"
+           class="loc-action">Mark rested</a>
+        {% endif %}
+
+        {% if location.has_coordinates %}
+        <a href="{{ location.maps_url }}" target="_blank" rel="noopener" hx-boost="false"
+           class="loc-action">Directions</a>
+        {% else %}
+        <a href="{% url 'location_detail' location.pk %}" class="loc-action">Location page</a>
+        {% endif %}
+    </div>
+
+    <!-- ── Who is on it ── -->
+    <div class="loc-sheet-body">
+        <p class="loc-sheet-label">Horses here</p>
+        {% if placements %}
+        <ul class="divide-y divide-light-sage">
+            {% for placement in placements %}
+            <li>
+                <a href="{% url 'horse_detail' placement.horse.pk %}" class="loc-horse-row">
+                    {% include 'horses/_horse_avatar.html' with horse=placement.horse size='sm' %}
+                    <span class="min-w-0 flex-1">
+                        <span class="loc-horse-name">{{ placement.horse.name }}</span>
+                        {% if placement.owner %}
+                        <span class="loc-horse-owner">{{ placement.owner.name }}</span>
+                        {% endif %}
+                    </span>
+                    <span class="loc-horse-since">{{ placement.start_date|date:"d M" }}</span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% elif rest_days is not None %}
+        <p class="text-sm text-sage">Empty &mdash; resting since {{ rest_since|date:"d M Y" }}.</p>
+        {% else %}
+        <p class="text-sm text-sage">No horses here.</p>
+        {% endif %}
+
+        <a href="{% url 'location_detail' location.pk %}" class="loc-sheet-more">Open the location page &rarr;</a>
+    </div>
+</div>

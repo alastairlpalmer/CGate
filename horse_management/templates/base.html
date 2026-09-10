@@ -48,6 +48,8 @@
     <script defer src="{% static_v 'js/split_view.js' %}"></script>
     <script defer src="{% static_v 'js/map_layout.js' %}"></script>
     <script defer src="{% static_v 'js/location_map.js' %}"></script>
+    {# The phone Locations page: the map, and its three-height sheet. #}
+    <script defer src="{% static_v 'js/locations_mobile.js' %}"></script>
     <script defer src="{% static_v 'js/alpine-collapse.min.js' %}"></script>
     <script defer src="{% static_v 'js/alpine.min.js' %}"></script>
     <!-- HTMX -->
@@ -271,7 +273,9 @@
     <div class="app-shell lg:pl-64 min-h-[100dvh] flex flex-col">
 
         <!-- Top bar (mobile — slim brand bar) -->
-        <header class="sticky top-0 z-30 bg-parchment/80 backdrop-blur border-b border-light-sage lg:hidden">
+        {# data-mobile-brand: the phone Locations page hides this row — the #}
+        {# site selector on it already names the yard (static/css/input.css). #}
+        <header data-mobile-brand class="sticky top-0 z-30 bg-parchment/80 backdrop-blur border-b border-light-sage lg:hidden">
             <div class="flex items-center justify-center h-11 px-4">
                 <div class="flex items-center gap-1.5">
                     <svg class="w-5 h-5 text-forest" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">

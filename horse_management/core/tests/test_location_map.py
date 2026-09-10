@@ -194,9 +194,11 @@ class MapTabTests(TestCase):
         self.assertEqual(payload['located'], 2)
 
     def test_locations_page_uses_the_ring_partial(self):
+        """Four rings, not three: one per desktop card, and one more on
+        the phone map's badge for the location that has a point."""
         response = self.client.get(reverse('location_list'))
         self.assertContains(response, '0 of 12 spaces used')
-        self.assertContains(response, 'width:44px;height:44px', count=3)
+        self.assertContains(response, 'width:44px;height:44px', count=4)
 
 
 @override_settings(LOCATION_MAPS_ENABLED=True)

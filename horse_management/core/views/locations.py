@@ -232,6 +232,59 @@ class LocationListView(FeatureAccessMixin, ListView):
                 )
         return queryset.order_by('site', 'name')
 
+    def _chosen_site(self, names, mapped_names):
+        """The site the phone map opens on.
+
+        The URL wins, then the dashboard preference. Failing both, a site
+        that actually has boundaries drawn: landing on the map page and
+        being told there is no map is a poor first answer when the yard
+        next door is mapped.
+        """
+        from ..models import DashboardPreference
+        chosen = (self.request.GET.get('site') or '').strip()
+        if chosen in names:
+            return chosen
+        pref = DashboardPreference.objects.filter(user=self.request.user).first()
+        if pref and pref.site in names:
+            return pref.site
+        if mapped_names:
+            return mapped_names[0]
+        return names[0] if names else ''
+
+    def _phone_map_context(self):
+        from ..dashboard import board
+
+        bands = board.map_locations_by_site()
+        names = [name for name in bands if name]
+        if not names:
+            return {}
+        mapped_names = [name for name in names if bands[name]['located']]
+        chosen = self._chosen_site(names, mapped_names)
+        payload = bands.get(chosen)
+        if payload is None:
+            return {}
+
+        mapped, unmapped = [], []
+        for loc in payload['locations']:
+            (mapped if loc['kind'] else unmapped).append(loc)
+
+        return {
+            'phone_site': chosen,
+            'phone_payload': payload,
+            'phone_mapped': mapped,
+            'phone_unmapped': unmapped,
+            'phone_sites': [
+                {
+                    'name': name,
+                    'total': bands[name]['total'],
+                    'located': bands[name]['located'],
+                    'horses': bands[name]['horses'],
+                    'is_current': name == chosen,
+                }
+                for name in names
+            ],
+        }
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['current_tab'] = self.request.GET.get('tab', 'locations')
@@ -264,6 +317,14 @@ class LocationListView(FeatureAccessMixin, ListView):
                 grouped = sort_grouped_locations(grouped)
             context['location_sort'] = sort
             context['grouped_locations'] = grouped
+
+        # Phone: the map is the page. One site at a time, the same payload
+        # the Map tab draws, with a switcher that says up front how much of
+        # each site is actually mapped. Built for the default tab only —
+        # Usage and Map have their own responsive layouts, and building it
+        # for them would mount a second Leaflet map nobody can see.
+        if context['current_tab'] == 'locations' and settings.LOCATION_MAPS_ENABLED:
+            context.update(self._phone_map_context())
 
         # Map tab: one site at a time, drawn by partials/location_map.html
         if context['current_tab'] == 'map':
@@ -662,6 +723,65 @@ def location_parse_link(request):
         })
     lat, lng = coords
     return JsonResponse({'ok': True, 'latitude': str(lat), 'longitude': str(lng), 'url': url})
+
+
+@feature_required('locations')
+def location_preview(request, pk):
+    """One location, for the phone map's sheet.
+
+    The sheet's list is server-rendered with the page; this is the step
+    after picking one — who is on it, and the four things you do about it.
+    A direct visit goes to the location's own page, so every row and
+    badge on the map stays an ordinary link without JavaScript.
+    """
+    htmx = getattr(request, 'htmx', None)
+    if not htmx or htmx.target != 'loc-sheet-detail':
+        return redirect('location_detail', pk=pk)
+
+    from ..dashboard import board
+
+    location = get_object_or_404(Location, pk=pk)
+    placements = list(
+        location.placements.filter(
+            end_date__isnull=True, horse__is_active=True,
+        ).select_related('horse', 'owner').order_by('start_date', 'horse__name')
+    )
+    count = len(placements)
+    holds_horses = location.usage in (Location.Usage.HORSES, Location.Usage.MIXED)
+    capacity = location.capacity if holds_horses else None
+    period = location.usage_periods.filter(end_date__isnull=True).first()
+    rest_days = None
+    if location.usage == Location.Usage.RESTED and period is not None:
+        rest_days = max(0, (timezone.localdate() - period.start_date).days)
+
+    state = board.rest_state(
+        count=count, capacity=capacity,
+        holds_horses=holds_horses, rest_days=rest_days,
+    )
+    label, colour = board.REST_STATES[state]
+
+    if capacity is None:
+        capacity_line = ''
+    elif count > capacity:
+        capacity_line = f"{count - capacity} over the limit"
+    else:
+        spaces = capacity - count
+        capacity_line = f"{spaces} space{'' if spaces == 1 else 's'} free"
+
+    return render(request, 'locations/partials/preview.html', {
+        'location': location,
+        'placements': placements,
+        'count': count,
+        'capacity': capacity,
+        'availability': capacity - count if capacity is not None else None,
+        'rest_state': state,
+        'rest_label': label or location.get_usage_display(),
+        'rest_colour': colour,
+        'rest_days': rest_days,
+        'rest_since': period.start_date if rest_days is not None else None,
+        'capacity_line': capacity_line,
+        'today': timezone.localdate(),
+    })
 
 
 @feature_required('locations')

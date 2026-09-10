@@ -206,6 +206,15 @@
                         });
                         this.map.on('dblclick', function () { clearTimeout(self._bgTimer); });
                     }
+                    if (this.variant === 'phone') {
+                        // Tapping bare ground puts the field detail away,
+                        // rather than leaving the page as the full map does.
+                        this.map.on('click', function () {
+                            window.dispatchEvent(new CustomEvent('yardway:map-pick', {
+                                detail: { site: self.$el.dataset.site, pk: null }
+                            }));
+                        });
+                    }
                     this.group = L.featureGroup().addTo(this.map);
                     this.draw();
                     // Badges are DOM outside Leaflet's panes, so they must be
@@ -256,18 +265,36 @@
                 draw: function () {
                     var self = this;
                     var full = this.variant === 'full';
+                    // The phone map picks rather than navigates: its tap
+                    // opens the field in the sheet beside it, and the
+                    // sheet is what static/js/locations_mobile.js drives.
+                    var picks = this.variant === 'phone';
+                    var interactive = full || picks;
                     this.payload.locations.forEach(function (loc) {
-                        var style = { color: loc.colour, weight: STROKE_WEIGHT, fillColor: loc.colour, fillOpacity: self.tiles ? FILL_OVER_TILES : FILL_PLAIN, opacity: 1 };
+                        // On the phone the colour answers the rotation —
+                        // grazing, over, rested, recovering — not capacity
+                        // alone, so the map and the list say the same thing.
+                        var colour = (picks && loc.rest_colour) ? loc.rest_colour : loc.colour;
+                        var style = { color: colour, weight: STROKE_WEIGHT, fillColor: colour, fillOpacity: self.tiles ? FILL_OVER_TILES : FILL_PLAIN, opacity: 1 };
                         var layer = null;
                         if (loc.boundary) {
-                            layer = L.geoJSON(loc.boundary, { style: style, interactive: full });
+                            layer = L.geoJSON(loc.boundary, { style: style, interactive: interactive });
                         } else if (loc.lat != null && loc.lng != null) {
-                            layer = L.circle([loc.lat, loc.lng], Object.assign({ radius: loc.radius_m || 25, interactive: full }, style));
+                            layer = L.circle([loc.lat, loc.lng], Object.assign({ radius: loc.radius_m || 25, interactive: interactive }, style));
                         }
                         if (!layer) return;   // no point: draw nothing, not even a placeholder
-                        if (full) {
+                        if (interactive) {
                             layer.on('click', function (e) {
                                 L.DomEvent.stopPropagation(e);   // not a background tap
+                                if (picks) {
+                                    // Leaflet layers are not in the page's
+                                    // DOM, so there is nothing to delegate
+                                    // from: the sheet is told by event.
+                                    window.dispatchEvent(new CustomEvent('yardway:map-pick', {
+                                        detail: { site: self.$el.dataset.site, pk: loc.pk }
+                                    }));
+                                    return;
+                                }
                                 window.location.assign(loc.urls.detail);
                             });
                         }
@@ -319,10 +346,32 @@
                     this._needsFit = !el || el.clientWidth === 0 || el.clientHeight === 0;
                     if (bounds.isValid() && !this._needsFit) {
                         this.map.invalidateSize();
-                        this.map.fitBounds(bounds, { padding: FIT_PADDING, animate: false });
+                        this.map.fitBounds(bounds, Object.assign(
+                            { animate: false }, this.fitPadding(el)
+                        ));
                         this.fitZoom = this.map.getZoom();
                     }
                     this.place();
+                },
+
+                // How much of the container the shapes must keep clear.
+                // On the phone the sheet lies over the bottom of the map,
+                // so a plain inset would fit the yard into ground nobody
+                // can see. The sheet's real edge is measured rather than
+                // repeated as a number here.
+                fitPadding: function (el) {
+                    if (this.variant !== 'phone' || !el) { return { padding: FIT_PADDING }; }
+                    var box = el.getBoundingClientRect();
+                    var sheet = document.querySelector('[data-loc-sheet]');
+                    var bottom = sheet ? box.bottom - sheet.getBoundingClientRect().top : 0;
+                    var top = FIT_PADDING[1];
+                    bottom = Math.max(FIT_PADDING[1], bottom + 12);
+                    // A sheet pulled up to full would leave no band at all.
+                    if (top + bottom > box.height * 0.7) { return { padding: FIT_PADDING }; }
+                    return {
+                        paddingTopLeft: [FIT_PADDING[0], Math.round(top)],
+                        paddingBottomRight: [FIT_PADDING[0], Math.round(bottom)]
+                    };
                 },
 
                 // Where a lat/lng lands in the container: now, or — during an
