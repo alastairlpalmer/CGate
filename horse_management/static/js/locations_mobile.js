@@ -202,7 +202,10 @@
             // the boosted navigation — a partial holds none, and the
             // sheet would come back empty.
             htmx.ajax('GET', previewUrl(state.pk), {
-                source: p,
+                // The leaf that carries hx-push-url="false"; naming the
+                // shell instead would hand that override to every link
+                // inside it.
+                source: p.querySelector('[data-preview-source]') || p,
                 target: '#loc-sheet-detail',
                 select: '#loc-sheet-content',
                 swap: 'innerHTML'
