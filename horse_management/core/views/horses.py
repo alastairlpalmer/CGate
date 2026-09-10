@@ -37,6 +37,9 @@ from health.models import (
     VetVisit,
     WormEggCount,
     WormingTreatment,
+    current_farrier_visits,
+    current_vaccinations,
+    current_worming_treatments,
 )
 
 from ..forms import (
@@ -1028,6 +1031,35 @@ class HorseListView(FeatureAccessMixin, ListView):
         return _sort_groups(groups, self.group_sort)
 
 
+def build_horse_timeline(
+    *, placements, vaccinations, farrier_visits, worming_treatments,
+    egg_counts, vet_visits, breeding_records=(),
+):
+    """One list of dated events, newest first.
+
+    The horse page and the list's preview pane both print a timeline. They
+    build it from the same records, so it is assembled once here — two
+    copies of this drift the moment a record type is added.
+    """
+    timeline = []
+    for p in placements:
+        timeline.append({'type': 'placement', 'date': p.start_date, 'obj': p})
+    for v in vaccinations:
+        timeline.append({'type': 'vaccination', 'date': v.date_given, 'obj': v})
+    for f in farrier_visits:
+        timeline.append({'type': 'farrier', 'date': f.date, 'obj': f})
+    for w in worming_treatments:
+        timeline.append({'type': 'worming', 'date': w.date, 'obj': w})
+    for ec in egg_counts:
+        timeline.append({'type': 'egg_count', 'date': ec.date, 'obj': ec})
+    for v in vet_visits:
+        timeline.append({'type': 'vet_visit', 'date': v.date, 'obj': v})
+    for br in breeding_records:
+        timeline.append({'type': 'breeding', 'date': br.date_covered, 'obj': br})
+    timeline.sort(key=lambda e: e['date'], reverse=True)
+    return timeline
+
+
 class HorseDetailView(FeatureAccessMixin, DetailView):
     feature = 'horses'
     access_level = LEVEL_VIEW
@@ -1099,25 +1131,15 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
             context['foal_notes'] = list(foal_record.foal_notes.all())
             context['foal_note_form'] = FoalNoteForm(initial={'date': timezone.localdate()})
 
-        # Build unified timeline
-        timeline = []
-        for p in context['placements']:
-            timeline.append({'type': 'placement', 'date': p.start_date, 'obj': p})
-        for v in context['vaccinations']:
-            timeline.append({'type': 'vaccination', 'date': v.date_given, 'obj': v})
-        for f in context['farrier_visits']:
-            timeline.append({'type': 'farrier', 'date': f.date, 'obj': f})
-        for w in context['worming_treatments']:
-            timeline.append({'type': 'worming', 'date': w.date, 'obj': w})
-        for ec in context['egg_counts']:
-            timeline.append({'type': 'egg_count', 'date': ec.date, 'obj': ec})
-        for v in context['vet_visits']:
-            timeline.append({'type': 'vet_visit', 'date': v.date, 'obj': v})
-        if horse.is_mare:
-            for br in context.get('breeding_records', []):
-                timeline.append({'type': 'breeding', 'date': br.date_covered, 'obj': br})
-        timeline.sort(key=lambda e: e['date'], reverse=True)
-        context['timeline_events'] = timeline
+        context['timeline_events'] = build_horse_timeline(
+            placements=context['placements'],
+            vaccinations=context['vaccinations'],
+            farrier_visits=context['farrier_visits'],
+            worming_treatments=context['worming_treatments'],
+            egg_counts=context['egg_counts'],
+            vet_visits=context['vet_visits'],
+            breeding_records=context.get('breeding_records', []) if horse.is_mare else [],
+        )
 
         return context
 
@@ -1245,6 +1267,111 @@ def horse_quick_view(request, pk):
         'horse': horse,
         'current_placement': placement,
         'owner': horse.current_owner,
+    })
+
+
+def horse_credential_rows(horse):
+    """The Credentials block: identity papers, then what is next due.
+
+    Vaccination rows are read from the horse's own records rather than a
+    fixed Flu/Tetanus pair, so a yard running its own programme gets its
+    own labels. Only the latest record per type carries a meaningful due
+    date — an old booster is due forever — so each is filtered down to it.
+    """
+    today = timezone.localdate()
+
+    def due_row(label, due):
+        return {
+            'label': label,
+            'value': due.strftime('%d %b %Y') if due else 'Not recorded',
+            'tone': 'muted' if not due else ('alert' if due < today else 'plain'),
+        }
+
+    rows = [
+        {
+            'label': 'Passport',
+            'value': (horse.passport_number or 'On record') if horse.has_passport else 'No passport',
+            'tone': 'plain' if horse.has_passport else 'alert',
+        },
+        {
+            'label': 'Microchip',
+            'value': horse.microchip or 'Not recorded',
+            'tone': 'plain' if horse.microchip else 'muted',
+        },
+    ]
+
+    for vaccination in current_vaccinations(
+        horse.vaccinations.select_related('vaccination_type')
+    ):
+        rows.append(due_row(vaccination.vaccination_type.name, vaccination.next_due_date))
+
+    farrier = current_farrier_visits(horse.farrier_visits.all()).first()
+    rows.append(due_row('Farrier', farrier.next_due_date if farrier else None))
+
+    worming = current_worming_treatments(horse.worming_treatments.all()).first()
+    rows.append(due_row('Worming', worming.next_due_date if worming else None))
+
+    return rows
+
+
+@feature_required('horses')
+def horse_preview(request, pk):
+    """The horse list's preview pane, and its sheet on a phone.
+
+    The same partial serves both: the pane is the sheet laid on its side.
+    A direct visit (or no JavaScript) goes to the full page instead, so
+    every row on the list stays an ordinary link.
+    """
+    htmx = getattr(request, 'htmx', None)
+    if not htmx or htmx.target != 'horse-preview-body':
+        return redirect('horse_detail', pk=pk)
+
+    horse = get_object_or_404(
+        Horse.objects.prefetch_related('ownership_shares__owner'), pk=pk
+    )
+    placement = (
+        horse.placements.filter(end_date__isnull=True)
+        .select_related('location', 'owner', 'rate_type')
+        .first()
+    )
+    last_placement = None
+    if placement is None:
+        last_placement = (
+            horse.placements.select_related('location').order_by('-start_date').first()
+        )
+
+    placements = list(
+        horse.placements.select_related('owner', 'location', 'rate_type')[:8]
+    )
+    vaccinations = list(horse.vaccinations.select_related('vaccination_type')[:8])
+    farrier_visits = list(horse.farrier_visits.select_related('service_provider')[:8])
+    worming_treatments = list(horse.worming_treatments.all()[:8])
+    egg_counts = list(horse.worm_egg_counts.all()[:8])
+    vet_visits = list(horse.vet_visits.select_related('vet')[:8])
+    breeding_records = (
+        list(horse.breeding_records.all()[:8]) if horse.is_mare else []
+    )
+
+    timeline = build_horse_timeline(
+        placements=placements,
+        vaccinations=vaccinations,
+        farrier_visits=farrier_visits,
+        worming_treatments=worming_treatments,
+        egg_counts=egg_counts,
+        vet_visits=vet_visits,
+        breeding_records=breeding_records,
+    )
+
+    return render(request, 'horses/partials/preview.html', {
+        'horse': horse,
+        'current_placement': placement,
+        'last_placement': last_placement,
+        'owner': horse.current_owner,
+        'ownership_shares': list(horse.ownership_shares.all()),
+        'credential_rows': horse_credential_rows(horse),
+        'documents': list(horse.documents.all()[:6]),
+        'timeline_events': timeline[:12],
+        'today': timezone.localdate(),
     })
 
 
@@ -1432,10 +1559,15 @@ def horse_arrive(request, pk):
 
 @feature_required('horses')
 def horse_depart(request, pk):
-    """Log a single horse departing (from Horse Detail, POST only)."""
+    """Log a single horse departing (POST only).
+
+    Answers a same-origin ``next`` so a departure logged from the horse
+    list's preview pane comes back to the list, not to the horse page.
+    """
     from ..services import PlacementService
 
     horse = get_object_or_404(Horse, pk=pk)
+    back = safe_next(request, '') or reverse('horse_detail', kwargs={'pk': horse.pk})
 
     if request.method == 'POST':
         if not horse.current_placement:
@@ -1446,18 +1578,18 @@ def horse_depart(request, pk):
                 request,
                 f"{horse.name} has no current placement to depart from.",
             )
-            return redirect('horse_detail', pk=horse.pk)
+            return redirect(back)
         departure_date_str = request.POST.get('departure_date')
         if not departure_date_str:
             messages.error(request, "Departure date is required.")
-            return redirect('horse_detail', pk=horse.pk)
+            return redirect(back)
 
         from datetime import date
         try:
             departure_date = date.fromisoformat(departure_date_str)
         except ValueError:
             messages.error(request, "Invalid date format.")
-            return redirect('horse_detail', pk=horse.pk)
+            return redirect(back)
 
         try:
             placement = PlacementService.depart_horse(horse, departure_date)
@@ -1479,7 +1611,7 @@ def horse_depart(request, pk):
                 "— refresh and check the current placement before retrying.",
             )
 
-    return redirect('horse_detail', pk=horse.pk)
+    return redirect(back)
 
 
 @feature_required('horses')
