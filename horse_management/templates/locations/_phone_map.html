@@ -20,23 +20,23 @@ nothing.
 {% endcomment %}
 <div id="locations-phone" class="loc-phone lg:hidden" data-phone-map
      data-preview-url="{% url 'location_preview' 0 %}"
-     data-site="{{ phone_site }}">
+     data-site="{{ board_site }}">
 
     <!-- ── The map, or an honest account of why there isn't one ── -->
     <div class="loc-phone-map">
-        {% if phone_mapped %}
-        {% include 'partials/location_map.html' with payload=phone_payload variant='phone' %}
+        {% if board_mapped %}
+        {% include 'partials/location_map.html' with payload=board_payload variant='phone' picks='1' pinned=board_pinned %}
         {% else %}
         <div class="loc-phone-nomap">
             <p class="loc-sheet-label">No boundaries</p>
-            <h2 class="text-lg font-semibold text-charcoal leading-snug mt-1">No boundaries drawn for {{ phone_site|default:"this site" }} yet</h2>
+            <h2 class="text-lg font-semibold text-charcoal leading-snug mt-1">No boundaries drawn for {{ board_site|default:"this site" }} yet</h2>
             <p class="mt-1.5 text-sm text-sage">
-                {{ phone_payload.total }} location{{ phone_payload.total|pluralize }} here {{ phone_payload.total|pluralize:"is,are" }} tracked by name only. Occupancy and rest still work in the list below.
+                {{ board_payload.total }} location{{ board_payload.total|pluralize }} here {{ board_payload.total|pluralize:"is,are" }} tracked by name only. Occupancy and rest still work in the list below.
             </p>
             {% if feature_access.locations.full %}
             <div class="mt-3 flex flex-col gap-2">
-                <a href="{% url 'boundary_import_upload' %}?site={{ phone_site|urlencode }}" class="btn-primary justify-center">Import field map</a>
-                <a href="{% url 'location_list' %}?tab=map&amp;site={{ phone_site|urlencode }}" class="btn-secondary justify-center">Open the full map</a>
+                <a href="{% url 'boundary_import_upload' %}?site={{ board_site|urlencode }}" class="btn-primary justify-center">Import field map</a>
+                <a href="{% url 'location_list' %}?view=map&amp;site={{ board_site|urlencode }}" class="btn-secondary justify-center">Open the full map</a>
             </div>
             {% endif %}
         </div>
@@ -51,8 +51,8 @@ nothing.
         <div class="loc-site-slot lg:hidden">
             <button type="button" data-loc-action="sites" class="loc-site-pill"
                     aria-expanded="false" aria-controls="loc-site-menu">
-                <span class="loc-site-initial" aria-hidden="true">{{ phone_site|slice:":1"|upper|default:"?" }}</span>
-                <span class="loc-site-name">{{ phone_site|default:"No site" }}</span>
+                <span class="loc-site-initial" aria-hidden="true">{{ board_site|slice:":1"|upper|default:"?" }}</span>
+                <span class="loc-site-name">{{ board_site|default:"No site" }}</span>
                 <svg class="w-4 h-4 shrink-0 text-sage transition-transform duration-150" data-loc-chevron
                      fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
@@ -65,7 +65,7 @@ nothing.
             working site switch.{% endcomment %}
             <div id="loc-site-menu" class="loc-site-menu" hidden>
                 <p class="loc-sheet-label px-3.5 pt-3 pb-2">Sites</p>
-                {% for site in phone_sites %}
+                {% for site in board_sites %}
                 <a href="{% url 'location_list' %}?site={{ site.name|urlencode }}"
                    class="loc-site-item{% if site.is_current %} is-current{% endif %}"
                    {% if site.is_current %}aria-current="true"{% endif %}>
@@ -121,7 +121,7 @@ nothing.
                 {# Its own box so sorting is an append, and the unmapped #}
                 {# block below never moves with it.                      #}
                 <div data-loc-mapped>
-                {% for loc in phone_mapped %}
+                {% for loc in board_mapped %}
                 <button type="button" class="loc-row" data-loc-row data-pk="{{ loc.pk }}"
                         data-count="{{ loc.count }}" data-rest="{{ loc.rest_days|default_if_none:"-1" }}"
                         data-state="{{ loc.rest_state }}" data-name="{{ loc.name }}">
@@ -144,15 +144,15 @@ nothing.
 
                 <p class="loc-empty" data-loc-empty hidden>Nothing matches that filter.</p>
 
-                {% if phone_unmapped %}
+                {% if board_unmapped %}
                 {% comment %}Unmapped locations sit at the end, never mixed
                 in: the list above answers "where on this map", and one
                 with no boundary cannot. The filter still reaches them —
                 "show me what is rested" must not quietly mean "of the
                 ones that are drawn".{% endcomment %}
                 <div data-loc-unmapped>
-                <p class="loc-sheet-label pt-4 pb-2">Not on the map (<span data-loc-unmapped-count>{{ phone_unmapped|length }}</span>)</p>
-                {% for loc in phone_unmapped %}
+                <p class="loc-sheet-label pt-4 pb-2">Not on the map (<span data-loc-unmapped-count>{{ board_unmapped|length }}</span>)</p>
+                {% for loc in board_unmapped %}
                 <button type="button" class="loc-row is-unmapped" data-loc-row data-pk="{{ loc.pk }}"
                         data-count="{{ loc.count }}" data-rest="{{ loc.rest_days|default_if_none:"-1" }}"
                         data-state="{{ loc.rest_state }}" data-name="{{ loc.name }}" data-unmapped>

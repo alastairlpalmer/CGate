@@ -1344,3 +1344,89 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
 @media (prefers-reduced-motion: reduce) {
     .loc-sheet { transition: none; }
 }
+
+/* ── The site board on a wide screen ───────────────────────────────────
+   The rail beside the map (templates/locations/_site_board.html, driven
+   by static/js/locations_board.js). Below `lg` the same site is the
+   phone map with its sheet, above. */
+
+.loc-board {
+    /* Tall enough to be a working surface, never taller than the window:
+       the rail scrolls inside itself and the map holds its shape. */
+    height: min(calc(100dvh - 16rem), 46rem);
+    min-height: 30rem;
+    gap: 1rem;
+}
+.loc-board > .loc-rail { flex: 1 1 22rem; min-width: 20rem; max-width: 28rem; }
+.loc-board > .loc-board-map { flex: 2 1 0%; }
+
+.loc-rail {
+    @apply flex flex-col min-h-0 bg-white border border-light-sage rounded-card overflow-hidden;
+}
+.loc-rail-list { @apply flex flex-col min-h-0 flex-1; }
+.loc-rail-detail { @apply flex-1 min-h-0 overflow-y-auto overscroll-contain; }
+.loc-rail-head { @apply px-4 pt-4 pb-3 border-b border-light-sage shrink-0; }
+
+/* Rest and rotation: the whole site's recovery in one row of bars. */
+.loc-rest { @apply px-4 py-3 border-b border-light-sage bg-parchment/50 shrink-0; }
+.loc-rest-bars { @apply flex items-end gap-1 h-11; }
+.loc-rest-bar {
+    @apply flex-1 min-w-[4px] rounded-sm transition-[filter,transform] duration-100;
+    transform-origin: bottom;
+}
+.loc-rest-bar:hover, .loc-rest-bar.is-hover { filter: brightness(0.9); transform: scaleY(1.06); }
+.loc-rest-bar.is-selected { @apply ring-2 ring-saddle ring-offset-1; }
+.loc-rest-key { @apply mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-charcoal-light; }
+.loc-rest-key span { @apply inline-flex items-center gap-1.5; }
+.loc-rest-key i { @apply block w-2 h-2 rounded-[2px]; }
+
+.loc-rail-controls { @apply flex items-center gap-2 px-4 py-2.5 border-b border-light-sage shrink-0; }
+.loc-rail-search {
+    @apply flex-1 min-w-0 px-2.5 py-1.5 text-sm rounded-btn border border-light-sage
+           bg-parchment/60 text-charcoal placeholder:text-sage
+           focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-sage;
+}
+.loc-rail-rows { @apply flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-2; }
+.loc-rail-divider { @apply flex items-center gap-2.5 pt-3 pb-2; }
+
+/* One location in the rail. */
+.loc-card {
+    @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-card border border-light-sage
+           bg-white text-left transition-colors duration-100 hover:bg-sage-50/60;
+}
+.loc-card.is-hover { @apply bg-sage-50 border-sage/40; }
+.loc-card.is-selected { @apply bg-sage-50 border-forest; }
+.loc-card.is-unmapped { @apply border-dashed border-sand bg-parchment/60; }
+.loc-card-name { @apply block text-[15px] font-semibold text-charcoal leading-tight truncate; }
+.loc-card-sub { @apply block mt-0.5 text-[12.5px] text-sage truncate; }
+.loc-card-fill { @apply block mt-2 h-[3px] rounded-sm bg-light-sage overflow-hidden; }
+.loc-card-fill > span { @apply block h-full; }
+.loc-card-count { @apply block text-sm font-bold text-charcoal tabular-nums; }
+.loc-card-count.is-over { @apply text-error-red; }
+.loc-card-count.is-quiet { @apply text-sage; }
+.loc-card-unit { @apply block text-[11px] text-sage/80; }
+
+/* The map half. */
+.loc-board-map { @apply relative min-h-0 rounded-card border border-light-sage overflow-hidden bg-parchment; }
+.loc-board-map .location-map { position: absolute; inset: 0; height: 100%; border: 0; border-radius: 0; }
+.loc-board-nomap { @apply absolute inset-0 grid place-items-center p-6 bg-parchment; }
+
+/* What the colours mean. The map earns a key now that its colour says
+   where the ground is in the rotation, not merely how full it is. */
+.loc-map-key {
+    @apply absolute left-3 bottom-3 z-[510] flex flex-wrap gap-x-3.5 gap-y-1 px-3 py-2
+           rounded-card border border-light-sage bg-white/90 text-xs text-charcoal-light;
+}
+.loc-map-key span { @apply inline-flex items-center gap-1.5; }
+.loc-map-key i { @apply block w-2.5 h-2.5 rounded-[2px]; }
+
+.location-map-badge.is-hover { @apply border-sage ring-2 ring-sage/30; }
+
+/* The detail panel's capacity bar and its nearest-ground chips. */
+.loc-detail-fill { @apply mt-3 h-1.5 rounded-full bg-light-sage overflow-hidden; }
+.loc-detail-fill > span { @apply block h-full; }
+.loc-near {
+    @apply inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-light-sage
+           bg-parchment/60 text-[13px] font-semibold text-charcoal
+           transition-colors duration-100 hover:border-saddle hover:text-saddle;
+}

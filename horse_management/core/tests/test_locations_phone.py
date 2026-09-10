@@ -138,12 +138,14 @@ class PhoneMapPageTests(PhoneMapFixture):
         return self.client.get(self.url, params).content.decode()
 
     def test_the_phone_page_is_served_with_the_desktop_one(self):
-        """One response holds both: the phone layout, and the tabs and
-        cards that take over from lg."""
+        """One response holds both shapes of the site board: the map with
+        its sheet on a phone, and the rail beside the map from lg. CSS
+        picks; only one of the two ever mounts a map (location_map.js
+        waits for its container to have a size)."""
         body = self.body()
         self.assertIn('data-phone-map', body)
         self.assertIn('data-loc-sheet', body)
-        self.assertIn('grid grid-cols-1 md:grid-cols-2', body)
+        self.assertIn('data-site-board', body)
 
     def test_it_opens_on_a_site_that_has_a_map(self):
         """Colgate sorts first, but landing on the map page and being told
@@ -193,11 +195,13 @@ class PhoneMapPageTests(PhoneMapFixture):
     def test_the_usage_page_is_still_reachable_from_the_sheet(self):
         self.assertIn(f'{self.url}?tab=usage', self.body())
 
-    def test_the_other_tabs_do_not_build_a_second_map(self):
-        """Two Leaflet maps on one page is one more than anybody can see."""
-        for tab in ('usage', 'map'):
-            with self.subTest(tab=tab):
-                self.assertNotIn('data-phone-map', self.body(tab=tab))
+    def test_usage_does_not_build_a_map_it_cannot_show(self):
+        self.assertNotIn('data-phone-map', self.body(tab='usage'))
+
+    def test_the_cards_view_drops_both_shapes_of_the_board(self):
+        body = self.body(view='cards')
+        self.assertNotIn('data-phone-map', body)
+        self.assertNotIn('data-site-board', body)
 
 
 class PhoneMapDisabledTests(PhoneMapFixture):

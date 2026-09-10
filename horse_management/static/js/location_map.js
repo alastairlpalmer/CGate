@@ -62,6 +62,11 @@
             opts = opts || {};
             return {
                 variant: opts.variant || 'full',
+                // Whether a tap opens the location's page or hands it to
+                // the board beside the map. The phone always picks; the
+                // desktop board asks for it, and the standalone map does
+                // not, so its badges stay ordinary links.
+                picks: opts.picks !== undefined ? !!opts.picks : opts.variant === 'phone',
                 highlight: opts.highlight || null,
                 tiles: false,     // the base map is showing
                 payload: null,
@@ -95,11 +100,21 @@
                         self.focus(e.detail.highlight);
                     };
                     window.addEventListener('yardway:map-focus', this._onFocus);
+                    // The board beside the map points at a location by
+                    // hovering its row; the shape has to answer, or the
+                    // two lists read as unrelated.
+                    this._onHover = function (e) {
+                        if (!e.detail || e.detail.site !== self.$el.dataset.site) return;
+                        self.highlightShape(e.detail.pk);
+                    };
+                    window.addEventListener('yardway:map-hover', this._onHover);
                 },
 
                 destroy: function () {
                     clearTimeout(this._bgTimer);
+                    if (this._sizeWatch) { this._sizeWatch.disconnect(); this._sizeWatch = null; }
                     window.removeEventListener('yardway:map-focus', this._onFocus);
+                    window.removeEventListener('yardway:map-hover', this._onHover);
                     if (this._ro) { this._ro.disconnect(); }
                     if (this.map) { this.map.remove(); this.map = null; }
                     this._tileLayer = null;
@@ -149,6 +164,16 @@
                     var self = this;
                     var el = this.$refs.map;
                     if (this.map || !el || !window.L || !document.body.contains(el)) return;
+                    // The Locations page carries both shapes of itself, and
+                    // one of them is always display:none. Mounting the hidden
+                    // one would build a second Leaflet map and, on the phone,
+                    // fetch a screen of tiles nobody can see — so wait until
+                    // the container has a size, and let the observer below
+                    // mount it if the window ever changes its mind.
+                    if (!el.clientWidth || !el.clientHeight) {
+                        this.watchForSize(el);
+                        return;
+                    }
                     var full = this.variant === 'full';
                     // Two ways in. With a mouse or trackpad (a fine pointer)
                     // both maps are for looking: drag to move, +/- and a double
@@ -206,7 +231,7 @@
                         });
                         this.map.on('dblclick', function () { clearTimeout(self._bgTimer); });
                     }
-                    if (this.variant === 'phone') {
+                    if (this.picks) {
                         // Tapping bare ground puts the field detail away,
                         // rather than leaving the page as the full map does.
                         this.map.on('click', function () {
@@ -250,6 +275,19 @@
                     this.focus(this.highlight);
                 },
 
+                // Wait for a hidden container to be shown, then mount once.
+                watchForSize: function (el) {
+                    if (this._sizeWatch || !window.ResizeObserver) return;
+                    var self = this;
+                    this._sizeWatch = new ResizeObserver(function () {
+                        if (!el.clientWidth || !el.clientHeight) return;
+                        self._sizeWatch.disconnect();
+                        self._sizeWatch = null;
+                        self.mount();
+                    });
+                    this._sizeWatch.observe(el);
+                },
+
                 // A short notice over the map (how to move it on a phone).
                 hint: function (text) {
                     var self = this;
@@ -268,7 +306,7 @@
                     // The phone map picks rather than navigates: its tap
                     // opens the field in the sheet beside it, and the
                     // sheet is what static/js/locations_mobile.js drives.
-                    var picks = this.variant === 'phone';
+                    var picks = this.picks;
                     var interactive = full || picks;
                     this.payload.locations.forEach(function (loc) {
                         // On the phone the colour answers the rotation —
@@ -352,6 +390,27 @@
                         this.fitZoom = this.map.getZoom();
                     }
                     this.place();
+                },
+
+                // Lift one shape out of the rest: a heavier stroke and a
+                // fuller wash, so the eye finds it without the colour
+                // changing meaning.
+                highlightShape: function (pk) {
+                    var self = this;
+                    Object.keys(this.layers).forEach(function (key) {
+                        var layer = self.layers[key];
+                        var on = String(key) === String(pk);
+                        if (!layer.setStyle) { return; }
+                        layer.setStyle({
+                            weight: on ? STROKE_WEIGHT + 2 : STROKE_WEIGHT,
+                            fillOpacity: on
+                                ? (self.tiles ? FILL_OVER_TILES + 0.14 : FILL_PLAIN + 0.16)
+                                : (self.tiles ? FILL_OVER_TILES : FILL_PLAIN),
+                        });
+                    });
+                    Object.keys(this.badges).forEach(function (key) {
+                        self.badges[key].classList.toggle('is-hover', String(key) === String(pk));
+                    });
                 },
 
                 // How much of the container the shapes must keep clear.
@@ -618,7 +677,7 @@
                 },
 
                 mapTabUrl: function () {
-                    return this.data.urls.map + '?tab=map&site=' + encodeURIComponent(this.site);
+                    return this.data.urls.map + '?view=map&site=' + encodeURIComponent(this.site);
                 },
 
                 count: function () {

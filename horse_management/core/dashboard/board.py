@@ -176,7 +176,7 @@ def map_locations_by_site():
 
 def _shape_band(band):
     from django.urls import reverse
-    from ..boundary_import import anchor_for, display_geometry
+    from ..boundary_import import anchor_for, area_hectares, display_geometry
 
     locations = []
     located = 0
@@ -215,6 +215,10 @@ def _shape_band(band):
                 if kind == 'polygon' else None
             ),
             'anchor': list(anchor) if anchor else None,
+            'area_ha': (
+                area_hectares(loc.boundary, key=(loc.pk, loc.boundary_updated_at))
+                if kind == 'polygon' else None
+            ),
             'kind': kind,
             'state': state,
             'colour': MAP_COLOURS[state],

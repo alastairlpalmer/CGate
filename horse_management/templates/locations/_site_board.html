@@ -1,0 +1,154 @@
+{% comment %}
+The site board on a wide screen: one site's ground as a rail beside its
+map (locations/_site_board.html, driven by static/js/locations_board.js).
+
+Hidden below `lg`, where locations/_phone_map.html shows the same site as
+a map with a sheet over it. Both read one payload and both load the same
+detail partial, so the two shapes of the page can never drift apart.
+
+Hovering a row lights its shape on the map and the other way about;
+clicking either opens the detail in the rail. The map's own Fit and Map
+buttons are the ones it has always had.
+{% endcomment %}
+<div class="loc-board hidden lg:flex" data-site-board
+     data-preview-url="{% url 'location_preview' 0 %}"
+     data-site="{{ board_site }}">
+
+    <!-- ── The rail ── -->
+    <section class="loc-rail">
+        {# The detail's htmx target. Empty until a location is picked. #}
+        <div id="loc-rail-detail" class="loc-rail-detail" hidden></div>
+
+        <div class="loc-rail-list" data-rail-list>
+            <div class="loc-rail-head">
+                <div class="flex items-baseline gap-2.5 flex-wrap">
+                    <h1 class="text-[22px] font-bold font-heading text-charcoal leading-tight">{{ board_site|default:"No site" }}</h1>
+                    <span class="loc-chip">{{ board_payload.horses }} horse{{ board_payload.horses|pluralize }}</span>
+                </div>
+                <p class="mt-1 text-[13px] text-sage">
+                    {{ board_payload.located }} of {{ board_payload.total }} location{{ board_payload.total|pluralize }} on the map
+                    {% if board_ready %}&middot; {{ board_ready|length }} ready to take horses{% endif %}
+                </p>
+            </div>
+
+            {% if board_mapped or board_unmapped %}
+            {% comment %}Rest and rotation. One bar per location, longest
+            rested first, height by days rested — the shape of the whole
+            site's recovery in one glance, and every bar is a way in.
+            {% endcomment %}
+            <div class="loc-rest">
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <span class="loc-sheet-label">Rest &amp; rotation</span>
+                    <span class="text-xs text-sage" data-rest-summary></span>
+                </div>
+                <div class="loc-rest-bars" role="list" data-rest-bars>
+                    {% for loc in board_rest_order %}
+                    <button type="button" role="listitem" class="loc-rest-bar" data-loc-bar data-pk="{{ loc.pk }}"
+                            style="height: {{ loc.bar_height }}%; background: {{ loc.rest_colour }}"
+                            title="{{ loc.name }} &mdash; {{ loc.rest_label }}{% if loc.rest_days is not None %} {{ loc.rest_days }} day{{ loc.rest_days|pluralize }}{% endif %}">
+                        <span class="sr-only">{{ loc.name }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+                <div class="loc-rest-key">
+                    <span><i style="background: {{ rest_key.rested }}"></i>Rested a fortnight or more</span>
+                    <span><i style="background: {{ rest_key.recovering }}"></i>Still recovering</span>
+                    <span><i style="background: {{ rest_key.over }}"></i>In use or over</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="loc-rail-controls">
+                <label class="sr-only" for="loc-rail-filter">Filter this site's locations</label>
+                <input type="search" id="loc-rail-filter" data-rail-filter class="loc-rail-search"
+                       placeholder="Filter locations&hellip;" autocomplete="off" spellcheck="false">
+                <button type="button" class="loc-sort is-active" data-loc-sort="horses">Most horses</button>
+                <button type="button" class="loc-sort" data-loc-sort="rest">Longest rested</button>
+            </div>
+
+            <div class="loc-rail-rows" data-loc-rows>
+                <div data-loc-mapped>
+                    {% for loc in board_mapped %}
+                    <button type="button" class="loc-card" data-loc-row data-pk="{{ loc.pk }}"
+                            data-count="{{ loc.count }}" data-rest="{{ loc.rest_days|default_if_none:"-1" }}"
+                            data-state="{{ loc.rest_state }}" data-name="{{ loc.name }}">
+                        <span class="min-w-0 flex-1 text-left">
+                            <span class="loc-card-name">{{ loc.name }}</span>
+                            <span class="loc-card-sub">
+                                <span style="color: {{ loc.rest_colour }}" class="font-semibold">{{ loc.rest_label }}</span>
+                                {% if loc.rest_days is not None %}<span class="text-sage/50">&middot;</span> rested {{ loc.rest_days }} day{{ loc.rest_days|pluralize }}{% elif loc.count %}<span class="text-sage/50">&middot;</span> in use{% endif %}
+                                {% if loc.area_ha %}<span class="text-sage/50">&middot;</span> {{ loc.area_ha }} ha{% endif %}
+                            </span>
+                            {% if loc.capacity %}
+                            <span class="loc-card-fill" aria-hidden="true">
+                                <span style="width: {{ loc.fill_pct }}%; background: {{ loc.rest_colour }}"></span>
+                            </span>
+                            {% endif %}
+                        </span>
+                        <span class="shrink-0 text-right">
+                            <span class="loc-card-count{% if loc.capacity and loc.count > loc.capacity %} is-over{% elif not loc.count %} is-quiet{% endif %}">{{ loc.count }}{% if loc.capacity %}/{{ loc.capacity }}{% endif %}</span>
+                            <span class="loc-card-unit">horse{{ loc.count|pluralize }}</span>
+                        </span>
+                    </button>
+                    {% endfor %}
+                </div>
+
+                <p class="loc-empty" data-loc-empty hidden>Nothing matches that filter.</p>
+
+                {% if board_unmapped %}
+                <div data-loc-unmapped>
+                    <div class="loc-rail-divider">
+                        <span class="loc-sheet-label">Not on the map (<span data-loc-unmapped-count>{{ board_unmapped|length }}</span>)</span>
+                        <span class="flex-1 border-b border-light-sage"></span>
+                        {% if feature_access.locations.full %}
+                        <a href="{% url 'boundary_import_upload' %}?site={{ board_site|urlencode }}" class="text-xs font-semibold text-saddle">Add boundary</a>
+                        {% endif %}
+                    </div>
+                    {% for loc in board_unmapped %}
+                    <button type="button" class="loc-card is-unmapped" data-loc-row data-pk="{{ loc.pk }}"
+                            data-count="{{ loc.count }}" data-rest="{{ loc.rest_days|default_if_none:"-1" }}"
+                            data-state="{{ loc.rest_state }}" data-name="{{ loc.name }}" data-unmapped>
+                        <span class="min-w-0 flex-1 text-left">
+                            <span class="loc-card-name">{{ loc.name }}</span>
+                            <span class="loc-card-sub">{{ loc.rest_label }}</span>
+                        </span>
+                        <span class="loc-card-count{% if not loc.count %} is-quiet{% endif %}">{{ loc.count }}{% if loc.capacity %}/{{ loc.capacity }}{% endif %}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <!-- ── The map ── -->
+    <section class="loc-board-map">
+        {% if board_mapped %}
+        {% include 'partials/location_map.html' with payload=board_payload variant='full' picks='1' pinned=board_pinned %}
+        <div class="loc-map-key">
+            <span><i style="background: {{ rest_key.grazing }}"></i>Grazing</span>
+            <span><i style="background: {{ rest_key.rested }}"></i>Rested</span>
+            <span><i style="background: {{ rest_key.recovering }}"></i>Recovering</span>
+            <span><i style="background: {{ rest_key.over }}"></i>Over capacity</span>
+        </div>
+        {% else %}
+        <div class="loc-board-nomap">
+            <div class="max-w-sm">
+                <p class="loc-sheet-label">No boundaries</p>
+                <h2 class="mt-1 text-xl font-bold font-heading text-charcoal leading-snug">{{ board_site|default:"This site" }} has none drawn yet</h2>
+                <p class="mt-2 text-sm text-sage leading-relaxed">
+                    {{ board_payload.total }} location{{ board_payload.total|pluralize }} here {{ board_payload.total|pluralize:"is,are" }} tracked by name only. Occupancy and rest still work in the list beside this.
+                </p>
+                {% if feature_access.locations.full %}
+                <div class="mt-4 flex flex-wrap gap-2">
+                    <a href="{% url 'boundary_import_upload' %}?site={{ board_site|urlencode }}" class="btn-primary">Import field map</a>
+                    <a href="{% url 'location_create' %}" hx-get="{% url 'location_create' %}"
+                       hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                       data-popup-title="Add location" class="btn-secondary">Add a location</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </section>
+</div>
