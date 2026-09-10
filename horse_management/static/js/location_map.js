@@ -108,17 +108,16 @@
                         self.highlightShape(e.detail.pk);
                     };
                     window.addEventListener('yardway:map-hover', this._onHover);
+                    this._onResize = function () { self.sizeChanged(); };
+                    window.addEventListener('resize', this._onResize);
                 },
 
                 destroy: function () {
-                    clearTimeout(this._bgTimer);
                     if (this._sizeWatch) { this._sizeWatch.disconnect(); this._sizeWatch = null; }
                     window.removeEventListener('yardway:map-focus', this._onFocus);
                     window.removeEventListener('yardway:map-hover', this._onHover);
-                    if (this._ro) { this._ro.disconnect(); }
-                    if (this.map) { this.map.remove(); this.map = null; }
-                    this._tileLayer = null;
-                    this._attribution = null;
+                    window.removeEventListener('resize', this._onResize);
+                    this.unmount();
                 },
 
                 // ── The base map ──
@@ -170,10 +169,8 @@
                     // fetch a screen of tiles nobody can see — so wait until
                     // the container has a size, and let the observer below
                     // mount it if the window ever changes its mind.
-                    if (!el.clientWidth || !el.clientHeight) {
-                        this.watchForSize(el);
-                        return;
-                    }
+                    this.watchForSize(el);
+                    if (!el.clientWidth || !el.clientHeight) { return; }
                     var full = this.variant === 'full';
                     // Two ways in. With a mouse or trackpad (a fine pointer)
                     // both maps are for looking: drag to move, +/- and a double
@@ -275,17 +272,52 @@
                     this.focus(this.highlight);
                 },
 
-                // Wait for a hidden container to be shown, then mount once.
+                // Follow the container's size for the life of the component:
+                // build the map when CSS gives the container a size, take it
+                // down when CSS takes the size away again. The second half
+                // matters because both shapes of the Locations page ship in
+                // one response — a window dragged across the breakpoint hands
+                // the map from one shell to the other, and without a teardown
+                // the shell that lost it kept a live Leaflet map at 0x0 for
+                // the rest of the session.
                 watchForSize: function (el) {
                     if (this._sizeWatch || !window.ResizeObserver) return;
                     var self = this;
                     this._sizeWatch = new ResizeObserver(function () {
-                        if (!el.clientWidth || !el.clientHeight) return;
-                        self._sizeWatch.disconnect();
-                        self._sizeWatch = null;
-                        self.mount();
+                        var sized = !!(el.clientWidth && el.clientHeight);
+                        if (sized && !self.map) { self.mount(); }
+                        else if (!sized && self.map) { self.unmount(); }
                     });
                     this._sizeWatch.observe(el);
+                },
+
+                // Which shell has the screen is a question of window width,
+                // and an element CSS has just set to display:none has no box
+                // to report a change from — so the window is asked directly.
+                // This is what hands the map over when a window is dragged
+                // across the breakpoint, in both directions.
+                sizeChanged: function () {
+                    var el = this.$refs.map;
+                    if (!el || !window.L) return;
+                    var sized = !!(el.clientWidth && el.clientHeight);
+                    if (sized && !this.map) { this.mount(); }
+                    else if (!sized && this.map) { this.unmount(); }
+                },
+
+                // Take the Leaflet map down but keep the component. Every
+                // field mount() sets is cleared, so the next mount() starts
+                // from the same place a first one does; the badges are DOM of
+                // our own and stay where they are, hidden with the shell,
+                // until the next focus() puts them back.
+                unmount: function () {
+                    clearTimeout(this._bgTimer);
+                    if (this._ro) { this._ro.disconnect(); this._ro = null; }
+                    if (this.map) { this.map.remove(); this.map = null; }
+                    this.group = null;
+                    this._tileLayer = null;
+                    this._attribution = null;
+                    this._anim = null;
+                    this.fitZoom = null;
                 },
 
                 // A short notice over the map (how to move it on a phone).
