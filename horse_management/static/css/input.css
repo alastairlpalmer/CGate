@@ -1362,7 +1362,11 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
     gap: 1rem;
 }
 .loc-board > .loc-rail { flex: 1 1 22rem; min-width: 20rem; max-width: 28rem; }
-.loc-board > .loc-board-map { flex: 2 1 0%; }
+/* The map keeps a working width of its own. Without the minimum the
+   rail's flex-grow eats the remainder, and at the breakpoint itself the
+   map was squeezed to 238 px — a map you cannot read is worse than the
+   list on its own. */
+.loc-board > .loc-board-map { flex: 2 1 0%; min-width: 22rem; }
 
 .loc-rail {
     @apply flex flex-col min-h-0 bg-white border border-light-sage rounded-card overflow-hidden;

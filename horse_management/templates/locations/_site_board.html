@@ -10,7 +10,15 @@ Hovering a row lights its shape on the map and the other way about;
 clicking either opens the detail in the rail. The map's own Fit and Map
 buttons are the ones it has always had.
 {% endcomment %}
+{% comment %}hx-select and hx-push-url sit on the board, not on a
+trigger: locations_board.js names this element as the request's source
+and htmx reads both off it. Without them the request inherits the
+boosted body's hx-push-url="true" and the address bar becomes the
+preview URL — which is a partial, so a refresh loses the map, and the
+address bar goes on naming a location after you have closed it.
+{% endcomment %}
 <div class="loc-board hidden lg:flex" data-site-board
+     hx-select="unset" hx-push-url="false"
      data-preview-url="{% url 'location_preview' 0 %}"
      data-site="{{ board_site }}">
 

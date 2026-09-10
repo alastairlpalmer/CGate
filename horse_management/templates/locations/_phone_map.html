@@ -18,7 +18,13 @@ Filtering and sorting the list are done in the browser
 round trip to reorder ten rows would cost a second of yard 4G for
 nothing.
 {% endcomment %}
+{% comment %}hx-select and hx-push-url sit here, not on a trigger:
+locations_mobile.js names this element as the request's source and htmx
+reads both off it. Without them the request inherits the boosted body's
+hx-push-url="true" and the address bar becomes the preview URL — a
+partial, so a refresh loses the map.{% endcomment %}
 <div id="locations-phone" class="loc-phone lg:hidden" data-phone-map
+     hx-select="unset" hx-push-url="false"
      data-preview-url="{% url 'location_preview' 0 %}"
      data-site="{{ board_site }}">
 

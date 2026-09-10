@@ -344,3 +344,44 @@ class ChromeTests(BoardFixture):
     def test_the_usage_tab_has_no_layout_switch_to_show(self):
         body = self.client.get(self.url, {'tab': 'usage'}).content.decode()
         self.assertNotIn('aria-label="Locations layout"', body)
+
+
+@override_settings(LOCATION_MAPS_ENABLED=True)
+class PreviewUrlTests(BoardFixture):
+    """Opening a location must not rewrite the address bar.
+
+    locations_board.js and locations_mobile.js name their shell as the
+    htmx request's source, so the request inherits whatever that element
+    carries. The boosted <body> sets hx-push-url="true"; inheriting it
+    made the address bar read /locations/12/preview/ — a partial, so a
+    refresh dropped the map, and the address bar went on naming a
+    location after it had been closed.
+    """
+
+    def setUp(self):
+        self.client.force_login(make_admin())
+
+    def shell(self, marker):
+        body = self.client.get(self.url).content.decode()
+        # The opening tag of the shell, up to the first '>'.
+        start = body.index(marker)
+        return body[body.rindex('<div', 0, start):body.index('>', start) + 1]
+
+    def test_the_board_does_not_push_the_preview_url(self):
+        tag = self.shell('data-site-board')
+        self.assertIn('hx-push-url="false"', tag)
+        self.assertIn('hx-select="unset"', tag)
+
+    def test_the_phone_shell_does_not_push_the_preview_url(self):
+        tag = self.shell('data-phone-map')
+        self.assertIn('hx-push-url="false"', tag)
+        self.assertIn('hx-select="unset"', tag)
+
+    def test_a_direct_visit_to_a_preview_still_goes_to_the_page(self):
+        """The fallback that makes the pushed URL survivable at all."""
+        response = self.client.get(
+            reverse('location_preview', args=[self.grazing.pk])
+        )
+        self.assertRedirects(
+            response, reverse('location_detail', args=[self.grazing.pk]),
+        )
