@@ -1,10 +1,14 @@
 {% comment %}
-One location, inside the phone map's sheet
+One location, inside the site board
 (core.views.locations.location_preview).
 
-The sheet's chrome — the handle, the back link and the snap heights —
-belongs to locations/_phone_map.html and stays put; only this body is
-replaced when another location is picked, so the sheet never flickers.
+Two shells load it: the rail beside the map on a wide screen, and the
+sheet over it on a phone. `in_rail` says which, and it changes only what
+would be wrong in the other — the back link's wording, and Directions,
+which is a phone's answer and a desktop's dead end.
+
+The shell's own chrome stays put; only this body is replaced when
+another location is picked, so neither ever flickers.
 
 Every action opens the shared pop-up sheet over the top, the same way it
 does from the location's own page, so nothing here has to know where it
@@ -20,7 +24,7 @@ is being shown.
                     <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
                     </svg>
-                    {{ location.site|default:"All locations" }}
+                    {% if in_rail %}All locations{% else %}{{ location.site|default:"All locations" }}{% endif %}
                 </button>
                 <h2 class="loc-sheet-title">{{ location.name }}</h2>
             </div>
@@ -41,10 +45,19 @@ is being shown.
             {% if rest_days is None and count %}
             <span class="loc-chip">In use</span>
             {% endif %}
-            {% if capacity_line %}
-            <span class="loc-chip">{{ capacity_line }}</span>
+            {% if area_ha %}
+            <span class="loc-chip">{{ area_ha }} ha</span>
             {% endif %}
         </div>
+
+        {% if capacity %}
+        <div class="loc-detail-fill" aria-hidden="true">
+            <span style="width: {{ fill_pct }}%; background: {{ rest_colour }}"></span>
+        </div>
+        {% endif %}
+        {% if capacity_line %}
+        <p class="mt-1.5 text-[13px] text-sage">{{ capacity_line }}</p>
+        {% endif %}
     </div>
 
     <!-- ── The four things you do here ── -->
@@ -84,13 +97,36 @@ is being shown.
            class="loc-action">Mark rested</a>
         {% endif %}
 
-        {% if location.has_coordinates %}
+        {% if in_rail %}
+        <a href="{% url 'location_update' location.pk %}"
+           hx-get="{% url 'location_update' location.pk %}" hx-target="#popup-body"
+           hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Edit {{ location.name }}" class="loc-action">Edit location</a>
+        {% elif location.has_coordinates %}
         <a href="{{ location.maps_url }}" target="_blank" rel="noopener" hx-boost="false"
            class="loc-action">Directions</a>
         {% else %}
         <a href="{% url 'location_detail' location.pk %}" class="loc-action">Location page</a>
         {% endif %}
     </div>
+
+    {% if neighbours %}
+    {% comment %}Nearest first, and only ground that is empty and rested:
+    at a gate deciding where the horses go next, "which of these is close"
+    is the question, and the boundaries to answer it are already drawn.
+    {% endcomment %}
+    <div class="loc-sheet-body border-b border-light-sage">
+        <p class="loc-sheet-label">Nearest ready ground</p>
+        <div class="mt-2 flex flex-wrap gap-1.5">
+            {% for near in neighbours %}
+            <button type="button" class="loc-near" data-loc-jump data-pk="{{ near.pk }}">
+                {{ near.name }}
+                <span class="text-sage font-normal">&middot; {{ near.metres|floatformat:"0" }} m</span>
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 
     <!-- ── Who is on it ── -->
     <div class="loc-sheet-body">

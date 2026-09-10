@@ -183,7 +183,7 @@ def boundary_import_match(request):
         if 'cancel' in request.POST:
             _discard(request)
             messages.info(request, 'Import cancelled. Nothing was saved.')
-            return redirect(f"{reverse('location_list')}?tab=map&site={site}")
+            return redirect(f"{reverse('location_list')}?view=map&site={site}")
         choices, errors = _parse_choices(request.POST, shapes, by_pk)
         overwriting = [
             loc for kind, loc in choices.values()
@@ -215,7 +215,7 @@ def boundary_import_match(request):
             + f" on {site}."
             + (f" {len(overwriting)} previous boundar{'ies' if len(overwriting) != 1 else 'y'} kept in the history." if overwriting else ''),
         )
-        return redirect(f"{reverse('location_list')}?tab=map&site={site}")
+        return redirect(f"{reverse('location_list')}?view=map&site={site}")
 
     # GET: pre-select the suggestions.
     choices = {}

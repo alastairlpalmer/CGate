@@ -121,7 +121,10 @@ class MapLocationsTests(TestCase):
 
 
 @override_settings(LOCATION_MAPS_ENABLED=True)
-class MapTabTests(TestCase):
+class SiteBoardTests(TestCase):
+    """The map is no longer a tab of its own: it is how the Locations tab
+    opens, beside a rail of the same site's ground. Old ``?tab=map``
+    links redirect onto it."""
 
     def setUp(self):
         self.user = make_admin()
@@ -133,48 +136,56 @@ class MapTabTests(TestCase):
         self.b = Location.objects.create(name='Barn', site='Somerford', capacity=4)
         self.c = Location.objects.create(name='Elsewhere', site='Colgate')
 
-    def test_tab_is_offered_and_renders_the_full_map(self):
-        response = self.client.get(reverse('location_list'))
-        self.assertContains(response, '?tab=map')
-        response = self.client.get(reverse('location_list') + '?tab=map')
-        self.assertEqual(response.context['current_tab'], 'map')
-        self.assertEqual(response.context['map_site'], 'Colgate')   # first by name, no preference
-        response = self.client.get(reverse('location_list') + '?tab=map&site=Somerford')
+    def test_the_locations_tab_opens_on_the_map(self):
+        response = self.client.get(reverse('location_list') + '?site=Somerford')
+        self.assertEqual(response.context['location_view'], 'map')
+        self.assertContains(response, 'data-site-board')
         self.assertContains(response, 'data-testid="location-map"')
         self.assertContains(response, 'is-full')
         self.assertContains(response, f'data-map-badge="{self.a.pk}"')
         self.assertNotContains(response, f'data-map-badge="{self.b.pk}"')   # no point: no badge
         self.assertContains(response, 'data-map-label=')
         self.assertContains(response, 'id="map-data-somerford-full"')
-        self.assertContains(response, '1 location without coordinates is not drawn')
         self.assertContains(response, 'Somerford')
-        self.assertContains(response, '0 horses')
-        # Site selector, both sites
-        self.assertContains(response, '?tab=map&site=Colgate')
         # Badge is the ring partial at 44 px
         self.assertContains(response, 'width:44px;height:44px')
-        # A badge opens the location; the list URL is there for a background tap.
+        # A badge opens the location without JavaScript.
         self.assertContains(response, f'href="{reverse("location_detail", args=[self.a.pk])}" class="location-map-badge"')
-        self.assertEqual(response.context['map_payload']['urls']['list'], reverse('location_list'))
+        self.assertEqual(response.context['board_payload']['urls']['list'], reverse('location_list'))
+
+    def test_old_map_tab_links_land_on_it(self):
+        """Bookmarks and printed links kept their site."""
+        response = self.client.get(reverse('location_list') + '?tab=map&site=Somerford')
+        self.assertRedirects(
+            response, reverse('location_list') + '?site=Somerford&view=map',
+        )
+
+    def test_the_cards_are_a_click_away(self):
+        response = self.client.get(reverse('location_list') + '?view=cards')
+        self.assertEqual(response.context['location_view'], 'cards')
+        self.assertNotContains(response, 'data-site-board')
+        self.assertContains(response, 'grid grid-cols-1 md:grid-cols-2')
 
     def test_default_site_follows_the_dashboard_preference(self):
         pref = DashboardPreference.get_for(self.user)
         pref.site = 'Somerford'
         pref.save()
-        response = self.client.get(reverse('location_list') + '?tab=map')
-        self.assertEqual(response.context['map_site'], 'Somerford')
+        response = self.client.get(reverse('location_list'))
+        self.assertEqual(response.context['board_site'], 'Somerford')
 
-    def test_empty_state_when_no_location_has_coordinates(self):
-        response = self.client.get(reverse('location_list') + '?tab=map&site=Colgate')
-        self.assertContains(response, 'Nothing to draw yet')
-        self.assertContains(response, 'Add coordinates to your locations')
+    def test_a_site_with_no_boundaries_says_so_beside_its_list(self):
+        response = self.client.get(reverse('location_list') + '?site=Colgate')
+        self.assertContains(response, 'has none drawn yet')
+        self.assertContains(response, 'tracked by name only')
         self.assertNotContains(response, 'data-testid="location-map"')
+        # The rail still lists them: occupancy and rest do not need a map.
+        self.assertContains(response, 'Elsewhere')
 
-    def test_tab_absent_with_the_flag_off(self):
+    def test_the_map_is_absent_with_the_flag_off(self):
         with self.settings(LOCATION_MAPS_ENABLED=False):
             response = self.client.get(reverse('location_list'))
-            self.assertNotContains(response, '?tab=map')
-            response = self.client.get(reverse('location_list') + '?tab=map')
+            self.assertNotContains(response, 'data-site-board')
+            self.assertNotContains(response, '?view=map')
         self.assertEqual(response.context['current_tab'], 'locations')
         self.assertContains(response, 'Grain store field')
 
@@ -182,23 +193,21 @@ class MapTabTests(TestCase):
         pref = DashboardPreference.get_for(self.user)
         pref.pinned_location = self.a
         pref.save()
-        response = self.client.get(reverse('location_list') + '?tab=map&site=Somerford')
+        response = self.client.get(reverse('location_list') + '?site=Somerford')
         self.assertContains(response, 'location-map-pin')
 
     def test_polygon_and_circle_mixed_in_one_view(self):
         Location.objects.create(name='L field', site='Somerford', boundary=concave_l(), capacity=3)
-        response = self.client.get(reverse('location_list') + '?tab=map&site=Somerford')
-        payload = json.loads(response.context['map_payload'] and json.dumps(response.context['map_payload']))
+        response = self.client.get(reverse('location_list') + '?site=Somerford')
+        payload = json.loads(json.dumps(response.context['board_payload']))
         kinds = sorted(loc['kind'] for loc in payload['locations'] if loc['kind'])
         self.assertEqual(kinds, ['circle', 'polygon'])
         self.assertEqual(payload['located'], 2)
 
-    def test_locations_page_uses_the_ring_partial(self):
-        """Four rings, not three: one per desktop card, and one more on
-        the phone map's badge for the location that has a point."""
-        response = self.client.get(reverse('location_list'))
+    def test_the_cards_view_uses_the_ring_partial(self):
+        response = self.client.get(reverse('location_list') + '?view=cards')
         self.assertContains(response, '0 of 12 spaces used')
-        self.assertContains(response, 'width:44px;height:44px', count=4)
+        self.assertContains(response, 'width:44px;height:44px', count=3)
 
 
 @override_settings(LOCATION_MAPS_ENABLED=True)
