@@ -720,3 +720,69 @@ class WormingOnTheStripTests(DashboardDataTestCase):
         day = [d for d in block['days'] if d['date'] == self.today + timedelta(days=4)][0]
         self.assertIn('worming', day['dots'])
         self.assertIn('worming', [entry['kind'] for entry in block['legend']])
+
+
+class VisitRowTitleTests(DashboardDataTestCase):
+    """A grouped row names a few horses and counts the rest.
+
+    Twelve names is a wall of text on a phone and says no more than three
+    and a number does.
+    """
+
+    def row_for(self, kind='worming'):
+        items = [i for i in self.collect() if i.kind == kind]
+        return [r for r in attention.rows(items, self.admin) if r.kind == 'visit'][0]
+
+    def due(self, horse, kind='worming'):
+        if kind == 'worming':
+            return self.worming(horse, 2)
+        return self.farrier(horse, 2)
+
+    def test_three_horses_are_all_named(self):
+        for name in ('Ash', 'Beech', 'Cedar'):
+            self.due(self.horse(name))
+        self.assertEqual(self.row_for().title, 'Ash, Beech, Cedar')
+
+    def test_more_than_three_are_named_and_counted(self):
+        for name in ('Ash', 'Beech', 'Cedar', 'Dogwood', 'Elm'):
+            self.due(self.horse(name))
+        self.assertEqual(self.row_for().title, 'Ash, Beech, Cedar and 2 more')
+
+    def test_the_row_still_holds_every_horse(self):
+        """The names stop; the row does not. The card prints the count
+        beside the subtitle (partials/dashboard/_attention_row.html), so
+        capping the title loses nothing."""
+        for name in ('Ash', 'Beech', 'Cedar', 'Dogwood', 'Elm'):
+            self.due(self.horse(name))
+        row = self.row_for()
+        self.assertEqual(len(row.horses), 5)
+        self.assertEqual(len(row.items), 5)
+
+    def test_the_card_prints_the_count(self):
+        # Overdue, so the row lands in Needs action rather than the strip.
+        for name in ('Ash', 'Beech', 'Cedar', 'Dogwood', 'Elm'):
+            self.worming(self.horse(name), -1)
+        self.client.force_login(self.admin)
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('Ash, Beech, Cedar and 2 more', body)
+        self.assertIn('5 horses, one visit', body)
+
+    def test_it_applies_to_the_farrier_too(self):
+        for name in ('Ash', 'Beech', 'Cedar', 'Dogwood'):
+            self.due(self.horse(name), 'farrier')
+        self.assertEqual(self.row_for('farrier').title, 'Ash, Beech, Cedar and 1 more')
+
+    def test_the_row_opens_the_tab_for_its_own_kind(self):
+        """Worming joining the bulk kinds found an either/or here: every
+        row that was not the farrier's opened the vaccination tab."""
+        for name in ('Ash', 'Beech'):
+            self.due(self.horse(name))
+        self.assertIn('type=worming', self.row_for().url)
+
+    def test_the_farrier_and_vaccination_tabs_are_unchanged(self):
+        for name in ('Ash', 'Beech'):
+            self.due(self.horse(name), 'farrier')
+        self.assertIn('type=farrier', self.row_for('farrier').url)
+        for name in ('Cedar', 'Dogwood'):
+            self.vaccination(self.horse(name), 2)
+        self.assertIn('type=vaccinations', self.row_for('vaccination').url)
