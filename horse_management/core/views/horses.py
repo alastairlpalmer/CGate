@@ -128,6 +128,19 @@ AXIS_FEATURE = {
 # Which group kinds show empty groups unless the URL says otherwise. Empty
 # locations answer "where can this horse go"; a roll of owners with no
 # horses is just noise.
+# How many horse rows a page renders before it stops and says so.
+#
+# The active tab lists every horse, and every horse is rendered twice: a
+# card for phones and a table row from md up. That is about 7.7 kB of
+# HTML each, so a hundred-horse yard was shipping the better part of a
+# megabyte to a phone in a gateway, and a four-hundred-horse yard three
+# of them. The cap bounds the page; the horses past it are a count and a
+# link that asks for them.
+#
+# Sixty is chosen to sit above a normal yard: most lists never reach it
+# and nothing about them changes.
+ROW_CAP = 60
+
 SHOW_EMPTY_DEFAULT = {'site': True, 'location': True, 'owner': False}
 
 # Which group kinds open collapsed. Locations and owners make long pages,
@@ -498,6 +511,12 @@ class HorseListView(FeatureAccessMixin, ListView):
         return SHOW_EMPTY_DEFAULT.get(self.group_kind, False)
 
     @property
+    def show_all_rows(self):
+        """Whether the page renders every horse rather than the first
+        ROW_CAP of them."""
+        return self.request.GET.get('all') == '1'
+
+    @property
     def sort_context(self):
         """Which sort menu applies: the grouping, or the flat-list tab."""
         if self.is_searching:
@@ -862,11 +881,42 @@ class HorseListView(FeatureAccessMixin, ListView):
                 if self.shows_usage:
                     self._attach_usage(groups)
                 context['grouped_horses'] = groups
+            context.update(self._cap_rows(context['grouped_horses']))
         elif self.is_searching:
             # Search results are one flat, unpaginated list.
             context['horses'] = _sort_horses(horses, self.sort)
+            context.update(self._cap_flat(context, 'horses'))
 
         return context
+
+    def _cap_rows(self, groups):
+        """Stop the page growing without limit.
+
+        Groups keep their order, their headings and their counts; it is
+        the horses inside them that stop once the cap is reached. An
+        empty group is not a row and is never trimmed — showing the space
+        that is free is the whole point of the land axes.
+        """
+        total = sum(len(group['horses']) for group in groups)
+        if self.show_all_rows or total <= ROW_CAP:
+            return {'rows_total': total, 'rows_shown': total, 'rows_capped': False}
+        shown = 0
+        for group in groups:
+            room = max(0, ROW_CAP - shown)
+            kept = group['horses'][:room]
+            group['hidden_here'] = len(group['horses']) - len(kept)
+            group['horses'] = kept
+            shown += len(kept)
+        return {'rows_total': total, 'rows_shown': shown, 'rows_capped': True}
+
+    def _cap_flat(self, context, key):
+        """The same ceiling for the flat lists: search, and the log."""
+        rows = context[key]
+        total = len(rows)
+        if self.show_all_rows or total <= ROW_CAP:
+            return {'rows_total': total, 'rows_shown': total, 'rows_capped': False}
+        context[key] = rows[:ROW_CAP]
+        return {'rows_total': total, 'rows_shown': ROW_CAP, 'rows_capped': True}
 
     def _build_groups(self, horses, group_kind):
         """Group the horses by location, site or owner.

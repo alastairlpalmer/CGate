@@ -540,6 +540,14 @@
                     </tbody>
                 </table>
                 </div>
+                {% comment %}Only where there is more than one group: on the
+                All axis this card is the whole list, and the line under it
+                already says the same thing.{% endcomment %}
+                {% if group.hidden_here and grouped_horses|length > 1 %}
+                <p class="px-5 py-3 text-sm text-sage border-t border-light-sage">
+                    {{ group.hidden_here }} more here, not shown.
+                </p>
+                {% endif %}
                 {% endif %}
             </div>
         </div>
@@ -556,6 +564,22 @@
     {% include 'includes/empty_state.html' with icon='horse' title='No horses on the yard yet' body='Nothing has been logged so far.' %}
     {% endif %}
     {% endif %}
+    {% endif %}
+
+    {% if rows_capped %}
+    {% comment %}The ceiling. The active tab lists every horse and renders
+    each of them twice — a card for a phone and a table row from md up —
+    so a big yard was sending a phone the better part of a megabyte before
+    it could show anything. The page stops at core.views.horses.ROW_CAP
+    and says what it has stopped at; asking for the rest is one tap, and
+    filtering or grouping is usually the better answer.
+    {% endcomment %}
+    <div class="card px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+        <p class="text-sm text-sage">
+            Showing {{ rows_shown }} of {{ rows_total }} horses.
+        </p>
+        <a href="{% querystring all=1 %}" class="btn-secondary">Show all {{ rows_total }}</a>
+    </div>
     {% endif %}
 
     </div><!-- /#list-results -->
