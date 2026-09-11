@@ -48,7 +48,23 @@
         return 'peek';
     }
 
-    var api = { stepIndex: stepIndex, snapFor: snapFor };
+    /**
+     * The vertical offset in a computed `transform`, in pixels.
+     *
+     * A drag has to start from where the sheet actually is. Reading the
+     * class instead would be a guess, and the guess is wrong the moment
+     * the finger lands during the settle animation.
+     */
+    function translateYOf(transformText) {
+        if (!transformText || transformText === 'none') { return 0; }
+        var m = transformText.match(/matrix3d\(([^)]+)\)/);
+        if (m) { return parseFloat(m[1].split(',')[13]) || 0; }
+        m = transformText.match(/matrix\(([^)]+)\)/);
+        if (m) { return parseFloat(m[1].split(',')[5]) || 0; }
+        return 0;
+    }
+
+    var api = { stepIndex: stepIndex, snapFor: snapFor, translateYOf: translateYOf };
     root.YardwaySplitView = api;
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
@@ -311,12 +327,36 @@
 
     // ── Dragging the sheet (phones) ──
 
+    // --sheet-peek is a CSS length in whatever unit the stylesheet finds
+    // clearest; today it is 34dvh. getPropertyValue hands back that text,
+    // and parseFloat("34dvh") is 34 — so the drag believed the sheet
+    // peeked at 34 pixels when it peeks at about 290. Every drag began by
+    // throwing the sheet down to where those 34 pixels would put it, and
+    // filling the screen then asked for a pull longer than the screen.
+    // The only honest way to get pixels out of a CSS length is to let the
+    // browser lay one out.
+    var peekPx = null;
+
+    function peekHeight(panel, full) {
+        if (peekPx !== null) { return peekPx; }
+        var probe = document.createElement('div');
+        probe.style.cssText = 'position:absolute;top:0;left:0;width:0;' +
+            'visibility:hidden;pointer-events:none;height:var(--sheet-peek)';
+        panel.appendChild(probe);
+        peekPx = probe.offsetHeight || Math.round(full / 3);
+        panel.removeChild(probe);
+        return peekPx;
+    }
+
+    // dvh moves with the window, and with a phone's address bar.
+    window.addEventListener('resize', function () { peekPx = null; });
+    window.addEventListener('orientationchange', function () { peekPx = null; });
+
     function sheetHeights() {
         var panel = pane();
         if (!panel) { return { peek: 0, full: 0 }; }
         var full = panel.offsetHeight;
-        var peek = parseFloat(getComputedStyle(panel).getPropertyValue('--sheet-peek')) || full / 3;
-        return { peek: peek, full: full };
+        return { peek: peekHeight(panel, full), full: full };
     }
 
     var drag = null;
@@ -332,10 +372,14 @@
         var heights = sheetHeights();
         drag = {
             y: e.touches[0].clientY,
-            from: state.sheet === 'full' ? heights.full : heights.peek,
+            // Where the sheet is now, not where its class says it should
+            // be: a finger landing during the settle animation picks the
+            // sheet up where it sees it, with no jump.
+            from: heights.full - translateYOf(getComputedStyle(panel).transform),
             heights: heights,
             inBody: inBody,
-            moved: false
+            moved: false,
+            frame: 0
         };
         panel.classList.add('is-dragging');
     }
@@ -350,13 +394,30 @@
         drag.visible = Math.max(0, drag.from + delta);
         drag.moved = drag.moved || Math.abs(delta) > 4;
         if (drag.moved && e.cancelable) { e.preventDefault(); }
-        var hidden = Math.max(0, drag.heights.full - drag.visible);
-        panel.style.transform = 'translateY(' + hidden + 'px)';
+        paint(panel);
+    }
+
+    // One write per frame. touchmove reports faster than the screen
+    // redraws, and a second write in the same frame is work nobody sees.
+    function paint(panel) {
+        if (!drag || drag.frame) { return; }
+        if (!window.requestAnimationFrame) { place(panel); return; }
+        drag.frame = requestAnimationFrame(function () {
+            if (!drag) { return; }
+            drag.frame = 0;
+            place(panel);
+        });
+    }
+
+    function place(panel) {
+        panel.style.transform =
+            'translateY(' + Math.max(0, drag.heights.full - drag.visible) + 'px)';
     }
 
     function dragEnd() {
         var panel = pane();
         if (!drag || !panel) { return; }
+        if (drag.frame && window.cancelAnimationFrame) { cancelAnimationFrame(drag.frame); }
         panel.classList.remove('is-dragging');
         panel.style.transform = '';
         var visible = drag.visible;
