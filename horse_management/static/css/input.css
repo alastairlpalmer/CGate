@@ -940,6 +940,21 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 
 @media (pointer: coarse) {
     .location-map-open, .location-map.is-compact .location-map-fit { display: none; }
+    /* A thumb needs a box, not a label. Both buttons were 26 px tall and
+       30 px apart, which is a miss either way; a finger that lands
+       between them gets neither. Sized here rather than everywhere
+       because a mouse does not need it — the same reason this block
+       already hides what a touch screen cannot use. */
+    .location-map-fit, .location-map-tiles {
+        display: grid;
+        place-items: center;
+        min-width: 44px;
+        min-height: 44px;
+        padding-left: 0.375rem;
+        padding-right: 0.375rem;
+    }
+    /* And room for the box: 44 plus 8 below the one above it. */
+    .location-map-tiles { top: 8.5rem; }
     /* No +/- and no Fit on the card: the Map button takes the top corner. */
     .location-map.is-compact .location-map-tiles { top: 0.625rem; }
 }
@@ -1399,6 +1414,12 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
    controls only need to stay out of the corners a thumb reaches for. */
 .loc-phone-map .location-map-fit { top: 0.625rem; left: auto; right: 0.625rem; }
 .loc-phone-map .location-map-tiles { top: 3.125rem; left: auto; right: 0.625rem; }
+/* A thumb's box is 44, so the one below it starts at 44 plus 8. Stated
+   here rather than with the sizing above, because these two rules carry
+   the same weight and this section is the later one. */
+@media (pointer: coarse) {
+    .loc-phone-map .location-map-tiles { top: 3.875rem; }
+}
 
 @media (prefers-reduced-motion: reduce) {
     .loc-sheet { transition: none; }
