@@ -12,6 +12,7 @@ from .attention import HORIZON_DAYS, KIND_LABELS, _bulk_action
 STRIP_KINDS = (
     ('farrier', 'Farrier'),
     ('vaccination', 'Vaccination'),
+    ('worming', 'Worming'),
     ('vet', 'Vet'),
     ('invoice', 'Invoice due'),
     ('departure_expected', 'Departure'),
@@ -21,9 +22,10 @@ STRIP_KINDS = (
 )
 STRIP_KIND_KEYS = [kind for kind, _ in STRIP_KINDS]
 
-# Kinds that are a provider coming to the yard: group them by day so one
-# row is one booking.
-VISIT_KINDS = ('farrier', 'vaccination', 'vet')
+# Kinds where a day's worth is one job rather than N of them: a provider
+# coming to the yard, or — for worming — the yard dosing its horses
+# together. Group them by day so one row is one booking.
+VISIT_KINDS = ('farrier', 'vaccination', 'vet', 'worming')
 
 MAX_VISITS = 8
 
