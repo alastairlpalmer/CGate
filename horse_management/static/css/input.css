@@ -594,6 +594,11 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
        move surrounding layout but does extend its hit box. No display
        override — flex/inline-flex links keep their own layout. */
     .tap-pad { padding-top: 0.875rem; padding-bottom: 0.875rem; margin-top: -0.875rem; margin-bottom: -0.875rem; position: relative; z-index: 1; }
+    /* A chip is the tap target on a phone, so it is given a thumb's size.
+       It can afford to: the chips are laid out in a wrapping row with a
+       gap, so growing them moves its neighbours rather than covering
+       them. */
+    .horse-chip { @apply min-h-[44px] px-3.5; }
 }
 
 /* Underline tabs (location detail, etc.) — 44px-tall tap boxes on phones,
@@ -728,6 +733,34 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 
     /* Visits worth booking together */
     .visit-row { @apply grid items-center gap-3 px-4 py-3 lg:px-5; grid-template-columns: 2.5rem minmax(0, 1fr) auto; }
+    /* On a phone the horses take the row's width and the action drops
+       below them. Beside the button there is about 150 px left, which is
+       narrower than a horse's name — every chip wrapped onto a line of
+       its own and a farrier's morning became a column of them. */
+    @media (max-width: 639px) {
+        .visit-row {
+            grid-template-columns: 2.5rem minmax(0, 1fr);
+            grid-template-areas: "date body" ". action";
+            align-items: start;
+        }
+        .visit-row > .visit-date { grid-area: date; }
+        .visit-row > .visit-body { grid-area: body; }
+        /* .attn-actions carries ml-auto, so it keeps to the right of the
+           row as it does on a wide screen. */
+        .visit-row > .attn-actions { grid-area: action; }
+        .visit-row > .attn-actions:empty { display: none; }
+    }
+    /* One horse, one tap target. The dashboard used to name horses inside
+       a line of text, which is 20 px tall with 20 px between the lines:
+       there is no way to pad that out to a thumb without one name taking
+       the tap meant for its neighbour. A chip owns its box, and the row
+       it sits in keeps the boxes 6 px apart. */
+    .horse-chip {
+        @apply inline-flex items-center rounded-full bg-white px-2.5 py-1 text-sm font-medium
+               text-charcoal no-underline ring-1 ring-light-sage transition-colors duration-100
+               hover:ring-sage hover:text-forest;
+    }
+    .horse-chip.is-more { @apply bg-parchment text-sage ring-0; }
     .visit-date { @apply flex h-10 w-10 flex-col items-center justify-center rounded-lg bg-sand-50 font-mono leading-none; }
     .visit-date-name { @apply text-[9px] uppercase tracking-wide text-sage; }
     .visit-date-num { @apply mt-0.5 text-sm font-semibold text-forest tabular-nums; }
