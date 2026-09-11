@@ -56,6 +56,13 @@ class DashboardDataTestCase(TestCase):
             next_due_date=self.today + timedelta(days=due),
         )
 
+    def worming(self, horse, due, dosed_days_ago=91, product='Equest'):
+        return WormingTreatment.objects.create(
+            horse=horse, date=self.today - timedelta(days=dosed_days_ago),
+            product_name=product,
+            next_due_date=self.today + timedelta(days=due),
+        )
+
     def invoice(self, number, total, due, status=Invoice.Status.SENT):
         return Invoice.objects.create(
             owner=self.owner, invoice_number=number,
@@ -572,3 +579,144 @@ class BreedingBlockTests(DashboardDataTestCase):
         self.assertEqual(entry['next_ehv']['month'], 7)
         no_breeding = make_user_with_access('nb', dashboard='full', health='full')
         self.assertEqual(breeding.in_foal(no_breeding, today=self.today), [])
+
+
+class WormingTests(DashboardDataTestCase):
+    """Routine worming, which the dashboard did not read until now.
+
+    WormingTreatment has carried a next_due_date since the microchip work
+    — thirteen weeks after the dose unless the yard says otherwise — and
+    nothing chased it. It joins the collectors the farrier already uses.
+    """
+
+    def test_a_dose_that_has_come_round_is_listed(self):
+        horse = self.horse('Antoinette')
+        self.worming(horse, 3)
+        items = [i for i in self.collect() if i.kind == 'worming']
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].horse, horse)
+        self.assertEqual(items[0].delta, 3)
+
+    def test_an_overdue_dose_is_overdue(self):
+        horse = self.horse('Beech')
+        self.worming(horse, -5)
+        item = [i for i in self.collect() if i.kind == 'worming'][0]
+        self.assertEqual(item.severity, 'overdue')
+
+    def test_a_dose_beyond_the_horizon_waits(self):
+        horse = self.horse('Cedars')
+        self.worming(horse, attention.HORIZON_DAYS + 10)
+        self.assertEqual([i for i in self.collect() if i.kind == 'worming'], [])
+
+    def test_only_the_latest_dose_counts(self):
+        """A horse wormed twice is due once — the second dose supersedes."""
+        horse = self.horse('Dave')
+        self.worming(horse, -30, dosed_days_ago=120)
+        self.worming(horse, 6, dosed_days_ago=85)
+        items = [i for i in self.collect() if i.kind == 'worming']
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].delta, 6)
+
+    def test_the_row_says_what_the_last_product_was(self):
+        horse = self.horse('Gata')
+        self.worming(horse, 2, product='Panacur')
+        item = [i for i in self.collect() if i.kind == 'worming'][0]
+        self.assertIn('Panacur', item.detail)
+
+    def test_it_offers_the_form_that_records_a_dose(self):
+        horse = self.horse('Hidalgo')
+        self.worming(horse, -1)
+        item = [i for i in self.collect() if i.kind == 'worming'][0]
+        self.assertTrue(item.actions)
+        self.assertIn(str(horse.pk), item.actions[0].url)
+
+    def test_a_reader_is_told_but_given_nothing_to_press(self):
+        horse = self.horse('Little')
+        self.worming(horse, 1)
+        viewer = make_user_with_access('worm-reader', health='view')
+        item = [i for i in self.collect(viewer) if i.kind == 'worming'][0]
+        self.assertEqual(item.actions, [])
+
+
+class WormingAndEggCountTests(DashboardDataTestCase):
+    """A horse is told to worm once, for the sharper of the two reasons.
+
+    An egg count over 200 EPG and a routine dose both mean "worm this
+    horse", and both carry the same button. Grouped by horse they would
+    have made one row with the button on it twice.
+    """
+
+    def egg_count(self, horse, count=450, days_ago=10):
+        return WormEggCount.objects.create(
+            horse=horse, date=self.today - timedelta(days=days_ago), count=count,
+        )
+
+    def test_an_outstanding_egg_count_silences_the_routine_row(self):
+        horse = self.horse('Antoinette')
+        self.worming(horse, 2)
+        self.egg_count(horse)
+        kinds = [i.kind for i in self.collect() if i.horse == horse]
+        self.assertIn('egg_count', kinds)
+        self.assertNotIn('worming', kinds)
+
+    def test_a_count_that_has_been_answered_leaves_the_routine_row_alone(self):
+        """Wormed since the test: the egg count is settled, the interval is not."""
+        horse = self.horse('Beech')
+        self.egg_count(horse, days_ago=40)
+        self.worming(horse, 2, dosed_days_ago=30)
+        kinds = [i.kind for i in self.collect() if i.horse == horse]
+        self.assertNotIn('egg_count', kinds)
+        self.assertIn('worming', kinds)
+
+    def test_a_low_count_does_not_silence_anything(self):
+        horse = self.horse('Cedars')
+        self.worming(horse, 2)
+        self.egg_count(horse, count=50)
+        kinds = [i.kind for i in self.collect() if i.horse == horse]
+        self.assertIn('worming', kinds)
+
+    def test_the_egg_count_is_looked_up_once_for_both_collectors(self):
+        """Worming asks the same question egg counts do; it is asked once."""
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        for name in ('A', 'B', 'C'):
+            horse = self.horse(name)
+            self.worming(horse, 2)
+            self.egg_count(horse)
+        with CaptureQueriesContext(connection) as ctx:
+            self.collect(kinds={'worming', 'egg_count'})
+        egg_queries = [
+            q for q in ctx.captured_queries
+            if 'wormeggcount' in q['sql'].lower().replace('_', '')
+        ]
+        self.assertEqual(len(egg_queries), 1, egg_queries)
+
+
+class WormingOnTheStripTests(DashboardDataTestCase):
+    """A day's worming is one job, the way a farrier's morning is."""
+
+    def test_a_day_of_doses_is_one_row(self):
+        horses = [self.horse(name) for name in ('A', 'B', 'C')]
+        for horse in horses:
+            self.worming(horse, 4)
+        block = upcoming.build(self.collect(), self.admin, self.today)
+        worming = [v for v in block['visits'] if v['kind'] == 'worming']
+        self.assertEqual(len(worming), 1)
+        self.assertEqual(len(worming[0]['horses']), 3)
+
+    def test_that_row_offers_one_form_for_all_of_them(self):
+        for name in ('A', 'B', 'C'):
+            self.worming(self.horse(name), 4)
+        block = upcoming.build(self.collect(), self.admin, self.today)
+        action = [v for v in block['visits'] if v['kind'] == 'worming'][0]['action']
+        self.assertIsNotNone(action)
+        self.assertIn('action_type=worming', action.url)
+        self.assertEqual(action.label, 'Record for 3')
+
+    def test_worming_earns_a_dot_on_the_strip(self):
+        self.worming(self.horse('A'), 4)
+        block = upcoming.build(self.collect(), self.admin, self.today)
+        day = [d for d in block['days'] if d['date'] == self.today + timedelta(days=4)][0]
+        self.assertIn('worming', day['dots'])
+        self.assertIn('worming', [entry['kind'] for entry in block['legend']])

@@ -39,11 +39,18 @@ SEVERITY_ORDER = {'overdue': 0, 'due': 1, 'info': 2}
 INBOX_ALWAYS = frozenset({'egg_count', 'document', 'departure', 'feed'})
 
 # Kinds the health bulk form can record for several horses at once.
-BULK_ACTION_TYPES = {'vaccination': 'vaccination', 'farrier': 'farrier'}
+BULK_ACTION_TYPES = {
+    'vaccination': 'vaccination',
+    'farrier': 'farrier',
+    # A yard worms its horses together, so a day's doses are one job
+    # with one form, the same way a farrier's morning is one booking.
+    'worming': 'worming',
+}
 
 KIND_LABELS = {
     'vaccination': 'Vaccination',
     'farrier': 'Farrier',
+    'worming': 'Worming',
     'vet': 'Vet follow-up',
     'egg_count': 'Egg count',
     'ehv': 'EHV vaccination',
@@ -60,6 +67,7 @@ KIND_LABELS = {
 
 CATEGORY_OF_KIND = {
     'vaccination': 'health', 'farrier': 'health', 'vet': 'health',
+    'worming': 'health',
     'egg_count': 'health', 'ehv': 'health',
     'foal': 'yard', 'departure': 'yard', 'departure_expected': 'yard',
     'scan': 'health', 'foal_check': 'health', 'foal_passport': 'documents',
@@ -290,32 +298,88 @@ def _vet_follow_ups(ctx):
     return items
 
 
-def _egg_counts(ctx):
-    """High counts (over 200 EPG) in the last 90 days, latest per horse,
-    dropped once a worming treatment is recorded on or after the test."""
+def _standing_egg_counts(ctx):
+    """The latest high egg count per horse that has not been answered.
+
+    Over 200 EPG in the last 90 days, with no worming treatment recorded
+    on or after the test. Shared with ``_worming``: a horse the yard has
+    already been told to worm does not also need telling that its routine
+    interval has come round.
+    """
     from health.models import WormEggCount, WormingTreatment
+
+    cached = getattr(ctx, '_standing_eggs', None)
+    if cached is not None:
+        return cached
 
     since = ctx.today - timedelta(days=90)
     counts = WormEggCount.objects.filter(
         horse__is_active=True, date__gte=since, count__gt=200,
     ).select_related('horse').order_by('-date', '-pk')
     if not counts:
-        return []
+        ctx._standing_eggs = {}
+        return {}
     treated = defaultdict(list)
     for horse_id, treated_on in WormingTreatment.objects.filter(
         horse__is_active=True, date__gte=since,
     ).values_list('horse_id', 'date'):
         treated[horse_id].append(treated_on)
 
-    full = ctx.can('health', LEVEL_FULL)
-    seen = set()
-    items = []
+    standing = {}
     for ec in counts:
-        if ec.horse_id in seen:
+        if ec.horse_id in standing:
             continue
-        seen.add(ec.horse_id)
         if any(d >= ec.date for d in treated.get(ec.horse_id, ())):
             continue
+        standing[ec.horse_id] = ec
+    ctx._standing_eggs = standing
+    return standing
+
+
+def _worming(ctx):
+    """Routine worming that has come round.
+
+    WormingTreatment carries the date the next dose is due — thirteen
+    weeks after the last one unless the yard says otherwise — and until
+    now nothing read it. A horse already flagged by an egg count is left
+    to that: it is the sharper reason to worm the same horse, and it
+    already carries the same button.
+    """
+    from health.models import WormingTreatment, current_worming_treatments
+
+    qs = current_worming_treatments(WormingTreatment.objects.filter(
+        horse__is_active=True,
+        next_due_date__isnull=False,
+        next_due_date__lte=ctx.horizon,
+    )).select_related('horse').order_by('next_due_date')
+    flagged = set(_standing_egg_counts(ctx))
+    full = ctx.can('health', LEVEL_FULL)
+    items = []
+    for treatment in qs:
+        if treatment.horse_id in flagged:
+            continue
+        due = treatment.next_due_date
+        product = (treatment.product_name or '').strip()
+        actions = []
+        if full:
+            actions.append(ctx.record_action(
+                'worming_create', treatment.horse, 'Record dose', 'Record worming',
+                primary=due < ctx.today,
+            ))
+        items.append(ctx.horse_item(
+            'worming', treatment.horse, due=due,
+            detail='Worming' + (f' · last was {product}' if product else ''),
+            actions=actions, key=f'worming-{treatment.pk}',
+        ))
+    return items
+
+
+def _egg_counts(ctx):
+    """High counts (over 200 EPG) in the last 90 days, latest per horse,
+    dropped once a worming treatment is recorded on or after the test."""
+    full = ctx.can('health', LEVEL_FULL)
+    items = []
+    for ec in _standing_egg_counts(ctx).values():
         actions = []
         if full:
             actions.append(ctx.record_action(
@@ -709,6 +773,7 @@ def _feed(ctx):
 COLLECTORS = (
     ('vaccination', 'health', _vaccinations),
     ('farrier', 'health', _farrier),
+    ('worming', 'health', _worming),
     ('vet', 'health', _vet_follow_ups),
     ('egg_count', 'health', _egg_counts),
     ('breeding', 'breeding', _breeding),
@@ -772,7 +837,10 @@ def _bulk_action(kind, horses, user):
     if not action_type or len(horses) < 2:
         return None
     ids = '&'.join(f'horse_ids={h.pk}' for h in horses)
-    label = 'farrier visit' if kind == 'farrier' else 'vaccination'
+    label = {
+        'farrier': 'farrier visit',
+        'worming': 'worming',
+    }.get(kind, 'vaccination')
     return Action(
         label=f'Record for {len(horses)}',
         url=reverse('bulk_health_form') + f'?action_type={action_type}&{ids}',
