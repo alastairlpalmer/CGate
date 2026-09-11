@@ -44,12 +44,30 @@ from 30rem, two rows of 7 narrower than that.
                 <span class="visit-date-name">{{ visit.date|date:"D" }}</span>
                 <span class="visit-date-num">{{ visit.date|date:"j" }}</span>
             </div>
-            <div class="min-w-0">
-                <p class="text-sm font-medium text-charcoal">
-                    <span class="text-sage">{{ visit.label }}</span> &middot;
-                    {% for horse in visit.horses %}<a href="{% url 'horse_detail' horse.pk %}" class="link">{{ horse.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
-                </p>
-                <p class="text-xs text-sage">{{ visit.detail }} &middot; {{ visit.date|due_label }}</p>
+            <div class="visit-body min-w-0">
+                <p class="text-sm font-medium text-sage">{{ visit.label }}</p>
+                {% comment %}A chip for each horse, not a comma-separated
+                sentence of them. A name set in a line of text is 20 px of
+                target on a phone, and the lines are 20 px apart — so
+                padding the names out to a thumb's size only made each one
+                overlap the names above and below it, and a tap opened the
+                wrong horse. A chip brings its own box, and the gap keeps
+                the boxes apart.
+
+                Three of them, because a farrier's day can carry a dozen
+                and this is a card that says what is coming, not the list
+                itself. The rest are a count, and the count is the way to
+                the full list.
+                {% endcomment %}
+                <div class="mt-1.5 flex flex-wrap gap-1.5">
+                    {% for horse in visit.horses|slice:":3" %}
+                    <a href="{% url 'horse_detail' horse.pk %}" class="horse-chip">{{ horse.name }}</a>
+                    {% endfor %}
+                    {% if visit.horses|length > 3 %}
+                    <a href="{% url 'health_dashboard' %}" class="horse-chip is-more">+{{ visit.horses|length|add:"-3" }} more</a>
+                    {% endif %}
+                </div>
+                <p class="mt-1.5 text-xs text-sage">{{ visit.detail }} &middot; {{ visit.date|due_label }}</p>
             </div>
             <div class="attn-actions">
                 {% if visit.action %}
