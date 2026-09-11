@@ -1028,7 +1028,20 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
 .split-view-pane[hidden] { display: none; }
 .split-view-pane.is-peek { transform: translateY(calc(100% - var(--sheet-peek))); }
 .split-view-pane.is-full { transform: translateY(0); }
-.split-view-pane.is-dragging { transition: none; }
+/* will-change gives the sheet a layer of its own for the length of the
+   drag, so following the finger is a composite rather than a repaint of
+   everything inside it. It is set only while dragging: left on, it costs
+   the memory for that layer for as long as the pane exists. */
+.split-view-pane.is-dragging { transition: none; will-change: transform; }
+
+/* At peek the body does not scroll, so the whole sheet is the drag
+   target and the gesture has to be ours from the first pixel. Left to
+   `auto` the browser spends the start of every pull deciding whether the
+   page should scroll instead, which is the part that feels unresponsive.
+   At full the body scrolls again, and only a pull from its very top is
+   read as a drag (see split_view.js). */
+.split-view-pane.is-peek { touch-action: none; }
+.split-view-pane.is-full .split-view-body { touch-action: pan-y; }
 
 .split-view-handle { @apply flex justify-center pt-2.5 pb-1 shrink-0; touch-action: none; }
 .split-view-handle span { @apply block w-10 h-1 rounded-full bg-sage/30; }
