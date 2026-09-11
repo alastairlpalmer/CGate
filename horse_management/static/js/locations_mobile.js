@@ -106,20 +106,54 @@
         if (hint) { hint.textContent = key === 'full' ? 'Show map' : 'Full list'; }
     }
 
+    // How far the sheet is pushed down right now. offsetTop is where
+    // layout put it and the client rect is where the transform left it,
+    // so the gap between the two is the translate — whichever snap, or a
+    // half-finished animation, set it.
+    function pushedDown(panel) {
+        var parent = panel.offsetParent;
+        if (!parent) { return 0; }
+        return panel.getBoundingClientRect().top
+            - (parent.getBoundingClientRect().top + panel.offsetTop);
+    }
+
+    /** How much of the sheet is showing, in pixels. */
+    function showing(panel) {
+        return panel.offsetHeight - pushedDown(panel);
+    }
+
+    // The three resting heights, read from the stylesheet rather than
+    // repeated here where they would drift from it. Measured once: this
+    // swaps the class three times, and doing that at the start of every
+    // drag made the first frame the most expensive one.
+    var snapPx = null;
+
     function snapHeights() {
         var panel = sheet();
         if (!panel) { return null; }
-        // Read the heights the stylesheet actually resolved, rather than
-        // repeating them here where they would drift from the CSS.
+        if (snapPx) { return snapPx; }
         var was = panel.className;
         var out = {};
+        // The snap classes carry a transition, so the sheet's position
+        // right after a class swap is still the old one — measured with
+        // the transition on, all three snaps come back as wherever the
+        // sheet happens to be sitting, and every drag then lands back
+        // where it started. Measure with it off.
+        panel.style.transition = 'none';
         SNAPS.forEach(function (key) {
             panel.className = was.replace(/is-(peek|half|full)/, 'is-' + key);
-            out[key] = panel.offsetHeight;
+            out[key] = showing(panel);
         });
         panel.className = was;
+        void panel.offsetHeight;        // settle back before animating again
+        panel.style.transition = '';
+        snapPx = out;
         return out;
     }
+
+    // The snaps are percentages, so they move with the window.
+    window.addEventListener('resize', function () { snapPx = null; });
+    window.addEventListener('orientationchange', function () { snapPx = null; });
 
     // ── Filtering and sorting, in the browser ──
 
@@ -325,27 +359,66 @@
 
     var drag = null;
 
+    function scrollBox() { return document.querySelector('.loc-sheet-scroll'); }
+
     function dragStart(e) {
         var panel = sheet();
         if (!panel) { return; }
-        drag = { y: e.touches[0].clientY, from: panel.offsetHeight, heights: snapHeights(), moved: false };
+        var box = scrollBox();
+        var inList = box && box.contains(e.target);
+        // The list scrolls; only a pull from the very top of it is a drag.
+        if (inList && box.scrollTop > 0) { return; }
+        drag = {
+            y: e.touches[0].clientY,
+            // Where the sheet is, not where its class says it should be:
+            // a finger landing mid-animation picks it up where it looks.
+            from: showing(panel),
+            height: panel.offsetHeight,
+            heights: snapHeights(),
+            inList: inList,
+            moved: false,
+            frame: 0
+        };
+        panel.classList.add('is-dragging');
     }
 
     function dragMove(e) {
         var panel = sheet();
         if (!drag || !panel) { return; }
         var delta = drag.y - e.touches[0].clientY;   // up is positive
+        // Pulling up inside the list with the sheet already full is the
+        // list being read, not the sheet being moved.
+        if (drag.inList && state.snap === 'full' && delta > 0) { return; }
         drag.moved = drag.moved || Math.abs(delta) > 4;
         if (!drag.moved) { return; }
         if (e.cancelable) { e.preventDefault(); }
         drag.visible = Math.max(0, drag.from + delta);
-        panel.style.height = drag.visible + 'px';
+        paint(panel);
+    }
+
+    // One write per frame: touchmove reports faster than the screen
+    // redraws, and a second write in the same frame is work nobody sees.
+    function paint(panel) {
+        if (!drag || drag.frame) { return; }
+        if (!window.requestAnimationFrame) { place(panel); return; }
+        drag.frame = requestAnimationFrame(function () {
+            if (!drag) { return; }
+            drag.frame = 0;
+            place(panel);
+        });
+    }
+
+    function place(panel) {
+        panel.style.transform =
+            'translateY(' + Math.max(0, drag.height - drag.visible) + 'px)';
     }
 
     function dragEnd() {
         var panel = sheet();
         if (!drag || !panel) { return; }
-        panel.style.height = '';
+        if (drag.frame && window.cancelAnimationFrame) { cancelAnimationFrame(drag.frame); }
+        panel.classList.remove('is-dragging');
+        panel.style.transform = '';
         var moved = drag.moved;
         var visible = drag.visible;
         var heights = drag.heights;
@@ -354,14 +427,16 @@
         setSnap(snapFromHeight(visible, heights));
     }
 
+    // The whole sheet is the handle. A 22 px strip was the only way to
+    // move it, which is a hard target for a thumb in a gateway.
     function bindDrag() {
-        var handle = document.querySelector('.loc-sheet-handle');
-        if (!handle || handle.dataset.dragBound) { return; }
-        handle.dataset.dragBound = '1';
-        handle.addEventListener('touchstart', dragStart, { passive: true });
-        handle.addEventListener('touchmove', dragMove, { passive: false });
-        handle.addEventListener('touchend', dragEnd);
-        handle.addEventListener('touchcancel', dragEnd);
+        var panel = sheet();
+        if (!panel || panel.dataset.dragBound) { return; }
+        panel.dataset.dragBound = '1';
+        panel.addEventListener('touchstart', dragStart, { passive: true });
+        panel.addEventListener('touchmove', dragMove, { passive: false });
+        panel.addEventListener('touchend', dragEnd);
+        panel.addEventListener('touchcancel', dragEnd);
     }
 
     // ── Setting up, and doing it again after a swap ──
