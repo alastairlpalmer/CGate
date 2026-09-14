@@ -47,6 +47,20 @@ BULK_ACTION_TYPES = {
     'worming': 'worming',
 }
 
+# Which tab of the health dashboard a grouped row opens. Named per kind
+# rather than decided with an either/or: when worming joined the bulk
+# kinds, an either/or sent its row to the vaccination tab.
+VISIT_ROW_TAB = {
+    'vaccination': 'vaccinations',
+    'farrier': 'farrier',
+    'worming': 'worming',
+}
+
+# How many horses a grouped row names before it counts the rest. Twelve
+# names is a wall of text on a phone and tells you no more than three and
+# a number does.
+TITLE_NAMES = 3
+
 KIND_LABELS = {
     'vaccination': 'Vaccination',
     'farrier': 'Farrier',
@@ -849,6 +863,13 @@ def _bulk_action(kind, horses, user):
     )
 
 
+def _names(horses):
+    """Up to TITLE_NAMES of them, then how many are left."""
+    shown = ', '.join(h.name for h in horses[:TITLE_NAMES])
+    rest = len(horses) - TITLE_NAMES
+    return f'{shown} and {rest} more' if rest > 0 else shown
+
+
 def rows(items, user):
     """Group inbox items into rows.
 
@@ -882,10 +903,10 @@ def rows(items, user):
         result.append(Row(
             kind='visit',
             severity=severity,
-            title=', '.join(h.name for h in horses),
+            title=_names(horses),
             subtitle=(details[0] if len(details) == 1 else f'{KIND_LABELS[kind]} · {len(horses)} horses'),
             items=group,
-            url=reverse('health_dashboard') + ('?type=farrier' if kind == 'farrier' else '?type=vaccinations'),
+            url=reverse('health_dashboard') + f'?type={VISIT_ROW_TAB.get(kind, "overview")}',
             horses=horses,
             action=_bulk_action(kind, horses, user),
             key=f'visit-{kind}-{due:%Y%m%d}',
