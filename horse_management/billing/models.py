@@ -135,6 +135,30 @@ class ExtraCharge(models.Model):
         self.invoice = invoice
         self.save(update_fields=['invoiced', 'invoice'])
 
+    @property
+    def on_live_invoice(self):
+        """True when this charge is billed on any non-cancelled invoice.
+
+        ``invoiced`` alone is not enough: a split charge on a co-owned horse
+        stays ``invoiced=False`` until *every* co-owner has been billed, yet
+        one owner's live invoice already carries a line for it. Changing the
+        amount in that window bills the co-owners different fractions of
+        different totals; deleting the charge orphans the line already
+        issued (``InvoiceLineItem.charge`` is SET_NULL), so cancelling that
+        invoice can never release it again.
+
+        Every path that edits or removes a charge must ask this, not
+        ``invoiced`` — the charge screens (billing.views) and the health
+        record → charge sync (health.views.sync_record_charge) alike.
+        """
+        if self.invoiced:
+            return True
+        from invoicing.models import Invoice
+
+        return self.invoice_items.exclude(
+            invoice__status=Invoice.Status.CANCELLED,
+        ).exists()
+
     @classmethod
     def unbilled_total(cls):
         """Total amount not yet billed to owners.

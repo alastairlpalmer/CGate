@@ -389,9 +389,12 @@ def generate_owner_statement_pdf(owner, statement):
     if settings.bank_details:
         elements.append(Spacer(1, 6*mm))
         elements.append(Paragraph('<b>Payment Details:</b>', normal_style))
-        elements.append(Paragraph(
-            settings.bank_details.replace('\n', '<br/>'), small_style
-        ))
+        # _esc_lines, not a bare newline swap: Paragraph parses its string as
+        # markup, so an unclosed tag in the bank details raised ValueError —
+        # a 500 on this page, and a statement email sent with no PDF while
+        # still reporting success. The invoice PDF above escapes the same
+        # field; this one was missed.
+        elements.append(Paragraph(_esc_lines(settings.bank_details), small_style))
 
     doc.build(elements)
     buffer.seek(0)

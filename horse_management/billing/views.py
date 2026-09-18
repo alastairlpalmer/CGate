@@ -9,7 +9,6 @@ from operator import attrgetter
 
 from django.contrib import messages
 
-from invoicing.models import Invoice
 from core.permissions import (
     LEVEL_VIEW, FeatureAccessMixin, deny, feature_required, has_feature_access,
 )
@@ -145,17 +144,10 @@ def _warn_if_owner_unrelated(request, form):
 def _on_live_invoice(charge):
     """True when the charge is billed on any non-cancelled invoice.
 
-    ``charge.invoiced`` alone is not enough: a split charge on a co-owned
-    horse stays invoiced=False until *every* co-owner has been billed, yet
-    one owner's live invoice already carries a line for it. Editing or
-    deleting it then orphaned that line (InvoiceLineItem.charge is
-    SET_NULL) and left the split no longer summing to the charge.
+    Thin wrapper over ``ExtraCharge.on_live_invoice``, which is the single
+    definition — the health record → charge sync asks the same question.
     """
-    if charge.invoiced:
-        return True
-    return charge.invoice_items.exclude(
-        invoice__status=Invoice.Status.CANCELLED
-    ).exists()
+    return charge.on_live_invoice
 
 
 class ExtraChargeUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):

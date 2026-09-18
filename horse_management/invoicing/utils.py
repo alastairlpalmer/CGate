@@ -6,7 +6,7 @@ import csv
 import io
 from collections import OrderedDict
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.utils import timezone
 
@@ -123,6 +123,69 @@ XERO_CSV_HEADERS = [
 ]
 
 
+class UnsupportedVatRateError(ValueError):
+    """An invoice whose VAT rate has no Xero tax code, so it cannot export."""
+
+
+# The only two rates that map. Decimal compares and hashes by value, so
+# 20.00 and 20 are the same key.
+XERO_TAX_TYPES = {
+    Decimal('0'): 'No VAT',
+    Decimal('20'): '20% (VAT on Income)',
+}
+
+
+def xero_tax_type(invoice):
+    """The Xero tax code for an invoice's snapshotted VAT rate.
+
+    Anything else is refused rather than labelled. Calling a 5% invoice
+    '20% (VAT on Income)' makes Xero raise a receivable for a VAT figure the
+    owner was never sent. ``BusinessSettingsForm.clean_vat_rate`` blocks
+    other rates at the settings page and
+    ``xero_integration.services.build_xero_invoice_payload`` refuses them on
+    the API path; the Django admin can still write one, and an invoice
+    created before that validator existed keeps its own snapshot — so the
+    CSV export checks for itself rather than trusting the setting.
+    """
+    try:
+        return XERO_TAX_TYPES[Decimal(invoice.vat_rate)]
+    except (KeyError, InvalidOperation, TypeError, ValueError):
+        raise UnsupportedVatRateError(
+            f"Invoice {invoice.invoice_number} has VAT rate "
+            f"{invoice.vat_rate}% — only 0% and 20% map to Xero tax codes, "
+            "so it cannot be exported. Correct the rate first."
+        )
+
+
+# Columns holding text a person typed. A spreadsheet treats a cell starting
+# with one of CSV_FORMULA_PREFIXES as a formula, so an owner named
+# '=HYPERLINK("http://elsewhere","click")' runs when the accountant opens
+# the export in Excel or Sheets on the way to Xero. Numeric columns are
+# deliberately not in this set: a credit's '-5.00' must stay a number.
+CSV_TEXT_HEADERS = frozenset({
+    '*ContactName', 'EmailAddress',
+    'POAddressLine1', 'POAddressLine2', 'POAddressLine3', 'POAddressLine4',
+    'POCity', 'PORegion', 'POPostalCode', 'POCountry',
+    '*InvoiceNumber', 'Reference', '*Description',
+    'InventoryItemCode', 'TrackingName1', 'TrackingOption1',
+    'TrackingName2', 'TrackingOption2', 'BrandingTheme',
+})
+CSV_FORMULA_PREFIXES = ('=', '+', '-', '@', '\t', '\r')
+
+
+def _csv_safe(value):
+    """Stop a text cell being read as a formula.
+
+    A leading apostrophe is the usual fix: spreadsheets show the rest as
+    plain text. It stays visible in the exported value, which is the right
+    trade — a name that needed it is worth someone looking at.
+    """
+    text = '' if value is None else str(value)
+    if text.startswith(CSV_FORMULA_PREFIXES):
+        return "'" + text
+    return text
+
+
 def _parse_address_lines(address_text):
     """Split an address into up to 4 lines."""
     if not address_text:
@@ -141,8 +204,9 @@ def invoice_to_xero_rows(invoice, account_code='200'):
     """
     # Tax type follows the invoice's snapshotted VAT rate, so what Xero adds
     # on import always matches what the PDF/detail page showed the owner.
-    # Line totals are net; Xero applies the VAT itself.
-    tax_type = '20% (VAT on Income)' if invoice.vat_rate > 0 else 'No VAT'
+    # Line totals are net; Xero applies the VAT itself. A rate with no Xero
+    # code raises UnsupportedVatRateError rather than exporting a wrong one.
+    tax_type = xero_tax_type(invoice)
 
     address_lines = _parse_address_lines(invoice.owner.address)
 
@@ -203,7 +267,10 @@ def invoice_to_xero_rows(invoice, account_code='200'):
             row['TaxAmount'] = str(tax_amounts[item.pk])
         row['Currency'] = 'GBP'
 
-        rows.append(row)
+        rows.append({
+            key: _csv_safe(value) if key in CSV_TEXT_HEADERS else value
+            for key, value in row.items()
+        })
 
     return rows
 
