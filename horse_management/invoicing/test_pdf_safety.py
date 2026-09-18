@@ -10,10 +10,10 @@ from django.test import TestCase
 from django.utils import timezone
 
 from billing.models import ExtraCharge
-from core.models import Horse, Location, Owner, Placement, RateType
+from core.models import BusinessSettings, Horse, Location, Owner, Placement, RateType
 from invoicing.pdf import generate_invoice_pdf, generate_owner_statement_pdf
 from invoicing.services import InvoiceService, StatementService
-from notifications.emails import send_invoice_email
+from notifications.emails import send_invoice_email, send_owner_statement
 
 
 class PdfEscapingTests(TestCase):
@@ -48,6 +48,24 @@ class PdfEscapingTests(TestCase):
         statement = StatementService.build_owner_statement(self.owner)
         pdf = generate_owner_statement_pdf(self.owner, statement)
         self.assertTrue(pdf.read().startswith(b"%PDF"))
+
+    def test_statement_pdf_survives_markup_in_the_bank_details(self):
+        # The invoice PDF escapes this field; the statement PDF did not, so
+        # an unclosed tag 500'd the page and sent the statement email with
+        # no PDF attached while still reporting success.
+        business = BusinessSettings.get_settings()
+        business.bank_details = "Lloyds <b>Bank\nSmith & Sons\nSort 30-00-00"
+        business.save()
+        statement = StatementService.build_owner_statement(self.owner)
+        pdf = generate_owner_statement_pdf(self.owner, statement)
+        self.assertTrue(pdf.read().startswith(b"%PDF"))
+
+    def test_statement_email_keeps_its_pdf_when_bank_details_carry_markup(self):
+        business = BusinessSettings.get_settings()
+        business.bank_details = "Lloyds <b>Bank\nSmith & Sons"
+        business.save()
+        self.assertTrue(send_owner_statement(self.owner))
+        self.assertEqual(len(mail.outbox[0].attachments), 1)
 
     def test_email_is_not_sent_when_pdf_fails(self):
         with patch("invoicing.pdf.generate_invoice_pdf", side_effect=RuntimeError("boom")):

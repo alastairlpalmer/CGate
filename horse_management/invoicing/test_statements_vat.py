@@ -13,7 +13,7 @@ from core.models import BusinessSettings, Horse, Location, Owner, Placement, Rat
 from core.roles_testutils import make_admin, make_viewer
 from invoicing.models import Invoice, Payment
 from invoicing.services import InvoiceService, StatementService
-from invoicing.utils import invoice_to_xero_rows
+from invoicing.utils import UnsupportedVatRateError, invoice_to_xero_rows
 from xero_integration.services import build_xero_invoice_payload
 
 PERIOD = (date(2026, 6, 1), date(2026, 6, 30))  # 30 days
@@ -89,6 +89,44 @@ class VatTests(TestCase):
         rows = invoice_to_xero_rows(invoice)
         self.assertEqual(rows[0]["*TaxType"], "No VAT")
 
+    def test_csv_export_refuses_a_rate_with_no_xero_code(self):
+        # clean_vat_rate blocks these at the settings page, but the Django
+        # admin can still write one and an older invoice keeps its own
+        # snapshot. The export used to label any non-zero rate as 20%, so a
+        # 5% invoice imported into Xero with four times the VAT the owner
+        # was sent. The API push already refuses the same rates.
+        invoice = InvoiceService.create_invoice(self.owner, *PERIOD)
+        Invoice.objects.filter(pk=invoice.pk).update(
+            vat_rate=Decimal("5.00"),
+            vat_amount=Decimal("7.50"),
+            total=Decimal("157.50"),
+        )
+        invoice.refresh_from_db()
+        with self.assertRaises(UnsupportedVatRateError) as caught:
+            invoice_to_xero_rows(invoice)
+        self.assertIn(invoice.invoice_number, str(caught.exception))
+
+    def test_single_invoice_csv_view_refuses_rather_than_mislabels(self):
+        self.client.force_login(make_admin())
+        invoice = InvoiceService.create_invoice(self.owner, *PERIOD)
+        Invoice.objects.filter(pk=invoice.pk).update(vat_rate=Decimal("5.00"))
+        resp = self.client.get(reverse('invoice_csv', args=[invoice.pk]))
+        self.assertRedirects(
+            resp, reverse('invoice_detail', args=[invoice.pk]),
+            fetch_redirect_response=False,
+        )
+
+    def test_bulk_csv_export_refuses_the_whole_file(self):
+        # Silently dropping the bad invoice would hand the accountant a file
+        # that is short a row with nothing to say so.
+        self.client.force_login(make_admin())
+        invoice = InvoiceService.create_invoice(self.owner, *PERIOD)
+        invoice.mark_as_sent()
+        Invoice.objects.filter(pk=invoice.pk).update(vat_rate=Decimal("5.00"))
+        resp = self.client.get(reverse('invoice_export_csv'))
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn(reverse('invoice_list'), resp['Location'])
+
     def test_xero_api_payload_consistent_with_pdf(self):
         _set_vat("20.00")
         invoice = InvoiceService.create_invoice(self.owner, *PERIOD)
@@ -115,6 +153,39 @@ class VatTests(TestCase):
         )
         self.assertFalse(form.is_valid())
         self.assertIn('vat_rate', form.errors)
+
+
+class XeroCsvInjectionTests(TestCase):
+    """The export is opened in Excel or Sheets on the way to Xero, so a text
+    cell starting with '=' runs as a formula. Owner names, rate-type names
+    and charge descriptions are all typed by staff."""
+
+    def test_formula_in_a_text_cell_is_neutralised(self):
+        owner = Owner.objects.create(
+            name='=HYPERLINK("http://elsewhere","click")', email="a@example.com",
+        )
+        loc = Location.objects.create(site="Colgate", name="Field")
+        rate = RateType.objects.create(name="@SUM(A1:A9)", daily_rate=Decimal("5.00"))
+        horse = Horse.objects.create(name="Ghost")
+        Placement.objects.create(
+            horse=horse, owner=owner, location=loc, rate_type=rate,
+            start_date=date(2026, 1, 1),
+        )
+        invoice = InvoiceService.create_invoice(owner, *PERIOD)
+
+        rows = invoice_to_xero_rows(invoice)
+        self.assertTrue(rows[0]["*ContactName"].startswith("'="))
+        self.assertTrue(rows[0]["*Description"].startswith("'@"))
+
+    def test_numbers_are_left_alone(self):
+        # A credit line's '-5.00' must stay a number, so the guard applies
+        # to text columns only.
+        owner = _placed_owner()
+        invoice = InvoiceService.create_invoice(owner, *PERIOD)
+        rows = invoice_to_xero_rows(invoice)
+        self.assertEqual(rows[0]["*Quantity"], "1")
+        self.assertEqual(Decimal(rows[0]["*UnitAmount"]), Decimal("150.00"))
+        self.assertNotIn("'", rows[0]["Total"])
 
 
 class AgedDebtorsTests(TestCase):

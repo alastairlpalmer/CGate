@@ -323,14 +323,24 @@ def sync_record_charge(record):
     The single definition of record→charge billing, shared by the create,
     update and bulk flows for farrier, vet, vaccination and worming records:
     cost > 0 with no charge yet → create one for the horse's current owner;
-    an existing uninvoiced charge → resync amount/date/description/provider;
-    cost cleared/zeroed → delete the uninvoiced charge (no £0.00 invoice
-    lines). Invoiced charges are never touched.
+    an existing unbilled charge → resync amount/date/description/provider;
+    cost cleared/zeroed → delete the unbilled charge (no £0.00 invoice
+    lines). Charges already on a live invoice are never touched.
+
+    "Already billed" is ``ExtraCharge.on_live_invoice``, not the ``invoiced``
+    flag: a split charge on a co-owned horse keeps ``invoiced=False`` until
+    every co-owner has been billed, so between the first co-owner's invoice
+    and the last there is a window where the flag says unbilled and a live
+    invoice already carries a line. Editing the cost in that window billed
+    the co-owners fractions of two different totals (£50 of £100 to one,
+    £100 of £200 to the other); clearing it deleted the charge and orphaned
+    the line already issued. The charge screens ask the same question — see
+    billing.views._on_live_invoice.
 
     Returns a status string so views can give honest feedback:
     'created' | 'updated' | 'deleted' | 'no_owner' (cost recorded but not
-    billable — nobody to invoice) | 'invoiced' (charge already invoiced;
-    the edit does NOT change what was billed) | None (nothing to do).
+    billable — nobody to invoice) | 'invoiced' (charge already billed; the
+    edit does NOT change what was billed) | None (nothing to do).
     """
     details = _charge_details(record)
     if details is None:
@@ -350,7 +360,7 @@ def sync_record_charge(record):
         )
         record.save(update_fields=['extra_charge'])
         return 'created'
-    if charge.invoiced:
+    if charge.on_live_invoice:
         # The bill is already on an invoice; silently diverging would lose
         # money — callers surface this so staff know to raise an adjustment.
         return 'invoiced' if record.cost != charge.amount else None
@@ -376,7 +386,9 @@ CHARGE_SYNC_MESSAGES = {
     ),
     'invoiced': (
         "The charge for this record is already on an invoice — the amount "
-        "billed has NOT changed. Raise a separate charge for any difference."
+        "billed has NOT changed. (On a co-owned horse this applies from the "
+        "moment the first owner is invoiced, while the charge still reads "
+        "as not invoiced.) Raise a separate charge for any difference."
     ),
 }
 

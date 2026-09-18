@@ -38,7 +38,7 @@ from .services import (
     NothingToInvoiceError,
     StatementService,
 )
-from .utils import group_line_items_by_horse, write_xero_csv
+from .utils import UnsupportedVatRateError, group_line_items_by_horse, write_xero_csv
 
 logger = logging.getLogger(__name__)
 
@@ -781,7 +781,11 @@ def invoice_csv(request, pk):
         return redirect('invoice_detail', pk=pk)
 
     output = io.StringIO()
-    write_xero_csv(invoice, output)
+    try:
+        write_xero_csv(invoice, output)
+    except UnsupportedVatRateError as exc:
+        messages.error(request, str(exc))
+        return redirect('invoice_detail', pk=pk)
 
     response = HttpResponse(output.getvalue(), content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="{invoice.invoice_number}.csv"'
@@ -820,7 +824,16 @@ def invoice_export_csv(request):
     queryset = _apply_period_filter(queryset, request)
 
     output = io.StringIO()
-    write_xero_csv(list(queryset), output)
+    try:
+        write_xero_csv(list(queryset), output)
+    except UnsupportedVatRateError as exc:
+        # The whole export is refused, not just the offending invoice: a
+        # file that is quietly missing rows is worse than one that is not
+        # produced, because nothing downstream would say so.
+        messages.error(request, f"{exc} Nothing was exported.")
+        back = reverse('invoice_list')
+        filters = request.GET.urlencode()
+        return redirect(f"{back}?{filters}" if filters else back)
 
     today = timezone.now().strftime('%Y-%m-%d')
     response = HttpResponse(output.getvalue(), content_type='text/csv')
