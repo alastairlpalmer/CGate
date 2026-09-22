@@ -804,12 +804,12 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .location-map .leaflet-tile-pane { filter: saturate(.45) brightness(1.04); opacity: .8; }
     .location-map .leaflet-control-attribution { @apply bg-white/80 px-1.5 text-[10px] leading-4 text-sage; }
     .location-map .leaflet-control-attribution a { @apply text-sage underline; }
-    .location-map-badge { @apply absolute z-[500] flex items-center justify-center rounded-full bg-white/95 shadow-card border border-light-sage no-underline; width: 44px; height: 44px; transform: translate(-50%, -50%); touch-action: manipulation; }
+    .location-map-badge { @apply absolute z-[500] flex items-center justify-center rounded-full bg-white/95 shadow-card border border-light-sage no-underline; top: 0; left: 0; width: 44px; height: 44px; touch-action: manipulation; }
     .location-map-badge[hidden], .location-map-label[hidden] { display: none; }
     .location-map-badge:focus-visible { @apply outline-none ring-2 ring-forest ring-offset-1; }
     .location-map-badge.is-highlight { @apply border-forest ring-2 ring-forest/40; }
     .location-map-badge .board-count { @apply h-9 w-9 text-xs; }
-    .location-map-label { @apply absolute z-[490] -translate-x-1/2 whitespace-nowrap rounded-md bg-white/90 px-1.5 py-0.5 text-xs font-medium leading-4 text-charcoal shadow-sm pointer-events-none; }
+    .location-map-label { @apply absolute z-[490] whitespace-nowrap rounded-md bg-white/90 px-1.5 py-0.5 text-xs font-medium leading-4 text-charcoal shadow-sm pointer-events-none; top: 0; left: 0; }
     /* Leader lines: a badge pushed off its anchor by a neighbour keeps a thin
        line (and a dot on the spot) back to the location it stands for. Above
        the shapes (Leaflet panes are 400), under the labels and badges. */
@@ -828,7 +828,7 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
        will end and CSS carries them there on Leaflet's own curve; leader
        lines cannot follow and sit the zoom out. */
     .location-map.is-zooming .location-map-badge,
-    .location-map.is-zooming .location-map-label { transition: left .25s cubic-bezier(0, 0, .25, 1), top .25s cubic-bezier(0, 0, .25, 1); }
+    .location-map.is-zooming .location-map-label { transition: transform .25s cubic-bezier(0, 0, .25, 1); will-change: transform; }
     .location-map.is-zooming .location-map-leaders { opacity: 0; }
     .location-map-pin { @apply absolute -top-1 -right-1 z-[501] grid h-4 w-4 place-items-center rounded-full bg-saddle text-white; }
     .near-chip { @apply inline-flex items-center gap-1.5 rounded-full border border-forest bg-sage-50 px-3 py-1.5 text-xs font-medium text-forest no-underline transition-colors hover:bg-white min-h-[36px]; }
