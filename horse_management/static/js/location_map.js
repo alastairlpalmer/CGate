@@ -555,8 +555,14 @@
                         var p = spread[i];
                         placed[it.pk] = true;
                         a.hidden = false;
-                        a.style.left = p.x + 'px';
-                        a.style.top = p.y + 'px';
+                        // transform, not left/top: a zoom animates this for
+                        // every badge and name at once, and left/top relayout
+                        // the map on each of those frames. A translate runs
+                        // on the compositor. The -50%/-50% that used to sit
+                        // in the stylesheet comes along here, because an
+                        // element has only one transform.
+                        a.style.transform =
+                            'translate(' + p.x + 'px,' + p.y + 'px) translate(-50%,-50%)';
                         var dx = p.x - it.x, dy = p.y - it.y;
                         self.leader(it.pk, Math.sqrt(dx * dx + dy * dy) > LEADER_MIN_PX ? { x1: it.x, y1: it.y, x2: p.x, y2: p.y, colour: a.dataset.colour } : null);
                         var label = self.labels[it.pk];
@@ -577,8 +583,9 @@
                         }
                         if (show) newNamed[it.pk] = true;
                         label.hidden = !show;
-                        label.style.left = p.x + 'px';
-                        label.style.top = (p.y + BADGE_PX / 2 + 2) + 'px';
+                        label.style.transform =
+                            'translate(' + p.x + 'px,' + (p.y + BADGE_PX / 2 + 2) + 'px)'
+                            + ' translateX(-50%)';
                     });
                     if (!named) decided.named = newNamed;
                     Object.keys(this.badges).forEach(function (pk) {
