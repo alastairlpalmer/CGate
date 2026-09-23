@@ -508,16 +508,11 @@
                     {% endif %}
                 </div>
                 {% else %}
-                <!-- Mobile cards -->
-                <ul class="divide-y divide-light-sage md:hidden">
-                    {% for horse in group.horses %}
-                    {% include 'horses/_horse_row_card.html' %}
-                    {% endfor %}
-                </ul>
-
-                <!-- Desktop table -->
-                <div class="hidden md:block overflow-x-auto">
-                <table class="data-table">
+                {% comment %}One table for both shapes: below `md` the
+                `.horse-rows` block in input.css re-lays each row as a
+                stacked card. See horses/_horse_row.html.{% endcomment %}
+                <div class="md:overflow-x-auto">
+                <table class="data-table horse-rows">
                     <thead>
                         <tr>
                             <th class="w-10" data-select-cell>

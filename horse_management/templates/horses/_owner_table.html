@@ -3,6 +3,11 @@ The Owner axis in its table layout: one card, one table, an owner row
 above each owner's horses. Compact enough to scan a long roll of owners,
 which a card per owner is not.
 
+One table for both shapes: below `md` the `.horse-rows` block in
+input.css re-lays each horse row as a stacked card, and hands the owner
+row's cells straight to its own flex line. There used to be a second,
+phone-only copy of this whole accordion beside it.
+
 Each owner is its own <tbody> with its own open state, so a row header
 folds only its own horses. Owner rows start closed (groups_collapsed);
 the Expand all button flips them all through a window event. Zebra
@@ -12,57 +17,20 @@ Context (from HorseListView): grouped_horses, groups_collapsed,
 group_kind ('owner'), feature_access.
 {% endcomment %}
 <div class="card overflow-hidden">
-    <!-- Mobile: an owner row, then that owner's horses as list cards -->
-    <div class="md:hidden">
-        {% for group in grouped_horses %}
-        <div x-data="{ collapsed: {{ groups_collapsed|yesno:'true,false' }} }"
-             @groups-toggle.window="collapsed = !$event.detail"
-             class="border-b border-light-sage last:border-b-0">
-            <div class="flex items-center gap-2.5 px-4 py-3 bg-sand-50 cursor-pointer select-none hover:bg-sand-100 transition-colors"
-                 @click="collapsed = !collapsed">
-                <button type="button" class="text-sage hover:text-charcoal transition-transform duration-150" :class="collapsed && '-rotate-90'"
-                        :aria-expanded="collapsed ? 'false' : 'true'" aria-label="Toggle owner">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
-                    </svg>
-                </button>
-                {% if group.pk %}
-                <a href="{% url 'owner_detail' group.pk %}" class="section-title link truncate tap-pad" @click.stop>{{ group.name }}</a>
-                {% else %}
-                <h2 class="section-title truncate">{{ group.name }}</h2>
-                {% endif %}
-                <span class="badge-info shrink-0 ml-auto">{{ group.count }}</span>
-            </div>
-            <div x-show="!collapsed" x-collapse>
-                {% if group.horses %}
-                <ul class="divide-y divide-light-sage">
-                    {% for horse in group.horses %}
-                    {% include 'horses/_horse_row_card.html' %}
-                    {% endfor %}
-                </ul>
-                {% else %}
-                <p class="px-5 py-4 text-sm text-sage">No horses here.</p>
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-
-    <!-- Desktop: one table, owners as section rows -->
-    <div class="hidden md:block overflow-x-auto">
-    <table class="data-table">
+    <div class="md:overflow-x-auto">
+    <table class="data-table horse-rows">
         <thead>
             <tr>
                 <th class="w-10" data-select-cell><span class="sr-only">Select</span></th>
                 <th>Horse</th>
-                <th>Location</th>
-                <th class="w-24 text-right pr-5">Actions</th>
+                <th class="split-optional">Location</th>
+                <th class="w-24 text-right pr-5 split-optional">Actions</th>
             </tr>
         </thead>
         {% for group in grouped_horses %}
         <tbody x-data="{ collapsed: {{ groups_collapsed|yesno:'true,false' }} }"
                @groups-toggle.window="collapsed = !$event.detail">
-            <tr class="bg-sand-50 hover:bg-sand-100 cursor-pointer select-none" @click="collapsed = !collapsed">
+            <tr class="group-header bg-sand-50 hover:bg-sand-100 cursor-pointer select-none" @click="collapsed = !collapsed">
                 <td class="!py-2" data-select-cell>
                     {% if group.horses %}
                     <input type="checkbox" data-select-all @change="toggleAll($event)" class="form-checkbox rounded" @click.stop
@@ -94,8 +62,8 @@ group_kind ('owner'), feature_access.
             {% for horse in group.horses %}
             {% include 'horses/_horse_row.html' with row_attrs='x-show="!collapsed"' %}
             {% empty %}
-            <tr x-show="!collapsed">
-                <td colspan="4" class="text-sm text-sage">No horses here.</td>
+            <tr class="is-empty" x-show="!collapsed">
+                <td colspan="4" class="text-sm text-sage px-5 py-3.5">No horses here.</td>
             </tr>
             {% endfor %}
         </tbody>

@@ -1052,6 +1052,128 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
     box-shadow: inset 3px 0 0 0 theme('colors.saddle.DEFAULT');
 }
 
+/* ── The horse row: one markup, two shapes ─────────────────────────────
+   Put `horse-rows` on a `.data-table` whose rows are horses
+   (horses/horse_list.html, horses/_owner_table.html). Below `md` the same
+   cells re-lay on a grid as a stacked card:
+
+       [ ] avatar  Name                         [icons]
+                   age · colour · sex
+                   Owner · Location
+
+   The phone list used to be a second partial rendered beside this one and
+   hidden with `md:hidden`. Both halves were parsed, both were walked by
+   htmx on every settle, and only one was ever seen. This block is what
+   replaced it, so nothing here may need a second copy of the markup.
+
+   It is placed after the split-view rules above on purpose: two of them
+   (the selected bar, the hidden tick box) are answered here by order, not
+   by piling on specificity. */
+@media (max-width: 767px) {
+    /* No table boxes below `md`: the rows lay themselves out. */
+    .horse-rows,
+    .horse-rows tbody { display: block; }
+    .horse-rows thead { display: none; }
+
+    .horse-rows tbody tr[data-horse-row] {
+        position: relative;
+        display: grid;
+        /* select | owner | location | actions. An absent column costs
+           nothing: its track collapses and its gap goes with it, because
+           the gaps are margins on the cells rather than a column-gap. */
+        grid-template-columns: auto minmax(0, auto) minmax(0, 1fr) auto;
+        align-items: center;
+        padding: 0.75rem 1rem;
+    }
+    .horse-rows tbody tr[data-horse-row] > td {
+        min-width: 0;
+        padding: 0;
+    }
+    /* Both stand the height of the card, so a thumb reaches them beside
+       the name rather than under it. z-index lifts them clear of the
+       name's tap overlay below. */
+    .horse-rows tbody td[data-col="select"],
+    .horse-rows tbody td[data-col="actions"] {
+        grid-row: 1 / -1;
+        position: relative;
+        z-index: 10;
+    }
+    .horse-rows tbody td[data-col="select"] { grid-column: 1; margin-right: 0.75rem; }
+    .horse-rows tbody td[data-col="actions"] { grid-column: 4; margin-left: 0.75rem; }
+    .horse-rows tbody td[data-col="name"] { grid-column: 2 / 4; grid-row: 1; }
+    .horse-rows tbody td[data-col="owner"] { grid-column: 2; grid-row: 2; }
+    .horse-rows tbody td[data-col="location"] { grid-column: 3; grid-row: 2; }
+    /* The meta line starts where the name does, clear of the avatar
+       (sm = 32px) and the gap-3 beside it, so the card reads as one
+       block rather than hanging off the picture. Whichever of the two
+       comes first carries the indent: owner always follows the name,
+       location only follows it under an owner group. */
+    .horse-rows tbody tr[data-horse-row] > td[data-col="owner"],
+    .horse-rows tbody tr[data-horse-row] > td[data-col="name"] + td[data-col="location"] {
+        padding-left: 2.75rem;
+    }
+
+    /* Owner and location read as one meta line under the name, as they
+       did on the card. Their links are not targets here — the name is the
+       only thing on the card to tap — so they give the tap back to the
+       overlay instead of sitting on top of it looking tappable. */
+    .horse-rows tbody td[data-col="owner"],
+    .horse-rows tbody td[data-col="location"] {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        @apply text-xs text-sage;
+    }
+    /* Everything in the two meta cells, not only their links: the
+       separator is a span, and a span that swallowed the tap would leave
+       a dead spot in the middle of the card. */
+    .horse-rows tbody td[data-col="owner"] *,
+    .horse-rows tbody td[data-col="location"] * {
+        pointer-events: none;
+    }
+    .horse-rows tbody td[data-col="owner"] a,
+    .horse-rows tbody td[data-col="location"] a {
+        color: inherit;
+        padding-top: 0;
+        padding-bottom: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+    /* The name is the card's target: its overlay covers everything the
+       tick box and the action buttons are not lifted above. */
+    .horse-rows tbody td[data-col="name"] a[data-horse-link]::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+    }
+
+    /* The selected bar runs the height of the card, not of one cell. */
+    .horse-rows tbody tr[data-horse-row].is-selected {
+        box-shadow: inset 3px 0 0 0 theme('colors.saddle.DEFAULT');
+    }
+    .split-view.is-selecting .horse-rows tr[data-horse-row].is-selected td:first-child,
+    .split-view:not(.is-selecting) .horse-rows tr[data-horse-row].is-selected td:nth-child(2) {
+        box-shadow: none;
+    }
+
+    /* An owner heading row (_owner_table.html) keeps its own shape: its
+       cells hand their children straight to the row's flex line, so the
+       chevron, the name and the count sit on one line as they did on the
+       phone accordion this replaced. The tick box cell is left alone —
+       the split-view rule above still hides it until Select is on. */
+    .horse-rows tbody tr.group-header {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 0.75rem 1rem;
+    }
+    .horse-rows tbody tr.group-header > td { display: contents; }
+    .horse-rows tbody tr.group-header > td > div { flex: 1; min-width: 0; }
+
+    .horse-rows tbody tr.is-empty,
+    .horse-rows tbody tr.is-empty > td { display: block; }
+}
+
 /* ── The pane: a sheet on a phone ── */
 .split-view-pane {
     --sheet-peek: 34dvh;
