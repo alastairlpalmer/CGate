@@ -215,10 +215,14 @@ class EntityGroupSpineTests(TestCase):
                 response = self.client.get(reverse('horse_list'), params)
                 self.assertFalse(response.context['groups_collapsed'])
 
+    # `horse-rows` is the marker of a table of horses: the class that
+    # carries the phone layout (input.css). Counting it counts the tables.
+    HORSE_TABLE = 'class="data-table horse-rows"'
+
     def test_owner_table_layout_renders_one_table(self):
         response = self.client.get(reverse('horse_list'), {'group_by': 'owner'})
         self.assertEqual(response.context['layout'], 'table')
-        self.assertEqual(response.content.decode().count('<table class="data-table">'), 1)
+        self.assertEqual(response.content.decode().count(self.HORSE_TABLE), 1)
         self.assertContains(response, 'Bob Bramble')
 
     def test_owner_cards_layout_renders_a_card_per_owner(self):
@@ -228,8 +232,46 @@ class EntityGroupSpineTests(TestCase):
         owners = len(response.context['grouped_horses'])
         self.assertGreater(owners, 1)
         self.assertEqual(
-            response.content.decode().count('<table class="data-table">'), owners,
+            response.content.decode().count(self.HORSE_TABLE), owners,
         )
+
+    def test_each_horse_is_rendered_once_on_every_grouped_axis(self):
+        """No second copy of the list for the phone.
+
+        The phone shape used to be a separate partial rendered beside the
+        table and hidden with `md:hidden`: every horse was in the response
+        twice, and the half nobody saw was still parsed and still walked by
+        htmx. One row partial now serves both shapes (horses/_horse_row.html
+        plus the `.horse-rows` block in input.css), so a horse that appears
+        twice means the split has come back.
+
+        The grouped axes only. The search-results and departed tabs of
+        horse_list.html still write their own card list and their own table
+        inline, and so still render each horse twice; they carry a Status
+        column the row partial has no cell for, so they are not covered
+        here and are not yet fixed.
+        """
+        for params in (
+            {},
+            {'group_by': 'location'},
+            {'group_by': 'location', 'layout': 'site'},
+            {'group_by': 'owner'},
+            {'group_by': 'owner', 'layout': 'cards'},
+        ):
+            with self.subTest(**params):
+                response = self.client.get(reverse('horse_list'), params)
+                body = response.content.decode()
+                horses = sum(
+                    len(g['horses']) for g in response.context['grouped_horses']
+                )
+                self.assertGreater(horses, 0)
+                self.assertEqual(body.count('data-horse-row'), horses)
+                for horse in Horse.objects.all():
+                    seen = body.count(f'data-horse-pk="{horse.pk}"')
+                    self.assertIn(
+                        seen, (0, 1),
+                        f'{horse.name} is in the page {seen} times',
+                    )
 
     # ── Unplaced and unowned horses ──────────────────────────────────
 

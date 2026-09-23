@@ -72,9 +72,9 @@ class OverTheCapTests(TestCase):
     def test_only_the_capped_number_of_horses_is_rendered(self):
         """The point of the exercise: the bytes are not sent."""
         body = self.client.get(self.url).content.decode()
-        # Each horse appears in a card and in a table row, so the row
-        # marker is the honest thing to count.
-        self.assertEqual(body.count('data-horse-row'), ROW_CAP * 2)
+        # One row per horse: the row marker is on the single partial that
+        # serves both the table and the phone shape.
+        self.assertEqual(body.count('data-horse-row'), ROW_CAP)
 
     def test_asking_for_the_rest_renders_all_of_them(self):
         response = self.client.get(self.url, {'all': '1'})
