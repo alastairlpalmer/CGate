@@ -1,23 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: [
-    './templates/**/*.html',
-  ],
-  safelist: [
-    // Classes used in Alpine.js :class bindings that Tailwind JIT can't detect
-    'bg-info-blue', 'text-info-blue', 'border-l-info-blue',
-    // Foaling calendar markers: the kind is interpolated in the template.
-    'foal-cal-mark-covering', 'foal-cal-mark-scan_pos', 'foal-cal-mark-scan_neg',
-    'foal-cal-mark-scan_other', 'foal-cal-mark-ehv', 'foal-cal-mark-ehv_sent', 'foal-cal-mark-born',
-    'bg-saddle', 'text-saddle', 'border-l-saddle',
-    'bg-error-red', 'text-error-red', 'border-l-error-red',
-    'bg-sand', 'text-sand', 'border-l-sand',
-    'bg-sage', 'bg-forest',
-    // Widget class set in core/forms.py, which the content globs do not scan
-    'switch-input',
-    // Leader lines are drawn by static/js/location_map.js, not a template
-    'location-map-leader',
-  ],
+  // Tailwind 4 reads only the theme from this file (static/css/input.css
+  // loads it with @config). What to scan, and the classes built at runtime
+  // that the old `safelist` kept, are listed in input.css (@source).
   theme: {
     // The palette is defined here (not under `extend`) on purpose: Tailwind's
     // default colours (gray-*, red-*, amber-*, …) are switched off, so a class

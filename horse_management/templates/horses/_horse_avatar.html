@@ -29,7 +29,7 @@ Args:
     {% if size == 'lg' %}
     <img src="{% if horse.photo_thumb %}{{ horse.photo_thumb.url }}{% else %}{{ horse.photo.url }}{% endif %}"
          alt="{{ horse.name }}" width="96" height="96"
-         class="w-24 h-24 rounded-xl object-cover shrink-0 ring-1 ring-light-sage shadow-sm cursor-zoom-in hover:ring-2 hover:ring-forest transition-shadow"
+         class="w-24 h-24 rounded-xl object-cover shrink-0 ring-1 ring-light-sage shadow-xs cursor-zoom-in hover:ring-2 hover:ring-forest transition-shadow"
          loading="lazy" decoding="async"
          role="button" tabindex="0" title="View photo full screen"
          aria-label="View the photo of {{ horse.name }} full screen"
@@ -52,7 +52,7 @@ Args:
 {% else %}
     {% with coat=horse.color|coat_colour %}
     {% if size == 'lg' %}
-    <div class="w-24 h-24 rounded-xl flex items-center justify-center shrink-0 shadow-sm ring-1 ring-black/10"
+    <div class="w-24 h-24 rounded-xl flex items-center justify-center shrink-0 shadow-xs ring-1 ring-black/10"
          style="background:{{ coat.0 }};color:{{ coat.1 }}" title="{{ horse.get_color_display }}">
         <svg class="w-12 h-12 opacity-90" aria-hidden="true"><use href="#i-horse"/></svg>
     </div>

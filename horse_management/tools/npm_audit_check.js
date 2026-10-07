@@ -16,12 +16,8 @@
 'use strict';
 
 const ALLOWED = {
-    // braces: every version is affected and no patched release exists.
-    // It reaches us only through Tailwind 3's build tools (chokidar,
-    // micromatch, fast-glob), which run on a developer machine to build
-    // static/css/styles.css and never in the deployed app. The fix npm
-    // offers is Tailwind 4, a breaking migration.
-    'GHSA-vfj7-8cjw-p6xm': 'braces: no patched version; build tooling only',
+    // Empty: nothing is accepted today. An entry is 'GHSA-…': 'why', and
+    // goes once npm audit stops reporting it (this script says when).
 };
 
 const BLOCKING = new Set(['high', 'critical']);
@@ -40,11 +36,11 @@ function advisories(report) {
     return [...found.values()];
 }
 
-function check(report) {
+function check(report, allowed = ALLOWED) {
     const all = advisories(report);
-    const blocking = all.filter((a) => BLOCKING.has(a.severity) && !(a.id in ALLOWED));
-    const accepted = all.filter((a) => a.id in ALLOWED);
-    const stale = Object.keys(ALLOWED).filter((id) => !all.some((a) => a.id === id));
+    const blocking = all.filter((a) => BLOCKING.has(a.severity) && !(a.id in allowed));
+    const accepted = all.filter((a) => a.id in allowed);
+    const stale = Object.keys(allowed).filter((id) => !all.some((a) => a.id === id));
     return { blocking, accepted, stale };
 }
 

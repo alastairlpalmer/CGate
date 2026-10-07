@@ -80,7 +80,7 @@ in the batch could be saved. Behaviour lives in static/js/photo_quick_add.js.
                     <div class="relative">
                         <img :src="item.url" :alt="item.name" class="w-full aspect-square object-cover rounded-card ring-1 ring-light-sage">
                         <button type="button" @click="remove(index)"
-                                class="absolute -top-1.5 -right-1.5 w-7 h-7 rounded-full bg-charcoal/80 text-white flex items-center justify-center shadow"
+                                class="absolute -top-1.5 -right-1.5 w-7 h-7 rounded-full bg-charcoal/80 text-white flex items-center justify-center shadow-sm"
                                 :aria-label="'Remove ' + item.name">
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
