@@ -69,7 +69,12 @@ jobs:
         with:
           node-version: '22'
       - name: npm audit (JavaScript build tooling)
-        run: npm audit --audit-level=high
+        # npm audit cannot accept a single advisory, so the check script
+        # fails on any high/critical advisory except the ones it lists
+        # (with the reason) in tools/npm_audit_check.js.
+        run: |
+          npm audit --json > npm-audit.json || true
+          node tools/npm_audit_check.js < npm-audit.json
 
   static-analysis:
     name: Bandit static analysis
