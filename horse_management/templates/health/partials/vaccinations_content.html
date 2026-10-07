@@ -70,7 +70,7 @@
                     <span class="badge-success">OK</span>
                     {% endif %}
                     {% if vax.next_due_date %}
-                    <span class="text-xs {% if vax.next_due_date < today %}text-error-red font-semibold{% elif vax.is_due_soon %}text-forest{% else %}text-sage{% endif %}">due {{ vax.next_due_date|date:"d M Y" }}</span>
+                    <span class="text-xs {% if vax.next_due_date < today %}text-error-red font-semibold{% elif vax.is_due_soon %}text-forest{% else %}text-sage{% endif %}">due {% if vax.due_from %}{{ vax.due_from|date:"d M" }} &ndash; {% endif %}{{ vax.next_due_date|date:"d M Y" }}</span>
                     {% endif %}
                 </div>
             </div>
@@ -113,7 +113,8 @@
                     <td>{{ vax.vaccination_type.name }}</td>
                     <td class="text-sage">{{ vax.date_given|date:"d M Y" }}</td>
                     <td class="{% if vax.next_due_date and vax.next_due_date < today %}text-error-red font-semibold{% elif vax.is_due_soon %}text-forest{% else %}text-sage{% endif %}">
-                        {{ vax.next_due_date|date:"d M Y" }}
+                        {% if vax.due_from %}{{ vax.due_from|date:"d M" }} &ndash; {% endif %}{{ vax.next_due_date|date:"d M Y" }}
+                        {% if vax.course_stage %}<span class="block text-xs text-sage font-normal">after {{ vax.get_course_stage_display }}</span>{% endif %}
                     </td>
                     <td>
                         {% if vax.next_due_date and vax.next_due_date < today %}

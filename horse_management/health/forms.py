@@ -55,12 +55,13 @@ class VaccinationForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFormMixi
     class Meta:
         model = Vaccination
         fields = [
-            'horse', 'vaccination_type', 'date_given', 'next_due_date',
+            'horse', 'vaccination_type', 'course_stage', 'date_given', 'next_due_date',
             'vet', 'batch_number', 'cost', 'notes'
         ]
         widgets = {
             'horse': forms.Select(attrs={'class': 'form-select'}),
             'vaccination_type': forms.Select(attrs={'class': 'form-select'}),
+            'course_stage': forms.Select(attrs={'class': 'form-select'}),
             'date_given': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'vet': forms.Select(attrs={'class': 'form-select'}),
@@ -69,8 +70,35 @@ class VaccinationForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFormMixi
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
+    # Free text for a vaccination that has no type yet. Saved as a new type
+    # that repeats every 12 months (edit it in Settings to change that).
+    new_type_name = forms.CharField(
+        required=False,
+        max_length=100,
+        label='Or type a new vaccination',
+        widget=forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Tetanus'}),
+        help_text='Leave both blank for Flu (every 12 months).',
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Not required: blank means flu, or the name typed below it.
+        self.fields['vaccination_type'].required = False
+        self.fields['vaccination_type'].empty_label = '— Flu (every 12 months) —'
+        self.fields['course_stage'].label = 'Course stage'
+        self.fields['course_stage'].choices = [
+            ('', '— Not part of a course —'),
+            *Vaccination.CourseStage.choices,
+        ]
+        # Keep the free-text box directly under the type picker.
+        fields = {}
+        for name, field in self.fields.items():
+            if name == 'new_type_name':
+                continue
+            fields[name] = field
+            if name == 'vaccination_type':
+                fields['new_type_name'] = self.fields['new_type_name']
+        self.fields = fields
         # Allow blank so model.save() can auto-calculate from vaccination_type interval
         self.fields['next_due_date'].required = False
         # Filter vet dropdown to active vets only
@@ -92,6 +120,26 @@ class VaccinationForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFormMixi
 
     def clean(self):
         cleaned_data = super().clean()
+        # The picked type wins, then a typed name, then flu. A typed name
+        # that matches an existing type reuses it instead of a duplicate.
+        # A type that does not exist yet is made in save(), so a form that
+        # fails validation leaves no new type behind.
+        self._new_type_name = ''
+        self._use_flu = False
+        if not cleaned_data.get('vaccination_type'):
+            name = (cleaned_data.get('new_type_name') or '').strip()
+            if name:
+                vax_type = (
+                    VaccinationType.objects.filter(name__iexact=name)
+                    .order_by('-is_active', 'pk').first()
+                )
+                if vax_type is None:
+                    self._new_type_name = name
+                else:
+                    cleaned_data['vaccination_type'] = vax_type
+                    self.instance.vaccination_type = vax_type
+            else:
+                self._use_flu = True
         date_given = cleaned_data.get('date_given')
         next_due = cleaned_data.get('next_due_date')
         if date_given and next_due and next_due <= date_given:
@@ -110,12 +158,24 @@ class VaccinationForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFormMixi
         if (
             self.instance.pk
             and ('date_given' in self.changed_data
-                 or 'vaccination_type' in self.changed_data)
+                 or 'vaccination_type' in self.changed_data
+                 or 'course_stage' in self.changed_data
+                 or 'new_type_name' in self.changed_data)
             and 'next_due_date' not in self.changed_data
         ):
             cleaned_data['next_due_date'] = None
             self.instance.next_due_date = None
         return cleaned_data
+
+    def save(self, commit=True):
+        name = getattr(self, '_new_type_name', '')
+        if getattr(self, '_use_flu', False):
+            self.instance.vaccination_type = VaccinationType.default_flu()
+        elif name:
+            self.instance.vaccination_type = VaccinationType.objects.create(
+                name=name, interval_months=12,
+            )
+        return super().save(commit=commit)
 
 
 class FarrierVisitForm(ServicePickerMixin, ActiveHorseFormMixin, forms.ModelForm):

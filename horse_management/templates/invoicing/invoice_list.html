@@ -300,7 +300,13 @@
                         @click="document.querySelectorAll('input[data-invoice-cb]').forEach(cb => cb.checked = false); refreshInv()"
                         class="text-xs text-sage hover:text-charcoal underline py-1.5">Clear</button>
             </div>
-            <div class="flex items-center gap-2 sm:gap-3">
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                {# Confirm first, then submit with a hidden action field: the submit button's own name/value is not sent when the form is submitted from script. #}
+                <button type="button"
+                        @click="$store.confirm.ask({ text: 'Delete ' + invCount + ' selected invoice' + (invCount !== 1 ? 's' : '') + '? Only drafts are deleted. Sent, paid and overdue invoices stay. This cannot be undone.', label: 'Delete', danger: true }).then(ok => { if (!ok) return; const f = document.getElementById('bulk-invoice-form'); f.querySelectorAll('input[name=action]').forEach(i => i.remove()); const a = document.createElement('input'); a.type = 'hidden'; a.name = 'action'; a.value = 'delete'; f.appendChild(a); f.requestSubmit(); })"
+                        class="btn-secondary text-sm text-error-red hover:text-error-red flex-1 sm:flex-none">
+                    Delete Selected
+                </button>
                 {% load xero_tags %}
                 {% xero_is_connected as xero_connected %}
                 {% if xero_connected and feature_access.xero.full %}

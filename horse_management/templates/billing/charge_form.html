@@ -35,6 +35,7 @@
                           <p class="mt-1 text-sm text-error-red">{{ form.service_item.errors.0 }}</p>
                         {% endif %}
                         <p class="text-xs text-sage mt-1">Pick a service to fill in the type, description and amount. Choose Other to enter everything yourself.</p>
+                        {% if form.service_item.help_text %}<p class="text-xs text-sage mt-1">{{ form.service_item.help_text }}</p>{% endif %}
                     </div>
                     <div>
                         <label for="id_horse" class="block text-sm font-medium text-charcoal">Horse *</label>

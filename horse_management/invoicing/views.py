@@ -569,7 +569,7 @@ def payment_delete(request, pk):
 
 @feature_required('invoices')
 def invoice_bulk_action(request):
-    """Send or mark-paid a selection of invoices in one action.
+    """Send, mark-paid, push or delete a selection of invoices in one action.
 
     Ineligible invoices in the selection are skipped and reported rather
     than failing the whole batch, so "select all → send" after a monthly
@@ -677,6 +677,32 @@ def invoice_bulk_action(request):
                 request,
                 f"Skipped {skipped} invoice{'s' if skipped != 1 else ''} "
                 "not in a payable state (only sent/overdue can be marked paid)."
+            )
+    elif action == 'delete':
+        # Same rule as the single delete (invoice_delete): only a draft that
+        # was never issued goes. The rest stay and are reported, so a
+        # "select all → delete" cannot remove an issued invoice.
+        deleted = 0
+        blocked = []
+        for invoice in invoices:
+            if invoice.deletion_blocker:
+                blocked.append(invoice.invoice_number)
+                continue
+            with transaction.atomic():
+                invoice.release_extra_charges()
+                invoice.delete()
+            deleted += 1
+        if deleted:
+            messages.success(
+                request,
+                f"Deleted {deleted} draft invoice{'s' if deleted != 1 else ''}. "
+                "Their extra charges are back to unbilled.",
+            )
+        if blocked:
+            messages.info(
+                request,
+                f"Not deleted (not a draft, paid in part, or in Xero): "
+                f"{', '.join(blocked)}. Cancel these instead.",
             )
     elif action == 'push_xero':
         from xero_integration.client import XeroAPIError, XeroTokenExpiredError

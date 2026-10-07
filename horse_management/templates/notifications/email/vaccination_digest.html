@@ -42,7 +42,7 @@
         <tr>
             <td>{{ vaccination.horse.name }}</td>
             <td>{{ vaccination.vaccination_type.name }}</td>
-            <td>{{ vaccination.next_due_date|date:"d/m/Y" }}</td>
+            <td>{% if vaccination.due_from %}{{ vaccination.due_from|date:"d/m/Y" }} to {% endif %}{{ vaccination.next_due_date|date:"d/m/Y" }}</td>
             <td>{{ vaccination.date_given|date:"d/m/Y" }}</td>
         </tr>
         {% endfor %}

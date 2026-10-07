@@ -53,9 +53,9 @@ def send_vaccination_reminders():
     # with several horses due used to get a separate 07:00 email for each.
     by_owner = {}
     for vaccination in vaccinations:
-        reminder_days = vaccination.vaccination_type.reminder_days_before
-        reminder_date = vaccination.next_due_date - timedelta(days=reminder_days)
-        if today < reminder_date:
+        # A primary-course dose is reminded when its window opens; any other
+        # record the type's reminder days before the due date.
+        if today < vaccination.reminder_date:
             continue
         owner = vaccination.horse.current_owner
         if not owner or not owner.email:
