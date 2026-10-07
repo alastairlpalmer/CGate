@@ -17,7 +17,7 @@ A web application for managing horse livery operations including tracking horses
 
 - **Backend**: Django 5.x with Python 3.11+
 - **Database**: SQLite (development) / PostgreSQL (production)
-- **Frontend**: Django templates with Tailwind CSS (via CDN)
+- **Frontend**: Django templates with Tailwind CSS 4 (compiled by `npm run build:css`)
 - **PDF Generation**: WeasyPrint / ReportLab
 - **Task Queue**: Celery + Redis (for automated reminders)
 

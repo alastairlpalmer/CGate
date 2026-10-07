@@ -23,7 +23,7 @@
     <!-- Filter Tabs -->
     <div class="card px-5 py-3">
         <div class="flex flex-wrap items-center gap-4">
-            <div class="inline-flex rounded-lg shadow-sm">
+            <div class="inline-flex rounded-lg shadow-xs">
                 <a href="?status=active{% if request.GET.location %}&location={{ request.GET.location|urlencode }}{% endif %}{% if request.GET.owner %}&owner={{ request.GET.owner|urlencode }}{% endif %}"
                    class="px-4 py-2 min-h-[44px] sm:min-h-0 inline-flex items-center text-sm font-medium rounded-l-lg border {% if current_status == 'active' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
                     Active

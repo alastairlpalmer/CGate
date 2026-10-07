@@ -157,7 +157,7 @@
 
     <!-- Status Filters -->
     <div class="card px-5 py-3">
-        <div class="inline-flex rounded-lg shadow-sm">
+        <div class="inline-flex rounded-lg shadow-xs">
             <a href="{% url 'location_detail' location.pk %}?tab=history&status=active"
                class="px-4 py-2 text-sm font-medium rounded-l-lg border {% if current_status == 'active' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
                 Active
@@ -289,7 +289,7 @@
     <!-- Period selector -->
     <div class="card px-5 py-3 space-y-3">
         <div class="flex items-center justify-between flex-wrap gap-3">
-            <div class="inline-flex rounded-lg shadow-sm">
+            <div class="inline-flex rounded-lg shadow-xs">
                 <a href="{% url 'location_detail' location.pk %}?tab=usage&range=3mo"
                    class="px-4 py-2 text-sm font-medium border rounded-l-lg {% if usage_range == '3mo' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">3 months</a>
                 <a href="{% url 'location_detail' location.pk %}?tab=usage&range=6mo"
@@ -300,7 +300,7 @@
             <span class="text-xs text-sage">{{ usage_total_days }} day{{ usage_total_days|pluralize }} tracked in the {{ usage_period_label }}</span>
         </div>
         {% if usage_range == 'year' %}
-        <div class="inline-flex rounded-lg shadow-sm flex-wrap">
+        <div class="inline-flex rounded-lg shadow-xs flex-wrap">
             {% for y in usage_year_choices %}
             <a href="{% url 'location_detail' location.pk %}?tab=usage&range=year&year={{ y }}"
                class="px-4 py-2 text-sm font-medium border {% if y == usage_year_choices.0 %}rounded-l-lg{% endif %}{% if forloop.last %} rounded-r-lg{% endif %}

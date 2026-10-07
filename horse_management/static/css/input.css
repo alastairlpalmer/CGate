@@ -28,11 +28,68 @@
     size-adjust: 96.47%; ascent-override: 106.14%; descent-override: 41.46%; line-gap-override: 0.00%;
 }
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind 4. source(none): scan only what is listed below, as the v3
+   `content` setting did. The theme still comes from tailwind.config.js. */
+@import "tailwindcss" source(none);
+@config "../../tailwind.config.js";
+@source "../../templates";
+/* Classes built at runtime, which the scan cannot see (was `safelist`) */
+@source inline("bg-info-blue text-info-blue border-l-info-blue bg-saddle text-saddle border-l-saddle bg-error-red text-error-red border-l-error-red bg-sand text-sand border-l-sand bg-sage bg-forest");
+
+@theme {
+    /* v3 defaults for a bare `ring` (3px, translucent blue) */
+    --default-ring-width: 3px;
+    --default-ring-color: rgb(59 130 246 / 0.5);
+    /* v3 line heights: fixed lengths, not v4's ratios, so a text-* class
+       keeps its line height when another rule changes the font size */
+    --text-xs--line-height: 1rem;
+    --text-sm--line-height: 1.25rem;
+    --text-base--line-height: 1.5rem;
+    --text-lg--line-height: 1.75rem;
+    --text-xl--line-height: 1.75rem;
+    --text-2xl--line-height: 2rem;
+    --text-3xl--line-height: 2.25rem;
+    --text-4xl--line-height: 2.5rem;
+    /* Tailwind 3's default sans stack, kept so unstyled text is unchanged */
+    --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+/* Tailwind 3 spacing for space-y and divide-*. v4 puts the gap (or the
+   line) after every child but the last; v3 put it before every child but
+   the first, skipping [hidden] ones. They differ when x-show hides a
+   child, so the v3 rules are kept. v4's own rule has zero specificity;
+   the reset below has (0,0,1) (`:not(_)` counts as a type selector), so it
+   beats v4's rule but still loses to a child's own mb-* or border-b. */
+@utility space-y-* {
+    :where(& > :not(:last-child)):not(_) { margin-block-end: 0; }
+    & > :not([hidden]) ~ :not([hidden]) { margin-top: calc(var(--spacing) * --value(number)); }
+}
+@utility divide-y {
+    :where(& > :not(:last-child)):not(_) { border-bottom-width: 0; }
+    & > :not([hidden]) ~ :not([hidden]) { border-top-width: 1px; border-bottom-width: 0; border-top-style: solid; }
+}
+@utility divide-y-* {
+    :where(& > :not(:last-child)):not(_) { border-bottom-width: 0; }
+    & > :not([hidden]) ~ :not([hidden]) { border-top-width: calc(--value(integer) * 1px); border-bottom-width: 0; }
+}
+@utility divide-x {
+    :where(& > :not(:last-child)):not(_) { border-right-width: 0; }
+    & > :not([hidden]) ~ :not([hidden]) { border-left-width: 1px; border-right-width: 0; border-left-style: solid; }
+}
+@utility divide-light-sage {
+    & > :not([hidden]) ~ :not([hidden]) { border-color: --theme(--color-light-sage); }
+}
 
 @layer base {
+    /* Tailwind 3 preflight behaviour that v4 dropped */
+    input::placeholder, textarea::placeholder { color: #9ca3af; }
+    button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+    /* v4 makes fields transparent and square; v3 left the browser's own */
+    input:where(:not([type="button"], [type="reset"], [type="submit"])), select, optgroup, textarea {
+        background-color: revert;
+        border-radius: revert;
+    }
+
     /* 14px is a phone size; unclassed body text reads better at 15px on desktop */
     @media (min-width: 1024px) { body { font-size: 15px; } }
 }
@@ -42,38 +99,48 @@
     /* Three surfaces: `card` is flat (lists, tables, forms); `card-raised`
        carries a Brim-tinted shadow and lifts on hover (KPIs, whole-card
        links); `panel` is a Crown-cream fill with no border (hero, summaries). */
-    .card { @apply bg-white rounded-card border border-light-sage; }
-    .card-raised { @apply card shadow-card transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-float hover:border-sage/40; }
+    .card, .card-raised, .kpi-card, .empty-state { @apply bg-white rounded-card border border-light-sage; }
+    .card-raised, .kpi-card { @apply shadow-card transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-float hover:border-sage/40; }
     .panel { @apply bg-sand-50 rounded-card p-5 lg:p-6; }
 
     /* Buttons */
-    .btn { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-btn transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 cursor-pointer active:scale-[0.97] touch-manipulation min-h-[44px] sm:min-h-0; }
-    .btn-primary { @apply btn bg-saddle text-white hover:bg-saddle-dark focus:ring-saddle/40 shadow-sm; }
-    .btn-secondary { @apply btn bg-white text-charcoal border border-sage/30 hover:bg-light-sage focus:ring-sage; }
-    .btn-danger { @apply btn bg-error-red text-white hover:bg-error-red/90 focus:ring-error-red shadow-sm; }
-    .btn-success { @apply btn bg-forest text-white hover:bg-forest-light focus:ring-sage shadow-sm; }
-    .btn-ghost { @apply btn text-sage hover:text-charcoal hover:bg-light-sage focus:ring-sage; }
+    .btn,
+    .btn-primary,
+    .btn-secondary,
+    .btn-danger,
+    .btn-success,
+    .btn-ghost { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-btn transition-all duration-150 focus:outline-hidden focus:ring-2 focus:ring-offset-2 cursor-pointer active:scale-[0.97] touch-manipulation min-h-[44px] sm:min-h-0; }
+    .btn-primary { @apply bg-saddle text-white hover:bg-saddle-dark focus:ring-saddle/40 shadow-xs; }
+    .btn-secondary { @apply bg-white text-charcoal border border-sage/30 hover:bg-light-sage focus:ring-sage; }
+    .btn-danger { @apply bg-error-red text-white hover:bg-error-red/90 focus:ring-error-red shadow-xs; }
+    .btn-success { @apply bg-forest text-white hover:bg-forest-light focus:ring-sage shadow-xs; }
+    .btn-ghost { @apply text-sage hover:text-charcoal hover:bg-light-sage focus:ring-sage; }
     .btn-xs { @apply px-2 py-1 text-xs rounded-sm; }
     /* Icon-only action button — 44px touch target on mobile, compact on desktop */
-    .btn-icon { @apply inline-flex items-center justify-center w-11 h-11 sm:w-8 sm:h-8 shrink-0 rounded-btn text-sage hover:text-charcoal hover:bg-light-sage active:bg-light-sage/70 transition-colors duration-100 touch-manipulation; }
-    .btn-icon-danger { @apply btn-icon text-error-red/70 hover:text-error-red hover:bg-error-red-50 active:bg-error-red-50; }
+    .btn-icon, .btn-icon-danger { @apply inline-flex items-center justify-center w-11 h-11 sm:w-8 sm:h-8 shrink-0 rounded-btn text-sage hover:text-charcoal hover:bg-light-sage active:bg-light-sage/70 transition-colors duration-100 touch-manipulation; }
+    .btn-icon-danger { @apply text-error-red/70 hover:text-error-red hover:bg-error-red-50 active:bg-error-red-50; }
 
     /* App bar icon buttons — square, the same height as the search input, so
        search + filter + add read as one control strip. */
-    .btn-icon-base { @apply relative inline-flex items-center justify-center w-11 h-11 sm:w-9 sm:h-9 shrink-0 rounded-btn transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-sage focus:ring-offset-2 active:scale-95 cursor-pointer touch-manipulation; }
-    .btn-icon-primary { @apply btn-icon-base bg-saddle text-white shadow-sm hover:bg-saddle-dark focus:ring-saddle/40; }
-    .btn-icon-outline { @apply btn-icon-base bg-white text-sage border border-sage/30 hover:text-charcoal hover:bg-light-sage; }
+    .btn-icon-base, .btn-icon-primary, .btn-icon-outline { @apply relative inline-flex items-center justify-center w-11 h-11 sm:w-9 sm:h-9 shrink-0 rounded-btn transition-all duration-150 focus:outline-hidden focus:ring-2 focus:ring-sage focus:ring-offset-2 active:scale-95 cursor-pointer touch-manipulation; }
+    .btn-icon-primary { @apply bg-saddle text-white shadow-xs hover:bg-saddle-dark focus:ring-saddle/40; }
+    .btn-icon-outline { @apply bg-white text-sage border border-sage/30 hover:text-charcoal hover:bg-light-sage; }
     .btn-icon-outline.is-on { @apply bg-light-sage text-forest border-forest/40; }
     /* Count of applied filters, pinned to the button corner */
     .btn-icon-badge { @apply absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[10px] font-bold leading-none rounded-full bg-forest text-white ring-2 ring-parchment; }
 
     /* Badges */
-    .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
-    .badge-success { @apply badge bg-sage-50 text-forest ring-1 ring-inset ring-sage/20; }
-    .badge-warning { @apply badge bg-sand-50 text-saddle ring-1 ring-inset ring-sand/40; }
-    .badge-danger { @apply badge bg-error-red-50 text-error-red ring-1 ring-inset ring-error-red/20; }
-    .badge-info { @apply badge bg-info-blue-50 text-info-blue ring-1 ring-inset ring-info-blue/20; }
-    .badge-neutral { @apply badge bg-light-sage text-charcoal-light ring-1 ring-inset ring-sage/10; }
+    .badge,
+    .badge-success,
+    .badge-warning,
+    .badge-danger,
+    .badge-info,
+    .badge-neutral { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
+    .badge-success { @apply bg-sage-50 text-forest ring-1 ring-inset ring-sage/20; }
+    .badge-warning { @apply bg-sand-50 text-saddle ring-1 ring-inset ring-sand/40; }
+    .badge-danger { @apply bg-error-red-50 text-error-red ring-1 ring-inset ring-error-red/20; }
+    .badge-info { @apply bg-info-blue-50 text-info-blue ring-1 ring-inset ring-info-blue/20; }
+    .badge-neutral { @apply bg-light-sage text-charcoal-light ring-1 ring-inset ring-sage/10; }
 
     /* Data Tables — cool sage-tinted header band separates columns from the
        page; zebra striping on even rows keeps long tables scannable, and the
@@ -87,18 +154,18 @@
     .data-table tbody tr:nth-child(even) { @apply bg-parchment/60 hover:bg-sage-50/80; }
 
     /* Forms */
-    .form-input { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-sm focus:outline-none focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150 min-h-[44px] sm:min-h-0; }
-    .form-select { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-sm focus:outline-none focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150 min-h-[44px] sm:min-h-0; }
-    .form-textarea { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-sm focus:outline-none focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150; }
+    .form-input { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-xs focus:outline-hidden focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150 min-h-[44px] sm:min-h-0; }
+    .form-select { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-xs focus:outline-hidden focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150 min-h-[44px] sm:min-h-0; }
+    .form-textarea { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-xs focus:outline-hidden focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150; }
     .form-checkbox { @apply h-5 w-5 rounded-sm border-sage/30 text-forest focus:ring-sage; }
 
     /* Toggle switch — pair with role="switch" + aria-checked for a11y.
        The ::after overlay grows the tap box to ~44px without changing the
        24x44 visual (the control itself is too small a touch target alone). */
-    .form-toggle { @apply relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent bg-sage/40 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sage focus:ring-offset-2; }
+    .form-toggle { @apply relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent bg-sage/40 transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-sage focus:ring-offset-2; }
     .form-toggle::after { content: ''; @apply absolute -inset-3; }
     .form-toggle[aria-checked="true"] { @apply bg-forest; }
-    .form-toggle-thumb { @apply pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out translate-x-0; }
+    .form-toggle-thumb { @apply pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out translate-x-0; }
     .form-toggle[aria-checked="true"] .form-toggle-thumb { @apply translate-x-5; }
 
     /* Navigation (dark sidebar) */
@@ -136,7 +203,7 @@
        top accent (brand teal by default; templates override with
        border-t-saddle / border-t-info-blue / border-t-sage to colour-code
        the metric) so the KPI row reads with more colour confidence. */
-    .kpi-card { @apply card-raised block p-5 lg:p-6 no-underline border-t-[3px] border-t-forest; }
+    .kpi-card { @apply block p-5 lg:p-6 no-underline border-t-[3px] border-t-forest; }
     .kpi-label { @apply text-[13px] font-medium text-charcoal-light; }
     .kpi-value { @apply font-mono tabular-nums text-4xl font-medium text-forest mt-2 leading-none; }
     /* min-h keeps all four cards equal height when only some have a meta line */
@@ -145,24 +212,24 @@
     /* App bar search — the box that reaches horses, owners and locations
        from every page. It fills its row, so it is taller and rounder than
        a form field; the focus ring is the brand teal, not the form sage. */
-    .app-search-input { @apply block w-full h-11 sm:h-10 pl-11 pr-11 rounded-card bg-white border border-sage/30 shadow-card text-base sm:text-[15px] text-charcoal placeholder:text-sage hover:border-sage/60 focus:outline-none focus:border-forest focus:ring-4 focus:ring-forest/10 transition-[border-color,box-shadow] duration-150; }
+    .app-search-input { @apply block w-full h-11 sm:h-10 pl-11 pr-11 rounded-card bg-white border border-sage/30 shadow-card text-base sm:text-[15px] text-charcoal placeholder:text-sage hover:border-sage/60 focus:outline-hidden focus:border-forest focus:ring-4 focus:ring-forest/10 transition-[border-color,box-shadow] duration-150; }
     .app-search-kbd { @apply inline-flex items-center justify-center h-[18px] min-w-[18px] px-1 rounded border border-sage/30 bg-white font-mono text-[10px] font-medium leading-none text-sage; }
     .app-search-panel { @apply absolute left-4 right-4 sm:left-0 sm:right-0 top-full mt-2 z-30 bg-white rounded-card border border-light-sage shadow-float overflow-hidden; }
     .app-search-hint { @apply flex items-center gap-3 px-1.5 py-1.5 text-sm text-charcoal-light; }
     /* The page actions beside the box match its desktop height (icon buttons are 36px by default). */
-    .app-bar .btn-icon-base { @apply sm:w-10 sm:h-10; }
+    .app-bar .btn-icon-base, .app-bar .btn-icon-primary, .app-bar .btn-icon-outline { @apply sm:w-10 sm:h-10; }
 
     /* Results inside the panel */
     .quick-find-group-label { @apply px-4 pt-2.5 pb-1 text-[11px] font-semibold text-sage uppercase tracking-widest; }
-    .quick-find-item { @apply flex items-center gap-3 mx-1.5 px-2.5 py-2 rounded-btn text-sm text-charcoal hover:bg-light-sage focus:bg-light-sage focus:outline-none transition-colors duration-100; }
+    .quick-find-item { @apply flex items-center gap-3 mx-1.5 px-2.5 py-2 rounded-btn text-sm text-charcoal hover:bg-light-sage focus:bg-light-sage focus:outline-hidden transition-colors duration-100; }
     .quick-find-icon { @apply inline-flex items-center justify-center w-7 h-7 rounded-lg bg-sage-50 text-forest shrink-0; }
     .quick-find-tag { @apply text-xs text-sage shrink-0; }
-    .quick-find-more { @apply flex items-center gap-1.5 mx-1.5 px-2.5 py-1.5 rounded-btn text-xs font-medium text-forest hover:bg-light-sage focus:bg-light-sage focus:outline-none transition-colors duration-100; }
+    .quick-find-more { @apply flex items-center gap-1.5 mx-1.5 px-2.5 py-1.5 rounded-btn text-xs font-medium text-forest hover:bg-light-sage focus:bg-light-sage focus:outline-hidden transition-colors duration-100; }
     /* A horse row: the wide link opens the quick view, the arrow goes straight to the profile */
     .quick-find-row { @apply flex items-center mx-1.5 rounded-btn hover:bg-light-sage focus-within:bg-light-sage transition-colors duration-100; }
     .quick-find-row > .quick-find-item { @apply mx-0 flex-1 min-w-0 hover:bg-transparent focus:bg-transparent; }
-    .quick-find-open { @apply inline-flex items-center justify-center w-8 h-8 mr-1 rounded-btn text-sage shrink-0 hover:bg-white hover:text-forest hover:shadow-sm focus:outline-none focus:bg-white focus:text-forest transition-colors duration-100; }
-    .app-bar-add-item { @apply flex items-center gap-2.5 px-4 py-2.5 text-sm text-charcoal hover:bg-parchment focus:bg-parchment focus:outline-none transition-colors duration-100; }
+    .quick-find-open { @apply inline-flex items-center justify-center w-8 h-8 mr-1 rounded-btn text-sage shrink-0 hover:bg-white hover:text-forest hover:shadow-xs focus:outline-hidden focus:bg-white focus:text-forest transition-colors duration-100; }
+    .app-bar-add-item { @apply flex items-center gap-2.5 px-4 py-2.5 text-sm text-charcoal hover:bg-parchment focus:bg-parchment focus:outline-hidden transition-colors duration-100; }
 }
 
 /* Search panel: no blank strip while the results are still on their way
@@ -172,18 +239,18 @@
 @layer components {
 
     /* Alerts — inline panels inside forms and cards (toasts are separate) */
-    .alert         { @apply rounded-card border p-3 text-sm flex items-start gap-2.5; }
-    .alert-error   { @apply alert bg-error-red-50 border-error-red/25 text-error-red; }
-    .alert-warning { @apply alert bg-sand-50 border-sand-200 text-saddle; }
-    .alert-info    { @apply alert bg-info-blue-50 border-info-blue/25 text-info-blue; }
-    .alert-success { @apply alert bg-sage-50 border-sage/25 text-forest; }
+    .alert, .alert-error, .alert-warning, .alert-info, .alert-success         { @apply rounded-card border p-3 text-sm flex items-start gap-2.5; }
+    .alert-error   { @apply bg-error-red-50 border-error-red/25 text-error-red; }
+    .alert-warning { @apply bg-sand-50 border-sand-200 text-saddle; }
+    .alert-info    { @apply bg-info-blue-50 border-info-blue/25 text-info-blue; }
+    .alert-success { @apply bg-sage-50 border-sage/25 text-forest; }
 
     /* Toast */
-    .toast { @apply rounded-card p-4 shadow-lg shadow-charcoal/10 border text-sm flex items-start gap-3 relative overflow-hidden; }
-    .toast-success { @apply toast bg-sage-50 border-sage/20 text-forest; }
-    .toast-error { @apply toast bg-error-red-50 border-error-red/20 text-error-red; }
-    .toast-info { @apply toast bg-info-blue-50 border-info-blue/20 text-info-blue; }
-    .toast-warning { @apply toast bg-sand-50 border-sand/40 text-saddle; }
+    .toast, .toast-success, .toast-error, .toast-info, .toast-warning { @apply rounded-card p-4 shadow-lg shadow-charcoal/10 border text-sm flex items-start gap-3 relative overflow-hidden; }
+    .toast-success { @apply bg-sage-50 border-sage/20 text-forest; }
+    .toast-error { @apply bg-error-red-50 border-error-red/20 text-error-red; }
+    .toast-info { @apply bg-info-blue-50 border-info-blue/20 text-info-blue; }
+    .toast-warning { @apply bg-sand-50 border-sand/40 text-saddle; }
 
     /* Link styling — hover warms to Saddle for a touch of personality */
     .link { @apply text-forest hover:text-saddle font-medium transition-colors duration-100 relative; }
@@ -198,9 +265,9 @@
        thumb that slides between the options (positioned by the `segmented`
        Alpine component in base.html), so a change of view reads as movement
        rather than as two separate buttons repainting. */
-    .segmented { @apply relative inline-flex items-center p-1 bg-white rounded-xl border border-light-sage shadow-sm; }
+    .segmented { @apply relative inline-flex items-center p-1 bg-white rounded-xl border border-light-sage shadow-xs; }
     .segmented-thumb {
-        @apply absolute left-0 top-1 bottom-1 rounded-lg bg-forest shadow-sm pointer-events-none;
+        @apply absolute left-0 top-1 bottom-1 rounded-lg bg-forest shadow-xs pointer-events-none;
         width: 0;
         opacity: 0;
         transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
@@ -314,8 +381,8 @@
 
     /* Row actions — small outlined buttons, not bare text links, so the
        target is obvious and large enough to tap */
-    .settings-action { @apply inline-flex items-center justify-center gap-1 min-h-[38px] sm:min-h-[32px] px-2.5 rounded-btn border border-sage/30 bg-white text-xs font-medium text-forest no-underline hover:bg-light-sage hover:border-sage/50 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-sage focus:ring-offset-1 transition-all duration-100 cursor-pointer touch-manipulation; }
-    .settings-action-danger { @apply settings-action text-error-red border-error-red/25 hover:bg-error-red-50 hover:border-error-red/40 focus:ring-error-red; }
+    .settings-action, .settings-action-danger { @apply inline-flex items-center justify-center gap-1 min-h-[38px] sm:min-h-[32px] px-2.5 rounded-btn border border-sage/30 bg-white text-xs font-medium text-forest no-underline hover:bg-light-sage hover:border-sage/50 active:scale-[0.97] focus:outline-hidden focus:ring-2 focus:ring-sage focus:ring-offset-1 transition-all duration-100 cursor-pointer touch-manipulation; }
+    .settings-action-danger { @apply text-error-red border-error-red/25 hover:bg-error-red-50 hover:border-error-red/40 focus:ring-error-red; }
     .settings-actions { @apply flex flex-wrap items-center justify-end gap-2 shrink-0; }
 
     /* Checkbox rendered as a switch. The real input stays in the DOM so the
@@ -325,7 +392,7 @@
        itself, which would leave the track stuck in its "on" colour. */
     .switch-input { @apply sr-only; }
     .switch-track { @apply relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full bg-sage/40 transition-colors duration-200; }
-    .switch-track::after { content: ''; @apply absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200; }
+    .switch-track::after { content: ''; @apply absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200; }
     .switch-input:checked ~ .switch-track { @apply bg-forest; }
     .switch-input:checked ~ .switch-track::after { transform: translateX(1.25rem); }
     .switch-input:focus-visible ~ .switch-track { @apply ring-2 ring-sage ring-offset-2; }
@@ -353,12 +420,12 @@ body { overscroll-behavior-y: none; }
 /* Tab bar + safe area coordination.
    pb-tab-bar clears tab bar (4rem) + safe area + 3rem visual buffer
    so the last page card never sits under the tab bar or Safari's URL pill. */
-.more-sheet-above-tabs { bottom: calc(4rem + env(safe-area-inset-bottom, 0px)); }
-.pb-tab-bar { padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px)); }
+@utility more-sheet-above-tabs { bottom: calc(4rem + env(safe-area-inset-bottom, 0px)); }
+@utility pb-tab-bar { padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px)); }
 /* Bulk-select action bar docks above the mobile tab bar; flush bottom on desktop */
-.bulk-bar-above-tabs { bottom: calc(4rem + env(safe-area-inset-bottom, 0px)); }
-@media (min-width: 1024px) {
-    .bulk-bar-above-tabs { bottom: 0; }
+@utility bulk-bar-above-tabs {
+    bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+    @media (min-width: 1024px) { bottom: 0; }
 }
 
 /* Motion: everything above degrades to an instant state change when the
@@ -380,7 +447,7 @@ body { overscroll-behavior-y: none; }
 input[type="text"], input[type="email"], input[type="password"], input[type="number"],
 input[type="url"], input[type="tel"], input[type="date"], input[type="datetime-local"],
 textarea, select {
-    @apply block w-full rounded-btn border-sage/30 shadow-sm focus:outline-none focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 px-3 py-2 border transition-all duration-150;
+    @apply block w-full rounded-btn border-sage/30 shadow-xs focus:outline-hidden focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 px-3 py-2 border transition-all duration-150;
     font-size: 16px; /* prevent iOS Safari auto-zoom on focus */
 }
 @media (min-width: 640px) {
@@ -408,6 +475,7 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
    their class specificity beats the bare `select` selector, so bump on mobile to avoid iOS zoom. */
 @media (max-width: 639px) {
     .form-input, .form-select, .form-textarea { font-size: 16px; }
+    .form-textarea { line-height: 1.5rem; }
 }
 /* h-5 w-5 here (not just on .form-checkbox) so checkboxes Django renders
    without a class — formset DELETE boxes, admin-ish widgets — never fall
@@ -455,16 +523,20 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     0%   { background-position: -200% 0; }
     100% { background-position: 200% 0; }
 }
-.skeleton {
+.skeleton,
+.skeleton-text,
+.skeleton-text-sm,
+.skeleton-circle,
+.skeleton-card {
     background: linear-gradient(90deg, #E4EAEB 25%, #E6E1D1 37%, #E4EAEB 63%);
     background-size: 200% 100%;
     animation: shimmer 1.5s ease-in-out infinite;
     border-radius: 0.375rem;
 }
-.skeleton-text    { @apply skeleton h-4 rounded; }
-.skeleton-text-sm { @apply skeleton h-3 rounded; }
-.skeleton-circle  { @apply skeleton rounded-full; }
-.skeleton-card    { @apply skeleton rounded-card h-24; }
+.skeleton-text    { @apply h-4; }
+.skeleton-text-sm { @apply h-3; }
+.skeleton-circle  { @apply rounded-full; }
+.skeleton-card    { @apply h-24; }
 
 /* Health tab skeleton: hidden until HTMX flags a request (hx-indicator),
    then swaps in for the stale tab content */
@@ -518,7 +590,7 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 /* Quick view card (horses/partials/quick_view.html) */
 .quick-view-label { @apply text-[11px] font-semibold text-sage uppercase tracking-widest; }
 .quick-view-menu { @apply grid grid-cols-2 gap-1 p-1.5 rounded-lg border border-light-sage bg-white shadow-lg; }
-.quick-view-menu-item { @apply flex items-center gap-2.5 px-2.5 py-2 min-h-[44px] rounded-btn text-sm font-medium text-charcoal hover:bg-parchment focus:bg-parchment focus:outline-none transition-colors duration-100; }
+.quick-view-menu-item { @apply flex items-center gap-2.5 px-2.5 py-2 min-h-[44px] rounded-btn text-sm font-medium text-charcoal hover:bg-parchment focus:bg-parchment focus:outline-hidden transition-colors duration-100; }
 .quick-view-menu-icon { @apply inline-flex items-center justify-center w-8 h-8 rounded-full shrink-0; }
 
 /* The sheet while a trigger inside it fetches the next step (popup.js) */
@@ -561,7 +633,7 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
    date: Today / Pick a date). Pair with aria-pressed; add .chip-on to the
    selected one. 44px tall on touch layouts. */
 .chip {
-    @apply inline-flex items-center justify-center min-h-[44px] sm:min-h-[36px] px-4 rounded-full border border-light-sage bg-white text-sm font-medium text-charcoal-light transition-colors duration-100 hover:border-sage/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest/40 touch-manipulation;
+    @apply inline-flex items-center justify-center min-h-[44px] sm:min-h-[36px] px-4 rounded-full border border-light-sage bg-white text-sm font-medium text-charcoal-light transition-colors duration-100 hover:border-sage/50 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest/40 touch-manipulation;
 }
 .chip-on {
     @apply bg-forest border-forest text-white hover:border-forest;
@@ -604,9 +676,9 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 /* Underline tabs (location detail, etc.) — 44px-tall tap boxes on phones,
    text stays bottom-aligned so the active underline still hugs the label. */
 @layer components {
-    .tab-underline { @apply inline-flex items-end pb-3 text-sm font-medium border-b-2 transition-colors duration-100 min-h-[44px] sm:min-h-0 whitespace-nowrap; }
-    .tab-underline-active { @apply tab-underline border-forest text-forest; }
-    .tab-underline-inactive { @apply tab-underline border-transparent text-sage hover:text-charcoal hover:border-sage/50; }
+    .tab-underline, .tab-underline-active, .tab-underline-inactive { @apply inline-flex items-end pb-3 text-sm font-medium border-b-2 transition-colors duration-100 min-h-[44px] sm:min-h-0 whitespace-nowrap; }
+    .tab-underline-active { @apply border-forest text-forest; }
+    .tab-underline-inactive { @apply border-transparent text-sage hover:text-charcoal hover:border-sage/50; }
 }
 
 /* Scrollable tab strips: fade the right edge on phones so it's obvious
@@ -670,15 +742,16 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     /* Site switch */
     .site-switch { @apply inline-flex shrink-0 rounded-lg bg-sage-50 p-1 text-xs; }
     .site-switch-item { @apply rounded-md px-3 py-1.5 text-sage no-underline transition-colors hover:text-forest min-h-[32px] inline-flex items-center; }
-    .site-switch-item.is-active { @apply bg-white font-semibold text-forest shadow-sm; }
+    .site-switch-item.is-active { @apply bg-white font-semibold text-forest shadow-xs; }
 
     /* Needs action rows */
     /* Needs action: one line per thing to do. The list is a size container
        and the row lays itself out by the width it has (rules below the
        layer): narrow, the badge and buttons take a second line; from 40rem
        the row is one line. The left edge says how urgent. */
-    .card.is-hot { @apply border-saddle/40 shadow-card; }
-    .card.is-hot > .section-header { @apply bg-saddle-50 border-saddle/20; }
+    .card.is-hot, .card-raised.is-hot, .kpi-card.is-hot, .empty-state.is-hot { @apply border-saddle/40 shadow-card; }
+    .card.is-hot > .section-header, .card-raised.is-hot > .section-header,
+    .kpi-card.is-hot > .section-header, .empty-state.is-hot > .section-header { @apply bg-saddle-50 border-saddle/20; }
     .attn-list { container-type: inline-size; }
     .attn-row { @apply border-l-[3px] border-l-transparent px-4 py-2.5 lg:px-5; }
     /* The divider lives here, not in divide-y on the list: divide-* sets
@@ -768,7 +841,7 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     /* Yard board */
     .board { @apply grid gap-5 px-4 py-4 lg:px-5; }
     .board-site { @apply grid gap-3; }
-    @screen lg { .board-site { grid-template-columns: 9.5rem minmax(0, 1fr); } }
+    @media (min-width: 1024px) { .board-site { grid-template-columns: 9.5rem minmax(0, 1fr); } }
     .board-site-name { @apply font-heading text-sm font-semibold text-forest no-underline hover:text-saddle; }
     .board-site-meta { @apply mt-1 text-xs leading-5 text-sage; }
     .board-site-meta b { @apply font-mono text-base font-medium text-charcoal tabular-nums; }
@@ -795,7 +868,7 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
        end together. The floor keeps it a useful size when the column is
        short. */
     .location-map.is-compact { aspect-ratio: 1 / 1; max-height: min(26rem, 70vh); }
-    @screen lg {
+    @media (min-width: 1024px) {
         .location-map.is-compact { aspect-ratio: auto; max-height: 48rem; flex: 1 1 auto; min-height: clamp(20rem, 45vh, 32rem); }
     }
     .location-map .leaflet-container { @apply bg-white font-body; }
@@ -806,10 +879,10 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .location-map .leaflet-control-attribution a { @apply text-sage underline; }
     .location-map-badge { @apply absolute z-[500] flex items-center justify-center rounded-full bg-white/95 shadow-card border border-light-sage no-underline; top: 0; left: 0; width: 44px; height: 44px; touch-action: manipulation; }
     .location-map-badge[hidden], .location-map-label[hidden] { display: none; }
-    .location-map-badge:focus-visible { @apply outline-none ring-2 ring-forest ring-offset-1; }
+    .location-map-badge:focus-visible { @apply outline-hidden ring-2 ring-forest ring-offset-1; }
     .location-map-badge.is-highlight { @apply border-forest ring-2 ring-forest/40; }
     .location-map-badge .board-count { @apply h-9 w-9 text-xs; }
-    .location-map-label { @apply absolute z-[490] whitespace-nowrap rounded-md bg-white/90 px-1.5 py-0.5 text-xs font-medium leading-4 text-charcoal shadow-sm pointer-events-none; top: 0; left: 0; }
+    .location-map-label { @apply absolute z-[490] whitespace-nowrap rounded-md bg-white/90 px-1.5 py-0.5 text-xs font-medium leading-4 text-charcoal shadow-xs pointer-events-none; top: 0; left: 0; }
     /* Leader lines: a badge pushed off its anchor by a neighbour keeps a thin
        line (and a dot on the spot) back to the location it stands for. Above
        the shapes (Leaflet panes are 400), under the labels and badges. */
@@ -820,10 +893,10 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .location-map-hint[hidden] { display: none; }
     /* Fit (under Leaflet's +/-) and, on the dashboard card, Full map. A
        touch screen has no +/- on the card and opens the Map tab with a tap. */
-    .location-map-fit { @apply absolute left-2.5 top-[84px] z-[510] rounded-md border border-light-sage bg-white/95 px-2 py-1 text-xs font-medium text-charcoal shadow-sm transition-colors hover:bg-sage-50; }
-    .location-map-tiles { @apply absolute left-2.5 top-[114px] z-[510] rounded-md border border-light-sage bg-white/95 px-2 py-1 text-xs font-medium text-charcoal shadow-sm transition-colors hover:bg-sage-50; }
+    .location-map-fit { @apply absolute left-2.5 top-[84px] z-[510] rounded-md border border-light-sage bg-white/95 px-2 py-1 text-xs font-medium text-charcoal shadow-xs transition-colors hover:bg-sage-50; }
+    .location-map-tiles { @apply absolute left-2.5 top-[114px] z-[510] rounded-md border border-light-sage bg-white/95 px-2 py-1 text-xs font-medium text-charcoal shadow-xs transition-colors hover:bg-sage-50; }
     .location-map-tiles[aria-pressed="true"] { @apply border-forest bg-sage-50 text-forest; }
-    .location-map-open { @apply absolute right-2.5 top-2.5 z-[510] rounded-md border border-light-sage bg-white/95 px-2.5 py-1 text-xs font-medium text-forest no-underline shadow-sm transition-colors hover:bg-sage-50; }
+    .location-map-open { @apply absolute right-2.5 top-2.5 z-[510] rounded-md border border-light-sage bg-white/95 px-2.5 py-1 text-xs font-medium text-forest no-underline shadow-xs transition-colors hover:bg-sage-50; }
     /* An animated zoom: the script sends badges and names to where they
        will end and CSS carries them there on Leaflet's own curve; leader
        lines cannot follow and sit the zoom out. */
@@ -857,7 +930,7 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .foal-cal-bar i { @apply block h-full rounded-full bg-saddle/70; }
     .foal-cal-bar.is-born i { @apply bg-forest/70; }
     .foal-cal-bar.is-past-due { @apply ring-2 ring-error-red/40; }
-    .foal-cal-mark { @apply absolute top-[68%] h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-sm; }
+    .foal-cal-mark { @apply absolute top-[68%] h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-xs; }
     .foal-cal-mark-covering { @apply bg-charcoal; }
     .foal-cal-mark-scan_pos { @apply bg-forest; }
     .foal-cal-mark-scan_neg { @apply bg-error-red; }
@@ -979,7 +1052,7 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
    ══════════════════════════════════════════════════════════════════════════ */
 @layer components {
     /* One empty state for every list */
-    .empty-state { @apply card px-6 py-14 text-center; }
+    .empty-state { @apply px-6 py-14 text-center; }
     .empty-state-compact { @apply rounded-none border-0 py-10; }
     .empty-state-icon { @apply mx-auto grid h-14 w-14 place-items-center rounded-full bg-sand-50 text-saddle; }
     .empty-state-icon.is-search { @apply bg-sage-50 text-sage; }
@@ -1357,7 +1430,7 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
     @apply flex-1 min-h-[40px] grid place-items-center rounded-[6px] text-sm font-bold
            text-sage whitespace-nowrap transition-colors duration-100;
 }
-.loc-seg-item.is-active { @apply bg-white text-charcoal shadow-sm; }
+.loc-seg-item.is-active { @apply bg-white text-charcoal shadow-xs; }
 
 .loc-sort {
     @apply min-h-[38px] px-3 flex items-center rounded-btn bg-parchment text-sm font-bold
@@ -1482,7 +1555,7 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
 .loc-rail-search {
     @apply flex-1 min-w-0 px-2.5 py-1.5 text-sm rounded-btn border border-light-sage
            bg-parchment/60 text-charcoal placeholder:text-sage
-           focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-sage;
+           focus:outline-hidden focus:ring-2 focus:ring-forest/20 focus:border-sage;
 }
 .loc-rail-rows { @apply flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-2; }
 .loc-rail-divider { @apply flex items-center gap-2.5 pt-3 pb-2; }

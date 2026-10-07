@@ -561,12 +561,12 @@
 
                             <!-- Dot -->
                             {# Rust is the "needs attention" colour: only an overdue record gets it #}
-                            <div class="absolute left-0 top-1.5 w-[19px] h-[19px] rounded-full border-2 border-white shadow-sm
+                            <div class="absolute left-0 top-1.5 w-[19px] h-[19px] rounded-full border-2 border-white shadow-xs
                                 {% if event.attention %}bg-saddle{% else %}bg-sage-300{% endif %}"
                                 {% if event.attention %}title="Overdue"{% endif %}></div>
 
                             <!-- Event Card -->
-                            <div class="rounded-lg border border-light-sage p-3 hover:shadow-sm transition-shadow duration-150
+                            <div class="rounded-lg border border-light-sage p-3 hover:shadow-xs transition-shadow duration-150
                                 {% if event.attention %}border-l-[3px] border-l-saddle{% endif %}">
 
                                 <div class="flex items-start justify-between gap-2">
@@ -770,7 +770,7 @@
                         <a href="{% url 'horse_move' horse.pk %}?next={{ request.path|urlencode }}" title="Move to a different location"
                            hx-get="{% url 'horse_move' horse.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
                            data-popup-title="Move {{ horse.name }}"
-                           class="group/qa col-span-2 flex items-center justify-center gap-2.5 p-3 rounded-card bg-forest text-white shadow-sm hover:bg-forest-light hover:shadow-md hover:-translate-y-0.5 transition-all duration-150">
+                           class="group/qa col-span-2 flex items-center justify-center gap-2.5 p-3 rounded-card bg-forest text-white shadow-xs hover:bg-forest-light hover:shadow-md hover:-translate-y-0.5 transition-all duration-150">
                             <span class="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center group-hover/qa:bg-white/25 transition-colors">
                                 <svg class="w-4 h-4" aria-hidden="true"><use href="#i-arrows-lr"/></svg>
                             </span>
@@ -778,7 +778,7 @@
                         </a>
                         {% else %}
                         <a href="{% url 'horse_arrive' horse.pk %}" hx-get="{% url 'horse_arrive' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Log arrival for {{ horse.name }}" title="Log this horse's arrival"
-                           class="group/qa col-span-2 flex items-center justify-center gap-2.5 p-3 rounded-card bg-forest text-white shadow-sm hover:bg-forest-light hover:shadow-md hover:-translate-y-0.5 transition-all duration-150">
+                           class="group/qa col-span-2 flex items-center justify-center gap-2.5 p-3 rounded-card bg-forest text-white shadow-xs hover:bg-forest-light hover:shadow-md hover:-translate-y-0.5 transition-all duration-150">
                             <span class="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center group-hover/qa:bg-white/25 transition-colors">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
@@ -790,7 +790,7 @@
                         {% endif %}
                         {% if feature_access.health.full %}
                         <a href="{% url 'vaccination_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vaccination_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Vaccination for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-sage/40 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-sage/40 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-sage-50 flex items-center justify-center group-hover/qa:bg-sage-100 transition-colors">
                                 <svg class="w-4 h-4 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3"/>
@@ -799,7 +799,7 @@
                             <span class="text-xs font-medium text-charcoal-light">Vaccination</span>
                         </a>
                         <a href="{% url 'farrier_create' %}?horse={{ horse.pk }}" hx-get="{% url 'farrier_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Farrier visit for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-saddle/40 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-saddle/40 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-saddle-50 flex items-center justify-center group-hover/qa:bg-saddle-100 transition-colors">
                                 <svg class="w-4 h-4 text-saddle" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.648 3.203a.75.75 0 01-1.088-.791l1.078-6.29-4.57-4.454a.75.75 0 01.416-1.28l6.317-.917L11.11 1.607a.75.75 0 011.78 0l3.186 6.45 6.317.917a.75.75 0 01.416 1.28l-4.57 4.454 1.078 6.29a.75.75 0 01-1.088.791L12 15.17z"/>
@@ -808,7 +808,7 @@
                             <span class="text-xs font-medium text-charcoal-light">Farrier</span>
                         </a>
                         <a href="{% url 'worming_create' %}?horse={{ horse.pk }}" hx-get="{% url 'worming_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Worming for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-sand/60 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-sand/60 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-sand-50 flex items-center justify-center group-hover/qa:bg-sand-100 transition-colors">
                                 <svg class="w-4 h-4 text-saddle" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19 14.5M14.25 3.104c.251.023.501.05.75.082M19 14.5l-1.386 4.16a2.25 2.25 0 01-2.137 1.59H8.523a2.25 2.25 0 01-2.137-1.59L5 14.5m14 0H5"/>
@@ -817,7 +817,7 @@
                             <span class="text-xs font-medium text-charcoal-light">Worming</span>
                         </a>
                         <a href="{% url 'egg_count_create' %}?horse={{ horse.pk }}" hx-get="{% url 'egg_count_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Egg count for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-sand/60 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-sand/60 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-sand-50 flex items-center justify-center group-hover/qa:bg-sand-100 transition-colors">
                                 <svg class="w-4 h-4 text-saddle" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/>
@@ -826,7 +826,7 @@
                             <span class="text-xs font-medium text-charcoal-light">Egg Count</span>
                         </a>
                         <a href="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-get="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Condition for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-error-red/30 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-error-red/30 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-error-red-50 flex items-center justify-center group-hover/qa:bg-error-red-100 transition-colors">
                                 <svg class="w-4 h-4 text-error-red" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/>
@@ -835,7 +835,7 @@
                             <span class="text-xs font-medium text-charcoal-light">Condition</span>
                         </a>
                         <a href="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Vet visit for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-error-red/30 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-error-red/30 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-error-red-50 flex items-center justify-center group-hover/qa:bg-error-red-100 transition-colors">
                                 <svg class="w-4 h-4 text-error-red" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -847,7 +847,7 @@
                         {% if horse.is_mare and feature_access.breeding.full %}
                         {% if active_pregnancy %}
                         <a href="{% url 'breeding_foaling' active_pregnancy.pk %}" hx-get="{% url 'breeding_foaling' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-forest/30 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-forest/30 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-sage-50 flex items-center justify-center group-hover/qa:bg-sage-100 transition-colors">
                                 <svg class="w-4 h-4 text-forest" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
@@ -857,7 +857,7 @@
                         </a>
                         {% else %}
                         <a href="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-get="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record a covering for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-forest/30 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-forest/30 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-sage-50 flex items-center justify-center group-hover/qa:bg-sage-100 transition-colors">
                                 <svg class="w-4 h-4 text-forest" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
@@ -871,7 +871,7 @@
                         <a href="{% url 'horse_photo_add' horse.pk %}"
                            hx-get="{% url 'horse_photo_add' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
                            data-popup-title="Add photos for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-info-blue/30 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-info-blue/30 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-info-blue-50 flex items-center justify-center group-hover/qa:bg-info-blue-100 transition-colors">
                                 <svg class="w-4 h-4 text-info-blue" aria-hidden="true"><use href="#i-camera"/></svg>
                             </div>
@@ -880,7 +880,7 @@
                         {% endif %}
                         {% if feature_access.charges.full %}
                         <a href="{% url 'charge_create' %}?horse={{ horse.pk }}" hx-get="{% url 'charge_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Other charge for {{ horse.name }}" title="Bill something that has no health record, e.g. transport or feed"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-info-blue/30 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-150 bg-white">
+                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-info-blue/30 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
                             <div class="w-9 h-9 rounded-full bg-info-blue-50 flex items-center justify-center group-hover/qa:bg-info-blue-100 transition-colors">
                                 <svg class="w-4 h-4 text-info-blue" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75"/>
