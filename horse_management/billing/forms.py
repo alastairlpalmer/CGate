@@ -172,7 +172,13 @@ class ServiceItemForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         from health.models import VaccinationType
         self.fields['vaccination_type'].queryset = VaccinationType.objects.filter(is_active=True)
-        self.fields['vaccination_type'].empty_label = '— not set —'
+        self.fields['vaccination_type'].required = False
+        self.fields['vaccination_type'].empty_label = '— Not needed (Flu, every 12 months) —'
+        self.fields['vaccination_type'].help_text = (
+            "Vaccination items only. Optional: leave it blank and the record "
+            "is filed as Flu (every 12 months), or pick or type another type "
+            "on the record."
+        )
 
     def clean(self):
         cleaned_data = super().clean()
@@ -214,6 +220,14 @@ class ExtraChargeForm(ServicePickerMixin, forms.ModelForm):
         # Archived owners leave every picker; a charge already billed to
         # one keeps that owner in its own list so it can still be edited.
         self.fields['owner'].queryset = owners_for_picker(self.instance.owner_id)
+        # A charge here is billing only. The record forms (vaccination,
+        # farrier, worming, egg count, vet visit) also bill, and they keep
+        # the health history and the next due date as well.
+        self.fields['service_item'].help_text = (
+            "Billing only. For a vaccination, farrier visit, worming, egg "
+            "count or vet visit, use that record's own button: it keeps the "
+            "health record and the next due date, and bills the owner too."
+        )
 
     def clean_receipt_image(self):
         return heic_to_jpeg(self.cleaned_data.get('receipt_image'))

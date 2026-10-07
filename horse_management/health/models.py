@@ -78,9 +78,40 @@ class VaccinationType(models.Model):
     def __str__(self):
         return f"{self.name} (every {self.interval_months} months)"
 
+    @classmethod
+    def default_flu(cls):
+        """The type a vaccination gets when none is picked: flu, yearly.
+
+        Uses an active type named "Flu" (any case) when there is one, and
+        makes it otherwise, so a record never needs a type set up first.
+        """
+        found = cls.objects.filter(is_active=True, name__iexact='flu').order_by('pk').first()
+        if found is None:
+            found = cls.objects.create(name='Flu', interval_months=12)
+        return found
+
 
 class Vaccination(models.Model):
     """Individual vaccination record for a horse."""
+
+    class CourseStage(models.TextChoices):
+        """Where this dose sits in the flu/tetanus course.
+
+        Each stage sets the window for the NEXT dose (the rules racing and
+        competition bodies use): V1 → V2 in 21–60 days, V2 → V3 in
+        120–180 days, and after V3 (the first booster) each booster within
+        the type's interval, with the window opening a month before.
+        """
+        PRIMARY_1 = 'primary_1', 'Primary course: 1st (V1)'
+        PRIMARY_2 = 'primary_2', 'Primary course: 2nd (V2)'
+        FIRST_BOOSTER = 'first_booster', '1st booster (V3)'
+        BOOSTER = 'booster', 'Booster'
+
+    # Days after this dose that the next one is due: (earliest, latest).
+    PRIMARY_WINDOWS = {
+        CourseStage.PRIMARY_1.value: (21, 60),
+        CourseStage.PRIMARY_2.value: (120, 180),
+    }
 
     horse = models.ForeignKey(
         'core.Horse',
@@ -93,6 +124,16 @@ class Vaccination(models.Model):
         related_name='vaccinations'
     )
     date_given = models.DateField()
+    course_stage = models.CharField(
+        max_length=20,
+        choices=CourseStage.choices,
+        blank=True,
+        help_text="Sets the reminder window for the next dose. Leave blank to use the type's interval.",
+    )
+    due_from = models.DateField(
+        null=True, blank=True,
+        help_text="Earliest date for the next dose (set from the course stage)",
+    )
     next_due_date = models.DateField(null=True, blank=True)
     vet = models.ForeignKey(
         'billing.ServiceProvider',
@@ -140,11 +181,39 @@ class Vaccination(models.Model):
         day = min(start_date.day, calendar.monthrange(year, month)[1])
         return date(year, month, day)
 
+    def due_window(self):
+        """(earliest, latest) date for the next dose, from the course stage.
+
+        Returns (None, None) when no stage is set.
+        """
+        stage = self.course_stage
+        if not stage:
+            return None, None
+        window = self.PRIMARY_WINDOWS.get(str(stage))
+        if window:
+            low, high = window
+            return (
+                self.date_given + timedelta(days=low),
+                self.date_given + timedelta(days=high),
+            )
+        months = self.vaccination_type.interval_months
+        return (
+            self._add_months(self.date_given, max(months - 1, 0)),
+            self._add_months(self.date_given, months),
+        )
+
     def save(self, *args, **kwargs):
+        earliest, latest = self.due_window()
         # Auto-calculate next due date if not set
         if not self.next_due_date:
-            months = self.vaccination_type.interval_months
-            self.next_due_date = self._add_months(self.date_given, months)
+            if latest:
+                self.next_due_date = latest
+            else:
+                months = self.vaccination_type.interval_months
+                self.next_due_date = self._add_months(self.date_given, months)
+        # The window opens on the stage's earliest date; a due date typed
+        # in before that has no window.
+        self.due_from = earliest if earliest and earliest <= self.next_due_date else None
         # Re-arm the reminder when the due date moves (same rule as
         # Document expiry) — a pushed-out due date used to keep
         # reminder_sent=True and pass silently with no email, ever.
@@ -162,8 +231,22 @@ class Vaccination(models.Model):
         from django.utils import timezone
         if not self.next_due_date:
             return False
-        days_until = (self.next_due_date - timezone.localdate()).days
+        today = timezone.localdate()
+        if self.due_from:
+            # A course dose is due once its window opens.
+            return self.due_from <= today <= self.next_due_date
+        days_until = (self.next_due_date - today).days
         return 0 <= days_until <= self.vaccination_type.reminder_days_before
+
+    @property
+    def reminder_date(self):
+        """The day the owner reminder goes out: when a course window opens,
+        else the type's reminder days before the due date."""
+        if not self.next_due_date:
+            return None
+        if self.due_from:
+            return self.due_from
+        return self.next_due_date - timedelta(days=self.vaccination_type.reminder_days_before)
 
     @property
     def is_overdue(self):

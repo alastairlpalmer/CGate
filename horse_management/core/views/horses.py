@@ -1107,6 +1107,20 @@ def build_horse_timeline(
     for br in breeding_records:
         timeline.append({'type': 'breeding', 'date': br.date_covered, 'obj': br})
     timeline.sort(key=lambda e: e['date'], reverse=True)
+    # Only the newest record of a kind can be overdue: an old booster's next
+    # due date is in the past for ever once the horse has had the next one.
+    # 'attention' is what the timeline colours rust; nothing else is.
+    seen = set()
+    for event in timeline:
+        obj = event['obj']
+        event['attention'] = False
+        if event['type'] not in ('vaccination', 'farrier', 'worming'):
+            continue
+        key = (event['type'], getattr(obj, 'vaccination_type_id', None))
+        if key in seen:
+            continue
+        seen.add(key)
+        event['attention'] = obj.is_overdue
     return timeline
 
 

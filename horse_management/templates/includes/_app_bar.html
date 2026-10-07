@@ -3,7 +3,8 @@ The app bar: search and Add, on every page.
 
 Rendered in base.html OUTSIDE #main-content, so a boosted navigation never
 swaps it. That is what keeps it in place — and keeps a half-typed search
-alive — as you move between areas.
+alive — as you move between areas. Picking a result clears the box, so the
+next page does not open with the old search still in it.
 
 The search is the dashboard's quick find, promoted: one typo-tolerant
 lookup across horses, owners and locations, each group gated on the role's
@@ -71,7 +72,7 @@ them gets no box.{% endcomment %}
                  x-transition:enter="transition ease-out duration-100"
                  x-transition:enter-start="opacity-0 -translate-y-1"
                  x-transition:enter-end="opacity-100 translate-y-0"
-                 @click="if ($event.target.closest('a')) open = false">
+                 @click="if ($event.target.closest('a')) { open = false; q = ''; $refs.input.value = '' }">
 
                 {# What the box reaches, shown until there is something to search for. #}
                 <div x-show="short" class="px-4 pt-3.5 pb-3">

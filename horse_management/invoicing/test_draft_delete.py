@@ -159,3 +159,41 @@ class DeleteDraftUITests(DraftDeleteTestCase):
             response, reverse("invoice_detail", args=[self.draft.pk])
         )
         self.assertContains(response, "still a draft")
+
+
+class BulkDeleteTests(DraftDeleteTestCase):
+    """The invoice list's "Delete Selected" action."""
+
+    def _bulk_delete(self, *invoices):
+        return self.client.post(reverse("invoice_bulk_action"), {
+            "action": "delete",
+            "invoice_ids": [inv.pk for inv in invoices],
+        })
+
+    def test_drafts_are_deleted_and_charges_released(self):
+        response = self._bulk_delete(self.draft)
+        self.assertRedirects(response, reverse("invoice_list"))
+        self.assertFalse(Invoice.objects.filter(pk=self.draft.pk).exists())
+        self.charge.refresh_from_db()
+        self.assertFalse(self.charge.invoiced)
+
+    def test_issued_invoice_in_the_selection_stays(self):
+        other = Owner.objects.create(name="Ken", email="ken@example.com")
+        sent = Invoice.objects.create(
+            owner=other, period_start=date(2026, 8, 1),
+            period_end=date(2026, 8, 31), status=Invoice.Status.SENT,
+        )
+        response = self._bulk_delete(self.draft, sent)
+        self.assertFalse(Invoice.objects.filter(pk=self.draft.pk).exists())
+        self.assertTrue(Invoice.objects.filter(pk=sent.pk).exists())
+        msgs = [str(m) for m in response.wsgi_request._messages]
+        self.assertTrue(any(sent.invoice_number in m for m in msgs))
+
+    def test_viewer_cannot_bulk_delete(self):
+        self.client.force_login(make_viewer())
+        self._bulk_delete(self.draft)
+        self.assertTrue(Invoice.objects.filter(pk=self.draft.pk).exists())
+
+    def test_list_offers_delete_selected(self):
+        response = self.client.get(reverse("invoice_list"))
+        self.assertContains(response, "Delete Selected")

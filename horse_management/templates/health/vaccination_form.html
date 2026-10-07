@@ -54,6 +54,9 @@
                         {% endif %}
                     </div>
 
+                    {% include "includes/form_field.html" with field=form.new_type_name %}
+                    {% include "includes/form_field.html" with field=form.course_stage %}
+
                     <div>
                         <label for="{{ form.date_given.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.date_given.label }}</label>
                         {{ form.date_given }}
