@@ -701,7 +701,7 @@ def invoice_bulk_action(request):
         if blocked:
             messages.info(
                 request,
-                f"Not deleted (not a draft, paid in part, or in Xero): "
+                f"Not deleted (already sent, paid in part, or in Xero): "
                 f"{', '.join(blocked)}. Cancel these instead.",
             )
     elif action == 'push_xero':
