@@ -64,6 +64,10 @@ class InvoiceCreateForm(forms.Form):
         # the template can link to it rather than leave the user to hunt
         # for the invoice number in the list.
         self.overlapping_invoice = None
+        # Set by clean() when the start moved past invoices that already
+        # cover it: (requested start, live invoices skipped).
+        self.start_moved_from = None
+        self.skipped_invoices = []
 
     def clean(self):
         cleaned_data = super().clean()
@@ -76,7 +80,8 @@ class InvoiceCreateForm(forms.Form):
 
         if owner and start and end:
             from .services import InvoiceService
-            existing = InvoiceService.check_for_overlapping_invoices(owner, start, end)
+            resolved = InvoiceService.resolve_period(owner, start, end)
+            existing = resolved['blocker']
             if existing:
                 self.overlapping_invoice = existing
                 raise forms.ValidationError(
@@ -84,6 +89,12 @@ class InvoiceCreateForm(forms.Form):
                     f"covering {existing.period_start} to {existing.period_end} "
                     f"which overlaps with this period."
                 )
+            # Invoices cover only the start of the range: bill from the
+            # first day they do not cover.
+            if resolved['period_start'] != start:
+                self.start_moved_from = start
+                self.skipped_invoices = resolved['invoiced']
+                cleaned_data['period_start'] = resolved['period_start']
 
         return cleaned_data
 
