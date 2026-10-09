@@ -243,6 +243,33 @@ class Invoice(models.Model):
             return False
         return timezone.localdate() > self.due_date
 
+    @property
+    def status_label(self):
+        """The status word the lists show.
+
+        A draft past its due date was never sent, so it is "Draft (past
+        due)", not "Overdue": nobody owes it yet, and it can still be
+        deleted.
+        """
+        if self.status == self.Status.DRAFT:
+            return 'Draft (past due)' if self.is_overdue else 'Draft'
+        if self.is_overdue:
+            return 'Overdue'
+        return self.get_status_display()
+
+    @property
+    def status_badge_class(self):
+        """The badge class that goes with ``status_label``."""
+        if self.status == self.Status.PAID:
+            return 'badge-success'
+        if self.status == self.Status.CANCELLED:
+            return 'badge-neutral'
+        if self.status == self.Status.DRAFT:
+            return 'badge-info'
+        if self.status == self.Status.OVERDUE or self.is_overdue:
+            return 'badge-danger'
+        return 'badge-warning'
+
 
 class InvoiceLineItem(models.Model):
     """Individual line item on an invoice."""

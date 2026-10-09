@@ -197,3 +197,31 @@ class BulkDeleteTests(DraftDeleteTestCase):
     def test_list_offers_delete_selected(self):
         response = self.client.get(reverse("invoice_list"))
         self.assertContains(response, "Delete Selected")
+
+
+class StatusLabelTests(DraftDeleteTestCase):
+    """A draft past its due date was never sent: "Draft (past due)", not
+    "Overdue"."""
+
+    def test_past_due_draft(self):
+        self.draft.due_date = date(2020, 1, 1)
+        self.assertEqual(self.draft.status_label, 'Draft (past due)')
+        self.assertEqual(self.draft.status_badge_class, 'badge-info')
+
+    def test_sent_past_due_is_overdue(self):
+        self.draft.status = Invoice.Status.SENT
+        self.draft.due_date = date(2020, 1, 1)
+        self.assertEqual(self.draft.status_label, 'Overdue')
+        self.assertEqual(self.draft.status_badge_class, 'badge-danger')
+
+    def test_paid_and_plain_draft(self):
+        self.draft.due_date = date(2099, 1, 1)
+        self.assertEqual(self.draft.status_label, 'Draft')
+        self.draft.status = Invoice.Status.PAID
+        self.assertEqual(self.draft.status_label, 'Paid')
+        self.assertEqual(self.draft.status_badge_class, 'badge-success')
+
+    def test_list_shows_draft_past_due(self):
+        Invoice.objects.filter(pk=self.draft.pk).update(due_date=date(2020, 1, 1))
+        response = self.client.get(reverse("invoice_list"))
+        self.assertContains(response, "Draft (past due)")

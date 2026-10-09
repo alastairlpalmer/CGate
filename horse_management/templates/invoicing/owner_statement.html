@@ -73,8 +73,8 @@
                         <td class="text-sage" data-label="Issued">{{ row.invoice.created_at|date:"d M Y" }}</td>
                         <td class="text-sage" data-label="Period">{{ row.invoice.period_start|date:"d M" }} &ndash; {{ row.invoice.period_end|date:"d M Y" }}</td>
                         <td data-label="Status">
-                            <span class="{% if row.invoice.status == 'paid' %}badge-success{% elif row.invoice.status == 'overdue' or row.invoice.is_overdue %}badge-danger{% elif row.invoice.status == 'sent' %}badge-warning{% else %}badge-info{% endif %}">
-                                {% if row.invoice.is_overdue and row.invoice.status != 'paid' %}Overdue{% else %}{{ row.invoice.get_status_display }}{% endif %}
+                            <span class="{{ row.invoice.status_badge_class }}">
+                                {{ row.invoice.status_label }}
                             </span>
                         </td>
                         <td class="text-right tabular-nums" data-label="Total">&pound;{{ row.invoice.total|floatformat:2 }}</td>

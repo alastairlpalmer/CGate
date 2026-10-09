@@ -107,6 +107,14 @@ class Vaccination(models.Model):
         FIRST_BOOSTER = 'first_booster', '1st booster (V3)'
         BOOSTER = 'booster', 'Booster'
 
+    # What the next dose is called, after a dose at each stage.
+    NEXT_DOSE_LABELS = {
+        CourseStage.PRIMARY_1.value: 'V2',
+        CourseStage.PRIMARY_2.value: 'V3',
+        CourseStage.FIRST_BOOSTER.value: 'Booster',
+        CourseStage.BOOSTER.value: 'Booster',
+    }
+
     # Days after this dose that the next one is due: (earliest, latest).
     PRIMARY_WINDOWS = {
         CourseStage.PRIMARY_1.value: (21, 60),
@@ -180,6 +188,11 @@ class Vaccination(models.Model):
         month = month % 12 + 1
         day = min(start_date.day, calendar.monthrange(year, month)[1])
         return date(year, month, day)
+
+    @property
+    def next_dose_label(self):
+        """'V2', 'V3' or 'Booster' for a course dose; '' with no stage."""
+        return self.NEXT_DOSE_LABELS.get(str(self.course_stage or ''), '')
 
     def due_window(self):
         """(earliest, latest) date for the next dose, from the course stage.
