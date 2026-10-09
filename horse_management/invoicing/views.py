@@ -232,6 +232,15 @@ def invoice_create(request):
 
     initial['period_start'] = last_month_start
     initial['period_end'] = last_month_end
+    if owner_id:
+        try:
+            owner = Owner.objects.get(pk=owner_id)
+        except (Owner.DoesNotExist, ValueError):
+            pass
+        else:
+            initial['period_start'], initial['period_end'] = _suggested_period(
+                owner, last_month_start, last_month_end
+            )
 
     if request.method == 'POST':
         form = InvoiceCreateForm(request.POST)
@@ -266,7 +275,13 @@ def invoice_create(request):
                     'form': form, 'preview': None,
                 })
 
-            messages.success(request, f"Invoice {invoice.invoice_number} created successfully.")
+            msg = f"Invoice {invoice.invoice_number} created successfully."
+            if form.start_moved_from:
+                msg += (
+                    f" It starts on {period_start:%d/%m/%Y}: the days before "
+                    "that are already invoiced."
+                )
+            messages.success(request, msg)
             return redirect('invoice_detail', pk=invoice.pk)
     else:
         form = InvoiceCreateForm(initial=initial)
@@ -276,7 +291,7 @@ def invoice_create(request):
     if owner_id and initial.get('period_start') and initial.get('period_end'):
         try:
             owner = Owner.objects.get(pk=owner_id)
-            preview = InvoiceService.calculate_invoice_preview(
+            preview = InvoiceService.preview_unbilled(
                 owner,
                 initial['period_start'],
                 initial['period_end']
@@ -317,11 +332,47 @@ def invoice_preview(request):
     except (Owner.DoesNotExist, ValueError):
         return HttpResponse("Invalid parameters", status=400)
 
-    preview = InvoiceService.calculate_invoice_preview(owner, start, end)
+    # A new owner was picked: start the period the day after their last
+    # invoice, so nobody has to look that date up. The new date inputs go
+    # back as out-of-band swaps next to the preview.
+    oob_fields = []
+    if request.headers.get('HX-Trigger-Name') == 'owner':
+        new_start, new_end = _suggested_period(owner, start, end)
+        if (new_start, new_end) != (start, end):
+            start, end = new_start, new_end
+            form = InvoiceCreateForm(
+                initial={'period_start': start, 'period_end': end}
+            )
+            oob_fields = [
+                form[name].as_widget(attrs={'hx-swap-oob': 'true'})
+                for name in ('period_start', 'period_end')
+            ]
 
-    return render(request, 'invoicing/partials/preview.html', {
+    preview = InvoiceService.preview_unbilled(owner, start, end)
+
+    return render(request, 'invoicing/partials/preview_response.html', {
         'preview': preview,
+        'oob_fields': oob_fields,
     })
+
+
+def _suggested_period(owner, period_start, period_end):
+    """Default create-form period for an owner who already has invoices.
+
+    Starts the day after their last live invoice. If that is after the
+    given end, the period runs to today instead. Owners with no invoice
+    (or invoiced past today) keep the given period.
+    """
+    last = InvoiceService.last_invoiced_date(owner)
+    if last is None:
+        return period_start, period_end
+    start = last + timedelta(days=1)
+    if start <= period_end:
+        return start, period_end
+    today = timezone.localdate()
+    if start <= today:
+        return start, today
+    return period_start, period_end
 
 
 @feature_required('invoices', LEVEL_VIEW)

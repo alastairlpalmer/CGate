@@ -653,6 +653,110 @@ class InvoiceService:
         return gaps
 
     @staticmethod
+    def last_invoiced_date(owner):
+        """End of the owner's latest live invoice period, or None."""
+        return (
+            Invoice.objects.filter(owner=owner)
+            .exclude(status=Invoice.Status.CANCELLED)
+            .order_by('-period_end')
+            .values_list('period_end', flat=True)
+            .first()
+        )
+
+    @classmethod
+    def resolve_period(cls, owner, period_start, period_end):
+        """Fit a requested period around the owner's live invoices.
+
+        The user picks a wide range ("what does she owe up to today?")
+        and must not have to find the day after the last invoice by hand.
+        When live invoices cover only the start of the range, the start
+        moves forward to the first day no invoice covers. Gaps between
+        invoices with no livery to bill (before any horse arrived, say)
+        are ignored. Unbilled extra charges are not period-bound, so the
+        tail of the range carries them.
+
+        Any other overlap — an invoice that covers the end or the middle
+        of the range, or an earlier gap with livery still to bill — is a
+        real clash, and stays blocked.
+
+        Returns a dict:
+        * ``period_start`` / ``period_end`` — the period to bill, or None
+          when blocked.
+        * ``invoiced`` — the live invoices skipped over at the start.
+        * ``blocker`` — the overlapping invoice when blocked, else None.
+        * ``unbilled_gaps`` — when blocked, the gaps with livery to bill.
+        """
+        covering = list(
+            Invoice.objects.filter(
+                owner=owner,
+                period_start__lte=period_end,
+                period_end__gte=period_start,
+            ).exclude(
+                status=Invoice.Status.CANCELLED,
+            ).order_by('period_start')
+        )
+        result = {
+            'period_start': period_start,
+            'period_end': period_end,
+            'invoiced': [],
+            'blocker': None,
+            'unbilled_gaps': [],
+        }
+        if not covering:
+            return result
+
+        gaps = [
+            (start, end)
+            for start, end in cls.uncovered_periods(owner, period_start, period_end)
+            if end == period_end
+            or cls.calculate_livery_charges(owner, start, end)
+        ]
+        tail_open = bool(gaps) and gaps[-1][1] == period_end
+        if tail_open and len(gaps) == 1:
+            new_start = gaps[0][0]
+            result['period_start'] = new_start
+            result['invoiced'] = [
+                inv for inv in covering if inv.period_end < new_start
+            ]
+            return result
+
+        result.update(
+            period_start=None,
+            period_end=None,
+            # Name the invoice that covers the end of the range; if the end
+            # is open, the clash is an earlier gap — name the first invoice.
+            blocker=covering[0] if tail_open else covering[-1],
+            unbilled_gaps=gaps,
+        )
+        return result
+
+    @classmethod
+    def preview_unbilled(cls, owner, period_start, period_end):
+        """Preview for the create form: only what is not yet invoiced.
+
+        Same as ``calculate_invoice_preview``, on the period
+        ``resolve_period`` gives, plus its keys so the panel can say what
+        it skipped. When blocked, there are no charges to show.
+        """
+        resolved = cls.resolve_period(owner, period_start, period_end)
+        if resolved['blocker']:
+            preview = {'horse_groups': [], 'total': Decimal('0.00')}
+        else:
+            preview = cls.calculate_invoice_preview(
+                owner, resolved['period_start'], resolved['period_end']
+            )
+        preview.update(resolved)
+        preview['requested_start'] = period_start
+        preview['start_moved'] = (
+            resolved['period_start'] is not None
+            and resolved['period_start'] != period_start
+        )
+        if preview['start_moved']:
+            preview['invoiced_until'] = resolved['period_start'] - timedelta(days=1)
+        preview['last_invoiced'] = cls.last_invoiced_date(owner)
+        return preview
+
+    @staticmethod
     def generate_monthly_invoices(year, month):
         """Generate invoices for all owners for a given month.
 

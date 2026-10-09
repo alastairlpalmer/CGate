@@ -1,3 +1,18 @@
+{% if preview.blocker %}
+<div class="mb-4 rounded-xl bg-error-red-50 border border-error-red/20 p-3 text-sm text-error-red space-y-1">
+    <p>{{ preview.blocker.invoice_number }} already covers {{ preview.blocker.period_start|date:"j M Y" }} to {{ preview.blocker.period_end|date:"j M Y" }}. Change the dates so they do not overlap it.</p>
+    {% if preview.unbilled_gaps|length > 1 %}
+    <p>Not yet invoiced:{% for gap in preview.unbilled_gaps %} {{ gap.0|date:"j M Y" }} to {{ gap.1|date:"j M Y" }}{% if not forloop.last %};{% endif %}{% endfor %}. Make one invoice for each period.</p>
+    {% endif %}
+</div>
+{% elif preview.start_moved %}
+<div class="mb-4 rounded-xl bg-info-blue-50 border border-info-blue/20 p-3 text-sm text-info-blue">
+    Already invoiced up to {{ preview.invoiced_until|date:"j M Y" }}{% if preview.invoiced %} ({% for inv in preview.invoiced %}{{ inv.invoice_number }}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}.
+    This invoice starts on <strong>{{ preview.period_start|date:"j M Y" }}</strong>.
+</div>
+{% elif preview.last_invoiced %}
+<p class="mb-4 text-xs text-sage">Last invoice ends {{ preview.last_invoiced|date:"j M Y" }}.</p>
+{% endif %}
 {% if preview.horse_groups %}
 <div class="space-y-4">
     {% for group in preview.horse_groups %}
@@ -41,6 +56,6 @@
         </div>
     </div>
 </div>
-{% else %}
+{% elif not preview.blocker %}
 <p class="text-sage text-sm">No charges found for this period.</p>
 {% endif %}
