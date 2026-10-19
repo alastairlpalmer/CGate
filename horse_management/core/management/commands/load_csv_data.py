@@ -666,7 +666,7 @@ class Command(BaseCommand):
             if start_date is None:
                 # Last resort: today
                 from django.utils import timezone
-                start_date = timezone.now().date()
+                start_date = timezone.localdate()
 
             # --- Create Placement (skip full_clean to avoid overlap validation
             #     during bulk import; all placements are new/non-overlapping) ---

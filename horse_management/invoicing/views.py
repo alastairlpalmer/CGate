@@ -513,7 +513,7 @@ def owner_statement_pdf(request, owner_pk):
     pdf_file = generate_owner_statement_pdf(owner, statement)
 
     response = HttpResponse(pdf_file.read(), content_type='application/pdf')
-    filename = f"statement-{owner.name.replace(' ', '-').lower()}-{timezone.now():%Y-%m-%d}.pdf"
+    filename = f"statement-{owner.name.replace(' ', '-').lower()}-{timezone.localdate():%Y-%m-%d}.pdf"
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 

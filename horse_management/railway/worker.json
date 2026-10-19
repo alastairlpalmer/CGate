@@ -4,7 +4,7 @@
     "builder": "RAILPACK"
   },
   "deploy": {
-    "startCommand": "python manage.py restore_test --reset; celery -A horse_management worker --loglevel=info --concurrency=2",
+    "startCommand": "celery -A horse_management worker --loglevel=info --concurrency=2",
     "restartPolicyType": "ALWAYS"
   }
 }

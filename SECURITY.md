@@ -68,7 +68,9 @@ no cross-customer isolation boundary to get wrong.
 **Data integrity and recovery**
 - `DATABASE_URL` missing with `DEBUG=False` stops the boot. There is no
   silent SQLite fallback that would accept data and lose it on redeploy.
-- Upload limits: 10 MB per file, 12 MB per request.
+- Upload limits: 5 MB per photo or document (`validate_file_size` in
+  `core/models.py`), 10 MB for a field-boundary import, and 12 MB of
+  form data per request, not counting files.
 - Nightly off-site backup of the database **and** the uploaded media, with
   grandfather-father-son retention (`core/backup/`). Off until
   `BACKUP_ENABLED` and the storage credentials are set. Every attempt is

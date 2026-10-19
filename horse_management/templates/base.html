@@ -107,6 +107,7 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-parchment font-body antialiased text-charcoal" x-data="{ moreSheetOpen: false }"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
       hx-boost="true" hx-swap="outerHTML show:window:top" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
 
     <!-- ── Progress Bar ── -->

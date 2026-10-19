@@ -666,6 +666,12 @@ SESSION_SAVE_EVERY_REQUEST = True  # rolling expiry — each request resets the 
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 
+# Password reset links. Django's default is 3 days, which leaves a link
+# usable for a long time in a mailbox somebody else may read. A link
+# already works only once: the token is tied to the password hash and
+# last_login, so it stops working as soon as it is used.
+PASSWORD_RESET_TIMEOUT = env.int('PASSWORD_RESET_TIMEOUT', default=60 * 60)
+
 # CSRF cookie
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'

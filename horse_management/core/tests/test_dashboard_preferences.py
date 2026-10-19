@@ -18,6 +18,7 @@ Covers:
 
 import re
 from datetime import timedelta
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -29,6 +30,7 @@ from core.models import DashboardPreference, Horse, Location, Owner, Placement, 
 from core.permissions import access_map
 from core.roles_testutils import make_admin, make_user_with_access
 from health.models import FarrierVisit, Vaccination, VaccinationType
+from invoicing.models import Invoice
 
 User = get_user_model()
 
@@ -729,3 +731,30 @@ class QuickFindTests(TestCase):
         input_tag = re.search(r'<input[^>]*name="q"[^>]*>', body)
         self.assertIsNotNone(input_tag, 'quick-find input not found on dashboard')
         self.assertIn('hx-select="unset"', input_tag.group(0))
+
+
+class FinancesRevenueStatusTests(TestCase):
+    """Revenue is every invoice that has gone out: paid, sent and overdue.
+    Overdue was left out once, so the chart did not match Xero."""
+
+    def test_revenue_counts_paid_sent_and_overdue(self):
+        owner = Owner.objects.create(name='Revenue Owner', email='rev@example.com')
+        today = timezone.localdate()
+        amounts = {
+            Invoice.Status.PAID: '100.00',
+            Invoice.Status.SENT: '50.00',
+            Invoice.Status.OVERDUE: '25.00',
+            Invoice.Status.DRAFT: '10.00',
+            Invoice.Status.CANCELLED: '5.00',
+        }
+        for status, total in amounts.items():
+            Invoice.objects.create(
+                owner=owner, invoice_number=f'REV-{status}',
+                period_start=today.replace(day=1), period_end=today,
+                subtotal=Decimal(total), total=Decimal(total),
+                status=status, due_date=today,
+            )
+
+        self.client.force_login(make_user('revenueuser'))
+        resp = self.client.get(reverse('finances'))
+        self.assertEqual(resp.context['revenue_this_month'], 175.0)

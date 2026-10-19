@@ -80,6 +80,8 @@ tested, and the legal pages are placeholders.
 
 These are small. Do them before anything else.
 
+**Status:** items 1–5 and 7 are fixed in code. Item 6 is still to do in the Railway dashboard.
+
 | # | Problem | Evidence | Fix |
 |---|---|---|---|
 | 1 | **The worker runs a restore test every time it starts.** A commit marked "TEMPORARY" was left in place. | `railway/worker.json` start command: `python manage.py restore_test --reset; celery ...` | Remove `restore_test --reset;` from the start command. Run the restore test by hand, as `BACKUP_RESTORE.md` says. |
