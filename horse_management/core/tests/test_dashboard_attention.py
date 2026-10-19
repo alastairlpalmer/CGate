@@ -786,3 +786,57 @@ class VisitRowTitleTests(DashboardDataTestCase):
         for name in ('Cedar', 'Dogwood'):
             self.vaccination(self.horse(name), 2)
         self.assertIn('type=vaccinations', self.row_for('vaccination').url)
+
+
+class VaccinationWindowTests(DashboardDataTestCase):
+    """A course dose has a window for the next one (V1 → V2 in 21–60 days).
+    The dashboard lists it from the day the window opens, says when it
+    opens, and is overdue only after the deadline."""
+
+    def course(self, horse, stage, given_days_ago):
+        return Vaccination.objects.create(
+            horse=horse, vaccination_type=self.flu, course_stage=stage,
+            date_given=self.today - timedelta(days=given_days_ago),
+        )
+
+    def test_listed_before_the_window_opens_dated_by_its_opening(self):
+        # V1 ten days ago: V2 window opens in 11 days, deadline in 50.
+        self.course(self.horse('Fresh'), 'primary_1', given_days_ago=10)
+        items = self.collect()
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].delta, 11)
+        self.assertEqual(items[0].severity, 'due')
+        self.assertIn('V2 not before', items[0].detail)
+        self.assertIn('due by', items[0].detail)
+
+    def test_open_window_stays_listed_until_the_deadline(self):
+        # Window opened 9 days ago; deadline is 30 days away, past the
+        # 14-day horizon, and the row still shows.
+        self.course(self.horse('Open'), 'primary_1', given_days_ago=30)
+        items = self.collect()
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].delta, 30)
+        self.assertIn('V2 due by', items[0].detail)
+        self.assertNotIn('not before', items[0].detail)
+
+    def test_overdue_only_after_the_deadline(self):
+        self.course(self.horse('Late'), 'primary_1', given_days_ago=65)
+        items = self.collect()
+        self.assertEqual(items[0].severity, 'overdue')
+
+    def test_window_far_off_is_not_listed(self):
+        self.course(self.horse('Later'), 'primary_2', given_days_ago=10)  # opens day 120
+        self.assertEqual(self.collect(), [])
+
+    def test_strip_shows_the_opening_day(self):
+        self.course(self.horse('Strip'), 'primary_1', given_days_ago=10)
+        strip = upcoming.build(self.collect(), self.admin, self.today)
+        self.assertEqual(strip['total'], 1)
+        day = [d for d in strip['days'] if d['count']][0]
+        self.assertEqual(day['date'], self.today + timedelta(days=11))
+
+    def test_plain_vaccination_unchanged(self):
+        self.vaccination(self.horse('Plain'), 5)
+        items = self.collect()
+        self.assertEqual(items[0].delta, 5)
+        self.assertEqual(items[0].detail, 'Vaccination · Flu')

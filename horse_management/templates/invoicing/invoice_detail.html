@@ -136,8 +136,8 @@
                     <div>
                         <dt class="dt-label">Status</dt>
                         <dd class="mt-1">
-                            <span class="{% if invoice.status == 'paid' %}badge-success{% elif invoice.status == 'overdue' or invoice.is_overdue %}badge-danger{% elif invoice.status == 'sent' %}badge-warning{% elif invoice.status == 'cancelled' %}badge-neutral{% else %}badge-info{% endif %}">
-                                {% if invoice.is_overdue and invoice.status != 'paid' %}Overdue{% else %}{{ invoice.get_status_display }}{% endif %}
+                            <span class="{{ invoice.status_badge_class }}">
+                                {{ invoice.status_label }}
                             </span>
                         </dd>
                     </div>
