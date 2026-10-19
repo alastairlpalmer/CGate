@@ -4,6 +4,7 @@
 
 | Document | What it covers |
 |---|---|
+| [`LAUNCH_READINESS_PLAN.md`](LAUNCH_READINESS_PLAN.md) | Every launch requirement checked against the code, with a phased plan for the gaps. |
 | [`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) | **Start here.** The dashboard work that is left, in the order to do it, with time estimates. |
 | [`../SECURITY.md`](../SECURITY.md) | How to report a vulnerability, the controls in place, and the known gaps. |
 | [`REVIEWER_PACK.md`](REVIEWER_PACK.md) | Orientation for an external code or security reviewer: architecture, data map, threat list. |
