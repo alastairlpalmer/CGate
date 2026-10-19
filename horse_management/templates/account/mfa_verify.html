@@ -1,0 +1,17 @@
+{% extends "account/_auth_layout.html" %}
+{% block title %}Two-step sign-in{% endblock %}
+{% block heading %}Enter your code{% endblock %}
+{% block subtitle %}Open your authenticator app and enter the 6-digit code for Yardway.{% endblock %}
+{% block card %}
+<form method="post" class="space-y-5">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    {% include "account/_code_input.html" with label="Code from your app, or a recovery code" inputmode="text" %}
+    <button type="submit" class="btn-primary w-full min-h-[44px]">Continue</button>
+</form>
+<p class="text-sm text-sage">
+    <strong class="text-charcoal">Lost your phone?</strong>
+    Enter one of the recovery codes you saved when you set this up. Each code works once.
+    No codes left? Ask an administrator to turn off two-step sign-in for your account.
+</p>
+{% endblock %}

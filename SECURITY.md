@@ -34,13 +34,29 @@ no cross-customer isolation boundary to get wrong.
 - Django's password validators are on: length, common passwords, numeric
   only, and similarity to the user's own details.
 - Sign-in locks after 5 failed attempts for 30 minutes (django-axes,
-  keyed on the username). Clear a lock early with
+  keyed on the username). The person can unlock it themselves with a
+  password reset, because that needs their mailbox. An administrator can
+  press **Unlock** on Settings → Users, or run
   `python manage.py axes_reset_username <email>`.
+- Two-step sign-in (TOTP authenticator app) with 10 single-use recovery
+  codes (`core/mfa.py`, django-otp). Required for Administrators
+  (`MFA_REQUIRED_FOR_ADMINS`). Wrong codes are throttled with a doubling
+  wait. Setting it up signs out every other session. Only an Administrator
+  can turn it off for another user, and that signs the user out
+  everywhere. From a shell: `python manage.py mfa_reset <email>`.
+- Password reset links expire after 1 hour and work once. Reset requests
+  are limited per address and per IP address (`core/ratelimit.py`).
+- New users can be invited by email to choose their own password, so an
+  administrator never needs to know it. Invitation links expire after
+  3 days and work once.
 - Every feature area is gated by a role (`core/permissions.py`). Templates
   hide what a role cannot use, and every view re-checks — hiding is not
   enforcement.
 - Sessions expire after 7 days without a request (`SESSION_COOKIE_AGE`).
-  Expiry rolls forward, so weekly users are not signed out.
+  Expiry rolls forward, so weekly users are not signed out. A session also
+  ends 30 days after sign-in, however busy (`SESSION_ABSOLUTE_AGE`).
+- Users can sign out of every other device from Account Security. An
+  administrator can sign any user out everywhere from Settings → Users.
 - The Django admin path is set by `ADMIN_URL`, so it can be moved off the
   default that untargeted scanners try first.
 - Uploaded files served from a local disk are gated by the same roles, not
@@ -103,11 +119,10 @@ Listed on purpose. A reviewer should not have to discover these.
 
 | Gap | Risk | Plan |
 |---|---|---|
-| **No multi-factor authentication.** A stolen password is enough. | High | Add `django-otp` for administrator accounts. |
 | **CSP allows `unsafe-inline` and `unsafe-eval` for scripts.** Inline `<script>` blocks and Alpine.js need them today. | Medium | Move to per-tag nonces and Alpine's CSP build, then set `CSP_ENFORCE=True`. |
-| **Sessions have no absolute lifetime.** Seven days of inactivity ends one, but an attacker actively using a stolen cookie keeps it alive indefinitely. | Low | Add an absolute cap alongside the rolling one. |
 | **`ADMIN_URL` still defaults to `admin/`.** The setting exists; a deployment that does not set it gains nothing. | Low | Set `ADMIN_URL` in production, or restrict by IP at the proxy. |
-| **No per-request rate limiting** outside sign-in. Report generation and PDF export are unthrottled. | Medium | Rate-limit at Cloudflare, or add `django-ratelimit` on the expensive views. |
+| **Two-step sign-in is optional for roles other than Administrator.** A stolen password is enough for those accounts. | Medium | Encourage it for staff who use Invoices or Owners. Make it required per role if needed. |
+| **Limited rate limiting outside sign-in.** Password reset is limited; report generation and PDF export are not. Rate-limit counters are per process unless `CACHE_URL` points at Redis. | Medium | Set `CACHE_URL`. Rate-limit expensive views at Cloudflare. |
 | **Uploads on a local volume are a single point of failure** where `MEDIA_S3_BUCKET` is not set. Worse, a volume attaches to one service, so the backup job on the worker cannot read files written by the web service and archives nothing while still reporting success. | Medium (availability) | Set the `MEDIA_S3_*` settings so uploads go to a private bucket. |
 | **Python dependencies are version ranges (`~=`), not a lockfile.** Two builds can differ. (JavaScript has `package-lock.json`.) | Low | Add `pip-compile` or `uv lock`. |
 | **The restore has never been tested.** Backups now run, but a backup nobody has restored is not proven. | High (availability) | Work through the five-point restore test in `docs/BACKUP_RESTORE.md` and record the date. |

@@ -49,8 +49,9 @@
                     {% if is_self %}<p class="text-xs text-saddle mt-0.5">You can't remove your own access to Users &amp; Roles — ask another administrator.</p>{% endif %}
                 </div>
                 {% if not object %}
+                <p class="text-sm text-sage">Leave the password blank to email the new user an invitation to choose their own. Then nobody else knows it.</p>
                 <div>
-                    <label for="{{ form.password1.id_for_label }}" class="text-sm font-medium text-charcoal">Password</label>
+                    <label for="{{ form.password1.id_for_label }}" class="text-sm font-medium text-charcoal">Password (optional)</label>
                     {{ form.password1 }}
                     {% if form.password1.errors %}<p class="mt-1 text-sm text-error-red">{{ form.password1.errors.0 }}</p>{% endif %}
                 </div>
@@ -96,6 +97,59 @@
                 <button type="submit" class="btn-primary">Set Password</button>
             </footer>
         </form>
+    </div>
+
+    <!-- ── Sign-in Security ── -->
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">Sign-In Security</h3>
+        </div>
+        <div class="settings-rows">
+            <div class="settings-row">
+                <div class="min-w-0">
+                    <p class="settings-row-title">{% if locked_out %}Locked out{% else %}Not locked out{% endif %}</p>
+                    <p class="settings-row-meta">{% if locked_out %}Too many wrong passwords. The lock lifts by itself, or unlock it now. A password reset also unlocks it.{% else %}Sign-in locks for a short time after repeated wrong passwords.{% endif %}</p>
+                </div>
+                {% if locked_out %}
+                <div class="settings-actions">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="unlock" value="1">
+                        <button type="submit" class="btn-primary btn-sm">Unlock</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            <div class="settings-row">
+                <div class="min-w-0">
+                    <p class="settings-row-title">Two-step sign-in {% if mfa.enabled %}on{% else %}off{% endif %}</p>
+                    <p class="settings-row-meta">{% if mfa.enabled %}{{ mfa.recovery_codes_left }} recovery code{{ mfa.recovery_codes_left|pluralize }} left.{% elif mfa.required %}Their role needs it. They will set it up when they next sign in.{% else %}They can turn it on from their Account Security page.{% endif %}</p>
+                </div>
+                {% if mfa.enabled and can_reset_mfa %}
+                <div class="settings-actions">
+                    <form method="post"
+                          hx-confirm="Turn off two-step sign-in for {{ object.email|default:object.username }}? Do this only when you are sure who is asking, for example in person or on a call you made.">
+                        {% csrf_token %}
+                        <input type="hidden" name="mfa_reset" value="1">
+                        <button type="submit" class="btn-secondary btn-sm text-error-red border-error-red/30 hover:bg-error-red-50">Turn Off</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            <div class="settings-row">
+                <div class="min-w-0">
+                    <p class="settings-row-title">Signed-in devices</p>
+                    <p class="settings-row-meta">{% if is_self %}Ends your sessions on every other device. You stay signed in here.{% else %}Ends every session for this user. They must sign in again.{% endif %}</p>
+                </div>
+                <div class="settings-actions">
+                    <form method="post" hx-confirm="Sign {{ object.email|default:object.username }} out everywhere?">
+                        {% csrf_token %}
+                        <input type="hidden" name="sign_out_everywhere" value="1">
+                        <button type="submit" class="btn-secondary btn-sm">Sign Out Everywhere</button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 
     {% if not is_self %}

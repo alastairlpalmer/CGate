@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Account Security - Yardway{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto space-y-6">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Account Security</h1>
+            <p class="page-subtitle">{{ user.email|default:user.username }}</p>
+        </div>
+    </div>
+
+    <!-- ── Password ── -->
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">Password</h3>
+        </div>
+        <div class="p-4 sm:p-5 flex items-center justify-between gap-4">
+            <p class="text-sm text-sage">Changing your password signs you out on your other devices.</p>
+            <a href="{% url 'password_change' %}" class="btn-secondary btn-sm shrink-0">Change Password</a>
+        </div>
+    </div>
+
+    <!-- ── Two-step sign-in ── -->
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">Two-Step Sign-In</h3>
+        </div>
+        <div class="p-4 sm:p-5 space-y-4">
+            {% if mfa.enabled %}
+            <p class="text-sm text-charcoal"><strong>On.</strong> Sign-in asks for a code from your authenticator app.</p>
+            <p class="text-sm {% if mfa.recovery_codes_left < 3 %}text-saddle font-medium{% else %}text-sage{% endif %}">
+                {{ mfa.recovery_codes_left }} recovery code{{ mfa.recovery_codes_left|pluralize }} left.
+                {% if mfa.recovery_codes_left < 3 %}Make new codes now, so you can still sign in if you lose your phone.{% endif %}
+            </p>
+            <div class="flex flex-wrap gap-2">
+                <a href="{% url 'mfa_setup' %}" hx-boost="false" class="btn-secondary btn-sm">Set Up a New Phone</a>
+                <form method="post" action="{% url 'mfa_new_recovery_codes' %}" hx-boost="false"
+                      hx-confirm="Make new recovery codes? Your old codes will stop working.">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-secondary btn-sm">New Recovery Codes</button>
+                </form>
+            </div>
+            {% if not mfa.required %}
+            <form method="post" action="{% url 'mfa_disable' %}" class="pt-4 border-t border-light-sage space-y-3">
+                {% csrf_token %}
+                <p class="text-sm text-sage">To turn two-step sign-in off, enter a current code.</p>
+                {% include "account/_code_input.html" with label="Code from your app, or a recovery code" inputmode="text" %}
+                <button type="submit" class="btn-secondary btn-sm text-error-red border-error-red/30 hover:bg-error-red-50">Turn Off</button>
+            </form>
+            {% else %}
+            <p class="text-xs text-sage">Your role needs two-step sign-in, so it cannot be turned off.</p>
+            {% endif %}
+            {% else %}
+            <p class="text-sm text-charcoal"><strong>Off.</strong> Anyone with your password can sign in as you.</p>
+            <p class="text-sm text-sage">Turn it on to ask for a 6-digit code from your phone as well. It takes about two minutes.</p>
+            <a href="{% url 'mfa_setup' %}" hx-boost="false" class="btn-primary btn-sm">Turn On</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ── Devices ── -->
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">Signed-In Devices</h3>
+        </div>
+        <div class="p-4 sm:p-5 flex items-center justify-between gap-4">
+            <p class="text-sm text-sage">Lost a phone or used a shared computer? Sign out everywhere except here.</p>
+            <form method="post" action="{% url 'sign_out_other_devices' %}"
+                  hx-confirm="Sign out of every other device and browser?">
+                {% csrf_token %}
+                <button type="submit" class="btn-secondary btn-sm shrink-0">Sign Out Other Devices</button>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

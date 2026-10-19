@@ -7,6 +7,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from core.views import account as account_views
 from core.views import (
     app_settings,
     posthog_proxy,
@@ -41,6 +42,17 @@ urlpatterns = [
     path('settings/roles/<int:pk>/delete/', role_delete, name='role_delete'),
     path('settings/dashboard/toggle/', dashboard_toggle, name='dashboard_toggle'),
     path(settings.ADMIN_URL, admin.site.urls),
+    # Ahead of django.contrib.auth.urls, so these replace the stock views of
+    # the same names (core/views/account.py says why).
+    path('accounts/password_reset/', account_views.RateLimitedPasswordResetView.as_view(), name='password_reset'),
+    path('accounts/reset/<uidb64>/<token>/', account_views.UnlockingPasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('accounts/invite/<uidb64>/<token>/', account_views.InviteConfirmView.as_view(), name='invite_confirm'),
+    path('accounts/security/', account_views.account_security, name='account_security'),
+    path('accounts/security/sign-out-others/', account_views.sign_out_other_devices, name='sign_out_other_devices'),
+    path('accounts/two-step/', account_views.mfa_verify, name='mfa_verify'),
+    path('accounts/two-step/setup/', account_views.mfa_setup, name='mfa_setup'),
+    path('accounts/two-step/recovery-codes/', account_views.mfa_new_recovery_codes, name='mfa_new_recovery_codes'),
+    path('accounts/two-step/off/', account_views.mfa_disable, name='mfa_disable'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('', include('core.urls')),
     path('invoicing/', include('invoicing.urls')),

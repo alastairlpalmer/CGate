@@ -6,11 +6,15 @@ assign roles, reset passwords, and deactivate accounts — no Django admin
 or CLI needed.
 """
 
+import logging
+
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
+from .. import mfa
+from ..account_security import clear_lockout, is_locked_out, sign_out_everywhere
 from ..forms import AdminSetPasswordForm, UserCreateForm, UserUpdateForm
 from ..permissions import (
     LEVEL_FULL,
@@ -20,6 +24,7 @@ from ..permissions import (
 )
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 def _grants_user_management(role):
@@ -59,7 +64,21 @@ def user_create(request):
         form = UserCreateForm(request.POST)
         if form.is_valid():
             user = form.save()
-            messages.success(request, f"User {user.email} created.")
+            if form.sends_invite:
+                from .account import send_invite
+                try:
+                    send_invite(request, user)
+                except Exception:
+                    logger.exception('Invitation email to new user %s failed.', user.pk)
+                    messages.warning(
+                        request,
+                        f"User {user.email} created, but the invitation email could not be sent. "
+                        "Check the email settings, then set a password for them below.",
+                    )
+                    return redirect('user_update', pk=user.pk)
+                messages.success(request, f"User {user.email} created. An invitation to choose a password is on its way.")
+            else:
+                messages.success(request, f"User {user.email} created.")
             return redirect('app_settings')
     else:
         form = UserCreateForm()
@@ -119,6 +138,43 @@ def user_update(request, pk):
                 messages.success(request, f"Password updated for {target.email or target.username}.")
                 return redirect('app_settings')
 
+        elif 'unlock' in request.POST:
+            cleared = clear_lockout(target)
+            logger.info('Sign-in lockout cleared for user %s by user %s.', target.pk, request.user.pk)
+            if cleared:
+                messages.success(request, f"{target.email or target.username} can sign in again.")
+            else:
+                messages.info(request, f"{target.email or target.username} was not locked out.")
+            return redirect('user_update', pk=target.pk)
+
+        elif 'sign_out_everywhere' in request.POST:
+            ended = sign_out_everywhere(
+                target, keep_session_key=request.session.session_key if is_self else None,
+            )
+            logger.info('User %s signed out of %d sessions by user %s.', target.pk, ended, request.user.pk)
+            messages.success(request, f"Ended {ended} session{'s' if ended != 1 else ''} for {target.email or target.username}.")
+            return redirect('user_update', pk=target.pk)
+
+        elif 'mfa_reset' in request.POST:
+            if is_self:
+                messages.error(request, "Change your own two-step sign-in on your Account Security page.")
+            elif not mfa.is_administrator(request.user):
+                # Together with "Set Password" this would hand over the
+                # account completely, so it is kept to Administrators.
+                messages.error(request, "Only an Administrator can turn off two-step sign-in for someone else.")
+            else:
+                mfa.disable(target)
+                # Whoever had the lost phone may also hold a signed-in session.
+                sign_out_everywhere(target)
+                logger.warning('Two-step sign-in turned off for user %s by user %s.', target.pk, request.user.pk)
+                messages.success(
+                    request,
+                    f"Two-step sign-in is off for {target.email or target.username}. "
+                    "They have been signed out everywhere."
+                    + (" Their role needs it, so they must set it up again when they next sign in." if mfa.mfa_required(target) else ""),
+                )
+            return redirect('user_update', pk=target.pk)
+
         elif 'toggle_active' in request.POST:
             if is_self:
                 messages.error(request, "You can't deactivate your own account.")
@@ -136,4 +192,7 @@ def user_update(request, pk):
         'password_form': password_form,
         'object': target,
         'is_self': is_self,
+        'locked_out': is_locked_out(target),
+        'mfa': mfa.mfa_status(target),
+        'can_reset_mfa': mfa.is_administrator(request.user) and not is_self,
     })

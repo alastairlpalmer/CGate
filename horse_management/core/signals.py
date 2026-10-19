@@ -30,6 +30,18 @@ def _source(request) -> str:
     return 'app'
 
 
+@receiver(user_logged_in, dispatch_uid='core.session_started')
+def on_user_logged_in_set_up_session(sender, request, user, **kwargs):
+    # The absolute session lifetime counts from here
+    # (core.middleware.AbsoluteSessionLifetimeMiddleware), and the session
+    # learns whether this user has two-step sign-in (core.mfa).
+    from core.middleware import mark_session_started
+    mark_session_started(request)
+    if request is not None and hasattr(request, 'session'):
+        from core import mfa
+        mfa.remember_enrolment(request, user)
+
+
 @receiver(user_logged_in, dispatch_uid='core.analytics.user_logged_in')
 def on_user_logged_in(sender, request, user, **kwargs):
     analytics.capture(user, 'user_signed_in', {'source': _source(request)})
