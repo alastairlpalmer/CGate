@@ -117,7 +117,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         apply = options['apply']
         force = options['force']
-        today = timezone.now().date()
+        today = timezone.localdate()
 
         locations = Location.objects.all().order_by('site', 'name')
         if options['location'] is not None:
