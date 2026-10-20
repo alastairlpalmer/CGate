@@ -72,19 +72,29 @@ def claim_invoice_for_sending(invoice_pk):
     return updated == 1
 
 
-@shared_task
-def send_invoice_email_task(invoice_pk):
+# Waits between tries of a failed invoice send, from the worker: about 1,
+# 2 and 4 minutes. The last try ends well inside SEND_CLAIM_TIMEOUT.
+SEND_RETRY_BASE_SECONDS = 60
+
+
+@shared_task(bind=True)
+def send_invoice_email_task(self, invoice_pk):
     """Email one claimed invoice and mark it sent.
 
     Runs after claim_invoice_for_sending. Outcomes: 'sent', 'failed'
     (claim released, reason stored in send_error, invoice stays draft so
     it remains in the work queue), or 'skipped' (no claim / not a draft
     any more / owner has no email).
+
+    From the worker, a failed send tries again up to max_retries times
+    before it gives up: most failures are the mail server refusing a
+    connection for a moment. A plain call (no worker) tries once.
     """
     from django.db import transaction
 
     from invoicing.models import Invoice
     from notifications.emails import send_invoice_email
+    from notifications.mail import can_email
 
     with transaction.atomic():
         invoice = (
@@ -105,6 +115,17 @@ def send_invoice_email_task(invoice_pk):
             invoice.save(update_fields=['send_queued_at', 'send_error'])
             return 'skipped'
 
+    if not can_email(invoice.owner):
+        # Bounced before: trying again sends nothing (notifications/mail.py).
+        Invoice.objects.filter(pk=invoice.pk).update(
+            send_queued_at=None,
+            send_error=(
+                'Emails to this owner are not arriving. Check the address on '
+                'the owner page, then send again.'
+            ),
+        )
+        return 'failed'
+
     # The SMTP round-trip happens outside the row lock.
     try:
         sent = send_invoice_email(invoice)
@@ -115,6 +136,12 @@ def send_invoice_email_task(invoice_pk):
     if sent:
         invoice.mark_as_sent()
         return 'sent'
+
+    if not self.request.called_directly and self.request.retries < self.max_retries:
+        # Keep the claim fresh so nothing else sends it in the meantime.
+        Invoice.objects.filter(pk=invoice.pk).update(send_queued_at=timezone.now())
+        logger.warning("Send failed for invoice %s; trying again.", invoice.invoice_number)
+        raise self.retry(countdown=SEND_RETRY_BASE_SECONDS * 2 ** self.request.retries)
 
     Invoice.objects.filter(pk=invoice.pk).update(
         send_queued_at=None,

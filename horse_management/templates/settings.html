@@ -224,6 +224,15 @@
                         <a href="{% url 'audit_log' %}" class="btn-secondary btn-sm">View</a>
                     </div>
                 </div>
+                <div class="settings-row">
+                    <div class="min-w-0">
+                        <p class="settings-row-title">Background Tasks</p>
+                        <p class="settings-row-meta">{% if failed_task_count %}<span class="badge-danger">{{ failed_task_count }} failed</span> {% endif %}Scheduled emails, invoice runs and backups: when each last ran, and any that failed.</p>
+                    </div>
+                    <div class="settings-actions">
+                        <a href="{% url 'background_tasks' %}" class="btn-secondary btn-sm">View</a>
+                    </div>
+                </div>
             </div>
         </div>
         {% endif %}

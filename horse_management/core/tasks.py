@@ -18,7 +18,9 @@ from core.models import BackupRun, BusinessSettings
 logger = logging.getLogger(__name__)
 
 
-@shared_task
+# No automatic retry: a backup is heavy, and each failure already emails
+# the yard. It is recorded in FailedTask and can be run again from there.
+@shared_task(autoretry_for=())
 def run_nightly_backup():
     """Back up the database and media off-site, then prune old copies.
 
@@ -133,8 +135,25 @@ def purge_soft_deleted():
             except Exception:
                 logger.exception('Purge: could not delete %s %s', model.__name__, row.pk)
         counts[model.__name__] = purged
+    counts.update(_purge_task_records())
     logger.info('Purge: %s', counts)
     return counts
+
+
+def _purge_task_records():
+    """Remove old ScheduledRun rows and dealt-with FailedTask rows."""
+    from datetime import timedelta
+
+    from core.models import FailedTask, ScheduledRun
+
+    now = timezone.now()
+    runs, _ = ScheduledRun.objects.filter(
+        started_at__lt=now - timedelta(days=settings.SCHEDULED_RUN_RETENTION_DAYS),
+    ).delete()
+    failures, _ = FailedTask.objects.filter(
+        resolved_at__lt=now - timedelta(days=settings.FAILED_TASK_RETENTION_DAYS),
+    ).delete()
+    return {'ScheduledRun': runs, 'FailedTask': failures}
 
 
 @shared_task

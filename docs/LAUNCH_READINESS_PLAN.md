@@ -54,15 +54,15 @@ its own deployment, database and bucket.
 | Security | 21 | 5 | 11 | 2 | 2 | 1 |
 | Compliance | 12 | 3 | 1 | 4 | 0 | 4 |
 | Infrastructure and deploys | 14 | 0 | 6 | 4 | 3 | 1 |
-| Jobs, email and cache | 11 | 4 | 5 | 1 | 1 | 0 |
-| Monitoring and incidents | 11 | 0 | 3 | 8 | 0 | 0 |
+| Jobs, email and cache | 11 | 8 | 2 | 0 | 1 | 0 |
+| Monitoring and incidents | 11 | 0 | 3 | 7 | 1 | 0 |
 | Testing | 9 | 1 | 5 | 3 | 0 | 0 |
 | Billing and payments | 11 | 7 | 0 | 2 | 0 | 2 |
 | API and integrations | 8 | 3 | 0 | 1 | 0 | 4 |
 | AI features | 8 | 0 | 0 | 0 | 0 | 8 |
 | User experience | 12 | 3 | 8 | 0 | 0 | 1 |
 | Code, docs and team | 14 | 0 | 7 | 5 | 2 | 0 |
-| **Total** | **169** | **49** | **52** | **36** | **8** | **24** |
+| **Total** | **169** | **53** | **49** | **34** | **9** | **24** |
 
 **What is already strong:** money is stored as `Decimal` everywhere, dates are
 timezone-aware, invoice creation and sends are safe against duplicates, the
@@ -211,15 +211,15 @@ These are small. Do them before anything else.
 | Requirement | Status | Evidence | Action | Phase |
 |---|---|---|---|---|
 | Background job queue | ✅ | Celery + Redis + beat | None. | — |
-| Retries with backoff | 🟡 | No `autoretry_for`, `retry_backoff` or `acks_late` on any task | Add retries with backoff to email and Xero tasks. Set `task_acks_late=True` and `task_reject_on_worker_lost=True`. | P1 |
-| Dead-letter queue | ❌ | None | Record tasks that fail every retry in a table, and show them on an admin page. | P1 |
-| Cron jobs that do not run twice | 🟡 | Most tasks claim rows with a conditional update. Document expiry reminders do not check the update count (`notifications/tasks.py:410`). Nothing stops two beat processes. | Fix the expiry claim. Add a Redis lock to beat (or to each scheduled task). | P1 |
+| Retries with backoff | ✅ | Every task is a `ReliableTask` (`core/jobs.py`): database and network errors retry up to 3 times with backoff. A failed invoice send tries again after about 1, 2 and 4 minutes. `acks_late`, `reject_on_worker_lost`, prefetch 1, and a Redis visibility timeout longer than the longest task | None. | — |
+| Dead-letter queue | ✅ | A task that fails every retry is written to `FailedTask`. Settings → Background Tasks lists it with **Run again** and **Dismiss**; the Settings card shows the count | None. | — |
+| Cron jobs that do not run twice | ✅ | Each scheduled task claims a `ScheduledRun` row for (task, day), unique in the database, so a second beat, a redelivered message or a manual run does nothing. A failed run gives up its claim. The document expiry task now locks and claims its rows in one transaction | None. | — |
 | SPF, DKIM and DMARC | ⚙️ | Planned (Go-live 5.2) | Do 5.2. | P1 |
 | Bounce and complaint handling | ✅ | Postmark (secret token) and Resend (Svix signature) webhooks flag the owner's address; nothing more is sent to it; the owner page shows it with "It works now"; a new address clears it (`notifications/views.py`) | Set the webhook in the provider when email moves there (Go-live 5.2). | ⚙️ P1 |
 | Emails that render in every client | 🟡 | Every email now has a plain-text part as well as HTML (`notifications/mail.py`) | Send one of each email to Gmail, Outlook and Apple Mail and look at them. | P1 |
 | Notifications people can turn off | ✅ | Per-owner "Email health reminders" and "Pause overdue reminders"; one-click unsubscribe link and `List-Unsubscribe` headers on health reminders (RFC 8058); invoices and statements always go | None. | — |
 | Caching | 🟡 | See section 2 | — | P2 |
-| Health check covers the whole system | 🟡 | `/_health/` checks the database only | Add Redis. Add a beat heartbeat (see monitoring). | P1 |
+| Health check covers the whole system | ✅ | `/_health/` checks the database, Redis, and that a scheduled task finished in the last 26 hours; 503 when any fails | Point an uptime monitor at it (section 7). | — |
 | Reminder at the right time | ✅ | 07:00 London time, Monday to Friday, follows summer time (`settings.py:528`) | None. | — |
 
 ### 7. Monitoring and incidents
@@ -229,7 +229,7 @@ These are small. Do them before anything else.
 | Structured logs you can search | 🟡 | Plain text console logs | Add a JSON formatter. Railway log search then works on fields. | P1 |
 | Error tracking that groups bugs | 🟡 | Sentry is built in, off until `SENTRY_DSN` is set | Go-live 1.3. | ⚙️ P1 |
 | Uptime checks from outside | ❌ | None | Free external monitor (for example Better Stack or UptimeRobot) on `/_health/`. | ⚙️ P1 |
-| Heartbeat for scheduled jobs | ❌ | Backup failures are emailed; nothing tells you if beat stops | Each scheduled task pings a heartbeat URL (Sentry Crons or the uptime tool). | P1 |
+| Heartbeat for scheduled jobs | ⚙️ | Each scheduled task calls `CRON_HEARTBEAT_URL` when it finishes; `/_health/` also goes red when no task has finished in 26 hours; Settings → Background Tasks shows each task's last run | Create the checks in a monitor (for example Healthchecks.io) and set `CRON_HEARTBEAT_URL` (Go-live 1.3). | ⚙️ P1 |
 | Alerts that page a human | ❌ | None | Route uptime and Sentry alerts to a phone. Tune after two weeks. | P1 |
 | Dashboards for latency, errors, throughput | ❌ | None | Sentry Performance at a low sample rate, or Railway metrics. | P2 |
 | Tracing across services | ❌ | None | Sentry tracing links web and worker. Low priority with two services. | P2 |
@@ -374,7 +374,7 @@ Dashboard:
 | 4 | ✅ **GDPR** (done): anonymise owner, export one owner's data, retention job, CSV exports for main lists | GDPR, retention, exports | 1 week |
 | 5 | ✅ **Billing fixes** (done): PO / customer reference, credit notes, stepped dunning, gap-free numbering, reconciliation report | Billing | 1.5 weeks |
 | 6 | ✅ **Email** (done; staff digest opt-out not needed: the only staff email is the yard's document summary): plain-text parts, `List-Unsubscribe`, owner and staff preferences, bounce webhook with signature check | Email, notifications | 1 week |
-| 7 | **Jobs**: retries with backoff, `acks_late`, failed-task table, beat lock, fix expiry claim, heartbeats, health check covers Redis | Jobs, cron, monitoring | 3 days |
+| 7 | ✅ **Jobs** (done): retries with backoff, `acks_late`, failed-task table with Run again, once-a-day claim for scheduled tasks, fix expiry claim, heartbeats, health check covers Redis and scheduled tasks | Jobs, cron, monitoring | 3 days |
 | 8 | **Hardening**: upload content check and `attachment` header, `Permissions-Policy`, DB `sslmode=require`, separate DB user, encrypted backups, Python lockfile, Actions pinned by SHA, trim Xero error logs, `security.txt` | Security | 3 days |
 | 9 | **Unicode and data quality**: PDF font, safe file names, CSV BOM, import encoding fix and `--dry-run`, DB check constraints | Unicode, imports, validation | 3 days |
 | 10 | **Tests and CI**: Postgres job in CI, three E2E tests in CI with axe checks, Xero OAuth tests, `seed_demo` command | Testing, accessibility | 1 week |

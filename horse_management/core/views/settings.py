@@ -2,8 +2,10 @@
 Settings, rate types, and health check views.
 """
 
+import logging
 from itertools import groupby
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import connection, models
@@ -15,6 +17,8 @@ from django.views.decorators.http import require_POST
 from ..dashboard_widgets import WIDGETS, WIDGETS_BY_KEY, widget_available
 from ..permissions import feature_required, has_feature_access
 from ..models import DashboardPreference, Location
+
+logger = logging.getLogger(__name__)
 
 
 def _location_groups(queryset):
@@ -52,10 +56,68 @@ def _location_groups(queryset):
 
 
 def health_check(request):
-    """Lightweight DB ping. No auth required. Used by Vercel cron to keep Supabase awake."""
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT 1")
-    return JsonResponse({"status": "ok"})
+    """What an uptime monitor calls. No sign-in. 503 when a part is down.
+
+    Checks the database, Redis (the task queue), and that a scheduled task
+    has finished in the last SCHEDULED_TASK_STALE_HOURS, which catches a
+    beat or worker that has stopped. The response names each part and its
+    state, and nothing more: it is public.
+    """
+    checks = {
+        'database': _check_database(),
+        'redis': _check_redis(),
+        'scheduled_tasks': _check_scheduled_tasks(),
+    }
+    healthy = all(state in ('ok', 'skipped', 'none yet') for state in checks.values())
+    return JsonResponse(
+        {'status': 'ok' if healthy else 'error', 'checks': checks},
+        status=200 if healthy else 503,
+    )
+
+
+def _check_database():
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+    except Exception:
+        logger.exception('Health check: database')
+        return 'error'
+    return 'ok'
+
+
+def _check_redis():
+    url = settings.CELERY_BROKER_URL
+    if getattr(settings, 'CELERY_TASK_ALWAYS_EAGER', False) or not url.startswith(('redis://', 'rediss://')):
+        return 'skipped'
+    import redis
+
+    try:
+        redis.Redis.from_url(url, socket_connect_timeout=2, socket_timeout=2).ping()
+    except redis.RedisError:
+        logger.exception('Health check: redis')
+        return 'error'
+    return 'ok'
+
+
+def _check_scheduled_tasks():
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from ..models import ScheduledRun
+
+    if 'django_celery_beat' not in settings.INSTALLED_APPS:
+        return 'skipped'  # No worker on this host (Vercel).
+    try:
+        latest = (ScheduledRun.objects.filter(status=ScheduledRun.Status.SUCCESS)
+                  .order_by('-finished_at').values_list('finished_at', flat=True).first())
+    except Exception:
+        logger.exception('Health check: scheduled tasks')
+        return 'error'
+    if latest is None:
+        return 'none yet'  # A new deploy that has not reached its first run.
+    limit = timedelta(hours=settings.SCHEDULED_TASK_STALE_HOURS)
+    return 'ok' if timezone.now() - latest <= limit else 'stale'
 
 
 @login_required
@@ -127,6 +189,9 @@ def app_settings(request):
 
     from .. import mfa
     ctx['can_view_audit_log'] = mfa.is_administrator(request.user)
+    if ctx['can_view_audit_log']:
+        from ..models import FailedTask
+        ctx['failed_task_count'] = FailedTask.objects.filter(resolved_at__isnull=True).count()
 
     return render(request, 'settings.html', ctx)
 

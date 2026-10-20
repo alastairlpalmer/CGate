@@ -405,20 +405,27 @@ def send_document_expiry_reminders():
     today = timezone.localdate()
     cutoff = today + timedelta(days=30)
 
-    documents = list(
-        Document.objects.filter(
-            expiry_date__isnull=False,
-            expiry_date__lte=cutoff,
-            expiry_reminder_sent=False,
-        ).select_related('horse', 'owner').order_by('expiry_date')
-    )
-    if not documents:
-        return "Sent 0 document expiry reminders"
-
     # Claim first, roll back on failure — matches the other reminder tasks,
-    # so a transient send error doesn't consume the reminder.
-    ids = [d.pk for d in documents]
-    Document.objects.filter(pk__in=ids).update(expiry_reminder_sent=True)
+    # so a transient send error doesn't consume the reminder. Lock and claim
+    # in one transaction, and email only the rows this run claimed: two
+    # runs at once used to both email every document.
+    with transaction.atomic():
+        ids = list(
+            Document.objects.select_for_update(skip_locked=True).filter(
+                expiry_date__isnull=False,
+                expiry_date__lte=cutoff,
+                expiry_reminder_sent=False,
+            ).values_list('pk', flat=True)
+        )
+        Document.objects.filter(pk__in=ids, expiry_reminder_sent=False).update(
+            expiry_reminder_sent=True,
+        )
+    if not ids:
+        return "Sent 0 document expiry reminders"
+    documents = list(
+        Document.objects.filter(pk__in=ids)
+        .select_related('horse', 'owner').order_by('expiry_date')
+    )
     try:
         sent = send_document_expiry_summary(business.email, documents, today)
     except Exception:

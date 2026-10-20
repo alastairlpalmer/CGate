@@ -71,6 +71,33 @@ would make the stored token unreadable. Set a dedicated key first.
 **Check it works.** Visit a URL that does not exist on your site, then look
 in Sentry. Nothing after a few minutes means the DSN did not take.
 
+### 1.4 Watch the site and the scheduled tasks from outside
+
+Sentry sees errors. It cannot see a worker or beat that has stopped, because
+a stopped process sends nothing. These two checks can.
+
+- [ ] Create a free account at healthchecks.io (or Better Stack)
+- [ ] **Uptime:** add an HTTP check on `https://<your domain>/_health/`
+      every 5 minutes. It returns 503 when the database or Redis is down,
+      or when no scheduled task has finished in 26 hours.
+- [ ] **Scheduled tasks:** in Healthchecks.io, create a project and copy its
+      **ping key**. Create one check per task, with the slug set to the
+      task's function name (for example `run_nightly_backup`,
+      `sync_xero_invoice_statuses`, `check_invoice_status`). Daily tasks: a
+      1-day period with a 2-hour grace. Reminder tasks: a cron schedule of
+      weekdays only.
+- [ ] Set `CRON_HEARTBEAT_URL=https://hc-ping.com/<ping key>/{task}` on the
+      **worker**. Keep `{task}` as written; the app fills it in.
+- [ ] Send the alerts to your phone (the app, or SMS).
+
+**Check it works.** Open `/_health/`. Every check reads `ok`, or
+`none yet` for scheduled tasks on a new deploy. The next morning, each
+check in Healthchecks.io shows a ping.
+
+**Failed tasks.** A task that fails every retry shows on **Settings →
+Background Tasks**, with **Run again**. The Settings page shows a red count
+when there are any.
+
 ---
 
 ## Phase 2 — Turn backups on (1 hour)
