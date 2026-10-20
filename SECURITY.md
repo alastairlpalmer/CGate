@@ -5,8 +5,17 @@ does not protect yet.
 
 ## Reporting a vulnerability
 
-Email the maintainer. Do not open a public GitHub issue for a security
+Email the address in `/.well-known/security.txt` on the live site (set
+by `SECURITY_CONTACT`). Do not open a public GitHub issue for a security
 problem — an open issue tells everyone about the hole before it is closed.
+
+What happens next:
+
+- We reply within **3 working days** to say we have it.
+- We tell you within **10 working days** whether we can reproduce it, and
+  what we will do.
+- We fix serious problems first, and tell you when the fix is live.
+- We name you in the release notes if you want us to.
 
 Include what you did, what happened, and what you expected. A short
 reproduction is worth more than a scanner report.
@@ -62,6 +71,11 @@ no cross-customer isolation boundary to get wrong.
 - Uploaded files served from a local disk are gated by the same roles, not
   only by being signed in (`horse_management/urls.py`). Passports and
   receipts are not reachable by guessing a path.
+- A new document or receipt must be what its extension says: the first
+  bytes are checked, so an HTML page named `passport.pdf` is refused
+  (`core/uploads.py`). PDFs and photos open in the browser; Word and HEIC
+  files are served as downloads (`Content-Disposition: attachment`), from
+  the bucket and from a local disk.
 - With uploads in a bucket (`MEDIA_S3_BUCKET`), the bucket is private and
   every file is served through a signed link that expires after
   `MEDIA_S3_SIGNED_URL_TTL` seconds.
@@ -73,11 +87,24 @@ no cross-customer isolation boundary to get wrong.
 - Content-Security-Policy in **report-only** mode (see Known gaps).
 - `Referrer-Policy: strict-origin-when-cross-origin`, so record IDs in URLs
   do not leak to third parties.
+- `Permissions-Policy` on every response: location and camera for this
+  site only (maps, photo uploads); microphone, payment, USB and the rest off
+  (`core/middleware.py`).
+- The database connection requires TLS (`sslmode=require`), and so does the
+  backup's `pg_dump`. `DATABASE_SSLMODE` changes it.
 
 **Secrets**
 - `SECRET_KEY` has no default. The app refuses to start without one.
 - Xero OAuth access and refresh tokens are encrypted at rest with Fernet
   (`core/encryption.py`). They are shown masked in the Django admin.
+- Supabase (the database) and Cloudflare R2 (uploads and backups) encrypt
+  everything they store with AES-256. They hold those keys.
+- Backups are also encrypted before they leave the server (AES-256-GCM,
+  `core/backup/crypto.py`), with `BACKUP_ENCRYPTION_KEY`, which the storage
+  provider never sees. A copy of that key must be kept off the server.
+- Xero error responses are cut down to their reason fields before they are
+  logged or shown. The body can echo an owner's details, so it is never
+  kept (`xero_integration/client.py`).
 - No secret is committed to the repository. CI runs gitleaks over the full
   history on every push.
 
@@ -148,6 +175,10 @@ no cross-customer isolation boundary to get wrong.
   reason. A new secret in the same file still fails the scan. Review this
   file — a suppression is a decision, not a fix.
 - Dependabot for pip, npm and GitHub Actions.
+- Python packages are locked: `requirements.txt` pins every package and
+  the hash of each download (`pip-compile`, from `requirements.in`), and CI
+  installs with `--require-hashes`. GitHub Actions are pinned to commit
+  SHAs, so a moved tag cannot change what runs.
 
 ## Known gaps
 
@@ -161,14 +192,16 @@ Listed on purpose. A reviewer should not have to discover these.
 | **No record of who viewed a record.** Only changes are tracked. | Medium | Log views of passports, insurance documents and owner details (plan P2). |
 | **Limited rate limiting outside sign-in.** Password reset is limited; report generation and PDF export are not. Rate-limit counters are per process unless `CACHE_URL` points at Redis. | Medium | Set `CACHE_URL`. Rate-limit expensive views at Cloudflare. |
 | **Uploads on a local volume are a single point of failure** where `MEDIA_S3_BUCKET` is not set. Worse, a volume attaches to one service, so the backup job on the worker cannot read files written by the web service and archives nothing while still reporting success. | Medium (availability) | Set the `MEDIA_S3_*` settings so uploads go to a private bucket. |
-| **Python dependencies are version ranges (`~=`), not a lockfile.** Two builds can differ. (JavaScript has `package-lock.json`.) | Low | Add `pip-compile` or `uv lock`. |
+| **The app signs in to the database as `postgres`** until Go-live step 6.1 is done. A query the app is tricked into running can do anything. | Medium | Run the SQL in `docs/GO_LIVE_CHECKLIST.md` step 6.1. |
+| **No virus scan on uploads.** Content is checked against the extension, but a real PDF can still carry malware. | Low (staff upload their own files) | ClamAV in the worker, or the storage provider's scanner, before SaaS. |
 | **The restore has never been tested.** Backups now run, but a backup nobody has restored is not proven. | High (availability) | Work through the five-point restore test in `docs/BACKUP_RESTORE.md` and record the date. |
 
 ## Running the security checks locally
 
 ```bash
 cd horse_management
-pip install -r requirements.txt bandit pip-audit ruff
+pip install --require-hashes -r requirements.txt
+pip install bandit pip-audit ruff
 
 # Production-shaped settings, so the deploy checks actually apply
 SECRET_KEY=$(python -c "import secrets;print(secrets.token_urlsafe(50))") \

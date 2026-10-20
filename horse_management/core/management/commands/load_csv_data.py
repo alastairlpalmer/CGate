@@ -10,6 +10,7 @@ Idempotent: skips import if Placement records already exist.
 """
 
 import csv
+import io
 import os
 import re
 from datetime import datetime
@@ -445,6 +446,11 @@ class Command(BaseCommand):
             action='store_true',
             help='Force import even if data already exists (will skip existing records)',
         )
+        parser.add_argument(
+            '--dry-run',
+            action='store_true',
+            help='Run the whole import, report what it would create, then save nothing.',
+        )
 
     def handle(self, *args, **options):
         csv1_path = options['csv1']
@@ -501,32 +507,35 @@ class Command(BaseCommand):
 
         self.stdout.write(f'  Location lookup entries: {len(location_lookup)}')
 
-        # Import everything inside a transaction
+        # Import everything inside a transaction. A dry run rolls it back.
         try:
             with transaction.atomic():
                 self._do_import(csv1_rows, location_lookup)
+                if options['dry_run']:
+                    transaction.set_rollback(True)
         except Exception as exc:
             self.stderr.write(self.style.ERROR(f'Import failed: {exc}'))
             raise
+        if options['dry_run']:
+            self.stdout.write(self.style.WARNING(
+                'DRY RUN: nothing was saved. Run again without --dry-run to import.'
+            ))
 
     # ---------------------------------------------------------------
     # CSV reader helper
     # ---------------------------------------------------------------
     def _read_csv(self, path: str):
-        """Read a CSV file, trying utf-8 first then latin-1."""
-        for encoding in ('utf-8', 'latin-1', 'cp1252'):
-            try:
-                with open(path, 'r', encoding=encoding, newline='') as fh:
-                    reader = csv.DictReader(fh)
-                    rows = list(reader)
-                return rows
-            except UnicodeDecodeError:
-                continue
-        # Last resort
-        with open(path, 'r', encoding='utf-8', errors='replace', newline='') as fh:
-            reader = csv.DictReader(fh)
-            rows = list(reader)
-        return rows
+        """Read a CSV file: UTF-8, then cp1252, then latin-1.
+
+        latin-1 used to come second. It decodes every byte, so cp1252 never
+        ran and Excel's £ and curly quotes came in as control codes.
+        """
+        from core.csv_import import read_csv_text
+
+        text, encoding = read_csv_text(path)
+        if encoding != 'utf-8-sig':
+            self.stdout.write(f'  Read {os.path.basename(path)} as {encoding} (not UTF-8).')
+        return list(csv.DictReader(io.StringIO(text, newline='')))
 
     # ---------------------------------------------------------------
     # Core import logic

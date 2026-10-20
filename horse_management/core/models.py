@@ -17,6 +17,7 @@ from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 from .softdelete import SoftDeleteModel
+from .uploads import validate_file_content
 
 
 def validate_file_size(value):
@@ -784,6 +785,9 @@ class RateType(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(daily_rate__gte=0), name='ratetype_daily_rate_not_negative'),
+        ]
         ordering = ['daily_rate']
 
     def __str__(self):
@@ -840,6 +844,10 @@ class Placement(models.Model):
                 fields=['horse'],
                 condition=models.Q(end_date__isnull=True),
                 name='unique_active_placement_per_horse',
+            ),
+            models.CheckConstraint(
+                condition=Q(end_date__isnull=True) | Q(end_date__gte=F('start_date')),
+                name='placement_ends_after_start',
             ),
         ]
 
@@ -1021,6 +1029,16 @@ class HorseOwnership(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(share_percentage__gte=Decimal('0.01'), share_percentage__lte=100),
+                name='horseownership_share_in_range',
+            ),
+            models.CheckConstraint(
+                condition=Q(effective_to__isnull=True) | Q(effective_to__gte=F('effective_from')),
+                name='horseownership_ends_after_start',
+            ),
+        ]
         ordering = ['-effective_from', 'owner__name']
         unique_together = [('horse', 'owner', 'effective_from')]
         verbose_name = "Horse Ownership"
@@ -1122,6 +1140,12 @@ class OwnershipShare(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(share_percentage__gte=Decimal('0.01'), share_percentage__lte=100),
+                name='ownershipshare_share_in_range',
+            ),
+        ]
         ordering = ['-share_percentage']
         unique_together = [('horse', 'owner')]
         indexes = [
@@ -1386,6 +1410,7 @@ class Document(SoftDeleteModel):
                 'doc', 'docx',
             ]),
             validate_file_size,
+            validate_file_content,
         ],
     )
     expiry_date = models.DateField(

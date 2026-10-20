@@ -8,6 +8,7 @@ Or run as a Django management command.
 """
 
 import csv
+import io
 import os
 import re
 import sys
@@ -26,6 +27,7 @@ django.setup()
 
 from django.db import transaction
 
+from core.csv_import import read_csv_text
 from core.models import Horse, Location, Owner, Placement, RateType
 
 
@@ -33,15 +35,11 @@ REQUIRED_LOCATION_HEADERS = {'Horse', 'Location', 'Owners'}
 
 
 def open_csv(filepath):
-    """Open a CSV with BOM-aware UTF-8 first, falling back to cp1252.
-
-    Excel often exports as cp1252; without this fallback an exported file
-    crashes the importer mid-loop with UnicodeDecodeError.
-    """
-    try:
-        return open(filepath, 'r', encoding='utf-8-sig')
-    except UnicodeDecodeError:
-        return open(filepath, 'r', encoding='cp1252')
+    """A file-like object over the decoded CSV (see read_csv_text)."""
+    text, encoding = read_csv_text(filepath)
+    if encoding != 'utf-8-sig':
+        print(f"  Read {Path(filepath).name} as {encoding} (not UTF-8).")
+    return io.StringIO(text, newline='')
 
 
 def parse_date(date_str):
@@ -428,8 +426,26 @@ def create_default_settings():
         print("  Updated business settings")
 
 
-def run_import():
-    """Run the full import process."""
+class _DryRunRollback(Exception):
+    """Raised at the end of a dry run to undo everything it wrote."""
+
+
+def run_import(dry_run=False):
+    """Run the full import process.
+
+    ``dry_run`` runs every step and prints what it would create, then rolls
+    the whole import back, so nothing is saved.
+    """
+    try:
+        with transaction.atomic():
+            _run_import()
+            if dry_run:
+                raise _DryRunRollback
+    except _DryRunRollback:
+        print("\nDRY RUN: nothing was saved. Run again without --dry-run to import.")
+
+
+def _run_import():
     # Find CSV files
     data_dir = Path(__file__).resolve().parent.parent.parent
 

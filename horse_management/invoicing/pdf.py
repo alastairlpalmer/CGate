@@ -5,6 +5,8 @@ PDF generation for invoices.
 import io
 import logging
 from decimal import Decimal
+from functools import lru_cache
+from pathlib import Path
 from xml.sax.saxutils import escape as _xml_escape
 
 from django.template.loader import render_to_string
@@ -15,6 +17,61 @@ from core.models import BusinessSettings
 from .utils import group_line_items_by_horse
 
 
+FONT_DIR = Path(__file__).resolve().parent / 'fonts'
+FONT = 'DejaVuSans'
+FONT_BOLD = 'DejaVuSans-Bold'
+_REPLACEMENT = '?'
+
+
+@lru_cache(maxsize=1)
+def _font_glyphs():
+    """Register DejaVu Sans once; return the set of characters it can draw.
+
+    Helvetica (ReportLab's default) has no Polish, Czech, Greek, Cyrillic,
+    Arabic or Hebrew letters and drew them as black boxes on the invoice.
+    DejaVu Sans has all of these (invoicing/fonts/README.md). Arabic and
+    Hebrew print letter by letter, left to right: ReportLab does not join
+    or reorder right-to-left text.
+    """
+    from reportlab.lib.fonts import addMapping
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+
+    regular = TTFont(FONT, str(FONT_DIR / 'DejaVuSans.ttf'))
+    pdfmetrics.registerFont(regular)
+    pdfmetrics.registerFont(TTFont(FONT_BOLD, str(FONT_DIR / 'DejaVuSans-Bold.ttf')))
+    # <b> and <i> inside a Paragraph pick the face from this family. There
+    # is no italic face, so italic uses the upright one.
+    addMapping(FONT, 0, 0, FONT)
+    addMapping(FONT, 1, 0, FONT_BOLD)
+    addMapping(FONT, 0, 1, FONT)
+    addMapping(FONT, 1, 1, FONT_BOLD)
+    return frozenset(regular.face.charToGlyph)
+
+
+def _drawable(text):
+    """Swap characters the font cannot draw (Chinese, some emoji) for '?'.
+
+    Otherwise ReportLab draws an empty box, and nobody can tell what was
+    there or that something was there at all.
+    """
+    glyphs = _font_glyphs()
+    return ''.join(ch if ord(ch) in glyphs or ch in '\n\r\t' else _REPLACEMENT for ch in text)
+
+
+def _styles():
+    """The ReportLab sample styles, moved onto DejaVu Sans."""
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    _font_glyphs()
+    sheet = getSampleStyleSheet()
+    for style in sheet.byName.values():
+        name = getattr(style, 'fontName', '')
+        if name.startswith('Helvetica'):
+            style.fontName = FONT_BOLD if 'Bold' in name else FONT
+    return sheet
+
+
 def _esc(value):
     """Escape free text for a ReportLab Paragraph.
 
@@ -23,7 +80,7 @@ def _esc(value):
     ValueError — which the email path swallowed, sending the invoice email
     with no PDF attached.
     """
-    return _xml_escape(str(value if value is not None else ''))
+    return _xml_escape(_drawable(str(value if value is not None else '')))
 
 
 def _esc_lines(value):
@@ -66,7 +123,7 @@ def generate_invoice_pdf_reportlab(invoice):
     """Generate a PDF using ReportLab as fallback."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.platypus import (
         Paragraph,
@@ -88,7 +145,7 @@ def generate_invoice_pdf_reportlab(invoice):
         bottomMargin=15*mm
     )
 
-    styles = getSampleStyleSheet()
+    styles = _styles()
     title_style = ParagraphStyle(
         'InvoiceTitle',
         parent=styles['Heading1'],
@@ -240,7 +297,7 @@ def generate_invoice_pdf_reportlab(invoice):
 
     base_styles = [
         ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.9, 0.9, 0.9)),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, 0), FONT_BOLD),
         ('FONTSIZE', (0, 0), (-1, 0), 9),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
         ('TOPPADDING', (0, 0), (-1, 0), 8),
@@ -278,8 +335,8 @@ def generate_invoice_pdf_reportlab(invoice):
     totals_table.setStyle(TableStyle([
         ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
         ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, -1), FONT),
+        ('FONTNAME', (0, -1), (-1, -1), FONT_BOLD),
         ('FONTSIZE', (0, -1), (-1, -1), 12),
         ('LINEABOVE', (0, -1), (-1, -1), 1.5, colors.black),
         ('TOPPADDING', (0, -1), (-1, -1), 6),
@@ -314,7 +371,7 @@ def generate_owner_statement_pdf(owner, statement):
     """Generate a statement-of-account PDF for an owner (ReportLab)."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.platypus import (
         Paragraph,
@@ -331,7 +388,7 @@ def generate_owner_statement_pdf(owner, statement):
         rightMargin=20*mm, leftMargin=20*mm, topMargin=15*mm, bottomMargin=15*mm,
     )
 
-    styles = getSampleStyleSheet()
+    styles = _styles()
     title_style = ParagraphStyle(
         'StatementTitle', parent=styles['Heading1'], fontSize=20, spaceAfter=4,
     )
@@ -380,11 +437,12 @@ def generate_owner_statement_pdf(owner, statement):
         repeatRows=1,
     )
     table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, -1), FONT),
+        ('FONTNAME', (0, 0), (-1, 0), FONT_BOLD),
         ('FONTSIZE', (0, 0), (-1, -1), 9),
         ('LINEBELOW', (0, 0), (-1, 0), 1, colors.black),
         ('ALIGN', (3, 0), (-1, -1), 'RIGHT'),
-        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (0, -1), (-1, -1), FONT_BOLD),
         ('LINEABOVE', (0, -1), (-1, -1), 1, colors.black),
         ('TOPPADDING', (0, 1), (-1, -1), 3),
         ('BOTTOMPADDING', (0, 1), (-1, -1), 3),
@@ -415,7 +473,7 @@ def generate_credit_note_pdf(credit):
     the amount and the reason. ``credit`` is a Payment of method
     CREDIT_NOTE."""
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
@@ -425,7 +483,7 @@ def generate_credit_note_pdf(credit):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=20*mm, leftMargin=20*mm,
                             topMargin=15*mm, bottomMargin=15*mm)
-    styles = getSampleStyleSheet()
+    styles = _styles()
     title_style = ParagraphStyle('CNTitle', parent=styles['Heading1'], fontSize=20, spaceAfter=4)
     normal = styles['Normal']
 
@@ -454,10 +512,11 @@ def generate_credit_note_pdf(credit):
         colWidths=[130*mm, 40*mm],
     )
     lines.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), FONT),
         ('LINEBELOW', (0, 0), (-1, 0), 0.5, (0.6, 0.6, 0.6)),
         ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, 0), FONT_BOLD),
     ]))
     elements += [lines, Spacer(1, 6*mm)]
     elements.append(Paragraph(

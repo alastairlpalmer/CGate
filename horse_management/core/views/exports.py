@@ -5,11 +5,11 @@ from django.contrib import messages
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
-from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
 from .. import audit, gdpr
 from ..csv_export import csv_response
+from ..downloads import attachment_header
 from ..models import AuditEvent, Horse, Owner, OwnershipShare
 from ..permissions import LEVEL_VIEW, feature_required
 
@@ -62,8 +62,7 @@ def owner_data_export(request, pk):
     data = gdpr.export_owner(owner)
     audit.record(AuditEvent.Action.OWNER_EXPORTED, request=request, detail=gdpr.owner_label(owner))
     response = HttpResponse(data, content_type='application/zip')
-    name = slugify(owner.name) or f'owner-{owner.pk}'
-    response['Content-Disposition'] = f'attachment; filename="{name}-data-{_stamp()}.zip"'
+    response['Content-Disposition'] = attachment_header(f'{owner.name or f"owner-{owner.pk}"} - data - {_stamp()}.zip')
     return response
 
 

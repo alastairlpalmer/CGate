@@ -125,3 +125,29 @@ class MFAMiddleware:
             # layout. Make the browser load it as a whole page instead.
             return HttpResponseClientRedirect(url)
         return HttpResponseRedirect(url)
+
+
+class PermissionsPolicyMiddleware:
+    """Send ``Permissions-Policy`` on every response.
+
+    The header turns off browser features the app never uses, so a script
+    injected into a page cannot use them either. Location stays on for this
+    site only: the "near you" chip and the maps use it. The camera stays on
+    for this site only, for photo uploads. The value is in
+    settings.PERMISSIONS_POLICY.
+    """
+
+    def __init__(self, get_response):
+        from django.conf import settings
+
+        self.get_response = get_response
+        self.value = ', '.join(
+            f"{feature}=({' '.join(origins)})"
+            for feature, origins in settings.PERMISSIONS_POLICY.items()
+        )
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if self.value:
+            response.headers.setdefault('Permissions-Policy', self.value)
+        return response

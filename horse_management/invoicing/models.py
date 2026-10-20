@@ -11,6 +11,7 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import F, Q
 from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
@@ -89,6 +90,12 @@ class Invoice(models.Model):
     history = HistoricalRecords(excluded_fields=['send_queued_at'])
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(period_end__gte=F('period_start')),
+                name='invoice_period_ends_after_start',
+            ),
+        ]
         db_table = 'core_invoice'
         ordering = ['-created_at']
         indexes = [
@@ -342,6 +349,10 @@ class InvoiceLineItem(models.Model):
     )
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(quantity__gte=0), name='lineitem_quantity_not_negative'),
+            models.CheckConstraint(condition=Q(unit_price__gte=0), name='lineitem_unit_price_not_negative'),
+        ]
         db_table = 'core_invoicelineitem'
         ordering = ['line_type', 'description']
 
@@ -425,6 +436,9 @@ class Payment(models.Model):
     history = HistoricalRecords()
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(amount__gt=0), name='payment_amount_positive'),
+        ]
         ordering = ['-date', '-created_at']
 
     def __str__(self):

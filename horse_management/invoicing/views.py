@@ -8,6 +8,7 @@ from datetime import timedelta
 
 from django.contrib import messages
 
+from core.downloads import attachment_header
 from core.views._popup import is_popup_request, popup_saved_response
 from core.permissions import (
     LEVEL_FULL,
@@ -393,7 +394,7 @@ def invoice_pdf(request, pk):
     pdf_file = generate_invoice_pdf(invoice)
 
     response = HttpResponse(pdf_file.read(), content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="{invoice.invoice_number}.pdf"'
+    response['Content-Disposition'] = attachment_header(f'{invoice.invoice_number}.pdf')
 
     return response
 
@@ -524,8 +525,8 @@ def owner_statement_pdf(request, owner_pk):
     pdf_file = generate_owner_statement_pdf(owner, statement)
 
     response = HttpResponse(pdf_file.read(), content_type='application/pdf')
-    filename = f"statement-{owner.name.replace(' ', '-').lower()}-{timezone.localdate():%Y-%m-%d}.pdf"
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    filename = f"Statement - {owner.name} - {timezone.localdate():%Y-%m-%d}.pdf"
+    response['Content-Disposition'] = attachment_header(filename)
     return response
 
 
@@ -646,7 +647,7 @@ def credit_note_pdf(request, pk):
         pk=pk, method=Payment.Method.CREDIT_NOTE,
     )
     response = HttpResponse(generate_credit_note_pdf(credit).read(), content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="{credit.credit_note_number}.pdf"'
+    response['Content-Disposition'] = attachment_header(f'{credit.credit_note_number}.pdf')
     return response
 
 
@@ -940,8 +941,11 @@ def invoice_csv(request, pk):
         messages.error(request, str(exc))
         return redirect('invoice_detail', pk=pk)
 
-    response = HttpResponse(output.getvalue(), content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="{invoice.invoice_number}.csv"'
+    # The byte-order mark tells Excel the file is UTF-8, so "Siobhán" does
+    # not open as "SiobhÃ¡n". Xero's import accepts it (Excel's own
+    # "CSV UTF-8" format writes one).
+    response = HttpResponse('\ufeff' + output.getvalue(), content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = attachment_header(f'{invoice.invoice_number}.csv')
     return response
 
 
@@ -989,8 +993,11 @@ def invoice_export_csv(request):
         return redirect(f"{back}?{filters}" if filters else back)
 
     today = timezone.now().strftime('%Y-%m-%d')
-    response = HttpResponse(output.getvalue(), content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="invoices-export-{today}.csv"'
+    # The byte-order mark tells Excel the file is UTF-8, so "Siobhán" does
+    # not open as "SiobhÃ¡n". Xero's import accepts it (Excel's own
+    # "CSV UTF-8" format writes one).
+    response = HttpResponse('\ufeff' + output.getvalue(), content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = attachment_header(f'invoices-export-{today}.csv')
     return response
 
 
