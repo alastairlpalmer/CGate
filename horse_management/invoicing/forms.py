@@ -2,6 +2,8 @@
 Forms for invoicing app.
 """
 
+from decimal import Decimal
+
 from django import forms
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -152,14 +154,46 @@ class PaymentForm(forms.ModelForm):
     def __init__(self, *args, invoice=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.invoice = invoice
+        # Credit notes are issued from their own form, which numbers them.
+        self.fields['method'].choices = [
+            c for c in self.fields['method'].choices if c[0] != Payment.Method.CREDIT_NOTE
+        ]
 
     def clean_amount(self):
         amount = self.cleaned_data['amount']
         if self.invoice is not None and amount > self.invoice.balance_due:
             raise forms.ValidationError(
                 f"Amount exceeds the outstanding balance "
-                f"(£{self.invoice.balance_due:.2f}). Overpayments/credits "
-                "are not supported yet — record up to the balance."
+                f"(£{self.invoice.balance_due:.2f}). Overpayments are not "
+                "supported — record up to the balance, or issue a credit note."
+            )
+        return amount
+
+
+class CreditNoteForm(forms.Form):
+    """Issue a credit note against an invoice (invoicing.services)."""
+
+    date = forms.DateField(widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}))
+    amount = forms.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal('0.01'),
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
+    )
+    reason = forms.CharField(
+        max_length=500,
+        widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+        help_text="Printed on the credit note, for example \"Horse away 5 days in March\".",
+    )
+
+    def __init__(self, *args, invoice, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.invoice = invoice
+
+    def clean_amount(self):
+        amount = self.cleaned_data['amount']
+        if amount > self.invoice.balance_due:
+            raise forms.ValidationError(
+                f"A credit note cannot be more than the £{self.invoice.balance_due:.2f} "
+                "still owed. Refund any money already paid outside the app."
             )
         return amount
 

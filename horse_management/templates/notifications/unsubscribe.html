@@ -1,0 +1,15 @@
+{% extends "account/_auth_layout.html" %}
+{% block title %}Email reminders{% endblock %}
+{% block signout %}{% endblock %}
+{% block heading %}{% if done %}Reminders turned off{% else %}Turn off reminder emails?{% endif %}{% endblock %}
+{% block subtitle %}{% if done %}You will no longer get vaccination, farrier, EHV or breeding reminders by email.{% else %}Vaccination, farrier, EHV and breeding reminders.{% endif %}{% endblock %}
+{% block card %}
+{% if done %}
+<p class="text-sm text-charcoal">Invoices and statements still come by email. To get reminders again, ask the yard to turn them back on.</p>
+{% else %}
+<form method="post" class="space-y-4">
+    <button type="submit" class="btn-primary w-full min-h-[44px]">Turn off reminders</button>
+</form>
+<p class="text-sm text-sage">Invoices and statements still come by email.</p>
+{% endif %}
+{% endblock %}

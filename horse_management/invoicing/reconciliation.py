@@ -6,7 +6,8 @@ Rules, so the numbers can be checked by hand:
 * **Invoiced** counts invoices that have been issued (not draft, not
   cancelled), by invoice date (``created_at``, the date on the PDF).
 * **Received** counts payments by payment date. Voided payments are left
-  out (the default manager hides them).
+  out (the default manager hides them), and so are credit notes, which
+  are in **Credited**.
 * **Outstanding** at a month end is what those invoices total, less what
   was paid against them by that day.
 """
@@ -35,6 +36,7 @@ class Month:
     vat: Decimal = ZERO
     total: Decimal = ZERO
     received: Decimal = ZERO
+    credited: Decimal = ZERO
     outstanding: Decimal = ZERO
 
 
@@ -53,6 +55,7 @@ class Report:
             t.vat += m.vat
             t.total += m.total
             t.received += m.received
+            t.credited += m.credited
         t.outstanding = self.months[-1].outstanding if self.months else ZERO
         return t
 
@@ -64,7 +67,7 @@ def monthly_report(year: int) -> Report:
             'pk', 'created_at', 'subtotal', 'vat_amount', 'total',
         )
     )
-    payments = list(Payment.objects.filter(invoice__status__in=ISSUED).only('invoice_id', 'date', 'amount'))
+    payments = list(Payment.objects.filter(invoice__status__in=ISSUED).only('invoice_id', 'date', 'amount', 'method'))
     today = timezone.localdate()
     for m in range(1, 13):
         start = date(year, m, 1)
@@ -79,7 +82,9 @@ def monthly_report(year: int) -> Report:
                 row.net += inv.subtotal
                 row.vat += inv.vat_amount
                 row.total += inv.total
-        row.received = sum((p.amount for p in payments if start <= p.date <= end), ZERO)
+        in_month = [p for p in payments if start <= p.date <= end]
+        row.received = sum((p.amount for p in in_month if not p.is_credit_note), ZERO)
+        row.credited = sum((p.amount for p in in_month if p.is_credit_note), ZERO)
         issued_by_end = {
             inv.pk: inv.total for inv in invoices if timezone.localtime(inv.created_at).date() <= end
         }

@@ -46,6 +46,7 @@ urlpatterns = [
     path('owners/export.csv', export_views.owners_csv, name='owners_csv'),
     path('owners/<int:pk>/data-export/', export_views.owner_data_export, name='owner_data_export'),
     path('owners/<int:pk>/erase/', export_views.owner_erase, name='owner_erase'),
+    path('owners/<int:pk>/email-ok/', export_views.owner_email_ok, name='owner_email_ok'),
     path('owners/add/', views.OwnerCreateView.as_view(), name='owner_create'),
     path('owners/<int:pk>/', views.OwnerDetailView.as_view(), name='owner_detail'),
     path('owners/<int:pk>/edit/', views.OwnerUpdateView.as_view(), name='owner_update'),

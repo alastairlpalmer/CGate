@@ -54,15 +54,15 @@ its own deployment, database and bucket.
 | Security | 21 | 5 | 11 | 2 | 2 | 1 |
 | Compliance | 12 | 3 | 1 | 4 | 0 | 4 |
 | Infrastructure and deploys | 14 | 0 | 6 | 4 | 3 | 1 |
-| Jobs, email and cache | 11 | 2 | 5 | 3 | 1 | 0 |
+| Jobs, email and cache | 11 | 4 | 5 | 1 | 1 | 0 |
 | Monitoring and incidents | 11 | 0 | 3 | 8 | 0 | 0 |
 | Testing | 9 | 1 | 5 | 3 | 0 | 0 |
-| Billing and payments | 11 | 6 | 1 | 2 | 0 | 2 |
-| API and integrations | 8 | 2 | 0 | 1 | 0 | 5 |
+| Billing and payments | 11 | 7 | 0 | 2 | 0 | 2 |
+| API and integrations | 8 | 3 | 0 | 1 | 0 | 4 |
 | AI features | 8 | 0 | 0 | 0 | 0 | 8 |
-| User experience | 12 | 2 | 8 | 1 | 0 | 1 |
+| User experience | 12 | 3 | 8 | 0 | 0 | 1 |
 | Code, docs and team | 14 | 0 | 7 | 5 | 2 | 0 |
-| **Total** | **169** | **44** | **53** | **39** | **8** | **25** |
+| **Total** | **169** | **49** | **52** | **36** | **8** | **24** |
 
 **What is already strong:** money is stored as `Decimal` everywhere, dates are
 timezone-aware, invoice creation and sends are safe against duplicates, the
@@ -215,9 +215,9 @@ These are small. Do them before anything else.
 | Dead-letter queue | ❌ | None | Record tasks that fail every retry in a table, and show them on an admin page. | P1 |
 | Cron jobs that do not run twice | 🟡 | Most tasks claim rows with a conditional update. Document expiry reminders do not check the update count (`notifications/tasks.py:410`). Nothing stops two beat processes. | Fix the expiry claim. Add a Redis lock to beat (or to each scheduled task). | P1 |
 | SPF, DKIM and DMARC | ⚙️ | Planned (Go-live 5.2) | Do 5.2. | P1 |
-| Bounce and complaint handling | ❌ | None | Use the Postmark or Resend webhook to mark an owner email as bouncing and show it on the owner page. | P1 |
-| Emails that render in every client | 🟡 | 8 HTML templates; no plain-text part (`notifications/emails.py:41`) | Send `EmailMultiAlternatives` with a plain-text version. Test in Gmail, Outlook and Apple Mail. | P1 |
-| Notifications people can turn off | ❌ | No preferences, no unsubscribe | Per-owner switches for reminder emails (invoices stay on). Add `List-Unsubscribe` header. Per-staff switch for digests. | P1 |
+| Bounce and complaint handling | ✅ | Postmark (secret token) and Resend (Svix signature) webhooks flag the owner's address; nothing more is sent to it; the owner page shows it with "It works now"; a new address clears it (`notifications/views.py`) | Set the webhook in the provider when email moves there (Go-live 5.2). | ⚙️ P1 |
+| Emails that render in every client | 🟡 | Every email now has a plain-text part as well as HTML (`notifications/mail.py`) | Send one of each email to Gmail, Outlook and Apple Mail and look at them. | P1 |
+| Notifications people can turn off | ✅ | Per-owner "Email health reminders" and "Pause overdue reminders"; one-click unsubscribe link and `List-Unsubscribe` headers on health reminders (RFC 8058); invoices and statements always go | None. | — |
 | Caching | 🟡 | See section 2 | — | P2 |
 | Health check covers the whole system | 🟡 | `/_health/` checks the database only | Add Redis. Add a beat heartbeat (see monitoring). | P1 |
 | Reminder at the right time | ✅ | 07:00 London time, Monday to Friday, follows summer time (`settings.py:528`) | None. | — |
@@ -258,7 +258,7 @@ These are small. Do them before anything else.
 |---|---|---|---|---|
 | PO number on invoices | ✅ | `Invoice.customer_reference`, defaulted from the owner's PO / reference; on the PDF ("Your ref"), in the Xero push and the Xero CSV | None. | — |
 | Sales tax and VAT | ✅ | VAT rate copied onto each invoice; VAT number on the PDF, and no "VAT Reg: N/A" line when the yard is not registered | Limits: one rate per invoice; Xero only 0% or 20%. Enough for UK livery. | — |
-| Refunds, credits and partial refunds | 🟡 | Partial payments work. No credit notes or refunds. Overpayment is refused. | Add credit notes linked to an invoice, synced to Xero. | P1 |
+| Refunds, credits and partial refunds | ✅ | Partial payments; numbered credit notes (CN00001) with reason and PDF, stored as a payment type so balances stay right; shown separately on the invoice PDF and in the reconciliation report | Refunds of money already paid happen outside the app. Credit notes are entered in Xero by hand. | — |
 | Failed-payment retries and dunning | ✅ | Stepped reminders at 1, 14 and 30 days overdue (`OVERDUE_REMINDER_DAYS`), the last worded as a final notice, then none; per-owner pause; count shown on the invoice | Card retries come with Stripe (P2). | — |
 | Invoice numbers safe and gap-free | ✅ | Unique and race-safe. Every gap is listed on the reconciliation page with who deleted that draft and when (from the record history), which is what HMRC asks for. | Confirm with the accountant that deleting drafts is acceptable, or switch to numbering on send. | — |
 | Revenue reports finance can reconcile | ✅ | Finances → Reconciliation: month by month invoiced (net, VAT, total), received, outstanding at month end; CSV; rules written on the page (`invoicing/reconciliation.py`) | Credits once credit notes exist. | — |
@@ -272,7 +272,7 @@ These are small. Do them before anything else.
 
 | Requirement | Status | Evidence | Action | Phase |
 |---|---|---|---|---|
-| Webhooks that verify signatures | ➖ | No inbound webhooks today | Stripe and email-provider webhooks must verify signatures when built. | P1 / P2 |
+| Webhooks that verify signatures | ✅ | The email bounce webhooks check a secret token (Postmark) or an HMAC signature with a 5-minute window (Resend) | Stripe webhooks, when built, must do the same. | — |
 | Webhooks that retry, with a log | ➖ | No outbound webhooks | None. | — |
 | Versioned API | ➖ | No public API | None. | — |
 | API keys customers create and revoke | ➖ | No public API | None. | — |
@@ -301,7 +301,7 @@ credentials (see "Least privilege" in section 3).
 | Error messages a customer can act on | ✅ | Form errors say what to do; custom 403, 404, 500 and lockout pages | None. | — |
 | Forms keep what people typed | 🟡 | Server forms re-render with input. Bulk delete form is built in JavaScript. | Check the JS-built forms. | P2 |
 | Emails render in every client | 🟡 | See section 6 | — | P1 |
-| Notifications people can turn off | ❌ | See section 6 | — | P1 |
+| Notifications people can turn off | ✅ | See section 6 | — | — |
 | Undo | ✅ | "Undo" button on the delete message for charges, yard costs, documents and payment voids; Recently Deleted page; archive and restore for owners and locations | None. | — |
 | Keyboard and screen reader support | 🟡 | See section 8 | — | P1 |
 | Translations and locale formats | ➖ | UK English only; dates fixed to `dd/mm/yyyy`; £ fixed | Only if you sell outside the UK. | P3 |
@@ -372,8 +372,8 @@ Dashboard:
 | 2 | ✅ **Audit log** (done): `django-simple-history` on invoices, payments, owners, roles and business settings; account events for users; history panels on record pages; Settings → Audit Log | Audit trail (changes), support | 1 week |
 | 3 | ✅ **Soft deletes** (done): void payments with a reason; archive charges and health records; "Undo" in success messages | Soft deletes, undo | 1 week |
 | 4 | ✅ **GDPR** (done): anonymise owner, export one owner's data, retention job, CSV exports for main lists | GDPR, retention, exports | 1 week |
-| 5 | 🟡 **Billing fixes** (done except credit notes, which wait for a decision): PO / customer reference, credit notes, stepped dunning, gap-free numbering, reconciliation report | Billing | 1.5 weeks |
-| 6 | **Email**: plain-text parts, `List-Unsubscribe`, owner and staff preferences, bounce webhook with signature check | Email, notifications | 1 week |
+| 5 | ✅ **Billing fixes** (done): PO / customer reference, credit notes, stepped dunning, gap-free numbering, reconciliation report | Billing | 1.5 weeks |
+| 6 | ✅ **Email** (done; staff digest opt-out not needed: the only staff email is the yard's document summary): plain-text parts, `List-Unsubscribe`, owner and staff preferences, bounce webhook with signature check | Email, notifications | 1 week |
 | 7 | **Jobs**: retries with backoff, `acks_late`, failed-task table, beat lock, fix expiry claim, heartbeats, health check covers Redis | Jobs, cron, monitoring | 3 days |
 | 8 | **Hardening**: upload content check and `attachment` header, `Permissions-Policy`, DB `sslmode=require`, separate DB user, encrypted backups, Python lockfile, Actions pinned by SHA, trim Xero error logs, `security.txt` | Security | 3 days |
 | 9 | **Unicode and data quality**: PDF font, safe file names, CSV BOM, import encoding fix and `--dry-run`, DB check constraints | Unicode, imports, validation | 3 days |

@@ -18,7 +18,7 @@ from core.models import (
     OwnershipShare,
     Placement,
 )
-from invoicing.models import LIVE_PAYMENTS, Invoice, InvoiceLineItem
+from invoicing.models import LIVE_PAYMENTS, Invoice, InvoiceLineItem, Payment
 from .utils import format_date_short, format_date_short_year, group_preview_charges_by_horse
 
 
@@ -900,3 +900,33 @@ class StatementService:
             totals['paid'] += paid
             totals['balance'] += balance
         return {'owner': owner, 'rows': rows, 'totals': totals}
+
+
+class CreditNoteRefused(Exception):
+    pass
+
+
+@transaction.atomic
+def issue_credit_note(invoice, amount, reason, date, user=None):
+    """Credit part or all of what is still owed on ``invoice``.
+
+    Stored as a payment of method CREDIT_NOTE with its own number from the
+    CN series, so balances, statuses and every outstanding figure treat it
+    the same way as money received. Money figures that must not count it
+    (received in a month, the dashboard's "received") filter it out.
+    """
+    from core.models import BusinessSettings
+
+    invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
+    if invoice.status not in (Invoice.Status.SENT, Invoice.Status.OVERDUE, Invoice.Status.PAID):
+        raise CreditNoteRefused("Only an invoice that has been sent can be credited. Edit a draft instead.")
+    if amount <= 0 or amount > invoice.balance_due:
+        raise CreditNoteRefused(f"A credit note must be between £0.01 and the £{invoice.balance_due:.2f} still owed.")
+    number = BusinessSettings.get_settings().get_next_credit_note_number()
+    credit = Payment.objects.create(
+        invoice=invoice, date=date, amount=amount,
+        method=Payment.Method.CREDIT_NOTE, reference=number,
+        credit_note_number=number, notes=reason,
+    )
+    invoice.refresh_payment_status()
+    return credit

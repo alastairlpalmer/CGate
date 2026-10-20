@@ -120,6 +120,9 @@
                 Record Payment
             </a>
             {% endif %}
+            {% if feature_access.invoices.full and balance_due > 0 and invoice.status != 'draft' and invoice.status != 'cancelled' %}
+            <a href="{% url 'credit_note_create' invoice.pk %}" class="btn-secondary">Issue Credit Note</a>
+            {% endif %}
         </div>
     </div>
 
@@ -317,7 +320,8 @@
                 <div class="min-w-0">
                     <p class="text-sm font-medium text-charcoal">
                         &pound;{{ payment.amount|floatformat:2 }}
-                        <span class="font-normal text-sage">&middot; {{ payment.get_method_display }}</span>
+                        <span class="font-normal text-sage">&middot; {{ payment.get_method_display }}{% if payment.credit_note_number %} {{ payment.credit_note_number }}{% endif %}</span>
+                        {% if payment.credit_note_number %}<a href="{% url 'credit_note_pdf' payment.pk %}" hx-boost="false" class="ml-1 text-xs font-medium text-forest hover:text-sage">PDF</a>{% endif %}
                     </p>
                     <p class="text-xs text-sage mt-0.5">
                         {{ payment.date|date:"d M Y" }}{% if payment.reference %} &middot; {{ payment.reference }}{% endif %}
