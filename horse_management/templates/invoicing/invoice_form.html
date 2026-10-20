@@ -50,6 +50,8 @@
                     </div>
                 </div>
 
+                {% include "includes/form_field.html" with field=form.customer_reference help=form.customer_reference.help_text %}
+
                 <div>
                     <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
                     {{ form.notes }}

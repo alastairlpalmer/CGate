@@ -184,18 +184,29 @@ def send_ehv_reminder(breeding_record, month_number):
         return False
 
 
-def send_invoice_overdue_reminder(invoice):
-    """Send overdue invoice reminder email."""
+def send_invoice_overdue_reminder(invoice, stage=1, final=False):
+    """Send overdue invoice reminder email.
+
+    ``stage`` is which reminder this is (1 = first); ``final`` words it as
+    the last one before the yard follows up in person.
+    """
     if not invoice.owner.email:
         return False
 
     business = BusinessSettings.get_settings()
 
-    subject = f"Payment Reminder: Invoice {invoice.invoice_number}"
+    if final:
+        subject = f"Final notice: Invoice {invoice.invoice_number}"
+    elif stage > 1:
+        subject = f"Second reminder: Invoice {invoice.invoice_number}"
+    else:
+        subject = f"Payment Reminder: Invoice {invoice.invoice_number}"
 
     context = {
         'invoice': invoice,
         'business': business,
+        'stage': stage,
+        'final': final,
     }
 
     html_content = render_to_string('notifications/email/invoice_overdue.html', context)

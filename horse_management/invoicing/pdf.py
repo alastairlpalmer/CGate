@@ -152,10 +152,15 @@ def generate_invoice_pdf_reportlab(invoice):
         f"Invoice No: {invoice.invoice_number}",
         f"Date: {invoice.created_at.strftime('%d/%m/%Y')}",
     ]
+    if invoice.customer_reference:
+        invoice_info_lines.append(f"Your ref: {_esc(invoice.customer_reference)}")
     if hasattr(invoice.owner, 'account_code') and invoice.owner.account_code:
         invoice_info_lines.append(f"Account: {invoice.owner.account_code}")
-    vat_reg = getattr(settings, 'vat_registration', 'N/A') or 'N/A'
-    invoice_info_lines.append(f"VAT Reg: {vat_reg}")
+    # Only a real VAT number: "VAT Reg: N/A" on the invoice of a yard that
+    # is not registered reads like a missing detail.
+    vat_reg = (getattr(settings, 'vat_registration', '') or '').strip()
+    if vat_reg and vat_reg.upper() not in ('N/A', 'NA', 'NONE', '-'):
+        invoice_info_lines.append(f"VAT Reg: {vat_reg}")
     invoice_info_lines.append(
         f"Period: {invoice.period_start.strftime('%d/%m/%Y')} - {invoice.period_end.strftime('%d/%m/%Y')}"
     )

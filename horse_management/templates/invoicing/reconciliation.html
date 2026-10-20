@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}Reconciliation {{ year }} - Yardway{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Reconciliation {{ year }}</h1>
+            <p class="page-subtitle">Month by month, to check against Xero. Amounts in £.</p>
+        </div>
+        <div class="flex flex-wrap items-end gap-2">
+            <form method="get" class="flex items-end gap-2">
+                <label for="id_year" class="sr-only">Year</label>
+                <select name="year" id="id_year" class="form-input">
+                    {% for y in years %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+                </select>
+                <button type="submit" class="btn-secondary btn-sm">Show</button>
+            </form>
+            <a href="?year={{ year }}&amp;format=csv" hx-boost="false" class="btn-secondary btn-sm">Download CSV</a>
+        </div>
+    </div>
+
+    <div class="card overflow-x-auto">
+        <table class="table w-full text-sm">
+            <thead>
+                <tr>
+                    <th class="text-left">Month</th>
+                    <th class="text-right">Invoices</th>
+                    <th class="text-right">Net</th>
+                    <th class="text-right">VAT</th>
+                    <th class="text-right">Total invoiced</th>
+                    <th class="text-right">Received</th>
+                    <th class="text-right">Outstanding at month end</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in report.months %}
+                <tr>
+                    <td>{{ m.month|date:"M Y" }}</td>
+                    <td class="text-right">{{ m.invoice_count }}</td>
+                    <td class="text-right">{{ m.net|floatformat:2 }}</td>
+                    <td class="text-right">{{ m.vat|floatformat:2 }}</td>
+                    <td class="text-right">{{ m.total|floatformat:2 }}</td>
+                    <td class="text-right">{{ m.received|floatformat:2 }}</td>
+                    <td class="text-right">{{ m.outstanding|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-sage py-6">No months to show yet.</td></tr>
+                {% endfor %}
+            </tbody>
+            {% if report.months %}
+            {% with t=report.totals %}
+            <tfoot>
+                <tr class="font-semibold">
+                    <td>Total</td>
+                    <td class="text-right">{{ t.invoice_count }}</td>
+                    <td class="text-right">{{ t.net|floatformat:2 }}</td>
+                    <td class="text-right">{{ t.vat|floatformat:2 }}</td>
+                    <td class="text-right">{{ t.total|floatformat:2 }}</td>
+                    <td class="text-right">{{ t.received|floatformat:2 }}</td>
+                    <td class="text-right">{{ t.outstanding|floatformat:2 }}</td>
+                </tr>
+            </tfoot>
+            {% endwith %}
+            {% endif %}
+        </table>
+    </div>
+
+    <div class="text-xs text-sage space-y-1">
+        <p><strong>Invoiced</strong>: invoices issued (sent, paid or overdue), by the date on the invoice. Drafts are left out.{% if report.cancelled_count %} {{ report.cancelled_count }} cancelled invoice{{ report.cancelled_count|pluralize }} this year {{ report.cancelled_count|pluralize:"is,are" }} left out too.{% endif %}</p>
+        <p><strong>Received</strong>: payments by payment date. Voided payments are left out.</p>
+        <p><strong>Outstanding</strong>: what those invoices total, less what was paid against them by the last day of the month.</p>
+    </div>
+
+    <div class="card overflow-hidden">
+        <div class="section-header">
+            <h3 class="section-title">Gaps in invoice numbers ({{ prefix }})</h3>
+        </div>
+        <ul class="divide-y divide-light-sage">
+            {% for gap in gaps %}
+            <li class="px-4 sm:px-5 py-3 text-sm"><span class="font-medium text-charcoal">{{ gap.number }}</span> <span class="text-sage">· {{ gap.explanation }}</span></li>
+            {% empty %}
+            <li class="px-4 sm:px-5 py-4 text-sm text-sage">No gaps. Every number in the series is in use.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

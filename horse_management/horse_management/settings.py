@@ -734,6 +734,11 @@ OWNER_RETENTION_YEARS = env.int('OWNER_RETENTION_YEARS', default=6)
 # Sign-in and account events (core.models.AuditEvent) are kept this long.
 AUDIT_EVENT_RETENTION_DAYS = env.int('AUDIT_EVENT_RETENTION_DAYS', default=2 * 365)
 
+# Overdue invoice reminders (notifications.tasks): days past the due date
+# for each reminder. The last is worded as a final notice; nothing is sent
+# after it.
+OVERDUE_REMINDER_DAYS = [int(d) for d in env.list('OVERDUE_REMINDER_DAYS', default=['1', '14', '30'])]
+
 # Two-step sign-in (core.mfa). Administrators must use it: their account
 # reaches every record and every other account. Set to False only to get a
 # yard back in during an emergency, and set it back afterwards.

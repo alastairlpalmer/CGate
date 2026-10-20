@@ -113,8 +113,9 @@ class InvoiceUpdateForm(forms.ModelForm):
 
     class Meta:
         model = Invoice
-        fields = ['status', 'payment_terms_days', 'due_date', 'notes']
+        fields = ['status', 'customer_reference', 'payment_terms_days', 'due_date', 'notes']
         widgets = {
+            'customer_reference': forms.TextInput(attrs={'class': 'form-input'}),
             'status': forms.Select(attrs={'class': 'form-select'}),
             'payment_terms_days': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
             'due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),

@@ -60,6 +60,18 @@ class Owner(models.Model):
         blank=True,
         help_text="Account code for accounting systems (e.g. Xero)"
     )
+    invoice_reference = models.CharField(
+        'Purchase order or reference',
+        max_length=50,
+        blank=True,
+        help_text="Printed on every new invoice for this owner, e.g. a PO number their "
+                  "accounts team needs before they will pay.",
+    )
+    pause_reminders = models.BooleanField(
+        'Pause overdue reminders',
+        default=False,
+        help_text="Stop overdue-payment emails, for example while a payment plan is agreed.",
+    )
     notes = models.TextField(blank=True)
     is_archived = models.BooleanField(
         default=False,

@@ -60,6 +60,12 @@ class Invoice(models.Model):
         choices=Status.choices,
         default=Status.DRAFT
     )
+    customer_reference = models.CharField(
+        'Purchase order or reference',
+        max_length=50,
+        blank=True,
+        help_text="The customer's PO number or reference. Printed on the invoice and sent to Xero.",
+    )
     payment_terms_days = models.PositiveIntegerField(default=30)
     due_date = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True)
@@ -67,6 +73,9 @@ class Invoice(models.Model):
     sent_at = models.DateTimeField(null=True, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)
     last_overdue_reminder_at = models.DateTimeField(null=True, blank=True)
+    # How many overdue reminders have gone out; picks the wording and stops
+    # after the final notice (notifications.tasks.send_overdue_invoice_reminders).
+    overdue_reminder_count = models.PositiveSmallIntegerField(default=0)
     # Bulk sending is queued through Celery. send_queued_at is the claim
     # (set when queued, cleared when the task finishes either way) so a
     # double-submit cannot email the owner twice; send_error holds the

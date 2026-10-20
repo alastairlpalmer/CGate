@@ -42,8 +42,10 @@ def get_grouped_location_choices():
 class OwnerForm(forms.ModelForm):
     class Meta:
         model = Owner
-        fields = ['name', 'email', 'phone', 'address', 'account_code', 'notes']
+        fields = ['name', 'email', 'phone', 'address', 'account_code', 'invoice_reference',
+                  'pause_reminders', 'notes']
         widgets = {
+            'invoice_reference': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. PO-4471'}),
             'name': forms.TextInput(attrs={'class': 'form-input', 'autocomplete': 'name'}),
             'email': forms.EmailInput(attrs={'class': 'form-input', 'autocomplete': 'email'}),
             'phone': forms.TextInput(attrs={'class': 'form-input', 'type': 'tel', 'autocomplete': 'tel'}),

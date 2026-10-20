@@ -949,3 +949,43 @@ def invoice_export_csv(request):
     response = HttpResponse(output.getvalue(), content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="invoices-export-{today}.csv"'
     return response
+
+
+@feature_required('finances')
+def reconciliation(request):
+    """Monthly invoiced, received and outstanding figures for one year, with
+    the invoice-number gaps explained (invoicing/reconciliation.py)."""
+    from core.csv_export import csv_response
+    from core.models import BusinessSettings
+
+    from .reconciliation import monthly_report, number_gaps
+
+    this_year = timezone.localdate().year
+    try:
+        year = int(request.GET.get('year', this_year))
+    except ValueError:
+        year = this_year
+    year = max(2000, min(year, this_year))
+    report = monthly_report(year)
+
+    if request.GET.get('format') == 'csv':
+        rows = [
+            [f'{m.month:%b %Y}', m.invoice_count, m.net, m.vat, m.total, m.received, m.outstanding]
+            for m in report.months
+        ]
+        t = report.totals
+        rows.append(['Total', t.invoice_count, t.net, t.vat, t.total, t.received, t.outstanding])
+        return csv_response(
+            f'reconciliation-{year}',
+            ['Month', 'Invoices', 'Net', 'VAT', 'Total invoiced', 'Received', 'Outstanding at month end'],
+            rows,
+        )
+
+    prefix = BusinessSettings.get_settings().invoice_prefix
+    return render(request, 'invoicing/reconciliation.html', {
+        'report': report,
+        'year': year,
+        'years': list(range(this_year, max(this_year - 7, 1999), -1)),
+        'gaps': number_gaps(prefix),
+        'prefix': prefix,
+    })
