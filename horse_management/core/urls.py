@@ -78,4 +78,5 @@ urlpatterns = [
     # Documents (passport scans, insurance certs, …)
     path('documents/add/', views.document_create, name='document_create'),
     path('documents/<int:pk>/delete/', views.document_delete, name='document_delete'),
+    path('documents/<int:pk>/restore/', views.document_restore, name='document_restore'),
 ]

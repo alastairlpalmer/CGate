@@ -50,7 +50,7 @@ its own deployment, database and bucket.
 | Area | Items | ✅ | 🟡 | ❌ | ⚙️ | ➖ |
 |---|---|---|---|---|---|---|
 | Sign-in and access | 15 | 9 | 0 | 4 | 0 | 2 |
-| Data and database | 23 | 11 | 8 | 3 | 0 | 1 |
+| Data and database | 23 | 12 | 7 | 3 | 0 | 1 |
 | Security | 21 | 5 | 11 | 2 | 2 | 1 |
 | Compliance | 12 | 1 | 1 | 6 | 0 | 4 |
 | Infrastructure and deploys | 14 | 0 | 6 | 4 | 3 | 1 |
@@ -60,9 +60,9 @@ its own deployment, database and bucket.
 | Billing and payments | 11 | 2 | 4 | 3 | 0 | 2 |
 | API and integrations | 8 | 2 | 0 | 1 | 0 | 5 |
 | AI features | 8 | 0 | 0 | 0 | 0 | 8 |
-| User experience | 12 | 1 | 9 | 1 | 0 | 1 |
+| User experience | 12 | 2 | 8 | 1 | 0 | 1 |
 | Code, docs and team | 14 | 0 | 7 | 5 | 2 | 0 |
-| **Total** | **169** | **34** | **59** | **43** | **8** | **25** |
+| **Total** | **169** | **36** | **57** | **43** | **8** | **25** |
 
 **What is already strong:** money is stored as `Decimal` everywhere, dates are
 timezone-aware, invoice creation and sends are safe against duplicates, the
@@ -129,7 +129,7 @@ These are small. Do them before anything else.
 | Backups every night | 🟡 | Built (`core/backup/`), off until set up | Turn on (Go-live phase 2). | ⚙️ P1 |
 | Restore from backup, tested | ❌ | Test log in `BACKUP_RESTORE.md:306` is empty | Run the five-point restore test and record the date. Repeat each quarter. | ⚙️ P1 |
 | Point-in-time recovery | ❌ | Not set up; nightly dump only (up to 24 hours lost) | Turn on Supabase PITR (paid add-on). | ⚙️ P1 |
-| Soft deletes | 🟡 | Owners, locations and horses archive. Payments, charges, costs, health records and draft invoices hard-delete. | Soft delete (or void with reason) for payments first, then charges and health records. Add an "Archived" view to restore them. | P1 |
+| Soft deletes | ✅ | Payments are voided with a reason and stay on the invoice. Charges, yard costs and documents go to Settings → Recently Deleted for 30 days, then a nightly job removes them (`core/softdelete.py`). Owners, locations and horses archive. | Placements and breeding notes still hard-delete (corrections, with history). | — |
 | Validation on the server | ✅ | 35 form `clean` methods, 8 model `clean()`, some DB constraints | Add DB `CheckConstraint`s: amounts ≥ 0, `period_end ≥ period_start`. | P1 |
 | Timezones stored right | ✅ | `USE_TZ=True`, `Europe/London`, Celery uses the same zone, `timezone.localdate()` everywhere except P0 #7 | Fix P0 #7. | P0 |
 | Apostrophes in names | ✅ | ORM only, no raw SQL; PDF text is escaped (`invoicing/pdf.py:26`) | None. | — |
@@ -302,7 +302,7 @@ credentials (see "Least privilege" in section 3).
 | Forms keep what people typed | 🟡 | Server forms re-render with input. Bulk delete form is built in JavaScript. | Check the JS-built forms. | P2 |
 | Emails render in every client | 🟡 | See section 6 | — | P1 |
 | Notifications people can turn off | ❌ | See section 6 | — | P1 |
-| Undo | 🟡 | Archive and restore for owners and locations. Other deletes are permanent. | Comes with soft deletes (section 2). Add an "Undo" link in the success message. | P1 |
+| Undo | ✅ | "Undo" button on the delete message for charges, yard costs, documents and payment voids; Recently Deleted page; archive and restore for owners and locations | None. | — |
 | Keyboard and screen reader support | 🟡 | See section 8 | — | P1 |
 | Translations and locale formats | ➖ | UK English only; dates fixed to `dd/mm/yyyy`; £ fixed | Only if you sell outside the UK. | P3 |
 | Back button does what people expect | 🟡 | HTMX navigation; not tested | Check that HTMX swaps push URLs. Add one E2E test for back. | P2 |
@@ -370,7 +370,7 @@ Dashboard:
 |---|---|---|---|
 | 1 | ✅ **Account security** (done): MFA with recovery codes (required for administrators), self-unlock by password reset and an admin unlock button, rate limit on password reset, absolute session lifetime, "sign out everywhere", invite by email | MFA, lockouts, sessions, rate limits | 1.5 weeks |
 | 2 | ✅ **Audit log** (done): `django-simple-history` on invoices, payments, owners, roles and business settings; account events for users; history panels on record pages; Settings → Audit Log | Audit trail (changes), support | 1 week |
-| 3 | **Soft deletes**: void payments with a reason; archive charges and health records; "Undo" in success messages | Soft deletes, undo | 1 week |
+| 3 | ✅ **Soft deletes** (done): void payments with a reason; archive charges and health records; "Undo" in success messages | Soft deletes, undo | 1 week |
 | 4 | **GDPR**: anonymise owner, export one owner's data, retention job, CSV exports for main lists | GDPR, retention, exports | 1 week |
 | 5 | **Billing fixes**: PO / customer reference, credit notes, stepped dunning, gap-free numbering, reconciliation report | Billing | 1.5 weeks |
 | 6 | **Email**: plain-text parts, `List-Unsubscribe`, owner and staff preferences, bounce webhook with signature check | Email, notifications | 1 week |

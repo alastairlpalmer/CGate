@@ -4,11 +4,14 @@ Document upload/management views (passport scans, insurance certs, etc.).
 
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.views.decorators.http import require_POST
 
 from core.permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 
 from ..forms import DocumentForm
 from ._popup import is_popup_request, popup_saved_response
+from ._undo import undo_tag
 from ..models import Document, Horse, Owner
 
 
@@ -72,8 +75,20 @@ def document_delete(request, pk):
     if request.method != 'POST':
         return _back_to(horse, owner)
 
-    title = document.title
-    document.file.delete(save=False)
-    document.delete()
-    messages.success(request, f"Document “{title}” deleted.")
+    # Soft delete: the file stays in storage until the nightly purge, so a
+    # passport scan deleted by mistake can be restored (core/softdelete.py).
+    document.soft_delete(request.user)
+    messages.success(
+        request, f"Document “{document.title}” deleted.",
+        extra_tags=undo_tag(reverse('document_restore', args=[document.pk])),
+    )
     return _back_to(horse, owner)
+
+
+@feature_required('horses')
+@require_POST
+def document_restore(request, pk):
+    document = get_object_or_404(Document.all_objects.deleted(), pk=pk)
+    document.restore()
+    messages.success(request, f"Document “{document.title}” restored.")
+    return _back_to(document.horse, document.owner)

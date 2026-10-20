@@ -16,6 +16,8 @@ from django.db.models import F, Q
 from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
+from .softdelete import SoftDeleteModel
+
 
 def validate_file_size(value):
     """Reject uploads larger than 5MB."""
@@ -1299,7 +1301,7 @@ class DashboardPreference(models.Model):
         return grouped
 
 
-class Document(models.Model):
+class Document(SoftDeleteModel):
     """A file attached to a horse or an owner: passport scan, insurance
     certificate, registration papers, loan agreement, etc.
 

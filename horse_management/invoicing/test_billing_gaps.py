@@ -126,17 +126,33 @@ class HealthChargeSyncTests(TestCase):
         charge.refresh_from_db()
         self.assertEqual(charge.amount, Decimal('45.00'))  # bill unchanged
 
-    def test_charge_delete_view_zeroes_record_cost(self):
+    def test_deleted_charge_is_not_rebuilt_by_a_record_edit(self):
         record = self._record()
         charge = record.extra_charge
         self.client.force_login(make_admin(username='charge-admin'))
         response = self.client.post(reverse('charge_delete', args=[charge.pk]))
         self.assertEqual(response.status_code, 302)
+        # Soft-deleted: gone from every list and invoice run, still linked
+        # to its record so a restore puts everything back.
+        self.assertEqual(ExtraCharge.objects.count(), 0)
         record.refresh_from_db()
-        self.assertEqual(record.cost, Decimal('0.00'))
-        self.assertIsNone(record.extra_charge)
+        self.assertEqual(record.extra_charge_id, charge.pk)
         # The kill shot: a later edit of the record must NOT resurrect it.
         record.notes = 'typo fixed'
+        record.cost = Decimal('99.00')
         record.save()
         self.assertIsNone(sync_record_charge(record))
         self.assertEqual(ExtraCharge.objects.count(), 0)
+        self.assertEqual(ExtraCharge.all_objects.get(pk=charge.pk).amount, Decimal('45.00'))
+
+    def test_purged_charge_zeroes_the_record_so_it_stays_gone(self):
+        record = self._record()
+        charge = record.extra_charge
+        charge.soft_delete()
+        ExtraCharge.all_objects.get(pk=charge.pk).purge()
+        record.refresh_from_db()
+        self.assertEqual(record.cost, Decimal('0.00'))
+        self.assertIsNone(record.extra_charge)
+        record.save()
+        self.assertIsNone(sync_record_charge(record))
+        self.assertEqual(ExtraCharge.all_objects.count(), 0)

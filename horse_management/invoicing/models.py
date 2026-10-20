@@ -7,6 +7,7 @@ Uses db_table to keep original table names, avoiding database migration changes.
 from datetime import timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -331,8 +332,26 @@ class InvoiceLineItem(models.Model):
         super().save(*args, **kwargs)
 
 
+# Condition for a join from Invoice to its payments that leaves voided
+# ones out, for example Sum('payments__amount', filter=LIVE_PAYMENTS).
+LIVE_PAYMENTS = models.Q(payments__voided_at__isnull=True)
+
+
+class LivePaymentManager(models.Manager):
+    """Hides voided payments, so balances and totals ignore them."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(voided_at__isnull=True)
+
+
 class Payment(models.Model):
-    """A payment (possibly partial) recorded against an invoice."""
+    """A payment (possibly partial) recorded against an invoice.
+
+    A payment entered by mistake is voided, not deleted: it stays on the
+    invoice, struck through, with who voided it and why. ``objects`` hides
+    voided payments; joins from Invoice (``Sum('payments__amount')``) must
+    filter them out themselves, with ``LIVE_PAYMENTS``.
+    """
 
     class Method(models.TextChoices):
         BANK_TRANSFER = 'bank_transfer', 'Bank Transfer'
@@ -365,9 +384,17 @@ class Payment(models.Model):
     )
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    voided_at = models.DateTimeField(null=True, blank=True, editable=False)
+    voided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, editable=False,
+        on_delete=models.SET_NULL, related_name='+',
+    )
+    void_reason = models.CharField(max_length=255, blank=True, editable=False)
 
-    # Deleting a payment leaves its history row behind, so a payment that
-    # disappears can still be traced to who removed it.
+    objects = LivePaymentManager()
+    all_objects = models.Manager()
+
+    # Every change, voids included, with the user who made it.
     history = HistoricalRecords()
 
     class Meta:
@@ -375,3 +402,22 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"£{self.amount} against {self.invoice.invoice_number} on {self.date}"
+
+    @property
+    def is_voided(self):
+        return self.voided_at is not None
+
+    def void(self, user, reason):
+        """Take this payment out of the balance, keeping the record."""
+        self.voided_at = timezone.now()
+        self.voided_by = user if getattr(user, 'is_authenticated', False) else None
+        self.void_reason = reason[:255]
+        self.save(update_fields=['voided_at', 'voided_by', 'void_reason'])
+        self.invoice.refresh_payment_status()
+
+    def unvoid(self):
+        self.voided_at = None
+        self.voided_by = None
+        self.void_reason = ''
+        self.save(update_fields=['voided_at', 'voided_by', 'void_reason'])
+        self.invoice.refresh_payment_status()

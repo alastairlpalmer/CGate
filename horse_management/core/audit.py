@@ -165,12 +165,19 @@ def _changes(record) -> list[Change]:
     if prev is None:
         return []
     model = record.instance_type
-    delta = record.diff_against(prev)
-    return [
-        Change(_field_label(model, c.field), _display(model, c.field, c.old), _display(model, c.field, c.new))
-        for c in delta.changes
-        if c.field not in _NOISE_FIELDS
-    ]
+    # Every tracked field, not only form-editable ones: a void (voided_at,
+    # void_reason) is set by code and is exactly what the trail must show.
+    # (simple-history's diff_against compares editable fields only.)
+    changes = []
+    for f in record.tracked_fields:
+        if f.name in _NOISE_FIELDS:
+            continue
+        old, new = getattr(prev, f.attname), getattr(record, f.attname)
+        if old != new:
+            changes.append(Change(
+                _field_label(model, f.name), _display(model, f.name, old), _display(model, f.name, new),
+            ))
+    return changes
 
 
 def _history_entry(record, category, label) -> Entry | None:

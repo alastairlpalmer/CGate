@@ -45,19 +45,32 @@ class RecordHistoryTests(TestCase):
         self.assertContains(response, 'History')
         self.assertContains(response, '0999')
 
-    def test_deleted_payment_is_still_on_the_invoice_history(self):
+    def test_voided_payment_is_on_the_invoice_history(self):
         invoice = Invoice.objects.create(
             owner=self.owner, invoice_number='AUD-1',
             period_start=date(2026, 9, 1), period_end=date(2026, 9, 30),
             subtotal=Decimal('100'), total=Decimal('100'), status=Invoice.Status.SENT,
         )
         payment = Payment.objects.create(invoice=invoice, date=date(2026, 10, 1), amount=Decimal('40'))
-        self.client.post(reverse('payment_delete', args=[payment.pk]))
-        self.assertFalse(Payment.objects.filter(pk=payment.pk).exists())
-        deleted = Payment.history.filter(id=payment.pk, history_type='-').get()
-        self.assertEqual(deleted.history_user, self.admin)
+        self.client.post(reverse('payment_void', args=[payment.pk]), {'reason': 'Bounced cheque'})
+        voided = Payment.history.filter(id=payment.pk).first()
+        self.assertEqual(voided.history_user, self.admin)
+        self.assertEqual(voided.void_reason, 'Bounced cheque')
         response = self.client.get(reverse('invoice_detail', args=[invoice.pk]))
-        self.assertContains(response, 'Deleted payment')
+        self.assertContains(response, 'Changed payment')
+        self.assertContains(response, 'Bounced cheque')
+
+    def test_hard_deleted_payment_is_still_traceable(self):
+        """Voiding is the normal path; a delete (admin, draft invoice
+        cascade) still leaves a history row with who did it."""
+        invoice = Invoice.objects.create(
+            owner=self.owner, invoice_number='AUD-2',
+            period_start=date(2026, 9, 1), period_end=date(2026, 9, 30),
+        )
+        payment = Payment.objects.create(invoice=invoice, date=date(2026, 10, 1), amount=Decimal('40'))
+        pk = payment.pk  # delete() clears payment.pk
+        payment.delete()
+        self.assertTrue(Payment.history.filter(id=pk, history_type='-').exists())
 
     def test_invoice_numbers_do_not_flood_business_settings_history(self):
         settings_row = BusinessSettings.get_settings()

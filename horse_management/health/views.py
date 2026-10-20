@@ -346,6 +346,11 @@ def sync_record_charge(record):
     if details is None:
         return None
     charge = record.extra_charge
+    if charge is not None and charge.is_deleted:
+        # Someone deleted this charge on purpose (it is in Recently
+        # Deleted). Leave it alone: neither recreate nor update it, so an
+        # edit to the record cannot bring a disputed fee back.
+        return None
     if charge is None:
         if not record.cost or record.cost <= 0:
             return None

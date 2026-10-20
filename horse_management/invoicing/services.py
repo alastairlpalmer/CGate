@@ -18,7 +18,7 @@ from core.models import (
     OwnershipShare,
     Placement,
 )
-from invoicing.models import Invoice, InvoiceLineItem
+from invoicing.models import LIVE_PAYMENTS, Invoice, InvoiceLineItem
 from .utils import format_date_short, format_date_short_year, group_preview_charges_by_horse
 
 
@@ -602,6 +602,7 @@ class InvoiceService:
             | models.Q(extra_charges__horse__ownership_shares__isnull=True),
             extra_charges__invoiced=False,
             extra_charges__date__lte=period_end,
+            extra_charges__deleted_at__isnull=True,
         ).distinct()
 
         # Co-owners of horses with unbilled split charges, regardless of
@@ -612,6 +613,7 @@ class InvoiceService:
             ownership_shares__horse__extra_charges__invoiced=False,
             ownership_shares__horse__extra_charges__split_by_ownership=True,
             ownership_shares__horse__extra_charges__date__lte=period_end,
+            ownership_shares__horse__extra_charges__deleted_at__isnull=True,
         ).distinct()
 
         return (
@@ -842,7 +844,7 @@ class StatementService:
         ).select_related('owner').annotate(
             balance=ExpressionWrapper(
                 F('total') - Coalesce(
-                    Sum('payments__amount'), Value(Decimal('0.00'))
+                    Sum('payments__amount', filter=LIVE_PAYMENTS), Value(Decimal('0.00'))
                 ),
                 output_field=DecimalField(max_digits=10, decimal_places=2),
             )

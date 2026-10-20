@@ -7,6 +7,7 @@ from decimal import Decimal
 from django.core.validators import FileExtensionValidator, MinValueValidator
 
 from core.models import validate_file_size
+from core.softdelete import SoftDeleteModel
 from django.db import models
 
 
@@ -42,7 +43,7 @@ class ServiceProvider(models.Model):
         return f"{self.name} ({self.get_provider_type_display()})"
 
 
-class ExtraCharge(models.Model):
+class ExtraCharge(SoftDeleteModel):
     """Extra charges for services beyond standard livery."""
 
     class ChargeType(models.TextChoices):
@@ -129,6 +130,37 @@ class ExtraCharge(models.Model):
     def __str__(self):
         return f"{self.horse.name} - {self.get_charge_type_display()}: £{self.amount} ({self.date})"
 
+    HEALTH_RECORD_ACCESSORS = (
+        'vaccination', 'farrier_visit', 'worming_treatment', 'vet_visit',
+        'worm_egg_count',
+    )
+
+    def linked_health_record(self):
+        """The vaccination, farrier visit (and so on) this charge bills for."""
+        from django.core.exceptions import ObjectDoesNotExist
+        for accessor in self.HEALTH_RECORD_ACCESSORS:
+            try:
+                # Reverse one-to-one raises DoesNotExist (not AttributeError),
+                # so getattr's default can't be used here.
+                return getattr(self, accessor)
+            except ObjectDoesNotExist:
+                continue
+        return None
+
+    def purge(self):
+        """Delete for good (core.tasks.purge_soft_deleted).
+
+        A charge made from a health record is rebuilt from record.cost on
+        the record's next save once the charge is gone. Zero the cost first,
+        so a purged charge stays gone.
+        """
+        record = self.linked_health_record()
+        if record is not None:
+            record.cost = Decimal('0.00')
+            record.extra_charge = None
+            record.save(update_fields=['cost', 'extra_charge'])
+        self.delete()
+
     def mark_as_invoiced(self, invoice):
         """Mark this charge as invoiced."""
         self.invoiced = True
@@ -187,7 +219,7 @@ class ExtraCharge(models.Model):
         return sum((c.amount - c.billed for c in charges), Decimal('0.00'))
 
 
-class YardCost(models.Model):
+class YardCost(SoftDeleteModel):
     """Yard-level costs not tied to a specific horse."""
 
     class CostCategory(models.TextChoices):
