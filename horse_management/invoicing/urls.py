@@ -24,6 +24,7 @@ urlpatterns = [
     path('payments/<int:pk>/void/', views.payment_void, name='payment_void'),
     path('payments/<int:pk>/unvoid/', views.payment_unvoid, name='payment_unvoid'),
     path('debtors/', views.aged_debtors, name='aged_debtors'),
+    path('reconciliation/', views.reconciliation, name='reconciliation'),
     path('statements/<int:owner_pk>/', views.owner_statement, name='owner_statement'),
     path('statements/<int:owner_pk>/pdf/', views.owner_statement_pdf, name='owner_statement_pdf'),
     path('statements/<int:owner_pk>/email/', views.owner_statement_email, name='owner_statement_email'),

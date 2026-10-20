@@ -141,6 +141,18 @@
                             </span>
                         </dd>
                     </div>
+                    {% if invoice.customer_reference %}
+                    <div>
+                        <dt class="dt-label">Their Reference</dt>
+                        <dd class="mt-1 text-sm text-charcoal">{{ invoice.customer_reference }}</dd>
+                    </div>
+                    {% endif %}
+                    {% if invoice.overdue_reminder_count %}
+                    <div>
+                        <dt class="dt-label">Reminders Sent</dt>
+                        <dd class="mt-1 text-sm text-charcoal">{{ invoice.overdue_reminder_count }}{% if invoice.last_overdue_reminder_at %}, last {{ invoice.last_overdue_reminder_at|date:"d M Y" }}{% endif %}{% if invoice.owner.pause_reminders %} · paused for this owner{% endif %}</dd>
+                    </div>
+                    {% endif %}
                     <div>
                         <dt class="dt-label">Due Date</dt>
                         <dd class="mt-1 text-sm {% if invoice.is_overdue and invoice.status != 'paid' %}text-error-red font-medium{% else %}text-charcoal{% endif %}">

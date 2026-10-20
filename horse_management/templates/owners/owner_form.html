@@ -27,12 +27,14 @@
                     {% include "includes/form_field.html" with field=form.phone %}
                     {% include "includes/form_field.html" with field=form.address span="2" %}
                     {% include "includes/form_field.html" with field=form.account_code help="For accounting systems (e.g. Xero)" %}
+                    {% include "includes/form_field.html" with field=form.invoice_reference help=form.invoice_reference.help_text %}
                 </div>
             </fieldset>
 
             <!-- Notes -->
             <fieldset class="border-t border-light-sage px-4 sm:px-5 pt-4 sm:pt-5 pb-4 sm:pb-5 space-y-4 sm:space-y-5">
                 <legend class="text-base font-semibold text-charcoal mb-4">Notes</legend>
+                {% include "includes/form_field.html" with field=form.pause_reminders help=form.pause_reminders.help_text %}
                 {% include "includes/form_field.html" with field=form.notes %}
             </fieldset>
 

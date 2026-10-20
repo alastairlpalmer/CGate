@@ -483,6 +483,7 @@ class InvoiceService:
             due_date=period_end + timedelta(days=settings.default_payment_terms),
             notes=notes,
             vat_rate=settings.vat_rate,
+            customer_reference=owner.invoice_reference,
         )
 
         # Add livery line items

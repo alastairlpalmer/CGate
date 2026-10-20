@@ -6,6 +6,7 @@ import logging
 from datetime import timedelta
 
 from celery import shared_task
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -170,53 +171,61 @@ def send_farrier_reminders():
     return f"Sent {reminders_sent} farrier reminders"
 
 
-REMINDER_REPEAT_DAYS = 7
+# Never two overdue reminders for one invoice closer together than this,
+# even when an invoice is already far past several steps (for example on
+# the first run after this schedule was introduced).
+REMINDER_MIN_GAP_DAYS = 7
 
 
 @shared_task
 def send_overdue_invoice_reminders():
     """
-    Send reminders for overdue invoices.
+    Send stepped reminders for overdue invoices, then stop.
 
-    Re-sends at most once every REMINDER_REPEAT_DAYS so beat running daily
-    does not spam owners. Status promotion to OVERDUE is left to
-    check_invoice_status; this task is purely about emails.
+    settings.OVERDUE_REMINDER_DAYS lists the days past the due date at which
+    each reminder goes out (default 1, 14, 30). The last one is worded as a
+    final notice. After it, nothing more is sent: the yard follows up in
+    person. An owner with pause_reminders set gets none.
 
-    Run daily via Celery Beat.
+    Status promotion to OVERDUE is left to check_invoice_status; this task
+    is purely about emails. Run daily via Celery Beat.
     """
     now = timezone.now()
     # Local (Europe/London) date, not the UTC date: between 00:00 and 01:00
     # BST now.date() is still yesterday and an invoice due yesterday would
     # not yet count as overdue.
     today = timezone.localdate()
-    cutoff = now - timedelta(days=REMINDER_REPEAT_DAYS)
+    schedule = list(settings.OVERDUE_REMINDER_DAYS)
+    gap_cutoff = now - timedelta(days=REMINDER_MIN_GAP_DAYS)
     reminders_sent = 0
 
-    eligible = Q(last_overdue_reminder_at__isnull=True) | Q(
-        last_overdue_reminder_at__lt=cutoff
-    )
+    rested = Q(last_overdue_reminder_at__isnull=True) | Q(last_overdue_reminder_at__lt=gap_cutoff)
     overdue_invoices = Invoice.objects.filter(
         status__in=[Invoice.Status.SENT, Invoice.Status.OVERDUE],
         due_date__lt=today,
-    ).filter(eligible).select_related('owner')
+        overdue_reminder_count__lt=len(schedule),
+        owner__pause_reminders=False,
+    ).filter(rested).select_related('owner')
 
     for invoice in overdue_invoices:
+        step = invoice.overdue_reminder_count
+        if (today - invoice.due_date).days < schedule[step]:
+            continue
         try:
             previous = invoice.last_overdue_reminder_at
-            # Atomic claim: only send if last_overdue_reminder_at is still
-            # null or older than cutoff. Update returns 0 if another worker
-            # already claimed it.
-            claimed = Invoice.objects.filter(pk=invoice.pk).filter(
-                eligible
-            ).update(last_overdue_reminder_at=now)
+            # Atomic claim on the step: update returns 0 if another worker
+            # already sent this step.
+            claimed = Invoice.objects.filter(
+                pk=invoice.pk, overdue_reminder_count=step,
+            ).filter(rested).update(last_overdue_reminder_at=now, overdue_reminder_count=step + 1)
             if not claimed:
                 continue
-            if send_invoice_overdue_reminder(invoice):
+            if send_invoice_overdue_reminder(invoice, stage=step + 1, final=step + 1 == len(schedule)):
                 reminders_sent += 1
             else:
                 # Roll back so next run can retry.
                 Invoice.objects.filter(pk=invoice.pk).update(
-                    last_overdue_reminder_at=previous
+                    last_overdue_reminder_at=previous, overdue_reminder_count=step,
                 )
         except Exception:
             logger.exception("Error processing overdue invoice reminder for pk=%s", invoice.pk)
