@@ -1,0 +1,14 @@
+{% autoescape off %}Hello{% if user.first_name %} {{ user.first_name }}{% endif %},
+
+{{ invited_by }} has made you a Yardway account.
+
+To choose your password and sign in, open this link:
+
+{{ protocol }}://{{ domain }}{% url 'invite_confirm' uidb64=uid token=token %}
+
+The link works once and expires in {{ valid_days }} day{{ valid_days|pluralize }}. If it has expired, use "Forgot your password?" on the sign-in page.
+
+You sign in with this email address: {{ email }}
+
+If you did not expect this email, you can ignore it.
+{% endautoescape %}

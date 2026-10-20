@@ -49,10 +49,10 @@ its own deployment, database and bucket.
 
 | Area | Items | ✅ | 🟡 | ❌ | ⚙️ | ➖ |
 |---|---|---|---|---|---|---|
-| Sign-in and access | 15 | 2 | 6 | 5 | 0 | 2 |
+| Sign-in and access | 15 | 9 | 0 | 4 | 0 | 2 |
 | Data and database | 23 | 11 | 8 | 3 | 0 | 1 |
 | Security | 21 | 5 | 11 | 2 | 2 | 1 |
-| Compliance | 12 | 0 | 2 | 6 | 0 | 4 |
+| Compliance | 12 | 1 | 1 | 6 | 0 | 4 |
 | Infrastructure and deploys | 14 | 0 | 6 | 4 | 3 | 1 |
 | Jobs, email and cache | 11 | 2 | 5 | 3 | 1 | 0 |
 | Monitoring and incidents | 11 | 0 | 3 | 8 | 0 | 0 |
@@ -60,9 +60,9 @@ its own deployment, database and bucket.
 | Billing and payments | 11 | 2 | 4 | 3 | 0 | 2 |
 | API and integrations | 8 | 2 | 0 | 1 | 0 | 5 |
 | AI features | 8 | 0 | 0 | 0 | 0 | 8 |
-| User experience | 12 | 1 | 8 | 2 | 0 | 1 |
+| User experience | 12 | 1 | 9 | 1 | 0 | 1 |
 | Code, docs and team | 14 | 0 | 7 | 5 | 2 | 0 |
-| **Total** | **169** | **26** | **65** | **45** | **8** | **25** |
+| **Total** | **169** | **34** | **59** | **43** | **8** | **25** |
 
 **What is already strong:** money is stored as `Decimal` everywhere, dates are
 timezone-aware, invoice creation and sends are safe against duplicates, the
@@ -70,7 +70,7 @@ role system is a per-feature matrix, the Xero client handles token refresh,
 rate limits and idempotency, every data migration can be reversed, and CI runs
 about 1,490 tests plus CVE, secret and static-analysis scans.
 
-**What is weakest:** no MFA, no audit trail, no GDPR erasure, no staging
+**What is weakest:** no GDPR erasure, no staging
 environment, no uptime monitoring or on-call, the restore has never been
 tested, and the legal pages are placeholders.
 
@@ -101,10 +101,10 @@ These are small. Do them before anything else.
 | Requirement | Status | Evidence | Action | Phase |
 |---|---|---|---|---|
 | Login works with a `+` in the email | ✅ | `core/auth_backends.py:28` matches `email__iexact`; nothing strips `+` | Add one test with a `+` address. | P0 |
-| Reset links expire and work once | 🟡 | Django's stock token: one use, but 3-day expiry | Set a 1-hour timeout (P0 #5). | P0 |
-| MFA, and recovery for a lost phone | ❌ | No OTP package; listed in `SECURITY.md` known gaps | Add `django-otp` (TOTP) and single-use recovery codes. Make it required for Administrator role. Admin can reset another user's MFA, and this is logged. | P1 |
-| Sessions time out | 🟡 | 7-day rolling idle timeout (`settings.py:663`); no absolute cap | Add an absolute lifetime (for example 30 days) in middleware. | P1 |
-| Kill every session for one user | 🟡 | Works only by resetting the password or deactivating the user | Add a "Sign out everywhere" button on the user page and on the user's own account page. | P1 |
+| Reset links expire and work once | ✅ | Django's stock token: one use, 1-hour expiry (`PASSWORD_RESET_TIMEOUT`) | None. | — |
+| MFA, and recovery for a lost phone | ✅ | TOTP app plus 10 single-use recovery codes (`core/mfa.py`). Required for Administrators. An Administrator can turn it off for a user who lost both; `mfa_reset` command for the last Administrator. | Encourage it for other roles. | — |
+| Sessions time out | ✅ | 7-day rolling idle timeout plus a 30-day absolute cap (`SESSION_ABSOLUTE_AGE`, `core/middleware.py`) | None. | — |
+| Kill every session for one user | ✅ | "Sign Out Everywhere" on Settings → Users, and "Sign Out Other Devices" on Account Security (`core/account_security.py`) | None. | — |
 | SSO | ❌ | None | Only if an enterprise buyer requires it. | P3 |
 | SAML | ❌ | None | Same as SSO. | P3 |
 | SCIM | ❌ | None | Same as SSO. | P3 |
@@ -112,9 +112,9 @@ These are small. Do them before anything else.
 | User A cannot read user B's data by changing an ID | ➖ | Staff-only app. Access is per feature, not per record, by design. No owner login exists. | Becomes critical when the owner portal (payments plan phase 4) or multi-tenancy is built. Add per-object checks and tests then. | P2 |
 | Tenant isolation | ➖ | One yard per deployment | Required for SaaS. Every query scoped by organisation, with tests that try to cross tenants. | P2 |
 | Admin "log in as user", with audit trail | ❌ | None | Build with the audit log. Each use is logged with who, whom, when and why. | P2 |
-| Rate limits on login | 🟡 | django-axes, 5 failures → 30-minute lock (`settings.py:693`) | Password reset form has no limit. Add `django-ratelimit` on reset, by IP and by email. | P1 |
-| Lockouts that do not lock out the CFO | 🟡 | Lock is keyed on username only. Anyone who knows an email can lock that person out, again and again. Unlock is by CLI or admin only. | Change `AXES_LOCKOUT_PARAMETERS` to `[["username", "ip_address"]]`. Add an "Unlock" button on the user page for administrators. | P1 |
-| Invite users by email | 🟡 | Admin types the first password and passes it on by hand | Send a one-time "set your password" link instead. | P1 |
+| Rate limits on login | ✅ | django-axes on sign-in; password reset limited per address and per IP (`core/ratelimit.py`) | Set `CACHE_URL` to Redis so the reset limit is shared by all web processes. | ⚙️ P1 |
+| Lockouts that do not lock out the CFO | ✅ | Lock stays keyed on username (behind a proxy the IP is not reliable; see `settings.py`). The person unlocks it themselves with a password reset, which needs their mailbox. Administrators have an **Unlock** button. MFA means a guessed password alone no longer signs anyone in. | None. | — |
+| Invite users by email | ✅ | Leave the password blank on Add User to send a one-time, 3-day invitation link | None. | — |
 
 ### 2. Data and database
 
@@ -174,7 +174,7 @@ These are small. Do them before anything else.
 
 | Requirement | Status | Evidence | Action | Phase |
 |---|---|---|---|---|
-| Audit trail of who changed a record | 🟡 | Only `uploaded_by` on documents and photos; Django `LogEntry` covers admin edits only | Add `django-simple-history` (or `django-auditlog`) on invoices, payments, owners, users and roles. Show history on each record page. | P1 |
+| Audit trail of who changed a record | ✅ | `django-simple-history` on invoices, payments, owners, roles, role assignments and business settings; `AuditEvent` for sign-ins and account actions (`core/audit.py`). History panels on invoice, owner and user pages; Settings → Audit Log for Administrators. | Changes made with `QuerySet.update()` by scheduled tasks are not tracked. Add charges and health records if needed. | — |
 | Audit trail of who viewed a record | ❌ | None | Log views of passports, insurance documents and owner contact details. | P2 |
 | GDPR deletion reaches every table, backup and log | ❌ | No erasure code. Owner delete is blocked once history exists. | Build "Anonymise owner": keep invoices (legal duty), blank name, email, phone and address, delete documents. Write down that backups expire within 12 months under the GFS retention. | P1 |
 | GDPR access request (export one person's data) | ❌ | None | Export everything about one owner as a ZIP (CSV plus documents). | P1 |
@@ -307,7 +307,7 @@ credentials (see "Least privilege" in section 3).
 | Translations and locale formats | ➖ | UK English only; dates fixed to `dd/mm/yyyy`; £ fixed | Only if you sell outside the UK. | P3 |
 | Back button does what people expect | 🟡 | HTMX navigation; not tested | Check that HTMX swaps push URLs. Add one E2E test for back. | P2 |
 | Admin panel for ops | 🟡 | 26 models in Django admin. `Payment`, `Role` and documents are missing. | Register the missing models (read-only where possible). | P1 |
-| Support tooling | ❌ | No impersonation, no audit view | Comes with the audit log (P1) and impersonation (P2). | P2 |
+| Support tooling | 🟡 | Audit log and history panels show who changed what. No impersonation. | Impersonation (P2). | P2 |
 
 ### 13. Code, docs and team
 
@@ -368,8 +368,8 @@ Dashboard:
 
 | # | Work package | Covers | Size |
 |---|---|---|---|
-| 1 | **Account security**: MFA with recovery codes (required for administrators), lockout keyed on username + IP, admin unlock button, rate limit on password reset, absolute session lifetime, "sign out everywhere", invite by email | MFA, lockouts, sessions, rate limits | 1.5 weeks |
-| 2 | **Audit log**: `django-simple-history` on invoices, payments, owners, users, roles; history panel on record pages | Audit trail (changes), support | 1 week |
+| 1 | ✅ **Account security** (done): MFA with recovery codes (required for administrators), self-unlock by password reset and an admin unlock button, rate limit on password reset, absolute session lifetime, "sign out everywhere", invite by email | MFA, lockouts, sessions, rate limits | 1.5 weeks |
+| 2 | ✅ **Audit log** (done): `django-simple-history` on invoices, payments, owners, roles and business settings; account events for users; history panels on record pages; Settings → Audit Log | Audit trail (changes), support | 1 week |
 | 3 | **Soft deletes**: void payments with a reason; archive charges and health records; "Undo" in success messages | Soft deletes, undo | 1 week |
 | 4 | **GDPR**: anonymise owner, export one owner's data, retention job, CSV exports for main lists | GDPR, retention, exports | 1 week |
 | 5 | **Billing fixes**: PO / customer reference, credit notes, stepped dunning, gap-free numbering, reconciliation report | Billing | 1.5 weeks |

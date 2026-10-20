@@ -833,17 +833,28 @@ def _clean_password_pair(form, cleaned, user):
 
 
 class UserCreateForm(UserAccountForm):
+    """New account. Leave the password blank to email an invitation instead,
+    so nobody else ever knows the new user's password."""
+
     password1 = forms.CharField(
         label="Password",
+        required=False,
         widget=forms.PasswordInput(attrs={'class': 'form-input', 'autocomplete': 'new-password'}),
     )
     password2 = forms.CharField(
         label="Confirm password",
+        required=False,
         widget=forms.PasswordInput(attrs={'class': 'form-input', 'autocomplete': 'new-password'}),
     )
 
+    @property
+    def sends_invite(self):
+        return not self.cleaned_data.get('password1')
+
     def clean(self):
         cleaned = super().clean()
+        if cleaned.get('password2') and not cleaned.get('password1'):
+            self.add_error('password1', "Enter the password, or leave both boxes blank to send an invitation.")
         from django.contrib.auth import get_user_model
         # Unsaved probe so similarity validators can see the name/email.
         probe = get_user_model()(
@@ -862,7 +873,9 @@ class UserCreateForm(UserAccountForm):
         user = get_user_model().objects.create_user(
             username=data['email'],
             email=data['email'],
-            password=data['password1'],
+            # None gives an unusable password: the account cannot sign in
+            # until the invitation link has been used.
+            password=data['password1'] or None,
             first_name=data['first_name'],
             last_name=data['last_name'],
         )

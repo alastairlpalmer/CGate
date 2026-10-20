@@ -17,6 +17,14 @@ django-storages~=1.14
 # Security
 # Brute-force protection on sign-in (lockout after repeated failures).
 django-axes~=8.3
+# Two-step sign-in: TOTP authenticator apps and single-use recovery codes
+# (core/mfa.py). qrcode draws the set-up QR code as SVG.
+django-otp~=1.7
+qrcode~=8.2
+
+# Audit trail: a copy of each tracked row on every save and delete, with
+# the user who made it (core/audit.py).
+django-simple-history~=3.13
 # Content-Security-Policy header. Report-only until CSP_ENFORCE=True.
 django-csp~=4.0
 # Fernet encryption for the Xero OAuth tokens at rest.

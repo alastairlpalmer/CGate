@@ -6,12 +6,17 @@ assign roles, reset passwords, and deactivate accounts — no Django admin
 or CLI needed.
 """
 
+import logging
+
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
+from .. import audit, mfa
+from ..account_security import clear_lockout, is_locked_out, sign_out_everywhere
 from ..forms import AdminSetPasswordForm, UserCreateForm, UserUpdateForm
+from ..models import AuditEvent
 from ..permissions import (
     LEVEL_FULL,
     LEVEL_ORDER,
@@ -20,6 +25,7 @@ from ..permissions import (
 )
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 def _grants_user_management(role):
@@ -47,6 +53,16 @@ def _other_role_managers(user):
     return _managers_excluding([user.pk])
 
 
+def _user_history(user):
+    """Account events for ``user`` plus changes to their role assignment."""
+    from ..models import UserRole
+
+    return audit.merge(
+        audit.events_for_user(user),
+        audit.history_of(UserRole.history.filter(user_id=user.pk), 'Role assignment'),
+    )
+
+
 def _is_manager(user):
     # Same resolution the permission layer uses everywhere else.
     return has_feature_access(user, 'users', LEVEL_FULL)
@@ -59,7 +75,25 @@ def user_create(request):
         form = UserCreateForm(request.POST)
         if form.is_valid():
             user = form.save()
-            messages.success(request, f"User {user.email} created.")
+            audit.record(
+                AuditEvent.Action.USER_INVITED if form.sends_invite else AuditEvent.Action.USER_CREATED,
+                request=request, target=user, detail=f"Role: {form.cleaned_data['role']}",
+            )
+            if form.sends_invite:
+                from .account import send_invite
+                try:
+                    send_invite(request, user)
+                except Exception:
+                    logger.exception('Invitation email to new user %s failed.', user.pk)
+                    messages.warning(
+                        request,
+                        f"User {user.email} created, but the invitation email could not be sent. "
+                        "Check the email settings, then set a password for them below.",
+                    )
+                    return redirect('user_update', pk=user.pk)
+                messages.success(request, f"User {user.email} created. An invitation to choose a password is on its way.")
+            else:
+                messages.success(request, f"User {user.email} created.")
             return redirect('app_settings')
     else:
         form = UserCreateForm()
@@ -102,7 +136,21 @@ def user_update(request, pk):
                 elif demoting and not _other_role_managers(target).exists():
                     messages.error(request, "You can't demote the only user with access to Users & Roles. Give someone else a role with that access first.")
                 else:
+                    before = {
+                        'First name': target.first_name, 'Last name': target.last_name,
+                        'Email': target.email, 'Role': str(current_role or '—'),
+                    }
                     form.save()
+                    after = {
+                        'First name': target.first_name, 'Last name': target.last_name,
+                        'Email': target.email, 'Role': str(new_role),
+                    }
+                    changed = [f"{k}: {before[k] or '—'} → {after[k] or '—'}" for k in before if before[k] != after[k]]
+                    if changed:
+                        audit.record(
+                            AuditEvent.Action.USER_UPDATED, request=request, target=target,
+                            detail='; '.join(changed),
+                        )
                     messages.success(request, "User details saved.")
                     return redirect('app_settings')
 
@@ -110,6 +158,7 @@ def user_update(request, pk):
             password_form = AdminSetPasswordForm(request.POST, user=target)
             if password_form.is_valid():
                 password_form.save()
+                audit.record(AuditEvent.Action.PASSWORD_SET_BY_ADMIN, request=request, target=target)
                 if is_self:
                     # Changing one's own password invalidates the session
                     # auth hash — refresh it or the redirect bounces the
@@ -119,6 +168,46 @@ def user_update(request, pk):
                 messages.success(request, f"Password updated for {target.email or target.username}.")
                 return redirect('app_settings')
 
+        elif 'unlock' in request.POST:
+            cleared = clear_lockout(target)
+            if cleared:
+                audit.record(AuditEvent.Action.LOCKOUT_CLEARED, request=request, target=target)
+                messages.success(request, f"{target.email or target.username} can sign in again.")
+            else:
+                messages.info(request, f"{target.email or target.username} was not locked out.")
+            return redirect('user_update', pk=target.pk)
+
+        elif 'sign_out_everywhere' in request.POST:
+            ended = sign_out_everywhere(
+                target, keep_session_key=request.session.session_key if is_self else None,
+            )
+            audit.record(
+                AuditEvent.Action.SIGNED_OUT_EVERYWHERE, request=request, target=target,
+                detail=f"{ended} session{'s' if ended != 1 else ''} ended",
+            )
+            messages.success(request, f"Ended {ended} session{'s' if ended != 1 else ''} for {target.email or target.username}.")
+            return redirect('user_update', pk=target.pk)
+
+        elif 'mfa_reset' in request.POST:
+            if is_self:
+                messages.error(request, "Change your own two-step sign-in on your Account Security page.")
+            elif not mfa.is_administrator(request.user):
+                # Together with "Set Password" this would hand over the
+                # account completely, so it is kept to Administrators.
+                messages.error(request, "Only an Administrator can turn off two-step sign-in for someone else.")
+            else:
+                mfa.disable(target)
+                # Whoever had the lost phone may also hold a signed-in session.
+                sign_out_everywhere(target)
+                audit.record(AuditEvent.Action.MFA_RESET, request=request, target=target)
+                messages.success(
+                    request,
+                    f"Two-step sign-in is off for {target.email or target.username}. "
+                    "They have been signed out everywhere."
+                    + (" Their role needs it, so they must set it up again when they next sign in." if mfa.mfa_required(target) else ""),
+                )
+            return redirect('user_update', pk=target.pk)
+
         elif 'toggle_active' in request.POST:
             if is_self:
                 messages.error(request, "You can't deactivate your own account.")
@@ -127,6 +216,10 @@ def user_update(request, pk):
             else:
                 target.is_active = not target.is_active
                 target.save(update_fields=['is_active'])
+                audit.record(
+                    AuditEvent.Action.USER_ACTIVATED if target.is_active else AuditEvent.Action.USER_DEACTIVATED,
+                    request=request, target=target,
+                )
                 verb = "reactivated" if target.is_active else "deactivated"
                 messages.success(request, f"User {target.email or target.username} {verb}.")
                 return redirect('app_settings')
@@ -136,4 +229,8 @@ def user_update(request, pk):
         'password_form': password_form,
         'object': target,
         'is_self': is_self,
+        'locked_out': is_locked_out(target),
+        'mfa': mfa.mfa_status(target),
+        'can_reset_mfa': mfa.is_administrator(request.user) and not is_self,
+        'history_entries': _user_history(target),
     })

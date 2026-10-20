@@ -90,6 +90,10 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_tailwind',
     'axes',
+    'django_otp',
+    'django_otp.plugins.otp_totp',
+    'django_otp.plugins.otp_static',
+    'simple_history',
 
     # Local apps
     'core.apps.CoreConfig',
@@ -119,6 +123,15 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Caps a session at SESSION_ABSOLUTE_AGE from sign-in (see below).
+    'core.middleware.AbsoluteSessionLifetimeMiddleware',
+    # Two-step sign-in. OTPMiddleware records whether this session has
+    # passed a code; MFAMiddleware holds the user at the code page until it
+    # has (core.mfa).
+    'django_otp.middleware.OTPMiddleware',
+    'core.middleware.MFAMiddleware',
+    # Records the signed-in user on every history row (core/audit.py).
+    'simple_history.middleware.HistoryRequestMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
@@ -671,6 +684,37 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 # already works only once: the token is tied to the password hash and
 # last_login, so it stops working as soon as it is used.
 PASSWORD_RESET_TIMEOUT = env.int('PASSWORD_RESET_TIMEOUT', default=60 * 60)
+
+# Absolute session lifetime. SESSION_COOKIE_AGE above is an idle timeout
+# that rolls forward with every request, so a stolen cookie that is kept
+# in use never expires on its own. This caps a session at 30 days from
+# sign-in, however busy it is (core.middleware.AbsoluteSessionLifetimeMiddleware).
+SESSION_ABSOLUTE_AGE = env.int('SESSION_ABSOLUTE_AGE', default=30 * 24 * 60 * 60)
+
+# Password reset requests (core.views.account). The form is public, so
+# without a limit anyone can make it send mail to a staff address over and
+# over. Per address: a few requests an hour is plenty for a real person.
+# Per IP: higher, because behind a proxy many people can share one address.
+PASSWORD_RESET_LIMIT_PER_EMAIL = env.int('PASSWORD_RESET_LIMIT_PER_EMAIL', default=3)
+PASSWORD_RESET_LIMIT_PER_IP = env.int('PASSWORD_RESET_LIMIT_PER_IP', default=20)
+PASSWORD_RESET_LIMIT_WINDOW = 60 * 60
+
+# Invitation links for new users (Settings → Users → Add user, password
+# left blank). Longer than a reset link, because a new starter may not
+# read the email the same day.
+INVITE_TIMEOUT = env.int('INVITE_TIMEOUT', default=3 * 24 * 60 * 60)
+
+# Cache. Local memory by default, which is per process. Set CACHE_URL to a
+# Redis URL (for example redis://host:6379/1) so rate-limit counters are
+# shared by every web process.
+CACHES = {'default': env.cache('CACHE_URL', default='locmemcache://')}
+
+# Two-step sign-in (core.mfa). Administrators must use it: their account
+# reaches every record and every other account. Set to False only to get a
+# yard back in during an emergency, and set it back afterwards.
+MFA_REQUIRED_FOR_ADMINS = env.bool('MFA_REQUIRED_FOR_ADMINS', default=True)
+# The name authenticator apps show next to the six-digit code.
+OTP_TOTP_ISSUER = env('OTP_TOTP_ISSUER', default='Yardway')
 
 # CSRF cookie
 CSRF_COOKIE_HTTPONLY = True

@@ -1,0 +1,29 @@
+{% comment %}
+A list of audit entries (core.audit.Entry). Used by the audit log page and
+the history panels on record pages.
+{% endcomment %}
+<ul class="divide-y divide-light-sage">
+    {% for e in entries %}
+    <li class="px-4 sm:px-5 py-3">
+        <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <p class="text-sm text-charcoal">
+                <span class="font-medium">{{ e.what }}</span>{% if e.subject %} · {{ e.subject }}{% endif %}
+            </p>
+            <time class="text-xs text-sage whitespace-nowrap" datetime="{{ e.when|date:'c' }}">{{ e.when|date:"d M Y, H:i" }}</time>
+        </div>
+        <p class="text-xs text-sage mt-0.5">By {{ e.who }}{% if e.detail %} · {{ e.detail }}{% endif %}</p>
+        {% if e.changes %}
+        <dl class="mt-1.5 text-xs text-charcoal-light space-y-0.5">
+            {% for c in e.changes %}
+            <div class="flex flex-wrap gap-x-1.5">
+                <dt class="font-medium">{{ c.field }}:</dt>
+                <dd><span class="line-through text-sage">{{ c.old }}</span> → {{ c.new }}</dd>
+            </div>
+            {% endfor %}
+        </dl>
+        {% endif %}
+    </li>
+    {% empty %}
+    <li class="px-4 sm:px-5 py-6 text-sm text-sage">{{ empty_text|default:"Nothing recorded yet." }}</li>
+    {% endfor %}
+</ul>

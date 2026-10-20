@@ -1,0 +1,8 @@
+<div>
+    <label for="id_code" class="block text-sm font-medium text-charcoal mb-1.5">{{ label|default:"Code" }}</label>
+    <input type="text" name="code" id="id_code" required autofocus
+           autocomplete="one-time-code" inputmode="{{ inputmode|default:'numeric' }}" autocapitalize="none" spellcheck="false"
+           maxlength="20"
+           class="block w-full rounded-lg border-sage/30 focus:border-sage focus:ring-sage text-base px-3 py-2.5 border shadow-xs placeholder-sage/60 min-h-[44px] tracking-widest"
+           placeholder="{{ placeholder|default:'123456' }}">
+</div>

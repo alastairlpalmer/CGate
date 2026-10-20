@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Audit Log - Yardway{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Audit Log</h1>
+            <p class="page-subtitle">Who did what, and when. Newest first.</p>
+        </div>
+    </div>
+
+    <form method="get" class="flex flex-wrap items-end gap-3">
+        <div>
+            <label for="id_category" class="text-sm font-medium text-charcoal">Show</label>
+            <select name="category" id="id_category" class="form-input">
+                {% for key, label in categories %}
+                <option value="{{ key }}" {% if key == category %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn-secondary btn-sm">Show</button>
+    </form>
+
+    <div class="card overflow-hidden">
+        {% include "includes/history_entries.html" with empty_text="Nothing recorded for this filter." %}
+    </div>
+
+    <div class="flex justify-between">
+        {% if not is_first_page %}
+        <a href="?category={{ category }}" class="btn-secondary btn-sm">Newest</a>
+        {% else %}<span></span>{% endif %}
+        {% if next_before %}
+        <a href="?category={{ category }}&amp;before={{ next_before|urlencode }}" class="btn-secondary btn-sm">Older</a>
+        {% endif %}
+    </div>
+
+    <p class="text-xs text-sage">
+        Changes made by scheduled tasks (for example invoices marked overdue overnight) show as "System".
+        Record history starts from the day the audit trail was turned on.
+    </p>
+</div>
+{% endblock %}

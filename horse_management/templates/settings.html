@@ -211,6 +211,22 @@
                 {% endfor %}
             </div>
         </div>
+
+        {% if can_view_audit_log %}
+        <div class="card overflow-hidden">
+            <div class="settings-rows">
+                <div class="settings-row">
+                    <div class="min-w-0">
+                        <p class="settings-row-title">Audit Log</p>
+                        <p class="settings-row-meta">Who signed in, who changed invoices, payments, owners and roles, and when.</p>
+                    </div>
+                    <div class="settings-actions">
+                        <a href="{% url 'audit_log' %}" class="btn-secondary btn-sm">View</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </section>
     {% endif %}
 
@@ -583,7 +599,7 @@
                         <p class="settings-row-meta truncate">{{ user.email|default:"No email set" }}</p>
                     </div>
                     <div class="settings-actions">
-                        <a href="{% url 'password_change' %}" class="btn-secondary btn-sm">Change Password</a>
+                        <a href="{% url 'account_security' %}" class="btn-secondary btn-sm">Account Security</a>
                     </div>
                 </div>
             </div>
