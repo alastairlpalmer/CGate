@@ -687,14 +687,14 @@ def _expected_departures(ctx):
 def _invoices(ctx):
     """Open invoices due within the horizon or already overdue, with the
     balance still owed (part-payments count)."""
-    from invoicing.models import Invoice
+    from invoicing.models import LIVE_PAYMENTS, Invoice
 
     qs = Invoice.objects.filter(
         status__in=[Invoice.Status.SENT, Invoice.Status.OVERDUE],
         due_date__lte=ctx.horizon,
     ).select_related('owner').annotate(
         balance=ExpressionWrapper(
-            F('total') - Coalesce(Sum('payments__amount'), Value(Decimal('0.00'))),
+            F('total') - Coalesce(Sum('payments__amount', filter=LIVE_PAYMENTS), Value(Decimal('0.00'))),
             output_field=DecimalField(max_digits=10, decimal_places=2),
         ),
     ).order_by('due_date')

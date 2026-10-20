@@ -562,6 +562,13 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'core.tasks.run_nightly_backup',
         'schedule': crontab(hour=BACKUP_HOUR, minute=0),
     },
+    # Remove what has been in Recently Deleted for longer than
+    # SOFT_DELETE_RETENTION_DAYS. After the backup, so the backup taken
+    # just before a purge still holds the rows.
+    'purge-soft-deleted': {
+        'task': 'core.tasks.purge_soft_deleted',
+        'schedule': crontab(hour=BACKUP_HOUR, minute=30),
+    },
     # Poll Xero for payments on pushed invoices. Runs daily before the
     # invoice-status promotion and reminder windows, so freshly-paid
     # invoices are marked paid before any overdue email could go out.
@@ -708,6 +715,11 @@ INVITE_TIMEOUT = env.int('INVITE_TIMEOUT', default=3 * 24 * 60 * 60)
 # Redis URL (for example redis://host:6379/1) so rate-limit counters are
 # shared by every web process.
 CACHES = {'default': env.cache('CACHE_URL', default='locmemcache://')}
+
+# Soft delete (core.softdelete). Deleted charges, yard costs and documents
+# can be restored for this many days, then the nightly purge removes them
+# (and their files) for good.
+SOFT_DELETE_RETENTION_DAYS = env.int('SOFT_DELETE_RETENTION_DAYS', default=30)
 
 # Two-step sign-in (core.mfa). Administrators must use it: their account
 # reaches every record and every other account. Set to False only to get a

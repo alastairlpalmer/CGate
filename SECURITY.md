@@ -93,6 +93,18 @@ no cross-customer isolation boundary to get wrong.
   recorded in `BackupRun`, so a job that stops running is visible rather
   than assumed. See `docs/BACKUP_RESTORE.md`.
 
+**Mistakes and recovery**
+- A payment entered by mistake is voided with a reason, not deleted. It
+  stays on the invoice, struck through, and stops counting toward the
+  balance. It can be restored.
+- Deleted charges, yard costs and documents go to Settings → Recently
+  Deleted, with an Undo button on the delete message. After
+  `SOFT_DELETE_RETENTION_DAYS` (30) the nightly purge removes them, and a
+  document's file with them (`core/softdelete.py`, `core/tasks.py`).
+- A deleted document's file stays in storage until the purge. With
+  uploads in a private bucket it is still only reachable through a
+  short-lived signed link.
+
 **Audit trail**
 - Every save and delete of an invoice, payment, owner, role, role
   assignment or the business settings keeps a copy of the row and the

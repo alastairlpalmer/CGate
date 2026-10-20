@@ -9,6 +9,7 @@ from django.urls import include, path
 
 from core.views import account as account_views
 from core.views import audit_log as audit_log_views
+from core.views import recently_deleted as recently_deleted_views
 from core.views import (
     app_settings,
     posthog_proxy,
@@ -43,6 +44,7 @@ urlpatterns = [
     path('settings/roles/<int:pk>/delete/', role_delete, name='role_delete'),
     path('settings/dashboard/toggle/', dashboard_toggle, name='dashboard_toggle'),
     path('settings/audit/', audit_log_views.audit_log, name='audit_log'),
+    path('settings/deleted/', recently_deleted_views.recently_deleted, name='recently_deleted'),
     path(settings.ADMIN_URL, admin.site.urls),
     # Ahead of django.contrib.auth.urls, so these replace the stock views of
     # the same names (core/views/account.py says why).

@@ -25,11 +25,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView, UpdateView
 
 from core import audit
+from core.views._undo import undo_tag
 from core.models import Owner
-from invoicing.models import Invoice, Payment
+from invoicing.models import LIVE_PAYMENTS, Invoice, Payment
 
 from .forms import InvoiceCreateForm, InvoiceUpdateForm, MonthlyInvoiceForm, PaymentForm
 from .pdf import generate_invoice_pdf, generate_owner_statement_pdf
@@ -61,7 +63,7 @@ class InvoiceListView(FeatureAccessMixin, ListView):
         queryset = Invoice.objects.select_related('owner', 'xero_sync').annotate(
             balance=ExpressionWrapper(
                 F('total') - Coalesce(
-                    Sum('payments__amount'), Value(Decimal('0.00'))
+                    Sum('payments__amount', filter=LIVE_PAYMENTS), Value(Decimal('0.00'))
                 ),
                 output_field=DecimalField(max_digits=10, decimal_places=2),
             )
@@ -160,6 +162,9 @@ class InvoiceDetailView(FeatureAccessMixin, DetailView):
         context['line_items'] = line_items
         context['horse_groups'] = group_line_items_by_horse(line_items)
         context['payments'] = self.object.payments.all()
+        context['voided_payments'] = Payment.all_objects.filter(
+            invoice=self.object, voided_at__isnull=False,
+        ).select_related('voided_by')
         context['amount_paid'] = self.object.amount_paid
         context['balance_due'] = self.object.balance_due
         # Payments included, so a payment that was deleted still shows here.
@@ -603,24 +608,46 @@ def payment_create(request, pk):
 
 
 @feature_required('invoices')
-def payment_delete(request, pk):
-    """Delete a mistakenly recorded payment and re-derive the invoice status."""
-    from invoicing.models import Payment
-
+def payment_void(request, pk):
+    """Void a payment entered by mistake. It stays on the invoice, struck
+    through, with who voided it and why; the balance no longer counts it."""
     payment = get_object_or_404(Payment.objects.select_related('invoice'), pk=pk)
     invoice = payment.invoice
 
     if request.method != 'POST':
         return redirect('invoice_detail', pk=invoice.pk)
 
-    amount = payment.amount
-    payment.delete()
-    invoice.refresh_payment_status()
+    reason = (request.POST.get('reason') or '').strip()
+    if not reason:
+        messages.error(request, "Say why you are voiding this payment, for example \"entered twice\".")
+        return redirect('invoice_detail', pk=invoice.pk)
+
+    payment.void(request.user, reason)
+    invoice.refresh_from_db()
     messages.success(
         request,
-        f"Payment of £{amount:.2f} removed — "
-        f"£{invoice.balance_due:.2f} now outstanding."
+        f"Payment of £{payment.amount:.2f} voided. £{invoice.balance_due:.2f} now outstanding.",
+        extra_tags=undo_tag(reverse('payment_unvoid', args=[payment.pk])),
     )
+    return redirect('invoice_detail', pk=invoice.pk)
+
+
+@feature_required('invoices')
+@require_POST
+def payment_unvoid(request, pk):
+    payment = get_object_or_404(
+        Payment.all_objects.select_related('invoice').filter(voided_at__isnull=False), pk=pk,
+    )
+    invoice = payment.invoice
+    if payment.amount > invoice.balance_due:
+        messages.error(
+            request,
+            f"Restoring this £{payment.amount:.2f} payment would pay more than the "
+            f"£{invoice.balance_due:.2f} outstanding. Void the other payment first.",
+        )
+        return redirect('invoice_detail', pk=invoice.pk)
+    payment.unvoid()
+    messages.success(request, f"Payment of £{payment.amount:.2f} restored.")
     return redirect('invoice_detail', pk=invoice.pk)
 
 

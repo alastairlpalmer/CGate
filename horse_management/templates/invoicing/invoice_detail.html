@@ -290,7 +290,7 @@
     </div>
 
     <!-- Payments -->
-    {% if payments or feature_access.invoices.full and invoice.status != 'cancelled' %}
+    {% if payments or voided_payments or feature_access.invoices.full and invoice.status != 'cancelled' %}
     <div class="card overflow-hidden">
         <div class="section-header">
             <h3 class="section-title">Payments</h3>
@@ -313,22 +313,43 @@
                     {% if payment.notes %}<p class="text-xs text-sage mt-0.5">{{ payment.notes }}</p>{% endif %}
                 </div>
                 {% if feature_access.invoices.full %}
-                <form method="post" action="{% url 'payment_delete' payment.pk %}" class="inline shrink-0"
-                      hx-confirm="Remove this payment of £{{ payment.amount|floatformat:2 }}?">
-                    {% csrf_token %}
-                    <button type="submit" class="btn-icon text-error-red hover:text-error-red hover:bg-error-red-50"
-                            title="Remove payment" aria-label="Remove payment of £{{ payment.amount|floatformat:2 }}">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
-                        </svg>
-                    </button>
-                </form>
+                <details class="shrink-0 relative">
+                    <summary class="btn-ghost btn-xs text-error-red hover:text-error-red hover:bg-error-red-50 cursor-pointer list-none"
+                             aria-label="Void payment of £{{ payment.amount|floatformat:2 }}">Void</summary>
+                    <form method="post" action="{% url 'payment_void' payment.pk %}"
+                          class="absolute right-0 z-10 mt-1 w-64 card p-3 space-y-2 shadow-lg">
+                        {% csrf_token %}
+                        <label for="void-reason-{{ payment.pk }}" class="text-xs font-medium text-charcoal">Why are you voiding this payment?</label>
+                        <input type="text" name="reason" id="void-reason-{{ payment.pk }}" required maxlength="255"
+                               class="form-input" placeholder="For example: entered twice">
+                        <p class="text-xs text-sage">It stays on the invoice, struck through, and stops counting toward the balance.</p>
+                        <button type="submit" class="btn-primary btn-sm w-full">Void £{{ payment.amount|floatformat:2 }}</button>
+                    </form>
+                </details>
                 {% endif %}
             </li>
             {% endfor %}
         </ul>
         {% else %}
         <div class="p-5 text-sm text-sage">No payments recorded yet.</div>
+        {% endif %}
+        {% if voided_payments %}
+        <ul class="divide-y divide-light-sage border-t border-light-sage bg-parchment/50" aria-label="Voided payments">
+            {% for payment in voided_payments %}
+            <li class="flex items-center justify-between gap-3 px-5 py-3">
+                <div class="min-w-0">
+                    <p class="text-sm text-sage"><span class="line-through">&pound;{{ payment.amount|floatformat:2 }} &middot; {{ payment.get_method_display }} &middot; {{ payment.date|date:"d M Y" }}</span> <span class="badge-neutral">Voided</span></p>
+                    <p class="text-xs text-sage mt-0.5">{{ payment.void_reason }} &middot; {{ payment.voided_by.email|default:payment.voided_by.username|default:"System" }}, {{ payment.voided_at|date:"d M Y H:i" }}</p>
+                </div>
+                {% if feature_access.invoices.full %}
+                <form method="post" action="{% url 'payment_unvoid' payment.pk %}" class="shrink-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-ghost btn-xs">Restore</button>
+                </form>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
         {% endif %}
     </div>
     {% endif %}
