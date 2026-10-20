@@ -519,6 +519,25 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 # same night instead of stalling the worker indefinitely.
 CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60
 CELERY_TASK_TIME_LIMIT = 30 * 60
+# Acknowledge a task only when it has finished, so a worker that dies or
+# is redeployed mid-task gives the message back to the queue instead of
+# losing it. Each task must then be safe to run twice: the sends claim
+# their rows first, and scheduled tasks claim their day (core/jobs.py).
+# One message at a time per worker process, so a crash returns at most one.
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+# Redis hands an unacknowledged message to another worker after this long.
+# It must be longer than the longest task (CELERY_TASK_TIME_LIMIT) and the
+# longest retry wait, or a slow task would run twice.
+CELERY_BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 2 * 60 * 60}
+# A URL with {task} in it that each scheduled task calls when it finishes,
+# for an outside monitor that alerts when a call is late (core/jobs.py).
+# Empty: no calls.
+CRON_HEARTBEAT_URL = env('CRON_HEARTBEAT_URL', default='')
+# /_health/ reports scheduled tasks as stale when none has finished in this
+# many hours. Something runs every day (backup, Xero sweep, invoice status).
+SCHEDULED_TASK_STALE_HOURS = env.int('SCHEDULED_TASK_STALE_HOURS', default=26)
 
 # Celery Beat schedule
 # ---------------------
@@ -733,6 +752,10 @@ SOFT_DELETE_RETENTION_DAYS = env.int('SOFT_DELETE_RETENTION_DAYS', default=30)
 OWNER_RETENTION_YEARS = env.int('OWNER_RETENTION_YEARS', default=6)
 # Sign-in and account events (core.models.AuditEvent) are kept this long.
 AUDIT_EVENT_RETENTION_DAYS = env.int('AUDIT_EVENT_RETENTION_DAYS', default=2 * 365)
+# Background task records (core/jobs.py), removed by the nightly purge:
+# finished scheduled runs, and failed tasks that someone has dealt with.
+SCHEDULED_RUN_RETENTION_DAYS = env.int('SCHEDULED_RUN_RETENTION_DAYS', default=90)
+FAILED_TASK_RETENTION_DAYS = env.int('FAILED_TASK_RETENTION_DAYS', default=90)
 
 # Overdue invoice reminders (notifications.tasks): days past the due date
 # for each reminder. The last is worded as a final notice; nothing is sent

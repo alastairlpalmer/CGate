@@ -11,13 +11,43 @@ from invoicing.models import Invoice, InvoiceLineItem
 from .models import (
     BackupRun,
     BusinessSettings,
+    FailedTask,
     Horse,
     Location,
     Owner,
     OwnershipShare,
     Placement,
     RateType,
+    ScheduledRun,
 )
+
+
+@admin.register(ScheduledRun)
+class ScheduledRunAdmin(admin.ModelAdmin):
+    """Read-only: one row per scheduled task per day (core/jobs.py)."""
+
+    list_display = ('task_name', 'run_key', 'status', 'started_at', 'finished_at')
+    list_filter = ('status', 'task_name')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(FailedTask)
+class FailedTaskAdmin(admin.ModelAdmin):
+    """Read-only. Run again and Dismiss are on Settings → Background Tasks."""
+
+    list_display = ('task_name', 'failed_at', 'retries', 'resolution', 'resolved_at')
+    list_filter = ('resolution', 'task_name')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(BackupRun)

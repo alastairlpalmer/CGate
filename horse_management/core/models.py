@@ -1630,6 +1630,73 @@ class BackupRun(models.Model):
         return cls.objects.filter(status=cls.STATUS_SUCCESS).first()
 
 
+class ScheduledRun(models.Model):
+    """One day's run of one scheduled task (core/jobs.py).
+
+    The unique (task, day) pair is the claim that stops a task running
+    twice: a second beat process or a redelivered message finds the row
+    taken. The rows also answer "when did this task last run?". Rows older
+    than SCHEDULED_RUN_RETENTION_DAYS are removed by the nightly purge.
+    """
+
+    class Status(models.TextChoices):
+        RUNNING = 'running', 'Running'
+        SUCCESS = 'success', 'Finished'
+        FAILED = 'failed', 'Failed'
+
+    task_name = models.CharField(max_length=200)
+    run_key = models.CharField(max_length=20, help_text='The local date of the run.')
+    task_id = models.CharField(max_length=255)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.RUNNING)
+    started_at = models.DateTimeField(default=timezone.now)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    result = models.CharField(max_length=500, blank=True)
+
+    class Meta:
+        ordering = ['-started_at']
+        constraints = [
+            models.UniqueConstraint(fields=['task_name', 'run_key'], name='one_scheduled_run_per_day'),
+        ]
+
+    def __str__(self):
+        return f'{self.task_name} on {self.run_key}: {self.get_status_display()}'
+
+
+class FailedTask(models.Model):
+    """A background task that failed every retry (core/jobs.py).
+
+    Settings → Background Tasks lists the open ones, with Run again and
+    Dismiss. Dismissed rows older than FAILED_TASK_RETENTION_DAYS are
+    removed by the nightly purge.
+    """
+
+    task_name = models.CharField(max_length=200)
+    task_id = models.CharField(max_length=255, blank=True)
+    # Task arguments are primary keys and flags, never personal data.
+    args = models.JSONField(default=list, blank=True)
+    kwargs = models.JSONField(default=dict, blank=True)
+    error = models.CharField(max_length=1000)
+    traceback = models.TextField(blank=True)
+    retries = models.PositiveSmallIntegerField(default=0)
+    failed_at = models.DateTimeField(default=timezone.now)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+    )
+    resolution = models.CharField(max_length=20, blank=True, help_text='"run again" or "dismissed".')
+
+    class Meta:
+        ordering = ['-failed_at']
+        indexes = [models.Index(fields=['resolved_at', 'failed_at'])]
+
+    def __str__(self):
+        return f'{self.task_name} failed at {self.failed_at:%Y-%m-%d %H:%M}'
+
+    @property
+    def short_name(self):
+        return self.task_name.rsplit('.', 1)[-1].replace('_', ' ').capitalize()
+
+
 class AuditEvent(models.Model):
     """A security or account action: who did it, to whom, and when.
 

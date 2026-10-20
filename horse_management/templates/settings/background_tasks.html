@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Background Tasks - Yardway{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Background Tasks</h1>
+            <p class="page-subtitle">Work the app does on its own: reminder emails, invoice runs, the Xero check and backups.</p>
+        </div>
+    </div>
+
+    <div class="card overflow-hidden">
+        <div class="section-header">
+            <h3 class="section-title">Failed tasks</h3>
+        </div>
+        <ul class="divide-y divide-light-sage">
+            {% for task in failures %}
+            <li class="px-4 sm:px-5 py-3 space-y-2">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium text-charcoal">{{ task.short_name }}</p>
+                        <p class="text-xs text-sage mt-0.5">
+                            Failed {{ task.failed_at|date:"d M Y, H:i" }}
+                            {% if task.retries %}&middot; tried {{ task.retries|add:1 }} times{% endif %}
+                        </p>
+                        <p class="text-sm text-charcoal mt-1 break-words">{{ task.error }}</p>
+                    </div>
+                    <div class="flex shrink-0 gap-2">
+                        <form method="post" action="{% url 'failed_task_resolve' task.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" name="action" value="run_again" class="btn-primary btn-sm">Run again</button>
+                        </form>
+                        <form method="post" action="{% url 'failed_task_resolve' task.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" name="action" value="dismiss" class="btn-secondary btn-sm">Dismiss</button>
+                        </form>
+                    </div>
+                </div>
+                {% if task.traceback %}
+                <details class="text-xs text-sage">
+                    <summary class="cursor-pointer">Technical detail</summary>
+                    <pre class="mt-2 whitespace-pre-wrap break-words">{{ task.traceback }}</pre>
+                </details>
+                {% endif %}
+            </li>
+            {% empty %}
+            <li class="px-4 sm:px-5 py-6 text-sm text-sage">No failed tasks.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="card overflow-hidden">
+        <div class="section-header">
+            <h3 class="section-title">Scheduled tasks</h3>
+        </div>
+        <ul class="divide-y divide-light-sage">
+            {% for item in schedule %}
+            <li class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3">
+                <p class="text-sm text-charcoal min-w-0">{{ item.label }}</p>
+                <div class="text-right shrink-0">
+                    {% if item.run %}
+                    {% if item.run.status == 'success' %}<span class="badge-success">Finished</span>
+                    {% elif item.run.status == 'failed' %}<span class="badge-danger">Failed</span>
+                    {% else %}<span class="badge-info">Running</span>{% endif %}
+                    <p class="text-xs text-sage mt-0.5">{{ item.run.started_at|date:"d M Y, H:i" }}</p>
+                    {% else %}
+                    <span class="badge-neutral">Not run yet</span>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <p class="text-xs text-sage">
+        A task that fails because of a short outage (the database, the mail server) tries again on its own, up to 3 times.
+        It shows here only when every try failed. Each scheduled task runs once a day at most.
+        Run again on a failed scheduled task runs it now.
+    </p>
+</div>
+{% endblock %}
