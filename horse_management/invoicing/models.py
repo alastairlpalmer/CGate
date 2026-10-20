@@ -138,8 +138,22 @@ class Invoice(models.Model):
         )
 
     @property
+    def amount_credited(self):
+        """The part of amount_paid that came from credit notes, not money."""
+        return (
+            self.payments.filter(method=Payment.Method.CREDIT_NOTE)
+            .aggregate(total=models.Sum('amount'))['total']
+            or Decimal('0.00')
+        )
+
+    @property
+    def amount_received(self):
+        """Money actually received (payments without the credit notes)."""
+        return self.amount_paid - self.amount_credited
+
+    @property
     def balance_due(self):
-        """What's still owed after recorded payments."""
+        """What's still owed after recorded payments and credit notes."""
         return self.total - self.amount_paid
 
     def mark_as_paid(self, method='other', reference=''):
@@ -369,6 +383,9 @@ class Payment(models.Model):
         CHEQUE = 'cheque', 'Cheque'
         XERO = 'xero', 'Paid in Xero'
         OTHER = 'other', 'Other'
+        # A credit note reduces what is owed without money changing hands
+        # (invoicing.services.issue_credit_note). It has its own number.
+        CREDIT_NOTE = 'credit_note', 'Credit note'
 
     invoice = models.ForeignKey(
         Invoice,
@@ -391,6 +408,7 @@ class Payment(models.Model):
         blank=True,
         help_text="e.g. bank reference or cheque number"
     )
+    credit_note_number = models.CharField(max_length=20, null=True, blank=True, unique=True, editable=False)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     voided_at = models.DateTimeField(null=True, blank=True, editable=False)
@@ -411,6 +429,10 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"£{self.amount} against {self.invoice.invoice_number} on {self.date}"
+
+    @property
+    def is_credit_note(self):
+        return self.method == self.Method.CREDIT_NOTE
 
     @property
     def is_voided(self):

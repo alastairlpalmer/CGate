@@ -608,6 +608,49 @@ def payment_create(request, pk):
 
 
 @feature_required('invoices')
+def credit_note_create(request, pk):
+    """Issue a credit note against a sent invoice (invoicing.services)."""
+    from .forms import CreditNoteForm
+    from .services import CreditNoteRefused, issue_credit_note
+
+    invoice = get_object_or_404(Invoice, pk=pk)
+    if request.method == 'POST':
+        form = CreditNoteForm(request.POST, invoice=invoice)
+        if form.is_valid():
+            try:
+                credit = issue_credit_note(
+                    invoice, form.cleaned_data['amount'], form.cleaned_data['reason'],
+                    form.cleaned_data['date'], request.user,
+                )
+            except CreditNoteRefused as exc:
+                form.add_error(None, str(exc))
+            else:
+                invoice.refresh_from_db()
+                messages.success(
+                    request,
+                    f"Credit note {credit.credit_note_number} for £{credit.amount:.2f} issued. "
+                    f"£{invoice.balance_due:.2f} now outstanding. Enter it in Xero too.",
+                )
+                return redirect('invoice_detail', pk=invoice.pk)
+    else:
+        form = CreditNoteForm(invoice=invoice, initial={'date': timezone.localdate()})
+    return render(request, 'invoicing/credit_note_form.html', {'form': form, 'invoice': invoice})
+
+
+@feature_required('invoices', LEVEL_VIEW)
+def credit_note_pdf(request, pk):
+    from .pdf import generate_credit_note_pdf
+
+    credit = get_object_or_404(
+        Payment.all_objects.select_related('invoice__owner'),
+        pk=pk, method=Payment.Method.CREDIT_NOTE,
+    )
+    response = HttpResponse(generate_credit_note_pdf(credit).read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{credit.credit_note_number}.pdf"'
+    return response
+
+
+@feature_required('invoices')
 def payment_void(request, pk):
     """Void a payment entered by mistake. It stays on the invoice, struck
     through, with who voided it and why; the balance no longer counts it."""
@@ -970,14 +1013,14 @@ def reconciliation(request):
 
     if request.GET.get('format') == 'csv':
         rows = [
-            [f'{m.month:%b %Y}', m.invoice_count, m.net, m.vat, m.total, m.received, m.outstanding]
+            [f'{m.month:%b %Y}', m.invoice_count, m.net, m.vat, m.total, m.received, m.credited, m.outstanding]
             for m in report.months
         ]
         t = report.totals
-        rows.append(['Total', t.invoice_count, t.net, t.vat, t.total, t.received, t.outstanding])
+        rows.append(['Total', t.invoice_count, t.net, t.vat, t.total, t.received, t.credited, t.outstanding])
         return csv_response(
             f'reconciliation-{year}',
-            ['Month', 'Invoices', 'Net', 'VAT', 'Total invoiced', 'Received', 'Outstanding at month end'],
+            ['Month', 'Invoices', 'Net', 'VAT', 'Total invoiced', 'Received', 'Credited', 'Outstanding at month end'],
             rows,
         )
 

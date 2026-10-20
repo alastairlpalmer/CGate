@@ -1186,6 +1186,8 @@ class BusinessSettings(models.Model):
     )
     invoice_prefix = models.CharField(max_length=10, default="INV")
     next_invoice_number = models.PositiveIntegerField(default=1)
+    credit_note_prefix = models.CharField(max_length=10, default="CN")
+    next_credit_note_number = models.PositiveIntegerField(default=1)
     auto_generate_invoices = models.BooleanField(
         default=True,
         help_text=(
@@ -1199,7 +1201,7 @@ class BusinessSettings(models.Model):
     # Bank details and VAT settings print on every invoice, so a change to
     # them must be traceable. next_invoice_number moves on every invoice
     # and is left out (get_next_invoice_number skips history).
-    history = HistoricalRecords(excluded_fields=['next_invoice_number', 'updated_at'])
+    history = HistoricalRecords(excluded_fields=['next_invoice_number', 'next_credit_note_number', 'updated_at'])
 
     class Meta:
         verbose_name = "Business Settings"
@@ -1235,6 +1237,17 @@ class BusinessSettings(models.Model):
             locked.save(update_fields=['next_invoice_number'])
         self.next_invoice_number = number + 1
         return f"{self.invoice_prefix}{number:05d}"
+
+    def get_next_credit_note_number(self):
+        """Get and atomically increment the credit note number (CN00001)."""
+        with transaction.atomic():
+            locked = BusinessSettings.objects.select_for_update().get(pk=self.pk)
+            number = locked.next_credit_note_number
+            locked.next_credit_note_number = number + 1
+            locked.skip_history_when_saving = True
+            locked.save(update_fields=['next_credit_note_number'])
+        self.next_credit_note_number = number + 1
+        return f"{self.credit_note_prefix}{number:05d}"
 
 
 class DashboardPreference(models.Model):

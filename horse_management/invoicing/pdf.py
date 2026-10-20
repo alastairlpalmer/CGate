@@ -265,8 +265,12 @@ def generate_invoice_pdf_reportlab(invoice):
         [vat_label, f"\u00a3{invoice.vat_amount:.2f}"],
     ]
     if amount_paid > 0:
+        credited = invoice.amount_credited
         totals_data.append(['Invoice Total:', f"\u00a3{invoice.total:.2f}"])
-        totals_data.append(['Paid to Date:', f"-\u00a3{amount_paid:.2f}"])
+        if amount_paid - credited > 0:
+            totals_data.append(['Paid to Date:', f"-\u00a3{amount_paid - credited:.2f}"])
+        if credited > 0:
+            totals_data.append(['Credit Notes:', f"-\u00a3{credited:.2f}"])
         totals_data.append(['Balance Due:', f"\u00a3{invoice.balance_due:.2f}"])
     else:
         totals_data.append(['Amount Due:', f"\u00a3{invoice.total:.2f}"])
@@ -401,6 +405,65 @@ def generate_owner_statement_pdf(owner, statement):
         # field; this one was missed.
         elements.append(Paragraph(_esc_lines(settings.bank_details), small_style))
 
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
+
+def generate_credit_note_pdf(credit):
+    """A one-page credit note (ReportLab): number, the invoice it credits,
+    the amount and the reason. ``credit`` is a Payment of method
+    CREDIT_NOTE."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    settings = BusinessSettings.get_settings()
+    invoice = credit.invoice
+    owner = invoice.owner
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=20*mm, leftMargin=20*mm,
+                            topMargin=15*mm, bottomMargin=15*mm)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('CNTitle', parent=styles['Heading1'], fontSize=20, spaceAfter=4)
+    normal = styles['Normal']
+
+    elements = [Paragraph(_esc(settings.business_name), title_style)]
+    if settings.address:
+        elements.append(Paragraph(_esc_lines(settings.address), normal))
+    elements.append(Spacer(1, 8*mm))
+    elements.append(Paragraph('<b>CREDIT NOTE</b>', styles['Heading2']))
+    if credit.is_voided:
+        elements.append(Paragraph('<b>VOID</b>: this credit note was cancelled.', normal))
+    bill_to = f"<b>{_esc(owner.name)}</b>"
+    if owner.address:
+        bill_to += '<br/>' + _esc_lines(owner.address)
+    info = [
+        f"Credit note No: {_esc(credit.credit_note_number)}",
+        f"Date: {credit.date.strftime('%d/%m/%Y')}",
+        f"Against invoice: {_esc(invoice.invoice_number)}",
+    ]
+    if invoice.customer_reference:
+        info.append(f"Your ref: {_esc(invoice.customer_reference)}")
+    meta = Table([[Paragraph(bill_to, normal), Paragraph('<br/>'.join(info), normal)]], colWidths=[85*mm, 85*mm])
+    meta.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP')]))
+    elements += [meta, Spacer(1, 8*mm)]
+    lines = Table(
+        [['Reason', 'Amount'], [Paragraph(_esc(credit.notes or ''), normal), f"£{credit.amount:.2f}"]],
+        colWidths=[130*mm, 40*mm],
+    )
+    lines.setStyle(TableStyle([
+        ('LINEBELOW', (0, 0), (-1, 0), 0.5, (0.6, 0.6, 0.6)),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+    ]))
+    elements += [lines, Spacer(1, 6*mm)]
+    elements.append(Paragraph(
+        f"This credit note reduces the amount due on invoice {_esc(invoice.invoice_number)} "
+        f"by £{credit.amount:.2f}.", normal,
+    ))
     doc.build(elements)
     buffer.seek(0)
     return buffer

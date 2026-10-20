@@ -57,12 +57,12 @@ its own deployment, database and bucket.
 | Jobs, email and cache | 11 | 2 | 5 | 3 | 1 | 0 |
 | Monitoring and incidents | 11 | 0 | 3 | 8 | 0 | 0 |
 | Testing | 9 | 1 | 5 | 3 | 0 | 0 |
-| Billing and payments | 11 | 6 | 1 | 2 | 0 | 2 |
+| Billing and payments | 11 | 7 | 0 | 2 | 0 | 2 |
 | API and integrations | 8 | 2 | 0 | 1 | 0 | 5 |
 | AI features | 8 | 0 | 0 | 0 | 0 | 8 |
 | User experience | 12 | 2 | 8 | 1 | 0 | 1 |
 | Code, docs and team | 14 | 0 | 7 | 5 | 2 | 0 |
-| **Total** | **169** | **44** | **53** | **39** | **8** | **25** |
+| **Total** | **169** | **45** | **52** | **39** | **8** | **25** |
 
 **What is already strong:** money is stored as `Decimal` everywhere, dates are
 timezone-aware, invoice creation and sends are safe against duplicates, the
@@ -258,7 +258,7 @@ These are small. Do them before anything else.
 |---|---|---|---|---|
 | PO number on invoices | ✅ | `Invoice.customer_reference`, defaulted from the owner's PO / reference; on the PDF ("Your ref"), in the Xero push and the Xero CSV | None. | — |
 | Sales tax and VAT | ✅ | VAT rate copied onto each invoice; VAT number on the PDF, and no "VAT Reg: N/A" line when the yard is not registered | Limits: one rate per invoice; Xero only 0% or 20%. Enough for UK livery. | — |
-| Refunds, credits and partial refunds | 🟡 | Partial payments work. No credit notes or refunds. Overpayment is refused. | Add credit notes linked to an invoice, synced to Xero. | P1 |
+| Refunds, credits and partial refunds | ✅ | Partial payments; numbered credit notes (CN00001) with reason and PDF, stored as a payment type so balances stay right; shown separately on the invoice PDF and in the reconciliation report | Refunds of money already paid happen outside the app. Credit notes are entered in Xero by hand. | — |
 | Failed-payment retries and dunning | ✅ | Stepped reminders at 1, 14 and 30 days overdue (`OVERDUE_REMINDER_DAYS`), the last worded as a final notice, then none; per-owner pause; count shown on the invoice | Card retries come with Stripe (P2). | — |
 | Invoice numbers safe and gap-free | ✅ | Unique and race-safe. Every gap is listed on the reconciliation page with who deleted that draft and when (from the record history), which is what HMRC asks for. | Confirm with the accountant that deleting drafts is acceptable, or switch to numbering on send. | — |
 | Revenue reports finance can reconcile | ✅ | Finances → Reconciliation: month by month invoiced (net, VAT, total), received, outstanding at month end; CSV; rules written on the page (`invoicing/reconciliation.py`) | Credits once credit notes exist. | — |
@@ -372,7 +372,7 @@ Dashboard:
 | 2 | ✅ **Audit log** (done): `django-simple-history` on invoices, payments, owners, roles and business settings; account events for users; history panels on record pages; Settings → Audit Log | Audit trail (changes), support | 1 week |
 | 3 | ✅ **Soft deletes** (done): void payments with a reason; archive charges and health records; "Undo" in success messages | Soft deletes, undo | 1 week |
 | 4 | ✅ **GDPR** (done): anonymise owner, export one owner's data, retention job, CSV exports for main lists | GDPR, retention, exports | 1 week |
-| 5 | 🟡 **Billing fixes** (done except credit notes, which wait for a decision): PO / customer reference, credit notes, stepped dunning, gap-free numbering, reconciliation report | Billing | 1.5 weeks |
+| 5 | ✅ **Billing fixes** (done): PO / customer reference, credit notes, stepped dunning, gap-free numbering, reconciliation report | Billing | 1.5 weeks |
 | 6 | **Email**: plain-text parts, `List-Unsubscribe`, owner and staff preferences, bounce webhook with signature check | Email, notifications | 1 week |
 | 7 | **Jobs**: retries with backoff, `acks_late`, failed-task table, beat lock, fix expiry claim, heartbeats, health check covers Redis | Jobs, cron, monitoring | 3 days |
 | 8 | **Hardening**: upload content check and `attachment` header, `Permissions-Policy`, DB `sslmode=require`, separate DB user, encrypted backups, Python lockfile, Actions pinned by SHA, trim Xero error logs, `security.txt` | Security | 3 days |
