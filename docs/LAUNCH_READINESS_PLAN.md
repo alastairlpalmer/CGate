@@ -50,9 +50,9 @@ its own deployment, database and bucket.
 | Area | Items | ✅ | 🟡 | ❌ | ⚙️ | ➖ |
 |---|---|---|---|---|---|---|
 | Sign-in and access | 15 | 9 | 0 | 4 | 0 | 2 |
-| Data and database | 23 | 12 | 7 | 3 | 0 | 1 |
+| Data and database | 23 | 14 | 6 | 2 | 0 | 1 |
 | Security | 21 | 5 | 11 | 2 | 2 | 1 |
-| Compliance | 12 | 1 | 1 | 6 | 0 | 4 |
+| Compliance | 12 | 3 | 1 | 4 | 0 | 4 |
 | Infrastructure and deploys | 14 | 0 | 6 | 4 | 3 | 1 |
 | Jobs, email and cache | 11 | 2 | 5 | 3 | 1 | 0 |
 | Monitoring and incidents | 11 | 0 | 3 | 8 | 0 | 0 |
@@ -62,7 +62,7 @@ its own deployment, database and bucket.
 | AI features | 8 | 0 | 0 | 0 | 0 | 8 |
 | User experience | 12 | 2 | 8 | 1 | 0 | 1 |
 | Code, docs and team | 14 | 0 | 7 | 5 | 2 | 0 |
-| **Total** | **169** | **36** | **57** | **43** | **8** | **25** |
+| **Total** | **169** | **40** | **56** | **40** | **8** | **25** |
 
 **What is already strong:** money is stored as `Decimal` everywhere, dates are
 timezone-aware, invoice creation and sends are safe against duplicates, the
@@ -70,7 +70,7 @@ role system is a per-feature matrix, the Xero client handles token refresh,
 rate limits and idempotency, every data migration can be reversed, and CI runs
 about 1,490 tests plus CVE, secret and static-analysis scans.
 
-**What is weakest:** no GDPR erasure, no staging
+**What is weakest:** no staging
 environment, no uptime monitoring or on-call, the restore has never been
 tested, and the legal pages are placeholders.
 
@@ -139,9 +139,9 @@ These are small. Do them before anything else.
 | Idempotency keys on payment | ✅ | Payment save locks the invoice; Xero calls send an Idempotency-Key | Card payments (Stripe) will need their own keys. | P2 |
 | Deduplication for four clicks on submit | ✅ | Submit buttons disable on click (`templates/base.html:756`); invoice creation locks the owner and refuses overlaps | None. | — |
 | Pagination on page 400 | ✅ | Django offset paging on all big lists | Fine at single-yard size. Use keyset paging if a list grows past about 100,000 rows. | — |
-| Exports to a spreadsheet | 🟡 | Invoice CSV and PDF only | Add CSV export for horses, owners, charges and health records. This is also the GDPR access export. | P1 |
+| Exports to a spreadsheet | ✅ | CSV export of owners, horses and charges (UTF-8 with BOM, formula guard; `core/csv_export.py`); invoice CSV and PDF; full owner export as ZIP | Add health records if staff ask for them. | — |
 | Imports that survive an old CSV | 🟡 | `data/import_csv.py` handles `utf-8-sig` then `cp1252`. `load_csv_data.py` tries latin-1 before cp1252, so cp1252 never runs. No dry run. | Fix encoding order. Add `--dry-run`. Delete the duplicate root `import_data.py`. | P1 |
-| Retention rules, and code that deletes | ❌ | Only backup retention exists | Write a retention schedule (for example: invoices 6 years for HMRC; archived owners' contact details deleted after that). Build a scheduled job that applies it. | P1 |
+| Retention rules, and code that deletes | ✅ | `docs/DATA_RETENTION.md`; weekly job anonymises archived owners 6 years after their last invoice and drops account events after 2 years (`core/gdpr.py`); nightly purge of Recently Deleted | Have the solicitor confirm the periods. | — |
 | Caching, and clearing it when data changes | 🟡 | Only the business name is cached, in per-process memory; the clear reaches one process | Harmless now. Use Redis as `CACHES` backend before caching more. | P2 |
 
 ### 3. Security
@@ -176,8 +176,8 @@ These are small. Do them before anything else.
 |---|---|---|---|---|
 | Audit trail of who changed a record | ✅ | `django-simple-history` on invoices, payments, owners, roles, role assignments and business settings; `AuditEvent` for sign-ins and account actions (`core/audit.py`). History panels on invoice, owner and user pages; Settings → Audit Log for Administrators. | Changes made with `QuerySet.update()` by scheduled tasks are not tracked. Add charges and health records if needed. | — |
 | Audit trail of who viewed a record | ❌ | None | Log views of passports, insurance documents and owner contact details. | P2 |
-| GDPR deletion reaches every table, backup and log | ❌ | No erasure code. Owner delete is blocked once history exists. | Build "Anonymise owner": keep invoices (legal duty), blank name, email, phone and address, delete documents. Write down that backups expire within 12 months under the GFS retention. | P1 |
-| GDPR access request (export one person's data) | ❌ | None | Export everything about one owner as a ZIP (CSV plus documents). | P1 |
+| GDPR deletion reaches every table, backup and log | ✅ | **Erase** on the owner page clears contact details and documents from the live row and the record history; name and address follow at the end of the invoice retention period. Backups age out within 12 months; Xero and mailboxes are by hand (`docs/DATA_RETENTION.md`). | None in code. | — |
+| GDPR access request (export one person's data) | ✅ | **Download** on the owner page: ZIP of CSVs and documents, recorded in the audit log | None. | — |
 | Terms and privacy policy that match the code | ❌ | `website/src/content/pages/privacy.md`, `terms.md`, `cookies.md` are placeholders. PostHog, Sentry, Xero, Supabase, Cloudflare R2 and Railway are not named. | Give a solicitor the list of sub-processors and what data each one gets. Publish the result. | P1 |
 | Data residency (UK / EU only) | 🟡 | Depends on Supabase, Railway, R2, Sentry and PostHog regions | Check each region and pick EU or UK where possible. Write it in the privacy policy. | P1 |
 | Quarterly access reviews | ❌ | None | Calendar task: list users and roles in the app, GitHub, Railway, Supabase, R2; record sign-off. | P1 |
@@ -371,7 +371,7 @@ Dashboard:
 | 1 | ✅ **Account security** (done): MFA with recovery codes (required for administrators), self-unlock by password reset and an admin unlock button, rate limit on password reset, absolute session lifetime, "sign out everywhere", invite by email | MFA, lockouts, sessions, rate limits | 1.5 weeks |
 | 2 | ✅ **Audit log** (done): `django-simple-history` on invoices, payments, owners, roles and business settings; account events for users; history panels on record pages; Settings → Audit Log | Audit trail (changes), support | 1 week |
 | 3 | ✅ **Soft deletes** (done): void payments with a reason; archive charges and health records; "Undo" in success messages | Soft deletes, undo | 1 week |
-| 4 | **GDPR**: anonymise owner, export one owner's data, retention job, CSV exports for main lists | GDPR, retention, exports | 1 week |
+| 4 | ✅ **GDPR** (done): anonymise owner, export one owner's data, retention job, CSV exports for main lists | GDPR, retention, exports | 1 week |
 | 5 | **Billing fixes**: PO / customer reference, credit notes, stepped dunning, gap-free numbering, reconciliation report | Billing | 1.5 weeks |
 | 6 | **Email**: plain-text parts, `List-Unsubscribe`, owner and staff preferences, bounce webhook with signature check | Email, notifications | 1 week |
 | 7 | **Jobs**: retries with backoff, `acks_late`, failed-task table, beat lock, fix expiry claim, heartbeats, health check covers Redis | Jobs, cron, monitoring | 3 days |

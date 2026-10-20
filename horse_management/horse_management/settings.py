@@ -569,6 +569,12 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'core.tasks.purge_soft_deleted',
         'schedule': crontab(hour=BACKUP_HOUR, minute=30),
     },
+    # Anonymise owners past OWNER_RETENTION_YEARS and drop old account
+    # events (core/gdpr.py). Weekly is plenty for a rule counted in years.
+    'data-retention': {
+        'task': 'core.tasks.apply_data_retention',
+        'schedule': crontab(hour=BACKUP_HOUR, minute=45, day_of_week='sun'),
+    },
     # Poll Xero for payments on pushed invoices. Runs daily before the
     # invoice-status promotion and reminder windows, so freshly-paid
     # invoices are marked paid before any overdue email could go out.
@@ -720,6 +726,13 @@ CACHES = {'default': env.cache('CACHE_URL', default='locmemcache://')}
 # can be restored for this many days, then the nightly purge removes them
 # (and their files) for good.
 SOFT_DELETE_RETENTION_DAYS = env.int('SOFT_DELETE_RETENTION_DAYS', default=30)
+
+# Data retention (core/gdpr.py, docs/DATA_RETENTION.md). An archived
+# owner is anonymised this many years after their newest invoice: HMRC
+# needs invoices, with the name and address on them, kept for six years.
+OWNER_RETENTION_YEARS = env.int('OWNER_RETENTION_YEARS', default=6)
+# Sign-in and account events (core.models.AuditEvent) are kept this long.
+AUDIT_EVENT_RETENTION_DAYS = env.int('AUDIT_EVENT_RETENTION_DAYS', default=2 * 365)
 
 # Two-step sign-in (core.mfa). Administrators must use it: their account
 # reaches every record and every other account. Set to False only to get a

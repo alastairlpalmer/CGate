@@ -1,6 +1,7 @@
 """Scheduled maintenance tasks.
 
-The nightly off-site backup, and the purge of soft-deleted rows. See core/backup/ for what it does
+The nightly off-site backup, the purge of soft-deleted rows, and data
+retention. See core/backup/ for what it does
 and docs/BACKUP_RESTORE.md for how to restore from it.
 """
 
@@ -134,3 +135,11 @@ def purge_soft_deleted():
         counts[model.__name__] = purged
     logger.info('Purge: %s', counts)
     return counts
+
+
+@shared_task
+def apply_data_retention():
+    """Stop keeping personal data longer than needed (core/gdpr.py)."""
+    from core import gdpr
+
+    return gdpr.apply_retention()

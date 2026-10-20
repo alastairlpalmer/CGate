@@ -1625,6 +1625,9 @@ class AuditEvent(models.Model):
         MFA_RESET = 'mfa_reset', 'Two-step sign-in turned off for someone else'
         MFA_RECOVERY_CODE_USED = 'mfa_recovery_code_used', 'Recovery code used'
         MFA_RECOVERY_CODES_RENEWED = 'mfa_recovery_codes_renewed', 'New recovery codes made'
+        OWNER_EXPORTED = 'owner_exported', "Owner's personal data exported"
+        OWNER_ERASED = 'owner_erased', "Owner's contact details erased"
+        OWNER_ANONYMISED = 'owner_anonymised', 'Owner anonymised'
 
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     action = models.CharField(max_length=40, choices=Action.choices)

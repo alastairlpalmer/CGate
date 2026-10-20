@@ -4,6 +4,8 @@ URL configuration for billing app.
 
 from django.urls import path
 
+from core.views import exports as export_views
+
 from . import views
 
 urlpatterns = [
@@ -36,6 +38,7 @@ urlpatterns = [
     path('charges/<int:pk>/edit/', views.ExtraChargeUpdateView.as_view(), name='charge_update'),
     path('charges/<int:pk>/delete/', views.ExtraChargeDeleteView.as_view(), name='charge_delete'),
     path('charges/<int:pk>/restore/', views.charge_restore, name='charge_restore'),
+    path('charges/export.csv', export_views.charges_csv, name='charges_csv'),
 
     # Service providers
     path('providers/', views.ServiceProviderListView.as_view(), name='provider_list'),

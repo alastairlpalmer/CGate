@@ -93,6 +93,16 @@ no cross-customer isolation boundary to get wrong.
   recorded in `BackupRun`, so a job that stops running is visible rather
   than assumed. See `docs/BACKUP_RESTORE.md`.
 
+**Personal data (UK GDPR)**
+- An owner's page can download everything held about them as a ZIP
+  (subject access), and erase their contact details and documents,
+  including earlier copies in the record history (erasure).
+- Name and address stay while their invoices must be kept (six years for
+  HMRC), then a weekly job anonymises the owner. Old sign-in events are
+  dropped after two years. See `docs/DATA_RETENTION.md`.
+- CSV exports are UTF-8 with a byte-order mark and guard against
+  spreadsheet formulas in typed text.
+
 **Mistakes and recovery**
 - A payment entered by mistake is voided with a reason, not deleted. It
   stays on the invoice, struck through, and stops counting toward the
@@ -148,7 +158,6 @@ Listed on purpose. A reviewer should not have to discover these.
 | **CSP allows `unsafe-inline` and `unsafe-eval` for scripts.** Inline `<script>` blocks and Alpine.js need them today. | Medium | Move to per-tag nonces and Alpine's CSP build, then set `CSP_ENFORCE=True`. |
 | **`ADMIN_URL` still defaults to `admin/`.** The setting exists; a deployment that does not set it gains nothing. | Low | Set `ADMIN_URL` in production, or restrict by IP at the proxy. |
 | **Two-step sign-in is optional for roles other than Administrator.** A stolen password is enough for those accounts. | Medium | Encourage it for staff who use Invoices or Owners. Make it required per role if needed. |
-| **Record history keeps old personal data.** An owner's previous addresses and phone numbers stay in the history tables. | Medium (GDPR) | The GDPR erasure work must clear history rows too. |
 | **No record of who viewed a record.** Only changes are tracked. | Medium | Log views of passports, insurance documents and owner details (plan P2). |
 | **Limited rate limiting outside sign-in.** Password reset is limited; report generation and PDF export are not. Rate-limit counters are per process unless `CACHE_URL` points at Redis. | Medium | Set `CACHE_URL`. Rate-limit expensive views at Cloudflare. |
 | **Uploads on a local volume are a single point of failure** where `MEDIA_S3_BUCKET` is not set. Worse, a volume attaches to one service, so the backup job on the worker cannot read files written by the web service and archives nothing while still reporting success. | Medium (availability) | Set the `MEDIA_S3_*` settings so uploads go to a private bucket. |
