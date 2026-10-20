@@ -10,6 +10,7 @@ from core.models import validate_file_size
 from core.uploads import validate_file_content
 from core.softdelete import SoftDeleteModel
 from django.db import models
+from django.db.models import F, Q
 
 
 class ServiceProvider(models.Model):
@@ -123,6 +124,9 @@ class ExtraCharge(SoftDeleteModel):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(amount__gte=0), name='extracharge_amount_not_negative'),
+        ]
         ordering = ['-date']
         indexes = [
             models.Index(fields=['invoiced', 'date'], name='charge_invoiced_date'),
@@ -278,6 +282,10 @@ class YardCost(SoftDeleteModel):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(amount__gte=0), name='yardcost_amount_not_negative'),
+            models.CheckConstraint(condition=Q(vat_amount__gte=0), name='yardcost_vat_not_negative'),
+        ]
         ordering = ['-date']
         indexes = [
             models.Index(fields=['date', 'category'], name='yardcost_date_category'),
@@ -352,6 +360,9 @@ class FeedOut(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(total_cost__gte=0), name='feedout_cost_not_negative'),
+        ]
         ordering = ['-date']
         indexes = [
             models.Index(fields=['location', 'date'], name='feedout_location_date'),
@@ -390,6 +401,9 @@ class FeedStock(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(cost__gte=0), name='feedstock_cost_not_negative'),
+        ]
         ordering = ['-date']
         indexes = [
             models.Index(fields=['feed_type', 'date'], name='feedstock_type_date'),
@@ -466,6 +480,9 @@ class ServiceItem(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(price__gte=0), name='serviceitem_price_not_negative'),
+        ]
         ordering = ['category', 'sort_order', 'name']
 
     def __str__(self):

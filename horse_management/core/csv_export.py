@@ -13,7 +13,7 @@ import io
 from datetime import date, datetime
 
 from django.http import HttpResponse
-from django.utils.text import slugify
+from core.downloads import attachment_header
 
 from invoicing.utils import _csv_safe
 
@@ -44,10 +44,9 @@ def csv_bytes(header, rows) -> bytes:
 def csv_response(filename_stem, header, rows) -> HttpResponse:
     """A download of ``rows`` as ``<filename_stem>.csv``.
 
-    The stem is slugified, so a name with quotes, slashes or accents can
-    never break the Content-Disposition header.
+    core.downloads cleans the name, so quotes, slashes or accents can never
+    break the Content-Disposition header.
     """
     response = HttpResponse(csv_bytes(header, rows), content_type='text/csv; charset=utf-8')
-    name = slugify(filename_stem) or 'export'
-    response['Content-Disposition'] = f'attachment; filename="{name}.csv"'
+    response['Content-Disposition'] = attachment_header(f'{filename_stem or "export"}.csv')
     return response

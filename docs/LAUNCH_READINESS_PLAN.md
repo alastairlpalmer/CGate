@@ -50,7 +50,7 @@ its own deployment, database and bucket.
 | Area | Items | ✅ | 🟡 | ❌ | ⚙️ | ➖ |
 |---|---|---|---|---|---|---|
 | Sign-in and access | 15 | 9 | 0 | 4 | 0 | 2 |
-| Data and database | 23 | 14 | 6 | 2 | 0 | 1 |
+| Data and database | 23 | 15 | 5 | 2 | 0 | 1 |
 | Security | 21 | 7 | 6 | 2 | 5 | 1 |
 | Compliance | 12 | 3 | 1 | 4 | 0 | 4 |
 | Infrastructure and deploys | 14 | 0 | 6 | 4 | 3 | 1 |
@@ -62,7 +62,7 @@ its own deployment, database and bucket.
 | AI features | 8 | 0 | 0 | 0 | 0 | 8 |
 | User experience | 12 | 3 | 8 | 0 | 0 | 1 |
 | Code, docs and team | 14 | 0 | 7 | 5 | 2 | 0 |
-| **Total** | **169** | **55** | **44** | **34** | **12** | **24** |
+| **Total** | **169** | **56** | **43** | **34** | **12** | **24** |
 
 **What is already strong:** money is stored as `Decimal` everywhere, dates are
 timezone-aware, invoice creation and sends are safe against duplicates, the
@@ -130,17 +130,17 @@ These are small. Do them before anything else.
 | Restore from backup, tested | ❌ | Test log in `BACKUP_RESTORE.md:306` is empty | Run the five-point restore test and record the date. Repeat each quarter. | ⚙️ P1 |
 | Point-in-time recovery | ❌ | Not set up; nightly dump only (up to 24 hours lost) | Turn on Supabase PITR (paid add-on). | ⚙️ P1 |
 | Soft deletes | ✅ | Payments are voided with a reason and stay on the invoice. Charges, yard costs and documents go to Settings → Recently Deleted for 30 days, then a nightly job removes them (`core/softdelete.py`). Owners, locations and horses archive. | Placements and breeding notes still hard-delete (corrections, with history). | — |
-| Validation on the server | ✅ | 35 form `clean` methods, 8 model `clean()`, some DB constraints | Add DB `CheckConstraint`s: amounts ≥ 0, `period_end ≥ period_start`. | P1 |
+| Validation on the server | ✅ | 35 form `clean` methods, 8 model `clean()`, and database `CheckConstraint`s: payments > 0; charges, costs, prices, rates and line items ≥ 0; ownership shares 0.01–100%; end dates on or after start dates (placements, ownerships, invoice periods). Each migration names any row that breaks a rule before it changes the database; `manage.py check_data_quality` gives the same list (`core/data_quality.py`) | None. | — |
 | Timezones stored right | ✅ | `USE_TZ=True`, `Europe/London`, Celery uses the same zone, `timezone.localdate()` everywhere except P0 #7 | Fix P0 #7. | P0 |
 | Apostrophes in names | ✅ | ORM only, no raw SQL; PDF text is escaped (`invoicing/pdf.py:26`) | None. | — |
-| Emoji, accents and right-to-left text | 🟡 | PDFs use Helvetica only, so Arabic, Chinese and emoji print as boxes. Statement file name built straight from the owner name (`invoicing/views.py:516`). CSV has no UTF-8 BOM, so Excel shows accents wrong. | Register a Unicode font (DejaVu or Noto) in `pdf.py`. Sanitise file names and add `filename*`. Write the BOM on CSV export. | P1 |
+| Emoji, accents and right-to-left text | 🟡 | PDFs use DejaVu Sans (`invoicing/fonts/`): every European accent, Greek, Cyrillic, Arabic and Hebrew letters, and some emoji. A character the font lacks (Chinese, Japanese, Korean, most emoji) prints as `?`, not an empty box. Download names keep the real name (`filename*`, `core/downloads.py`). Every CSV has a UTF-8 byte-order mark, the Xero ones included. Arabic and Hebrew print letter by letter, left to right | Add a CJK font and right-to-left shaping (`python-bidi`, `arabic-reshaper`) only if a yard needs it. | P3 |
 | Money stored as exact numbers | ✅ | `DecimalField` everywhere; no float in money paths | Decimal is correct (integers in pence would also be correct). Optionally set `ROUND_HALF_UP` explicitly. | — |
 | Currency, rounding and tax per country | ➖ | UK only, GBP only, one VAT rate | Only if you sell outside the UK. | P3 |
 | Idempotency keys on payment | ✅ | Payment save locks the invoice; Xero calls send an Idempotency-Key | Card payments (Stripe) will need their own keys. | P2 |
 | Deduplication for four clicks on submit | ✅ | Submit buttons disable on click (`templates/base.html:756`); invoice creation locks the owner and refuses overlaps | None. | — |
 | Pagination on page 400 | ✅ | Django offset paging on all big lists | Fine at single-yard size. Use keyset paging if a list grows past about 100,000 rows. | — |
 | Exports to a spreadsheet | ✅ | CSV export of owners, horses and charges (UTF-8 with BOM, formula guard; `core/csv_export.py`); invoice CSV and PDF; full owner export as ZIP | Add health records if staff ask for them. | — |
-| Imports that survive an old CSV | 🟡 | `data/import_csv.py` handles `utf-8-sig` then `cp1252`. `load_csv_data.py` tries latin-1 before cp1252, so cp1252 never runs. No dry run. | Fix encoding order. Add `--dry-run`. Delete the duplicate root `import_data.py`. | P1 |
+| Imports that survive an old CSV | ✅ | Both importers decode the whole file first: UTF-8, then cp1252 (Excel on Windows), then latin-1 (`core/csv_import.py`). The old fallback never ran, because `open()` does not raise on a bad byte. `--dry-run` on `import_data` and `load_csv_data` runs everything and saves nothing. The duplicate root `import_data.py` is deleted | None. | — |
 | Retention rules, and code that deletes | ✅ | `docs/DATA_RETENTION.md`; weekly job anonymises archived owners 6 years after their last invoice and drops account events after 2 years (`core/gdpr.py`); nightly purge of Recently Deleted | Have the solicitor confirm the periods. | — |
 | Caching, and clearing it when data changes | 🟡 | Only the business name is cached, in per-process memory; the clear reaches one process | Harmless now. Use Redis as `CACHES` backend before caching more. | P2 |
 
@@ -319,7 +319,7 @@ credentials (see "Least privilege" in section 3).
 | PR template and CODEOWNERS | ❌ | None in `.github/` | Add both. The template asks: tests added? migration safe both ways? `SECURITY.md` still true? | P1 |
 | Monthly dependency upgrades | 🟡 | Dependabot on; nothing makes sure its PRs merge | Calendar task: merge Dependabot PRs each month. | P1 |
 | Framework upgrades before support ends | 🟡 | Django 5.2 is LTS (security fixes to April 2028) | Plan the move to Django 6.2 LTS for 2027. | P3 |
-| Delete dead code | 🟡 | Root `import_data.py` (513 lines, duplicates `data/import_csv.py`); `load_csv_data.py` (one-off); Vercel code; keep-Supabase-awake ping | Delete after Go-live phase 4. | P1 |
+| Delete dead code | 🟡 | `load_csv_data.py` (one-off); Vercel code; keep-Supabase-awake ping. (The root `import_data.py` duplicate is deleted.) | Delete after Go-live phase 4. | P1 |
 | Split the very large files | 🟡 | `health/views.py` 1,830 lines; `core/views/horses.py` 1,802; `core/models.py` 1,580; `core/views/locations.py` 1,241; `core/forms.py` 1,050; `health/models.py` 1,009 | Split by sub-area, one file per PR, no behaviour change. | P2 |
 | Architecture decisions written down | ❌ | No ADRs | Start `docs/adr/`. First records: single-tenant, Decimal money, Celery claim pattern, Xero as push target. | P1 |
 | README that gets a new engineer running in an hour | 🟡 | Steps exist; Windows first; no demo data | Add Linux/Mac first, Docker Compose for Postgres and Redis, and `seed_demo`. Time a new person on it. | P1 |
@@ -376,7 +376,7 @@ Dashboard:
 | 6 | ✅ **Email** (done; staff digest opt-out not needed: the only staff email is the yard's document summary): plain-text parts, `List-Unsubscribe`, owner and staff preferences, bounce webhook with signature check | Email, notifications | 1 week |
 | 7 | ✅ **Jobs** (done): retries with backoff, `acks_late`, failed-task table with Run again, once-a-day claim for scheduled tasks, fix expiry claim, heartbeats, health check covers Redis and scheduled tasks | Jobs, cron, monitoring | 3 days |
 | 8 | ✅ **Hardening** (done; the database user and the security address are dashboard steps in Go-live phase 6): upload content check and `attachment` header, `Permissions-Policy`, DB `sslmode=require`, separate DB user, encrypted backups, Python lockfile, Actions pinned by SHA, trim Xero error logs, `security.txt` | Security | 3 days |
-| 9 | **Unicode and data quality**: PDF font, safe file names, CSV BOM, import encoding fix and `--dry-run`, DB check constraints | Unicode, imports, validation | 3 days |
+| 9 | ✅ **Unicode and data quality** (done): PDF font, safe file names, CSV BOM, import encoding fix and `--dry-run`, DB check constraints | Unicode, imports, validation | 3 days |
 | 10 | **Tests and CI**: Postgres job in CI, three E2E tests in CI with axe checks, Xero OAuth tests, `seed_demo` command | Testing, accessibility | 1 week |
 | 11 | **Cleanup and docs**: delete Vercel and import dead code, skip link, missing admin models, JSON logs, global HTMX error message, `CONTRIBUTING.md`, PR template, CODEOWNERS, `CHANGELOG.md`, first ADRs, README update, `HANDOVER.md`, runbooks (site down, email, Xero, worker, rollback, stolen laptop, DR), postmortem template | Docs, team, ops | 1 week |
 
