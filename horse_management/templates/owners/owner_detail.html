@@ -77,6 +77,21 @@
                         <dd class="mt-1 text-sm text-charcoal">
                             <a href="mailto:{{ owner.email }}" class="link tap-pad">{{ owner.email }}</a>
                         </dd>
+                        {% if owner.email_bounced_at %}
+                        <div class="mt-2 alert-error" role="alert">
+                            <div class="text-sm">
+                                <p class="font-medium">Emails to this address are not arriving.</p>
+                                <p>{{ owner.email_bounce_reason|default:"Bounced" }}, {{ owner.email_bounced_at|date:"d M Y" }}. Nothing more is sent until you change the address{% if feature_access.owners.full %} or mark it as working{% endif %}.</p>
+                                {% if feature_access.owners.full %}
+                                <form method="post" action="{% url 'owner_email_ok' owner.pk %}" class="mt-2">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-secondary btn-sm">It works now</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if not owner.email_health_reminders %}<p class="mt-1 text-xs text-sage">Health reminder emails are off.</p>{% endif %}
                     </div>
                     {% endif %}
                     {% if owner.phone %}

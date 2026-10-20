@@ -61,6 +61,7 @@ child's {% block extra_styles %}. Keep brand hex in sync with tailwind.config.js
         {% if business.phone %}Tel: {{ business.phone }}<br>{% endif %}
         {% if business.email %}Email: {{ business.email }}{% endif %}
         {% endblock %}
+        {% if unsubscribe_url %}<p>Don't want these reminders? <a href="{{ unsubscribe_url }}">Turn them off</a>.</p>{% endif %}
     </div>
 </body>
 </html>

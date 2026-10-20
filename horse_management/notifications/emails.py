@@ -5,11 +5,12 @@ Email sending functions for notifications.
 import logging
 
 from django.conf import settings
-from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 from django.utils import timezone
 
 from core.models import BusinessSettings
+
+from .mail import SKIPPED, can_email, health_unsubscribe_url, message
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ def send_invoice_email(invoice):
     """Send invoice email with PDF attachment."""
     from invoicing.pdf import generate_invoice_pdf
 
-    if not invoice.owner.email:
+    if not can_email(invoice.owner):
         return False
 
     business = BusinessSettings.get_settings()
@@ -32,13 +33,7 @@ def send_invoice_email(invoice):
 
     html_content = render_to_string('notifications/email/invoice.html', context)
 
-    email = EmailMessage(
-        subject=subject,
-        body=html_content,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[invoice.owner.email],
-    )
-    email.content_subtype = 'html'
+    email = message(subject, html_content, [invoice.owner.email])
 
     # The PDF *is* the invoice. Sending without it used to report success,
     # mark the invoice SENT and drop it from the draft queue, while the
@@ -71,6 +66,10 @@ def send_vaccination_digest(owner, vaccinations):
     """
     if not owner or not owner.email or not vaccinations:
         return False
+    if not owner.email_health_reminders or not can_email(owner):
+        # Turned off by the owner, or the address bounces.
+        return SKIPPED
+    unsubscribe = health_unsubscribe_url(owner)
 
     business = BusinessSettings.get_settings()
 
@@ -85,17 +84,12 @@ def send_vaccination_digest(owner, vaccinations):
         {
             'vaccinations': vaccinations,
             'owner': owner,
+            'unsubscribe_url': unsubscribe,
             'business': business,
         },
     )
 
-    email = EmailMessage(
-        subject=subject,
-        body=html_content,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[owner.email],
-    )
-    email.content_subtype = 'html'
+    email = message(subject, html_content, [owner.email], unsubscribe_url=unsubscribe)
 
     try:
         email.send()
@@ -109,6 +103,10 @@ def send_farrier_digest(owner, visits):
     """Send ONE email covering all of an owner's due farrier visits."""
     if not owner or not owner.email or not visits:
         return False
+    if not owner.email_health_reminders or not can_email(owner):
+        # Turned off by the owner, or the address bounces.
+        return SKIPPED
+    unsubscribe = health_unsubscribe_url(owner)
 
     business = BusinessSettings.get_settings()
 
@@ -122,17 +120,12 @@ def send_farrier_digest(owner, visits):
         {
             'visits': visits,
             'owner': owner,
+            'unsubscribe_url': unsubscribe,
             'business': business,
         },
     )
 
-    email = EmailMessage(
-        subject=subject,
-        body=html_content,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[owner.email],
-    )
-    email.content_subtype = 'html'
+    email = message(subject, html_content, [owner.email], unsubscribe_url=unsubscribe)
 
     try:
         email.send()
@@ -149,6 +142,10 @@ def send_ehv_reminder(breeding_record, month_number):
 
     if not owner or not owner.email:
         return False
+    if not owner.email_health_reminders or not can_email(owner):
+        # Turned off by the owner, or the address bounces.
+        return SKIPPED
+    unsubscribe = health_unsubscribe_url(owner)
 
     business = BusinessSettings.get_settings()
 
@@ -161,6 +158,7 @@ def send_ehv_reminder(breeding_record, month_number):
         'breeding_record': breeding_record,
         'mare': mare,
         'owner': owner,
+            'unsubscribe_url': unsubscribe,
         'business': business,
         'month_number': month_number,
         'due_date': due_date,
@@ -168,13 +166,7 @@ def send_ehv_reminder(breeding_record, month_number):
 
     html_content = render_to_string('notifications/email/ehv_reminder.html', context)
 
-    email = EmailMessage(
-        subject=subject,
-        body=html_content,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[owner.email],
-    )
-    email.content_subtype = 'html'
+    email = message(subject, html_content, [owner.email], unsubscribe_url=unsubscribe)
 
     try:
         email.send()
@@ -190,7 +182,7 @@ def send_invoice_overdue_reminder(invoice, stage=1, final=False):
     ``stage`` is which reminder this is (1 = first); ``final`` words it as
     the last one before the yard follows up in person.
     """
-    if not invoice.owner.email:
+    if not can_email(invoice.owner):
         return False
 
     business = BusinessSettings.get_settings()
@@ -211,13 +203,7 @@ def send_invoice_overdue_reminder(invoice, stage=1, final=False):
 
     html_content = render_to_string('notifications/email/invoice_overdue.html', context)
 
-    email = EmailMessage(
-        subject=subject,
-        body=html_content,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[invoice.owner.email],
-    )
-    email.content_subtype = 'html'
+    email = message(subject, html_content, [invoice.owner.email])
 
     try:
         email.send()
@@ -232,7 +218,7 @@ def send_owner_statement(owner):
     from invoicing.pdf import generate_owner_statement_pdf
     from invoicing.services import StatementService
 
-    if not owner.email:
+    if not can_email(owner):
         return False
 
     business = BusinessSettings.get_settings()
@@ -245,13 +231,7 @@ def send_owner_statement(owner):
         'business': business,
     })
 
-    email = EmailMessage(
-        subject=subject,
-        body=html_content,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[owner.email],
-    )
-    email.content_subtype = 'html'
+    email = message(subject, html_content, [owner.email])
 
     try:
         pdf_file = generate_owner_statement_pdf(owner, statement)
@@ -285,13 +265,7 @@ def send_document_expiry_summary(to_email, documents, today):
         'today': today,
     })
 
-    email = EmailMessage(
-        subject=subject,
-        body=html_content,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[to_email],
-    )
-    email.content_subtype = 'html'
+    email = message(subject, html_content, [to_email])
     try:
         email.send()
         return True
@@ -307,6 +281,10 @@ def send_breeding_digest(owner, entries):
     ``due``."""
     if not owner or not owner.email or not entries:
         return False
+    if not owner.email_health_reminders or not can_email(owner):
+        # Turned off by the owner, or the address bounces.
+        return SKIPPED
+    unsubscribe = health_unsubscribe_url(owner)
 
     business = BusinessSettings.get_settings()
     if len(entries) == 1:
@@ -317,15 +295,10 @@ def send_breeding_digest(owner, entries):
 
     html_content = render_to_string(
         'notifications/email/breeding_digest.html',
-        {'entries': entries, 'owner': owner, 'business': business},
+        {'entries': entries, 'owner': owner,
+            'unsubscribe_url': unsubscribe, 'business': business},
     )
-    email = EmailMessage(
-        subject=subject,
-        body=html_content,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[owner.email],
-    )
-    email.content_subtype = 'html'
+    email = message(subject, html_content, [owner.email], unsubscribe_url=unsubscribe)
     try:
         email.send()
         return True

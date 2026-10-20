@@ -72,6 +72,17 @@ class Owner(models.Model):
         default=False,
         help_text="Stop overdue-payment emails, for example while a payment plan is agreed.",
     )
+    email_health_reminders = models.BooleanField(
+        'Email health reminders',
+        default=True,
+        help_text="Vaccination, farrier, EHV and breeding reminders. Invoices and statements "
+                  "always go. The owner can also turn these off from the link in the email.",
+    )
+    # Set by the email provider's webhook (notifications/webhooks.py) when
+    # mail to this address hard-bounces or is marked as spam. Nothing more
+    # is sent until the address is changed or marked as working.
+    email_bounced_at = models.DateTimeField(null=True, blank=True, editable=False)
+    email_bounce_reason = models.CharField(max_length=255, blank=True, editable=False)
     notes = models.TextField(blank=True)
     is_archived = models.BooleanField(
         default=False,

@@ -43,7 +43,7 @@ class OwnerForm(forms.ModelForm):
     class Meta:
         model = Owner
         fields = ['name', 'email', 'phone', 'address', 'account_code', 'invoice_reference',
-                  'pause_reminders', 'notes']
+                  'pause_reminders', 'email_health_reminders', 'notes']
         widgets = {
             'invoice_reference': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. PO-4471'}),
             'name': forms.TextInput(attrs={'class': 'form-input', 'autocomplete': 'name'}),
@@ -53,6 +53,16 @@ class OwnerForm(forms.ModelForm):
             'account_code': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Xero account code'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
         }
+
+    def save(self, commit=True):
+        owner = super().save(commit=False)
+        if 'email' in self.changed_data:
+            # A new address gets a fresh start: the bounce was the old one's.
+            owner.email_bounced_at = None
+            owner.email_bounce_reason = ''
+        if commit:
+            owner.save()
+        return owner
 
 
 def owners_for_picker(current_pk=None):

@@ -94,3 +94,16 @@ def owner_erase(request, pk):
     except gdpr.ErasureRefused as exc:
         messages.error(request, str(exc))
     return redirect('owner_detail', pk=owner.pk)
+
+
+@feature_required('owners')
+@require_POST
+def owner_email_ok(request, pk):
+    """Clear a bounce flag: the address was fixed outside the app, or the
+    bounce was a one-off."""
+    owner = get_object_or_404(Owner, pk=pk)
+    owner.email_bounced_at = None
+    owner.email_bounce_reason = ''
+    owner.save(update_fields=['email_bounced_at', 'email_bounce_reason'])
+    messages.success(request, "Emails to this owner will be sent again.")
+    return redirect('owner_detail', pk=owner.pk)

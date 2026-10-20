@@ -344,6 +344,15 @@ and anyone can spoof your address.
       `DEFAULT_FROM_EMAIL` on **web and worker**
 - [ ] Send yourself a test invoice and confirm it lands in the inbox, not
       spam
+- [ ] Set `SITE_URL` to the app's address (for the unsubscribe link)
+- [ ] Add the bounce webhook in the provider, so addresses that bounce are
+      flagged on the owner's page:
+  - Postmark: set `EMAIL_WEBHOOK_TOKEN` to a long random string and add a
+    Bounce + Spam Complaint webhook to
+    `https://<your domain>/email/events/postmark/<that token>/`
+  - Resend: add a webhook for `email.bounced` and `email.complained` to
+    `https://<your domain>/email/events/resend/`, and set
+    `RESEND_WEBHOOK_SECRET` to its signing secret
 
 ---
 

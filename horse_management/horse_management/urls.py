@@ -10,6 +10,7 @@ from django.urls import include, path
 from core.views import account as account_views
 from core.views import audit_log as audit_log_views
 from core.views import recently_deleted as recently_deleted_views
+from notifications import views as notification_views
 from core.views import (
     app_settings,
     posthog_proxy,
@@ -45,6 +46,11 @@ urlpatterns = [
     path('settings/dashboard/toggle/', dashboard_toggle, name='dashboard_toggle'),
     path('settings/audit/', audit_log_views.audit_log, name='audit_log'),
     path('settings/deleted/', recently_deleted_views.recently_deleted, name='recently_deleted'),
+    # Public: the unsubscribe link in reminder emails, and the email
+    # provider's bounce and complaint webhooks (notifications/views.py).
+    path('email/unsubscribe/<str:token>/', notification_views.unsubscribe, name='email_unsubscribe'),
+    path('email/events/postmark/<str:token>/', notification_views.postmark_events, name='email_events_postmark'),
+    path('email/events/resend/', notification_views.resend_events, name='email_events_resend'),
     path(settings.ADMIN_URL, admin.site.urls),
     # Ahead of django.contrib.auth.urls, so these replace the stock views of
     # the same names (core/views/account.py says why).
