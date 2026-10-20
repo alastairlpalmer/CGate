@@ -93,6 +93,7 @@ INSTALLED_APPS = [
     'django_otp',
     'django_otp.plugins.otp_totp',
     'django_otp.plugins.otp_static',
+    'simple_history',
 
     # Local apps
     'core.apps.CoreConfig',
@@ -129,6 +130,8 @@ MIDDLEWARE = [
     # has (core.mfa).
     'django_otp.middleware.OTPMiddleware',
     'core.middleware.MFAMiddleware',
+    # Records the signed-in user on every history row (core/audit.py).
+    'simple_history.middleware.HistoryRequestMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_htmx.middleware.HtmxMiddleware',

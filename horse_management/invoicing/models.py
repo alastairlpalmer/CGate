@@ -11,6 +11,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
+from simple_history.models import HistoricalRecords
 
 
 class Invoice(models.Model):
@@ -71,6 +72,11 @@ class Invoice(models.Model):
     # last failure reason so a queued send that fails is not invisible.
     send_queued_at = models.DateTimeField(null=True, blank=True)
     send_error = models.TextField(blank=True)
+
+    # Who changed what, and when (core/audit.py shows it). send_queued_at
+    # is a claim flag set and cleared by every bulk send: tracking it
+    # would bury the real changes.
+    history = HistoricalRecords(excluded_fields=['send_queued_at'])
 
     class Meta:
         db_table = 'core_invoice'
@@ -359,6 +365,10 @@ class Payment(models.Model):
     )
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # Deleting a payment leaves its history row behind, so a payment that
+    # disappears can still be traced to who removed it.
+    history = HistoricalRecords()
 
     class Meta:
         ordering = ['-date', '-created_at']

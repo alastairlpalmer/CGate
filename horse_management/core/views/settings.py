@@ -125,6 +125,9 @@ def app_settings(request):
             ).order_by('-is_system', 'name'),
         })
 
+    from .. import mfa
+    ctx['can_view_audit_log'] = mfa.is_administrator(request.user)
+
     return render(request, 'settings.html', ctx)
 
 

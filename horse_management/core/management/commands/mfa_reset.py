@@ -9,8 +9,9 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Q
 
-from core import mfa
+from core import audit, mfa
 from core.account_security import sign_out_everywhere
+from core.models import AuditEvent
 
 
 class Command(BaseCommand):
@@ -28,6 +29,7 @@ class Command(BaseCommand):
         user = users[0]
         mfa.disable(user)
         ended = sign_out_everywhere(user)
+        audit.record(AuditEvent.Action.MFA_RESET, target=user, detail='From a shell (mfa_reset command)')
         self.stdout.write(self.style.SUCCESS(
             f"Two-step sign-in is off for {user.get_username()}. Ended {ended} session(s)."
         ))

@@ -52,7 +52,7 @@ its own deployment, database and bucket.
 | Sign-in and access | 15 | 9 | 0 | 4 | 0 | 2 |
 | Data and database | 23 | 11 | 8 | 3 | 0 | 1 |
 | Security | 21 | 5 | 11 | 2 | 2 | 1 |
-| Compliance | 12 | 0 | 2 | 6 | 0 | 4 |
+| Compliance | 12 | 1 | 1 | 6 | 0 | 4 |
 | Infrastructure and deploys | 14 | 0 | 6 | 4 | 3 | 1 |
 | Jobs, email and cache | 11 | 2 | 5 | 3 | 1 | 0 |
 | Monitoring and incidents | 11 | 0 | 3 | 8 | 0 | 0 |
@@ -60,9 +60,9 @@ its own deployment, database and bucket.
 | Billing and payments | 11 | 2 | 4 | 3 | 0 | 2 |
 | API and integrations | 8 | 2 | 0 | 1 | 0 | 5 |
 | AI features | 8 | 0 | 0 | 0 | 0 | 8 |
-| User experience | 12 | 1 | 8 | 2 | 0 | 1 |
+| User experience | 12 | 1 | 9 | 1 | 0 | 1 |
 | Code, docs and team | 14 | 0 | 7 | 5 | 2 | 0 |
-| **Total** | **169** | **33** | **59** | **44** | **8** | **25** |
+| **Total** | **169** | **34** | **59** | **43** | **8** | **25** |
 
 **What is already strong:** money is stored as `Decimal` everywhere, dates are
 timezone-aware, invoice creation and sends are safe against duplicates, the
@@ -70,7 +70,7 @@ role system is a per-feature matrix, the Xero client handles token refresh,
 rate limits and idempotency, every data migration can be reversed, and CI runs
 about 1,490 tests plus CVE, secret and static-analysis scans.
 
-**What is weakest:** no audit trail, no GDPR erasure, no staging
+**What is weakest:** no GDPR erasure, no staging
 environment, no uptime monitoring or on-call, the restore has never been
 tested, and the legal pages are placeholders.
 
@@ -174,7 +174,7 @@ These are small. Do them before anything else.
 
 | Requirement | Status | Evidence | Action | Phase |
 |---|---|---|---|---|
-| Audit trail of who changed a record | 🟡 | Only `uploaded_by` on documents and photos; Django `LogEntry` covers admin edits only | Add `django-simple-history` (or `django-auditlog`) on invoices, payments, owners, users and roles. Show history on each record page. | P1 |
+| Audit trail of who changed a record | ✅ | `django-simple-history` on invoices, payments, owners, roles, role assignments and business settings; `AuditEvent` for sign-ins and account actions (`core/audit.py`). History panels on invoice, owner and user pages; Settings → Audit Log for Administrators. | Changes made with `QuerySet.update()` by scheduled tasks are not tracked. Add charges and health records if needed. | — |
 | Audit trail of who viewed a record | ❌ | None | Log views of passports, insurance documents and owner contact details. | P2 |
 | GDPR deletion reaches every table, backup and log | ❌ | No erasure code. Owner delete is blocked once history exists. | Build "Anonymise owner": keep invoices (legal duty), blank name, email, phone and address, delete documents. Write down that backups expire within 12 months under the GFS retention. | P1 |
 | GDPR access request (export one person's data) | ❌ | None | Export everything about one owner as a ZIP (CSV plus documents). | P1 |
@@ -307,7 +307,7 @@ credentials (see "Least privilege" in section 3).
 | Translations and locale formats | ➖ | UK English only; dates fixed to `dd/mm/yyyy`; £ fixed | Only if you sell outside the UK. | P3 |
 | Back button does what people expect | 🟡 | HTMX navigation; not tested | Check that HTMX swaps push URLs. Add one E2E test for back. | P2 |
 | Admin panel for ops | 🟡 | 26 models in Django admin. `Payment`, `Role` and documents are missing. | Register the missing models (read-only where possible). | P1 |
-| Support tooling | ❌ | No impersonation, no audit view | Comes with the audit log (P1) and impersonation (P2). | P2 |
+| Support tooling | 🟡 | Audit log and history panels show who changed what. No impersonation. | Impersonation (P2). | P2 |
 
 ### 13. Code, docs and team
 
@@ -369,7 +369,7 @@ Dashboard:
 | # | Work package | Covers | Size |
 |---|---|---|---|
 | 1 | ✅ **Account security** (done): MFA with recovery codes (required for administrators), self-unlock by password reset and an admin unlock button, rate limit on password reset, absolute session lifetime, "sign out everywhere", invite by email | MFA, lockouts, sessions, rate limits | 1.5 weeks |
-| 2 | **Audit log**: `django-simple-history` on invoices, payments, owners, users, roles; history panel on record pages | Audit trail (changes), support | 1 week |
+| 2 | ✅ **Audit log** (done): `django-simple-history` on invoices, payments, owners, roles and business settings; account events for users; history panels on record pages; Settings → Audit Log | Audit trail (changes), support | 1 week |
 | 3 | **Soft deletes**: void payments with a reason; archive charges and health records; "Undo" in success messages | Soft deletes, undo | 1 week |
 | 4 | **GDPR**: anonymise owner, export one owner's data, retention job, CSV exports for main lists | GDPR, retention, exports | 1 week |
 | 5 | **Billing fixes**: PO / customer reference, credit notes, stepped dunning, gap-free numbering, reconciliation report | Billing | 1.5 weeks |

@@ -93,6 +93,20 @@ no cross-customer isolation boundary to get wrong.
   recorded in `BackupRun`, so a job that stops running is visible rather
   than assumed. See `docs/BACKUP_RESTORE.md`.
 
+**Audit trail**
+- Every save and delete of an invoice, payment, owner, role, role
+  assignment or the business settings keeps a copy of the row and the
+  user who made it (django-simple-history). A deleted payment can still be
+  traced to who removed it.
+- Sign-ins, sign-outs, password changes and resets, invitations, user
+  changes, lockout clears, "sign out everywhere" and every two-step
+  sign-in change are written to `AuditEvent` with the user, the target,
+  the time and the IP address (`core/audit.py`).
+- Administrators see it all on Settings → Audit Log. Invoice, owner and
+  user pages have a History panel.
+- Not covered: changes made by scheduled tasks with `QuerySet.update()`
+  (overdue sweep, reminder flags), and who *viewed* a record.
+
 **Monitoring**
 - Sentry reports unhandled errors from both the web process and the Celery
   worker. Off until `SENTRY_DSN` is set.
@@ -122,6 +136,8 @@ Listed on purpose. A reviewer should not have to discover these.
 | **CSP allows `unsafe-inline` and `unsafe-eval` for scripts.** Inline `<script>` blocks and Alpine.js need them today. | Medium | Move to per-tag nonces and Alpine's CSP build, then set `CSP_ENFORCE=True`. |
 | **`ADMIN_URL` still defaults to `admin/`.** The setting exists; a deployment that does not set it gains nothing. | Low | Set `ADMIN_URL` in production, or restrict by IP at the proxy. |
 | **Two-step sign-in is optional for roles other than Administrator.** A stolen password is enough for those accounts. | Medium | Encourage it for staff who use Invoices or Owners. Make it required per role if needed. |
+| **Record history keeps old personal data.** An owner's previous addresses and phone numbers stay in the history tables. | Medium (GDPR) | The GDPR erasure work must clear history rows too. |
+| **No record of who viewed a record.** Only changes are tracked. | Medium | Log views of passports, insurance documents and owner details (plan P2). |
 | **Limited rate limiting outside sign-in.** Password reset is limited; report generation and PDF export are not. Rate-limit counters are per process unless `CACHE_URL` points at Redis. | Medium | Set `CACHE_URL`. Rate-limit expensive views at Cloudflare. |
 | **Uploads on a local volume are a single point of failure** where `MEDIA_S3_BUCKET` is not set. Worse, a volume attaches to one service, so the backup job on the worker cannot read files written by the web service and archives nothing while still reporting success. | Medium (availability) | Set the `MEDIA_S3_*` settings so uploads go to a private bucket. |
 | **Python dependencies are version ranges (`~=`), not a lockfile.** Two builds can differ. (JavaScript has `package-lock.json`.) | Low | Add `pip-compile` or `uv lock`. |

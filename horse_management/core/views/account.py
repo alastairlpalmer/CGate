@@ -21,8 +21,9 @@ from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.decorators.http import require_POST
 
-from .. import ratelimit
+from .. import audit, ratelimit
 from ..account_security import clear_lockout, sign_out_everywhere
+from ..models import AuditEvent
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +48,19 @@ class RateLimitedPasswordResetView(auth_views.PasswordResetView):
 
 
 class UnlockingPasswordResetConfirmView(auth_views.PasswordResetConfirmView):
+    audit_action = AuditEvent.Action.PASSWORD_RESET
+
     def form_valid(self, form):
         response = super().form_valid(form)
         clear_lockout(form.user)
+        audit.record(self.audit_action, request=self.request, actor=form.user, target=form.user)
+        return response
+
+
+class AuditedPasswordChangeView(auth_views.PasswordChangeView):
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        audit.record(AuditEvent.Action.PASSWORD_CHANGED, request=self.request, target=self.request.user)
         return response
 
 
@@ -67,6 +78,10 @@ def account_security(request):
 @require_POST
 def sign_out_other_devices(request):
     ended = sign_out_everywhere(request.user, keep_session_key=request.session.session_key)
+    audit.record(
+        AuditEvent.Action.SIGNED_OUT_EVERYWHERE, request=request, target=request.user,
+        detail=f"{ended} other session{'s' if ended != 1 else ''} ended",
+    )
     if ended:
         messages.success(request, f"Signed out of {ended} other session{'s' if ended != 1 else ''}.")
     else:
@@ -136,6 +151,7 @@ def send_invite(request, user):
 
 
 class InviteConfirmView(UnlockingPasswordResetConfirmView):
+    audit_action = AuditEvent.Action.INVITE_ACCEPTED
     token_generator = invite_token_generator
     success_url = reverse_lazy('password_reset_complete')
     extra_context = {'invite': True}
@@ -178,6 +194,10 @@ def mfa_verify(request):
             otp_login(request, device)
             if device.__class__.__name__ == 'StaticDevice':
                 left = mfa.recovery_codes_left(request.user)
+                audit.record(
+                    AuditEvent.Action.MFA_RECOVERY_CODE_USED, request=request, target=request.user,
+                    detail=f'{left} left',
+                )
                 messages.warning(
                     request,
                     f"You used a recovery code. {left} left. "
@@ -201,6 +221,7 @@ def mfa_setup(request):
     from .. import mfa
 
     error = None
+    replacing = mfa.has_mfa(request.user)
     device = mfa.pending_device(request.user, request.session.get(PENDING_DEVICE_KEY))
     if request.method == 'POST' and device is not None:
         codes = mfa.confirm_setup(request.user, device, request.POST.get('code'))
@@ -213,7 +234,10 @@ def mfa_setup(request):
             # A session elsewhere, perhaps on the device that made the user
             # turn this on, would otherwise carry on without a code.
             sign_out_everywhere(request.user, keep_session_key=request.session.session_key)
-            logger.info('Two-step sign-in set up for user %s.', request.user.pk)
+            audit.record(
+                AuditEvent.Action.MFA_ENABLED, request=request, target=request.user,
+                detail='New phone' if replacing else '',
+            )
             return render(request, 'account/mfa_recovery_codes.html', {
                 'codes': codes,
                 'next': _safe_next(request),
@@ -231,8 +255,8 @@ def mfa_setup(request):
         'qr_svg': mfa.qr_code_svg(device),
         'secret': mfa.secret_for_display(device),
         'error': error,
-        'required': mfa.mfa_required(request.user) and not mfa.has_mfa(request.user),
-        'replacing': mfa.has_mfa(request.user),
+        'required': mfa.mfa_required(request.user) and not replacing,
+        'replacing': replacing,
         'next': request.POST.get('next') or request.GET.get('next', ''),
     })
 
@@ -245,6 +269,7 @@ def mfa_new_recovery_codes(request):
     if not mfa.has_mfa(request.user):
         return redirect('account_security')
     codes = mfa.new_recovery_codes(request.user)
+    audit.record(AuditEvent.Action.MFA_RECOVERY_CODES_RENEWED, request=request, target=request.user)
     return render(request, 'account/mfa_recovery_codes.html', {
         'codes': codes,
         'next': reverse('account_security'),
@@ -265,6 +290,6 @@ def mfa_disable(request):
     else:
         mfa.disable(request.user)
         mfa.remember_enrolment(request)
-        logger.info('Two-step sign-in turned off by user %s.', request.user.pk)
+        audit.record(AuditEvent.Action.MFA_DISABLED, request=request, target=request.user)
         messages.success(request, "Two-step sign-in is off.")
     return redirect('account_security')

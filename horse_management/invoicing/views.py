@@ -27,6 +27,7 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import DetailView, ListView, UpdateView
 
+from core import audit
 from core.models import Owner
 from invoicing.models import Invoice, Payment
 
@@ -161,6 +162,11 @@ class InvoiceDetailView(FeatureAccessMixin, DetailView):
         context['payments'] = self.object.payments.all()
         context['amount_paid'] = self.object.amount_paid
         context['balance_due'] = self.object.balance_due
+        # Payments included, so a payment that was deleted still shows here.
+        context['history_entries'] = audit.merge(
+            audit.history_for(self.object),
+            audit.history_of(Payment.history.filter(invoice_id=self.object.pk), 'Payment'),
+        )
         return context
 
 

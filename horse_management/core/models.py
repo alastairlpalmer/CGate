@@ -14,6 +14,7 @@ from django.core.validators import FileExtensionValidator, MinValueValidator, Ma
 from django.db import models, transaction
 from django.db.models import F, Q
 from django.utils import timezone
+from simple_history.models import HistoricalRecords
 
 
 def validate_file_size(value):
@@ -67,6 +68,9 @@ class Owner(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     objects = OwnerQuerySet.as_manager()
+    # Owner contact details change history (core/audit.py). It holds
+    # personal data, so a GDPR erasure must clear it too.
+    history = HistoricalRecords(excluded_fields=['updated_at'])
 
     class Meta:
         ordering = ['name']
@@ -1178,6 +1182,11 @@ class BusinessSettings(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Bank details and VAT settings print on every invoice, so a change to
+    # them must be traceable. next_invoice_number moves on every invoice
+    # and is left out (get_next_invoice_number skips history).
+    history = HistoricalRecords(excluded_fields=['next_invoice_number', 'updated_at'])
+
     class Meta:
         verbose_name = "Business Settings"
         verbose_name_plural = "Business Settings"
@@ -1207,6 +1216,8 @@ class BusinessSettings(models.Model):
             locked = BusinessSettings.objects.select_for_update().get(pk=self.pk)
             number = locked.next_invoice_number
             locked.next_invoice_number = number + 1
+            # Only the counter moved, which history leaves out.
+            locked.skip_history_when_saving = True
             locked.save(update_fields=['next_invoice_number'])
         self.next_invoice_number = number + 1
         return f"{self.invoice_prefix}{number:05d}"
@@ -1487,6 +1498,9 @@ class Role(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # What each role could reach, and when that changed.
+    history = HistoricalRecords(excluded_fields=['updated_at'])
+
     class Meta:
         ordering = ['name']
 
@@ -1517,6 +1531,9 @@ class UserRole(models.Model):
     # PROTECT: deleting a role with members requires reassigning them first.
     role = models.ForeignKey(Role, on_delete=models.PROTECT, related_name='assignments')
     assigned_at = models.DateTimeField(auto_now_add=True)
+
+    # Who was given which role, and by whom.
+    history = HistoricalRecords()
 
     def __str__(self):
         return f"{self.user} → {self.role}"
@@ -1573,6 +1590,63 @@ class BackupRun(models.Model):
     @classmethod
     def last_success(cls):
         return cls.objects.filter(status=cls.STATUS_SUCCESS).first()
+
+
+class AuditEvent(models.Model):
+    """A security or account action: who did it, to whom, and when.
+
+    Record changes (an invoice edited, a payment deleted) are kept by
+    django-simple-history on the models themselves. This table holds the
+    things that are not a row changing: signing in, two-step sign-in
+    being turned off, a lockout cleared, a user signed out everywhere.
+
+    The labels are copied at the time, so the trail still reads correctly
+    after a user is renamed or deleted. Written through ``core.audit``.
+    """
+
+    class Action(models.TextChoices):
+        SIGNED_IN = 'signed_in', 'Signed in'
+        SIGNED_OUT = 'signed_out', 'Signed out'
+        USER_CREATED = 'user_created', 'User created'
+        USER_INVITED = 'user_invited', 'User invited'
+        USER_UPDATED = 'user_updated', 'User details changed'
+        USER_ACTIVATED = 'user_activated', 'User reactivated'
+        USER_DEACTIVATED = 'user_deactivated', 'User deactivated'
+        PASSWORD_SET_BY_ADMIN = 'password_set_by_admin', 'Password set by an administrator'
+        PASSWORD_CHANGED = 'password_changed', 'Password changed'
+        PASSWORD_RESET = 'password_reset', 'Password reset by email'
+        INVITE_ACCEPTED = 'invite_accepted', 'Invitation accepted'
+        LOCKOUT_CLEARED = 'lockout_cleared', 'Sign-in lockout cleared'
+        SIGNED_OUT_EVERYWHERE = 'signed_out_everywhere', 'Signed out everywhere'
+        MFA_ENABLED = 'mfa_enabled', 'Two-step sign-in turned on'
+        MFA_DISABLED = 'mfa_disabled', 'Two-step sign-in turned off'
+        MFA_RESET = 'mfa_reset', 'Two-step sign-in turned off for someone else'
+        MFA_RECOVERY_CODE_USED = 'mfa_recovery_code_used', 'Recovery code used'
+        MFA_RECOVERY_CODES_RENEWED = 'mfa_recovery_codes_renewed', 'New recovery codes made'
+
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    action = models.CharField(max_length=40, choices=Action.choices)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='+',
+    )
+    actor_label = models.CharField(max_length=254, blank=True)
+    target_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='+',
+    )
+    target_label = models.CharField(max_length=254, blank=True)
+    detail = models.CharField(max_length=500, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at', '-pk']
+        indexes = [
+            models.Index(fields=['target_user', 'created_at'], name='auditevent_target_created'),
+        ]
+
+    def __str__(self):
+        return f'{self.get_action_display()} — {self.target_label or self.actor_label} at {self.created_at:%Y-%m-%d %H:%M}'
 
 
 # Invoice and InvoiceLineItem have been moved to invoicing.models.

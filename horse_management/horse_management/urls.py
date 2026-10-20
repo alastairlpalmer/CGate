@@ -8,6 +8,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 from core.views import account as account_views
+from core.views import audit_log as audit_log_views
 from core.views import (
     app_settings,
     posthog_proxy,
@@ -41,9 +42,11 @@ urlpatterns = [
     path('settings/roles/<int:pk>/edit/', role_update, name='role_update'),
     path('settings/roles/<int:pk>/delete/', role_delete, name='role_delete'),
     path('settings/dashboard/toggle/', dashboard_toggle, name='dashboard_toggle'),
+    path('settings/audit/', audit_log_views.audit_log, name='audit_log'),
     path(settings.ADMIN_URL, admin.site.urls),
     # Ahead of django.contrib.auth.urls, so these replace the stock views of
     # the same names (core/views/account.py says why).
+    path('accounts/password_change/', account_views.AuditedPasswordChangeView.as_view(), name='password_change'),
     path('accounts/password_reset/', account_views.RateLimitedPasswordResetView.as_view(), name='password_reset'),
     path('accounts/reset/<uidb64>/<token>/', account_views.UnlockingPasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('accounts/invite/<uidb64>/<token>/', account_views.InviteConfirmView.as_view(), name='invite_confirm'),
