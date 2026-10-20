@@ -51,7 +51,7 @@ its own deployment, database and bucket.
 |---|---|---|---|---|---|---|
 | Sign-in and access | 15 | 9 | 0 | 4 | 0 | 2 |
 | Data and database | 23 | 14 | 6 | 2 | 0 | 1 |
-| Security | 21 | 5 | 11 | 2 | 2 | 1 |
+| Security | 21 | 7 | 6 | 2 | 5 | 1 |
 | Compliance | 12 | 3 | 1 | 4 | 0 | 4 |
 | Infrastructure and deploys | 14 | 0 | 6 | 4 | 3 | 1 |
 | Jobs, email and cache | 11 | 8 | 2 | 0 | 1 | 0 |
@@ -62,7 +62,7 @@ its own deployment, database and bucket.
 | AI features | 8 | 0 | 0 | 0 | 0 | 8 |
 | User experience | 12 | 3 | 8 | 0 | 0 | 1 |
 | Code, docs and team | 14 | 0 | 7 | 5 | 2 | 0 |
-| **Total** | **169** | **53** | **49** | **34** | **9** | **24** |
+| **Total** | **169** | **55** | **44** | **34** | **12** | **24** |
 
 **What is already strong:** money is stored as `Decimal` everywhere, dates are
 timezone-aware, invoice creation and sends are safe against duplicates, the
@@ -151,23 +151,23 @@ These are small. Do them before anything else.
 | Secrets out of the code and repo | ✅ | `SECRET_KEY` has no default; gitleaks on full history in CI | Turn on GitHub secret scanning and push protection (Go-live 1.1). | ⚙️ P1 |
 | Secrets out of AI chat history | ⚙️ | Cannot check from code | Treat any secret ever pasted into a chat as burnt. Rotate it. | P1 |
 | Rotate every key that was exposed | ⚙️ | Planned in Go-live phase 4D | Do 4D. | P1 |
-| Every package exists and is the right one | 🟡 | `requirements.txt` uses `~=` ranges, no lockfile, no hashes | Add `uv lock` or `pip-compile --generate-hashes`. Review each top-level package name once. | P1 |
-| Dependency scanning | ✅ | pip-audit, npm audit, Dependabot, weekly run (`.github/workflows/security.yml`) | Pin GitHub Actions by commit SHA. | P1 |
+| Every package exists and is the right one | ✅ | `requirements.in` holds the ranges; `requirements.txt` is a `pip-compile` lockfile with a hash for every download, and CI installs it with `--require-hashes`. Every top-level name is the well-known package | None. | — |
+| Dependency scanning | ✅ | pip-audit, npm audit, Dependabot, weekly run (`.github/workflows/security.yml`). Every GitHub Action is pinned to a commit SHA; Dependabot updates the pins | None. | — |
 | Input sanitisation | ✅ | Django forms everywhere; CSV formula-injection guard (`invoicing/utils.py:161`) | None. | — |
 | SQL injection | ✅ | No `.raw()` or `.extra()`; all `cursor.execute` calls static or parameterised | None. | — |
 | XSS | 🟡 | Autoescape on; one `\|safe` with a fixed string only. CSP is report-only with `unsafe-inline` and `unsafe-eval`. | Move to CSP nonces and Alpine's CSP build, then set `CSP_ENFORCE=True`. | P2 |
 | CSRF | 🟡 | One exempt view (the analytics proxy, no app state). No global HTMX header. | P0 #4. | P0 |
 | Rest of the OWASP list | 🟡 | No rate limit outside login (`SECURITY.md` gap) | Rate-limit password reset, PDF export and reports. Or put Cloudflare WAF in front. | P1 |
-| File uploads scanned, limited, stored safely | 🟡 | 5 MB limit; extension allow-list; images re-encoded by Pillow; private bucket with signed links. Documents (PDF, Word) are checked by extension only. No virus scan. | Check file type by content (magic bytes). Serve documents with `Content-Disposition: attachment`. Add a virus scan (ClamAV in the worker, or the storage provider's scanner) before SaaS. | P1 / P2 |
+| File uploads scanned, limited, stored safely | 🟡 | 5 MB limit; extension allow-list; content must match the extension (`core/uploads.py`); images re-encoded by Pillow; private bucket with signed links. Word and HEIC files are stored and served as downloads (`Content-Disposition: attachment`); PDFs and photos open in the browser. No virus scan. | Add a virus scan (ClamAV in the worker, or the storage provider's scanner) before SaaS. | P2 |
 | CORS not "allow everything" | ➖ | No CORS headers at all; same-origin app | None. | — |
-| Security headers on every response | 🟡 | HSTS, nosniff, X-Frame-Options, Referrer-Policy present. No `Permissions-Policy`. CSP report-only. | Add `Permissions-Policy` (camera, microphone, geolocation limited to self, as maps use location). Enforce CSP in P2. | P1 |
-| Encryption in transit | 🟡 | HTTPS and HSTS. Database connection does not require TLS. | Add `sslmode=require` to the database options. | P1 |
-| Encryption at rest | 🟡 | Xero tokens are Fernet-encrypted. Backups and media rely on provider defaults. | Confirm R2 and Supabase encrypt at rest (they do by default) and write it down. Encrypt backup files before upload. | P1 |
-| Least privilege, including AI agents | 🟡 | R2 tokens scoped to one bucket (Go-live 2.1). Supabase uses the `postgres` superuser. | Create a separate database user for the app without superuser rights. Never give an AI agent production credentials; give it staging only. | P1 |
-| Logs without passwords, tokens or card numbers | ✅ | Sentry scrubbing (`core/monitoring.py`); no card data held | Stop logging Xero error bodies in full (`xero_integration/client.py:182`) and stop showing them to users (`views.py:104`). | P1 |
+| Security headers on every response | 🟡 | HSTS, nosniff, X-Frame-Options, Referrer-Policy and `Permissions-Policy` (location and camera for this site only; microphone, payment and the rest off) on every response. CSP report-only. | Enforce CSP (see XSS). | P2 |
+| Encryption in transit | ✅ | HTTPS and HSTS. The database connection requires TLS (`sslmode=require`, set by `DATABASE_SSLMODE`), and so does the backup's `pg_dump` | None. | — |
+| Encryption at rest | ⚙️ | Xero tokens are Fernet-encrypted. Supabase and R2 encrypt all stored data (AES-256), written down in `SECURITY.md`. Backups are also encrypted before upload (AES-256-GCM, `core/backup/crypto.py`) with a key the provider never sees, once `BACKUP_ENCRYPTION_KEY` is set | Set the key and save a copy in a password manager (Go-live 2.2). | ⚙️ P1 |
+| Least privilege, including AI agents | ⚙️ | R2 tokens scoped to one bucket (Go-live 2.1). The SQL for an app-only database user is in Go-live 6.1. | Run Go-live 6.1. Never give an AI agent production credentials; give it staging only. | ⚙️ P1 |
+| Logs without passwords, tokens or card numbers | ✅ | Sentry scrubbing (`core/monitoring.py`); no card data held. Xero errors keep only the reason fields, never the response body (`xero_integration/client.py`, `error_summary`); unexpected errors show a plain message, not the exception | None. | — |
 | Penetration test | ❌ | None | Two reviewers are planned (`REVIEWER_PACK.md`). Book a paid pen test before the first enterprise or multi-yard sale. | P2 |
 | Security questionnaire answers with evidence | 🟡 | `SECURITY.md` and `REVIEWER_PACK.md` cover most of it | Keep a standard answers file that links to the evidence. | P2 |
-| Disclosure process | 🟡 | `SECURITY.md` says "email the maintainer" with no address | Add a real address (`security@<domain>`), a response time, and `/.well-known/security.txt`. | P1 |
+| Disclosure process | ⚙️ | `SECURITY.md` gives the process and response times; `/.well-known/security.txt` publishes `SECURITY_CONTACT` | Create the address and set `SECURITY_CONTACT` (Go-live 6.2). | ⚙️ P1 |
 | Plan for a stolen laptop | ❌ | None | Write a one-page runbook: which keys to rotate, in what order, and how to revoke GitHub, Railway, Supabase, Xero and R2 sessions. | P1 |
 
 ### 4. Compliance
@@ -375,7 +375,7 @@ Dashboard:
 | 5 | ✅ **Billing fixes** (done): PO / customer reference, credit notes, stepped dunning, gap-free numbering, reconciliation report | Billing | 1.5 weeks |
 | 6 | ✅ **Email** (done; staff digest opt-out not needed: the only staff email is the yard's document summary): plain-text parts, `List-Unsubscribe`, owner and staff preferences, bounce webhook with signature check | Email, notifications | 1 week |
 | 7 | ✅ **Jobs** (done): retries with backoff, `acks_late`, failed-task table with Run again, once-a-day claim for scheduled tasks, fix expiry claim, heartbeats, health check covers Redis and scheduled tasks | Jobs, cron, monitoring | 3 days |
-| 8 | **Hardening**: upload content check and `attachment` header, `Permissions-Policy`, DB `sslmode=require`, separate DB user, encrypted backups, Python lockfile, Actions pinned by SHA, trim Xero error logs, `security.txt` | Security | 3 days |
+| 8 | ✅ **Hardening** (done; the database user and the security address are dashboard steps in Go-live phase 6): upload content check and `attachment` header, `Permissions-Policy`, DB `sslmode=require`, separate DB user, encrypted backups, Python lockfile, Actions pinned by SHA, trim Xero error logs, `security.txt` | Security | 3 days |
 | 9 | **Unicode and data quality**: PDF font, safe file names, CSV BOM, import encoding fix and `--dry-run`, DB check constraints | Unicode, imports, validation | 3 days |
 | 10 | **Tests and CI**: Postgres job in CI, three E2E tests in CI with axe checks, Xero OAuth tests, `seed_demo` command | Testing, accessibility | 1 week |
 | 11 | **Cleanup and docs**: delete Vercel and import dead code, skip link, missing admin models, JSON logs, global HTMX error message, `CONTRIBUTING.md`, PR template, CODEOWNERS, `CHANGELOG.md`, first ADRs, README update, `HANDOVER.md`, runbooks (site down, email, Xero, worker, rollback, stolen laptop, DR), postmortem template | Docs, team, ops | 1 week |

@@ -17,6 +17,7 @@ from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 from .softdelete import SoftDeleteModel
+from .uploads import validate_file_content
 
 
 def validate_file_size(value):
@@ -1386,6 +1387,7 @@ class Document(SoftDeleteModel):
                 'doc', 'docx',
             ]),
             validate_file_size,
+            validate_file_content,
         ],
     )
     expiry_date = models.DateField(

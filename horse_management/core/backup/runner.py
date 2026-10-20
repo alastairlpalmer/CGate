@@ -17,7 +17,7 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 from django.utils import timezone
 
-from . import retention, storage
+from . import crypto, retention, storage
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,12 @@ def _dsn_from_settings():
     port = config.get('PORT') or 5432
     name = config.get('NAME') or ''
     credentials = f'{user}:{password}@' if user else ''
-    return f'postgresql://{credentials}{host}:{port}/{name}'
+    dsn = f'postgresql://{credentials}{host}:{port}/{name}'
+    sslmode = (config.get('OPTIONS') or {}).get('sslmode')
+    if sslmode:
+        # The backup connection is as encrypted as the app's own.
+        dsn += f'?sslmode={sslmode}'
+    return dsn
 
 
 def archive_media(destination_dir, now=None):
@@ -183,19 +188,26 @@ def run(include_media=True, now=None):
 
     now = now or timezone.now()
     summary = {'database_bytes': 0, 'media_bytes': 0, 'pruned': 0, 'keys': []}
+    # Checked before the dump, so a malformed key fails fast.
+    if crypto.encryption_key() is None:
+        logger.warning(
+            'Backup: BACKUP_ENCRYPTION_KEY is not set, so this backup is '
+            'uploaded unencrypted. See docs/BACKUP_RESTORE.md.'
+        )
 
     # A temporary directory, cleaned up whatever happens. The dump holds
     # every owner's details in plain text, so it must not be left on disk.
     with tempfile.TemporaryDirectory(prefix='yardway-backup-') as workdir:
         db_path = dump_database(workdir, now=now)
-        key = DB_PREFIX + db_path.name
+        # Encrypted here when BACKUP_ENCRYPTION_KEY is set (crypto.py).
+        db_path, key = crypto.maybe_encrypt(db_path, DB_PREFIX + db_path.name)
         summary['database_bytes'] = storage.upload(db_path, key)
         summary['keys'].append(key)
 
         if include_media:
             media_path = archive_media(workdir, now=now)
             if media_path is not None:
-                key = MEDIA_PREFIX + media_path.name
+                media_path, key = crypto.maybe_encrypt(media_path, MEDIA_PREFIX + media_path.name)
                 summary['media_bytes'] = storage.upload(media_path, key)
                 summary['keys'].append(key)
 

@@ -99,9 +99,11 @@ def xero_callback(request):
             f'Connected to Xero organisation: {conn.xero_tenant_name}'
         )
 
-    except Exception as e:
+    except Exception:
         logger.exception('Xero OAuth callback failed')
-        messages.error(request, f'Failed to connect to Xero: {e}')
+        # The exception can carry Xero's response; the log has it, the
+        # page says only what to do.
+        messages.error(request, 'Could not connect to Xero. Please try again. If it fails again, check the server log.')
 
     return redirect('app_settings')
 
@@ -151,9 +153,9 @@ def xero_push_invoice(request, pk):
         messages.error(request, 'Xero session expired. Please reconnect.')
     except XeroAPIError as e:
         messages.error(request, f'Xero API error: {e}')
-    except Exception as e:
+    except Exception:
         logger.exception('Unexpected error pushing invoice %s to Xero', invoice.invoice_number)
-        messages.error(request, f'Failed to push invoice: {e}')
+        messages.error(request, 'Failed to push the invoice to Xero. Check the server log, then try again.')
 
     return redirect('invoice_detail', pk=pk)
 

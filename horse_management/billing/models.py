@@ -7,6 +7,7 @@ from decimal import Decimal
 from django.core.validators import FileExtensionValidator, MinValueValidator
 
 from core.models import validate_file_size
+from core.uploads import validate_file_content
 from core.softdelete import SoftDeleteModel
 from django.db import models
 
@@ -102,6 +103,7 @@ class ExtraCharge(SoftDeleteModel):
         validators=[
             FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'pdf', 'heic', 'heif']),
             validate_file_size,
+            validate_file_content,
         ],
     )
     feed_out = models.ForeignKey(
@@ -268,6 +270,7 @@ class YardCost(SoftDeleteModel):
         validators=[
             FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'pdf', 'heic', 'heif']),
             validate_file_size,
+            validate_file_content,
         ],
     )
     notes = models.TextField(blank=True)

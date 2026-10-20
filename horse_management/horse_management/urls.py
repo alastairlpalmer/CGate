@@ -10,6 +10,7 @@ from django.urls import include, path
 from core.views import account as account_views
 from core.views import audit_log as audit_log_views
 from core.views import background_tasks as background_tasks_views
+from core.views import well_known as well_known_views
 from core.views import recently_deleted as recently_deleted_views
 from notifications import views as notification_views
 from core.views import (
@@ -30,6 +31,7 @@ from core.views import (
 
 urlpatterns = [
     path('_health/', health_check, name='health_check'),
+    path('.well-known/security.txt', well_known_views.security_txt, name='security_txt'),
     # Same-origin PostHog proxy, so ad blockers cannot see the tracker.
     # Path must match POSTHOG_PROXY_PATH in settings.
     path('ingest/', posthog_proxy, name='posthog_proxy_root'),
@@ -111,7 +113,13 @@ if getattr(settings, 'SERVE_MEDIA', False) and not settings.DEBUG:
             # Unknown prefix: superusers only, fail closed.
             if not request.user.is_superuser:
                 raise PermissionDenied
-        return media_serve(request, path, document_root=document_root)
+        response = media_serve(request, path, document_root=document_root)
+        # Open PDFs and photos in the browser; download everything else,
+        # so an uploaded file is never rendered as a page of this site.
+        from core.uploads import content_disposition
+        response['Content-Disposition'] = content_disposition(path)
+        response['X-Content-Type-Options'] = 'nosniff'
+        return response
 
     urlpatterns += [
         re_path(

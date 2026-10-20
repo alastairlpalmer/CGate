@@ -128,6 +128,13 @@ BACKUP_S3_SECRET_KEY=<secret access key>
 ```
 
 - [ ] Set those five
+- [ ] **Encrypt the backups.** Run `python manage.py backup --new-key` once
+      (locally, or in the Railway shell). It prints a key. Set it as
+      `BACKUP_ENCRYPTION_KEY` on the worker.
+- [ ] **Save the same key in your password manager now.** The provider
+      never sees this key. If the server is lost and the key with it, no
+      backup can be read. Never change the key without moving the old one
+      into `BACKUP_DECRYPTION_KEYS`, or the older backups become unreadable.
 - [ ] **If your `DATABASE_URL` contains `pooler.supabase.com`**, also set
       `BACKUP_DATABASE_URL`.
 
@@ -380,6 +387,57 @@ and anyone can spoof your address.
   - Resend: add a webhook for `email.bounced` and `email.complained` to
     `https://<your domain>/email/events/resend/`, and set
     `RESEND_WEBHOOK_SECRET` to its signing secret
+
+---
+
+## Phase 6 — Hardening (30 min)
+
+### 6.1 Give the app its own database user
+
+Today the app signs in to Supabase as `postgres`, the most powerful user.
+If the app is ever tricked into running a query, that query can do anything
+`postgres` can. A separate user owns the app's tables and can do nothing
+else: it cannot create users, databases or extensions.
+
+**Take a backup first (phase 2.3).** Then, in Supabase → **SQL Editor**:
+
+```sql
+-- 1. The user. Use a long random password (a password manager makes one).
+create role yardway_app login password '<long random password>'
+  nosuperuser nocreatedb nocreaterole;
+grant connect on database postgres to yardway_app;
+grant usage, create on schema public to yardway_app;
+-- Lets postgres hand tables to the new user in step 2.
+grant yardway_app to postgres;
+
+-- 2. Hand it the existing tables. Their sequences follow.
+do $$
+declare r record;
+begin
+  for r in select tablename from pg_tables where schemaname = 'public' loop
+    execute format('alter table public.%I owner to yardway_app', r.tablename);
+  end loop;
+end $$;
+```
+
+- [ ] Run the SQL above
+- [ ] Change `DATABASE_URL` on **web, worker and beat**: user
+      `yardway_app.<project-ref>` (the pooler needs the `.<project-ref>`)
+      and the new password. Change `BACKUP_DATABASE_URL` the same way.
+- [ ] Redeploy, sign in, open an invoice, and run one backup by hand
+- [ ] Keep the `postgres` password in the password manager only, for
+      emergencies. It is no longer on any service.
+
+The connection is encrypted (`sslmode=require`) unless `DATABASE_SSLMODE`
+says otherwise. If a database without TLS refuses it, set
+`DATABASE_SSLMODE=disable` for that database only.
+
+### 6.2 Say where to report a security problem
+
+- [ ] Create `security@<your domain>` and forward it to two people
+- [ ] Set `SECURITY_CONTACT=security@<your domain>` on the **web** service
+- [ ] Open `https://<your domain>/.well-known/security.txt`. It names the
+      address. It is a 404 until `SECURITY_CONTACT` is set.
 
 ---
 

@@ -34,8 +34,19 @@ class Command(BaseCommand):
             '--prune-only', action='store_true',
             help='Delete expired backups without taking a new one.',
         )
+        parser.add_argument(
+            '--new-key', action='store_true',
+            help='Print a new BACKUP_ENCRYPTION_KEY and stop. Store it '
+                 'somewhere other than the server as well.',
+        )
 
     def handle(self, *args, **options):
+        if options['new_key']:
+            from core.backup import crypto
+
+            self.stdout.write(crypto.new_key())
+            return
+
         if not storage.is_configured():
             raise CommandError(
                 'Backups are not configured. Set BACKUP_S3_BUCKET, '

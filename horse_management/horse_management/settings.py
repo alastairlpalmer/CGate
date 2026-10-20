@@ -113,6 +113,7 @@ if not os.environ.get('VERCEL'):
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'core.middleware.PermissionsPolicyMiddleware',
     # Compress responses: the map pages carry field geometry as JSON and
     # gzip cuts them to a fifth. Django masks the CSRF token per request,
     # which is what makes compressing pages with forms safe (BREACH).
@@ -192,6 +193,17 @@ if DATABASE_URL:
     DATABASES['default']['CONN_MAX_AGE'] = CONN_MAX_AGE
     DATABASES['default']['CONN_HEALTH_CHECKS'] = True
     DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True  # Required for Supabase pooler (pgbouncer transaction mode)
+    # Encrypt the connection to the database. Supabase accepts TLS on the
+    # pooler and directly. 'require' encrypts but does not check the
+    # certificate; set DATABASE_SSLMODE=verify-full (with the provider's
+    # root certificate in PGSSLROOTCERT) for that as well. A local database
+    # (localhost, or a socket) usually has no TLS, so it is left alone. An
+    # sslmode in DATABASE_URL itself wins over both.
+    _db = DATABASES['default']
+    _db_is_local = (_db.get('HOST') or 'localhost') in ('localhost', '127.0.0.1', '::1') or str(_db.get('HOST', '')).startswith('/')
+    DATABASE_SSLMODE = env('DATABASE_SSLMODE', default='' if _db_is_local else 'require')
+    if 'postgresql' in _db.get('ENGINE', '') and DATABASE_SSLMODE:
+        _db.setdefault('OPTIONS', {}).setdefault('sslmode', DATABASE_SSLMODE)
 else:
     if not DEBUG:
         # A missing/typo'd DATABASE_URL on a real host must fail loudly.
@@ -266,7 +278,8 @@ MEDIA_ON_S3 = bool(MEDIA_S3_BUCKET and MEDIA_S3_ACCESS_KEY and MEDIA_S3_SECRET_K
 
 if MEDIA_ON_S3:
     _media_storage = {
-        'BACKEND': 'storages.backends.s3.S3Storage',
+        # S3Storage that marks non-PDF, non-image files as downloads.
+        'BACKEND': 'core.storage.MediaStorage',
         'OPTIONS': {
             'bucket_name': MEDIA_S3_BUCKET,
             # Cloudflare R2 and Backblaze B2 need an endpoint; plain AWS S3
@@ -373,6 +386,12 @@ BACKUP_S3_REGION = env('BACKUP_S3_REGION', default='auto')
 # database through a connection pooler (Supabase's pgbouncer) that
 # pg_dump cannot use — point this at the direct connection instead.
 BACKUP_DATABASE_URL = env('BACKUP_DATABASE_URL', default='')
+# Encrypt each backup before upload (core/backup/crypto.py). Make a key with
+# `python manage.py backup --new-key`, and keep a copy off the server: a
+# lost key makes every backup unreadable. Earlier keys, comma-separated, go
+# in BACKUP_DECRYPTION_KEYS so older backups can still be restored.
+BACKUP_ENCRYPTION_KEY = env('BACKUP_ENCRYPTION_KEY', default='')
+BACKUP_DECRYPTION_KEYS = env('BACKUP_DECRYPTION_KEYS', default='')
 
 # The restore test (core/backup/restore.py). Both must name somewhere
 # scratch: the module refuses to run if the database matches DATABASE_URL
@@ -786,6 +805,29 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 
 # Clickjacking protection
 X_FRAME_OPTIONS = 'DENY'
+
+# Where to report a security problem: an email address or an https URL.
+# Published at /.well-known/security.txt (404 while empty) and named in
+# SECURITY.md. Use an address that more than one person reads.
+SECURITY_CONTACT = env('SECURITY_CONTACT', default='')
+
+# Browser features each page may use (core.middleware.PermissionsPolicyMiddleware).
+# 'self' allows this site only; an empty list turns the feature off.
+PERMISSIONS_POLICY = {
+    'geolocation': ['self'],   # "Near you" chip and the maps.
+    'camera': ['self'],        # Taking a horse photo.
+    'microphone': [],
+    'payment': [],
+    'usb': [],
+    'serial': [],
+    'bluetooth': [],
+    'midi': [],
+    'magnetometer': [],
+    'gyroscope': [],
+    'accelerometer': [],
+    'display-capture': [],
+    'browsing-topics': [],
+}
 
 # Brute-force protection (django-axes)
 # -----------------------------------
