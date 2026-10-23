@@ -64,7 +64,7 @@ django-celery-results~=2.6.0
 # Floor is 12.3.0. Pillow decodes files that people upload, so a decoder
 # CVE here is reachable by anyone who can add a horse photo. 12.1.1
 # carried 27 of them.
-Pillow~=12.3
+Pillow~=13.0
 pillow-heif~=1.4.0  # decode iPhone HEIC uploads (converted to JPEG on save)
 
 # Development
