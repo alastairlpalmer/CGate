@@ -201,11 +201,11 @@ does from the horse page, so nothing here has to know it is in a pane.
                     </span>
                     <span class="pane-event-note">
                         {% if event.type == 'placement' %}{% if event.obj.rate_type %}{{ event.obj.rate_type.name }} · {{ event.obj.rate_type.daily_rate|gbp }}/day{% else %}No rate set{% endif %}
-                        {% elif event.type == 'vaccination' %}{% if event.obj.vet %}Given by {{ event.obj.vet.name }}{% else %}Vaccination{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"d M Y" }}{% endif %}
-                        {% elif event.type == 'farrier' %}{% if event.obj.service_provider %}{{ event.obj.service_provider.name }}{% else %}Farrier visit{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"d M Y" }}{% endif %}
-                        {% elif event.type == 'worming' %}{{ event.obj.product_name }}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"d M Y" }}{% endif %}
-                        {% elif event.type == 'egg_count' %}{{ event.obj.count }} eggs per gram
-                        {% elif event.type == 'vet_visit' %}{% if event.obj.vet %}{{ event.obj.vet.name }}{% else %}Vet visit{% endif %}
+                        {% elif event.type == 'vaccination' %}{% if event.obj.vet %}Given by {{ event.obj.vet.name }}{% else %}Vaccination{% endif %}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"d M Y" }}{% endif %}
+                        {% elif event.type == 'farrier' %}{% if event.obj.service_provider %}{{ event.obj.service_provider.name }}{% else %}Farrier visit{% endif %}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"d M Y" }}{% endif %}
+                        {% elif event.type == 'worming' %}{{ event.obj.product_name }}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"d M Y" }}{% endif %}
+                        {% elif event.type == 'egg_count' %}{{ event.obj.count }} eggs per gram{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}
+                        {% elif event.type == 'vet_visit' %}{% if event.obj.vet %}{{ event.obj.vet.name }}{% else %}Vet visit{% endif %}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}
                         {% elif event.type == 'breeding' %}{{ event.obj.get_status_display }}
                         {% endif %}
                     </span>
