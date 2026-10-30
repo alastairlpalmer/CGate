@@ -648,9 +648,15 @@
 
                                     {% elif event.type == 'vaccination' %}
                                     <p class="text-charcoal font-medium">{{ event.obj.vaccination_type.name }}</p>
-                                    {% if event.obj.next_due_date %}
-                                    <p class="text-xs mt-0.5 {% if event.attention %}text-saddle font-medium{% elif event.obj.is_due_soon %}text-forest font-medium{% else %}text-sage{% endif %}">
-                                        {% if event.obj.course_stage %}{{ event.obj.get_course_stage_display }} &middot; {% endif %}Next due: {% if event.obj.due_from %}{{ event.obj.due_from|date:"d M" }} &ndash; {% endif %}{{ event.obj.next_due_date|date:"d M Y" }}{% if event.attention %} &middot; Overdue{% endif %}
+                                    {% if event.obj.next_due_date or event.obj.cost and feature_access.charges.view %}
+                                    <p class="text-sage text-xs mt-0.5">
+                                        {% if event.obj.cost and feature_access.charges.view %}&pound;{{ event.obj.cost|floatformat:2 }}{% endif %}
+                                        {% if event.obj.next_due_date %}
+                                        {% if event.obj.cost and feature_access.charges.view %}&middot; {% endif %}
+                                        <span class="{% if event.attention %}text-saddle font-medium{% elif event.obj.is_due_soon %}text-forest font-medium{% endif %}">
+                                            {% if event.obj.course_stage %}{{ event.obj.get_course_stage_display }} &middot; {% endif %}Next due: {% if event.obj.due_from %}{{ event.obj.due_from|date:"d M" }} &ndash; {% endif %}{{ event.obj.next_due_date|date:"d M Y" }}{% if event.attention %} &middot; Overdue{% endif %}
+                                        </span>
+                                        {% endif %}
                                     </p>
                                     {% endif %}
 
@@ -696,7 +702,8 @@
                                     <p class="text-charcoal font-medium">{{ event.obj.product_name }}</p>
                                     <p class="text-sage text-xs mt-0.5">
                                         {{ event.obj.active_ingredient|default:"" }}
-                                        {% if event.obj.administered_by %}&middot; By: {{ event.obj.administered_by }}{% endif %}
+                                        {% if event.obj.administered_by %}{% if event.obj.active_ingredient %}&middot; {% endif %}By: {{ event.obj.administered_by }}{% endif %}
+                                        {% if event.obj.cost and feature_access.charges.view %}{% if event.obj.active_ingredient or event.obj.administered_by %}&middot; {% endif %}&pound;{{ event.obj.cost|floatformat:2 }}{% endif %}
                                     </p>
 
                                     {% elif event.type == 'egg_count' %}
@@ -704,7 +711,7 @@
                                         {{ event.obj.count }} EPG
                                         <span class="{{ event.obj.level_badge_class }} ml-1">{{ event.obj.level_label }}</span>
                                     </p>
-                                    <p class="text-sage text-xs mt-0.5">{{ event.obj.get_sample_type_display }}</p>
+                                    <p class="text-sage text-xs mt-0.5">{{ event.obj.get_sample_type_display }}{% if event.obj.cost and feature_access.charges.view %} &middot; &pound;{{ event.obj.cost|floatformat:2 }}{% endif %}</p>
                                     {% endif %}
                                 </div>
                             </div>
