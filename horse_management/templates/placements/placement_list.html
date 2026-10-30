@@ -91,7 +91,7 @@
                             <a href="{% url 'location_detail' placement.location.pk %}" class="link tap-pad">{{ placement.location.name }}</a>
                         </td>
                         <td class="text-sage" data-label="Rate">
-                            {{ placement.rate_type.name }} (&pound;{{ placement.rate_type.daily_rate }}/day)
+                            {{ placement.rate_type.name }}{% if feature_access.charges.view %} (&pound;{{ placement.rate_type.daily_rate }}/day){% endif %}
                         </td>
                         <td class="text-sage" data-label="Arrived">{{ placement.start_date|date:"d M Y" }}</td>
                         <td data-label="Departed">

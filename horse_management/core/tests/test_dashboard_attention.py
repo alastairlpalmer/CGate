@@ -548,6 +548,46 @@ class ActivityGroupingTests(DashboardDataTestCase):
         self.assertEqual(charges[0].amount, Decimal('45.00'))
         self.assertEqual(charges[0].names[0].color, '')
 
+    def test_egg_count_cost_is_on_its_own_row_not_a_second_charge_row(self):
+        from billing.models import ExtraCharge
+        from health.models import WormEggCount
+        horse = self.horse('Dobbin')
+        count = WormEggCount.objects.create(
+            horse=horse, date=self.today - timedelta(days=1), count=150, cost=Decimal('18.90'),
+        )
+        charge = ExtraCharge.objects.create(
+            horse=horse, owner=self.owner, charge_type='vet', date=count.date,
+            description='Worm egg count', amount=Decimal('18.90'),
+        )
+        count.extra_charge = charge
+        count.save()
+        days = activity.recent(self.admin, today=self.today)
+        events = [e for d in days for e in d['events']]
+        egg = next(e for e in events if e.kind == 'egg_count')
+        self.assertEqual(egg.amount, Decimal('18.90'))
+        self.assertEqual([e for e in events if e.kind == 'charge'], [])
+
+    def test_costs_are_hidden_from_users_who_cannot_see_charges(self):
+        from health.models import VetVisit, WormEggCount
+        horse = self.horse('Dobbin')
+        day = self.today - timedelta(days=1)
+        Vaccination.objects.create(horse=horse, vaccination_type=self.flu, date_given=day, cost=Decimal('31.50'))
+        FarrierVisit.objects.create(horse=horse, date=day, work_done='trim', cost=Decimal('45.00'))
+        VetVisit.objects.create(horse=horse, date=day, reason='Dental', cost=Decimal('95.00'))
+        WormingTreatment.objects.create(horse=horse, date=day, product_name='Equest', cost=Decimal('12.40'))
+        WormEggCount.objects.create(horse=horse, date=day, count=150, cost=Decimal('18.90'))
+        health_kinds = {'vaccination', 'farrier', 'vet', 'worming', 'egg_count'}
+
+        def health_events(user):
+            days = activity.recent(user, today=self.today)
+            return [e for d in days for e in d['events'] if e.kind in health_kinds]
+
+        self.assertTrue(all(e.amount is not None for e in health_events(self.admin)))
+        no_charges = make_user_with_access('nocharges', dashboard='full', horses='view', health='view')
+        events = health_events(no_charges)
+        self.assertEqual({e.kind for e in events}, health_kinds)
+        self.assertEqual([e.amount for e in events], [None] * 5)
+
     def test_arrivals_into_one_location_group_and_carry_coat_colours(self):
         Horse.objects.all().delete()
         for name, colour in (('Pepona', 'bay'), ('Pilarita', 'grey'), ('Pollera', 'chestnut')):

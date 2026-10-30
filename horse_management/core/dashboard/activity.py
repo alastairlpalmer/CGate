@@ -148,6 +148,8 @@ def recent(user, *, site='', today=None, limit=DEFAULT_LIMIT, max_rows=MAX_ROWS)
     """The newest events the user may see, grouped by day."""
     today = today or timezone.localdate()
     can = lambda feature: has_feature_access(user, feature, LEVEL_VIEW)  # noqa: E731
+    # A record's cost is money, so only users who can see charges see it.
+    cost = _cost if can('charges') else (lambda record: None)  # noqa: E731
 
     where = {}
     if site:
@@ -188,14 +190,14 @@ def recent(user, *, site='', today=None, limit=DEFAULT_LIMIT, max_rows=MAX_ROWS)
             events.append(Event(
                 date=vax.date_given, kind='vaccination',
                 what=f'Vaccinated · {vax.vaccination_type.name}',
-                names=[_horse(vax.horse)], amount=_cost(vax),
+                names=[_horse(vax.horse)], amount=cost(vax),
                 site=where.get(vax.horse_id, ''), sort_ts=_ts(vax.created_at),
             ))
         for visit in FarrierVisit.objects.select_related('horse').order_by('-date', '-pk')[:limit]:
             events.append(Event(
                 date=visit.date, kind='farrier',
                 what=f'Farrier · {visit.get_work_done_display()}',
-                names=[_horse(visit.horse)], amount=_cost(visit),
+                names=[_horse(visit.horse)], amount=cost(visit),
                 site=where.get(visit.horse_id, ''), sort_ts=_ts(visit.created_at),
             ))
         for visit in VetVisit.objects.select_related('horse').order_by('-date', '-pk')[:limit]:
@@ -203,21 +205,21 @@ def recent(user, *, site='', today=None, limit=DEFAULT_LIMIT, max_rows=MAX_ROWS)
             events.append(Event(
                 date=visit.date, kind='vet',
                 what='Vet visit' + (f' · {reason[:50]}' if reason else ''),
-                names=[_horse(visit.horse)], amount=_cost(visit),
+                names=[_horse(visit.horse)], amount=cost(visit),
                 site=where.get(visit.horse_id, ''), sort_ts=_ts(visit.created_at),
             ))
         for treatment in WormingTreatment.objects.select_related('horse').order_by('-date', '-pk')[:limit]:
             events.append(Event(
                 date=treatment.date, kind='worming',
                 what='Wormed' + (f' · {treatment.product_name}' if treatment.product_name else ''),
-                names=[_horse(treatment.horse)], amount=_cost(treatment),
+                names=[_horse(treatment.horse)], amount=cost(treatment),
                 site=where.get(treatment.horse_id, ''), sort_ts=_ts(treatment.created_at),
             ))
         for count in WormEggCount.objects.select_related('horse').order_by('-date', '-pk')[:limit]:
             events.append(Event(
                 date=count.date, kind='egg_count',
                 what=f'Egg count · {count.count} EPG',
-                names=[_horse(count.horse)],
+                names=[_horse(count.horse)], amount=cost(count),
                 site=where.get(count.horse_id, ''), sort_ts=_ts(count.created_at),
             ))
 
@@ -228,6 +230,7 @@ def recent(user, *, site='', today=None, limit=DEFAULT_LIMIT, max_rows=MAX_ROWS)
         standalone = ExtraCharge.objects.filter(
             vaccination__isnull=True, farrier_visit__isnull=True,
             worming_treatment__isnull=True, vet_visit__isnull=True,
+            worm_egg_count__isnull=True,
         )
         for charge in standalone.select_related('horse').order_by('-date', '-pk')[:limit]:
             events.append(Event(
