@@ -10,7 +10,7 @@ management software, contracting with beef and lamb, and camping.
 
 ## Running it
 
-Node 22.12 or newer.
+Node 22.22 or newer.
 
 ```
 npm ci
