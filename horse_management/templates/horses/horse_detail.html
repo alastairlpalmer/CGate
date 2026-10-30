@@ -179,8 +179,10 @@
                             <dt class="dt-label">Rate</dt>
                             <dd class="mt-1 text-sm text-charcoal">
                                 {{ current_placement.rate_type.name }}
+                                {% if feature_access.charges.view %}
                                 <span class="text-sage">·</span>
                                 <span class="font-mono text-charcoal-light">£{{ current_placement.rate_type.daily_rate }}/day</span>
+                                {% endif %}
                             </dd>
                         </div>
                         <div>
@@ -641,8 +643,8 @@
                                     {% if event.type == 'placement' %}
                                     <p class="text-charcoal font-medium">{{ event.obj.location.name }}</p>
                                     <p class="text-sage text-xs mt-0.5">
-                                        {% if horse.current_owner and event.obj.owner_id != horse.current_owner.pk %}Billed to {{ event.obj.owner.name }} &middot; {% endif %}&pound;{{ event.obj.rate_type.daily_rate }}/day
-                                        &middot; {{ event.obj.start_date|date:"d M Y" }} &ndash;
+                                        {% if horse.current_owner and event.obj.owner_id != horse.current_owner.pk %}Billed to {{ event.obj.owner.name }} &middot; {% endif %}{% if feature_access.charges.view %}&pound;{{ event.obj.rate_type.daily_rate }}/day
+                                        &middot; {% endif %}{{ event.obj.start_date|date:"d M Y" }} &ndash;
                                         {% if event.obj.end_date %}{{ event.obj.end_date|date:"d M Y" }}{% else %}<span class="text-forest font-medium">Present</span>{% endif %}
                                     </p>
 

@@ -62,8 +62,12 @@ does from the horse page, so nothing here has to know it is in a pane.
             <dt class="pane-stat-label">Rate</dt>
             <dd class="pane-stat-value">
                 {% if current_placement.rate_type %}
+                {% if feature_access.charges.view %}
                 <span class="font-mono">{{ current_placement.rate_type.daily_rate|gbp }}/day</span>
                 <span class="pane-stat-note">{{ current_placement.rate_type.name }}</span>
+                {% else %}
+                {{ current_placement.rate_type.name }}
+                {% endif %}
                 {% else %}
                 <span class="text-sage">&mdash;</span>
                 {% endif %}
@@ -200,7 +204,7 @@ does from the horse page, so nothing here has to know it is in a pane.
                         {% endif %}
                     </span>
                     <span class="pane-event-note">
-                        {% if event.type == 'placement' %}{% if event.obj.rate_type %}{{ event.obj.rate_type.name }} · {{ event.obj.rate_type.daily_rate|gbp }}/day{% else %}No rate set{% endif %}
+                        {% if event.type == 'placement' %}{% if event.obj.rate_type %}{{ event.obj.rate_type.name }}{% if feature_access.charges.view %} · {{ event.obj.rate_type.daily_rate|gbp }}/day{% endif %}{% else %}No rate set{% endif %}
                         {% elif event.type == 'vaccination' %}{% if event.obj.vet %}Given by {{ event.obj.vet.name }}{% else %}Vaccination{% endif %}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"d M Y" }}{% endif %}
                         {% elif event.type == 'farrier' %}{% if event.obj.service_provider %}{{ event.obj.service_provider.name }}{% else %}Farrier visit{% endif %}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"d M Y" }}{% endif %}
                         {% elif event.type == 'worming' %}{{ event.obj.product_name }}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"d M Y" }}{% endif %}
