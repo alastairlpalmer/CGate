@@ -339,7 +339,7 @@ Storyblok maps your page blocks (Section 6.4) directly to Astro components. Deve
 
 **Two costs to check before you sign.** Storyblok bills per environment, so a staging site may count as a second environment. It also caps languages on lower plans. Neither should affect a single-language British site, but confirm both.
 
-**Version note.** Astro 6 requires Node 22.12 or newer. The current integration is `@storyblok/astro` version 9. Confirm both against the docs on the day the build starts.
+**Version note.** Astro 7 requires Node 22.22 or newer. The current integration is `@storyblok/astro` version 9. Confirm both against the docs on the day the build starts.
 
 **Option B — Astro plus Decap CMS. Lowest cost.**
 - Free. Content is stored as files in your repository.
@@ -709,7 +709,7 @@ This is a reported and repeated problem. ScrollSmoother stops working after the 
 The banner script must not delay the largest image. Load the photograph first. Start the carousel after. If the banner lives in a framework island, use `client:visible` or `client:idle`, never `client:load`.
 
 **5. Version floor.**
-Astro 6 requires Node 22.12 or newer. Node 18 and 20 no longer work.
+Astro 7 requires Node 22.22 or newer. Node 18 and 20 no longer work.
 
 ---
 
@@ -783,7 +783,7 @@ npm i countup.js                     # only if there is a number worth counting
 
 Build one throwaway page. Half a day. It answers every open technical question at once.
 
-1. Astro 6, static output, on Node 22.12 or newer.
+1. Astro 7, static output, on Node 22.22 or newer.
 2. Four photographs in an Embla carousel. Fade plugin, Autoplay at 6 seconds, Class Names plugin.
 3. The centre index above it, with the marker travelling on Embla's `select` event.
 4. A sticky header that shrinks, driven by `animation-timeline: scroll()`.
