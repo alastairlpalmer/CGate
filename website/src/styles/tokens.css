@@ -73,8 +73,15 @@
   --dial-two: 700ms;
 
   /* Header height, used for scroll padding and the sticky offset.
-     Two rows: the mark, then the index. */
-  --header-h: 6.5rem;
+     Two rows: the mark, then the index. The centred layout from 620px has
+     more space between the rows. */
+  --header-h: 6rem;
+}
+
+@media (min-width: 620px) {
+  :root {
+    --header-h: 6.5rem;
+  }
 }
 
 @media (min-width: 880px) {
