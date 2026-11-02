@@ -236,27 +236,49 @@ class _Context:
 def _vaccinations(ctx):
     from health.models import Vaccination, current_vaccinations
 
+    # A course dose (V1, V2, booster) has a window for the next one. It is
+    # listed from the day the window opens, not only near the deadline: the
+    # owner reminder goes out then, and a dose before it does not count.
     qs = current_vaccinations(Vaccination.objects.filter(
         horse__is_active=True,
         next_due_date__isnull=False,
-        next_due_date__lte=ctx.horizon,
+    ).filter(
+        Q(next_due_date__lte=ctx.horizon) | Q(due_from__lte=ctx.horizon)
     )).select_related('horse', 'vaccination_type').order_by('next_due_date')
     full = ctx.can('health', LEVEL_FULL)
     items = []
     for vax in qs:
-        due = vax.next_due_date
+        deadline = vax.next_due_date
+        opens = vax.due_from
+        waiting = opens is not None and opens > ctx.today
+        # Before the window opens the row is dated by its opening day (so
+        # the 14-day strip shows it then); once open, by the deadline.
+        due = opens if waiting else deadline
+        detail = f'Vaccination · {vax.vaccination_type.name}'
+        if opens is not None:
+            dose = vax.next_dose_label or 'Next dose'
+            if waiting:
+                detail += f' · {dose} not before {_short(opens)}, due by {_short(deadline)}'
+            else:
+                detail += f' · {dose} due by {_short(deadline)}'
         actions = []
         if full:
             actions.append(ctx.record_action(
                 'vaccination_create', vax.horse, 'Record', 'Record vaccination',
-                primary=due < ctx.today,
+                primary=deadline < ctx.today,
             ))
         items.append(ctx.horse_item(
             'vaccination', vax.horse, due=due,
-            detail=f'Vaccination · {vax.vaccination_type.name}',
+            detail=detail,
             actions=actions, key=f'vaccination-{vax.pk}',
         ))
     return items
+
+
+def _short(day):
+    """'9 Dec': a date in the same short form the rows use."""
+    return f'{day.day} {day:%b}'
+
 
 
 def _farrier(ctx):
