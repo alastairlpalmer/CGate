@@ -218,6 +218,13 @@ python manage.py restore_test --database    # one or the other
 python manage.py restore_test --reset       # empty the scratch database first
 ```
 
+**Give the scratch bucket its own token, and copy both halves from one
+screen.** An access key and a secret from different tokens produce
+`SignatureDoesNotMatch`, and R2 shows a third value — the Token value —
+that is for Cloudflare's own API and is not the secret. Every key looks
+alike once the creation screen is closed, so name the tokens for what
+they are.
+
 `--reset` drops and recreates the scratch database's public schema before
 restoring, which is what makes a second run possible without emptying a
 database by hand. It is the most destructive thing here, so it happens
@@ -231,6 +238,12 @@ not a failed restore, and none of it is the yard's data. The command
 does not take the exit code at face value either way: on exit 1 it checks
 that the app's own tables arrived and are populated, and fails if they
 did not.
+
+**Restore first, then start the checking service.** `--reset` drops the
+scratch database's schema, so anything already connected to it starts
+returning errors and holds stale connections afterwards. Standing the
+checking service up second avoids that; if it is already running,
+redeploy it after the restore rather than just reloading the page.
 
 Then point a throwaway copy of the app at the scratch database and media
 bucket, and work through the five checks below. On a host where services
@@ -309,4 +322,4 @@ Order:
 
 | Date | Backup age | Restore time | Result | Notes |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| 2026-09-09 | 5 hours | ~2 hours, most of it first-time setup | Pass, with one known exception | Sign-in, horse count, invoice PDF and horse photos all restored and worked. Xero showed disconnected — correctly: the backup predated that day's reconnection, so the stored token genuinely could not be decrypted at the time it was taken. |
