@@ -140,8 +140,8 @@
                     <div class="list-card-meta truncate">{{ invoice.owner.name }}</div>
                     <div class="list-card-meta">{{ invoice.period_start|date:"d M" }} &ndash; {{ invoice.period_end|date:"d M Y" }}</div>
                     <div class="mt-1.5 flex items-center gap-1.5">
-                        <span class="{% if invoice.status == 'paid' %}badge-success{% elif invoice.status == 'overdue' or invoice.is_overdue %}badge-danger{% elif invoice.status == 'sent' %}badge-warning{% elif invoice.status == 'cancelled' %}badge-neutral{% else %}badge-info{% endif %}">
-                            {% if invoice.is_overdue and invoice.status != 'paid' %}Overdue{% else %}{{ invoice.get_status_display }}{% endif %}
+                        <span class="{{ invoice.status_badge_class }}">
+                            {{ invoice.status_label }}
                         </span>
                         {% if invoice.is_send_queued %}<span class="badge-info" title="Queued — the email is being sent">Sending…</span>{% elif invoice.send_error and invoice.status == 'draft' %}<span class="badge-danger" title="{{ invoice.send_error }}">Send failed</span>{% endif %}
                         {% if invoice.xero_sync and invoice.xero_sync.sync_status == 'pushed' or invoice.xero_sync and invoice.xero_sync.sync_status == 'paid_in_xero' %}
@@ -221,8 +221,8 @@
                             {% endif %}
                         </td>
                         <td>
-                            <span class="{% if invoice.status == 'paid' %}badge-success{% elif invoice.status == 'overdue' or invoice.is_overdue %}badge-danger{% elif invoice.status == 'sent' %}badge-warning{% elif invoice.status == 'cancelled' %}badge-neutral{% else %}badge-info{% endif %}">
-                                {% if invoice.is_overdue and invoice.status != 'paid' %}Overdue{% else %}{{ invoice.get_status_display }}{% endif %}
+                            <span class="{{ invoice.status_badge_class }}">
+                                {{ invoice.status_label }}
                             </span>
                             {% if invoice.is_send_queued %}<span class="badge-info ml-1" title="Queued — the email is being sent">Sending…</span>{% elif invoice.send_error and invoice.status == 'draft' %}<span class="badge-danger ml-1" title="{{ invoice.send_error }}">Send failed</span>{% endif %}
                             {% if invoice.xero_sync and invoice.xero_sync.sync_status == 'pushed' or invoice.xero_sync and invoice.xero_sync.sync_status == 'paid_in_xero' %}
@@ -303,7 +303,7 @@
             <div class="flex flex-wrap items-center gap-2 sm:gap-3">
                 {# Confirm first, then submit with a hidden action field: the submit button's own name/value is not sent when the form is submitted from script. #}
                 <button type="button"
-                        @click="$store.confirm.ask({ text: 'Delete ' + invCount + ' selected invoice' + (invCount !== 1 ? 's' : '') + '? Only invoices that were never sent are deleted, even if they show Overdue. Sent and paid invoices stay. This cannot be undone.', label: 'Delete', danger: true }).then(ok => { if (!ok) return; const f = document.getElementById('bulk-invoice-form'); f.querySelectorAll('input[name=action]').forEach(i => i.remove()); const a = document.createElement('input'); a.type = 'hidden'; a.name = 'action'; a.value = 'delete'; f.appendChild(a); f.requestSubmit(); })"
+                        @click="$store.confirm.ask({ text: 'Delete ' + invCount + ' selected invoice' + (invCount !== 1 ? 's' : '') + '? Only drafts (never sent) are deleted, past-due drafts too. Sent and paid invoices stay. This cannot be undone.', label: 'Delete', danger: true }).then(ok => { if (!ok) return; const f = document.getElementById('bulk-invoice-form'); f.querySelectorAll('input[name=action]').forEach(i => i.remove()); const a = document.createElement('input'); a.type = 'hidden'; a.name = 'action'; a.value = 'delete'; f.appendChild(a); f.requestSubmit(); })"
                         class="btn-secondary text-sm text-error-red hover:text-error-red flex-1 sm:flex-none">
                     Delete Selected
                 </button>
