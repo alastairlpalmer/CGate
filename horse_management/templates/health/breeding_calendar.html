@@ -94,9 +94,21 @@
             <span><i class="bg-saddle/70 !rounded-sm !w-5"></i>Gestation so far</span>
         </div>
         {% if cal.not_carrying %}
-        <div class="px-4 pb-4 text-xs text-sage">
-            Not carrying this season:
-            {% for br in cal.not_carrying %}<a href="{% url 'horse_detail' br.mare.pk %}" class="link">{{ br.mare.name }}</a> ({{ br.get_status_display|lower }}){% if not forloop.last %}, {% endif %}{% endfor %}
+        {% comment %}Chips, for the reason the dashboard's visit rows use
+        them: a mare's name set in a comma-separated line is 20 px of tap
+        target with 20 px between the lines, and there is no way to pad
+        that out without one name taking the tap meant for its neighbour.
+        {% endcomment %}
+        <div class="px-4 pb-4">
+            <p class="text-xs text-sage">Not carrying this season</p>
+            <div class="mt-1.5 flex flex-wrap gap-1.5">
+                {% for br in cal.not_carrying %}
+                <a href="{% url 'horse_detail' br.mare.pk %}" class="horse-chip">
+                    {{ br.mare.name }}
+                    <span class="ml-1 text-xs font-normal text-sage">{{ br.get_status_display|lower }}</span>
+                </a>
+                {% endfor %}
+            </div>
         </div>
         {% endif %}
     </div>

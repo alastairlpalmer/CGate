@@ -54,7 +54,9 @@ def _finances_inner(request):
 
     revenue_qs = (
         Invoice.objects.filter(
-            status__in=['paid', 'sent'],
+            # Overdue is invoiced revenue that is not yet paid, the same as
+            # sent. Leaving it out made the chart disagree with Xero.
+            status__in=['paid', 'sent', 'overdue'],
             period_end__gte=twelve_months_ago,
         )
         .annotate(month=TruncMonth('period_end'))

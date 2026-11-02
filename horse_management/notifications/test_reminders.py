@@ -165,8 +165,10 @@ class OverdueInvoiceReminderTests(TestCase):
         send_overdue_invoice_reminders()  # same day -> throttled
         self.assertEqual(len(mail.outbox), 0)
 
-    def test_resends_after_repeat_window(self):
-        inv = self._invoice("Sent", Invoice.Status.OVERDUE)
+    def test_resends_at_the_next_step(self):
+        """Stepped schedule (default 1, 14, 30 days overdue): an invoice 20
+        days overdue gets the second reminder once a week has passed."""
+        inv = self._invoice("Sent", Invoice.Status.OVERDUE, due_offset=-20)
         send_overdue_invoice_reminders()
         Invoice.objects.filter(pk=inv.pk).update(
             last_overdue_reminder_at=timezone.now() - timedelta(days=8)
@@ -174,6 +176,40 @@ class OverdueInvoiceReminderTests(TestCase):
         mail.outbox.clear()
         send_overdue_invoice_reminders()
         self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Second reminder", mail.outbox[0].subject)
+
+    def test_waits_for_the_next_step(self):
+        inv = self._invoice("Early", Invoice.Status.OVERDUE, due_offset=-10)
+        send_overdue_invoice_reminders()
+        Invoice.objects.filter(pk=inv.pk).update(
+            last_overdue_reminder_at=timezone.now() - timedelta(days=8)
+        )
+        mail.outbox.clear()
+        send_overdue_invoice_reminders()  # 10 days overdue: second step is at 14
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_final_notice_then_stops(self):
+        inv = self._invoice("Late", Invoice.Status.OVERDUE, due_offset=-60)
+        subjects = []
+        for _ in range(5):
+            send_overdue_invoice_reminders()
+            subjects += [m.subject for m in mail.outbox]
+            mail.outbox.clear()
+            Invoice.objects.filter(pk=inv.pk).update(
+                last_overdue_reminder_at=timezone.now() - timedelta(days=8)
+            )
+        self.assertEqual(len(subjects), 3)
+        self.assertTrue(subjects[0].startswith("Payment Reminder"))
+        self.assertTrue(subjects[2].startswith("Final notice"))
+        inv.refresh_from_db()
+        self.assertEqual(inv.overdue_reminder_count, 3)
+
+    def test_paused_owner_gets_none(self):
+        inv = self._invoice("Paused", Invoice.Status.OVERDUE)
+        inv.owner.pause_reminders = True
+        inv.owner.save()
+        send_overdue_invoice_reminders()
+        self.assertEqual(len(mail.outbox), 0)
 
     def test_not_yet_due_excluded(self):
         self._invoice("Future", Invoice.Status.SENT, due_offset=10)
@@ -192,6 +228,7 @@ class OverdueInvoiceReminderTests(TestCase):
         self.assertEqual(len(mail.outbox), 0)
         inv.refresh_from_db()
         self.assertIsNone(inv.last_overdue_reminder_at)
+        self.assertEqual(inv.overdue_reminder_count, 0)
 
 
 class EhvReminderTests(TestCase):

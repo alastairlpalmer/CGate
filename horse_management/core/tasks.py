@@ -1,6 +1,7 @@
 """Scheduled maintenance tasks.
 
-Currently the nightly off-site backup. See core/backup/ for what it does
+The nightly off-site backup, the purge of soft-deleted rows, and data
+retention. See core/backup/ for what it does
 and docs/BACKUP_RESTORE.md for how to restore from it.
 """
 
@@ -17,7 +18,9 @@ from core.models import BackupRun, BusinessSettings
 logger = logging.getLogger(__name__)
 
 
-@shared_task
+# No automatic retry: a backup is heavy, and each failure already emails
+# the yard. It is recorded in FailedTask and can be run again from there.
+@shared_task(autoretry_for=())
 def run_nightly_backup():
     """Back up the database and media off-site, then prune old copies.
 
@@ -99,3 +102,63 @@ def _notify_failure(exc):
         # email is bad; masking the backup failure behind an SMTP error
         # would be worse.
         logger.exception('Backup: could not send the failure notification')
+
+
+@shared_task
+def purge_soft_deleted():
+    """Delete for good what has sat in Recently Deleted past the limit.
+
+    Runs after the nightly backup, so the last backup before a purge still
+    holds the row. Documents lose their file here too. Each row goes
+    through its own ``purge`` (when it has one) so model rules still run:
+    a purged charge zeroes its health record's cost, so the charge is not
+    rebuilt (billing.models.ExtraCharge.purge).
+    """
+    from datetime import timedelta
+
+    from billing.models import ExtraCharge, YardCost
+    from core.models import Document
+
+    cutoff = timezone.now() - timedelta(days=settings.SOFT_DELETE_RETENTION_DAYS)
+    counts = {}
+    for model in (ExtraCharge, YardCost, Document):
+        purged = 0
+        for row in model.all_objects.filter(deleted_at__lt=cutoff).iterator():
+            try:
+                if isinstance(row, Document) and row.file:
+                    row.file.delete(save=False)
+                if hasattr(row, 'purge'):
+                    row.purge()
+                else:
+                    row.delete()
+                purged += 1
+            except Exception:
+                logger.exception('Purge: could not delete %s %s', model.__name__, row.pk)
+        counts[model.__name__] = purged
+    counts.update(_purge_task_records())
+    logger.info('Purge: %s', counts)
+    return counts
+
+
+def _purge_task_records():
+    """Remove old ScheduledRun rows and dealt-with FailedTask rows."""
+    from datetime import timedelta
+
+    from core.models import FailedTask, ScheduledRun
+
+    now = timezone.now()
+    runs, _ = ScheduledRun.objects.filter(
+        started_at__lt=now - timedelta(days=settings.SCHEDULED_RUN_RETENTION_DAYS),
+    ).delete()
+    failures, _ = FailedTask.objects.filter(
+        resolved_at__lt=now - timedelta(days=settings.FAILED_TASK_RETENTION_DAYS),
+    ).delete()
+    return {'ScheduledRun': runs, 'FailedTask': failures}
+
+
+@shared_task
+def apply_data_retention():
+    """Stop keeping personal data longer than needed (core/gdpr.py)."""
+    from core import gdpr
+
+    return gdpr.apply_retention()

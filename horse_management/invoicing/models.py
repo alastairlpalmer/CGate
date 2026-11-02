@@ -7,10 +7,13 @@ Uses db_table to keep original table names, avoiding database migration changes.
 from datetime import timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import F, Q
 from django.utils import timezone
+from simple_history.models import HistoricalRecords
 
 
 class Invoice(models.Model):
@@ -58,6 +61,12 @@ class Invoice(models.Model):
         choices=Status.choices,
         default=Status.DRAFT
     )
+    customer_reference = models.CharField(
+        'Purchase order or reference',
+        max_length=50,
+        blank=True,
+        help_text="The customer's PO number or reference. Printed on the invoice and sent to Xero.",
+    )
     payment_terms_days = models.PositiveIntegerField(default=30)
     due_date = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True)
@@ -65,6 +74,9 @@ class Invoice(models.Model):
     sent_at = models.DateTimeField(null=True, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)
     last_overdue_reminder_at = models.DateTimeField(null=True, blank=True)
+    # How many overdue reminders have gone out; picks the wording and stops
+    # after the final notice (notifications.tasks.send_overdue_invoice_reminders).
+    overdue_reminder_count = models.PositiveSmallIntegerField(default=0)
     # Bulk sending is queued through Celery. send_queued_at is the claim
     # (set when queued, cleared when the task finishes either way) so a
     # double-submit cannot email the owner twice; send_error holds the
@@ -72,7 +84,18 @@ class Invoice(models.Model):
     send_queued_at = models.DateTimeField(null=True, blank=True)
     send_error = models.TextField(blank=True)
 
+    # Who changed what, and when (core/audit.py shows it). send_queued_at
+    # is a claim flag set and cleared by every bulk send: tracking it
+    # would bury the real changes.
+    history = HistoricalRecords(excluded_fields=['send_queued_at'])
+
     class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(period_end__gte=F('period_start')),
+                name='invoice_period_ends_after_start',
+            ),
+        ]
         db_table = 'core_invoice'
         ordering = ['-created_at']
         indexes = [
@@ -122,8 +145,22 @@ class Invoice(models.Model):
         )
 
     @property
+    def amount_credited(self):
+        """The part of amount_paid that came from credit notes, not money."""
+        return (
+            self.payments.filter(method=Payment.Method.CREDIT_NOTE)
+            .aggregate(total=models.Sum('amount'))['total']
+            or Decimal('0.00')
+        )
+
+    @property
+    def amount_received(self):
+        """Money actually received (payments without the credit notes)."""
+        return self.amount_paid - self.amount_credited
+
+    @property
     def balance_due(self):
-        """What's still owed after recorded payments."""
+        """What's still owed after recorded payments and credit notes."""
         return self.total - self.amount_paid
 
     def mark_as_paid(self, method='other', reference=''):
@@ -312,6 +349,10 @@ class InvoiceLineItem(models.Model):
     )
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(quantity__gte=0), name='lineitem_quantity_not_negative'),
+            models.CheckConstraint(condition=Q(unit_price__gte=0), name='lineitem_unit_price_not_negative'),
+        ]
         db_table = 'core_invoicelineitem'
         ordering = ['line_type', 'description']
 
@@ -325,8 +366,26 @@ class InvoiceLineItem(models.Model):
         super().save(*args, **kwargs)
 
 
+# Condition for a join from Invoice to its payments that leaves voided
+# ones out, for example Sum('payments__amount', filter=LIVE_PAYMENTS).
+LIVE_PAYMENTS = models.Q(payments__voided_at__isnull=True)
+
+
+class LivePaymentManager(models.Manager):
+    """Hides voided payments, so balances and totals ignore them."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(voided_at__isnull=True)
+
+
 class Payment(models.Model):
-    """A payment (possibly partial) recorded against an invoice."""
+    """A payment (possibly partial) recorded against an invoice.
+
+    A payment entered by mistake is voided, not deleted: it stays on the
+    invoice, struck through, with who voided it and why. ``objects`` hides
+    voided payments; joins from Invoice (``Sum('payments__amount')``) must
+    filter them out themselves, with ``LIVE_PAYMENTS``.
+    """
 
     class Method(models.TextChoices):
         BANK_TRANSFER = 'bank_transfer', 'Bank Transfer'
@@ -335,6 +394,9 @@ class Payment(models.Model):
         CHEQUE = 'cheque', 'Cheque'
         XERO = 'xero', 'Paid in Xero'
         OTHER = 'other', 'Other'
+        # A credit note reduces what is owed without money changing hands
+        # (invoicing.services.issue_credit_note). It has its own number.
+        CREDIT_NOTE = 'credit_note', 'Credit note'
 
     invoice = models.ForeignKey(
         Invoice,
@@ -357,11 +419,50 @@ class Payment(models.Model):
         blank=True,
         help_text="e.g. bank reference or cheque number"
     )
+    credit_note_number = models.CharField(max_length=20, null=True, blank=True, unique=True, editable=False)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    voided_at = models.DateTimeField(null=True, blank=True, editable=False)
+    voided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, editable=False,
+        on_delete=models.SET_NULL, related_name='+',
+    )
+    void_reason = models.CharField(max_length=255, blank=True, editable=False)
+
+    objects = LivePaymentManager()
+    all_objects = models.Manager()
+
+    # Every change, voids included, with the user who made it.
+    history = HistoricalRecords()
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(amount__gt=0), name='payment_amount_positive'),
+        ]
         ordering = ['-date', '-created_at']
 
     def __str__(self):
         return f"£{self.amount} against {self.invoice.invoice_number} on {self.date}"
+
+    @property
+    def is_credit_note(self):
+        return self.method == self.Method.CREDIT_NOTE
+
+    @property
+    def is_voided(self):
+        return self.voided_at is not None
+
+    def void(self, user, reason):
+        """Take this payment out of the balance, keeping the record."""
+        self.voided_at = timezone.now()
+        self.voided_by = user if getattr(user, 'is_authenticated', False) else None
+        self.void_reason = reason[:255]
+        self.save(update_fields=['voided_at', 'voided_by', 'void_reason'])
+        self.invoice.refresh_payment_status()
+
+    def unvoid(self):
+        self.voided_at = None
+        self.voided_by = None
+        self.void_reason = ''
+        self.save(update_fields=['voided_at', 'voided_by', 'void_reason'])
+        self.invoice.refresh_payment_status()

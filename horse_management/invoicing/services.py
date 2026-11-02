@@ -18,7 +18,7 @@ from core.models import (
     OwnershipShare,
     Placement,
 )
-from invoicing.models import Invoice, InvoiceLineItem
+from invoicing.models import LIVE_PAYMENTS, Invoice, InvoiceLineItem, Payment
 from .utils import format_date_short, format_date_short_year, group_preview_charges_by_horse
 
 
@@ -483,6 +483,7 @@ class InvoiceService:
             due_date=period_end + timedelta(days=settings.default_payment_terms),
             notes=notes,
             vat_rate=settings.vat_rate,
+            customer_reference=owner.invoice_reference,
         )
 
         # Add livery line items
@@ -602,6 +603,7 @@ class InvoiceService:
             | models.Q(extra_charges__horse__ownership_shares__isnull=True),
             extra_charges__invoiced=False,
             extra_charges__date__lte=period_end,
+            extra_charges__deleted_at__isnull=True,
         ).distinct()
 
         # Co-owners of horses with unbilled split charges, regardless of
@@ -612,6 +614,7 @@ class InvoiceService:
             ownership_shares__horse__extra_charges__invoiced=False,
             ownership_shares__horse__extra_charges__split_by_ownership=True,
             ownership_shares__horse__extra_charges__date__lte=period_end,
+            ownership_shares__horse__extra_charges__deleted_at__isnull=True,
         ).distinct()
 
         return (
@@ -651,6 +654,110 @@ class InvoiceService:
         if cursor <= period_end:
             gaps.append((cursor, period_end))
         return gaps
+
+    @staticmethod
+    def last_invoiced_date(owner):
+        """End of the owner's latest live invoice period, or None."""
+        return (
+            Invoice.objects.filter(owner=owner)
+            .exclude(status=Invoice.Status.CANCELLED)
+            .order_by('-period_end')
+            .values_list('period_end', flat=True)
+            .first()
+        )
+
+    @classmethod
+    def resolve_period(cls, owner, period_start, period_end):
+        """Fit a requested period around the owner's live invoices.
+
+        The user picks a wide range ("what does she owe up to today?")
+        and must not have to find the day after the last invoice by hand.
+        When live invoices cover only the start of the range, the start
+        moves forward to the first day no invoice covers. Gaps between
+        invoices with no livery to bill (before any horse arrived, say)
+        are ignored. Unbilled extra charges are not period-bound, so the
+        tail of the range carries them.
+
+        Any other overlap — an invoice that covers the end or the middle
+        of the range, or an earlier gap with livery still to bill — is a
+        real clash, and stays blocked.
+
+        Returns a dict:
+        * ``period_start`` / ``period_end`` — the period to bill, or None
+          when blocked.
+        * ``invoiced`` — the live invoices skipped over at the start.
+        * ``blocker`` — the overlapping invoice when blocked, else None.
+        * ``unbilled_gaps`` — when blocked, the gaps with livery to bill.
+        """
+        covering = list(
+            Invoice.objects.filter(
+                owner=owner,
+                period_start__lte=period_end,
+                period_end__gte=period_start,
+            ).exclude(
+                status=Invoice.Status.CANCELLED,
+            ).order_by('period_start')
+        )
+        result = {
+            'period_start': period_start,
+            'period_end': period_end,
+            'invoiced': [],
+            'blocker': None,
+            'unbilled_gaps': [],
+        }
+        if not covering:
+            return result
+
+        gaps = [
+            (start, end)
+            for start, end in cls.uncovered_periods(owner, period_start, period_end)
+            if end == period_end
+            or cls.calculate_livery_charges(owner, start, end)
+        ]
+        tail_open = bool(gaps) and gaps[-1][1] == period_end
+        if tail_open and len(gaps) == 1:
+            new_start = gaps[0][0]
+            result['period_start'] = new_start
+            result['invoiced'] = [
+                inv for inv in covering if inv.period_end < new_start
+            ]
+            return result
+
+        result.update(
+            period_start=None,
+            period_end=None,
+            # Name the invoice that covers the end of the range; if the end
+            # is open, the clash is an earlier gap — name the first invoice.
+            blocker=covering[0] if tail_open else covering[-1],
+            unbilled_gaps=gaps,
+        )
+        return result
+
+    @classmethod
+    def preview_unbilled(cls, owner, period_start, period_end):
+        """Preview for the create form: only what is not yet invoiced.
+
+        Same as ``calculate_invoice_preview``, on the period
+        ``resolve_period`` gives, plus its keys so the panel can say what
+        it skipped. When blocked, there are no charges to show.
+        """
+        resolved = cls.resolve_period(owner, period_start, period_end)
+        if resolved['blocker']:
+            preview = {'horse_groups': [], 'total': Decimal('0.00')}
+        else:
+            preview = cls.calculate_invoice_preview(
+                owner, resolved['period_start'], resolved['period_end']
+            )
+        preview.update(resolved)
+        preview['requested_start'] = period_start
+        preview['start_moved'] = (
+            resolved['period_start'] is not None
+            and resolved['period_start'] != period_start
+        )
+        if preview['start_moved']:
+            preview['invoiced_until'] = resolved['period_start'] - timedelta(days=1)
+        preview['last_invoiced'] = cls.last_invoiced_date(owner)
+        return preview
 
     @staticmethod
     def generate_monthly_invoices(year, month):
@@ -738,7 +845,7 @@ class StatementService:
         ).select_related('owner').annotate(
             balance=ExpressionWrapper(
                 F('total') - Coalesce(
-                    Sum('payments__amount'), Value(Decimal('0.00'))
+                    Sum('payments__amount', filter=LIVE_PAYMENTS), Value(Decimal('0.00'))
                 ),
                 output_field=DecimalField(max_digits=10, decimal_places=2),
             )
@@ -793,3 +900,33 @@ class StatementService:
             totals['paid'] += paid
             totals['balance'] += balance
         return {'owner': owner, 'rows': rows, 'totals': totals}
+
+
+class CreditNoteRefused(Exception):
+    pass
+
+
+@transaction.atomic
+def issue_credit_note(invoice, amount, reason, date, user=None):
+    """Credit part or all of what is still owed on ``invoice``.
+
+    Stored as a payment of method CREDIT_NOTE with its own number from the
+    CN series, so balances, statuses and every outstanding figure treat it
+    the same way as money received. Money figures that must not count it
+    (received in a month, the dashboard's "received") filter it out.
+    """
+    from core.models import BusinessSettings
+
+    invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
+    if invoice.status not in (Invoice.Status.SENT, Invoice.Status.OVERDUE, Invoice.Status.PAID):
+        raise CreditNoteRefused("Only an invoice that has been sent can be credited. Edit a draft instead.")
+    if amount <= 0 or amount > invoice.balance_due:
+        raise CreditNoteRefused(f"A credit note must be between £0.01 and the £{invoice.balance_due:.2f} still owed.")
+    number = BusinessSettings.get_settings().get_next_credit_note_number()
+    credit = Payment.objects.create(
+        invoice=invoice, date=date, amount=amount,
+        method=Payment.Method.CREDIT_NOTE, reference=number,
+        credit_note_number=number, notes=reason,
+    )
+    invoice.refresh_payment_status()
+    return credit

@@ -113,6 +113,39 @@ def capacity_state(capacity, availability):
     return 'ok'
 
 
+# ── Rest and rotation, for the phone map ──────────────────────────────
+# The desktop map colours by capacity alone (MAP_COLOURS). In the field
+# the question is the rotation: which ground is carrying horses, which is
+# over its limit, and which has rested long enough to take them back. A
+# fortnight is the point most yards call a field ready again.
+REST_READY_DAYS = 14
+
+REST_STATES = {
+    'over': ('Over capacity', '#C0392B'),
+    'grazing': ('Grazing', '#4F6F64'),
+    'rested': ('Rested', '#8B968F'),
+    'recovering': ('Recovering', '#A08343'),
+    'empty': ('Empty', '#9CB2B8'),
+    'other': ('', '#6A8990'),
+}
+
+
+def rest_state(*, count, capacity, holds_horses, rest_days):
+    """Where one location sits in the rotation.
+
+    ``other`` is ground that is not grazing at all — hay, arable — and it
+    carries no label of its own here: the tile prints the land use, which
+    says more than a second word for "not horses" would.
+    """
+    if capacity and count > capacity:
+        return 'over'
+    if count > 0:
+        return 'grazing'
+    if rest_days is not None:
+        return 'rested' if rest_days >= REST_READY_DAYS else 'recovering'
+    return 'empty' if holds_horses else 'other'
+
+
 def circle_radius_m(capacity):
     if not capacity:
         return CIRCLE_DEFAULT_M
@@ -143,7 +176,7 @@ def map_locations_by_site():
 
 def _shape_band(band):
     from django.urls import reverse
-    from ..boundary_import import anchor_for, display_geometry
+    from ..boundary_import import anchor_for, area_hectares, display_geometry
 
     locations = []
     located = 0
@@ -160,6 +193,10 @@ def _shape_band(band):
         if kind:
             located += 1
         state = capacity_state(tile['capacity'], tile['availability'])
+        rest = rest_state(
+            count=tile['count'], capacity=tile['capacity'],
+            holds_horses=tile['holds_horses'], rest_days=tile['rest_days'],
+        )
         locations.append({
             'pk': loc.pk,
             'name': loc.name,
@@ -178,9 +215,16 @@ def _shape_band(band):
                 if kind == 'polygon' else None
             ),
             'anchor': list(anchor) if anchor else None,
+            'area_ha': (
+                area_hectares(loc.boundary, key=(loc.pk, loc.boundary_updated_at))
+                if kind == 'polygon' else None
+            ),
             'kind': kind,
             'state': state,
             'colour': MAP_COLOURS[state],
+            'rest_state': rest,
+            'rest_label': REST_STATES[rest][0] or tile['usage_label'],
+            'rest_colour': REST_STATES[rest][1],
             'radius_m': circle_radius_m(tile['capacity']) if kind == 'circle' else None,
             'urls': {
                 'detail': reverse('location_detail', kwargs={'pk': loc.pk}),

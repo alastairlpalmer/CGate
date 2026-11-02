@@ -36,7 +36,7 @@ from urllib.parse import urlparse
 from django.conf import settings
 from django.db import connections
 
-from . import runner, storage
+from . import crypto, runner, storage
 
 logger = logging.getLogger(__name__)
 
@@ -259,6 +259,7 @@ def restore_database(key=None, allow_nonempty=False, reset=False):
         # directory means it is gone whatever happens next.
         local = Path(workdir) / posixpath.basename(key)
         size = storage.download(key, local)
+        local = crypto.maybe_decrypt(local)
 
         result = subprocess.run(  # noqa: S603 - fixed argv, no shell
             [
@@ -328,6 +329,7 @@ def restore_media(key=None):
     with tempfile.TemporaryDirectory(prefix='yardway-restore-media-') as workdir:
         archive_path = Path(workdir) / posixpath.basename(key)
         storage.download(key, archive_path)
+        archive_path = crypto.maybe_decrypt(archive_path)
 
         unpacked = Path(workdir) / 'unpacked'
         unpacked.mkdir()

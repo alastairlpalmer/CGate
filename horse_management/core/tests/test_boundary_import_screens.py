@@ -52,7 +52,7 @@ class UploadTests(TempMediaMixin, TestCase):
         self.assertContains(response, 'Import field map')
         self.assertContains(response, 'name="file"')
         self.assertContains(response, '<option value="Somerford" selected')
-        response = self.client.get(reverse('location_list') + '?tab=map&site=Somerford')
+        response = self.client.get(reverse('location_list') + '?view=map&site=Somerford')
         self.assertContains(response, self.url)
 
     def test_flag_off_redirects(self):
@@ -167,7 +167,7 @@ class MatchTests(TempMediaMixin, TestCase):
             'shape_3': 'new', 'new_name_3': 'Long Acre',
             'shape_4': 'skip',
         })
-        self.assertRedirects(response, reverse('location_list') + '?tab=map&site=Somerford')
+        self.assertRedirects(response, reverse('location_list') + '?view=map&site=Somerford')
         self.inside.refresh_from_db()
         self.other.refresh_from_db()
         self.assertEqual(self.inside.boundary_source, 'landapp')
@@ -226,7 +226,7 @@ class MatchTests(TempMediaMixin, TestCase):
     def test_cancel_clears_the_session(self):
         self.start()
         response = self.client.post(self.url, {'cancel': '1'})
-        self.assertRedirects(response, reverse('location_list') + '?tab=map&site=Somerford')
+        self.assertRedirects(response, reverse('location_list') + '?view=map&site=Somerford')
         self.assertNotIn('boundary_import', self.client.session)
 
     def test_real_export_end_to_end_with_a_second_file(self):

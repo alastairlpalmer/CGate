@@ -2,6 +2,8 @@
 Forms for invoicing app.
 """
 
+from decimal import Decimal
+
 from django import forms
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -64,6 +66,10 @@ class InvoiceCreateForm(forms.Form):
         # the template can link to it rather than leave the user to hunt
         # for the invoice number in the list.
         self.overlapping_invoice = None
+        # Set by clean() when the start moved past invoices that already
+        # cover it: (requested start, live invoices skipped).
+        self.start_moved_from = None
+        self.skipped_invoices = []
 
     def clean(self):
         cleaned_data = super().clean()
@@ -76,7 +82,8 @@ class InvoiceCreateForm(forms.Form):
 
         if owner and start and end:
             from .services import InvoiceService
-            existing = InvoiceService.check_for_overlapping_invoices(owner, start, end)
+            resolved = InvoiceService.resolve_period(owner, start, end)
+            existing = resolved['blocker']
             if existing:
                 self.overlapping_invoice = existing
                 raise forms.ValidationError(
@@ -84,6 +91,12 @@ class InvoiceCreateForm(forms.Form):
                     f"covering {existing.period_start} to {existing.period_end} "
                     f"which overlaps with this period."
                 )
+            # Invoices cover only the start of the range: bill from the
+            # first day they do not cover.
+            if resolved['period_start'] != start:
+                self.start_moved_from = start
+                self.skipped_invoices = resolved['invoiced']
+                cleaned_data['period_start'] = resolved['period_start']
 
         return cleaned_data
 
@@ -102,8 +115,9 @@ class InvoiceUpdateForm(forms.ModelForm):
 
     class Meta:
         model = Invoice
-        fields = ['status', 'payment_terms_days', 'due_date', 'notes']
+        fields = ['status', 'customer_reference', 'payment_terms_days', 'due_date', 'notes']
         widgets = {
+            'customer_reference': forms.TextInput(attrs={'class': 'form-input'}),
             'status': forms.Select(attrs={'class': 'form-select'}),
             'payment_terms_days': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
             'due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
@@ -140,14 +154,46 @@ class PaymentForm(forms.ModelForm):
     def __init__(self, *args, invoice=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.invoice = invoice
+        # Credit notes are issued from their own form, which numbers them.
+        self.fields['method'].choices = [
+            c for c in self.fields['method'].choices if c[0] != Payment.Method.CREDIT_NOTE
+        ]
 
     def clean_amount(self):
         amount = self.cleaned_data['amount']
         if self.invoice is not None and amount > self.invoice.balance_due:
             raise forms.ValidationError(
                 f"Amount exceeds the outstanding balance "
-                f"(£{self.invoice.balance_due:.2f}). Overpayments/credits "
-                "are not supported yet — record up to the balance."
+                f"(£{self.invoice.balance_due:.2f}). Overpayments are not "
+                "supported — record up to the balance, or issue a credit note."
+            )
+        return amount
+
+
+class CreditNoteForm(forms.Form):
+    """Issue a credit note against an invoice (invoicing.services)."""
+
+    date = forms.DateField(widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}))
+    amount = forms.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal('0.01'),
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
+    )
+    reason = forms.CharField(
+        max_length=500,
+        widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+        help_text="Printed on the credit note, for example \"Horse away 5 days in March\".",
+    )
+
+    def __init__(self, *args, invoice, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.invoice = invoice
+
+    def clean_amount(self):
+        amount = self.cleaned_data['amount']
+        if amount > self.invoice.balance_due:
+            raise forms.ValidationError(
+                f"A credit note cannot be more than the £{self.invoice.balance_due:.2f} "
+                "still owed. Refund any money already paid outside the app."
             )
         return amount
 

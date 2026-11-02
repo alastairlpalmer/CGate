@@ -52,3 +52,9 @@ AXES_ENABLED = False
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 INVOICE_SEND_ASYNC = True
+
+# Two-step sign-in is not required of administrators in tests, for the same
+# reason axes is off: almost every test signs in with Client.force_login()
+# and has no authenticator app. The requirement itself is covered in
+# core/tests/test_account_security.py, which turns it back on.
+MFA_REQUIRED_FOR_ADMINS = False

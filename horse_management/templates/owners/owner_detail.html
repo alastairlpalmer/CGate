@@ -47,9 +47,7 @@
                 Create Invoice
             </a>
             <a href="{% url 'owner_update' owner.pk %}" hx-get="{% url 'owner_update' owner.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit {{ owner.name }}" class="btn-secondary">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
-                </svg>
+                <svg class="w-4 h-4" aria-hidden="true"><use href="#i-pencil"/></svg>
                 Edit
             </a>
         </div>
@@ -79,6 +77,21 @@
                         <dd class="mt-1 text-sm text-charcoal">
                             <a href="mailto:{{ owner.email }}" class="link tap-pad">{{ owner.email }}</a>
                         </dd>
+                        {% if owner.email_bounced_at %}
+                        <div class="mt-2 alert-error" role="alert">
+                            <div class="text-sm">
+                                <p class="font-medium">Emails to this address are not arriving.</p>
+                                <p>{{ owner.email_bounce_reason|default:"Bounced" }}, {{ owner.email_bounced_at|date:"d M Y" }}. Nothing more is sent until you change the address{% if feature_access.owners.full %} or mark it as working{% endif %}.</p>
+                                {% if feature_access.owners.full %}
+                                <form method="post" action="{% url 'owner_email_ok' owner.pk %}" class="mt-2">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-secondary btn-sm">It works now</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if not owner.email_health_reminders %}<p class="mt-1 text-xs text-sage">Health reminder emails are off.</p>{% endif %}
                     </div>
                     {% endif %}
                     {% if owner.phone %}
@@ -314,6 +327,50 @@
         </div>
     </div>
     {% endif %}
+
+    {% if feature_access.owners.full %}
+    <!-- ── Personal data (core/gdpr.py) ── -->
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">Personal Data</h3>
+        </div>
+        <div class="settings-rows">
+            <div class="settings-row">
+                <div class="min-w-0">
+                    <p class="settings-row-title">Download their data</p>
+                    <p class="settings-row-meta">Everything held about this owner, as a ZIP of spreadsheets and their documents. Use it to answer a subject access request.</p>
+                </div>
+                <div class="settings-actions">
+                    <a href="{% url 'owner_data_export' owner.pk %}" hx-boost="false" class="btn-secondary btn-sm">Download</a>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div class="min-w-0">
+                    <p class="settings-row-title">Erase their details</p>
+                    {% if not owner.is_archived %}
+                    <p class="settings-row-meta">Archive this owner first.</p>
+                    {% elif owner_has_invoices %}
+                    <p class="settings-row-meta">Removes email, phone, notes, account code and documents, including earlier copies. Name and address stay on their invoices for {{ owner_retention_years }} years, then go automatically.</p>
+                    {% else %}
+                    <p class="settings-row-meta">This owner has no invoices, so everything can go: name, address, contact details and documents.</p>
+                    {% endif %}
+                </div>
+                {% if owner.is_archived %}
+                <div class="settings-actions">
+                    <form method="post" action="{% url 'owner_erase' owner.pk %}"
+                          hx-confirm="Erase this owner's personal data? This cannot be undone.">
+                        {% csrf_token %}
+                        {% if not owner_has_invoices %}<input type="hidden" name="scope" value="all">{% endif %}
+                        <button type="submit" class="btn-secondary btn-sm text-error-red border-error-red/30 hover:bg-error-red-50">Erase</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% include "includes/history_panel.html" %}
 
     <!-- Bulk Action Bar -->
     {% include 'health/partials/bulk_action_bar.html' %}

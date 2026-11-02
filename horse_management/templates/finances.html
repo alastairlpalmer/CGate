@@ -11,6 +11,9 @@
             <h1 class="sr-only">Finances</h1>
             <p class="page-subtitle">Revenue, costs and capacity across the yard</p>
         </div>
+        {% if feature_access.finances.view %}
+        <a href="{% url 'reconciliation' %}" class="btn-secondary">Reconciliation</a>
+        {% endif %}
     </div>
 
     <!-- Headline KPIs -->

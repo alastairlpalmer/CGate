@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Credit Note - {{ invoice.invoice_number }} - Yardway{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Issue Credit Note</h1>
+            <p class="page-subtitle">
+                Against invoice {{ invoice.invoice_number }} &middot; {{ invoice.owner.name }} &middot;
+                &pound;{{ invoice.balance_due|floatformat:2 }} outstanding
+            </p>
+        </div>
+    </div>
+
+    <div class="card">
+        <form method="post">
+            {% csrf_token %}
+            <div class="p-5 space-y-5">
+                {% if form.non_field_errors %}
+                <div class="alert-error" role="alert">{% for e in form.non_field_errors %}<p class="text-sm">{{ e }}</p>{% endfor %}</div>
+                {% endif %}
+                <div class="grid grid-cols-1 min-[360px]:grid-cols-2 gap-4">
+                    {% include "includes/form_field.html" with field=form.date %}
+                    {% include "includes/form_field.html" with field=form.amount help="Up to the amount still owed." %}
+                </div>
+                {% include "includes/form_field.html" with field=form.reason help=form.reason.help_text %}
+                <p class="text-xs text-sage">The credit note gets its own number and a PDF to send to the owner. It lowers what they owe, and shows on the invoice and on their statement. Enter it in Xero as well.</p>
+            </div>
+            <footer class="form-footer">
+                <a href="{% url 'invoice_detail' invoice.pk %}" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">Issue Credit Note</button>
+            </footer>
+        </form>
+    </div>
+</div>
+{% endblock %}

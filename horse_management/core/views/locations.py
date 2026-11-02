@@ -20,6 +20,7 @@ from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from ..forms import ArrivalForm, LocationForm, LocationUsageForm, SiteSettingsForm
+from ..boundary_import import area_hectares
 from ..geo import coords_from_link, site_distance_warning
 from ._next import safe_next
 from ._popup import PopupFormMixin, is_popup_request, popup_saved_response
@@ -202,6 +203,10 @@ class LocationListView(FeatureAccessMixin, ListView):
     template_name = 'locations/location_list.html'
     context_object_name = 'locations'
 
+    VIEW_MAP = 'map'
+    VIEW_CARDS = 'cards'
+    VIEWS = (VIEW_MAP, VIEW_CARDS)
+
     def get(self, request, *args, **kwargs):
         # The movement log lives on the horse list now. Old links and
         # bookmarks keep working, filters and all — this page kept the tab
@@ -211,6 +216,14 @@ class LocationListView(FeatureAccessMixin, ListView):
             carried.pop('tab', None)
             carried['tab'] = 'movements'
             return redirect(f"{reverse('horse_list')}?{carried.urlencode()}")
+        # The map is not a tab of its own any more: it is how the
+        # Locations tab opens. Old links and bookmarks land on it, site
+        # and all, rather than on a page that no longer exists.
+        if request.GET.get('tab') == 'map' and settings.LOCATION_MAPS_ENABLED:
+            carried = request.GET.copy()
+            carried.pop('tab', None)
+            carried['view'] = self.VIEW_MAP
+            return redirect(f"{reverse('location_list')}?{carried.urlencode()}")
         return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
@@ -231,6 +244,94 @@ class LocationListView(FeatureAccessMixin, ListView):
                     Q(name__icontains=search) | Q(site__icontains=search)
                 )
         return queryset.order_by('site', 'name')
+
+    def _chosen_site(self, names, mapped_names):
+        """The site the phone map opens on.
+
+        The URL wins, then the dashboard preference. Failing both, a site
+        that actually has boundaries drawn: landing on the map page and
+        being told there is no map is a poor first answer when the yard
+        next door is mapped.
+        """
+        from ..models import DashboardPreference
+        chosen = (self.request.GET.get('site') or '').strip()
+        if chosen in names:
+            return chosen
+        pref = DashboardPreference.objects.filter(user=self.request.user).first()
+        if pref and pref.site in names:
+            return pref.site
+        if mapped_names:
+            return mapped_names[0]
+        return names[0] if names else ''
+
+    @property
+    def location_view(self):
+        """Map or cards. The map is how the page opens where the feature
+        is on; the cards are the layout this page had before it, kept a
+        click away for anyone who reads a yard better as a list."""
+        if not settings.LOCATION_MAPS_ENABLED:
+            return self.VIEW_CARDS
+        value = self.request.GET.get('view', self.VIEW_MAP)
+        return value if value in self.VIEWS else self.VIEW_MAP
+
+    def _site_board_context(self):
+        from ..dashboard import board
+
+        bands = board.map_locations_by_site()
+        names = [name for name in bands if name]
+        if not names:
+            return {}
+        mapped_names = [name for name in names if bands[name]['located']]
+        chosen = self._chosen_site(names, mapped_names)
+        payload = bands.get(chosen)
+        if payload is None:
+            return {}
+
+        mapped, unmapped = [], []
+        for loc in payload['locations']:
+            # How full, and how tall its bar on the rest strip. Both are
+            # presentation, so they are worked out once here rather than
+            # in two templates that would then have to agree.
+            capacity = loc['capacity']
+            loc['fill_pct'] = (
+                min(100, round(loc['count'] * 100 / capacity)) if capacity else 0
+            )
+            loc['bar_height'] = _rest_bar_height(loc['rest_days'])
+            (mapped if loc['kind'] else unmapped).append(loc)
+
+        from ..models import DashboardPreference
+        pinned = DashboardPreference.objects.filter(
+            user=self.request.user,
+        ).values_list('pinned_location_id', flat=True).first()
+
+        return {
+            'board_site': chosen,
+            'board_payload': payload,
+            'board_pinned': pinned,
+            'board_mapped': mapped,
+            'board_unmapped': unmapped,
+            'board_rest_order': sorted(
+                payload['locations'],
+                key=lambda loc: (-(loc['rest_days'] or 0), loc['name']),
+            ),
+            'rest_key': {
+                key: colour for key, (_label, colour) in board.REST_STATES.items()
+            },
+            'board_ready': [
+                loc for loc in payload['locations']
+                if loc['rest_state'] == 'rested'
+            ],
+            'board_sites': [
+                {
+                    'name': name,
+                    'total': bands[name]['total'],
+                    'located': bands[name]['located'],
+                    'horses': bands[name]['horses'],
+                    'is_current': name == chosen,
+                }
+                for name in names
+            ],
+        }
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -264,6 +365,15 @@ class LocationListView(FeatureAccessMixin, ListView):
                 grouped = sort_grouped_locations(grouped)
             context['location_sort'] = sort
             context['grouped_locations'] = grouped
+
+        # The site board: one site at a time, drawn from the same payload
+        # on both shapes of the page — a rail beside the map on a wide
+        # screen, a sheet over it on a phone. Built for the default tab
+        # only; Usage has its own layout, and building it there would
+        # mount a second Leaflet map nobody can see.
+        context['location_view'] = self.location_view
+        if context['current_tab'] == 'locations' and settings.LOCATION_MAPS_ENABLED:
+            context.update(self._site_board_context())
 
         # Map tab: one site at a time, drawn by partials/location_map.html
         if context['current_tab'] == 'map':
@@ -662,6 +772,125 @@ def location_parse_link(request):
         })
     lat, lng = coords
     return JsonResponse({'ok': True, 'latitude': str(lat), 'longitude': str(lng), 'url': url})
+
+
+# Where the board's detail can land: the rail beside the map, or the
+# sheet over it on a phone. Anything else is not the board asking.
+BOARD_DETAIL_TARGETS = ('loc-rail-detail', 'loc-sheet-detail')
+
+# The rest strip's bars. A bar never falls below a readable stub, and a
+# field rested half a year does not tower over one rested a month — past
+# a point the answer is just "long enough".
+REST_BAR_MIN_PCT = 38
+REST_BAR_FULL_DAYS = 36
+
+
+def _rest_bar_height(rest_days):
+    days = rest_days or 0
+    share = round((days + 4) * 100 / REST_BAR_FULL_DAYS)
+    return min(100, max(REST_BAR_MIN_PCT, share))
+
+
+# How many places to offer as somewhere to move horses to.
+NEIGHBOUR_LIMIT = 4
+
+
+def _ready_neighbours(location):
+    """The nearest ground on this site that is empty and rested.
+
+    Nearest, not merely free: "adjacent" is the useful question when you
+    are standing at a gate deciding where the horses go next, and the
+    boundaries needed to answer it are already drawn. Locations with no
+    point of their own cannot be ranked by distance, so they are left
+    out rather than guessed at.
+    """
+    from ..dashboard import board
+    from ..geo import haversine_m
+
+    here = board.map_locations(location.site)
+    anchor = None
+    candidates = []
+    for tile in here['locations']:
+        if tile['pk'] == location.pk:
+            anchor = tile['anchor']
+            continue
+        if tile['rest_state'] == 'rested' and tile['anchor']:
+            candidates.append(tile)
+    if anchor is None:
+        return []
+    for tile in candidates:
+        tile['metres'] = haversine_m(
+            anchor[0], anchor[1], tile['anchor'][0], tile['anchor'][1],
+        )
+    candidates.sort(key=lambda t: t['metres'])
+    return candidates[:NEIGHBOUR_LIMIT]
+
+
+@feature_required('locations')
+def location_preview(request, pk):
+    """One location, for the site board.
+
+    The board's list is server-rendered with the page; this is the step
+    after picking one — who is on it, and the things you do about it. One
+    partial serves both shells: the rail beside the map on a wide screen,
+    the sheet over it on a phone. A direct visit goes to the location's
+    own page, so every row and badge on the map stays an ordinary link
+    without JavaScript.
+    """
+    htmx = getattr(request, 'htmx', None)
+    if not htmx or htmx.target not in BOARD_DETAIL_TARGETS:
+        return redirect('location_detail', pk=pk)
+
+    from ..dashboard import board
+
+    location = get_object_or_404(Location, pk=pk)
+    placements = list(
+        location.placements.filter(
+            end_date__isnull=True, horse__is_active=True,
+        ).select_related('horse', 'owner').order_by('start_date', 'horse__name')
+    )
+    count = len(placements)
+    holds_horses = location.usage in (Location.Usage.HORSES, Location.Usage.MIXED)
+    capacity = location.capacity if holds_horses else None
+    period = location.usage_periods.filter(end_date__isnull=True).first()
+    rest_days = None
+    if location.usage == Location.Usage.RESTED and period is not None:
+        rest_days = max(0, (timezone.localdate() - period.start_date).days)
+
+    state = board.rest_state(
+        count=count, capacity=capacity,
+        holds_horses=holds_horses, rest_days=rest_days,
+    )
+    label, colour = board.REST_STATES[state]
+
+    if capacity is None:
+        capacity_line = ''
+    elif count > capacity:
+        capacity_line = f"{count - capacity} over the limit"
+    else:
+        spaces = capacity - count
+        capacity_line = f"{spaces} space{'' if spaces == 1 else 's'} free"
+
+    return render(request, 'locations/partials/preview.html', {
+        'location': location,
+        'in_rail': htmx.target == 'loc-rail-detail',
+        'area_ha': area_hectares(
+            location.boundary, key=(location.pk, location.boundary_updated_at),
+        ),
+        'neighbours': _ready_neighbours(location),
+        'placements': placements,
+        'count': count,
+        'capacity': capacity,
+        'availability': capacity - count if capacity is not None else None,
+        'rest_state': state,
+        'rest_label': label or location.get_usage_display(),
+        'rest_colour': colour,
+        'rest_days': rest_days,
+        'rest_since': period.start_date if rest_days is not None else None,
+        'capacity_line': capacity_line,
+        'fill_pct': min(100, round(count * 100 / capacity)) if capacity else 0,
+        'today': timezone.localdate(),
+    })
 
 
 @feature_required('locations')

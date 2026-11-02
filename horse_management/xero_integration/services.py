@@ -156,7 +156,9 @@ def build_xero_invoice_payload(invoice, xero_contact_id):
         'Type': 'ACCREC',
         'Contact': {'ContactID': xero_contact_id},
         'InvoiceNumber': invoice.invoice_number,
-        'Reference': getattr(invoice.owner, 'account_code', '') or '',
+        # The customer's PO number when there is one: their accounts team
+        # matches on it. Otherwise the owner's account code, as before.
+        'Reference': invoice.customer_reference or getattr(invoice.owner, 'account_code', '') or '',
         # London date, not UTC — an invoice created 00:30 BST on the 1st must
         # not land in the previous month's VAT period in Xero.
         'Date': timezone.localtime(invoice.created_at).strftime('%Y-%m-%d'),

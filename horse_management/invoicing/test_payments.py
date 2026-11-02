@@ -162,17 +162,68 @@ class PaymentViewTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(self.invoice.payments.count(), 0)
 
-    def test_delete_payment(self):
+    def test_void_payment(self):
+        """A mistaken payment is voided, not deleted: it leaves the balance
+        but the record stays, with who voided it and why."""
         payment = Payment.objects.create(
             invoice=self.invoice, date=date(2026, 7, 1), amount=Decimal("150.00")
         )
         self.invoice.refresh_payment_status()
         self.client.force_login(self.staff)
-        response = self.client.post(reverse("payment_delete", args=[payment.pk]))
+        response = self.client.post(
+            reverse("payment_void", args=[payment.pk]), {"reason": "Entered twice"},
+        )
         self.assertRedirects(response, reverse("invoice_detail", args=[self.invoice.pk]))
         self.invoice.refresh_from_db()
         self.assertEqual(self.invoice.payments.count(), 0)
+        self.assertEqual(self.invoice.amount_paid, Decimal("0"))
         self.assertNotEqual(self.invoice.status, Invoice.Status.PAID)
+        voided = Payment.all_objects.get(pk=payment.pk)
+        self.assertEqual(voided.void_reason, "Entered twice")
+        self.assertEqual(voided.voided_by, self.staff)
+        page = self.client.get(reverse("invoice_detail", args=[self.invoice.pk]))
+        self.assertContains(page, "Voided")
+        self.assertContains(page, "Entered twice")
+
+    def test_void_needs_a_reason(self):
+        payment = Payment.objects.create(
+            invoice=self.invoice, date=date(2026, 7, 1), amount=Decimal("150.00")
+        )
+        self.client.force_login(self.staff)
+        self.client.post(reverse("payment_void", args=[payment.pk]), {"reason": "  "})
+        self.assertFalse(Payment.all_objects.get(pk=payment.pk).is_voided)
+
+    def test_unvoid_restores_the_payment(self):
+        payment = Payment.objects.create(
+            invoice=self.invoice, date=date(2026, 7, 1), amount=Decimal("150.00")
+        )
+        payment.void(self.staff, "Mistake")
+        self.client.force_login(self.staff)
+        self.client.post(reverse("payment_unvoid", args=[payment.pk]))
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.amount_paid, Decimal("150.00"))
+
+    def test_unvoid_refuses_an_overpayment(self):
+        voided = Payment.objects.create(
+            invoice=self.invoice, date=date(2026, 7, 1), amount=self.invoice.total,
+        )
+        voided.void(self.staff, "Entered twice")
+        Payment.objects.create(invoice=self.invoice, date=date(2026, 7, 2), amount=self.invoice.total)
+        self.client.force_login(self.staff)
+        self.client.post(reverse("payment_unvoid", args=[voided.pk]))
+        self.assertTrue(Payment.all_objects.get(pk=voided.pk).is_voided)
+
+    def test_voided_payments_leave_list_balances_alone(self):
+        payment = Payment.objects.create(
+            invoice=self.invoice, date=date(2026, 7, 1), amount=Decimal("150.00")
+        )
+        payment.void(self.staff, "Mistake")
+        from django.db.models import Sum
+        from invoicing.models import LIVE_PAYMENTS
+        paid = Invoice.objects.filter(pk=self.invoice.pk).aggregate(
+            p=Sum("payments__amount", filter=LIVE_PAYMENTS),
+        )["p"]
+        self.assertIsNone(paid)
 
     def test_one_click_mark_paid_still_works_and_records_payment(self):
         self.client.force_login(self.staff)

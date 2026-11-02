@@ -5,8 +5,17 @@ does not protect yet.
 
 ## Reporting a vulnerability
 
-Email the maintainer. Do not open a public GitHub issue for a security
+Email the address in `/.well-known/security.txt` on the live site (set
+by `SECURITY_CONTACT`). Do not open a public GitHub issue for a security
 problem — an open issue tells everyone about the hole before it is closed.
+
+What happens next:
+
+- We reply within **3 working days** to say we have it.
+- We tell you within **10 working days** whether we can reproduce it, and
+  what we will do.
+- We fix serious problems first, and tell you when the fix is live.
+- We name you in the release notes if you want us to.
 
 Include what you did, what happened, and what you expected. A short
 reproduction is worth more than a scanner report.
@@ -34,18 +43,39 @@ no cross-customer isolation boundary to get wrong.
 - Django's password validators are on: length, common passwords, numeric
   only, and similarity to the user's own details.
 - Sign-in locks after 5 failed attempts for 30 minutes (django-axes,
-  keyed on the username). Clear a lock early with
+  keyed on the username). The person can unlock it themselves with a
+  password reset, because that needs their mailbox. An administrator can
+  press **Unlock** on Settings → Users, or run
   `python manage.py axes_reset_username <email>`.
+- Two-step sign-in (TOTP authenticator app) with 10 single-use recovery
+  codes (`core/mfa.py`, django-otp). Required for Administrators
+  (`MFA_REQUIRED_FOR_ADMINS`). Wrong codes are throttled with a doubling
+  wait. Setting it up signs out every other session. Only an Administrator
+  can turn it off for another user, and that signs the user out
+  everywhere. From a shell: `python manage.py mfa_reset <email>`.
+- Password reset links expire after 1 hour and work once. Reset requests
+  are limited per address and per IP address (`core/ratelimit.py`).
+- New users can be invited by email to choose their own password, so an
+  administrator never needs to know it. Invitation links expire after
+  3 days and work once.
 - Every feature area is gated by a role (`core/permissions.py`). Templates
   hide what a role cannot use, and every view re-checks — hiding is not
   enforcement.
 - Sessions expire after 7 days without a request (`SESSION_COOKIE_AGE`).
-  Expiry rolls forward, so weekly users are not signed out.
+  Expiry rolls forward, so weekly users are not signed out. A session also
+  ends 30 days after sign-in, however busy (`SESSION_ABSOLUTE_AGE`).
+- Users can sign out of every other device from Account Security. An
+  administrator can sign any user out everywhere from Settings → Users.
 - The Django admin path is set by `ADMIN_URL`, so it can be moved off the
   default that untargeted scanners try first.
 - Uploaded files served from a local disk are gated by the same roles, not
   only by being signed in (`horse_management/urls.py`). Passports and
   receipts are not reachable by guessing a path.
+- A new document or receipt must be what its extension says: the first
+  bytes are checked, so an HTML page named `passport.pdf` is refused
+  (`core/uploads.py`). PDFs and photos open in the browser; Word and HEIC
+  files are served as downloads (`Content-Disposition: attachment`), from
+  the bucket and from a local disk.
 - With uploads in a bucket (`MEDIA_S3_BUCKET`), the bucket is private and
   every file is served through a signed link that expires after
   `MEDIA_S3_SIGNED_URL_TTL` seconds.
@@ -57,23 +87,74 @@ no cross-customer isolation boundary to get wrong.
 - Content-Security-Policy in **report-only** mode (see Known gaps).
 - `Referrer-Policy: strict-origin-when-cross-origin`, so record IDs in URLs
   do not leak to third parties.
+- `Permissions-Policy` on every response: location and camera for this
+  site only (maps, photo uploads); microphone, payment, USB and the rest off
+  (`core/middleware.py`).
+- The database connection requires TLS (`sslmode=require`), and so does the
+  backup's `pg_dump`. `DATABASE_SSLMODE` changes it.
 
 **Secrets**
 - `SECRET_KEY` has no default. The app refuses to start without one.
 - Xero OAuth access and refresh tokens are encrypted at rest with Fernet
   (`core/encryption.py`). They are shown masked in the Django admin.
+- Supabase (the database) and Cloudflare R2 (uploads and backups) encrypt
+  everything they store with AES-256. They hold those keys.
+- Backups are also encrypted before they leave the server (AES-256-GCM,
+  `core/backup/crypto.py`), with `BACKUP_ENCRYPTION_KEY`, which the storage
+  provider never sees. A copy of that key must be kept off the server.
+- Xero error responses are cut down to their reason fields before they are
+  logged or shown. The body can echo an owner's details, so it is never
+  kept (`xero_integration/client.py`).
 - No secret is committed to the repository. CI runs gitleaks over the full
   history on every push.
 
 **Data integrity and recovery**
 - `DATABASE_URL` missing with `DEBUG=False` stops the boot. There is no
   silent SQLite fallback that would accept data and lose it on redeploy.
-- Upload limits: 10 MB per file, 12 MB per request.
+- Upload limits: 5 MB per photo or document (`validate_file_size` in
+  `core/models.py`), 10 MB for a field-boundary import, and 12 MB of
+  form data per request, not counting files.
 - Nightly off-site backup of the database **and** the uploaded media, with
   grandfather-father-son retention (`core/backup/`). Off until
   `BACKUP_ENABLED` and the storage credentials are set. Every attempt is
   recorded in `BackupRun`, so a job that stops running is visible rather
   than assumed. See `docs/BACKUP_RESTORE.md`.
+
+**Personal data (UK GDPR)**
+- An owner's page can download everything held about them as a ZIP
+  (subject access), and erase their contact details and documents,
+  including earlier copies in the record history (erasure).
+- Name and address stay while their invoices must be kept (six years for
+  HMRC), then a weekly job anonymises the owner. Old sign-in events are
+  dropped after two years. See `docs/DATA_RETENTION.md`.
+- CSV exports are UTF-8 with a byte-order mark and guard against
+  spreadsheet formulas in typed text.
+
+**Mistakes and recovery**
+- A payment entered by mistake is voided with a reason, not deleted. It
+  stays on the invoice, struck through, and stops counting toward the
+  balance. It can be restored.
+- Deleted charges, yard costs and documents go to Settings → Recently
+  Deleted, with an Undo button on the delete message. After
+  `SOFT_DELETE_RETENTION_DAYS` (30) the nightly purge removes them, and a
+  document's file with them (`core/softdelete.py`, `core/tasks.py`).
+- A deleted document's file stays in storage until the purge. With
+  uploads in a private bucket it is still only reachable through a
+  short-lived signed link.
+
+**Audit trail**
+- Every save and delete of an invoice, payment, owner, role, role
+  assignment or the business settings keeps a copy of the row and the
+  user who made it (django-simple-history). A deleted payment can still be
+  traced to who removed it.
+- Sign-ins, sign-outs, password changes and resets, invitations, user
+  changes, lockout clears, "sign out everywhere" and every two-step
+  sign-in change are written to `AuditEvent` with the user, the target,
+  the time and the IP address (`core/audit.py`).
+- Administrators see it all on Settings → Audit Log. Invoice, owner and
+  user pages have a History panel.
+- Not covered: changes made by scheduled tasks with `QuerySet.update()`
+  (overdue sweep, reminder flags), and who *viewed* a record.
 
 **Monitoring**
 - Sentry reports unhandled errors from both the web process and the Celery
@@ -94,6 +175,10 @@ no cross-customer isolation boundary to get wrong.
   reason. A new secret in the same file still fails the scan. Review this
   file — a suppression is a decision, not a fix.
 - Dependabot for pip, npm and GitHub Actions.
+- Python packages are locked: `requirements.txt` pins every package and
+  the hash of each download (`pip-compile`, from `requirements.in`), and CI
+  installs with `--require-hashes`. GitHub Actions are pinned to commit
+  SHAs, so a moved tag cannot change what runs.
 
 ## Known gaps
 
@@ -101,20 +186,22 @@ Listed on purpose. A reviewer should not have to discover these.
 
 | Gap | Risk | Plan |
 |---|---|---|
-| **No multi-factor authentication.** A stolen password is enough. | High | Add `django-otp` for administrator accounts. |
 | **CSP allows `unsafe-inline` and `unsafe-eval` for scripts.** Inline `<script>` blocks and Alpine.js need them today. | Medium | Move to per-tag nonces and Alpine's CSP build, then set `CSP_ENFORCE=True`. |
-| **Sessions have no absolute lifetime.** Seven days of inactivity ends one, but an attacker actively using a stolen cookie keeps it alive indefinitely. | Low | Add an absolute cap alongside the rolling one. |
 | **`ADMIN_URL` still defaults to `admin/`.** The setting exists; a deployment that does not set it gains nothing. | Low | Set `ADMIN_URL` in production, or restrict by IP at the proxy. |
-| **No per-request rate limiting** outside sign-in. Report generation and PDF export are unthrottled. | Medium | Rate-limit at Cloudflare, or add `django-ratelimit` on the expensive views. |
+| **Two-step sign-in is optional for roles other than Administrator.** A stolen password is enough for those accounts. | Medium | Encourage it for staff who use Invoices or Owners. Make it required per role if needed. |
+| **No record of who viewed a record.** Only changes are tracked. | Medium | Log views of passports, insurance documents and owner details (plan P2). |
+| **Limited rate limiting outside sign-in.** Password reset is limited; report generation and PDF export are not. Rate-limit counters are per process unless `CACHE_URL` points at Redis. | Medium | Set `CACHE_URL`. Rate-limit expensive views at Cloudflare. |
 | **Uploads on a local volume are a single point of failure** where `MEDIA_S3_BUCKET` is not set. Worse, a volume attaches to one service, so the backup job on the worker cannot read files written by the web service and archives nothing while still reporting success. | Medium (availability) | Set the `MEDIA_S3_*` settings so uploads go to a private bucket. |
-| **Python dependencies are version ranges (`~=`), not a lockfile.** Two builds can differ. (JavaScript has `package-lock.json`.) | Low | Add `pip-compile` or `uv lock`. |
+| **The app signs in to the database as `postgres`** until Go-live step 6.1 is done. A query the app is tricked into running can do anything. | Medium | Run the SQL in `docs/GO_LIVE_CHECKLIST.md` step 6.1. |
+| **No virus scan on uploads.** Content is checked against the extension, but a real PDF can still carry malware. | Low (staff upload their own files) | ClamAV in the worker, or the storage provider's scanner, before SaaS. |
 | **The restore has never been tested.** Backups now run, but a backup nobody has restored is not proven. | High (availability) | Work through the five-point restore test in `docs/BACKUP_RESTORE.md` and record the date. |
 
 ## Running the security checks locally
 
 ```bash
 cd horse_management
-pip install -r requirements.txt bandit pip-audit ruff
+pip install --require-hashes -r requirements.txt
+pip install bandit pip-audit ruff
 
 # Production-shaped settings, so the deploy checks actually apply
 SECRET_KEY=$(python -c "import secrets;print(secrets.token_urlsafe(50))") \

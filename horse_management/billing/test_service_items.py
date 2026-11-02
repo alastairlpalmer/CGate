@@ -320,7 +320,7 @@ class EggCountBillingTests(ServiceDirectoryBase):
         self.assertEqual(response.status_code, 204)
         self.assertEqual(ExtraCharge.objects.filter(horse__in=self.horses).count(), 2)
 
-    def test_deleting_the_charge_zeroes_the_record_cost(self):
+    def test_deleting_the_charge_stops_billing_the_record(self):
         record = WormEggCount.objects.create(
             horse=self.horse, date=self.today, count=10, cost=Decimal('12.00'),
         )
@@ -329,8 +329,9 @@ class EggCountBillingTests(ServiceDirectoryBase):
         response = self.client.post(reverse('charge_delete', args=[record.extra_charge.pk]))
         self.assertEqual(response.status_code, 302)
         record.refresh_from_db()
-        self.assertEqual(record.cost, Decimal('0.00'))
-        self.assertIsNone(record.extra_charge)
+        self.assertTrue(record.extra_charge.is_deleted)
+        self.assertIsNone(sync_record_charge(record))
+        self.assertFalse(ExtraCharge.objects.filter(horse=self.horse).exists())
 
     def test_level_key(self):
         def level(count):

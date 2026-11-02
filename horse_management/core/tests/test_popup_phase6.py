@@ -75,8 +75,8 @@ class SaveAndAddAnotherTests(Phase6TestCase):
     def test_invalid_save_and_add_re_renders_with_errors_and_saves_nothing(self):
         url = reverse('vaccination_create') + f'?horse={self.horse.pk}'
         response = self.client.post(url, {
-            'horse': self.horse.pk, 'vaccination_type': '',
-            'date_given': self.today.isoformat(), 'save_and_add': '1',
+            'horse': self.horse.pk, 'vaccination_type': self.vax_type.pk,
+            'date_given': '', 'save_and_add': '1',
         }, **POPUP)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'This field is required')

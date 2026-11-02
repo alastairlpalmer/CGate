@@ -3,7 +3,7 @@ A website for a mixed farm business. Four trading arms: horse livery and foaling
 equine management software, farm contracting with beef and lamb, and camping.
 Specification: `docs/plan.md`. Build rules: `docs/handover.md`. Read both.
 ## Stack
-Astro 6 (Node 22.12+), static output. Plain CSS with custom properties.
+Astro 7 (Node 22.22+), static output. Plain CSS with custom properties.
 No UI framework. No Tailwind. Content collections with a Zod schema.
 Animation: embla-carousel and gsap only. Nothing else without asking.
 ## Design bar

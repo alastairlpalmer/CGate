@@ -49,7 +49,7 @@ def snapshot(user, *, today=None):
     data = {'invoices': None, 'unbilled': None, 'xero': None, 'any': False}
 
     if has_feature_access(user, 'invoices', LEVEL_VIEW):
-        from invoicing.models import Invoice, Payment
+        from invoicing.models import LIVE_PAYMENTS, Invoice, Payment
 
         drafts = Invoice.objects.filter(status=Invoice.Status.DRAFT).aggregate(
             count=Count('id'), total=Coalesce(Sum('total'), Value(ZERO)),
@@ -58,7 +58,7 @@ def snapshot(user, *, today=None):
             status__in=[Invoice.Status.SENT, Invoice.Status.OVERDUE],
         ).annotate(
             balance=ExpressionWrapper(
-                F('total') - Coalesce(Sum('payments__amount'), Value(ZERO)),
+                F('total') - Coalesce(Sum('payments__amount', filter=LIVE_PAYMENTS), Value(ZERO)),
                 output_field=DecimalField(max_digits=10, decimal_places=2),
             ),
         ).values('id', 'due_date', 'balance')
@@ -78,9 +78,10 @@ def snapshot(user, *, today=None):
                 overdue_total += balance
                 overdue_count += 1
 
+        # Money in: credit notes lower what is owed but bring nothing in.
         received = Payment.objects.filter(
             date__gte=today - timedelta(days=30),
-        ).aggregate(total=Coalesce(Sum('amount'), Value(ZERO)), count=Count('id'))
+        ).exclude(method=Payment.Method.CREDIT_NOTE).aggregate(total=Coalesce(Sum('amount'), Value(ZERO)), count=Count('id'))
 
         send_errors = Invoice.objects.exclude(send_error='').count()
 

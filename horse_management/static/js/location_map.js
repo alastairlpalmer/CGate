@@ -62,6 +62,11 @@
             opts = opts || {};
             return {
                 variant: opts.variant || 'full',
+                // Whether a tap opens the location's page or hands it to
+                // the board beside the map. The phone always picks; the
+                // desktop board asks for it, and the standalone map does
+                // not, so its badges stay ordinary links.
+                picks: opts.picks !== undefined ? !!opts.picks : opts.variant === 'phone',
                 highlight: opts.highlight || null,
                 tiles: false,     // the base map is showing
                 payload: null,
@@ -95,15 +100,24 @@
                         self.focus(e.detail.highlight);
                     };
                     window.addEventListener('yardway:map-focus', this._onFocus);
+                    // The board beside the map points at a location by
+                    // hovering its row; the shape has to answer, or the
+                    // two lists read as unrelated.
+                    this._onHover = function (e) {
+                        if (!e.detail || e.detail.site !== self.$el.dataset.site) return;
+                        self.highlightShape(e.detail.pk);
+                    };
+                    window.addEventListener('yardway:map-hover', this._onHover);
+                    this._onResize = function () { self.sizeChanged(); };
+                    window.addEventListener('resize', this._onResize);
                 },
 
                 destroy: function () {
-                    clearTimeout(this._bgTimer);
+                    if (this._sizeWatch) { this._sizeWatch.disconnect(); this._sizeWatch = null; }
                     window.removeEventListener('yardway:map-focus', this._onFocus);
-                    if (this._ro) { this._ro.disconnect(); }
-                    if (this.map) { this.map.remove(); this.map = null; }
-                    this._tileLayer = null;
-                    this._attribution = null;
+                    window.removeEventListener('yardway:map-hover', this._onHover);
+                    window.removeEventListener('resize', this._onResize);
+                    this.unmount();
                 },
 
                 // ── The base map ──
@@ -149,6 +163,14 @@
                     var self = this;
                     var el = this.$refs.map;
                     if (this.map || !el || !window.L || !document.body.contains(el)) return;
+                    // The Locations page carries both shapes of itself, and
+                    // one of them is always display:none. Mounting the hidden
+                    // one would build a second Leaflet map and, on the phone,
+                    // fetch a screen of tiles nobody can see — so wait until
+                    // the container has a size, and let the observer below
+                    // mount it if the window ever changes its mind.
+                    this.watchForSize(el);
+                    if (!el.clientWidth || !el.clientHeight) { return; }
                     var full = this.variant === 'full';
                     // Two ways in. With a mouse or trackpad (a fine pointer)
                     // both maps are for looking: drag to move, +/- and a double
@@ -206,6 +228,15 @@
                         });
                         this.map.on('dblclick', function () { clearTimeout(self._bgTimer); });
                     }
+                    if (this.picks) {
+                        // Tapping bare ground puts the field detail away,
+                        // rather than leaving the page as the full map does.
+                        this.map.on('click', function () {
+                            window.dispatchEvent(new CustomEvent('yardway:map-pick', {
+                                detail: { site: self.$el.dataset.site, pk: null }
+                            }));
+                        });
+                    }
                     this.group = L.featureGroup().addTo(this.map);
                     this.draw();
                     // Badges are DOM outside Leaflet's panes, so they must be
@@ -241,6 +272,54 @@
                     this.focus(this.highlight);
                 },
 
+                // Follow the container's size for the life of the component:
+                // build the map when CSS gives the container a size, take it
+                // down when CSS takes the size away again. The second half
+                // matters because both shapes of the Locations page ship in
+                // one response — a window dragged across the breakpoint hands
+                // the map from one shell to the other, and without a teardown
+                // the shell that lost it kept a live Leaflet map at 0x0 for
+                // the rest of the session.
+                watchForSize: function (el) {
+                    if (this._sizeWatch || !window.ResizeObserver) return;
+                    var self = this;
+                    this._sizeWatch = new ResizeObserver(function () {
+                        var sized = !!(el.clientWidth && el.clientHeight);
+                        if (sized && !self.map) { self.mount(); }
+                        else if (!sized && self.map) { self.unmount(); }
+                    });
+                    this._sizeWatch.observe(el);
+                },
+
+                // Which shell has the screen is a question of window width,
+                // and an element CSS has just set to display:none has no box
+                // to report a change from — so the window is asked directly.
+                // This is what hands the map over when a window is dragged
+                // across the breakpoint, in both directions.
+                sizeChanged: function () {
+                    var el = this.$refs.map;
+                    if (!el || !window.L) return;
+                    var sized = !!(el.clientWidth && el.clientHeight);
+                    if (sized && !this.map) { this.mount(); }
+                    else if (!sized && this.map) { this.unmount(); }
+                },
+
+                // Take the Leaflet map down but keep the component. Every
+                // field mount() sets is cleared, so the next mount() starts
+                // from the same place a first one does; the badges are DOM of
+                // our own and stay where they are, hidden with the shell,
+                // until the next focus() puts them back.
+                unmount: function () {
+                    clearTimeout(this._bgTimer);
+                    if (this._ro) { this._ro.disconnect(); this._ro = null; }
+                    if (this.map) { this.map.remove(); this.map = null; }
+                    this.group = null;
+                    this._tileLayer = null;
+                    this._attribution = null;
+                    this._anim = null;
+                    this.fitZoom = null;
+                },
+
                 // A short notice over the map (how to move it on a phone).
                 hint: function (text) {
                     var self = this;
@@ -256,18 +335,36 @@
                 draw: function () {
                     var self = this;
                     var full = this.variant === 'full';
+                    // The phone map picks rather than navigates: its tap
+                    // opens the field in the sheet beside it, and the
+                    // sheet is what static/js/locations_mobile.js drives.
+                    var picks = this.picks;
+                    var interactive = full || picks;
                     this.payload.locations.forEach(function (loc) {
-                        var style = { color: loc.colour, weight: STROKE_WEIGHT, fillColor: loc.colour, fillOpacity: self.tiles ? FILL_OVER_TILES : FILL_PLAIN, opacity: 1 };
+                        // On the phone the colour answers the rotation —
+                        // grazing, over, rested, recovering — not capacity
+                        // alone, so the map and the list say the same thing.
+                        var colour = (picks && loc.rest_colour) ? loc.rest_colour : loc.colour;
+                        var style = { color: colour, weight: STROKE_WEIGHT, fillColor: colour, fillOpacity: self.tiles ? FILL_OVER_TILES : FILL_PLAIN, opacity: 1 };
                         var layer = null;
                         if (loc.boundary) {
-                            layer = L.geoJSON(loc.boundary, { style: style, interactive: full });
+                            layer = L.geoJSON(loc.boundary, { style: style, interactive: interactive });
                         } else if (loc.lat != null && loc.lng != null) {
-                            layer = L.circle([loc.lat, loc.lng], Object.assign({ radius: loc.radius_m || 25, interactive: full }, style));
+                            layer = L.circle([loc.lat, loc.lng], Object.assign({ radius: loc.radius_m || 25, interactive: interactive }, style));
                         }
                         if (!layer) return;   // no point: draw nothing, not even a placeholder
-                        if (full) {
+                        if (interactive) {
                             layer.on('click', function (e) {
                                 L.DomEvent.stopPropagation(e);   // not a background tap
+                                if (picks) {
+                                    // Leaflet layers are not in the page's
+                                    // DOM, so there is nothing to delegate
+                                    // from: the sheet is told by event.
+                                    window.dispatchEvent(new CustomEvent('yardway:map-pick', {
+                                        detail: { site: self.$el.dataset.site, pk: loc.pk }
+                                    }));
+                                    return;
+                                }
                                 window.location.assign(loc.urls.detail);
                             });
                         }
@@ -319,10 +416,53 @@
                     this._needsFit = !el || el.clientWidth === 0 || el.clientHeight === 0;
                     if (bounds.isValid() && !this._needsFit) {
                         this.map.invalidateSize();
-                        this.map.fitBounds(bounds, { padding: FIT_PADDING, animate: false });
+                        this.map.fitBounds(bounds, Object.assign(
+                            { animate: false }, this.fitPadding(el)
+                        ));
                         this.fitZoom = this.map.getZoom();
                     }
                     this.place();
+                },
+
+                // Lift one shape out of the rest: a heavier stroke and a
+                // fuller wash, so the eye finds it without the colour
+                // changing meaning.
+                highlightShape: function (pk) {
+                    var self = this;
+                    Object.keys(this.layers).forEach(function (key) {
+                        var layer = self.layers[key];
+                        var on = String(key) === String(pk);
+                        if (!layer.setStyle) { return; }
+                        layer.setStyle({
+                            weight: on ? STROKE_WEIGHT + 2 : STROKE_WEIGHT,
+                            fillOpacity: on
+                                ? (self.tiles ? FILL_OVER_TILES + 0.14 : FILL_PLAIN + 0.16)
+                                : (self.tiles ? FILL_OVER_TILES : FILL_PLAIN),
+                        });
+                    });
+                    Object.keys(this.badges).forEach(function (key) {
+                        self.badges[key].classList.toggle('is-hover', String(key) === String(pk));
+                    });
+                },
+
+                // How much of the container the shapes must keep clear.
+                // On the phone the sheet lies over the bottom of the map,
+                // so a plain inset would fit the yard into ground nobody
+                // can see. The sheet's real edge is measured rather than
+                // repeated as a number here.
+                fitPadding: function (el) {
+                    if (this.variant !== 'phone' || !el) { return { padding: FIT_PADDING }; }
+                    var box = el.getBoundingClientRect();
+                    var sheet = document.querySelector('[data-loc-sheet]');
+                    var bottom = sheet ? box.bottom - sheet.getBoundingClientRect().top : 0;
+                    var top = FIT_PADDING[1];
+                    bottom = Math.max(FIT_PADDING[1], bottom + 12);
+                    // A sheet pulled up to full would leave no band at all.
+                    if (top + bottom > box.height * 0.7) { return { padding: FIT_PADDING }; }
+                    return {
+                        paddingTopLeft: [FIT_PADDING[0], Math.round(top)],
+                        paddingBottomRight: [FIT_PADDING[0], Math.round(bottom)]
+                    };
                 },
 
                 // Where a lat/lng lands in the container: now, or — during an
@@ -415,8 +555,14 @@
                         var p = spread[i];
                         placed[it.pk] = true;
                         a.hidden = false;
-                        a.style.left = p.x + 'px';
-                        a.style.top = p.y + 'px';
+                        // transform, not left/top: a zoom animates this for
+                        // every badge and name at once, and left/top relayout
+                        // the map on each of those frames. A translate runs
+                        // on the compositor. The -50%/-50% that used to sit
+                        // in the stylesheet comes along here, because an
+                        // element has only one transform.
+                        a.style.transform =
+                            'translate(' + p.x + 'px,' + p.y + 'px) translate(-50%,-50%)';
                         var dx = p.x - it.x, dy = p.y - it.y;
                         self.leader(it.pk, Math.sqrt(dx * dx + dy * dy) > LEADER_MIN_PX ? { x1: it.x, y1: it.y, x2: p.x, y2: p.y, colour: a.dataset.colour } : null);
                         var label = self.labels[it.pk];
@@ -437,8 +583,9 @@
                         }
                         if (show) newNamed[it.pk] = true;
                         label.hidden = !show;
-                        label.style.left = p.x + 'px';
-                        label.style.top = (p.y + BADGE_PX / 2 + 2) + 'px';
+                        label.style.transform =
+                            'translate(' + p.x + 'px,' + (p.y + BADGE_PX / 2 + 2) + 'px)'
+                            + ' translateX(-50%)';
                     });
                     if (!named) decided.named = newNamed;
                     Object.keys(this.badges).forEach(function (pk) {
@@ -569,7 +716,7 @@
                 },
 
                 mapTabUrl: function () {
-                    return this.data.urls.map + '?tab=map&site=' + encodeURIComponent(this.site);
+                    return this.data.urls.map + '?view=map&site=' + encodeURIComponent(this.site);
                 },
 
                 count: function () {

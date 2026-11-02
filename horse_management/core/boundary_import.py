@@ -400,6 +400,34 @@ def _project_ring(ring, k):
     return [(x * k * METRES_PER_DEGREE, y * METRES_PER_DEGREE) for x, y in ring.coords]
 
 
+_AREA_CACHE: dict = {}
+_AREA_CACHE_MAX = 2000
+
+
+def area_hectares(geometry: dict, key=None) -> float | None:
+    """A drawn boundary's area, in hectares, to one decimal place.
+
+    Nothing stores an area: it is the boundary's own, so keeping a second
+    copy of it would only be a way for the two to disagree. Cached per
+    process on ``key`` (the location's pk and ``boundary_updated_at``),
+    the same way ``display_geometry`` is, so a page of parcels does not
+    re-measure every one on every request.
+    """
+    if not geometry:
+        return None
+    if key is not None and key in _AREA_CACHE:
+        return _AREA_CACHE[key]
+    try:
+        hectares = round(approx_area_m2(shape(geometry)) / 10000, 1)
+    except Exception:
+        return None
+    if key is not None:
+        if len(_AREA_CACHE) >= _AREA_CACHE_MAX:
+            _AREA_CACHE.clear()
+        _AREA_CACHE[key] = hectares
+    return hectares
+
+
 # ── Display geometry ───────────────────────────────────────────────────────
 
 DISPLAY_TOLERANCE_DEG = 0.00001   # about one metre: invisible at field scale

@@ -7,7 +7,10 @@ from decimal import Decimal
 from django.core.validators import FileExtensionValidator, MinValueValidator
 
 from core.models import validate_file_size
+from core.uploads import validate_file_content
+from core.softdelete import SoftDeleteModel
 from django.db import models
+from django.db.models import F, Q
 
 
 class ServiceProvider(models.Model):
@@ -42,7 +45,7 @@ class ServiceProvider(models.Model):
         return f"{self.name} ({self.get_provider_type_display()})"
 
 
-class ExtraCharge(models.Model):
+class ExtraCharge(SoftDeleteModel):
     """Extra charges for services beyond standard livery."""
 
     class ChargeType(models.TextChoices):
@@ -101,6 +104,7 @@ class ExtraCharge(models.Model):
         validators=[
             FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'pdf', 'heic', 'heif']),
             validate_file_size,
+            validate_file_content,
         ],
     )
     feed_out = models.ForeignKey(
@@ -120,6 +124,9 @@ class ExtraCharge(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(amount__gte=0), name='extracharge_amount_not_negative'),
+        ]
         ordering = ['-date']
         indexes = [
             models.Index(fields=['invoiced', 'date'], name='charge_invoiced_date'),
@@ -129,11 +136,66 @@ class ExtraCharge(models.Model):
     def __str__(self):
         return f"{self.horse.name} - {self.get_charge_type_display()}: £{self.amount} ({self.date})"
 
+    HEALTH_RECORD_ACCESSORS = (
+        'vaccination', 'farrier_visit', 'worming_treatment', 'vet_visit',
+        'worm_egg_count',
+    )
+
+    def linked_health_record(self):
+        """The vaccination, farrier visit (and so on) this charge bills for."""
+        from django.core.exceptions import ObjectDoesNotExist
+        for accessor in self.HEALTH_RECORD_ACCESSORS:
+            try:
+                # Reverse one-to-one raises DoesNotExist (not AttributeError),
+                # so getattr's default can't be used here.
+                return getattr(self, accessor)
+            except ObjectDoesNotExist:
+                continue
+        return None
+
+    def purge(self):
+        """Delete for good (core.tasks.purge_soft_deleted).
+
+        A charge made from a health record is rebuilt from record.cost on
+        the record's next save once the charge is gone. Zero the cost first,
+        so a purged charge stays gone.
+        """
+        record = self.linked_health_record()
+        if record is not None:
+            record.cost = Decimal('0.00')
+            record.extra_charge = None
+            record.save(update_fields=['cost', 'extra_charge'])
+        self.delete()
+
     def mark_as_invoiced(self, invoice):
         """Mark this charge as invoiced."""
         self.invoiced = True
         self.invoice = invoice
         self.save(update_fields=['invoiced', 'invoice'])
+
+    @property
+    def on_live_invoice(self):
+        """True when this charge is billed on any non-cancelled invoice.
+
+        ``invoiced`` alone is not enough: a split charge on a co-owned horse
+        stays ``invoiced=False`` until *every* co-owner has been billed, yet
+        one owner's live invoice already carries a line for it. Changing the
+        amount in that window bills the co-owners different fractions of
+        different totals; deleting the charge orphans the line already
+        issued (``InvoiceLineItem.charge`` is SET_NULL), so cancelling that
+        invoice can never release it again.
+
+        Every path that edits or removes a charge must ask this, not
+        ``invoiced`` — the charge screens (billing.views) and the health
+        record → charge sync (health.views.sync_record_charge) alike.
+        """
+        if self.invoiced:
+            return True
+        from invoicing.models import Invoice
+
+        return self.invoice_items.exclude(
+            invoice__status=Invoice.Status.CANCELLED,
+        ).exists()
 
     @classmethod
     def unbilled_total(cls):
@@ -163,7 +225,7 @@ class ExtraCharge(models.Model):
         return sum((c.amount - c.billed for c in charges), Decimal('0.00'))
 
 
-class YardCost(models.Model):
+class YardCost(SoftDeleteModel):
     """Yard-level costs not tied to a specific horse."""
 
     class CostCategory(models.TextChoices):
@@ -212,6 +274,7 @@ class YardCost(models.Model):
         validators=[
             FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'pdf', 'heic', 'heif']),
             validate_file_size,
+            validate_file_content,
         ],
     )
     notes = models.TextField(blank=True)
@@ -219,6 +282,10 @@ class YardCost(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(amount__gte=0), name='yardcost_amount_not_negative'),
+            models.CheckConstraint(condition=Q(vat_amount__gte=0), name='yardcost_vat_not_negative'),
+        ]
         ordering = ['-date']
         indexes = [
             models.Index(fields=['date', 'category'], name='yardcost_date_category'),
@@ -293,6 +360,9 @@ class FeedOut(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(total_cost__gte=0), name='feedout_cost_not_negative'),
+        ]
         ordering = ['-date']
         indexes = [
             models.Index(fields=['location', 'date'], name='feedout_location_date'),
@@ -331,6 +401,9 @@ class FeedStock(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(cost__gte=0), name='feedstock_cost_not_negative'),
+        ]
         ordering = ['-date']
         indexes = [
             models.Index(fields=['feed_type', 'date'], name='feedstock_type_date'),
@@ -407,6 +480,9 @@ class ServiceItem(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(price__gte=0), name='serviceitem_price_not_negative'),
+        ]
         ordering = ['category', 'sort_order', 'name']
 
     def __str__(self):

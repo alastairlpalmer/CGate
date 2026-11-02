@@ -1,0 +1,15 @@
+{% extends "account/_auth_layout.html" %}
+{% block title %}Recovery codes{% endblock %}
+{% block heading %}Save your recovery codes{% endblock %}
+{% block subtitle %}{% if first_setup %}Two-step sign-in is on.{% else %}Your old recovery codes no longer work.{% endif %}{% endblock %}
+{% block card %}
+<p class="text-sm text-charcoal">
+    If you lose your phone, each of these codes lets you sign in <strong>once</strong>.
+    Keep them somewhere safe and away from your phone, such as a password manager or a printed copy.
+    <strong>This is the only time they are shown.</strong>
+</p>
+<ul class="grid grid-cols-2 gap-2 font-mono text-base text-charcoal bg-parchment rounded-lg p-4 select-all" aria-label="Recovery codes">
+    {% for code in codes %}<li>{{ code }}</li>{% endfor %}
+</ul>
+<a href="{{ next }}" class="btn-primary w-full min-h-[44px] flex items-center justify-center">I have saved my codes</a>
+{% endblock %}

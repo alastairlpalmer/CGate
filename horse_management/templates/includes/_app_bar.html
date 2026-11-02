@@ -3,7 +3,8 @@ The app bar: search and Add, on every page.
 
 Rendered in base.html OUTSIDE #main-content, so a boosted navigation never
 swaps it. That is what keeps it in place — and keeps a half-typed search
-alive — as you move between areas.
+alive — as you move between areas. Picking a result clears the box, so the
+next page does not open with the old search still in it.
 
 The search is the dashboard's quick find, promoted: one typo-tolerant
 lookup across horses, owners and locations, each group gated on the role's
@@ -23,7 +24,9 @@ them gets no box.{% endcomment %}
         reaches; from two on it shows the matches.{% endcomment %}
         {% comment %}static below sm: the panel then positions against the
         row and spans the whole bar, not just the box.{% endcomment %}
-        <div class="static sm:relative flex-1 min-w-0 group"
+        {# data-app-search: the phone Locations page collapses this to its #}
+        {# icon so the site selector can share the row (static/css/input.css). #}
+        <div data-app-search class="static sm:relative flex-1 min-w-0 group"
              x-data="{ open: false, focused: false, q: '', compact: false,
                        get short() { return this.q.trim().length < 2 },
                        init() { var mq = window.matchMedia('(max-width: 639px)'); this.compact = mq.matches; mq.addEventListener('change', function (e) { this.compact = e.matches }.bind(this)) } }"
@@ -69,7 +72,7 @@ them gets no box.{% endcomment %}
                  x-transition:enter="transition ease-out duration-100"
                  x-transition:enter-start="opacity-0 -translate-y-1"
                  x-transition:enter-end="opacity-100 translate-y-0"
-                 @click="if ($event.target.closest('a')) open = false">
+                 @click="if ($event.target.closest('a')) { open = false; q = ''; $refs.input.value = '' }">
 
                 {# What the box reaches, shown until there is something to search for. #}
                 <div x-show="short" class="px-4 pt-3.5 pb-3">

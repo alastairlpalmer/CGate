@@ -14,6 +14,10 @@ from django.core.validators import FileExtensionValidator, MinValueValidator, Ma
 from django.db import models, transaction
 from django.db.models import F, Q
 from django.utils import timezone
+from simple_history.models import HistoricalRecords
+
+from .softdelete import SoftDeleteModel
+from .uploads import validate_file_content
 
 
 def validate_file_size(value):
@@ -57,6 +61,29 @@ class Owner(models.Model):
         blank=True,
         help_text="Account code for accounting systems (e.g. Xero)"
     )
+    invoice_reference = models.CharField(
+        'Purchase order or reference',
+        max_length=50,
+        blank=True,
+        help_text="Printed on every new invoice for this owner, e.g. a PO number their "
+                  "accounts team needs before they will pay.",
+    )
+    pause_reminders = models.BooleanField(
+        'Pause overdue reminders',
+        default=False,
+        help_text="Stop overdue-payment emails, for example while a payment plan is agreed.",
+    )
+    email_health_reminders = models.BooleanField(
+        'Email health reminders',
+        default=True,
+        help_text="Vaccination, farrier, EHV and breeding reminders. Invoices and statements "
+                  "always go. The owner can also turn these off from the link in the email.",
+    )
+    # Set by the email provider's webhook (notifications/webhooks.py) when
+    # mail to this address hard-bounces or is marked as spam. Nothing more
+    # is sent until the address is changed or marked as working.
+    email_bounced_at = models.DateTimeField(null=True, blank=True, editable=False)
+    email_bounce_reason = models.CharField(max_length=255, blank=True, editable=False)
     notes = models.TextField(blank=True)
     is_archived = models.BooleanField(
         default=False,
@@ -67,6 +94,9 @@ class Owner(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     objects = OwnerQuerySet.as_manager()
+    # Owner contact details change history (core/audit.py). It holds
+    # personal data, so a GDPR erasure must clear it too.
+    history = HistoricalRecords(excluded_fields=['updated_at'])
 
     class Meta:
         ordering = ['name']
@@ -546,6 +576,10 @@ class Horse(models.Model):
     notes = models.TextField(blank=True, help_text="Special notes (e.g., first winter, lame, needs rug)")
     passport_number = models.CharField(max_length=100, blank=True)
     has_passport = models.BooleanField(default=True)
+    microchip = models.CharField(
+        max_length=50, blank=True,
+        help_text="Microchip number, if the horse is chipped",
+    )
     is_active = models.BooleanField(default=True, db_index=True, help_text="False if horse has left permanently")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -751,6 +785,9 @@ class RateType(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(daily_rate__gte=0), name='ratetype_daily_rate_not_negative'),
+        ]
         ordering = ['daily_rate']
 
     def __str__(self):
@@ -807,6 +844,10 @@ class Placement(models.Model):
                 fields=['horse'],
                 condition=models.Q(end_date__isnull=True),
                 name='unique_active_placement_per_horse',
+            ),
+            models.CheckConstraint(
+                condition=Q(end_date__isnull=True) | Q(end_date__gte=F('start_date')),
+                name='placement_ends_after_start',
             ),
         ]
 
@@ -988,6 +1029,16 @@ class HorseOwnership(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(share_percentage__gte=Decimal('0.01'), share_percentage__lte=100),
+                name='horseownership_share_in_range',
+            ),
+            models.CheckConstraint(
+                condition=Q(effective_to__isnull=True) | Q(effective_to__gte=F('effective_from')),
+                name='horseownership_ends_after_start',
+            ),
+        ]
         ordering = ['-effective_from', 'owner__name']
         unique_together = [('horse', 'owner', 'effective_from')]
         verbose_name = "Horse Ownership"
@@ -1089,6 +1140,12 @@ class OwnershipShare(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(share_percentage__gte=Decimal('0.01'), share_percentage__lte=100),
+                name='ownershipshare_share_in_range',
+            ),
+        ]
         ordering = ['-share_percentage']
         unique_together = [('horse', 'owner')]
         indexes = [
@@ -1164,6 +1221,8 @@ class BusinessSettings(models.Model):
     )
     invoice_prefix = models.CharField(max_length=10, default="INV")
     next_invoice_number = models.PositiveIntegerField(default=1)
+    credit_note_prefix = models.CharField(max_length=10, default="CN")
+    next_credit_note_number = models.PositiveIntegerField(default=1)
     auto_generate_invoices = models.BooleanField(
         default=True,
         help_text=(
@@ -1173,6 +1232,11 @@ class BusinessSettings(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # Bank details and VAT settings print on every invoice, so a change to
+    # them must be traceable. next_invoice_number moves on every invoice
+    # and is left out (get_next_invoice_number skips history).
+    history = HistoricalRecords(excluded_fields=['next_invoice_number', 'next_credit_note_number', 'updated_at'])
 
     class Meta:
         verbose_name = "Business Settings"
@@ -1203,9 +1267,22 @@ class BusinessSettings(models.Model):
             locked = BusinessSettings.objects.select_for_update().get(pk=self.pk)
             number = locked.next_invoice_number
             locked.next_invoice_number = number + 1
+            # Only the counter moved, which history leaves out.
+            locked.skip_history_when_saving = True
             locked.save(update_fields=['next_invoice_number'])
         self.next_invoice_number = number + 1
         return f"{self.invoice_prefix}{number:05d}"
+
+    def get_next_credit_note_number(self):
+        """Get and atomically increment the credit note number (CN00001)."""
+        with transaction.atomic():
+            locked = BusinessSettings.objects.select_for_update().get(pk=self.pk)
+            number = locked.next_credit_note_number
+            locked.next_credit_note_number = number + 1
+            locked.skip_history_when_saving = True
+            locked.save(update_fields=['next_credit_note_number'])
+        self.next_credit_note_number = number + 1
+        return f"{self.credit_note_prefix}{number:05d}"
 
 
 class DashboardPreference(models.Model):
@@ -1284,7 +1361,7 @@ class DashboardPreference(models.Model):
         return grouped
 
 
-class Document(models.Model):
+class Document(SoftDeleteModel):
     """A file attached to a horse or an owner: passport scan, insurance
     certificate, registration papers, loan agreement, etc.
 
@@ -1333,6 +1410,7 @@ class Document(models.Model):
                 'doc', 'docx',
             ]),
             validate_file_size,
+            validate_file_content,
         ],
     )
     expiry_date = models.DateField(
@@ -1483,6 +1561,9 @@ class Role(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # What each role could reach, and when that changed.
+    history = HistoricalRecords(excluded_fields=['updated_at'])
+
     class Meta:
         ordering = ['name']
 
@@ -1513,6 +1594,9 @@ class UserRole(models.Model):
     # PROTECT: deleting a role with members requires reassigning them first.
     role = models.ForeignKey(Role, on_delete=models.PROTECT, related_name='assignments')
     assigned_at = models.DateTimeField(auto_now_add=True)
+
+    # Who was given which role, and by whom.
+    history = HistoricalRecords()
 
     def __str__(self):
         return f"{self.user} → {self.role}"
@@ -1569,6 +1653,133 @@ class BackupRun(models.Model):
     @classmethod
     def last_success(cls):
         return cls.objects.filter(status=cls.STATUS_SUCCESS).first()
+
+
+class ScheduledRun(models.Model):
+    """One day's run of one scheduled task (core/jobs.py).
+
+    The unique (task, day) pair is the claim that stops a task running
+    twice: a second beat process or a redelivered message finds the row
+    taken. The rows also answer "when did this task last run?". Rows older
+    than SCHEDULED_RUN_RETENTION_DAYS are removed by the nightly purge.
+    """
+
+    class Status(models.TextChoices):
+        RUNNING = 'running', 'Running'
+        SUCCESS = 'success', 'Finished'
+        FAILED = 'failed', 'Failed'
+
+    task_name = models.CharField(max_length=200)
+    run_key = models.CharField(max_length=20, help_text='The local date of the run.')
+    task_id = models.CharField(max_length=255)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.RUNNING)
+    started_at = models.DateTimeField(default=timezone.now)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    result = models.CharField(max_length=500, blank=True)
+
+    class Meta:
+        ordering = ['-started_at']
+        constraints = [
+            models.UniqueConstraint(fields=['task_name', 'run_key'], name='one_scheduled_run_per_day'),
+        ]
+
+    def __str__(self):
+        return f'{self.task_name} on {self.run_key}: {self.get_status_display()}'
+
+
+class FailedTask(models.Model):
+    """A background task that failed every retry (core/jobs.py).
+
+    Settings → Background Tasks lists the open ones, with Run again and
+    Dismiss. Dismissed rows older than FAILED_TASK_RETENTION_DAYS are
+    removed by the nightly purge.
+    """
+
+    task_name = models.CharField(max_length=200)
+    task_id = models.CharField(max_length=255, blank=True)
+    # Task arguments are primary keys and flags, never personal data.
+    args = models.JSONField(default=list, blank=True)
+    kwargs = models.JSONField(default=dict, blank=True)
+    error = models.CharField(max_length=1000)
+    traceback = models.TextField(blank=True)
+    retries = models.PositiveSmallIntegerField(default=0)
+    failed_at = models.DateTimeField(default=timezone.now)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+    )
+    resolution = models.CharField(max_length=20, blank=True, help_text='"run again" or "dismissed".')
+
+    class Meta:
+        ordering = ['-failed_at']
+        indexes = [models.Index(fields=['resolved_at', 'failed_at'])]
+
+    def __str__(self):
+        return f'{self.task_name} failed at {self.failed_at:%Y-%m-%d %H:%M}'
+
+    @property
+    def short_name(self):
+        return self.task_name.rsplit('.', 1)[-1].replace('_', ' ').capitalize()
+
+
+class AuditEvent(models.Model):
+    """A security or account action: who did it, to whom, and when.
+
+    Record changes (an invoice edited, a payment deleted) are kept by
+    django-simple-history on the models themselves. This table holds the
+    things that are not a row changing: signing in, two-step sign-in
+    being turned off, a lockout cleared, a user signed out everywhere.
+
+    The labels are copied at the time, so the trail still reads correctly
+    after a user is renamed or deleted. Written through ``core.audit``.
+    """
+
+    class Action(models.TextChoices):
+        SIGNED_IN = 'signed_in', 'Signed in'
+        SIGNED_OUT = 'signed_out', 'Signed out'
+        USER_CREATED = 'user_created', 'User created'
+        USER_INVITED = 'user_invited', 'User invited'
+        USER_UPDATED = 'user_updated', 'User details changed'
+        USER_ACTIVATED = 'user_activated', 'User reactivated'
+        USER_DEACTIVATED = 'user_deactivated', 'User deactivated'
+        PASSWORD_SET_BY_ADMIN = 'password_set_by_admin', 'Password set by an administrator'
+        PASSWORD_CHANGED = 'password_changed', 'Password changed'
+        PASSWORD_RESET = 'password_reset', 'Password reset by email'
+        INVITE_ACCEPTED = 'invite_accepted', 'Invitation accepted'
+        LOCKOUT_CLEARED = 'lockout_cleared', 'Sign-in lockout cleared'
+        SIGNED_OUT_EVERYWHERE = 'signed_out_everywhere', 'Signed out everywhere'
+        MFA_ENABLED = 'mfa_enabled', 'Two-step sign-in turned on'
+        MFA_DISABLED = 'mfa_disabled', 'Two-step sign-in turned off'
+        MFA_RESET = 'mfa_reset', 'Two-step sign-in turned off for someone else'
+        MFA_RECOVERY_CODE_USED = 'mfa_recovery_code_used', 'Recovery code used'
+        MFA_RECOVERY_CODES_RENEWED = 'mfa_recovery_codes_renewed', 'New recovery codes made'
+        OWNER_EXPORTED = 'owner_exported', "Owner's personal data exported"
+        OWNER_ERASED = 'owner_erased', "Owner's contact details erased"
+        OWNER_ANONYMISED = 'owner_anonymised', 'Owner anonymised'
+
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    action = models.CharField(max_length=40, choices=Action.choices)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='+',
+    )
+    actor_label = models.CharField(max_length=254, blank=True)
+    target_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='+',
+    )
+    target_label = models.CharField(max_length=254, blank=True)
+    detail = models.CharField(max_length=500, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at', '-pk']
+        indexes = [
+            models.Index(fields=['target_user', 'created_at'], name='auditevent_target_created'),
+        ]
+
+    def __str__(self):
+        return f'{self.get_action_display()} — {self.target_label or self.actor_label} at {self.created_at:%Y-%m-%d %H:%M}'
 
 
 # Invoice and InvoiceLineItem have been moved to invoicing.models.

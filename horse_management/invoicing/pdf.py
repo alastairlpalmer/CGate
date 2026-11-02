@@ -5,6 +5,8 @@ PDF generation for invoices.
 import io
 import logging
 from decimal import Decimal
+from functools import lru_cache
+from pathlib import Path
 from xml.sax.saxutils import escape as _xml_escape
 
 from django.template.loader import render_to_string
@@ -15,6 +17,61 @@ from core.models import BusinessSettings
 from .utils import group_line_items_by_horse
 
 
+FONT_DIR = Path(__file__).resolve().parent / 'fonts'
+FONT = 'DejaVuSans'
+FONT_BOLD = 'DejaVuSans-Bold'
+_REPLACEMENT = '?'
+
+
+@lru_cache(maxsize=1)
+def _font_glyphs():
+    """Register DejaVu Sans once; return the set of characters it can draw.
+
+    Helvetica (ReportLab's default) has no Polish, Czech, Greek, Cyrillic,
+    Arabic or Hebrew letters and drew them as black boxes on the invoice.
+    DejaVu Sans has all of these (invoicing/fonts/README.md). Arabic and
+    Hebrew print letter by letter, left to right: ReportLab does not join
+    or reorder right-to-left text.
+    """
+    from reportlab.lib.fonts import addMapping
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+
+    regular = TTFont(FONT, str(FONT_DIR / 'DejaVuSans.ttf'))
+    pdfmetrics.registerFont(regular)
+    pdfmetrics.registerFont(TTFont(FONT_BOLD, str(FONT_DIR / 'DejaVuSans-Bold.ttf')))
+    # <b> and <i> inside a Paragraph pick the face from this family. There
+    # is no italic face, so italic uses the upright one.
+    addMapping(FONT, 0, 0, FONT)
+    addMapping(FONT, 1, 0, FONT_BOLD)
+    addMapping(FONT, 0, 1, FONT)
+    addMapping(FONT, 1, 1, FONT_BOLD)
+    return frozenset(regular.face.charToGlyph)
+
+
+def _drawable(text):
+    """Swap characters the font cannot draw (Chinese, some emoji) for '?'.
+
+    Otherwise ReportLab draws an empty box, and nobody can tell what was
+    there or that something was there at all.
+    """
+    glyphs = _font_glyphs()
+    return ''.join(ch if ord(ch) in glyphs or ch in '\n\r\t' else _REPLACEMENT for ch in text)
+
+
+def _styles():
+    """The ReportLab sample styles, moved onto DejaVu Sans."""
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    _font_glyphs()
+    sheet = getSampleStyleSheet()
+    for style in sheet.byName.values():
+        name = getattr(style, 'fontName', '')
+        if name.startswith('Helvetica'):
+            style.fontName = FONT_BOLD if 'Bold' in name else FONT
+    return sheet
+
+
 def _esc(value):
     """Escape free text for a ReportLab Paragraph.
 
@@ -23,7 +80,7 @@ def _esc(value):
     ValueError — which the email path swallowed, sending the invoice email
     with no PDF attached.
     """
-    return _xml_escape(str(value if value is not None else ''))
+    return _xml_escape(_drawable(str(value if value is not None else '')))
 
 
 def _esc_lines(value):
@@ -66,7 +123,7 @@ def generate_invoice_pdf_reportlab(invoice):
     """Generate a PDF using ReportLab as fallback."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.platypus import (
         Paragraph,
@@ -88,7 +145,7 @@ def generate_invoice_pdf_reportlab(invoice):
         bottomMargin=15*mm
     )
 
-    styles = getSampleStyleSheet()
+    styles = _styles()
     title_style = ParagraphStyle(
         'InvoiceTitle',
         parent=styles['Heading1'],
@@ -152,10 +209,15 @@ def generate_invoice_pdf_reportlab(invoice):
         f"Invoice No: {invoice.invoice_number}",
         f"Date: {invoice.created_at.strftime('%d/%m/%Y')}",
     ]
+    if invoice.customer_reference:
+        invoice_info_lines.append(f"Your ref: {_esc(invoice.customer_reference)}")
     if hasattr(invoice.owner, 'account_code') and invoice.owner.account_code:
         invoice_info_lines.append(f"Account: {invoice.owner.account_code}")
-    vat_reg = getattr(settings, 'vat_registration', 'N/A') or 'N/A'
-    invoice_info_lines.append(f"VAT Reg: {vat_reg}")
+    # Only a real VAT number: "VAT Reg: N/A" on the invoice of a yard that
+    # is not registered reads like a missing detail.
+    vat_reg = (getattr(settings, 'vat_registration', '') or '').strip()
+    if vat_reg and vat_reg.upper() not in ('N/A', 'NA', 'NONE', '-'):
+        invoice_info_lines.append(f"VAT Reg: {vat_reg}")
     invoice_info_lines.append(
         f"Period: {invoice.period_start.strftime('%d/%m/%Y')} - {invoice.period_end.strftime('%d/%m/%Y')}"
     )
@@ -235,7 +297,7 @@ def generate_invoice_pdf_reportlab(invoice):
 
     base_styles = [
         ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.9, 0.9, 0.9)),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, 0), FONT_BOLD),
         ('FONTSIZE', (0, 0), (-1, 0), 9),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
         ('TOPPADDING', (0, 0), (-1, 0), 8),
@@ -260,8 +322,12 @@ def generate_invoice_pdf_reportlab(invoice):
         [vat_label, f"\u00a3{invoice.vat_amount:.2f}"],
     ]
     if amount_paid > 0:
+        credited = invoice.amount_credited
         totals_data.append(['Invoice Total:', f"\u00a3{invoice.total:.2f}"])
-        totals_data.append(['Paid to Date:', f"-\u00a3{amount_paid:.2f}"])
+        if amount_paid - credited > 0:
+            totals_data.append(['Paid to Date:', f"-\u00a3{amount_paid - credited:.2f}"])
+        if credited > 0:
+            totals_data.append(['Credit Notes:', f"-\u00a3{credited:.2f}"])
         totals_data.append(['Balance Due:', f"\u00a3{invoice.balance_due:.2f}"])
     else:
         totals_data.append(['Amount Due:', f"\u00a3{invoice.total:.2f}"])
@@ -269,8 +335,8 @@ def generate_invoice_pdf_reportlab(invoice):
     totals_table.setStyle(TableStyle([
         ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
         ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, -1), FONT),
+        ('FONTNAME', (0, -1), (-1, -1), FONT_BOLD),
         ('FONTSIZE', (0, -1), (-1, -1), 12),
         ('LINEABOVE', (0, -1), (-1, -1), 1.5, colors.black),
         ('TOPPADDING', (0, -1), (-1, -1), 6),
@@ -305,7 +371,7 @@ def generate_owner_statement_pdf(owner, statement):
     """Generate a statement-of-account PDF for an owner (ReportLab)."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.platypus import (
         Paragraph,
@@ -322,7 +388,7 @@ def generate_owner_statement_pdf(owner, statement):
         rightMargin=20*mm, leftMargin=20*mm, topMargin=15*mm, bottomMargin=15*mm,
     )
 
-    styles = getSampleStyleSheet()
+    styles = _styles()
     title_style = ParagraphStyle(
         'StatementTitle', parent=styles['Heading1'], fontSize=20, spaceAfter=4,
     )
@@ -371,11 +437,12 @@ def generate_owner_statement_pdf(owner, statement):
         repeatRows=1,
     )
     table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, -1), FONT),
+        ('FONTNAME', (0, 0), (-1, 0), FONT_BOLD),
         ('FONTSIZE', (0, 0), (-1, -1), 9),
         ('LINEBELOW', (0, 0), (-1, 0), 1, colors.black),
         ('ALIGN', (3, 0), (-1, -1), 'RIGHT'),
-        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (0, -1), (-1, -1), FONT_BOLD),
         ('LINEABOVE', (0, -1), (-1, -1), 1, colors.black),
         ('TOPPADDING', (0, 1), (-1, -1), 3),
         ('BOTTOMPADDING', (0, 1), (-1, -1), 3),
@@ -389,10 +456,73 @@ def generate_owner_statement_pdf(owner, statement):
     if settings.bank_details:
         elements.append(Spacer(1, 6*mm))
         elements.append(Paragraph('<b>Payment Details:</b>', normal_style))
-        elements.append(Paragraph(
-            settings.bank_details.replace('\n', '<br/>'), small_style
-        ))
+        # _esc_lines, not a bare newline swap: Paragraph parses its string as
+        # markup, so an unclosed tag in the bank details raised ValueError —
+        # a 500 on this page, and a statement email sent with no PDF while
+        # still reporting success. The invoice PDF above escapes the same
+        # field; this one was missed.
+        elements.append(Paragraph(_esc_lines(settings.bank_details), small_style))
 
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
+
+def generate_credit_note_pdf(credit):
+    """A one-page credit note (ReportLab): number, the invoice it credits,
+    the amount and the reason. ``credit`` is a Payment of method
+    CREDIT_NOTE."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    settings = BusinessSettings.get_settings()
+    invoice = credit.invoice
+    owner = invoice.owner
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=20*mm, leftMargin=20*mm,
+                            topMargin=15*mm, bottomMargin=15*mm)
+    styles = _styles()
+    title_style = ParagraphStyle('CNTitle', parent=styles['Heading1'], fontSize=20, spaceAfter=4)
+    normal = styles['Normal']
+
+    elements = [Paragraph(_esc(settings.business_name), title_style)]
+    if settings.address:
+        elements.append(Paragraph(_esc_lines(settings.address), normal))
+    elements.append(Spacer(1, 8*mm))
+    elements.append(Paragraph('<b>CREDIT NOTE</b>', styles['Heading2']))
+    if credit.is_voided:
+        elements.append(Paragraph('<b>VOID</b>: this credit note was cancelled.', normal))
+    bill_to = f"<b>{_esc(owner.name)}</b>"
+    if owner.address:
+        bill_to += '<br/>' + _esc_lines(owner.address)
+    info = [
+        f"Credit note No: {_esc(credit.credit_note_number)}",
+        f"Date: {credit.date.strftime('%d/%m/%Y')}",
+        f"Against invoice: {_esc(invoice.invoice_number)}",
+    ]
+    if invoice.customer_reference:
+        info.append(f"Your ref: {_esc(invoice.customer_reference)}")
+    meta = Table([[Paragraph(bill_to, normal), Paragraph('<br/>'.join(info), normal)]], colWidths=[85*mm, 85*mm])
+    meta.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP')]))
+    elements += [meta, Spacer(1, 8*mm)]
+    lines = Table(
+        [['Reason', 'Amount'], [Paragraph(_esc(credit.notes or ''), normal), f"£{credit.amount:.2f}"]],
+        colWidths=[130*mm, 40*mm],
+    )
+    lines.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), FONT),
+        ('LINEBELOW', (0, 0), (-1, 0), 0.5, (0.6, 0.6, 0.6)),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('FONTNAME', (0, 0), (-1, 0), FONT_BOLD),
+    ]))
+    elements += [lines, Spacer(1, 6*mm)]
+    elements.append(Paragraph(
+        f"This credit note reduces the amount due on invoice {_esc(invoice.invoice_number)} "
+        f"by £{credit.amount:.2f}.", normal,
+    ))
     doc.build(elements)
     buffer.seek(0)
     return buffer
