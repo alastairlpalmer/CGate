@@ -9,7 +9,9 @@ from celery import Celery
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'horse_management.settings')
 
-app = Celery('horse_management')
+# Every task retries on connection errors, records a final failure and,
+# when it is on the beat schedule, runs once a day (core/jobs.py).
+app = Celery('horse_management', task_cls='core.jobs:ReliableTask')
 
 # Using a string here means the worker doesn't have to serialize
 # the configuration object to child processes.

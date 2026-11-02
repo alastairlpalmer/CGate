@@ -8,6 +8,7 @@ from datetime import timedelta
 
 from django.contrib import messages
 
+from core.downloads import attachment_header
 from core.views._popup import is_popup_request, popup_saved_response
 from core.permissions import (
     LEVEL_FULL,
@@ -25,10 +26,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView, UpdateView
 
+from core import audit
+from core.views._undo import undo_tag
 from core.models import Owner
-from invoicing.models import Invoice, Payment
+from invoicing.models import LIVE_PAYMENTS, Invoice, Payment
 
 from .forms import InvoiceCreateForm, InvoiceUpdateForm, MonthlyInvoiceForm, PaymentForm
 from .pdf import generate_invoice_pdf, generate_owner_statement_pdf
@@ -60,7 +64,7 @@ class InvoiceListView(FeatureAccessMixin, ListView):
         queryset = Invoice.objects.select_related('owner', 'xero_sync').annotate(
             balance=ExpressionWrapper(
                 F('total') - Coalesce(
-                    Sum('payments__amount'), Value(Decimal('0.00'))
+                    Sum('payments__amount', filter=LIVE_PAYMENTS), Value(Decimal('0.00'))
                 ),
                 output_field=DecimalField(max_digits=10, decimal_places=2),
             )
@@ -159,8 +163,16 @@ class InvoiceDetailView(FeatureAccessMixin, DetailView):
         context['line_items'] = line_items
         context['horse_groups'] = group_line_items_by_horse(line_items)
         context['payments'] = self.object.payments.all()
+        context['voided_payments'] = Payment.all_objects.filter(
+            invoice=self.object, voided_at__isnull=False,
+        ).select_related('voided_by')
         context['amount_paid'] = self.object.amount_paid
         context['balance_due'] = self.object.balance_due
+        # Payments included, so a payment that was deleted still shows here.
+        context['history_entries'] = audit.merge(
+            audit.history_for(self.object),
+            audit.history_of(Payment.history.filter(invoice_id=self.object.pk), 'Payment'),
+        )
         return context
 
 
@@ -232,6 +244,15 @@ def invoice_create(request):
 
     initial['period_start'] = last_month_start
     initial['period_end'] = last_month_end
+    if owner_id:
+        try:
+            owner = Owner.objects.get(pk=owner_id)
+        except (Owner.DoesNotExist, ValueError):
+            pass
+        else:
+            initial['period_start'], initial['period_end'] = _suggested_period(
+                owner, last_month_start, last_month_end
+            )
 
     if request.method == 'POST':
         form = InvoiceCreateForm(request.POST)
@@ -266,7 +287,13 @@ def invoice_create(request):
                     'form': form, 'preview': None,
                 })
 
-            messages.success(request, f"Invoice {invoice.invoice_number} created successfully.")
+            msg = f"Invoice {invoice.invoice_number} created successfully."
+            if form.start_moved_from:
+                msg += (
+                    f" It starts on {period_start:%d/%m/%Y}: the days before "
+                    "that are already invoiced."
+                )
+            messages.success(request, msg)
             return redirect('invoice_detail', pk=invoice.pk)
     else:
         form = InvoiceCreateForm(initial=initial)
@@ -276,7 +303,7 @@ def invoice_create(request):
     if owner_id and initial.get('period_start') and initial.get('period_end'):
         try:
             owner = Owner.objects.get(pk=owner_id)
-            preview = InvoiceService.calculate_invoice_preview(
+            preview = InvoiceService.preview_unbilled(
                 owner,
                 initial['period_start'],
                 initial['period_end']
@@ -317,11 +344,47 @@ def invoice_preview(request):
     except (Owner.DoesNotExist, ValueError):
         return HttpResponse("Invalid parameters", status=400)
 
-    preview = InvoiceService.calculate_invoice_preview(owner, start, end)
+    # A new owner was picked: start the period the day after their last
+    # invoice, so nobody has to look that date up. The new date inputs go
+    # back as out-of-band swaps next to the preview.
+    oob_fields = []
+    if request.headers.get('HX-Trigger-Name') == 'owner':
+        new_start, new_end = _suggested_period(owner, start, end)
+        if (new_start, new_end) != (start, end):
+            start, end = new_start, new_end
+            form = InvoiceCreateForm(
+                initial={'period_start': start, 'period_end': end}
+            )
+            oob_fields = [
+                form[name].as_widget(attrs={'hx-swap-oob': 'true'})
+                for name in ('period_start', 'period_end')
+            ]
 
-    return render(request, 'invoicing/partials/preview.html', {
+    preview = InvoiceService.preview_unbilled(owner, start, end)
+
+    return render(request, 'invoicing/partials/preview_response.html', {
         'preview': preview,
+        'oob_fields': oob_fields,
     })
+
+
+def _suggested_period(owner, period_start, period_end):
+    """Default create-form period for an owner who already has invoices.
+
+    Starts the day after their last live invoice. If that is after the
+    given end, the period runs to today instead. Owners with no invoice
+    (or invoiced past today) keep the given period.
+    """
+    last = InvoiceService.last_invoiced_date(owner)
+    if last is None:
+        return period_start, period_end
+    start = last + timedelta(days=1)
+    if start <= period_end:
+        return start, period_end
+    today = timezone.localdate()
+    if start <= today:
+        return start, today
+    return period_start, period_end
 
 
 @feature_required('invoices', LEVEL_VIEW)
@@ -331,7 +394,7 @@ def invoice_pdf(request, pk):
     pdf_file = generate_invoice_pdf(invoice)
 
     response = HttpResponse(pdf_file.read(), content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="{invoice.invoice_number}.pdf"'
+    response['Content-Disposition'] = attachment_header(f'{invoice.invoice_number}.pdf')
 
     return response
 
@@ -462,8 +525,8 @@ def owner_statement_pdf(request, owner_pk):
     pdf_file = generate_owner_statement_pdf(owner, statement)
 
     response = HttpResponse(pdf_file.read(), content_type='application/pdf')
-    filename = f"statement-{owner.name.replace(' ', '-').lower()}-{timezone.now():%Y-%m-%d}.pdf"
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    filename = f"Statement - {owner.name} - {timezone.localdate():%Y-%m-%d}.pdf"
+    response['Content-Disposition'] = attachment_header(filename)
     return response
 
 
@@ -546,24 +609,89 @@ def payment_create(request, pk):
 
 
 @feature_required('invoices')
-def payment_delete(request, pk):
-    """Delete a mistakenly recorded payment and re-derive the invoice status."""
-    from invoicing.models import Payment
+def credit_note_create(request, pk):
+    """Issue a credit note against a sent invoice (invoicing.services)."""
+    from .forms import CreditNoteForm
+    from .services import CreditNoteRefused, issue_credit_note
 
+    invoice = get_object_or_404(Invoice, pk=pk)
+    if request.method == 'POST':
+        form = CreditNoteForm(request.POST, invoice=invoice)
+        if form.is_valid():
+            try:
+                credit = issue_credit_note(
+                    invoice, form.cleaned_data['amount'], form.cleaned_data['reason'],
+                    form.cleaned_data['date'], request.user,
+                )
+            except CreditNoteRefused as exc:
+                form.add_error(None, str(exc))
+            else:
+                invoice.refresh_from_db()
+                messages.success(
+                    request,
+                    f"Credit note {credit.credit_note_number} for £{credit.amount:.2f} issued. "
+                    f"£{invoice.balance_due:.2f} now outstanding. Enter it in Xero too.",
+                )
+                return redirect('invoice_detail', pk=invoice.pk)
+    else:
+        form = CreditNoteForm(invoice=invoice, initial={'date': timezone.localdate()})
+    return render(request, 'invoicing/credit_note_form.html', {'form': form, 'invoice': invoice})
+
+
+@feature_required('invoices', LEVEL_VIEW)
+def credit_note_pdf(request, pk):
+    from .pdf import generate_credit_note_pdf
+
+    credit = get_object_or_404(
+        Payment.all_objects.select_related('invoice__owner'),
+        pk=pk, method=Payment.Method.CREDIT_NOTE,
+    )
+    response = HttpResponse(generate_credit_note_pdf(credit).read(), content_type='application/pdf')
+    response['Content-Disposition'] = attachment_header(f'{credit.credit_note_number}.pdf')
+    return response
+
+
+@feature_required('invoices')
+def payment_void(request, pk):
+    """Void a payment entered by mistake. It stays on the invoice, struck
+    through, with who voided it and why; the balance no longer counts it."""
     payment = get_object_or_404(Payment.objects.select_related('invoice'), pk=pk)
     invoice = payment.invoice
 
     if request.method != 'POST':
         return redirect('invoice_detail', pk=invoice.pk)
 
-    amount = payment.amount
-    payment.delete()
-    invoice.refresh_payment_status()
+    reason = (request.POST.get('reason') or '').strip()
+    if not reason:
+        messages.error(request, "Say why you are voiding this payment, for example \"entered twice\".")
+        return redirect('invoice_detail', pk=invoice.pk)
+
+    payment.void(request.user, reason)
+    invoice.refresh_from_db()
     messages.success(
         request,
-        f"Payment of £{amount:.2f} removed — "
-        f"£{invoice.balance_due:.2f} now outstanding."
+        f"Payment of £{payment.amount:.2f} voided. £{invoice.balance_due:.2f} now outstanding.",
+        extra_tags=undo_tag(reverse('payment_unvoid', args=[payment.pk])),
     )
+    return redirect('invoice_detail', pk=invoice.pk)
+
+
+@feature_required('invoices')
+@require_POST
+def payment_unvoid(request, pk):
+    payment = get_object_or_404(
+        Payment.all_objects.select_related('invoice').filter(voided_at__isnull=False), pk=pk,
+    )
+    invoice = payment.invoice
+    if payment.amount > invoice.balance_due:
+        messages.error(
+            request,
+            f"Restoring this £{payment.amount:.2f} payment would pay more than the "
+            f"£{invoice.balance_due:.2f} outstanding. Void the other payment first.",
+        )
+        return redirect('invoice_detail', pk=invoice.pk)
+    payment.unvoid()
+    messages.success(request, f"Payment of £{payment.amount:.2f} restored.")
     return redirect('invoice_detail', pk=invoice.pk)
 
 
@@ -813,8 +941,11 @@ def invoice_csv(request, pk):
         messages.error(request, str(exc))
         return redirect('invoice_detail', pk=pk)
 
-    response = HttpResponse(output.getvalue(), content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="{invoice.invoice_number}.csv"'
+    # The byte-order mark tells Excel the file is UTF-8, so "Siobhán" does
+    # not open as "SiobhÃ¡n". Xero's import accepts it (Excel's own
+    # "CSV UTF-8" format writes one).
+    response = HttpResponse('\ufeff' + output.getvalue(), content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = attachment_header(f'{invoice.invoice_number}.csv')
     return response
 
 
@@ -862,6 +993,49 @@ def invoice_export_csv(request):
         return redirect(f"{back}?{filters}" if filters else back)
 
     today = timezone.now().strftime('%Y-%m-%d')
-    response = HttpResponse(output.getvalue(), content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="invoices-export-{today}.csv"'
+    # The byte-order mark tells Excel the file is UTF-8, so "Siobhán" does
+    # not open as "SiobhÃ¡n". Xero's import accepts it (Excel's own
+    # "CSV UTF-8" format writes one).
+    response = HttpResponse('\ufeff' + output.getvalue(), content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = attachment_header(f'invoices-export-{today}.csv')
     return response
+
+
+@feature_required('finances')
+def reconciliation(request):
+    """Monthly invoiced, received and outstanding figures for one year, with
+    the invoice-number gaps explained (invoicing/reconciliation.py)."""
+    from core.csv_export import csv_response
+    from core.models import BusinessSettings
+
+    from .reconciliation import monthly_report, number_gaps
+
+    this_year = timezone.localdate().year
+    try:
+        year = int(request.GET.get('year', this_year))
+    except ValueError:
+        year = this_year
+    year = max(2000, min(year, this_year))
+    report = monthly_report(year)
+
+    if request.GET.get('format') == 'csv':
+        rows = [
+            [f'{m.month:%b %Y}', m.invoice_count, m.net, m.vat, m.total, m.received, m.credited, m.outstanding]
+            for m in report.months
+        ]
+        t = report.totals
+        rows.append(['Total', t.invoice_count, t.net, t.vat, t.total, t.received, t.credited, t.outstanding])
+        return csv_response(
+            f'reconciliation-{year}',
+            ['Month', 'Invoices', 'Net', 'VAT', 'Total invoiced', 'Received', 'Credited', 'Outstanding at month end'],
+            rows,
+        )
+
+    prefix = BusinessSettings.get_settings().invoice_prefix
+    return render(request, 'invoicing/reconciliation.html', {
+        'report': report,
+        'year': year,
+        'years': list(range(this_year, max(this_year - 7, 1999), -1)),
+        'gaps': number_gaps(prefix),
+        'prefix': prefix,
+    })

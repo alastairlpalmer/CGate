@@ -19,7 +19,7 @@ Context: placements.
                     <span class="list-card-title">{{ placement.horse.name }}</span>
                 </a>
                 <div class="list-card-meta truncate">{{ placement.owner.name }} &middot; {{ placement.location.name }}</div>
-                <div class="list-card-meta">{{ placement.rate_type.name }} (&pound;{{ placement.rate_type.daily_rate }}/day)</div>
+                <div class="list-card-meta">{{ placement.rate_type.name }}{% if feature_access.charges.view %} (&pound;{{ placement.rate_type.daily_rate }}/day){% endif %}</div>
                 <div class="list-card-meta tabular-nums mt-1">
                     {{ placement.start_date|date:"d M Y" }} &rarr;
                     {% if placement.end_date %}{{ placement.end_date|date:"d M Y" }}{% else %}<span class="badge-success ml-0.5">Current</span>{% endif %}
@@ -70,7 +70,7 @@ Context: placements.
                         <a href="{% url 'location_detail' placement.location.pk %}" class="link tap-pad">{{ placement.location.name }}</a>
                     </td>
                     <td class="text-sage">
-                        {{ placement.rate_type.name }} (&pound;{{ placement.rate_type.daily_rate }}/day)
+                        {{ placement.rate_type.name }}{% if feature_access.charges.view %} (&pound;{{ placement.rate_type.daily_rate }}/day){% endif %}
                     </td>
                     <td class="text-sage">{{ placement.start_date|date:"d M Y" }}</td>
                     <td>

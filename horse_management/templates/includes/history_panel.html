@@ -1,0 +1,10 @@
+{% comment %}
+Collapsed "History" card for a record page. Pass history_entries.
+{% endcomment %}
+<details class="card group">
+    <summary class="section-header cursor-pointer list-none">
+        <h3 class="section-title">History</h3>
+        <span class="text-xs text-sage">{{ history_entries|length }} change{{ history_entries|length|pluralize }}<span class="group-open:hidden"> · Show</span></span>
+    </summary>
+    {% include "includes/history_entries.html" with entries=history_entries empty_text="No changes recorded since the audit trail started." %}
+</details>

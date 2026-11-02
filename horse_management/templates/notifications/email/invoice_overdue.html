@@ -19,8 +19,8 @@
     <p>Dear {{ invoice.owner.name }},</p>
 
     <div class="alert">
-        <strong>Payment Overdue</strong><br>
-        Your invoice {{ invoice.invoice_number }} is now overdue.
+        <strong>{% if final %}Final notice{% elif stage > 1 %}Second reminder{% else %}Payment overdue{% endif %}</strong><br>
+        Your invoice {{ invoice.invoice_number }}{% if invoice.customer_reference %} (your reference {{ invoice.customer_reference }}){% endif %} is now overdue.
     </div>
 
     <p>Our records show that payment for the following invoice has not yet been received:</p>
@@ -46,7 +46,13 @@
         </table>
     </div>
 
+    {% if final %}
+    <p>This is our final reminder. Please pay the amount due within 7 days, or contact us to agree a plan. If we do not hear from you, we will be in touch to discuss next steps.</p>
+    {% elif stage > 1 %}
+    <p>We wrote to you about this invoice before. Please arrange payment now, or contact us if there is a problem with it.</p>
+    {% else %}
     <p>Please arrange payment at your earliest convenience.</p>
+    {% endif %}
 
     {% if business.bank_details %}
     <h3>Payment Details</h3>

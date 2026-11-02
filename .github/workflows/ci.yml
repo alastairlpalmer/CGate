@@ -16,9 +16,9 @@ jobs:
       DEBUG: 'True'
       DJANGO_SETTINGS_MODULE: horse_management.test_settings
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.11'
           cache: pip
@@ -27,7 +27,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt ruff
+          # requirements.txt is a lockfile with hashes, so pip checks every
+          # download. Tools not in it are installed in a separate step:
+          # hash-checking mode refuses any package without a hash.
+          pip install --require-hashes -r requirements.txt
+          pip install ruff
 
       - name: Lint (ruff, errors only)
         run: ruff check .
@@ -41,7 +45,7 @@ jobs:
       - name: Tests
         run: python manage.py test --noinput --parallel auto
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
 
@@ -54,9 +58,9 @@ jobs:
       run:
         working-directory: website
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
           cache: npm

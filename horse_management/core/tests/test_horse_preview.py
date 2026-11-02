@@ -153,6 +153,53 @@ class PreviewContentTests(PreviewFixture):
         self.assertIn('Routine dental check', body)
 
 
+class PreviewCostTests(PreviewFixture):
+    """The timeline shows each health record's cost, like the horse's own
+    page, to users who can see charges."""
+
+    COSTS = ('£31.50', '£45.00', '£12.40', '£18.90', '£95.00')
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        from health.models import WormEggCount
+        flu = VaccinationType.objects.create(name='Flu', interval_months=12)
+        Vaccination.objects.create(
+            horse=cls.horse, vaccination_type=flu,
+            date_given=cls.today - timedelta(days=10), cost='31.50',
+        )
+        FarrierVisit.objects.create(
+            horse=cls.horse, date=cls.today - timedelta(days=9),
+            work_done='trim', cost='45',
+        )
+        WormingTreatment.objects.create(
+            horse=cls.horse, date=cls.today - timedelta(days=8),
+            product_name='Equest', cost='12.40',
+        )
+        WormEggCount.objects.create(
+            horse=cls.horse, date=cls.today - timedelta(days=7), count=150,
+            cost='18.90',
+        )
+        VetVisit.objects.create(
+            horse=cls.horse, date=cls.today - timedelta(days=6),
+            reason='Dental', cost='95',
+        )
+
+    def test_costs_shown_to_users_who_can_see_charges(self):
+        self.client.force_login(make_admin())
+        body = self.pane()
+        for amount in self.COSTS:
+            self.assertIn(amount, body)
+        self.assertIn('Equest · £12.40', body)
+
+    def test_costs_hidden_without_charges_access(self):
+        self.client.force_login(make_user_with_access('nocharges', horses='full', health='view'))
+        body = self.pane()
+        self.assertIn('Equest', body)
+        for amount in self.COSTS:
+            self.assertNotIn(amount, body)
+
+
 class CredentialDueDateTests(PreviewFixture):
     def setUp(self):
         self.client.force_login(make_admin())

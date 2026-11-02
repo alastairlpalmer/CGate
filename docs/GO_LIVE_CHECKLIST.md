@@ -71,6 +71,33 @@ would make the stored token unreadable. Set a dedicated key first.
 **Check it works.** Visit a URL that does not exist on your site, then look
 in Sentry. Nothing after a few minutes means the DSN did not take.
 
+### 1.4 Watch the site and the scheduled tasks from outside
+
+Sentry sees errors. It cannot see a worker or beat that has stopped, because
+a stopped process sends nothing. These two checks can.
+
+- [ ] Create a free account at healthchecks.io (or Better Stack)
+- [ ] **Uptime:** add an HTTP check on `https://<your domain>/_health/`
+      every 5 minutes. It returns 503 when the database or Redis is down,
+      or when no scheduled task has finished in 26 hours.
+- [ ] **Scheduled tasks:** in Healthchecks.io, create a project and copy its
+      **ping key**. Create one check per task, with the slug set to the
+      task's function name (for example `run_nightly_backup`,
+      `sync_xero_invoice_statuses`, `check_invoice_status`). Daily tasks: a
+      1-day period with a 2-hour grace. Reminder tasks: a cron schedule of
+      weekdays only.
+- [ ] Set `CRON_HEARTBEAT_URL=https://hc-ping.com/<ping key>/{task}` on the
+      **worker**. Keep `{task}` as written; the app fills it in.
+- [ ] Send the alerts to your phone (the app, or SMS).
+
+**Check it works.** Open `/_health/`. Every check reads `ok`, or
+`none yet` for scheduled tasks on a new deploy. The next morning, each
+check in Healthchecks.io shows a ping.
+
+**Failed tasks.** A task that fails every retry shows on **Settings →
+Background Tasks**, with **Run again**. The Settings page shows a red count
+when there are any.
+
 ---
 
 ## Phase 2 — Turn backups on (1 hour)
@@ -101,6 +128,13 @@ BACKUP_S3_SECRET_KEY=<secret access key>
 ```
 
 - [ ] Set those five
+- [ ] **Encrypt the backups.** Run `python manage.py backup --new-key` once
+      (locally, or in the Railway shell). It prints a key. Set it as
+      `BACKUP_ENCRYPTION_KEY` on the worker.
+- [ ] **Save the same key in your password manager now.** The provider
+      never sees this key. If the server is lost and the key with it, no
+      backup can be read. Never change the key without moving the old one
+      into `BACKUP_DECRYPTION_KEYS`, or the older backups become unreadable.
 - [ ] **If your `DATABASE_URL` contains `pooler.supabase.com`**, also set
       `BACKUP_DATABASE_URL`.
 
@@ -344,6 +378,66 @@ and anyone can spoof your address.
       `DEFAULT_FROM_EMAIL` on **web and worker**
 - [ ] Send yourself a test invoice and confirm it lands in the inbox, not
       spam
+- [ ] Set `SITE_URL` to the app's address (for the unsubscribe link)
+- [ ] Add the bounce webhook in the provider, so addresses that bounce are
+      flagged on the owner's page:
+  - Postmark: set `EMAIL_WEBHOOK_TOKEN` to a long random string and add a
+    Bounce + Spam Complaint webhook to
+    `https://<your domain>/email/events/postmark/<that token>/`
+  - Resend: add a webhook for `email.bounced` and `email.complained` to
+    `https://<your domain>/email/events/resend/`, and set
+    `RESEND_WEBHOOK_SECRET` to its signing secret
+
+---
+
+## Phase 6 — Hardening (30 min)
+
+### 6.1 Give the app its own database user
+
+Today the app signs in to Supabase as `postgres`, the most powerful user.
+If the app is ever tricked into running a query, that query can do anything
+`postgres` can. A separate user owns the app's tables and can do nothing
+else: it cannot create users, databases or extensions.
+
+**Take a backup first (phase 2.3).** Then, in Supabase → **SQL Editor**:
+
+```sql
+-- 1. The user. Use a long random password (a password manager makes one).
+create role yardway_app login password '<long random password>'
+  nosuperuser nocreatedb nocreaterole;
+grant connect on database postgres to yardway_app;
+grant usage, create on schema public to yardway_app;
+-- Lets postgres hand tables to the new user in step 2.
+grant yardway_app to postgres;
+
+-- 2. Hand it the existing tables. Their sequences follow.
+do $$
+declare r record;
+begin
+  for r in select tablename from pg_tables where schemaname = 'public' loop
+    execute format('alter table public.%I owner to yardway_app', r.tablename);
+  end loop;
+end $$;
+```
+
+- [ ] Run the SQL above
+- [ ] Change `DATABASE_URL` on **web, worker and beat**: user
+      `yardway_app.<project-ref>` (the pooler needs the `.<project-ref>`)
+      and the new password. Change `BACKUP_DATABASE_URL` the same way.
+- [ ] Redeploy, sign in, open an invoice, and run one backup by hand
+- [ ] Keep the `postgres` password in the password manager only, for
+      emergencies. It is no longer on any service.
+
+The connection is encrypted (`sslmode=require`) unless `DATABASE_SSLMODE`
+says otherwise. If a database without TLS refuses it, set
+`DATABASE_SSLMODE=disable` for that database only.
+
+### 6.2 Say where to report a security problem
+
+- [ ] Create `security@<your domain>` and forward it to two people
+- [ ] Set `SECURITY_CONTACT=security@<your domain>` on the **web** service
+- [ ] Open `https://<your domain>/.well-known/security.txt`. It names the
+      address. It is a 404 until `SECURITY_CONTACT` is set.
 
 ---
 

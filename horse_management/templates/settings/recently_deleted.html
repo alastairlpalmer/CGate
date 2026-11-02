@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Recently Deleted - Yardway{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Recently Deleted</h1>
+            <p class="page-subtitle">Restore anything deleted in the last {{ retention_days }} days. After that it is removed for good.</p>
+        </div>
+    </div>
+
+    {% for section in sections %}
+    <div class="card overflow-hidden">
+        <div class="section-header">
+            <h3 class="section-title">{{ section.title }}</h3>
+        </div>
+        <ul class="divide-y divide-light-sage">
+            {% for obj, label in section.rows %}
+            <li class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3">
+                <div class="min-w-0">
+                    <p class="text-sm text-charcoal">{{ label }}</p>
+                    <p class="text-xs text-sage mt-0.5">
+                        Deleted {{ obj.deleted_at|date:"d M Y, H:i" }}{% if obj.deleted_by %} by {{ obj.deleted_by.email|default:obj.deleted_by.username }}{% endif %}
+                        &middot; removed for good on {{ obj.purge_after|date:"d M Y" }}
+                    </p>
+                </div>
+                <form method="post" action="{% url section.restore_url obj.pk %}" class="shrink-0">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="btn-secondary btn-sm">Restore</button>
+                </form>
+            </li>
+            {% empty %}
+            <li class="px-4 sm:px-5 py-6 text-sm text-sage">Nothing deleted.</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% empty %}
+    <div class="card p-5 text-sm text-sage">Your role cannot delete charges, yard costs or documents, so there is nothing to restore here.</div>
+    {% endfor %}
+
+    <p class="text-xs text-sage">Voided payments are not listed here. They stay on their invoice for good, and you can restore them there.</p>
+</div>
+{% endblock %}

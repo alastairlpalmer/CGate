@@ -7,6 +7,7 @@ from django.urls import path
 from django.views.generic import RedirectView
 
 from . import views
+from .views import exports as export_views
 
 urlpatterns = [
     # Dashboard
@@ -20,6 +21,7 @@ urlpatterns = [
 
     # Horses
     path('horses/', views.HorseListView.as_view(), name='horse_list'),
+    path('horses/export.csv', export_views.horses_csv, name='horses_csv'),
     path('horses/add/', views.HorseCreateView.as_view(), name='horse_create'),
     path('horses/new-arrival/', views.new_arrival, name='horse_new_arrival'),
     path('horses/<int:pk>/', views.HorseDetailView.as_view(), name='horse_detail'),
@@ -41,6 +43,10 @@ urlpatterns = [
 
     # Owners
     path('owners/', views.OwnerListView.as_view(), name='owner_list'),
+    path('owners/export.csv', export_views.owners_csv, name='owners_csv'),
+    path('owners/<int:pk>/data-export/', export_views.owner_data_export, name='owner_data_export'),
+    path('owners/<int:pk>/erase/', export_views.owner_erase, name='owner_erase'),
+    path('owners/<int:pk>/email-ok/', export_views.owner_email_ok, name='owner_email_ok'),
     path('owners/add/', views.OwnerCreateView.as_view(), name='owner_create'),
     path('owners/<int:pk>/', views.OwnerDetailView.as_view(), name='owner_detail'),
     path('owners/<int:pk>/edit/', views.OwnerUpdateView.as_view(), name='owner_update'),
@@ -78,4 +84,5 @@ urlpatterns = [
     # Documents (passport scans, insurance certs, …)
     path('documents/add/', views.document_create, name='document_create'),
     path('documents/<int:pk>/delete/', views.document_delete, name='document_delete'),
+    path('documents/<int:pk>/restore/', views.document_restore, name='document_restore'),
 ]

@@ -19,6 +19,35 @@ XERO_TOKEN_URL = 'https://identity.xero.com/connect/token'
 XERO_CONNECTIONS_URL = 'https://api.xero.com/connections'
 XERO_API_BASE = 'https://api.xero.com/api.xro/2.0'
 
+# Longest error detail kept from a Xero response, for logs and messages.
+ERROR_SUMMARY_LENGTH = 300
+
+
+def error_summary(response):
+    """A short, safe description of a failed Xero response.
+
+    Only the fields Xero uses to say what went wrong: the OAuth ``error``
+    code, the API ``Message`` and ``Detail``, and validation messages
+    ("Contact name already exists"). The rest of the body can echo the
+    invoice or contact that was sent, with an owner's address and email,
+    so it is never logged or shown in full.
+    """
+    try:
+        data = response.json()
+    except ValueError:
+        return 'no detail'
+    if not isinstance(data, dict):
+        return 'no detail'
+    parts = [str(data[k]) for k in ('error', 'Message', 'Detail') if isinstance(data.get(k), str)]
+    for element in data.get('Elements') or []:
+        if not isinstance(element, dict):
+            continue
+        for problem in element.get('ValidationErrors') or []:
+            if isinstance(problem, dict) and isinstance(problem.get('Message'), str):
+                parts.append(problem['Message'])
+    summary = '; '.join(dict.fromkeys(parts)) or 'no detail'
+    return summary[:ERROR_SUMMARY_LENGTH]
+
 
 class XeroAPIError(Exception):
     """Raised when a Xero API call fails.
@@ -91,7 +120,7 @@ class XeroClient:
         )
         if response.status_code != 200:
             raise XeroAuthError(
-                f'Token exchange failed: {response.status_code} {response.text}'
+                f'Token exchange failed: {response.status_code} ({error_summary(response)})'
             )
         return response.json()
 
@@ -108,7 +137,7 @@ class XeroClient:
         )
         if response.status_code != 200:
             raise XeroAuthError(
-                f'Failed to fetch connections: {response.status_code} {response.text}'
+                f'Failed to fetch connections: {response.status_code} ({error_summary(response)})'
             )
         return response.json()
 
@@ -180,8 +209,8 @@ class XeroClient:
                         'Refresh token expired. Please reconnect to Xero.'
                     )
                 logger.warning(
-                    'Transient Xero token refresh failure: %s %s',
-                    response.status_code, body[:500],
+                    'Transient Xero token refresh failure: %s (%s)',
+                    response.status_code, error_summary(response),
                 )
                 raise XeroAuthError(
                     f'Xero token refresh failed ({response.status_code}); '
@@ -269,9 +298,9 @@ class XeroClient:
                 except (TypeError, ValueError):
                     retry_after = None
             raise XeroAPIError(
-                f'Xero API error: {response.status_code}',
+                f'Xero API error: {response.status_code} ({error_summary(response)})',
                 status_code=response.status_code,
-                response_body=response.text,
+                response_body=error_summary(response),
                 retry_after=retry_after,
             )
 

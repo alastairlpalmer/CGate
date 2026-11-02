@@ -2,6 +2,7 @@
 Owner views — CRUD and detail.
 """
 
+from django.conf import settings
 from django.contrib import messages
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect
@@ -10,6 +11,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
+from .. import audit
 from ..forms import OwnerForm
 from ._next import safe_next
 from ._popup import PopupFormMixin
@@ -107,6 +109,9 @@ class OwnerDetailView(FeatureAccessMixin, DetailView):
         owner = self.object
         context['owner_has_history'] = owner.has_history
         context['archive_blockers'] = [] if owner.is_archived else owner.archive_blockers()
+        context['history_entries'] = audit.history_for(owner)
+        context['owner_has_invoices'] = owner.invoices.exists()
+        context['owner_retention_years'] = settings.OWNER_RETENTION_YEARS
         return context
 
 

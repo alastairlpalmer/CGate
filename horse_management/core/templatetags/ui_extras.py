@@ -190,3 +190,10 @@ def business_name():
         return cache.get_or_set(BUSINESS_NAME_CACHE_KEY, _load, 300)
     except Exception:  # noqa: BLE001 — a cache or DB hiccup must not take the shell down
         return 'Yardway'
+
+
+@register.filter
+def undo_url(message):
+    """The restore URL on a message made with core.views._undo.undo_tag."""
+    from core.views._undo import undo_url_from_tags
+    return undo_url_from_tags(getattr(message, 'extra_tags', ''))

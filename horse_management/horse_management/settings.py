@@ -90,6 +90,10 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_tailwind',
     'axes',
+    'django_otp',
+    'django_otp.plugins.otp_totp',
+    'django_otp.plugins.otp_static',
+    'simple_history',
 
     # Local apps
     'core.apps.CoreConfig',
@@ -109,6 +113,7 @@ if not os.environ.get('VERCEL'):
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'core.middleware.PermissionsPolicyMiddleware',
     # Compress responses: the map pages carry field geometry as JSON and
     # gzip cuts them to a fifth. Django masks the CSRF token per request,
     # which is what makes compressing pages with forms safe (BREACH).
@@ -119,6 +124,15 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Caps a session at SESSION_ABSOLUTE_AGE from sign-in (see below).
+    'core.middleware.AbsoluteSessionLifetimeMiddleware',
+    # Two-step sign-in. OTPMiddleware records whether this session has
+    # passed a code; MFAMiddleware holds the user at the code page until it
+    # has (core.mfa).
+    'django_otp.middleware.OTPMiddleware',
+    'core.middleware.MFAMiddleware',
+    # Records the signed-in user on every history row (core/audit.py).
+    'simple_history.middleware.HistoryRequestMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
@@ -179,6 +193,17 @@ if DATABASE_URL:
     DATABASES['default']['CONN_MAX_AGE'] = CONN_MAX_AGE
     DATABASES['default']['CONN_HEALTH_CHECKS'] = True
     DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True  # Required for Supabase pooler (pgbouncer transaction mode)
+    # Encrypt the connection to the database. Supabase accepts TLS on the
+    # pooler and directly. 'require' encrypts but does not check the
+    # certificate; set DATABASE_SSLMODE=verify-full (with the provider's
+    # root certificate in PGSSLROOTCERT) for that as well. A local database
+    # (localhost, or a socket) usually has no TLS, so it is left alone. An
+    # sslmode in DATABASE_URL itself wins over both.
+    _db = DATABASES['default']
+    _db_is_local = (_db.get('HOST') or 'localhost') in ('localhost', '127.0.0.1', '::1') or str(_db.get('HOST', '')).startswith('/')
+    DATABASE_SSLMODE = env('DATABASE_SSLMODE', default='' if _db_is_local else 'require')
+    if 'postgresql' in _db.get('ENGINE', '') and DATABASE_SSLMODE:
+        _db.setdefault('OPTIONS', {}).setdefault('sslmode', DATABASE_SSLMODE)
 else:
     if not DEBUG:
         # A missing/typo'd DATABASE_URL on a real host must fail loudly.
@@ -253,7 +278,8 @@ MEDIA_ON_S3 = bool(MEDIA_S3_BUCKET and MEDIA_S3_ACCESS_KEY and MEDIA_S3_SECRET_K
 
 if MEDIA_ON_S3:
     _media_storage = {
-        'BACKEND': 'storages.backends.s3.S3Storage',
+        # S3Storage that marks non-PDF, non-image files as downloads.
+        'BACKEND': 'core.storage.MediaStorage',
         'OPTIONS': {
             'bucket_name': MEDIA_S3_BUCKET,
             # Cloudflare R2 and Backblaze B2 need an endpoint; plain AWS S3
@@ -360,6 +386,12 @@ BACKUP_S3_REGION = env('BACKUP_S3_REGION', default='auto')
 # database through a connection pooler (Supabase's pgbouncer) that
 # pg_dump cannot use — point this at the direct connection instead.
 BACKUP_DATABASE_URL = env('BACKUP_DATABASE_URL', default='')
+# Encrypt each backup before upload (core/backup/crypto.py). Make a key with
+# `python manage.py backup --new-key`, and keep a copy off the server: a
+# lost key makes every backup unreadable. Earlier keys, comma-separated, go
+# in BACKUP_DECRYPTION_KEYS so older backups can still be restored.
+BACKUP_ENCRYPTION_KEY = env('BACKUP_ENCRYPTION_KEY', default='')
+BACKUP_DECRYPTION_KEYS = env('BACKUP_DECRYPTION_KEYS', default='')
 
 # The restore test (core/backup/restore.py). Both must name somewhere
 # scratch: the module refuses to run if the database matches DATABASE_URL
@@ -506,6 +538,25 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 # same night instead of stalling the worker indefinitely.
 CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60
 CELERY_TASK_TIME_LIMIT = 30 * 60
+# Acknowledge a task only when it has finished, so a worker that dies or
+# is redeployed mid-task gives the message back to the queue instead of
+# losing it. Each task must then be safe to run twice: the sends claim
+# their rows first, and scheduled tasks claim their day (core/jobs.py).
+# One message at a time per worker process, so a crash returns at most one.
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+# Redis hands an unacknowledged message to another worker after this long.
+# It must be longer than the longest task (CELERY_TASK_TIME_LIMIT) and the
+# longest retry wait, or a slow task would run twice.
+CELERY_BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 2 * 60 * 60}
+# A URL with {task} in it that each scheduled task calls when it finishes,
+# for an outside monitor that alerts when a call is late (core/jobs.py).
+# Empty: no calls.
+CRON_HEARTBEAT_URL = env('CRON_HEARTBEAT_URL', default='')
+# /_health/ reports scheduled tasks as stale when none has finished in this
+# many hours. Something runs every day (backup, Xero sweep, invoice status).
+SCHEDULED_TASK_STALE_HOURS = env.int('SCHEDULED_TASK_STALE_HOURS', default=26)
 
 # Celery Beat schedule
 # ---------------------
@@ -548,6 +599,19 @@ CELERY_BEAT_SCHEDULE = {
     'nightly-backup': {
         'task': 'core.tasks.run_nightly_backup',
         'schedule': crontab(hour=BACKUP_HOUR, minute=0),
+    },
+    # Remove what has been in Recently Deleted for longer than
+    # SOFT_DELETE_RETENTION_DAYS. After the backup, so the backup taken
+    # just before a purge still holds the rows.
+    'purge-soft-deleted': {
+        'task': 'core.tasks.purge_soft_deleted',
+        'schedule': crontab(hour=BACKUP_HOUR, minute=30),
+    },
+    # Anonymise owners past OWNER_RETENTION_YEARS and drop old account
+    # events (core/gdpr.py). Weekly is plenty for a rule counted in years.
+    'data-retention': {
+        'task': 'core.tasks.apply_data_retention',
+        'schedule': crontab(hour=BACKUP_HOUR, minute=45, day_of_week='sun'),
     },
     # Poll Xero for payments on pushed invoices. Runs daily before the
     # invoice-status promotion and reminder windows, so freshly-paid
@@ -666,12 +730,104 @@ SESSION_SAVE_EVERY_REQUEST = True  # rolling expiry — each request resets the 
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 
+# Password reset links. Django's default is 3 days, which leaves a link
+# usable for a long time in a mailbox somebody else may read. A link
+# already works only once: the token is tied to the password hash and
+# last_login, so it stops working as soon as it is used.
+PASSWORD_RESET_TIMEOUT = env.int('PASSWORD_RESET_TIMEOUT', default=60 * 60)
+
+# Absolute session lifetime. SESSION_COOKIE_AGE above is an idle timeout
+# that rolls forward with every request, so a stolen cookie that is kept
+# in use never expires on its own. This caps a session at 30 days from
+# sign-in, however busy it is (core.middleware.AbsoluteSessionLifetimeMiddleware).
+SESSION_ABSOLUTE_AGE = env.int('SESSION_ABSOLUTE_AGE', default=30 * 24 * 60 * 60)
+
+# Password reset requests (core.views.account). The form is public, so
+# without a limit anyone can make it send mail to a staff address over and
+# over. Per address: a few requests an hour is plenty for a real person.
+# Per IP: higher, because behind a proxy many people can share one address.
+PASSWORD_RESET_LIMIT_PER_EMAIL = env.int('PASSWORD_RESET_LIMIT_PER_EMAIL', default=3)
+PASSWORD_RESET_LIMIT_PER_IP = env.int('PASSWORD_RESET_LIMIT_PER_IP', default=20)
+PASSWORD_RESET_LIMIT_WINDOW = 60 * 60
+
+# Invitation links for new users (Settings → Users → Add user, password
+# left blank). Longer than a reset link, because a new starter may not
+# read the email the same day.
+INVITE_TIMEOUT = env.int('INVITE_TIMEOUT', default=3 * 24 * 60 * 60)
+
+# Cache. Local memory by default, which is per process. Set CACHE_URL to a
+# Redis URL (for example redis://host:6379/1) so rate-limit counters are
+# shared by every web process.
+CACHES = {'default': env.cache('CACHE_URL', default='locmemcache://')}
+
+# Soft delete (core.softdelete). Deleted charges, yard costs and documents
+# can be restored for this many days, then the nightly purge removes them
+# (and their files) for good.
+SOFT_DELETE_RETENTION_DAYS = env.int('SOFT_DELETE_RETENTION_DAYS', default=30)
+
+# Data retention (core/gdpr.py, docs/DATA_RETENTION.md). An archived
+# owner is anonymised this many years after their newest invoice: HMRC
+# needs invoices, with the name and address on them, kept for six years.
+OWNER_RETENTION_YEARS = env.int('OWNER_RETENTION_YEARS', default=6)
+# Sign-in and account events (core.models.AuditEvent) are kept this long.
+AUDIT_EVENT_RETENTION_DAYS = env.int('AUDIT_EVENT_RETENTION_DAYS', default=2 * 365)
+# Background task records (core/jobs.py), removed by the nightly purge:
+# finished scheduled runs, and failed tasks that someone has dealt with.
+SCHEDULED_RUN_RETENTION_DAYS = env.int('SCHEDULED_RUN_RETENTION_DAYS', default=90)
+FAILED_TASK_RETENTION_DAYS = env.int('FAILED_TASK_RETENTION_DAYS', default=90)
+
+# Overdue invoice reminders (notifications.tasks): days past the due date
+# for each reminder. The last is worded as a final notice; nothing is sent
+# after it.
+OVERDUE_REMINDER_DAYS = [int(d) for d in env.list('OVERDUE_REMINDER_DAYS', default=['1', '14', '30'])]
+
+# The public address of the app, for links in emails sent by scheduled
+# tasks (no request to read the host from). Falls back to the first real
+# ALLOWED_HOSTS entry over https.
+SITE_URL = env('SITE_URL', default='')
+
+# Bounce and complaint webhooks from the email provider
+# (notifications/webhooks.py). Postmark: a secret token in the webhook URL.
+# Resend: the signing secret (whsec_...) from the webhook page.
+EMAIL_WEBHOOK_TOKEN = env('EMAIL_WEBHOOK_TOKEN', default='')
+RESEND_WEBHOOK_SECRET = env('RESEND_WEBHOOK_SECRET', default='')
+
+# Two-step sign-in (core.mfa). Administrators must use it: their account
+# reaches every record and every other account. Set to False only to get a
+# yard back in during an emergency, and set it back afterwards.
+MFA_REQUIRED_FOR_ADMINS = env.bool('MFA_REQUIRED_FOR_ADMINS', default=True)
+# The name authenticator apps show next to the six-digit code.
+OTP_TOTP_ISSUER = env('OTP_TOTP_ISSUER', default='Yardway')
+
 # CSRF cookie
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'
 
 # Clickjacking protection
 X_FRAME_OPTIONS = 'DENY'
+
+# Where to report a security problem: an email address or an https URL.
+# Published at /.well-known/security.txt (404 while empty) and named in
+# SECURITY.md. Use an address that more than one person reads.
+SECURITY_CONTACT = env('SECURITY_CONTACT', default='')
+
+# Browser features each page may use (core.middleware.PermissionsPolicyMiddleware).
+# 'self' allows this site only; an empty list turns the feature off.
+PERMISSIONS_POLICY = {
+    'geolocation': ['self'],   # "Near you" chip and the maps.
+    'camera': ['self'],        # Taking a horse photo.
+    'microphone': [],
+    'payment': [],
+    'usb': [],
+    'serial': [],
+    'bluetooth': [],
+    'midi': [],
+    'magnetometer': [],
+    'gyroscope': [],
+    'accelerometer': [],
+    'display-capture': [],
+    'browsing-topics': [],
+}
 
 # Brute-force protection (django-axes)
 # -----------------------------------

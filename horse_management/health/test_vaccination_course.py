@@ -221,3 +221,50 @@ class HorseTimelineTests(TestCase):
         response = self.client.get(reverse('horse_detail', args=[self.horse.pk]))
         events = {e['obj'].pk: e for e in response.context['timeline_events'] if e['type'] == 'vaccination'}
         self.assertTrue(events[self.old.pk]['attention'])
+
+
+class HorseTimelineCostTests(TestCase):
+    """The horse page timeline shows the cost of vaccination, worming and
+    egg count records, like farrier visits, to users who can see charges."""
+
+    def setUp(self):
+        from health.models import WormEggCount, WormingTreatment
+        self.horse = Horse.objects.create(name='Dobbin')
+        flu = VaccinationType.objects.create(name='Flu', interval_months=12)
+        tetanus = VaccinationType.objects.create(name='Tetanus')
+        today = timezone.localdate()
+        Vaccination.objects.create(
+            horse=self.horse, vaccination_type=flu,
+            date_given=today - timedelta(days=10), cost='31.50',
+        )
+        # No next due date: the cost still shows.
+        Vaccination.objects.create(
+            horse=self.horse, vaccination_type=tetanus,
+            date_given=today - timedelta(days=20), cost='27.25',
+        )
+        WormingTreatment.objects.create(
+            horse=self.horse, date=today - timedelta(days=5),
+            product_name='Equest', cost='12.40',
+        )
+        WormEggCount.objects.create(
+            horse=self.horse, date=today - timedelta(days=3), count=150,
+            cost='18.90',
+        )
+
+    def get_page(self):
+        return self.client.get(reverse('horse_detail', args=[self.horse.pk]))
+
+    def test_costs_shown_to_users_who_can_see_charges(self):
+        self.client.force_login(make_admin())
+        response = self.get_page()
+        for amount in ('31.50', '27.25', '12.40', '18.90'):
+            self.assertContains(response, f'&pound;{amount}')
+
+    def test_costs_hidden_without_charges_access(self):
+        from core.roles_testutils import make_user_with_access
+        self.client.force_login(make_user_with_access(horses='view', health='view'))
+        response = self.get_page()
+        self.assertEqual(response.status_code, 200)
+        for amount in ('31.50', '27.25', '12.40', '18.90'):
+            self.assertNotContains(response, amount)
+        self.assertContains(response, 'Next due:')

@@ -42,8 +42,10 @@ def get_grouped_location_choices():
 class OwnerForm(forms.ModelForm):
     class Meta:
         model = Owner
-        fields = ['name', 'email', 'phone', 'address', 'account_code', 'notes']
+        fields = ['name', 'email', 'phone', 'address', 'account_code', 'invoice_reference',
+                  'pause_reminders', 'email_health_reminders', 'notes']
         widgets = {
+            'invoice_reference': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. PO-4471'}),
             'name': forms.TextInput(attrs={'class': 'form-input', 'autocomplete': 'name'}),
             'email': forms.EmailInput(attrs={'class': 'form-input', 'autocomplete': 'email'}),
             'phone': forms.TextInput(attrs={'class': 'form-input', 'type': 'tel', 'autocomplete': 'tel'}),
@@ -51,6 +53,16 @@ class OwnerForm(forms.ModelForm):
             'account_code': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Xero account code'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
         }
+
+    def save(self, commit=True):
+        owner = super().save(commit=False)
+        if 'email' in self.changed_data:
+            # A new address gets a fresh start: the bounce was the old one's.
+            owner.email_bounced_at = None
+            owner.email_bounce_reason = ''
+        if commit:
+            owner.save()
+        return owner
 
 
 def owners_for_picker(current_pk=None):
@@ -833,17 +845,28 @@ def _clean_password_pair(form, cleaned, user):
 
 
 class UserCreateForm(UserAccountForm):
+    """New account. Leave the password blank to email an invitation instead,
+    so nobody else ever knows the new user's password."""
+
     password1 = forms.CharField(
         label="Password",
+        required=False,
         widget=forms.PasswordInput(attrs={'class': 'form-input', 'autocomplete': 'new-password'}),
     )
     password2 = forms.CharField(
         label="Confirm password",
+        required=False,
         widget=forms.PasswordInput(attrs={'class': 'form-input', 'autocomplete': 'new-password'}),
     )
 
+    @property
+    def sends_invite(self):
+        return not self.cleaned_data.get('password1')
+
     def clean(self):
         cleaned = super().clean()
+        if cleaned.get('password2') and not cleaned.get('password1'):
+            self.add_error('password1', "Enter the password, or leave both boxes blank to send an invitation.")
         from django.contrib.auth import get_user_model
         # Unsaved probe so similarity validators can see the name/email.
         probe = get_user_model()(
@@ -862,7 +885,9 @@ class UserCreateForm(UserAccountForm):
         user = get_user_model().objects.create_user(
             username=data['email'],
             email=data['email'],
-            password=data['password1'],
+            # None gives an unusable password: the account cannot sign in
+            # until the invitation link has been used.
+            password=data['password1'] or None,
             first_name=data['first_name'],
             last_name=data['last_name'],
         )
