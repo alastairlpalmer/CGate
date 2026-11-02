@@ -1,18 +1,33 @@
 {% comment %}
-One horse as a desktop table row, inside a grouped view.
+One horse in the horse list. One markup, two shapes.
+
+From `md` this is a table row. Below `md` the `.horse-rows` block in
+input.css re-lays the same cells on a grid, as a stacked card:
+
+    [ ] avatar  Name                            [icons]
+                age · colour · sex
+                Owner · Location
+
+There used to be a second partial for the phone shape, rendered beside
+this one and hidden with `md:hidden`. Both halves were parsed, both were
+initialised by htmx, and only one was ever seen.
 
 Context: horse, group_kind — the Owner column is dropped under owner
 groups and the Location column under location groups.
   row_attrs (optional) — extra attributes for the <tr>; the owner table
   passes an x-show so its owner row can fold the horses under it.
+
+`data-col` names each cell for the phone grid. split_view.js reads only
+data-horse-row, data-horse-pk, data-horse-link and data-horse-checkbox,
+so it needs no breakpoint of its own.
 {% endcomment %}
 <tr class="group" id="horse-{{ horse.pk }}" data-horse-row data-horse-pk="{{ horse.pk }}" {{ row_attrs|default:''|safe }}>
-    <td data-select-cell>
+    <td data-col="select" data-select-cell>
         <input type="checkbox" data-horse-checkbox value="{{ horse.pk }}"
                @change="toggleHorse({{ horse.pk }})" :checked="isSelected({{ horse.pk }})"
                class="form-checkbox rounded">
     </td>
-    <td>
+    <td data-col="name">
         <a href="{% url 'horse_detail' horse.pk %}" data-horse-link class="flex items-center gap-3 group/name">
             {% include 'horses/_horse_avatar.html' with horse=horse size='sm' %}
             <div class="min-w-0">
@@ -25,7 +40,7 @@ groups and the Location column under location groups.
         </a>
     </td>
     {% if group_kind != 'owner' %}
-    <td class="text-sm">
+    <td data-col="owner" class="text-sm">
         <div class="flex items-center gap-2 min-w-0">
             {% if horse.resolved_owner %}<a href="{% url 'owner_detail' horse.resolved_owner.pk %}" class="link tap-pad truncate">{{ horse.resolved_owner.name }}</a>{% else %}<span class="text-sage/70">—</span>{% endif %}
             {% if not horse.has_passport %}<span class="badge-warning shrink-0 ml-auto">No passport</span>{% endif %}
@@ -33,13 +48,20 @@ groups and the Location column under location groups.
     </td>
     {% endif %}
     {% if group_kind != 'location' %}
-    <td class="text-sm split-optional">
+    <td data-col="location" class="text-sm split-optional">
         {% with p=horse.active_placements.0 %}
+        {% comment %}Owner and location are one meta line below `md`, so the
+        two need a separator there and no separator as columns. A span the
+        `md` breakpoint hides is what a CSS `::before` on this cell would
+        have been — but that rule needed `:has()` to know whether there was
+        an owner to separate from, and measured ~95ms of style recalc on the
+        location axis (4x throttled) for one dot.{% endcomment %}
+        {% if group_kind != 'owner' and horse.resolved_owner and p and p.location %}<span class="md:hidden text-sage/70 ml-1.5" aria-hidden="true">·</span>{% endif %}
         {% if p and p.location %}<a href="{% url 'location_detail' p.location.pk %}" class="link tap-pad">{{ p.location.name }}</a>{% else %}<span class="text-sage/70">—</span>{% endif %}
         {% endwith %}
     </td>
     {% endif %}
-    <td class="pr-5 split-optional">
+    <td data-col="actions" class="pr-5 split-optional">
         <div class="flex items-center justify-end gap-1">
             {% if feature_access.horses.full %}
             <a href="{% url 'horse_photo_add' horse.pk %}" hx-get="{% url 'horse_photo_add' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"

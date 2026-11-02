@@ -1,9 +1,10 @@
 ---
 /*
-  The site header. Mark on the left, the index in the centre, Contact on the
-  right. It sits over the banner in a translucent bar and turns solid once the
-  visitor scrolls past. transition:persist carries it across page swaps so the
-  dial can turn during navigation.
+  The site header. On a phone, the mark on the left with Contact at the right;
+  from 620px, the mark centred on the top row with Contact at the right. The
+  index sits centred beneath it on every width. It sits over the banner in a translucent bar
+  and turns solid once the visitor scrolls past. transition:persist carries it
+  across page swaps so the dial can turn during navigation.
 */
 import { getSite } from '../../lib/site';
 import { inline } from '../../lib/text';
@@ -96,6 +97,22 @@ const site = await getSite();
     text-decoration: none;
     transform-origin: 0 50%;
   }
+
+  /* A centred mark needs room on both sides: below 620px it would crowd Contact. */
+  @media (min-width: 620px) {
+    .site-header__inner {
+      grid-template-columns: 1fr auto 1fr;
+      grid-template-areas:
+        '. mark contact'
+        'index index index';
+      gap: var(--s-2) var(--s-4);
+      padding-block: var(--s-3) var(--s-2);
+    }
+    .site-header__mark {
+      justify-self: center;
+      transform-origin: 50% 50%;
+    }
+  }
   .site-header__name {
     font-family: var(--font-display);
     font-weight: 600;
@@ -128,13 +145,6 @@ const site = await getSite();
     color: var(--teal-deep);
   }
 
-  @media (min-width: 880px) {
-    .site-header__inner {
-      grid-template-columns: 1fr minmax(0, 3fr) 1fr;
-      grid-template-areas: 'mark index contact';
-      padding-block: 0;
-    }
-  }
 
   /* Scroll behaviour, the CSS way: solid ground and a rule as the banner leaves,
      and the mark shrinks over the first 200px. */
