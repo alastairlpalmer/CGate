@@ -629,6 +629,12 @@ class OwnershipShareForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['owner'].queryset = owners_for_picker(self.instance.owner_id)
+        # The formset checks the rows' total as submitted. The model's own
+        # check adds this row to the OTHER rows' saved values, so moving
+        # shares between owners (A 100 -> A 50 + B 50, 50/50 -> 40/60, or
+        # replacing an owner) always failed it, in validation and again
+        # row by row on save.
+        self.instance._total_checked_by_formset = True
 
 
 class BaseOwnershipShareFormSet(forms.BaseInlineFormSet):

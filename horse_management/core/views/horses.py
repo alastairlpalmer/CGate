@@ -1238,6 +1238,10 @@ class HorseCreateView(FeatureAccessMixin, CreateView):
             self.object = form.save()
             ownership_formset.instance = self.object
             ownership_formset.save()
+            # The open stay is billed to the Ownership card's primary owner,
+            # as on the ownership screen (manage_ownership_shares).
+            from ..services import PlacementService
+            PlacementService.sync_placement_owner(self.object)
         _warn_if_incomplete_ownership(self.request, ownership_formset)
         messages.success(self.request, f"Horse '{self.object.name}' created successfully.")
         return redirect(self.get_success_url())
@@ -1275,6 +1279,10 @@ class HorseUpdateView(FeatureAccessMixin, UpdateView):
             self.object = form.save()
             ownership_formset.instance = self.object
             ownership_formset.save()
+            # The open stay is billed to the Ownership card's primary owner,
+            # as on the ownership screen (manage_ownership_shares).
+            from ..services import PlacementService
+            PlacementService.sync_placement_owner(self.object)
         _warn_if_incomplete_ownership(self.request, ownership_formset)
         messages.success(self.request, f"Horse '{self.object.name}' updated successfully.")
         return redirect(self.get_success_url())

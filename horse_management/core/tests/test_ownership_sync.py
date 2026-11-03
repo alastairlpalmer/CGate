@@ -13,6 +13,7 @@ from decimal import Decimal
 from io import StringIO
 
 from django.core.management import call_command
+from django.forms import FileField
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -160,3 +161,107 @@ class OwnershipSyncTests(TestCase):
         out = StringIO()
         call_command('sync_placement_owners', stdout=out)
         self.assertIn('already names', out.getvalue())
+
+
+class MovingSharesTests(OwnershipSyncTests):
+    """Shares can be moved between owners in one save.
+
+    The model's own 100% check added each submitted row to the other
+    rows' SAVED values, so every way of moving shares failed it.
+    """
+
+    def _post(self, url, rows, extra=None):
+        existing = [row for row in rows if row[0] is not None]
+        data = {
+            'ownership_shares-TOTAL_FORMS': str(len(rows)),
+            'ownership_shares-INITIAL_FORMS': str(len(existing)),
+            'ownership_shares-MIN_NUM_FORMS': '0',
+            'ownership_shares-MAX_NUM_FORMS': '1000',
+        }
+        for i, (share, owner, pct, primary, delete) in enumerate(rows):
+            if share is not None:
+                data[f'ownership_shares-{i}-id'] = share.pk
+            data[f'ownership_shares-{i}-owner'] = owner.pk
+            data[f'ownership_shares-{i}-share_percentage'] = pct
+            data[f'ownership_shares-{i}-notes'] = ''
+            if primary:
+                data[f'ownership_shares-{i}-is_primary_contact'] = 'on'
+            if delete:
+                data[f'ownership_shares-{i}-DELETE'] = 'on'
+        data.update(extra or {})
+        return self.client.post(url, data)
+
+    def _shares(self):
+        return sorted(
+            (s.owner.name, s.share_percentage)
+            for s in OwnershipShare.objects.filter(horse=self.horse)
+        )
+
+    def _share(self, owner, pct, primary=False):
+        return OwnershipShare.objects.create(
+            horse=self.horse, owner=owner, share_percentage=pct, is_primary_contact=primary,
+        )
+
+    def test_selling_half(self):
+        milly = self._share(self.milly, 100, primary=True)
+        url = reverse('horse_ownership', args=[self.horse.pk])
+        response = self._post(url, [
+            (milly, self.milly, '50', True, False),
+            (None, self.maite, '50', False, False),
+        ])
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self._shares(), [('Maite Marre', Decimal('50.00')), ('Milly Hine', Decimal('50.00'))])
+
+    def test_rebalancing(self):
+        milly = self._share(self.milly, 50, primary=True)
+        maite = self._share(self.maite, 50)
+        url = reverse('horse_ownership', args=[self.horse.pk])
+        # Maite's row first, so saving it before Milly's would pass 100%.
+        response = self._post(url, [
+            (maite, self.maite, '60', False, False),
+            (milly, self.milly, '40', True, False),
+        ])
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self._shares(), [('Maite Marre', Decimal('60.00')), ('Milly Hine', Decimal('40.00'))])
+
+    def test_replacing_the_owner(self):
+        milly = self._share(self.milly, 100, primary=True)
+        url = reverse('horse_ownership', args=[self.horse.pk])
+        response = self._post(url, [
+            (milly, self.milly, '100', True, True),
+            (None, self.maite, '100', True, False),
+        ])
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self._shares(), [('Maite Marre', Decimal('100.00'))])
+        self.stay.refresh_from_db()
+        self.assertEqual(self.stay.owner, self.maite)
+
+    def test_over_100_is_still_refused(self):
+        milly = self._share(self.milly, 100, primary=True)
+        url = reverse('horse_ownership', args=[self.horse.pk])
+        response = self._post(url, [
+            (milly, self.milly, '100', True, False),
+            (None, self.maite, '20', False, False),
+        ])
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'exactly 100%')
+        self.assertEqual(self._shares(), [('Milly Hine', Decimal('100.00'))])
+
+    def test_the_horse_edit_page_moves_the_open_stay_to_the_new_primary_owner(self):
+        from core.forms import HorseForm
+        milly = self._share(self.milly, 60, primary=True)
+        maite = self._share(self.maite, 40)
+        form = HorseForm(instance=self.horse)
+        horse_fields = {}
+        for name, field in form.fields.items():
+            value = form[name].value()
+            if value is None or value is False or isinstance(field, FileField):
+                continue
+            horse_fields[name] = 'on' if value is True else value
+        response = self._post(reverse('horse_update', args=[self.horse.pk]), [
+            (milly, self.milly, '60', False, False),
+            (maite, self.maite, '40', True, False),
+        ], extra=horse_fields)
+        self.assertEqual(response.status_code, 302)
+        self.stay.refresh_from_db()
+        self.assertEqual(self.stay.owner, self.maite)
