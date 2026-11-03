@@ -65,6 +65,7 @@ from .settings import (  # noqa: F401
     app_settings,
     dashboard_toggle,
     health_check,
+    web_health_check,
     rate_type_create,
     rate_type_update,
     service_item_create,

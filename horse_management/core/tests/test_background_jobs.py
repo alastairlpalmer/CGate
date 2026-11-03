@@ -238,3 +238,25 @@ class TaskRecordPurgeTests(TestCase):
         self.assertEqual((counts['ScheduledRun'], counts['FailedTask']), (1, 1))
         self.assertEqual(list(ScheduledRun.objects.values_list('run_key', flat=True)), ['new'])
         self.assertEqual(FailedTask.objects.get().error, 'open')
+
+
+class WebHealthCheckTests(TestCase):
+    """/_health/web/ is Railway's deploy check: the database only."""
+
+    def test_ok_while_scheduled_tasks_are_stale(self):
+        ScheduledRun.objects.create(
+            task_name=CHECK_STATUS, run_key='2026-01-01', task_id='x',
+            status=ScheduledRun.Status.SUCCESS, finished_at=timezone.now() - timedelta(hours=30),
+        )
+        self.assertEqual(self.client.get('/_health/').status_code, 503)
+        response = self.client.get('/_health/web/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'status': 'ok'})
+
+    def test_railway_uses_it_for_web_deploys(self):
+        import json
+        from pathlib import Path
+
+        from django.conf import settings
+        config = json.loads((Path(settings.BASE_DIR) / 'railway' / 'web.json').read_text())
+        self.assertEqual(config['deploy']['healthcheckPath'], '/_health/web/')
