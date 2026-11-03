@@ -3,6 +3,39 @@
 import django.db.models.deletion
 from django.db import migrations, models
 
+# Some databases already have an invoice.horse_id column, with this same
+# definition: an earlier version of per-horse invoicing (April 2026) added
+# it before main's history was rebuilt. Adding it again fails with
+# "column horse_id already exists", so the column is added only where it is
+# missing, and the field is added to the migration state either way.
+
+
+def _columns(schema_editor, model):
+    connection = schema_editor.connection
+    with connection.cursor() as cursor:
+        return {
+            column.name
+            for column in connection.introspection.get_table_description(
+                cursor, model._meta.db_table
+            )
+        }
+
+
+def add_horse_columns(apps, schema_editor):
+    for model_name in ('HistoricalInvoice', 'Invoice'):
+        model = apps.get_model('invoicing', model_name)
+        field = model._meta.get_field('horse')
+        if field.column not in _columns(schema_editor, model):
+            schema_editor.add_field(model, field)
+
+
+def remove_horse_columns(apps, schema_editor):
+    for model_name in ('HistoricalInvoice', 'Invoice'):
+        model = apps.get_model('invoicing', model_name)
+        field = model._meta.get_field('horse')
+        if field.column in _columns(schema_editor, model):
+            schema_editor.remove_field(model, field)
+
 
 class Migration(migrations.Migration):
 
@@ -12,27 +45,33 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name="historicalinvoice",
-            name="horse",
-            field=models.ForeignKey(
-                blank=True,
-                db_constraint=False,
-                null=True,
-                on_delete=django.db.models.deletion.DO_NOTHING,
-                related_name="+",
-                to="core.horse",
-            ),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AddField(
+                    model_name="historicalinvoice",
+                    name="horse",
+                    field=models.ForeignKey(
+                        blank=True,
+                        db_constraint=False,
+                        null=True,
+                        on_delete=django.db.models.deletion.DO_NOTHING,
+                        related_name="+",
+                        to="core.horse",
+                    ),
+                ),
+                migrations.AddField(
+                    model_name="invoice",
+                    name="horse",
+                    field=models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="invoices",
+                        to="core.horse",
+                    ),
+                ),
+            ],
         ),
-        migrations.AddField(
-            model_name="invoice",
-            name="horse",
-            field=models.ForeignKey(
-                blank=True,
-                null=True,
-                on_delete=django.db.models.deletion.PROTECT,
-                related_name="invoices",
-                to="core.horse",
-            ),
-        ),
+        # Runs after the state change, so `apps` already has the field.
+        migrations.RunPython(add_horse_columns, remove_horse_columns),
     ]
