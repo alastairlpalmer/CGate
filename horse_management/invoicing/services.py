@@ -985,10 +985,14 @@ class StatementService:
 
     @staticmethod
     def build_owner_statement(owner):
-        """Statement of account for one owner: every non-cancelled invoice
-        with its paid-to-date and balance, plus overall totals."""
+        """Statement of account for one owner: every issued invoice (sent,
+        overdue or paid) with its paid-to-date and balance, plus overall
+        totals. Drafts are left out: they have not been sent, so the owner
+        does not owe them yet (aged debtors leaves them out too)."""
         invoices = list(
-            owner.invoices.exclude(status=Invoice.Status.CANCELLED)
+            owner.invoices.filter(status__in=[
+                Invoice.Status.SENT, Invoice.Status.OVERDUE, Invoice.Status.PAID,
+            ])
             .prefetch_related('payments')
             .order_by('created_at')
         )
