@@ -245,11 +245,8 @@ class EntityGroupSpineTests(TestCase):
         plus the `.horse-rows` block in input.css), so a horse that appears
         twice means the split has come back.
 
-        The grouped axes only. The search-results and departed tabs of
-        horse_list.html still write their own card list and their own table
-        inline, and so still render each horse twice; they carry a Status
-        column the row partial has no cell for, so they are not covered
-        here and are not yet fixed.
+        The grouped axes. The search-results and Departed tabs have their
+        own row partial and their own test, below.
         """
         for params in (
             {},
@@ -271,6 +268,38 @@ class EntityGroupSpineTests(TestCase):
                     self.assertIn(
                         seen, (0, 1),
                         f'{horse.name} is in the page {seen} times',
+                    )
+
+    def test_each_horse_is_rendered_once_on_the_flat_tabs(self):
+        """Search results and the Departed tab, likewise.
+
+        They carry a Status (or Departed date) column that the grouped row
+        has no cell for, so they share horses/_horse_row_flat.html instead,
+        on the same `.horse-rows` grid.
+        """
+        today = timezone.localdate()
+        gone = Horse.objects.create(name='Gale', is_active=False)
+        Placement.objects.create(
+            horse=gone, owner=self.bob, location=self.paddock,
+            rate_type=self.rate, start_date=today - timedelta(days=60),
+            end_date=today - timedelta(days=10),
+        )
+        for params, label in (
+            ({'search': 'a'}, 'Departed'),
+            ({'status': 'departed'}, (today - timedelta(days=10)).strftime('%d %b %Y')),
+        ):
+            with self.subTest(**params):
+                response = self.client.get(reverse('horse_list'), params)
+                body = response.content.decode()
+                horses = list(response.context['horses'])
+                self.assertIn(gone, horses)
+                self.assertEqual(body.count('data-horse-row'), len(horses))
+                self.assertEqual(body.count(self.HORSE_TABLE), 1)
+                self.assertIn(label, body)
+                for horse in horses:
+                    self.assertEqual(
+                        body.count(f'data-horse-pk="{horse.pk}"'), 1,
+                        f'{horse.name} is not in the page exactly once',
                     )
 
     # ── Unplaced and unowned horses ──────────────────────────────────

@@ -1134,6 +1134,9 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
                    age · colour · sex
                    Owner · Location
 
+   The search-results and Departed tabs (horses/_horse_row_flat.html) have
+   no action buttons; their `status` cell takes that right-hand column.
+
    The phone list used to be a second partial rendered beside this one and
    hidden with `md:hidden`. Both halves were parsed, both were walked by
    htmx on every settle, and only one was ever seen. This block is what
@@ -1173,6 +1176,15 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
     }
     .horse-rows tbody td[data-col="select"] { grid-column: 1; margin-right: 0.75rem; }
     .horse-rows tbody td[data-col="actions"] { grid-column: 4; margin-left: 0.75rem; }
+    /* The status badge or departure date of the flat tabs. It is not a
+       target, so it stays under the name's tap overlay. */
+    .horse-rows tbody td[data-col="status"] {
+        grid-column: 4;
+        grid-row: 1 / -1;
+        margin-left: 0.75rem;
+        justify-self: end;
+        @apply text-xs;
+    }
     .horse-rows tbody td[data-col="name"] { grid-column: 2 / 4; grid-row: 1; }
     .horse-rows tbody td[data-col="owner"] { grid-column: 2; grid-row: 2; }
     .horse-rows tbody td[data-col="location"] { grid-column: 3; grid-row: 2; }
