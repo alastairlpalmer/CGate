@@ -1169,7 +1169,7 @@ class OwnershipShare(models.Model):
     def clean(self):
         from django.core.exceptions import ValidationError
         super().clean()
-        if not self.horse_id:
+        if not self.horse_id or getattr(self, '_total_checked_by_formset', False):
             return
         existing = OwnershipShare.objects.filter(horse=self.horse)
         if self.pk:

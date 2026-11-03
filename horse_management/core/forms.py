@@ -629,6 +629,12 @@ class OwnershipShareForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['owner'].queryset = owners_for_picker(self.instance.owner_id)
+        # The formset checks the rows' total as submitted. The model's own
+        # check adds this row to the OTHER rows' saved values, so moving
+        # shares between owners (A 100 -> A 50 + B 50, 50/50 -> 40/60, or
+        # replacing an owner) always failed it, in validation and again
+        # row by row on save.
+        self.instance._total_checked_by_formset = True
 
 
 class BaseOwnershipShareFormSet(forms.BaseInlineFormSet):
@@ -811,11 +817,16 @@ class UserAccountForm(forms.Form):
                   "(Settings → Users & Roles).",
     )
 
-    def __init__(self, *args, instance=None, **kwargs):
+    def __init__(self, *args, instance=None, can_grant_admin=False, **kwargs):
         from .models import Role
         self.instance = instance
         super().__init__(*args, **kwargs)
-        self.fields['role'].queryset = Role.objects.order_by('-is_system', 'name')
+        roles = Role.objects.order_by('-is_system', 'name')
+        if not can_grant_admin:
+            # The Administrator role (is_system) passes every check that is
+            # kept to Administrators, so only an Administrator may give it.
+            roles = roles.filter(is_system=False)
+        self.fields['role'].queryset = roles
 
     def clean_email(self):
         from django.contrib.auth import get_user_model

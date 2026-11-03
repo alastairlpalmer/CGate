@@ -40,18 +40,36 @@ class InvoiceService:
     """Service for generating and managing invoices."""
 
     @staticmethod
-    def check_for_overlapping_invoices(owner, period_start, period_end):
-        """Check if an invoice already exists for this owner overlapping the given period.
+    def _live_invoices(owner, period_start, period_end, horse=None):
+        """The owner's live invoices that cover part of the period.
 
-        Returns the overlapping invoice if found, None otherwise.
+        An invoice for one horse (Owner.invoice_per_horse) covers only
+        that horse; an invoice for all the owner's horses covers them all.
+        So for a horse this is its own invoices plus whole-owner ones, and
+        for a per-horse owner as a whole it is whole-owner invoices only:
+        the invoice of one horse must not stop another horse being billed,
+        for example after that horse's invoice is cancelled and re-issued.
         """
-        return Invoice.objects.filter(
+        invoices = Invoice.objects.filter(
             owner=owner,
             period_start__lte=period_end,
             period_end__gte=period_start,
         ).exclude(
             status=Invoice.Status.CANCELLED,
-        ).first()
+        )
+        if horse is not None:
+            invoices = invoices.filter(models.Q(horse=horse) | models.Q(horse__isnull=True))
+        elif owner.invoice_per_horse:
+            invoices = invoices.filter(horse__isnull=True)
+        return invoices
+
+    @classmethod
+    def check_for_overlapping_invoices(cls, owner, period_start, period_end):
+        """Check if an invoice already exists for this owner overlapping the given period.
+
+        Returns the overlapping invoice if found, None otherwise.
+        """
+        return cls._live_invoices(owner, period_start, period_end).first()
 
     @staticmethod
     def _billing_key(placement):
@@ -471,21 +489,42 @@ class InvoiceService:
         owner, livery_charges, extra_charges = cls._lock_and_price(
             owner, period_start, period_end
         )
-        by_horse = {}
-        for charge in livery_charges:
-            by_horse.setdefault(charge['horse'], ([], []))[0].append(charge)
-        for charge in extra_charges:
-            by_horse.setdefault(charge['horse'], ([], []))[1].append(charge)
+        horses = {c['horse'] for c in livery_charges + extra_charges}
 
         invoices = []
-        for horse in sorted(by_horse, key=lambda h: (h.name.lower(), h.pk)):
-            livery, extras = by_horse[horse]
-            if sum(c['amount'] for c in livery + extras) <= 0:
+        covered = []
+        for horse in sorted(horses, key=lambda h: (h.name.lower(), h.pk)):
+            # Each horse is billed for the days no live invoice of its own
+            # covers, so a cancelled horse invoice can be issued again.
+            gaps = cls.uncovered_periods(owner, period_start, period_end, horse=horse)
+            if not gaps:
+                covered.append(horse)
                 continue
-            invoices.append(cls._write_invoice(
-                owner, period_start, period_end, notes, livery, extras,
-                horse=horse,
-            ))
+            extras = [c for c in extra_charges if c['horse'] == horse]
+            for index, (gap_start, gap_end) in enumerate(gaps):
+                if (gap_start, gap_end) == (period_start, period_end):
+                    livery = livery_charges
+                else:
+                    livery = cls.calculate_livery_charges(owner, gap_start, gap_end)
+                livery = [c for c in livery if c['horse'] == horse]
+                # Unbilled extras are not period-bound: they go on the last gap.
+                gap_extras = extras if index == len(gaps) - 1 else []
+                if sum(c['amount'] for c in livery + gap_extras) <= 0:
+                    continue
+                invoices.append(cls._write_invoice(
+                    owner, gap_start, gap_end, notes, livery, gap_extras,
+                    horse=horse,
+                ))
+        if not invoices and covered:
+            raise DuplicateInvoiceError(
+                f"{owner.name}'s horses already have invoices covering "
+                f"{period_start} to {period_end}."
+            )
+        if not invoices:
+            raise NothingToInvoiceError(
+                f"{owner.name} has nothing billable for "
+                f"{period_start} to {period_end}."
+            )
         return invoices
 
     @classmethod
@@ -680,8 +719,8 @@ class InvoiceService:
             | owners_via_split_charges
         ).distinct()
 
-    @staticmethod
-    def uncovered_periods(owner, period_start, period_end):
+    @classmethod
+    def uncovered_periods(cls, owner, period_start, period_end, horse=None):
         """Sub-ranges of [period_start, period_end] no live invoice covers.
 
         Livery has no per-day "billed" marker — coverage is the invoice
@@ -690,13 +729,11 @@ class InvoiceService:
         month: the remainder is still billable and is returned here as one
         or more (start, end) gaps. Returns [(period_start, period_end)]
         when nothing overlaps, [] when the period is fully covered.
+        With ``horse``, only invoices that cover that horse count
+        (see ``_live_invoices``).
         """
-        existing = Invoice.objects.filter(
-            owner=owner,
-            period_start__lte=period_end,
-            period_end__gte=period_start,
-        ).exclude(
-            status=Invoice.Status.CANCELLED,
+        existing = cls._live_invoices(
+            owner, period_start, period_end, horse=horse,
         ).order_by('period_start')
 
         gaps = []
@@ -746,13 +783,7 @@ class InvoiceService:
         * ``unbilled_gaps`` — when blocked, the gaps with livery to bill.
         """
         covering = list(
-            Invoice.objects.filter(
-                owner=owner,
-                period_start__lte=period_end,
-                period_end__gte=period_start,
-            ).exclude(
-                status=Invoice.Status.CANCELLED,
-            ).order_by('period_start')
+            cls._live_invoices(owner, period_start, period_end).order_by('period_start')
         )
         result = {
             'period_start': period_start,
@@ -814,8 +845,25 @@ class InvoiceService:
             preview['invoiced_until'] = resolved['period_start'] - timedelta(days=1)
         preview['last_invoiced'] = cls.last_invoiced_date(owner)
         # create_invoices makes one invoice for each horse with a positive
-        # total when the owner is billed per horse.
+        # total when the owner is billed per horse, and skips a horse whose
+        # own invoices already cover the period.
         preview['per_horse'] = owner.invoice_per_horse
+        if owner.invoice_per_horse and preview['horse_groups']:
+            start, end = resolved['period_start'], resolved['period_end']
+            billed = [
+                group for group in preview['horse_groups']
+                if group['horse'] is not None
+                and not cls.uncovered_periods(owner, start, end, horse=group['horse'])
+            ]
+            if billed:
+                preview['already_invoiced_horses'] = [g['horse_name'] for g in billed]
+                groups = [g for g in preview['horse_groups'] if g not in billed]
+                subtotal = sum((g['subtotal'] for g in groups), Decimal('0.00'))
+                vat_amount = (subtotal * preview['vat_rate'] / Decimal('100')).quantize(Decimal('0.01'))
+                preview.update(
+                    horse_groups=groups, subtotal=subtotal,
+                    vat_amount=vat_amount, total=subtotal + vat_amount,
+                )
         preview['per_horse_count'] = sum(
             1 for group in preview.get('horse_groups', []) if group['subtotal'] > 0
         )
@@ -937,10 +985,14 @@ class StatementService:
 
     @staticmethod
     def build_owner_statement(owner):
-        """Statement of account for one owner: every non-cancelled invoice
-        with its paid-to-date and balance, plus overall totals."""
+        """Statement of account for one owner: every issued invoice (sent,
+        overdue or paid) with its paid-to-date and balance, plus overall
+        totals. Drafts are left out: they have not been sent, so the owner
+        does not owe them yet (aged debtors leaves them out too)."""
         invoices = list(
-            owner.invoices.exclude(status=Invoice.Status.CANCELLED)
+            owner.invoices.filter(status__in=[
+                Invoice.Status.SENT, Invoice.Status.OVERDUE, Invoice.Status.PAID,
+            ])
             .prefetch_related('payments')
             .order_by('created_at')
         )

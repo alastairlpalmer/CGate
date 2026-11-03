@@ -376,11 +376,25 @@ def sync_record_charge(record):
         record.save(update_fields=['extra_charge'])
         charge.delete()
         return 'deleted'
+    fields = ['amount', 'date', 'description', 'service_provider']
+    if charge.horse_id != record.horse_id:
+        # The record was moved to another horse, so its bill goes to that
+        # horse's owner. Left alone, the first owner was billed for a
+        # horse that is not theirs and the right owner never was.
+        owner = record.horse.current_owner
+        if not owner:
+            record.extra_charge = None
+            record.save(update_fields=['extra_charge'])
+            charge.delete()
+            return 'no_owner'
+        charge.horse = record.horse
+        charge.owner = owner
+        fields += ['horse', 'owner']
     charge.amount = record.cost
     charge.date = details['date']
     charge.description = details['description']
     charge.service_provider = details['service_provider']
-    charge.save(update_fields=['amount', 'date', 'description', 'service_provider'])
+    charge.save(update_fields=fields)
     return 'updated'
 
 

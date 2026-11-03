@@ -158,3 +158,74 @@ class HealthCostTestCase(TestCase):
         })
         vax.refresh_from_db()
         self.assertEqual(vax.extra_charge.amount, Decimal('45.00'))
+
+
+class RecordChargeFollowsTheRecordTests(HealthCostTestCase):
+    """The charge behind a health record follows edits made in either place."""
+
+    def _update_vaccination(self, vax, **changes):
+        data = {
+            'horse': vax.horse_id,
+            'vaccination_type': self.vax_type.pk,
+            'date_given': self.today.isoformat(),
+            'next_due_date': '',
+            'vet': '',
+            'batch_number': '',
+            'cost': str(vax.cost),
+            'notes': '',
+        }
+        data.update(changes)
+        return self.client.post(reverse('vaccination_update', args=[vax.pk]), data)
+
+    def _second_horse(self, owner=None):
+        horse = Horse.objects.create(name='BRAMBLE')
+        if owner:
+            OwnershipShare.objects.create(
+                horse=horse, owner=owner, share_percentage=100, is_primary_contact=True,
+            )
+            Placement.objects.create(
+                horse=horse, owner=owner, location=self.location,
+                rate_type=self.rate, start_date=self.today - timedelta(days=30),
+            )
+        return horse
+
+    def test_moving_the_record_to_another_horse_moves_its_charge(self):
+        bob = Owner.objects.create(name='Bob Brown')
+        bramble = self._second_horse(owner=bob)
+        self._add_vaccination('50.00')
+        vax = Vaccination.objects.get(horse=self.horse)
+        self.assertEqual(self._update_vaccination(vax, horse=bramble.pk).status_code, 302)
+        charge = ExtraCharge.objects.get()
+        self.assertEqual((charge.horse, charge.owner), (bramble, bob))
+        self.assertEqual(charge.amount, Decimal('50.00'))
+
+    def test_moving_the_record_to_a_horse_with_no_owner_removes_the_charge(self):
+        bramble = self._second_horse()
+        self._add_vaccination('50.00')
+        vax = Vaccination.objects.get(horse=self.horse)
+        self._update_vaccination(vax, horse=bramble.pk)
+        vax.refresh_from_db()
+        self.assertIsNone(vax.extra_charge)
+        self.assertFalse(ExtraCharge.objects.exists())
+
+    def test_a_discount_on_the_charge_screen_survives_a_record_edit(self):
+        self._add_vaccination('100.00')
+        vax = Vaccination.objects.get(horse=self.horse)
+        charge = vax.extra_charge
+        response = self.client.post(reverse('charge_update', args=[charge.pk]), {
+            'horse': self.horse.pk,
+            'owner': self.owner.pk,
+            'service_provider': '',
+            'charge_type': charge.charge_type,
+            'date': charge.date.isoformat(),
+            'description': charge.description,
+            'amount': '80.00',
+            'notes': '',
+        })
+        self.assertEqual(response.status_code, 302)
+        vax.refresh_from_db()
+        self.assertEqual(vax.cost, Decimal('80.00'))
+        # An unrelated edit to the record keeps the discounted amount.
+        self._update_vaccination(vax, notes='Booster due in spring')
+        charge.refresh_from_db()
+        self.assertEqual(charge.amount, Decimal('80.00'))

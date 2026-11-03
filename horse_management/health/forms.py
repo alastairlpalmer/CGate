@@ -267,6 +267,17 @@ class WormingTreatmentForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFor
         next_due = cleaned_data.get('next_due_date')
         if dose_date and next_due and next_due <= dose_date:
             self.add_error('next_due_date', "Next due date must be after the dose date.")
+        # Same rule as FarrierVisitForm: a corrected dose date with the due
+        # date left alone means "recalculate it". WormingTreatment.save()
+        # only fills an empty due date, so the old one stayed anchored to
+        # the old dose and the horse showed due on the wrong day.
+        if (
+            self.instance.pk
+            and 'date' in self.changed_data
+            and 'next_due_date' not in self.changed_data
+        ):
+            cleaned_data['next_due_date'] = None
+            self.instance.next_due_date = None
         return cleaned_data
 
 
@@ -564,9 +575,13 @@ class BreedingRecordForm(ActiveHorseFormMixin, forms.ModelForm):
         # Auto-calculate foal due date if not provided
         if date_covered and not date_foal_due:
             cleaned_data['date_foal_due'] = date_covered + timedelta(days=340)
-        # A typed-in due date that is not 340 days from covering is kept as
-        # is; a blank or matching one follows the latest covering.
-        if date_covered:
+        # A due date typed in this form that is not 340 days from covering
+        # is kept as is; a blank or matching one follows the latest
+        # covering. Only a change to the due date field counts: the edit
+        # form sends the stored date back, so comparing it with the new
+        # covering date marked every corrected covering as 'typed in' and
+        # the due date (and its reminders) stayed on the old covering.
+        if date_covered and 'date_foal_due' in self.changed_data:
             auto_due = date_covered + timedelta(days=BreedingRecord.GESTATION_DAYS)
             self.instance.due_date_is_manual = bool(date_foal_due) and date_foal_due != auto_due
         mare = cleaned_data.get('mare')

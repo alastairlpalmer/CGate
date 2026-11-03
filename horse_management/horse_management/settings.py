@@ -984,7 +984,7 @@ if not DEBUG:
     # with no X-Forwarded-Proto. Without this exemption it gets a 301 and
     # the deploy is marked unhealthy. Paths are regexes without the leading
     # slash. The view returns no data beyond {"status": "ok"}.
-    SECURE_REDIRECT_EXEMPT = [r'^_health/$']
+    SECURE_REDIRECT_EXEMPT = [r'^_health/$', r'^_health/web/$']
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True

@@ -75,6 +75,22 @@ def health_check(request):
     )
 
 
+def web_health_check(request):
+    """What Railway calls before a new web deploy goes live: the database only.
+
+    /_health/ also fails when Redis, the worker or beat is down. As the
+    deploy health check that blocked every web deploy (with migrate
+    already run against the shared database) until those were fixed,
+    and left the old web code serving the new schema. Those parts are
+    for the uptime monitor to report, not a reason to refuse new code.
+    """
+    healthy = _check_database() == 'ok'
+    return JsonResponse(
+        {'status': 'ok' if healthy else 'error'},
+        status=200 if healthy else 503,
+    )
+
+
 def _check_database():
     try:
         with connection.cursor() as cursor:

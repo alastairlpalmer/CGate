@@ -72,7 +72,7 @@ def _is_manager(user):
 def user_create(request):
     """Create a login account. The email address is the sign-in identifier."""
     if request.method == 'POST':
-        form = UserCreateForm(request.POST)
+        form = UserCreateForm(request.POST, can_grant_admin=mfa.is_administrator(request.user))
         if form.is_valid():
             user = form.save()
             audit.record(
@@ -96,7 +96,7 @@ def user_create(request):
                 messages.success(request, f"User {user.email} created.")
             return redirect('app_settings')
     else:
-        form = UserCreateForm()
+        form = UserCreateForm(can_grant_admin=mfa.is_administrator(request.user))
     return render(request, 'settings/user_form.html', {'form': form})
 
 
@@ -112,8 +112,18 @@ def user_update(request, pk):
     )
     is_self = target.pk == request.user.pk
     current_role = getattr(getattr(target, 'role_assignment', None), 'role', None)
+    is_admin = mfa.is_administrator(request.user)
+    if (
+        request.method == 'POST'
+        and not is_admin
+        and (target.is_superuser or mfa.is_administrator(target))
+    ):
+        # Changing an Administrator's details, role or password would hand
+        # their access to someone who does not have it.
+        messages.error(request, "Only an Administrator can change an Administrator's account.")
+        return redirect('user_update', pk=target.pk)
 
-    form = UserUpdateForm(instance=target, initial={
+    form = UserUpdateForm(instance=target, can_grant_admin=is_admin, initial={
         'first_name': target.first_name,
         'last_name': target.last_name,
         'email': target.email,
@@ -123,7 +133,7 @@ def user_update(request, pk):
 
     if request.method == 'POST':
         if 'save_details' in request.POST:
-            form = UserUpdateForm(request.POST, instance=target)
+            form = UserUpdateForm(request.POST, instance=target, can_grant_admin=is_admin)
             if form.is_valid():
                 new_role = form.cleaned_data['role']
                 demoting = (

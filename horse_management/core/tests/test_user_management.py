@@ -237,3 +237,63 @@ class UserUpdateTests(TestCase):
         self.client.post(reverse("user_update", args=[self.admin.pk]), {"toggle_active": "1"})
         self.admin.refresh_from_db()
         self.assertFalse(self.admin.is_active)
+
+
+class UserManagerLimitsTests(TestCase):
+    """A role with Users & Roles access, but not Administrator, cannot reach
+    Administrator access: it cannot give the Administrator role, nor change
+    an Administrator's or superuser's account (that would take it over)."""
+
+    def setUp(self):
+        from core.models import Role
+        office = Role.objects.create(name="Office", access={"users": "full"})
+        self.manager = User.objects.create_user(
+            username="office@example.com", email="office@example.com", password=PW,
+        )
+        assign_role(self.manager, office)
+        self.office = office
+        self.admin = make_admin()
+        self.viewer = make_viewer("jo@example.com", first_name="Jo")
+        self.client.login(username=self.manager.email, password=PW)
+
+    def _details(self, target, role):
+        return self.client.post(reverse("user_update", args=[target.pk]), {
+            "save_details": "1", "first_name": target.first_name or "X",
+            "last_name": target.last_name, "email": target.email, "role": role.pk,
+        })
+
+    def test_cannot_give_themselves_the_administrator_role(self):
+        response = self._details(self.manager, administrator_role())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(UserRole.objects.get(user=self.manager).role, self.office)
+
+    def test_cannot_give_another_user_the_administrator_role(self):
+        self._details(self.viewer, administrator_role())
+        self.assertEqual(UserRole.objects.get(user=self.viewer).role, viewer_role())
+
+    def test_cannot_create_an_administrator(self):
+        response = self.client.get(reverse("user_create"))
+        self.assertNotContains(response, f'value="{administrator_role().pk}"')
+        self.client.post(reverse("user_create"), {
+            "first_name": "New", "last_name": "", "email": "new@example.com",
+            "role": administrator_role().pk, "password1": "", "password2": "",
+        })
+        self.assertFalse(User.objects.filter(email="new@example.com").exists())
+
+    def test_cannot_set_an_administrators_password(self):
+        for target in (self.admin, User.objects.create_superuser("root", "root@example.com", PW)):
+            self.client.post(reverse("user_update", args=[target.pk]), {
+                "set_password": "1", "password1": "taken-over-77", "password2": "taken-over-77",
+            })
+            target.refresh_from_db()
+            self.assertTrue(target.check_password(PW))
+
+    def test_can_still_manage_other_users(self):
+        response = self._details(self.viewer, self.office)
+        self.assertRedirects(response, reverse("app_settings"))
+        self.assertEqual(UserRole.objects.get(user=self.viewer).role, self.office)
+
+    def test_an_administrator_can_still_give_the_administrator_role(self):
+        self.client.login(username=self.admin.email, password=PW)
+        self._details(self.viewer, administrator_role())
+        self.assertEqual(UserRole.objects.get(user=self.viewer).role, administrator_role())

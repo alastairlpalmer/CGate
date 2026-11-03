@@ -176,6 +176,14 @@ def add_covering(record, *, date, method='', stallion_name='', vet=None, notes='
         if record.date_scanned_heartbeat and record.date_scanned_heartbeat <= date:
             record.date_scanned_heartbeat = None
             changed.append('date_scanned_heartbeat')
+        # Scan dates are counted from the latest covering, so the scan
+        # reminders already sent were for the previous attempt. Left marked
+        # as sent, the new covering's 14-day and heartbeat scan reminders
+        # never went out.
+        sent = record.sent_reminder_keys
+        if sent & {'scan14', 'heartbeat'}:
+            record.breeding_reminders_sent = ','.join(sorted(sent - {'scan14', 'heartbeat'}))
+            changed.append('breeding_reminders_sent')
         if changed:
             record.save(update_fields=changed + ['updated_at'])
     record.refresh_from_db()

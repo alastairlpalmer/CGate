@@ -134,6 +134,18 @@ class InvoiceUpdateForm(forms.ModelForm):
                     f"Cannot change status from '{self.instance.get_status_display()}' "
                     f"to '{dict(Invoice.Status.choices).get(new_status, new_status)}'."
                 )
+            # Money received against a cancelled invoice drops out of the
+            # statement, aged debtors and reconciliation, and the owner is
+            # never credited for it.
+            if (
+                new_status == Invoice.Status.CANCELLED
+                and current_status != Invoice.Status.CANCELLED
+                and self.instance.payments.exists()
+            ):
+                raise forms.ValidationError(
+                    "This invoice has payments or credit notes. Void them first, "
+                    "then cancel the invoice."
+                )
         return new_status
 
 
