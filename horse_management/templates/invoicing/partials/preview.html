@@ -13,12 +13,18 @@
 {% elif preview.last_invoiced %}
 <p class="mb-4 text-xs text-sage">Last invoice ends {{ preview.last_invoiced|date:"j M Y" }}.</p>
 {% endif %}
+{% if preview.horse_groups and preview.per_horse %}
+<p class="mb-4 rounded-xl bg-info-blue-50 border border-info-blue/20 p-3 text-sm text-info-blue">
+    This owner gets one invoice per horse. This makes {{ preview.per_horse_count }} invoice{{ preview.per_horse_count|pluralize }}.
+</p>
+{% endif %}
 {% if preview.horse_groups %}
 <div class="space-y-4">
     {% for group in preview.horse_groups %}
     <div>
-        <h4 class="text-sm font-bold text-charcoal mb-1 bg-sand-50 px-3 py-2 rounded">
-            {{ group.horse_name }}{% for charge in group.charges %}{% if forloop.first %}{% if charge.share_percentage < 100 %} ({{ charge.share_percentage|floatformat:2 }}% share){% endif %}{% endif %}{% endfor %}
+        <h4 class="text-sm font-bold text-charcoal mb-1 bg-sand-50 px-3 py-2 rounded{% if preview.per_horse %} flex justify-between gap-4{% endif %}">
+            <span>{{ group.horse_name }}{% for charge in group.charges %}{% if forloop.first %}{% if charge.share_percentage < 100 %} ({{ charge.share_percentage|floatformat:2 }}% share){% endif %}{% endif %}{% endfor %}</span>
+            {% if preview.per_horse %}<span class="whitespace-nowrap">Net &pound;{{ group.subtotal|floatformat:2 }}</span>{% endif %}
         </h4>
         <ul class="divide-y divide-light-sage border border-light-sage rounded-btn">
             {% for charge in group.charges %}

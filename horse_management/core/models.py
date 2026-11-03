@@ -68,6 +68,12 @@ class Owner(models.Model):
         help_text="Printed on every new invoice for this owner, e.g. a PO number their "
                   "accounts team needs before they will pay.",
     )
+    invoice_per_horse = models.BooleanField(
+        'One invoice per horse',
+        default=False,
+        help_text="Bill each horse on its own invoice instead of all horses on one, "
+                  "for example when an owner keeps each horse's costs apart.",
+    )
     pause_reminders = models.BooleanField(
         'Pause overdue reminders',
         default=False,

@@ -61,7 +61,7 @@ class InvoiceListView(FeatureAccessMixin, ListView):
         from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Value
         from django.db.models.functions import Coalesce
 
-        queryset = Invoice.objects.select_related('owner', 'xero_sync').annotate(
+        queryset = Invoice.objects.select_related('owner', 'horse', 'xero_sync').annotate(
             balance=ExpressionWrapper(
                 F('total') - Coalesce(
                     Sum('payments__amount', filter=LIVE_PAYMENTS), Value(Decimal('0.00'))
@@ -278,7 +278,7 @@ def invoice_create(request):
                 })
 
             try:
-                invoice = InvoiceService.create_invoice(
+                invoices = InvoiceService.create_invoices(
                     owner, period_start, period_end, notes
                 )
             except (DuplicateInvoiceError, NothingToInvoiceError) as e:
@@ -287,14 +287,25 @@ def invoice_create(request):
                     'form': form, 'preview': None,
                 })
 
-            msg = f"Invoice {invoice.invoice_number} created successfully."
+            if len(invoices) == 1:
+                msg = f"Invoice {invoices[0].invoice_number} created successfully."
+            else:
+                msg = (
+                    f"{len(invoices)} invoices created, one per horse: "
+                    + ", ".join(
+                        f"{inv.invoice_number} ({inv.horse.name})" for inv in invoices
+                    )
+                    + "."
+                )
             if form.start_moved_from:
                 msg += (
-                    f" It starts on {period_start:%d/%m/%Y}: the days before "
-                    "that are already invoiced."
+                    f" {'It starts' if len(invoices) == 1 else 'They start'} on "
+                    f"{period_start:%d/%m/%Y}: the days before that are already invoiced."
                 )
             messages.success(request, msg)
-            return redirect('invoice_detail', pk=invoice.pk)
+            if len(invoices) == 1:
+                return redirect('invoice_detail', pk=invoices[0].pk)
+            return redirect(f"{reverse('invoice_list')}?owner={owner.pk}")
     else:
         form = InvoiceCreateForm(initial=initial)
 
@@ -957,7 +968,7 @@ def invoice_export_csv(request):
     raise receivables that were voided here); drafts are excluded unless
     explicitly requested via ?status=draft.
     """
-    queryset = Invoice.objects.select_related('owner').exclude(
+    queryset = Invoice.objects.select_related('owner', 'horse').exclude(
         status=Invoice.Status.CANCELLED
     ).order_by('-created_at')
 

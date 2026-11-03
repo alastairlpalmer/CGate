@@ -218,6 +218,8 @@ def generate_invoice_pdf_reportlab(invoice):
     vat_reg = (getattr(settings, 'vat_registration', '') or '').strip()
     if vat_reg and vat_reg.upper() not in ('N/A', 'NA', 'NONE', '-'):
         invoice_info_lines.append(f"VAT Reg: {vat_reg}")
+    if invoice.horse_id:
+        invoice_info_lines.append(f"Horse: {_esc(invoice.horse.name)}")
     invoice_info_lines.append(
         f"Period: {invoice.period_start.strftime('%d/%m/%Y')} - {invoice.period_end.strftime('%d/%m/%Y')}"
     )

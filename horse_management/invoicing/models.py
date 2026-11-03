@@ -32,6 +32,15 @@ class Invoice(models.Model):
         related_name='invoices'
     )
     invoice_number = models.CharField(max_length=50, unique=True)
+    # Set when the owner is billed one invoice per horse
+    # (Owner.invoice_per_horse); empty on an invoice for all their horses.
+    horse = models.ForeignKey(
+        'core.Horse',
+        on_delete=models.PROTECT,
+        related_name='invoices',
+        null=True,
+        blank=True,
+    )
     period_start = models.DateField()
     period_end = models.DateField()
     subtotal = models.DecimalField(
@@ -110,6 +119,15 @@ class Invoice(models.Model):
         if not self.due_date:
             self.due_date = self.period_end + timedelta(days=self.payment_terms_days)
         super().save(*args, **kwargs)
+
+    @property
+    def accounting_reference(self):
+        """Reference for Xero: theirs (or the owner's account code), then
+        the horse when the invoice is for one horse."""
+        parts = [self.customer_reference or getattr(self.owner, 'account_code', '') or '']
+        if self.horse_id:
+            parts.append(self.horse.name)
+        return ' / '.join(part for part in parts if part)
 
     def recalculate_totals(self):
         """Recalculate invoice totals from line items.
