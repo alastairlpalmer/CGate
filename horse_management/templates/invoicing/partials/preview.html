@@ -15,7 +15,7 @@
 {% endif %}
 {% if preview.horse_groups and preview.per_horse %}
 <p class="mb-4 rounded-xl bg-info-blue-50 border border-info-blue/20 p-3 text-sm text-info-blue">
-    This owner gets one invoice per horse. This makes {{ preview.per_horse_count }} invoice{{ preview.per_horse_count|pluralize }}.
+    This owner gets one invoice per horse. This makes {{ preview.per_horse_count }} invoice{{ preview.per_horse_count|pluralize }}.{% if preview.already_invoiced_horses %} Already invoiced for this period: {{ preview.already_invoiced_horses|join:", " }}.{% endif %}
 </p>
 {% endif %}
 {% if preview.horse_groups %}

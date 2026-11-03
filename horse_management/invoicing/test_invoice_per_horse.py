@@ -210,3 +210,63 @@ class ReferenceTests(PerHorseTestCase):
         self.owner.save()
         invoice = InvoiceService.create_invoices(self.owner, *PERIOD)[0]
         self.assertEqual(invoice.accounting_reference, 'PO-7')
+
+
+class ReissueTests(PerHorseTestCase):
+    """A horse's invoice can be issued again after it is cancelled or deleted.
+
+    The invoice of one horse covers only that horse. Before, the other
+    horse's invoice covered the owner as a whole, so the cancelled horse's
+    livery could never be billed again.
+    """
+
+    def _cancel_apple(self):
+        apple, willow = InvoiceService.create_invoices(self.owner, *PERIOD)
+        apple.status = Invoice.Status.CANCELLED
+        apple.save()
+        apple.release_extra_charges()
+        return apple, willow
+
+    def test_create_invoices_bills_only_the_cancelled_horse_again(self):
+        _apple, willow = self._cancel_apple()
+        invoices = InvoiceService.create_invoices(self.owner, *PERIOD)
+        self.assertEqual([inv.horse for inv in invoices], [self.apple])
+        self.assertEqual(invoices[0].subtotal, Decimal('150.00'))
+        self.assertEqual(Invoice.objects.filter(horse=self.willow).count(), 1)
+
+    def test_a_deleted_draft_can_be_issued_again(self):
+        apple, _willow = InvoiceService.create_invoices(self.owner, *PERIOD)
+        apple.delete()
+        invoices = InvoiceService.create_invoices(self.owner, *PERIOD)
+        self.assertEqual([inv.horse for inv in invoices], [self.apple])
+
+    def test_the_monthly_run_bills_the_cancelled_horse_again(self):
+        self._cancel_apple()
+        invoices, skipped = InvoiceService.generate_monthly_invoices(2026, 6)
+        self.assertEqual([inv.horse for inv in invoices], [self.apple])
+        self.assertNotIn(self.owner, skipped)
+
+    def test_the_create_page_previews_and_makes_only_the_missing_invoice(self):
+        self._cancel_apple()
+        self.client.force_login(make_admin())
+        preview = self.client.get(reverse('invoice_preview'), {
+            'owner': self.owner.pk, 'period_start': '2026-06-01', 'period_end': '2026-06-30',
+        }, HTTP_HX_REQUEST='true')
+        self.assertContains(preview, 'This makes 1 invoice.')
+        self.assertContains(preview, 'Already invoiced for this period: Willow.')
+        response = self.client.post(reverse('invoice_create'), {
+            'owner': self.owner.pk, 'period_start': '2026-06-01',
+            'period_end': '2026-06-30', 'notes': '',
+        })
+        self.assertEqual(response.status_code, 302)
+        live = Invoice.objects.exclude(status=Invoice.Status.CANCELLED)
+        self.assertEqual(sorted(inv.horse.name for inv in live), ['Apple', 'Willow'])
+
+    def test_an_invoice_for_all_horses_still_covers_every_horse(self):
+        self.owner.invoice_per_horse = False
+        self.owner.save()
+        InvoiceService.create_invoices(self.owner, *PERIOD)
+        self.owner.invoice_per_horse = True
+        self.owner.save()
+        with self.assertRaises(DuplicateInvoiceError):
+            InvoiceService.create_invoices(self.owner, *PERIOD)
