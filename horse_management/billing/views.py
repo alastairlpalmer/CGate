@@ -176,7 +176,15 @@ class ExtraChargeUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
     def form_valid(self, form):
         messages.success(self.request, "Charge updated successfully.")
         _warn_if_owner_unrelated(self.request, form)
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        # A charge made from a health record is rebuilt from record.cost
+        # each time the record is saved. Keep the record's cost in step, or
+        # a discount given here is undone by the next edit to the record.
+        record = self.object.linked_health_record()
+        if record is not None and record.cost != self.object.amount:
+            record.cost = self.object.amount
+            record.save(update_fields=['cost'])
+        return response
 
 
 class ExtraChargeDeleteView(FeatureAccessMixin, DeleteView):
