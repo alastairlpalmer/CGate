@@ -445,7 +445,57 @@ class InvoiceService:
     @classmethod
     @transaction.atomic
     def create_invoice(cls, owner, period_start, period_end, notes=''):
-        """Create an invoice for an owner."""
+        """Create one invoice for all of an owner's horses."""
+        owner, livery_charges, extra_charges = cls._lock_and_price(
+            owner, period_start, period_end
+        )
+        return cls._write_invoice(
+            owner, period_start, period_end, notes,
+            livery_charges, extra_charges,
+        )
+
+    @classmethod
+    @transaction.atomic
+    def create_invoices(cls, owner, period_start, period_end, notes=''):
+        """Create the owner's invoices for a period, as a list.
+
+        One invoice for all their horses, or, when the owner is billed one
+        invoice per horse (``Owner.invoice_per_horse``), one invoice for each
+        horse with something to bill, in horse-name order. The per-horse
+        invoices are made together and share the period, so the overlap and
+        coverage checks keep working on the owner as a whole.
+        """
+        if not owner.invoice_per_horse:
+            return [cls.create_invoice(owner, period_start, period_end, notes)]
+
+        owner, livery_charges, extra_charges = cls._lock_and_price(
+            owner, period_start, period_end
+        )
+        by_horse = {}
+        for charge in livery_charges:
+            by_horse.setdefault(charge['horse'], ([], []))[0].append(charge)
+        for charge in extra_charges:
+            by_horse.setdefault(charge['horse'], ([], []))[1].append(charge)
+
+        invoices = []
+        for horse in sorted(by_horse, key=lambda h: (h.name.lower(), h.pk)):
+            livery, extras = by_horse[horse]
+            if sum(c['amount'] for c in livery + extras) <= 0:
+                continue
+            invoices.append(cls._write_invoice(
+                owner, period_start, period_end, notes, livery, extras,
+                horse=horse,
+            ))
+        return invoices
+
+    @classmethod
+    def _lock_and_price(cls, owner, period_start, period_end):
+        """Lock the owner, refuse an overlap, and price the period once.
+
+        Returns (owner, livery_charges, extra_charges). Raises
+        DuplicateInvoiceError or NothingToInvoiceError. Must run inside the
+        caller's transaction.
+        """
         # Serialise concurrent invoice creation per owner: the overlap check
         # below is check-then-act, so without this lock two simultaneous
         # "generate" clicks can both pass it and double-bill the period.
@@ -458,8 +508,6 @@ class InvoiceService:
                 f"which overlaps with this period."
             )
 
-        settings = BusinessSettings.get_settings()
-
         # Price the period ONCE, under the owner lock, before consuming an
         # invoice number. The monthly run used to do a full preview pass and
         # then recompute everything here — twice the query fan-out per owner
@@ -471,6 +519,13 @@ class InvoiceService:
                 f"{owner.name} has nothing billable for "
                 f"{period_start} to {period_end}."
             )
+        return owner, livery_charges, extra_charges
+
+    @classmethod
+    def _write_invoice(cls, owner, period_start, period_end, notes,
+                       livery_charges, extra_charges, horse=None):
+        """Write one invoice from charges already priced and checked."""
+        settings = BusinessSettings.get_settings()
 
         # Create the invoice (VAT rate snapshotted so later settings changes
         # don't rewrite this invoice's totals)
@@ -484,6 +539,7 @@ class InvoiceService:
             notes=notes,
             vat_rate=settings.vat_rate,
             customer_reference=owner.invoice_reference,
+            horse=horse,
         )
 
         # Add livery line items
@@ -757,6 +813,12 @@ class InvoiceService:
         if preview['start_moved']:
             preview['invoiced_until'] = resolved['period_start'] - timedelta(days=1)
         preview['last_invoiced'] = cls.last_invoiced_date(owner)
+        # create_invoices makes one invoice for each horse with a positive
+        # total when the owner is billed per horse.
+        preview['per_horse'] = owner.invoice_per_horse
+        preview['per_horse_count'] = sum(
+            1 for group in preview.get('horse_groups', []) if group['subtotal'] > 0
+        )
         return preview
 
     @staticmethod
@@ -787,7 +849,7 @@ class InvoiceService:
 
             for gap_start, gap_end in gaps:
                 try:
-                    invoice = InvoiceService.create_invoice(
+                    created = InvoiceService.create_invoices(
                         owner, gap_start, gap_end
                     )
                 except NothingToInvoiceError:
@@ -799,7 +861,7 @@ class InvoiceService:
                     # the whole batch.
                     skipped.append(owner)
                     continue
-                invoices.append(invoice)
+                invoices.extend(created)
 
         return invoices, skipped
 

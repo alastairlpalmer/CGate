@@ -137,7 +137,7 @@
                     <a href="{% url 'invoice_detail' invoice.pk %}" class="list-card-link">
                         <span class="list-card-title">{{ invoice.invoice_number }}</span>
                     </a>
-                    <div class="list-card-meta truncate">{{ invoice.owner.name }}</div>
+                    <div class="list-card-meta truncate">{{ invoice.owner.name }}{% if invoice.horse %} · {{ invoice.horse.name }}{% endif %}</div>
                     <div class="list-card-meta">{{ invoice.period_start|date:"d M" }} &ndash; {{ invoice.period_end|date:"d M Y" }}</div>
                     <div class="mt-1.5 flex items-center gap-1.5">
                         <span class="{{ invoice.status_badge_class }}">
@@ -212,6 +212,7 @@
                         </td>
                         <td>
                             <a href="{% url 'owner_detail' invoice.owner.pk %}" class="link tap-pad">{{ invoice.owner.name }}</a>
+                            {% if invoice.horse %}<span class="block text-xs text-sage">{{ invoice.horse.name }}</span>{% endif %}
                         </td>
                         <td class="text-sage">{{ invoice.period_start }} - {{ invoice.period_end }}</td>
                         <td class="text-right font-medium text-charcoal">

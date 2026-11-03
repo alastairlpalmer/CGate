@@ -43,7 +43,7 @@ class OwnerForm(forms.ModelForm):
     class Meta:
         model = Owner
         fields = ['name', 'email', 'phone', 'address', 'account_code', 'invoice_reference',
-                  'pause_reminders', 'email_health_reminders', 'notes']
+                  'invoice_per_horse', 'pause_reminders', 'email_health_reminders', 'notes']
         widgets = {
             'invoice_reference': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. PO-4471'}),
             'name': forms.TextInput(attrs={'class': 'form-input', 'autocomplete': 'name'}),

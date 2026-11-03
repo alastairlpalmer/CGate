@@ -144,6 +144,12 @@
                             </span>
                         </dd>
                     </div>
+                    {% if invoice.horse %}
+                    <div>
+                        <dt class="dt-label">Horse</dt>
+                        <dd class="mt-1 text-sm"><a href="{% url 'horse_detail' invoice.horse.pk %}" class="link">{{ invoice.horse.name }}</a> <span class="text-sage">· one invoice per horse</span></dd>
+                    </div>
+                    {% endif %}
                     {% if invoice.customer_reference %}
                     <div>
                         <dt class="dt-label">Their Reference</dt>
