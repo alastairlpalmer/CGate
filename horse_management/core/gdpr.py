@@ -37,7 +37,9 @@ from .csv_export import csv_bytes
 logger = logging.getLogger(__name__)
 
 # Fields on Owner that hold personal data, by what may be kept.
-CONTACT_FIELDS = ('email', 'phone', 'notes', 'account_code')
+# email_bounce_reason too: a mail server's bounce text usually quotes the
+# address it refused.
+CONTACT_FIELDS = ('email', 'phone', 'notes', 'account_code', 'email_bounce_reason')
 INVOICE_FIELDS = ('name', 'address')
 
 
@@ -98,9 +100,11 @@ def export_owner(owner) -> bytes:
     files['charges.csv'] = csv_bytes(
         ['Date', 'Horse', 'Type', 'Description', 'Amount', 'Invoiced'],
         [[c.date, c.horse.name, c.get_charge_type_display(), c.description, c.amount, c.invoiced]
-         for c in ExtraCharge.objects.filter(owner=owner).select_related('horse').order_by('date')],
+         for c in ExtraCharge.all_objects.filter(owner=owner).select_related('horse').order_by('date')],
     )
-    documents = list(Document.objects.filter(owner=owner))
+    # all_objects: a document in Recently Deleted is still held (for 30
+    # days), so a subject access request must include it.
+    documents = list(Document.all_objects.filter(owner=owner))
     files['documents.csv'] = csv_bytes(
         ['Title', 'Type', 'Expires', 'Added', 'File in this ZIP'],
         [[d.title, d.get_doc_type_display(), d.expiry_date, d.uploaded_at,
@@ -184,6 +188,8 @@ def anonymise_owner(owner, user=None, reason='') -> None:
 
 def _clear(owner, fields) -> None:
     blank = {f: '' for f in fields}
+    if 'email_bounce_reason' in fields:
+        blank['email_bounced_at'] = None
     if 'name' in fields:
         blank['name'] = anonymous_name(owner)
     for field, value in blank.items():
@@ -195,6 +201,11 @@ def _clear(owner, fields) -> None:
     del owner.skip_history_when_saving
     # Earlier versions of the row hold the same details.
     owner.history.update(**blank)
+
+
+def delete_documents(owner) -> None:
+    """Delete every document of the owner and its file, Recently Deleted too."""
+    _delete_documents(owner)
 
 
 def _delete_documents(owner) -> None:

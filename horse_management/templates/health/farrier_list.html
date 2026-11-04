@@ -74,7 +74,7 @@
                         <td class="text-sage" data-label="Farrier">
                             {% if visit.service_provider %}{{ visit.service_provider.name }}{% else %}<span class="text-sage">-</span>{% endif %}
                         </td>
-                        <td class="{% if visit.next_due_date and visit.next_due_date < today %}text-error-red font-semibold{% elif visit.is_due_soon %}text-forest{% else %}text-sage{% endif %}" data-label="Next Due">
+                        <td class="{% if visit.next_due_date and not visit.is_superseded and visit.next_due_date < today %}text-error-red font-semibold{% elif visit.is_due_soon %}text-forest{% else %}text-sage{% endif %}" data-label="Next Due">
                             {% if visit.next_due_date %}{{ visit.next_due_date|date:"d M Y" }}{% else %}<span class="text-sage">-</span>{% endif %}
                         </td>
                         {% if feature_access.charges.view %}<td class="text-right" data-label="Cost">

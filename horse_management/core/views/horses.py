@@ -1386,7 +1386,7 @@ def horse_credential_rows(horse):
     return rows
 
 
-@feature_required('horses')
+@feature_required('horses', LEVEL_VIEW)
 def horse_preview(request, pk):
     """The horse list's preview pane, and its sheet on a phone.
 

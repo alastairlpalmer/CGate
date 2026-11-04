@@ -2,6 +2,7 @@
 Core models for horse management system.
 """
 
+import logging
 import os
 from datetime import date
 from decimal import Decimal
@@ -18,6 +19,8 @@ from simple_history.models import HistoricalRecords
 
 from .softdelete import SoftDeleteModel
 from .uploads import validate_file_content
+
+logger = logging.getLogger(__name__)
 
 
 def validate_file_size(value):
@@ -118,12 +121,17 @@ class Owner(models.Model):
         deleting would take the stays and invoices with it, or be refused
         by the database.
         """
+        from billing.models import ExtraCharge
+
         counts = {
             'stays': self.placements.count(),
             'ownership shares': self.ownership_shares.count(),
             'invoices': self.invoices.count(),
-            'extra charges': self.extra_charges.count(),
-            'documents': self.documents.count(),
+            # all_objects: a charge or document in Recently Deleted still
+            # points at the owner (a charge's owner is PROTECT), so a delete
+            # would fail with a 500.
+            'extra charges': ExtraCharge.all_objects.filter(owner=self).count(),
+            'documents': Document.all_objects.filter(owner=self).count(),
             'legacy ownership records': self.horse_ownerships.count(),
         }
         if hasattr(self, 'xero_contact'):
@@ -134,9 +142,12 @@ class Owner(models.Model):
     def has_history(self):
         """True at the first record that points at this owner: one cheap
         query per relation until a hit, not the full counts."""
+        from billing.models import ExtraCharge
+
         related = (
             self.placements, self.ownership_shares, self.invoices,
-            self.extra_charges, self.documents, self.horse_ownerships,
+            ExtraCharge.all_objects.filter(owner=self),
+            Document.all_objects.filter(owner=self), self.horse_ownerships,
         )
         if any(qs.exists() for qs in related):
             return True
@@ -626,6 +637,23 @@ class Horse(models.Model):
                 kwargs['update_fields'] = list(update_fields) + ['photo_thumb']
         super().save(*args, **kwargs)
 
+    def _delete_unused_photo(self, name):
+        """Delete a replaced profile photo's file, unless still in use.
+
+        The gallery (HorsePhoto) may hold the same file: only delete when no
+        other row points at it. Before, every replaced photo stayed in
+        storage for good.
+        """
+        in_use = (
+            Horse.objects.filter(photo=name).exclude(pk=self.pk).exists()
+            or HorsePhoto.objects.filter(image=name).exists()
+        )
+        if not in_use:
+            try:
+                self.photo.storage.delete(name)
+            except Exception:
+                logger.warning('Could not delete replaced photo %s', name, exc_info=True)
+
     def _sync_photo_thumb(self):
         """Keep photo_thumb in step with photo.
 
@@ -638,6 +666,10 @@ class Horse(models.Model):
         from .images import make_avatar_thumbnail
 
         if not self.photo:
+            if self.pk:
+                old_photo_name = Horse.objects.filter(pk=self.pk).values_list('photo', flat=True).first()
+                if old_photo_name:
+                    self._delete_unused_photo(old_photo_name)
             if self.photo_thumb:
                 self.photo_thumb.delete(save=False)
                 self.photo_thumb = None
@@ -653,6 +685,8 @@ class Horse(models.Model):
             )
         if self.photo.name == old_photo_name and self.photo_thumb:
             return False  # unchanged photo, thumb present
+        if old_photo_name and old_photo_name != self.photo.name:
+            self._delete_unused_photo(old_photo_name)
 
         thumb = make_avatar_thumbnail(self.photo)
         if thumb is None:
@@ -911,13 +945,26 @@ class Placement(models.Model):
         # each caller individually is how horses ended up stranded as
         # "departed but placed" in production. Detect the transition here.
         was_open = None
+        old_location_id = None
         creating = self.pk is None
         if not creating:
-            was_open = Placement.objects.filter(
+            old_end, old_location_id = Placement.objects.filter(
                 pk=self.pk
-            ).values_list('end_date', flat=True).first() is None
+            ).values_list('end_date', 'location_id').first() or (None, None)
+            was_open = old_end is None
 
         from .services import LocationUsageService
+        # An open stay corrected to another field: the old field never had
+        # this horse, the new one did. Without this both fields kept the
+        # wrong usage (the old one "horses" and empty, the new one "rested").
+        moved_open = (
+            not creating and was_open and self.end_date is None
+            and old_location_id and old_location_id != self.location_id
+        )
+        moved_was_empty = (
+            LocationUsageService._is_empty(self.location, exclude_horse_ids=[self.horse_id])
+            if moved_open else False
+        )
         newly_open = self.end_date is None and (creating or not was_open)
         opening_was_empty = (
             LocationUsageService._is_empty(
@@ -927,6 +974,15 @@ class Placement(models.Model):
         )
 
         super().save(*args, **kwargs)
+
+        if moved_open:
+            LocationUsageService.undo_arrival(
+                Location.objects.get(pk=old_location_id), self.start_date,
+            )
+            LocationUsageService.clear_auto_rest_from(self.location, self.start_date)
+            LocationUsageService.horses_arrived(
+                self.location, self.start_date, was_empty=moved_was_empty,
+            )
 
         if self.end_date is None:
             # An open placement means the horse is on site — never let it
@@ -958,11 +1014,11 @@ class Placement(models.Model):
         # this, as they bypass any model delete.)
         was_open = self.end_date is None
         location = self.location
+        start_date = self.start_date
         super().delete(*args, **kwargs)
         if was_open:
-            from django.utils import timezone
             from .services import LocationUsageService
-            LocationUsageService.rest_if_empty(location, timezone.localdate())
+            LocationUsageService.undo_arrival(location, start_date)
 
     @property
     def is_current(self):
@@ -1474,6 +1530,31 @@ class Document(SoftDeleteModel):
         from django.utils import timezone
         return bool(self.expiry_date) and self.expiry_date < timezone.localdate()
 
+
+
+def documents_needing_renewal(queryset, today=None):
+    """Documents whose expiry still matters: the shared rule for the
+    dashboard inbox and the yard's expiry email.
+
+    Leaves out documents of departed horses and archived owners, and an
+    expired document that was renewed: one of the same type, for the same
+    horse or owner, is still valid (a renewed insurance certificate left
+    the old one "expired" in the inbox for good). A document that has not
+    expired yet always stays: a yard can hold two policies of one type.
+    """
+    from django.db.models import Exists, OuterRef
+
+    today = today or timezone.localdate()
+    renewed = Document.objects.filter(
+        doc_type=OuterRef('doc_type'),
+        expiry_date__gte=today,
+    ).filter(
+        Q(horse_id=OuterRef('horse_id'))
+        | Q(horse__isnull=True, owner_id=OuterRef('owner_id'))
+    )
+    return queryset.filter(
+        Q(horse__is_active=True) | Q(horse__isnull=True, owner__is_archived=False)
+    ).exclude(Q(expiry_date__lt=today) & Exists(renewed))
 
 class HorsePhoto(models.Model):
     """A quick-add photo on a horse's record: condition shots, markings,

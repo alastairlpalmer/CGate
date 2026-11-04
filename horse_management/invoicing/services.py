@@ -254,6 +254,55 @@ class InvoiceService:
         share = next(s for s in all_shares if s.owner_id == owner_id)
         return rounded(share)
 
+    @staticmethod
+    def _unbilled_share_ranges(horse_id, owner_id, share_percentage,
+                               period_start, period_end):
+        """The date ranges in the period where this owner's share is unbilled.
+
+        Adds up, for each day, the share of the horse's livery that other
+        owners' live (not cancelled) invoices already bill. A day where that
+        plus this owner's share is over 100% was billed before this owner's
+        share existed (for example 100% to the old sole owner), so it is left
+        out. Returns [(start, end), …], the whole period when nothing is
+        billed elsewhere.
+        """
+        billed_lines = (
+            InvoiceLineItem.objects.filter(
+                horse_id=horse_id,
+                line_type=InvoiceLineItem.LineType.LIVERY,
+                invoice__period_start__lte=period_end,
+                invoice__period_end__gte=period_start,
+            )
+            .exclude(invoice__status=Invoice.Status.CANCELLED)
+            .exclude(invoice__owner_id=owner_id)
+            .values_list('invoice__period_start', 'invoice__period_end', 'share_percentage')
+        )
+        billed = {}
+        for start, end, share in billed_lines:
+            day = max(start, period_start)
+            while day <= min(end, period_end):
+                billed[day] = billed.get(day, Decimal('0')) + (
+                    share if share is not None else Decimal('100')
+                )
+                day += timedelta(days=1)
+        if not billed:
+            return [(period_start, period_end)]
+
+        ranges = []
+        run_start = None
+        day = period_start
+        while day <= period_end:
+            free = billed.get(day, Decimal('0')) + share_percentage <= Decimal('100.00')
+            if free and run_start is None:
+                run_start = day
+            if not free and run_start is not None:
+                ranges.append((run_start, day - timedelta(days=1)))
+                run_start = None
+            day += timedelta(days=1)
+        if run_start is not None:
+            ranges.append((run_start, period_end))
+        return ranges
+
     @classmethod
     def calculate_livery_charges(cls, owner, period_start, period_end):
         """Calculate livery charges for an owner.
@@ -297,17 +346,27 @@ class InvoiceService:
                 overlapping(Placement.objects.filter(horse_id=share.horse_id)),
                 period_start, period_end,
             )
-            for run in runs:
-                # Reconcile the split once per run, not per placement — the
-                # penny remainder is settled against the whole line.
-                full = cls._run_full_amount(run, period_start, period_end)
-                charge = cls._build_livery_charge(
-                    run, period_start, period_end,
-                    share_percentage=pct,
-                    amount=cls._reconciled_amount(full, owner.id, all_shares),
-                )
-                if charge:
-                    charges.append(charge)
+            # Shares have no dates, so a share added after a period was
+            # billed would bill that period again. Bill only the days that
+            # other owners' live invoices have not already billed in full.
+            for sub_start, sub_end in cls._unbilled_share_ranges(
+                share.horse_id, owner.id, pct, period_start, period_end,
+            ):
+                sub_runs = cls._merge_placement_runs(
+                    overlapping(Placement.objects.filter(horse_id=share.horse_id)),
+                    sub_start, sub_end,
+                ) if (sub_start, sub_end) != (period_start, period_end) else runs
+                for run in sub_runs:
+                    # Reconcile the split once per run, not per placement —
+                    # the penny remainder is settled against the whole line.
+                    full = cls._run_full_amount(run, sub_start, sub_end)
+                    charge = cls._build_livery_charge(
+                        run, sub_start, sub_end,
+                        share_percentage=pct,
+                        amount=cls._reconciled_amount(full, owner.id, all_shares),
+                    )
+                    if charge:
+                        charges.append(charge)
 
         # --- Single-owner horses: bill each placement's owner at 100% ---
         single_owner_runs = cls._merge_placement_runs(

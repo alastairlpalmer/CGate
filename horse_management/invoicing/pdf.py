@@ -17,6 +17,12 @@ from core.models import BusinessSettings
 from .utils import group_line_items_by_horse
 
 
+def _pct(value):
+    """20 for 20.00, 12.5 for 12.50: no trailing zeros in "VAT (20%)"."""
+    text = f"{Decimal(value).normalize():f}"
+    return text
+
+
 FONT_DIR = Path(__file__).resolve().parent / 'fonts'
 FONT = 'DejaVuSans'
 FONT_BOLD = 'DejaVuSans-Bold'
@@ -207,7 +213,9 @@ def generate_invoice_pdf_reportlab(invoice):
 
     invoice_info_lines = [
         f"Invoice No: {invoice.invoice_number}",
-        f"Date: {invoice.created_at.strftime('%d/%m/%Y')}",
+        # UK date, as the page and the Xero CSV show: an invoice made just
+        # after midnight BST printed the day before.
+        f"Date: {timezone.localtime(invoice.created_at).strftime('%d/%m/%Y')}",
     ]
     if invoice.customer_reference:
         invoice_info_lines.append(f"Your ref: {_esc(invoice.customer_reference)}")
@@ -268,7 +276,7 @@ def generate_invoice_pdf_reportlab(invoice):
         if len(shares) == 1:
             share_pct = shares.pop()
             if share_pct < 100:
-                share_label = f" ({share_pct:g}% share)"
+                share_label = f" ({_pct(share_pct)}% share)"
         # Horse header row
         table_data.append([
             Paragraph(f"<b>{_esc(group['horse_name'])}{share_label}</b>", item_style),
@@ -318,7 +326,7 @@ def generate_invoice_pdf_reportlab(invoice):
     # Totals \u2014 when part-paid, show the running balance so the PDF asks for
     # what's actually owed rather than the full face value.
     amount_paid = invoice.amount_paid
-    vat_label = 'VAT:' if invoice.vat_rate == 0 else f"VAT ({invoice.vat_rate:g}%):"
+    vat_label = 'VAT:' if invoice.vat_rate == 0 else f"VAT ({_pct(invoice.vat_rate)}%):"
     totals_data = [
         ['Net Total:', f"\u00a3{invoice.subtotal:.2f}"],
         [vat_label, f"\u00a3{invoice.vat_amount:.2f}"],
@@ -419,7 +427,7 @@ def generate_owner_statement_pdf(owner, statement):
         invoice = row['invoice']
         table_data.append([
             invoice.invoice_number,
-            f"{invoice.created_at:%d/%m/%Y}",
+            f"{timezone.localtime(invoice.created_at):%d/%m/%Y}",
             f"{invoice.period_start:%d/%m/%y} – {invoice.period_end:%d/%m/%y}",
             f"£{invoice.total:.2f}",
             f"£{row['paid']:.2f}",

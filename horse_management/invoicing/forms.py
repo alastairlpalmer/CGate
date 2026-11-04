@@ -134,6 +134,15 @@ class InvoiceUpdateForm(forms.ModelForm):
                     f"Cannot change status from '{self.instance.get_status_display()}' "
                     f"to '{dict(Invoice.Status.choices).get(new_status, new_status)}'."
                 )
+            if (
+                new_status != current_status
+                and self.instance.is_send_queued
+                and current_status == Invoice.Status.DRAFT
+            ):
+                raise forms.ValidationError(
+                    "This invoice is being emailed right now. Wait for the send "
+                    "to finish, then change its status."
+                )
             # Money received against a cancelled invoice drops out of the
             # statement, aged debtors and reconciliation, and the owner is
             # never credited for it.

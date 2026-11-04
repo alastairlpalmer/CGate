@@ -142,12 +142,23 @@ class Invoice(models.Model):
         self.save(update_fields=['subtotal', 'vat_amount', 'total'])
 
     def mark_as_sent(self):
-        """Mark invoice as sent."""
-        self.status = self.Status.SENT
-        self.sent_at = timezone.now()
-        self.send_queued_at = None
-        self.send_error = ''
-        self.save(update_fields=['status', 'sent_at', 'send_queued_at', 'send_error'])
+        """Mark invoice as sent. Returns False when it was not.
+
+        A conditional update: the email goes out outside any lock, and an
+        invoice cancelled (or deleted) in the meantime used to come back as
+        SENT here, with its released charges billed again on the next one.
+        """
+        now = timezone.now()
+        updated = Invoice.objects.filter(
+            pk=self.pk,
+            status__in=[self.Status.DRAFT, self.Status.SENT, self.Status.OVERDUE],
+        ).update(status=self.Status.SENT, sent_at=now, send_queued_at=None, send_error='')
+        if updated:
+            self.status = self.Status.SENT
+            self.sent_at = now
+            self.send_queued_at = None
+            self.send_error = ''
+        return bool(updated)
 
     @property
     def is_send_queued(self):
@@ -266,6 +277,11 @@ class Invoice(models.Model):
             return (
                 f"{self.invoice_number} is {self.get_status_display().lower()}, "
                 "not a draft. Edit it and set the status to Cancelled instead."
+            )
+        if self.is_send_queued:
+            return (
+                f"{self.invoice_number} is being emailed right now. Wait for the "
+                "send to finish, then cancel it instead."
             )
         if self.payments.exists():
             return (

@@ -62,11 +62,15 @@ def mark_bounced(address: str, reason: str) -> int:
 @require_POST
 def postmark_events(request, token):
     expected = settings.EMAIL_WEBHOOK_TOKEN
-    if not expected or not hmac.compare_digest(token, expected):
+    # Bytes: compare_digest raises TypeError on non-ASCII text (a 500 on an
+    # unauthenticated endpoint).
+    if not expected or not hmac.compare_digest(token.encode(), expected.encode()):
         return HttpResponseForbidden()
     try:
         event = json.loads(request.body)
     except ValueError:
+        return HttpResponseBadRequest()
+    if not isinstance(event, dict):
         return HttpResponseBadRequest()
     record = event.get('RecordType')
     if record == 'SpamComplaint':
@@ -107,6 +111,8 @@ def resend_events(request):
     try:
         event = json.loads(request.body)
     except ValueError:
+        return HttpResponseBadRequest()
+    if not isinstance(event, dict) or not isinstance(event.get('data') or {}, dict):
         return HttpResponseBadRequest()
     data = event.get('data') or {}
     recipients = data.get('to') or []

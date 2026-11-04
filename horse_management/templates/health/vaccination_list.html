@@ -70,12 +70,14 @@
                         </td>
                         <td data-label="Type">{{ vax.vaccination_type.name }}</td>
                         <td class="text-sage" data-label="Date Given">{{ vax.date_given|date:"d M Y" }}</td>
-                        <td class="{% if vax.next_due_date < today %}text-error-red font-semibold{% elif vax.is_due_soon %}text-forest{% else %}text-sage{% endif %}" data-label="Next Due">
+                        <td class="{% if not vax.is_superseded and vax.next_due_date < today %}text-error-red font-semibold{% elif vax.is_due_soon %}text-forest{% else %}text-sage{% endif %}" data-label="Next Due">
                             {{ vax.next_due_date|date:"d M Y" }}
                         </td>
                         <td data-label="Status">
-                            {% if vax.next_due_date < today %}
+                            {% if not vax.is_superseded and vax.next_due_date < today %}
                             <span class="badge-danger">Overdue</span>
+                    {% elif vax.is_superseded %}
+                    <span class="badge-neutral" title="A newer record replaced this one">Replaced</span>
                             {% elif vax.is_due_soon %}
                             <span class="badge-warning">Due Soon</span>
                             {% else %}

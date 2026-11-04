@@ -70,9 +70,12 @@ from .models import (
     MedicalCondition,
     Vaccination,
     VaccinationType,
+    FARRIER_GROUP,
+    VACCINATION_GROUP,
     VetVisit,
     WormEggCount,
     WormingTreatment,
+    annotate_superseded,
     current_farrier_visits,
     current_vaccinations,
 )
@@ -118,7 +121,7 @@ def health_dashboard(request):
         high_egg_counts = list(WormEggCount.objects.select_related('horse').filter(
             horse__is_active=True,
             date__gte=today - timedelta(days=90),
-            count__gt=200,
+            count__gte=WormEggCount.TREATMENT_THRESHOLD,
         ).order_by('-date'))
 
         # Active conditions
@@ -153,10 +156,14 @@ def health_dashboard(request):
             queryset = current_vaccinations(queryset).filter(
                 next_due_date__lt=today,
             )
+        else:
+            # Every record, each marked when a newer one replaced it: a
+            # replaced record's past due date is not \"Overdue\".
+            queryset = annotate_superseded(queryset, **VACCINATION_GROUP)
         horse = request.GET.get('horse')
         if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
-        paginator = Paginator(queryset.order_by('next_due_date'), 50)
+        paginator = Paginator(queryset.order_by('is_superseded', 'next_due_date'), 50)
         page_obj = paginator.get_page(request.GET.get('page'))
         context['vaccinations'] = page_obj
         context['page_obj'] = page_obj
@@ -177,6 +184,10 @@ def health_dashboard(request):
             queryset = current_farrier_visits(queryset).filter(
                 next_due_date__lt=today,
             )
+        else:
+            # Every record, each marked when a newer one replaced it: a
+            # replaced record's past due date is not \"Overdue\".
+            queryset = annotate_superseded(queryset, **FARRIER_GROUP)
         horse = request.GET.get('horse')
         if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
@@ -346,6 +357,17 @@ def sync_record_charge(record):
     details = _charge_details(record)
     if details is None:
         return None
+    # Lock the record and read its charge link again: two saves at once (a
+    # double-click on Save) both saw "no charge yet" and each created one,
+    # and the second link overwrote the first, leaving a live charge that
+    # no record could remove.
+    with transaction.atomic():
+        type(record)._default_manager.select_for_update().filter(pk=record.pk).first()
+        record.refresh_from_db(fields=['extra_charge'])
+        return _sync_locked_record_charge(record, details)
+
+
+def _sync_locked_record_charge(record, details):
     charge = record.extra_charge
     if charge is not None and charge.is_deleted:
         # Someone deleted this charge on purpose (it is in Recently
@@ -430,6 +452,18 @@ class CostNeedsChargesMixin:
         if not can_set_cost(self.request.user):
             hide_cost(form)
         return form
+
+    def post(self, request, *args, **kwargs):
+        # An edit saves the record and then syncs its charge. Lock the
+        # record for the whole request, so a second Save (a double-click)
+        # waits, then loads the record with the charge the first one
+        # linked. Without the lock both saw "no charge yet", both created
+        # one, and the second save wrote the first link away.
+        if 'pk' not in kwargs:
+            return super().post(request, *args, **kwargs)
+        with transaction.atomic():
+            self.model._default_manager.select_for_update().filter(pk=kwargs['pk']).first()
+            return super().post(request, *args, **kwargs)
 
 
 def _report_charge_sync(request, record, status):
@@ -748,13 +782,17 @@ class VaccinationListView(FeatureAccessMixin, ListView):
             queryset = current_vaccinations(queryset).filter(
                 next_due_date__lt=today,
             )
+        else:
+            # Every record, each marked when a newer one replaced it: a
+            # replaced record's past due date is not \"Overdue\".
+            queryset = annotate_superseded(queryset, **VACCINATION_GROUP)
 
         # Filter by horse
         horse = self.request.GET.get('horse')
         if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
 
-        return queryset.order_by('next_due_date')
+        return queryset.order_by('is_superseded', 'next_due_date')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -914,6 +952,10 @@ class FarrierListView(FeatureAccessMixin, ListView):
             queryset = current_farrier_visits(queryset).filter(
                 next_due_date__lt=today,
             )
+        else:
+            # Every record, each marked when a newer one replaced it: a
+            # replaced record's past due date is not \"Overdue\".
+            queryset = annotate_superseded(queryset, **FARRIER_GROUP)
 
         # Filter by horse
         horse = self.request.GET.get('horse')
@@ -1683,10 +1725,24 @@ def breeding_covering_delete(request, pk):
     record = covering.record
     if request.method != 'POST':
         return HttpResponseBadRequest("POST required")
-    if record.coverings.count() <= 1:
+    if record.status not in BreedingRecord.ACTIVE_STATUSES and record.status != BreedingRecord.Status.BARREN:
+        # A finished record (born, lost): removing a covering moved its
+        # covering and due dates after the fact.
+        messages.error(request, f"This record is {record.get_status_display().lower()}; its coverings can't be changed.")
+    elif record.coverings.count() <= 1:
         messages.error(request, "A record needs at least one covering; edit the date instead.")
     else:
-        covering.delete()
+        with transaction.atomic():
+            covering.delete()
+            record.refresh_from_db()
+            # Undoing a re-cover: if a negative scan came after the covering
+            # that is now the latest, the mare is barren again (adding the
+            # covering had reopened her as Covered).
+            if record.status == BreedingRecord.Status.COVERED and record.scans.filter(
+                result=PregnancyScan.Result.NOT_IN_FOAL, date__gte=record.date_covered,
+            ).exists():
+                record.status = BreedingRecord.Status.BARREN
+                record.save(update_fields=['status', 'updated_at'])
         messages.success(request, f"Covering on {covering.date:%d %b %Y} removed.")
     return redirect('horse_detail', pk=record.mare_id)
 

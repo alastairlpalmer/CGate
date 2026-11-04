@@ -20,6 +20,17 @@ def exclude_superseded(queryset, *, date_field, group_fields):
     record shows as permanently overdue the day after a horse is re-treated.
     Ties on the date fall back to highest pk (the later entry).
     """
+    return annotate_superseded(
+        queryset, date_field=date_field, group_fields=group_fields,
+    ).filter(is_superseded=False)
+
+
+def annotate_superseded(queryset, *, date_field, group_fields):
+    """Add ``is_superseded``: True when a newer record of the group exists.
+
+    For lists that show every record: a replaced record's past due date is
+    not "Overdue" (the newer record carries the due date).
+    """
     model = queryset.model
     newer = model.objects.filter(
         **{field: OuterRef(field) for field in group_fields}
@@ -27,9 +38,11 @@ def exclude_superseded(queryset, *, date_field, group_fields):
         Q(**{f'{date_field}__gt': OuterRef(date_field)})
         | Q(**{date_field: OuterRef(date_field), 'pk__gt': OuterRef('pk')})
     )
-    return queryset.annotate(
-        _superseded=Exists(newer),
-    ).filter(_superseded=False)
+    return queryset.annotate(is_superseded=Exists(newer))
+
+
+VACCINATION_GROUP = {'date_field': 'date_given', 'group_fields': ('horse', 'vaccination_type')}
+FARRIER_GROUP = {'date_field': 'date', 'group_fields': ('horse',)}
 
 
 def current_vaccinations(queryset):
@@ -466,6 +479,10 @@ class WormEggCount(models.Model):
         (None, 'high', 'High', 'badge-danger'),
     )
     LEVEL_KEY = "Key (EPG): low < 200 · mild 200–499 · moderate 500–999 · high 1000+"
+    # From this count up, the horse needs worming (the end of 'low'). One
+    # number for the lists, the dashboard and the health overview: they
+    # used > 200 and >= 200, so exactly 200 was "high" but never flagged.
+    TREATMENT_THRESHOLD = 200
 
     class Meta:
         ordering = ['-date']
@@ -498,7 +515,7 @@ class WormEggCount(models.Model):
     @property
     def is_high(self):
         """Above the treatment threshold (200 EPG) — anything but 'low'."""
-        return self.count >= 200
+        return self.count >= self.TREATMENT_THRESHOLD
 
 
 class MedicalCondition(models.Model):
@@ -646,7 +663,23 @@ class BreedingRecord(models.Model):
         super().__init__(*args, **kwargs)
         self._loaded_date_covered = self.date_covered
 
+    def _rearm_ehv_if_covering_moved(self):
+        """A corrected covering date moves the EHV doses: send them again.
+
+        Returns True when the sent months were cleared. Without this the
+        month-5 reminder went out for the old date and never for the new.
+        """
+        if (
+            self.pk and self._loaded_date_covered and self.ehv_reminders_sent
+            and self.date_covered != self._loaded_date_covered
+        ):
+            self.ehv_reminders_sent = ''
+            return True
+        return False
+
     def save(self, *args, **kwargs):
+        if self._rearm_ehv_if_covering_moved() and kwargs.get('update_fields') is not None:
+            kwargs['update_fields'] = list(kwargs['update_fields']) + ['ehv_reminders_sent']
         if self.date_covered and not self.due_date_is_manual:
             self.date_foal_due = self.date_covered + timedelta(days=self.GESTATION_DAYS)
         elif not self.date_foal_due and self.date_covered:
@@ -684,6 +717,8 @@ class BreedingRecord(models.Model):
         if self.date_covered != latest:
             self.date_covered = latest
             changed.append('date_covered')
+            if self._rearm_ehv_if_covering_moved():
+                changed.append('ehv_reminders_sent')
         if not self.due_date_is_manual:
             due = latest + timedelta(days=self.GESTATION_DAYS)
             if self.date_foal_due != due:
@@ -706,6 +741,37 @@ class BreedingRecord(models.Model):
             5: Vaccination._add_months(self.date_covered, 5),
             7: Vaccination._add_months(self.date_covered, 7),
             9: Vaccination._add_months(self.date_covered, 9),
+        }
+
+    # How early an EHV jab still counts for its month: the reminder goes out
+    # 14 days before, so a jab given then (or a little sooner) is that dose.
+    EHV_EARLY_DAYS = 21
+    EHV_LATE_DAYS = 7
+
+    def ehv_months_done(self):
+        """Months (5, 7, 9) whose EHV dose is already recorded on the mare.
+
+        A Vaccination whose type name contains "EHV", given in that month's
+        window. Without this, the dashboard row (and the owner email) for a
+        dose stayed until 7 days after its due date, even once recorded.
+        """
+        dates = self.ehv_vaccination_dates
+        if not dates:
+            return set()
+        given = list(
+            Vaccination.objects.filter(
+                horse_id=self.mare_id,
+                vaccination_type__name__icontains='EHV',
+                date_given__gte=min(dates.values()) - timedelta(days=self.EHV_EARLY_DAYS),
+                date_given__lte=max(dates.values()) + timedelta(days=self.EHV_LATE_DAYS),
+            ).values_list('date_given', flat=True)
+        )
+        return {
+            month for month, due in dates.items()
+            if any(
+                due - timedelta(days=self.EHV_EARLY_DAYS) <= day <= due + timedelta(days=self.EHV_LATE_DAYS)
+                for day in given
+            )
         }
 
     @property

@@ -138,7 +138,7 @@ def parse_geojson(data) -> ImportReport:
             )
     try:
         doc = json.loads(data)
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, RecursionError):
         raise BoundaryImportError(
             "That file isn't valid JSON. Export the plan again as GeoJSON from "
             "Land App and upload the .geojson file it gives you."
@@ -183,7 +183,10 @@ def parse_geojson(data) -> ImportReport:
     # Coordinate system. GeoJSON must be WGS84; the RPA/Land App parcel
     # export declares EPSG:27700 (British National Grid) and is converted.
     declared_bng = _declares_bng(doc)
-    positions = [p for _, g in geometries for p in _positions(g['coordinates'])]
+    try:
+        positions = [p for _, g in geometries for p in _positions(g['coordinates'])]
+    except RecursionError:
+        raise BoundaryImportError("That file's shapes are nested too deeply to read.")
     if positions:
         in_wgs84 = all(-180 <= x <= 180 and -90 <= y <= 90 for x, y in positions)
         if declared_bng or not in_wgs84:
@@ -397,7 +400,9 @@ def approx_area_m2(geom) -> float:
 
 
 def _project_ring(ring, k):
-    return [(x * k * METRES_PER_DEGREE, y * METRES_PER_DEGREE) for x, y in ring.coords]
+    # GIS exports often carry a height as a third value: ignore it (it was
+    # a ValueError, and a 500 on upload).
+    return [(x * k * METRES_PER_DEGREE, y * METRES_PER_DEGREE) for x, y, *_ in ring.coords]
 
 
 _AREA_CACHE: dict = {}

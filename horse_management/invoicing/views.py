@@ -426,10 +426,39 @@ def invoice_send(request, pk):
         messages.error(request, "Owner doesn't have an email address.")
         return redirect('invoice_detail', pk=pk)
 
-    # Import here to avoid circular imports
+    # Claim the invoice first, as the bulk send does: a double-click, or a
+    # click while a bulk send of it is queued, used to email the owner twice.
     from notifications.emails import send_invoice_email
 
-    success = send_invoice_email(invoice)
+    from .tasks import claim_invoice_for_sending, send_invoice_email_task
+
+    if invoice.status == Invoice.Status.DRAFT:
+        if not claim_invoice_for_sending(invoice.pk):
+            messages.info(request, "This invoice is already being sent.")
+            return redirect('invoice_detail', pk=pk)
+        outcome = send_invoice_email_task(invoice.pk)
+        if outcome == 'sent':
+            messages.success(request, f"Invoice sent to {invoice.owner.email}")
+        else:
+            invoice.refresh_from_db(fields=['send_error'])
+            messages.error(
+                request,
+                invoice.send_error or "Failed to send invoice. Check email configuration.",
+            )
+        return redirect('invoice_detail', pk=pk)
+
+    # A re-send of an invoice that was sent before. A second click just
+    # after the first send finished is a double-click, not a re-send.
+    if invoice.sent_at and timezone.now() - invoice.sent_at < RESEND_GAP:
+        messages.info(request, "This invoice was emailed less than a minute ago.")
+        return redirect('invoice_detail', pk=pk)
+    if not claim_invoice_for_sending(invoice.pk, statuses=[Invoice.Status.SENT]):
+        messages.info(request, "This invoice is already being sent.")
+        return redirect('invoice_detail', pk=pk)
+    try:
+        success = send_invoice_email(invoice)
+    finally:
+        Invoice.objects.filter(pk=invoice.pk).update(send_queued_at=None)
 
     if success:
         invoice.mark_as_sent()
@@ -438,6 +467,10 @@ def invoice_send(request, pk):
         messages.error(request, "Failed to send invoice. Check email configuration.")
 
     return redirect('invoice_detail', pk=pk)
+
+
+# The shortest time between two emails of the same invoice from "Send".
+RESEND_GAP = timedelta(minutes=1)
 
 
 @feature_required('invoices')
@@ -801,11 +834,15 @@ def invoice_bulk_action(request):
     elif action == 'mark_paid':
         paid = skipped = 0
         for invoice in invoices:
-            if invoice.status in (Invoice.Status.SENT, Invoice.Status.OVERDUE):
-                invoice.mark_as_paid(reference='Bulk marked as paid')
-                paid += 1
-            else:
-                skipped += 1
+            # Locked and read again, as the single "Mark as paid" does: two
+            # overlapping submits each recorded a balancing payment.
+            with transaction.atomic():
+                invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
+                if invoice.status in (Invoice.Status.SENT, Invoice.Status.OVERDUE):
+                    invoice.mark_as_paid(reference='Bulk marked as paid')
+                    paid += 1
+                else:
+                    skipped += 1
         if paid:
             messages.success(
                 request,

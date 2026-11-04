@@ -8,10 +8,24 @@ keeping views thin and logic testable.
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from .models import Horse, Location, LocationUsagePeriod, OwnershipShare, Placement
+
+
+def _refuse_future_date(day, what):
+    """Moves and arrivals are recorded on the day, not ahead.
+
+    A move dated next week closed the current stay and showed the horse in
+    the new field at once, and until that date it could not be moved or
+    departed ("must be after the current placement start date").
+    Departures already schedule a future date properly.
+    """
+    if day and day > timezone.localdate():
+        raise ValidationError(
+            f"{what} can't be dated in the future. Record it on the day it happens."
+        )
 
 # A superseding return may shorten the previous stay by at most this many
 # already-elapsed days. Small trims are the yard-reality case (departed
@@ -51,6 +65,7 @@ class PlacementService:
             share_percentage=100,
             is_primary_contact=True,
         )
+        _refuse_future_date(arrival_date, 'An arrival')
         placement = Placement(
             horse=horse,
             owner=owner,
@@ -74,6 +89,7 @@ class PlacementService:
         Returns the new placement.
         Raises ValidationError if the move is invalid.
         """
+        _refuse_future_date(move_date, 'A move')
         current_placement = horse.current_placement
 
         # Resolve owner and rate type
@@ -256,6 +272,7 @@ class PlacementService:
         hooks. Returns the placement with ``superseded_trim`` attached so
         views can surface any trim.
         """
+        _refuse_future_date(arrival_date, 'An arrival')
         trimmed = PlacementService._supersede_recorded_departure(
             horse, arrival_date, destination=location
         )
@@ -418,6 +435,11 @@ class PlacementService:
                 created += 1
             except ValidationError as e:
                 errors.append(f"{horse.name}: {e}")
+            except IntegrityError:
+                # Another request placed the same horse a moment ago: the
+                # overlap check took no lock, and the one-open-stay rule
+                # stopped the second insert (a 500 on Log Arrival).
+                errors.append(f"{horse.name}: already arrived somewhere else just now.")
         return created, errors
 
     @staticmethod
@@ -492,6 +514,11 @@ class LocationUsageService:
         Returns the new LocationUsagePeriod, or None if usage is unchanged.
         Raises ValidationError if change_date is not after the current start.
         """
+        if source == LocationUsagePeriod.Source.MANUAL and change_date > timezone.localdate():
+            # Location.usage changes at once, so a future date showed the
+            # field as hay while horses were still on it, and blocked the
+            # automatic rest when they left.
+            raise ValidationError("A usage change can't be dated in the future.")
         current = location.usage_periods.filter(end_date__isnull=True).first()
 
         # No-op: already in this usage state.
@@ -652,6 +679,46 @@ class LocationUsageService:
         # Queryset write — see set_usage: instance state can be stale.
         Location.objects.filter(pk=location.pk).update(usage=restored_usage)
         location.usage = restored_usage
+
+    @staticmethod
+    @transaction.atomic
+    def undo_arrival(location, start_date):
+        """A stay that started on ``start_date`` was removed or moved away.
+
+        If it put horses on an empty field (an AUTO "horses" period from
+        that date) and the field is empty again, take that period out and
+        reopen the one it closed, as if the arrival never happened. Before,
+        the field got a new rest period from tomorrow: false "horses"
+        history and a rest count back to 0. Otherwise rest the field from
+        today as before.
+        """
+        if not LocationUsageService._is_empty(location):
+            return
+        current = location.usage_periods.filter(end_date__isnull=True).first()
+        if not (
+            current
+            and current.usage == Location.Usage.HORSES
+            and current.source == LocationUsagePeriod.Source.AUTO
+            and current.start_date >= start_date
+        ):
+            LocationUsageService.rest_if_empty(location, timezone.localdate())
+            return
+        previous = location.usage_periods.filter(
+            end_date=current.start_date - timedelta(days=1)
+        ).order_by('-start_date').first()
+        current.delete()
+        if previous:
+            previous.end_date = None
+            previous.save()
+            restored = previous.usage
+        else:
+            restored = Location.Usage.RESTED
+            LocationUsagePeriod.objects.create(
+                location=location, usage=restored,
+                start_date=current.start_date, source=LocationUsagePeriod.Source.AUTO,
+            )
+        Location.objects.filter(pk=location.pk).update(usage=restored)
+        location.usage = restored
 
     @staticmethod
     def rest_if_empty(location, last_occupied_date):

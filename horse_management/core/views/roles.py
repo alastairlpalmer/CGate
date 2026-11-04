@@ -8,6 +8,7 @@ from django.views.decorators.http import require_POST
 
 from ..forms import RoleForm
 from ..models import Role, UserRole
+from .. import mfa
 from ..permissions import feature_required
 from .users import _grants_user_management, _managers_excluding
 
@@ -65,11 +66,14 @@ def role_update(request, pk):
         form = RoleForm(instance=role)
 
     member_count = role.assignments.count()
+    reassign_targets = Role.objects.exclude(pk=role.pk)
+    if not mfa.is_administrator(request.user):
+        reassign_targets = reassign_targets.exclude(is_system=True)
     return render(request, 'settings/role_form.html', {
         'form': form,
         'object': role,
         'member_count': member_count,
-        'reassign_targets': Role.objects.exclude(pk=role.pk).order_by('-is_system', 'name'),
+        'reassign_targets': reassign_targets.order_by('-is_system', 'name'),
     })
 
 
@@ -92,6 +96,13 @@ def role_delete(request, pk):
         if target is None:
             messages.error(request, "Choose a role to move this role's members to.")
             return redirect('role_update', pk=pk)
+        # Moving members into the Administrator role grants it: only an
+        # Administrator may do that (the same rule as the user form).
+        # Without it, a user manager could put themselves in a throwaway
+        # role, delete it, and land in Administrator.
+        if target.is_system and not mfa.is_administrator(request.user):
+            messages.error(request, "Only an Administrator can move members into the Administrator role.")
+            return redirect('role_update', pk=pk)
         # Reassignment must not strand user management with nobody.
         if _demotion_locks_out(role, _grants_user_management(target)):
             messages.error(
@@ -100,7 +111,11 @@ def role_delete(request, pk):
                 "manage users and roles. Pick a role with Users & Roles access.",
             )
             return redirect('role_update', pk=pk)
-        UserRole.objects.filter(role=role).update(role=target)
+        # One save per member, so each move is in the role-assignment
+        # history (a bulk update() wrote nothing there).
+        for assignment in UserRole.objects.filter(role=role).select_related('user'):
+            assignment.role = target
+            assignment.save()
 
     name = role.name
     role.delete()

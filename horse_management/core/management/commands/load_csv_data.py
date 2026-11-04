@@ -542,11 +542,12 @@ class Command(BaseCommand):
     # ---------------------------------------------------------------
     def _do_import(self, csv1_rows, location_lookup):
         # --- 1. Business Settings ---
-        settings, created = BusinessSettings.objects.get_or_create(pk=1)
-        if created or settings.business_name != 'Colgate Livery':
-            settings.business_name = 'Colgate Livery'
-            settings.pk = 1
-            settings.save()
+        # The name is set only on a new settings row: a re-import with
+        # --force used to rename a business that had renamed itself.
+        settings, created = BusinessSettings.objects.get_or_create(
+            pk=1, defaults={'business_name': 'Colgate Livery'},
+        )
+        if created:
             self.stdout.write(self.style.SUCCESS('Created BusinessSettings (Colgate Livery)'))
         else:
             self.stdout.write('BusinessSettings already exists.')
@@ -605,9 +606,13 @@ class Command(BaseCommand):
                 continue
 
             # --- Get or create Horse ---
-            horse_obj, h_created = Horse.objects.get_or_create(
-                name=horse_name,
-                defaults={
+            # Names are not unique: two horses (or owners) with the same name
+            # made get_or_create raise MultipleObjectsReturned and stop the
+            # whole import. Use the first match.
+            horse_obj = Horse.objects.filter(name=horse_name).order_by('pk').first()
+            h_created = horse_obj is None
+            if h_created:
+                horse_obj = Horse.objects.create(name=horse_name, **{
                     'age': horse_info['age'],
                     'color': horse_info['color'],
                     'sex': horse_info['sex'],
@@ -615,8 +620,7 @@ class Command(BaseCommand):
                     'has_passport': horse_info['has_passport'],
                     'notes': horse_info['notes'],
                     'is_active': True,
-                },
-            )
+                })
             if h_created:
                 horses_created += 1
                 self.stdout.write(f'  Horse: {horse_name}')
@@ -626,10 +630,10 @@ class Command(BaseCommand):
             owner_key = owner_name.strip().lower()
 
             if owner_key not in owners_cache:
-                owner_obj, o_created = Owner.objects.get_or_create(
-                    name=owner_name,
-                    defaults={},
-                )
+                owner_obj = Owner.objects.filter(name=owner_name).order_by('pk').first()
+                o_created = owner_obj is None
+                if o_created:
+                    owner_obj = Owner.objects.create(name=owner_name)
                 owners_cache[owner_key] = owner_obj
                 if o_created:
                     owners_created += 1
@@ -680,9 +684,11 @@ class Command(BaseCommand):
             # --- Create Placement (skip full_clean to avoid overlap validation
             #     during bulk import; all placements are new/non-overlapping) ---
             # Check for existing placement to support idempotency with --force
+            # Any open stay counts, whoever it is billed to: a horse whose
+            # owner changed since the last import has an open stay for the new
+            # owner, and creating a second one broke the one-open-stay rule.
             placement_exists = Placement.objects.filter(
                 horse=horse_obj,
-                owner=owner_obj,
                 end_date__isnull=True,
             ).exists()
 

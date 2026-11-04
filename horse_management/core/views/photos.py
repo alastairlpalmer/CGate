@@ -37,8 +37,10 @@ def _validate_decodes_as_image(upload):
         upload.seek(0)
         with Image.open(upload) as img:
             img.verify()
-    except (UnidentifiedImageError, OSError):
-        raise ValidationError("File is not a valid image.")
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+        # DecompressionBombError: a tiny file that opens to a huge image
+        # (it is not an OSError, and was a 500).
+        raise ValidationError("File is not a valid image, or is too large to open.")
     finally:
         upload.seek(0)
 

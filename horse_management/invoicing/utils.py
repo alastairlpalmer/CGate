@@ -237,17 +237,20 @@ def invoice_to_xero_rows(invoice, account_code='200'):
     for idx, item in enumerate(line_items):
         row = {h: '' for h in XERO_CSV_HEADERS}
 
+        # Xero groups an invoice's lines by these columns, and its import
+        # needs the starred ones on every line: on the first line only, a
+        # second line (vet after livery) had no invoice to belong to.
+        row['*ContactName'] = invoice.owner.name
+        row['*InvoiceNumber'] = invoice.invoice_number
+        row['Reference'] = invoice.accounting_reference
+        row['*InvoiceDate'] = timezone.localtime(invoice.created_at).strftime('%d/%m/%Y')
+        row['*DueDate'] = invoice.due_date.strftime('%d/%m/%Y')
         if idx == 0:
-            row['*ContactName'] = invoice.owner.name
             row['EmailAddress'] = invoice.owner.email or ''
             row['POAddressLine1'] = address_lines[0]
             row['POAddressLine2'] = address_lines[1]
             row['POAddressLine3'] = address_lines[2]
             row['POAddressLine4'] = address_lines[3]
-            row['*InvoiceNumber'] = invoice.invoice_number
-            row['Reference'] = invoice.accounting_reference
-            row['*InvoiceDate'] = timezone.localtime(invoice.created_at).strftime('%d/%m/%Y')
-            row['*DueDate'] = invoice.due_date.strftime('%d/%m/%Y')
             row['Total'] = str(invoice.total)
 
         row['*Description'] = item.description

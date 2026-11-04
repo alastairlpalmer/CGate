@@ -344,7 +344,13 @@ def quick_find(request):
 
     owners = []
     if has_feature_access(request.user, 'owners'):
-        owners = _find(Owner.objects.all(), query, ('name',), ('pk', 'name'))
+        # Archived owners last, and labelled: they used to come first and
+        # push active owners out of the four places.
+        owners = _find(
+            Owner.objects.order_by('is_archived', 'name'), query, ('name',),
+            ('pk', 'name', 'is_archived'),
+            key=lambda o: o['is_archived'],
+        )
 
     locations = []
     if has_feature_access(request.user, 'locations'):

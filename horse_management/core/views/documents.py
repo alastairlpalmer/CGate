@@ -7,7 +7,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from core.permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
+from django.contrib.auth.decorators import login_required
+
+from core.permissions import LEVEL_FULL, LEVEL_VIEW, FeatureAccessMixin, deny, feature_required, has_feature_access
 
 from ..forms import DocumentForm
 from ._popup import is_popup_request, popup_saved_response
@@ -24,19 +26,32 @@ def _attachment_target(request):
     return horse, owner
 
 
+def _document_feature(horse, owner):
+    """A horse's documents follow Horses access; an owner's, Owners access."""
+    return 'horses' if horse else 'owners'
+
+
+def _may_change(request, horse, owner):
+    return has_feature_access(request.user, _document_feature(horse, owner), LEVEL_FULL)
+
+
 def _back_to(horse, owner):
     if horse:
         return redirect('horse_detail', pk=horse.pk)
     return redirect('owner_detail', pk=owner.pk)
 
 
-@feature_required('horses')
+@login_required
 def document_create(request):
     """Upload a document against a horse or an owner (?horse= / ?owner=)."""
     horse, owner = _attachment_target(request)
     if not horse and not owner:
+        if not has_feature_access(request.user, 'horses', LEVEL_FULL):
+            return deny(request)
         messages.error(request, "Choose a horse or an owner to attach the document to.")
         return redirect('horse_list')
+    if not _may_change(request, horse, owner):
+        return deny(request)
 
     in_popup = is_popup_request(request)
 
@@ -66,11 +81,13 @@ def document_create(request):
     })
 
 
-@feature_required('horses')
+@login_required
 def document_delete(request, pk):
     """Delete a document (POST only, confirmed client-side)."""
     document = get_object_or_404(Document, pk=pk)
     horse, owner = document.horse, document.owner
+    if not _may_change(request, horse, owner):
+        return deny(request)
 
     if request.method != 'POST':
         return _back_to(horse, owner)
@@ -85,10 +102,12 @@ def document_delete(request, pk):
     return _back_to(horse, owner)
 
 
-@feature_required('horses')
+@login_required
 @require_POST
 def document_restore(request, pk):
     document = get_object_or_404(Document.all_objects.deleted(), pk=pk)
+    if not _may_change(request, document.horse, document.owner):
+        return deny(request)
     document.restore()
     messages.success(request, f"Document “{document.title}” restored.")
     return _back_to(document.horse, document.owner)

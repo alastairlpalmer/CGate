@@ -216,6 +216,26 @@ def owner_delete(request, pk):
         return redirect(safe_next(request, fallback))
 
     name = owner.name
-    owner.delete()
+    # Delete the copies a plain delete leaves behind: the owner's record
+    # history (email, phone, notes) and the files of their documents.
+    from django.db import transaction
+    from django.db.models.deletion import ProtectedError
+
+    from .. import gdpr
+
+    try:
+        with transaction.atomic():
+            gdpr.delete_documents(owner)
+            owner_pk = owner.pk
+            owner.delete()
+            # After the delete: it writes a last history row of its own.
+            Owner.history.filter(id=owner_pk).delete()
+    except ProtectedError:
+        _archive_owner(owner)
+        messages.success(
+            request,
+            f"{name} still has records, so they were archived rather than deleted.",
+        )
+        return redirect(safe_next(request, fallback))
     messages.success(request, f"{name} deleted.")
     return redirect(safe_next(request, reverse('owner_list')))

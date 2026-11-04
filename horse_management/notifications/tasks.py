@@ -126,14 +126,17 @@ def send_farrier_reminders():
     # One digest email per owner instead of one per horse.
     by_owner = {}
     for entry in horses_needing_farrier:
+        # The horse's current visit (on the latest date, newest first),
+        # then the sent check. Filtering on reminder_sent first picked the
+        # older of two visits on the same day once the newer one was sent,
+        # and the owner got "Farrier Due" again the next day.
         visit = FarrierVisit.objects.filter(
             horse_id=entry['horse'],
             date=entry['latest_date'],
-            reminder_sent=False,
             next_due_date__isnull=False,
         ).select_related('horse').order_by('-pk').first()
 
-        if not visit or visit.next_due_date > two_weeks:
+        if not visit or visit.reminder_sent or visit.next_due_date > two_weeks:
             continue
         owner = visit.horse.current_owner
         if not owner or not owner.email:
@@ -211,6 +214,10 @@ def send_overdue_invoice_reminders():
         step = invoice.overdue_reminder_count
         if (today - invoice.due_date).days < schedule[step]:
             continue
+        # Nothing owed (a £0 invoice, or paid in full but not yet marked):
+        # no "Payment reminder" for £0.00.
+        if invoice.balance_due <= 0:
+            continue
         try:
             previous = invoice.last_overdue_reminder_at
             # Atomic claim on the step: update returns 0 if another worker
@@ -253,11 +260,17 @@ def send_ehv_reminders():
     for record in active_records:
         try:
             ehv_dates = record.ehv_vaccination_dates
+            done = None
 
             for month, due_date in ehv_dates.items():
                 # Send reminder 14 days before due date
                 reminder_date = due_date - timedelta(days=14)
                 if not (reminder_date <= today <= due_date + timedelta(days=7)):
+                    continue
+                # Already given (early): no reminder.
+                if done is None:
+                    done = record.ehv_months_done()
+                if month in done:
                     continue
 
                 # Atomic claim: lock the row, re-read sent months, only
@@ -306,10 +319,19 @@ def breeding_reminder_entries(record, today):
         if 'heartbeat' not in sent and due - timedelta(days=2) <= today <= due + timedelta(days=14):
             entries.append({'key': 'heartbeat', 'label': 'Heartbeat scan due', 'due': due, 'record': record})
     if record.date_foal_due and record.status == 'confirmed':
-        for key, days, label in (('foal30', 30, 'Foal due in 30 days'), ('foal7', 7, 'Foal due in 7 days')):
-            window_open = record.date_foal_due - timedelta(days=days)
-            if key not in sent and window_open <= today <= record.date_foal_due:
-                entries.append({'key': key, 'label': label, 'due': record.date_foal_due, 'record': record})
+        # The 30-day reminder's window closes when the 7-day one opens: a
+        # record first seen inside the last week got both in one email.
+        # The label says the real number of days left.
+        due = record.date_foal_due
+        days_left = (due - today).days
+        for key, opens, closes in (('foal30', 30, 7), ('foal7', 7, -1)):
+            if key in sent or not (due - timedelta(days=opens) <= today < due - timedelta(days=closes)):
+                continue
+            if days_left <= 0:
+                label = 'Foal due today'
+            else:
+                label = f"Foal due in {days_left} day{'s' if days_left != 1 else ''}"
+            entries.append({'key': key, 'label': label, 'due': due, 'record': record})
     return entries
 
 
@@ -391,7 +413,7 @@ def send_document_expiry_reminders():
     if none is configured the sweep is skipped and nothing is consumed.
     Run daily via Celery Beat.
     """
-    from core.models import BusinessSettings, Document
+    from core.models import BusinessSettings, Document, documents_needing_renewal
 
     from .emails import send_document_expiry_summary
 
@@ -411,10 +433,13 @@ def send_document_expiry_reminders():
     # runs at once used to both email every document.
     with transaction.atomic():
         ids = list(
-            Document.objects.select_for_update(skip_locked=True).filter(
-                expiry_date__isnull=False,
-                expiry_date__lte=cutoff,
-                expiry_reminder_sent=False,
+            documents_needing_renewal(
+                Document.objects.select_for_update(skip_locked=True).filter(
+                    expiry_date__isnull=False,
+                    expiry_date__lte=cutoff,
+                    expiry_reminder_sent=False,
+                ),
+                today=today,
             ).values_list('pk', flat=True)
         )
         Document.objects.filter(pk__in=ids, expiry_reminder_sent=False).update(

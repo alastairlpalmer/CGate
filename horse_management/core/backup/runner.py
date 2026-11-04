@@ -115,6 +115,17 @@ def archive_media(destination_dir, now=None):
     """
     names = sorted(_stored_media_names())
     if not names:
+        referenced = _referenced_media_count()
+        if referenced:
+            # The database points at uploads this process cannot see: the
+            # files are on another service's volume. Reporting success here
+            # meant passports were never backed up and nobody was told.
+            raise BackupError(
+                f'The database refers to {referenced} uploaded file(s), but '
+                'none are in the media storage this job can read. Store '
+                'uploads in an object store (MEDIA_S3_BUCKET) so the backup '
+                'can reach them.'
+            )
         logger.info('Backup: no uploaded media found, no media archive made')
         return None
 
@@ -124,6 +135,24 @@ def archive_media(destination_dir, now=None):
         for name in names:
             _add_stored_file(archive, name)
     return path
+
+
+def _referenced_media_count():
+    """How many rows point at an uploaded file, across every file field."""
+    from django.apps import apps
+    from django.db.models import FileField, Q
+
+    total = 0
+    for model in apps.get_models():
+        if model.__name__.startswith('Historical'):
+            continue
+        manager = getattr(model, 'all_objects', model._default_manager)
+        for field in model._meta.get_fields():
+            if isinstance(field, FileField) and field.concrete:
+                total += manager.exclude(
+                    Q(**{f'{field.name}__isnull': True}) | Q(**{field.name: ''})
+                ).count()
+    return total
 
 
 def _stored_media_names(prefix=''):
