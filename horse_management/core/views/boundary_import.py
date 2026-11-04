@@ -137,6 +137,7 @@ def _parse_choices(post, shapes, by_pk):
     """``{index: ('location', Location) | ('new', name) | ('skip', None)}``
     from the posted picker rows, plus the errors that stop a commit."""
     choices, errors, used = {}, [], {}
+    taken_names = {loc.name.casefold() for loc in by_pk.values()}
     for shp in shapes:
         if not shp.importable:
             choices[shp.index] = (SKIP, None)
@@ -148,6 +149,14 @@ def _parse_choices(post, shapes, by_pk):
             name = (post.get(f'new_name_{shp.index}') or shp.name).strip()[:200]
             if not name:
                 errors.append(f'Shape {shp.index} needs a name for its new location.')
+            elif name.casefold() in taken_names:
+                # A second "Top" on the site (or two in one import) made
+                # duplicate locations.
+                errors.append(
+                    f'Shape {shp.index}: there is already a location called "{name}" '
+                    'on this site. Pick it, or give the new one another name.'
+                )
+            taken_names.add(name.casefold())
             choices[shp.index] = (NEW, name)
         elif raw.isdigit() and int(raw) in by_pk:
             loc = by_pk[int(raw)]

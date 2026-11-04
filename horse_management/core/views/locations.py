@@ -826,7 +826,7 @@ def _ready_neighbours(location):
     return candidates[:NEIGHBOUR_LIMIT]
 
 
-@feature_required('locations')
+@feature_required('locations', LEVEL_VIEW)
 def location_preview(request, pk):
     """One location, for the site board.
 

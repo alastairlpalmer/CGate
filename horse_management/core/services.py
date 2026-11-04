@@ -514,6 +514,11 @@ class LocationUsageService:
         Returns the new LocationUsagePeriod, or None if usage is unchanged.
         Raises ValidationError if change_date is not after the current start.
         """
+        if source == LocationUsagePeriod.Source.MANUAL and change_date > timezone.localdate():
+            # Location.usage changes at once, so a future date showed the
+            # field as hay while horses were still on it, and blocked the
+            # automatic rest when they left.
+            raise ValidationError("A usage change can't be dated in the future.")
         current = location.usage_periods.filter(end_date__isnull=True).first()
 
         # No-op: already in this usage state.
@@ -674,6 +679,46 @@ class LocationUsageService:
         # Queryset write — see set_usage: instance state can be stale.
         Location.objects.filter(pk=location.pk).update(usage=restored_usage)
         location.usage = restored_usage
+
+    @staticmethod
+    @transaction.atomic
+    def undo_arrival(location, start_date):
+        """A stay that started on ``start_date`` was removed or moved away.
+
+        If it put horses on an empty field (an AUTO "horses" period from
+        that date) and the field is empty again, take that period out and
+        reopen the one it closed, as if the arrival never happened. Before,
+        the field got a new rest period from tomorrow: false "horses"
+        history and a rest count back to 0. Otherwise rest the field from
+        today as before.
+        """
+        if not LocationUsageService._is_empty(location):
+            return
+        current = location.usage_periods.filter(end_date__isnull=True).first()
+        if not (
+            current
+            and current.usage == Location.Usage.HORSES
+            and current.source == LocationUsagePeriod.Source.AUTO
+            and current.start_date >= start_date
+        ):
+            LocationUsageService.rest_if_empty(location, timezone.localdate())
+            return
+        previous = location.usage_periods.filter(
+            end_date=current.start_date - timedelta(days=1)
+        ).order_by('-start_date').first()
+        current.delete()
+        if previous:
+            previous.end_date = None
+            previous.save()
+            restored = previous.usage
+        else:
+            restored = Location.Usage.RESTED
+            LocationUsagePeriod.objects.create(
+                location=location, usage=restored,
+                start_date=current.start_date, source=LocationUsagePeriod.Source.AUTO,
+            )
+        Location.objects.filter(pk=location.pk).update(usage=restored)
+        location.usage = restored
 
     @staticmethod
     def rest_if_empty(location, last_occupied_date):

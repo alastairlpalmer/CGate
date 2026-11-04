@@ -5,6 +5,7 @@ Forms for core app.
 from decimal import Decimal
 
 from django import forms
+from django.utils import timezone
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import FileExtensionValidator
 from django.db.models import Q
@@ -323,6 +324,13 @@ class LocationUsageForm(forms.Form):
         required=False,
         widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
     )
+
+    def clean_change_date(self):
+        day = self.cleaned_data['change_date']
+        if day > timezone.localdate():
+            raise forms.ValidationError("The date can't be in the future. Record the change on the day.")
+        return day
+
 
 
 class HorseForm(forms.ModelForm):
