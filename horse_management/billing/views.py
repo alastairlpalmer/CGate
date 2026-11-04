@@ -418,13 +418,16 @@ class CostsListView(FeatureAccessMixin, ListView):
         # A recharged feed-out's charges pass on a cost already booked as a
         # YardCost (the delivery or the feed-out itself): counting both
         # showed £1,000 for £500 of hay.
+        # Up to today, as the list is: a cost entered early for next month
+        # (or next January) counted in "This month" and "This year".
+        to_date = Q(date__lte=today)
         charge_agg = ExtraCharge.objects.filter(feed_out__isnull=True).aggregate(
-            month=Sum('amount', filter=Q(date__gte=month_start)),
-            year=Sum('amount', filter=Q(date__gte=year_start)),
+            month=Sum('amount', filter=Q(date__gte=month_start) & to_date),
+            year=Sum('amount', filter=Q(date__gte=year_start) & to_date),
         )
         yard_agg = YardCost.objects.aggregate(
-            month=Sum('amount', filter=Q(date__gte=month_start)),
-            year=Sum('amount', filter=Q(date__gte=year_start)),
+            month=Sum('amount', filter=Q(date__gte=month_start) & to_date),
+            year=Sum('amount', filter=Q(date__gte=year_start) & to_date),
         )
         context['month_total'] = (charge_agg['month'] or Decimal('0')) + (yard_agg['month'] or Decimal('0'))
         context['year_total'] = (charge_agg['year'] or Decimal('0')) + (yard_agg['year'] or Decimal('0'))
@@ -551,18 +554,23 @@ def feed_dashboard(request):
         stock_qs = stock_qs.filter(site=site_filter)
         out_qs = out_qs.filter(location__site=site_filter)
 
-    stock_in = stock_qs.values('site', 'feed_type', 'unit').annotate(total=Sum('quantity'))
+    # Stock rows: positive in, negative (waste, a downward adjustment) out.
+    # Summed together, a waste-only line read "+-3 in".
+    stock_in = stock_qs.values('site', 'feed_type', 'unit').annotate(
+        added=Sum('quantity', filter=Q(quantity__gt=0)),
+        removed=Sum('quantity', filter=Q(quantity__lt=0)),
+    )
     stock_out = out_qs.values('location__site', 'feed_type', 'unit').annotate(total=Sum('quantity_numeric'))
 
     balances = {}
     for s in stock_in:
         key = (s['site'] or 'Unassigned', s['feed_type'], s['unit'])
-        balances[key] = {'in': float(s['total'] or 0), 'out': 0}
+        balances[key] = {'in': float(s['added'] or 0), 'out': -float(s['removed'] or 0)}
     for s in stock_out:
         key = (s['location__site'] or 'Unassigned', s['feed_type'], s['unit'])
         if key not in balances:
             balances[key] = {'in': 0, 'out': 0}
-        balances[key]['out'] = float(s['total'] or 0)
+        balances[key]['out'] += float(s['total'] or 0)
 
     stock_summary = []
     for (site, ft, unit), vals in sorted(balances.items()):
@@ -581,8 +589,10 @@ def feed_dashboard(request):
     ledger = []
     for s in stock_qs.order_by('-date')[:30]:
         ledger.append({
-            'date': s.date, 'direction': 'in', 'site': s.site or '',
-            'feed_type': s.get_feed_type_display(), 'quantity': s.quantity,
+            # Waste and downward adjustments are stored negative: show them
+            # as stock going out ("-3"), not "+-3".
+            'date': s.date, 'direction': 'in' if s.quantity >= 0 else 'out', 'site': s.site or '',
+            'feed_type': s.get_feed_type_display(), 'quantity': abs(s.quantity),
             'unit': s.get_unit_display(), 'entry_type': s.get_entry_type_display(),
             'detail': s.supplier or s.notes or s.get_entry_type_display(),
             'cost': s.cost if s.cost else None,
@@ -628,8 +638,9 @@ class FeedStockCreateView(FeatureAccessMixin, CreateView):
     def form_valid(self, form):
         response = super().form_valid(form)
         stock = self.object
-        # Create YardCost if cost > 0
-        if stock.cost and stock.cost > 0:
+        # A yard cost only for a delivery: waste or an adjustment is not a
+        # new purchase.
+        if stock.entry_type == FeedStock.EntryType.DELIVERY and stock.cost and stock.cost > 0:
             cat = 'hay' if stock.feed_type in ('hay', 'haylage') else 'feed'
             YardCost.objects.create(
                 category=cat,
@@ -651,11 +662,8 @@ def feed_stock_adjust(request):
     if request.method == 'POST':
         form = FeedStockForm(request.POST)
         if form.is_valid():
-            stock = form.save(commit=False)
-            # Negate quantity for waste/reduction
-            if stock.entry_type == 'waste':
-                stock.quantity = -abs(stock.quantity)
-            stock.save()
+            # FeedStockForm.clean makes waste negative.
+            stock = form.save()
             messages.success(request, f"Stock adjusted: {stock.quantity:+g} {stock.get_unit_display()} {stock.get_feed_type_display()} at {stock.site}.")
             return redirect('feed_dashboard')
     else:
@@ -731,12 +739,20 @@ def feed_out_create(request, location_pk):
                 # Auto-calculate cost from stock if not provided
                 cost_from_stock = False
                 if not feed_out.total_cost and feed_out.quantity_numeric and feed_out.unit:
-                    latest_stock = FeedStock.objects.filter(
+                    # The price of this site's latest delivery; another
+                    # site's only when this one has none. Any site's (and
+                    # any entry type's) newest row priced a Main field's
+                    # bale at the Other site's price.
+                    priced = FeedStock.objects.filter(
                         feed_type=feed_out.feed_type,
                         unit=feed_out.unit,
+                        entry_type=FeedStock.EntryType.DELIVERY,
                         cost__gt=0,
                         quantity__gt=0,
-                    ).order_by('-date').first()
+                    ).order_by('-date', '-pk')
+                    latest_stock = (
+                        priced.filter(site=location.site).first() or priced.first()
+                    )
                     if latest_stock:
                         cost_per_unit = latest_stock.cost / latest_stock.quantity
                         feed_out.total_cost = (cost_per_unit * feed_out.quantity_numeric).quantize(Decimal('0.01'))

@@ -3,6 +3,7 @@ Forms for billing app.
 """
 
 import json
+from decimal import Decimal
 
 from django import forms
 
@@ -331,6 +332,14 @@ class FeedOutForm(forms.ModelForm):
         self.fields['total_cost'].required = False
 
 
+    def clean_quantity_numeric(self):
+        # A negative feed-out made a negative auto-cost (a 500 on the
+        # cost rule) or put stock back on the dashboard.
+        quantity = self.cleaned_data.get('quantity_numeric')
+        if quantity is not None and quantity <= 0:
+            raise forms.ValidationError('Enter a quantity above 0, or leave it blank.')
+        return quantity
+
 class FeedStockForm(forms.ModelForm):
     class Meta:
         model = FeedStock
@@ -359,6 +368,27 @@ class FeedStockForm(forms.ModelForm):
             attrs={'class': 'form-select'},
             choices=[('', '---------')] + [(s, s) for s in sites],
         )
+        # The adjust page has no cost field: a required cost meant it could
+        # never save (and showed no error).
+        self.fields['cost'].required = False
+
+    def clean_cost(self):
+        return self.cleaned_data.get('cost') or Decimal('0.00')
+
+    def clean(self):
+        cleaned = super().clean()
+        quantity = cleaned.get('quantity')
+        entry_type = cleaned.get('entry_type')
+        if quantity is None:
+            return cleaned
+        if quantity == 0:
+            self.add_error('quantity', 'Enter a quantity other than 0.')
+        elif entry_type == FeedStock.EntryType.WASTE:
+            # Waste always reduces stock, whichever form logs it.
+            cleaned['quantity'] = -abs(quantity)
+        elif entry_type == FeedStock.EntryType.DELIVERY and quantity < 0:
+            self.add_error('quantity', 'A delivery adds stock: enter a positive quantity.')
+        return cleaned
 
 
 class ServiceProviderForm(forms.ModelForm):

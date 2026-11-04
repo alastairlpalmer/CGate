@@ -61,7 +61,9 @@ def _finances_inner(request):
         )
         .annotate(month=TruncMonth('period_end'))
         .values('month')
-        .annotate(total=Sum('total'))
+        # Net of VAT, as costs and the forecast are: VAT is owed to HMRC,
+        # not earned.
+        .annotate(total=Sum('subtotal'))
         .order_by('month')
     )
 
@@ -69,6 +71,17 @@ def _finances_inner(request):
         return val.date() if hasattr(val, 'date') and callable(val.date) else val
 
     revenue_map = {_to_date(r['month']): float(r['total']) for r in revenue_qs}
+    # A credit note takes revenue back: net of its VAT share, in the month
+    # of the invoice it credits.
+    credits = Payment.objects.filter(
+        method=Payment.Method.CREDIT_NOTE,
+        invoice__status__in=['paid', 'sent', 'overdue'],
+        invoice__period_end__gte=twelve_months_ago,
+    ).values_list('amount', 'invoice__period_end', 'invoice__subtotal', 'invoice__total')
+    for amount, period_end, subtotal, total in credits:
+        net = amount * subtotal / total if total else amount
+        month = period_end.replace(day=1)
+        revenue_map[month] = revenue_map.get(month, 0) - float(net)
 
     # .order_by() clears the models' Meta.ordering ('-date'): an ORDER BY
     # inside a UNION arm is a DatabaseError on SQLite and breaks the

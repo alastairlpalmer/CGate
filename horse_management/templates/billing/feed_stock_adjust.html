@@ -16,6 +16,12 @@
         <form method="post" class="divide-y divide-light-sage">
             {% csrf_token %}
 
+            {% if form.errors %}
+            <div class="p-4 sm:p-5 text-sm text-error-red" role="alert">
+                {% for field in form %}{% for error in field.errors %}<p>{{ field.label }}: {{ error }}</p>{% endfor %}{% endfor %}
+                {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+            </div>
+            {% endif %}
             <fieldset class="p-4 sm:p-5 space-y-4">
                 <legend class="section-title">Adjustment</legend>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
