@@ -48,7 +48,10 @@ def send_vaccination_reminders():
         reminder_sent=False,
         next_due_date__isnull=False,
         horse__is_active=True,
-    )).select_related('horse', 'vaccination_type')
+    )).filter(
+        # An inactive type is no longer given at the yard: no reminders.
+        vaccination_type__is_active=True,
+    ).select_related('horse', 'vaccination_type')
 
     # One digest email per owner instead of one email per record — an owner
     # with several horses due used to get a separate 07:00 email for each.

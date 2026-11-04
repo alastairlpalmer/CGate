@@ -147,3 +147,21 @@ class FoalReminderTests(Base):
         )
         entries = breeding_reminder_entries(record, self.today)
         self.assertEqual([(e['key'], e['label']) for e in entries], [('foal30', 'Foal due in 30 days')])
+
+
+class InactiveVaccinationTypeTests(Base):
+    """An inactive vaccination type sends no reminder and is not due."""
+
+    def test_no_reminder_or_dashboard_row_for_an_inactive_type(self):
+        from notifications.tasks import send_vaccination_reminders
+
+        horse = self.horse()
+        strangles = VaccinationType.objects.create(name='Strangles', is_active=False)
+        Vaccination.objects.create(
+            horse=horse, vaccination_type=strangles,
+            date_given=self.today - timedelta(days=400),
+            next_due_date=self.today - timedelta(days=5),
+        )
+        send_vaccination_reminders()
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(self.kinds('vaccination'), [])
