@@ -1122,20 +1122,18 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 /* Rows. The whole row is the target — split_view.js turns a click
    anywhere on it into a selection — so it has to look like one. */
 [data-horse-row] { cursor: pointer; }
-/* The selected row uses the same quiet language as the sidebar's active
-   item: a soft forest tint with a hairline ring, the name in forest, and
-   a ring round the photo. No coloured edge bar. The tint is stronger than
-   the hover tint, so the selection still reads while the mouse is on
-   another row. */
+/* The selected row has to be obvious at a glance: a clear forest tint,
+   a solid 2px forest outline round the whole row, the name in forest,
+   and a solid ring round the photo. No coloured edge bar. */
 [data-horse-row].is-selected,
 .data-table tbody tr[data-horse-row].is-selected,
 .data-table tbody tr[data-horse-row].is-selected:hover {
-    @apply bg-forest/[0.07] ring-1 ring-inset ring-forest/[0.18];
+    @apply bg-forest/[0.1] ring-2 ring-inset ring-forest;
 }
 [data-horse-row].is-selected [data-horse-link] .font-medium { @apply text-forest font-semibold; }
 [data-horse-row].is-selected [data-horse-link] > img,
 [data-horse-row].is-selected [data-horse-link] > div:first-child {
-    @apply outline-2 outline-offset-2 outline-forest/45;
+    @apply outline-2 outline-offset-2 outline-forest;
 }
 
 /* ── The horse row: one markup, two shapes ─────────────────────────────
@@ -1594,10 +1592,13 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     @apply w-full flex items-center gap-3 px-3 py-3 min-h-[62px] border-b border-light-sage
            text-left transition-colors duration-100 active:bg-sand-50/60;
 }
-.loc-row.is-selected { @apply bg-sage-50; }
 .loc-row.is-unmapped {
     @apply border border-dashed border-sand rounded-card mb-2 bg-parchment/60 min-h-[58px];
 }
+/* Selected: the same soft forest tint as the horse list's selected row,
+   with the name in forest. After .is-unmapped so it wins there too. */
+.loc-row.is-selected { @apply bg-forest/[0.1] ring-2 ring-inset ring-forest; }
+.loc-row.is-selected .loc-row-name { @apply text-forest; }
 .loc-row-bar { @apply w-2 h-10 rounded shrink-0; }
 .loc-row-name { @apply block text-[16.5px] font-semibold text-charcoal leading-tight truncate; }
 .loc-row-sub { @apply block text-[13px] text-sage truncate mt-0.5; }
@@ -1720,11 +1721,19 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 /* One location in the rail. */
 .loc-card {
     @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-card border border-light-sage
-           bg-white text-left transition-colors duration-100 hover:bg-sage-50/60;
+           bg-white text-left transition-colors duration-100;
 }
-.loc-card.is-hover { @apply bg-sage-50 border-sage/40; }
-.loc-card.is-selected { @apply bg-sage-50 border-forest; }
 .loc-card.is-unmapped { @apply border-dashed border-sand bg-parchment/60; }
+/* Same tile language as the sidebar and the horse list: hover (from the
+   mouse, or from the map via .is-hover) is a lighter preview of the
+   selected tile. Selected is obvious at a glance: a clear forest tint,
+   a solid 2px forest edge and the name in forest. After .is-unmapped so they win there
+   too; an unmapped card keeps its dashed edge. */
+.loc-card:hover,
+.loc-card.is-hover { @apply bg-forest/[0.04] border-forest/[0.15]; }
+.loc-card.is-selected,
+.loc-card.is-selected:hover { @apply bg-forest/[0.1] border-solid border-forest ring-1 ring-inset ring-forest; }
+.loc-card.is-selected .loc-card-name { @apply text-forest; }
 .loc-card-name { @apply block text-[15px] font-semibold text-charcoal leading-tight truncate; }
 .loc-card-sub { @apply block mt-0.5 text-[12.5px] text-sage truncate; }
 .loc-card-fill { @apply block mt-2 h-[3px] rounded-sm bg-light-sage overflow-hidden; }
