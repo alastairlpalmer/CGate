@@ -30,12 +30,14 @@ class ServicePickerSelect(forms.Select):
         super().__init__(attrs, choices)
         self.items_by_pk = {}
         self.fill = ()
+        self.show_prices = True
 
     def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
         option = super().create_option(name, value, label, selected, index, subindex=subindex, attrs=attrs)
         item = self.items_by_pk.get(str(value))
         if item is not None:
-            option['attrs']['data-price'] = str(item.price)
+            if self.show_prices:
+                option['attrs']['data-price'] = str(item.price)
             option['attrs']['data-fill'] = json.dumps(_js_fill_values(item, self.fill))
         return option
 
@@ -65,7 +67,13 @@ class ServicePickerField(forms.ChoiceField):
         widget = ServicePickerSelect(attrs={'class': 'form-select', 'data-service-picker': ''})
         super().__init__(choices=(), widget=widget, **kwargs)
         self.widget.fill = tuple(fill)
+        self.category = category
         self.load_items(category)
+
+    def hide_prices(self):
+        """Offer the services by name only, for a user who may not see money."""
+        self.widget.show_prices = False
+        self.load_items(self.category)
 
     def load_items(self, category):
         queryset = ServiceItem.objects.filter(is_active=True)
@@ -77,6 +85,8 @@ class ServicePickerField(forms.ChoiceField):
         self.widget.items_by_pk = {str(item.pk): item for item in items}
 
         def option(item):
+            if not self.widget.show_prices:
+                return (str(item.pk), item.name)
             return (str(item.pk), f"{item.name} — {item.price_label}")
 
         choices = [('', 'Choose a service…')]

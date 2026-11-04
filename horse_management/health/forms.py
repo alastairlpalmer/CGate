@@ -26,6 +26,21 @@ from .models import (
 )
 
 
+def hide_cost(form):
+    """Take the cost (and the service prices) off a health record form.
+
+    For a user without Full access to Charges: a cost above 0 creates a
+    billable charge (health.views.sync_record_charge), so only someone who
+    may add charges can set it, and a user who may not see charges does not
+    see it. Without the field, a save leaves the record's cost as it was.
+    """
+    form.fields.pop('cost', None)
+    picker = form.fields.get('service_item')
+    if picker is not None:
+        picker.hide_prices()
+    return form
+
+
 class OptionalCostMixin:
     """Make the cost field optional: blank or omitted means 0 (not billable)."""
 

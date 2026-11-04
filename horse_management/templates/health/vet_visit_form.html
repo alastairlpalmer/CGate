@@ -94,6 +94,7 @@
                         {% endif %}
                     </div>
 
+                    {% if form.cost %}
                     <div>
                         <label for="{{ form.cost.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.cost.label }}</label>
                         {{ form.cost }}
@@ -102,6 +103,7 @@
                         {% endif %}
                         <p class="text-xs text-sage mt-1">If &gt; &pound;0, a billable charge will be created</p>
                     </div>
+                    {% endif %}
 
                     <div class="sm:col-span-2">
                         <label for="{{ form.notes.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.notes.label }}</label>

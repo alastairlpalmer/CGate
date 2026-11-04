@@ -67,7 +67,7 @@
                 </div>
             </div>
             <div class="flex flex-col items-end gap-1 shrink-0">
-                {% if visit.cost %}<span class="font-semibold text-charcoal tabular-nums text-sm">&pound;{{ visit.cost|floatformat:2 }}</span>{% endif %}
+                {% if feature_access.charges.view %}{% if visit.cost %}<span class="font-semibold text-charcoal tabular-nums text-sm">&pound;{{ visit.cost|floatformat:2 }}</span>{% endif %}{% endif %}
                 <div class="list-card-actions">
                     <a href="{% url 'farrier_update' visit.pk %}" hx-get="{% url 'farrier_update' visit.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit farrier visit" class="btn-icon" title="Edit" aria-label="Edit farrier visit">
                         <svg class="w-4 h-4" aria-hidden="true"><use href="#i-pencil"/></svg>
@@ -93,7 +93,7 @@
                     <th>Work Done</th>
                     <th>Farrier</th>
                     <th>Next Due</th>
-                    <th class="text-right">Cost</th>
+                    {% if feature_access.charges.view %}<th class="text-right">Cost</th>{% endif %}
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -111,9 +111,9 @@
                     <td class="{% if visit.next_due_date and visit.next_due_date < today %}text-error-red font-semibold{% elif visit.is_due_soon %}text-forest{% else %}text-sage{% endif %}">
                         {% if visit.next_due_date %}{{ visit.next_due_date|date:"d M Y" }}{% else %}<span class="text-sage">-</span>{% endif %}
                     </td>
-                    <td class="text-right">
+                    {% if feature_access.charges.view %}<td class="text-right">
                         {% if visit.cost %}&pound;{{ visit.cost|floatformat:2 }}{% else %}<span class="text-sage">-</span>{% endif %}
-                    </td>
+                    </td>{% endif %}
                     <td>
                         <a href="{% url 'farrier_update' visit.pk %}" hx-get="{% url 'farrier_update' visit.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit farrier visit" class="btn-ghost btn-xs">Edit</a>
                     </td>

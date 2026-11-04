@@ -35,6 +35,7 @@ from core.models import Horse, Placement
 from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_response
 
 from .forms import (
+    hide_cost,
     BreedingRecordForm,
     CoveringForm,
     FoalDetailsForm,
@@ -412,6 +413,25 @@ CHARGE_SYNC_MESSAGES = {
 }
 
 
+def can_set_cost(user):
+    """A cost above 0 bills the owner, so setting it needs Full on Charges."""
+    return has_feature_access(user, 'charges', LEVEL_FULL)
+
+
+class CostNeedsChargesMixin:
+    """Health record forms: no cost field for a user who may not add charges.
+
+    Without it, Full access to Health alone could create, change or delete
+    billable charges by typing a cost on a record.
+    """
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        if not can_set_cost(self.request.user):
+            hide_cost(form)
+        return form
+
+
 def _report_charge_sync(request, record, status):
     """Surface non-silent sync outcomes to the user."""
     template = CHARGE_SYNC_MESSAGES.get(status)
@@ -435,6 +455,14 @@ def _bulk_action_allowed(user, action_type):
     if action_type == 'charge':
         return has_feature_access(user, 'charges', LEVEL_FULL)
     return has_feature_access(user, 'health', LEVEL_FULL)
+
+
+def _hide_bulk_cost(user, action_type, form):
+    """The bulk health record forms follow the single-record rule."""
+    if action_type in PLACEMENT_BULK_ACTIONS or action_type == 'charge':
+        return
+    if 'cost' in form.fields and not can_set_cost(user):
+        hide_cost(form)
 
 
 def _bulk_horse_ids(data):
@@ -475,6 +503,7 @@ def bulk_health_form(request):
         form = form_class(initial={'date': timezone.localdate()})
     else:
         form = form_class()
+    _hide_bulk_cost(request.user, action_type, form)
 
     return render(request, 'health/partials/bulk_health_form.html', {
         'form': form,
@@ -515,6 +544,7 @@ def bulk_health_apply(request):
         raise PermissionDenied
 
     form = form_class(request.POST)
+    _hide_bulk_cost(request.user, action_type, form)
     if not form.is_valid():
         return render(request, 'health/partials/bulk_health_form.html', {
             'form': form,
@@ -769,7 +799,7 @@ class HealthRecordSuccessUrlMixin:
         return context
 
 
-class VaccinationCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+class VaccinationCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
     feature = 'health'
     model = Vaccination
     form_class = VaccinationForm
@@ -794,7 +824,7 @@ class VaccinationCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, Feature
         return response
 
 
-class VaccinationUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
+class VaccinationUpdateView(CostNeedsChargesMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'health'
     model = Vaccination
     form_class = VaccinationForm
@@ -899,7 +929,7 @@ class FarrierListView(FeatureAccessMixin, ListView):
         return context
 
 
-class FarrierCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+class FarrierCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
     feature = 'health'
     model = FarrierVisit
     form_class = FarrierVisitForm
@@ -924,7 +954,7 @@ class FarrierCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAcce
         return response
 
 
-class FarrierUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
+class FarrierUpdateView(CostNeedsChargesMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'health'
     model = FarrierVisit
     form_class = FarrierVisitForm
@@ -968,7 +998,7 @@ class WormingListView(FeatureAccessMixin, ListView):
         return context
 
 
-class WormingCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+class WormingCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
     feature = 'health'
     model = WormingTreatment
     form_class = WormingTreatmentForm
@@ -993,7 +1023,7 @@ class WormingCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAcce
         return response
 
 
-class WormingUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
+class WormingUpdateView(CostNeedsChargesMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'health'
     model = WormingTreatment
     form_class = WormingTreatmentForm
@@ -1036,7 +1066,7 @@ class WormEggCountListView(FeatureAccessMixin, ListView):
         return context
 
 
-class WormEggCountCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+class WormEggCountCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
     feature = 'health'
     model = WormEggCount
     form_class = WormEggCountForm
@@ -1061,7 +1091,7 @@ class WormEggCountCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, Featur
         return response
 
 
-class WormEggCountUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
+class WormEggCountUpdateView(CostNeedsChargesMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'health'
     model = WormEggCount
     form_class = WormEggCountForm
@@ -1161,7 +1191,7 @@ class VetVisitListView(FeatureAccessMixin, ListView):
         return context
 
 
-class VetVisitCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+class VetVisitCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
     feature = 'health'
     model = VetVisit
     form_class = VetVisitForm
@@ -1186,7 +1216,7 @@ class VetVisitCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAcc
         return response
 
 
-class VetVisitUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
+class VetVisitUpdateView(CostNeedsChargesMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
     feature = 'health'
     model = VetVisit
     form_class = VetVisitForm
