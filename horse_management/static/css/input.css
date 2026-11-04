@@ -273,7 +273,9 @@
        rather than as two separate buttons repainting. */
     .segmented { @apply relative inline-flex items-center p-1 bg-white rounded-xl border border-light-sage shadow-xs; }
     .segmented-thumb {
-        @apply absolute left-0 top-1 bottom-1 rounded-lg bg-forest shadow-xs pointer-events-none;
+        /* Same selected style as the tables and cards: a clear forest tint
+           with a solid 2px forest outline, rather than a solid fill. */
+        @apply absolute left-0 top-1 bottom-1 rounded-lg bg-forest/[0.1] ring-2 ring-inset ring-forest pointer-events-none;
         width: 0;
         opacity: 0;
         transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
@@ -283,15 +285,19 @@
     .segmented-item {
         @apply relative z-10 inline-flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] sm:min-h-0 text-sm font-medium rounded-lg whitespace-nowrap no-underline;
         @apply text-sage hover:text-charcoal active:scale-[0.97] cursor-pointer;
-        transition: color 0.18s ease-out, transform 0.12s ease-out;
+        transition: color 0.18s ease-out, background-color 0.15s ease-out, transform 0.12s ease-out;
     }
-    .segmented-item.is-active { @apply text-white; }
+    /* Hover on another option is a light preview of the selected tint.
+       The active label stays font-medium so its width (and the thumb
+       measured from it) does not jump. */
+    .segmented-item:not(.is-active):hover { @apply bg-forest/[0.04]; }
+    .segmented-item.is-active { @apply text-forest; }
     /* Fallback fill for the moment before the thumb is measured, and for
        anyone with JavaScript off. The thumb covers it once it is placed. */
-    .segmented:not(.is-ready) .segmented-item.is-active { @apply bg-forest; }
+    .segmented:not(.is-ready) .segmented-item.is-active { @apply bg-forest/[0.1] ring-2 ring-inset ring-forest; }
     .segmented-icon { @apply w-4 h-4 shrink-0; }
     .segmented-count { @apply inline-flex items-center justify-center min-w-[20px] px-1.5 h-5 text-[11px] font-semibold tabular-nums rounded-full bg-light-sage text-sage transition-colors duration-200; }
-    .segmented-item.is-active .segmented-count { @apply bg-white/20 text-white; }
+    .segmented-item.is-active .segmented-count { @apply bg-forest/15 text-forest; }
     /* Scroll the rail instead of wrapping it when the labels outgrow the phone */
     .segmented-scroll { @apply -mx-4 px-4 overflow-x-auto sm:mx-0 sm:px-0 sm:overflow-visible; scrollbar-width: none; }
     .segmented-scroll::-webkit-scrollbar { display: none; }
