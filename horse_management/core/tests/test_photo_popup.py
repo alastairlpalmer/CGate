@@ -14,8 +14,6 @@ from django.utils import timezone
 from core.models import Document, Horse, HorsePhoto, Location, Owner, Placement, RateType
 from core.roles_testutils import make_admin, make_viewer
 
-TEMP_MEDIA = tempfile.mkdtemp(prefix='cgate-photo-popup-tests-')
-
 POPUP = {'HTTP_HX_REQUEST': 'true', 'HTTP_HX_TARGET': 'popup-body'}
 
 
@@ -31,13 +29,28 @@ def _photo(name='snap.jpg'):
     return SimpleUploadedFile(name, _image_bytes(), content_type='image/jpeg')
 
 
-@override_settings(MEDIA_ROOT=TEMP_MEDIA)
 class PhotoPopupTestCase(TestCase):
+    """Each test class gets a media folder of its own.
+
+    The folder used to be made once, at import, and shared by every class
+    here, and each class deleted it in tearDownClass. Under `--parallel`
+    the workers are forked after import, so they all share that one path:
+    a class finishing in one worker deleted the photos a class in another
+    worker was still reading (FileNotFoundError in CI, now and then).
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls._media_root = tempfile.mkdtemp(prefix='cgate-photo-popup-tests-')
+        cls._media_override = override_settings(MEDIA_ROOT=cls._media_root)
+        cls._media_override.enable()
+        super().setUpClass()
 
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
-        shutil.rmtree(TEMP_MEDIA, ignore_errors=True)
+        cls._media_override.disable()
+        shutil.rmtree(cls._media_root, ignore_errors=True)
 
     def setUp(self):
         self.horse = Horse.objects.create(name='Dobbin')
