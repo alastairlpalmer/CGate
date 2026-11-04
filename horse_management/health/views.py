@@ -70,9 +70,12 @@ from .models import (
     MedicalCondition,
     Vaccination,
     VaccinationType,
+    FARRIER_GROUP,
+    VACCINATION_GROUP,
     VetVisit,
     WormEggCount,
     WormingTreatment,
+    annotate_superseded,
     current_farrier_visits,
     current_vaccinations,
 )
@@ -118,7 +121,7 @@ def health_dashboard(request):
         high_egg_counts = list(WormEggCount.objects.select_related('horse').filter(
             horse__is_active=True,
             date__gte=today - timedelta(days=90),
-            count__gt=200,
+            count__gte=WormEggCount.TREATMENT_THRESHOLD,
         ).order_by('-date'))
 
         # Active conditions
@@ -153,10 +156,14 @@ def health_dashboard(request):
             queryset = current_vaccinations(queryset).filter(
                 next_due_date__lt=today,
             )
+        else:
+            # Every record, each marked when a newer one replaced it: a
+            # replaced record's past due date is not \"Overdue\".
+            queryset = annotate_superseded(queryset, **VACCINATION_GROUP)
         horse = request.GET.get('horse')
         if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
-        paginator = Paginator(queryset.order_by('next_due_date'), 50)
+        paginator = Paginator(queryset.order_by('is_superseded', 'next_due_date'), 50)
         page_obj = paginator.get_page(request.GET.get('page'))
         context['vaccinations'] = page_obj
         context['page_obj'] = page_obj
@@ -177,6 +184,10 @@ def health_dashboard(request):
             queryset = current_farrier_visits(queryset).filter(
                 next_due_date__lt=today,
             )
+        else:
+            # Every record, each marked when a newer one replaced it: a
+            # replaced record's past due date is not \"Overdue\".
+            queryset = annotate_superseded(queryset, **FARRIER_GROUP)
         horse = request.GET.get('horse')
         if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
@@ -771,13 +782,17 @@ class VaccinationListView(FeatureAccessMixin, ListView):
             queryset = current_vaccinations(queryset).filter(
                 next_due_date__lt=today,
             )
+        else:
+            # Every record, each marked when a newer one replaced it: a
+            # replaced record's past due date is not \"Overdue\".
+            queryset = annotate_superseded(queryset, **VACCINATION_GROUP)
 
         # Filter by horse
         horse = self.request.GET.get('horse')
         if horse and horse.isdigit():
             queryset = queryset.filter(horse_id=horse)
 
-        return queryset.order_by('next_due_date')
+        return queryset.order_by('is_superseded', 'next_due_date')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -937,6 +952,10 @@ class FarrierListView(FeatureAccessMixin, ListView):
             queryset = current_farrier_visits(queryset).filter(
                 next_due_date__lt=today,
             )
+        else:
+            # Every record, each marked when a newer one replaced it: a
+            # replaced record's past due date is not \"Overdue\".
+            queryset = annotate_superseded(queryset, **FARRIER_GROUP)
 
         # Filter by horse
         horse = self.request.GET.get('horse')

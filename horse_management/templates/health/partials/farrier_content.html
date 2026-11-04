@@ -63,7 +63,7 @@
                 <div class="list-card-meta">{{ visit.get_work_done_display }} &middot; {{ visit.date|date:"d M Y" }}</div>
                 <div class="list-card-meta truncate">
                     {% if visit.service_provider %}{{ visit.service_provider.name }}{% endif %}
-                    {% if visit.next_due_date %}{% if visit.service_provider %} &middot; {% endif %}<span class="{% if visit.next_due_date < today %}text-error-red font-semibold{% elif visit.is_due_soon %}text-forest{% endif %}">due {{ visit.next_due_date|date:"d M Y" }}</span>{% endif %}
+                    {% if visit.next_due_date %}{% if visit.service_provider %} &middot; {% endif %}<span class="{% if not visit.is_superseded and visit.next_due_date < today %}text-error-red font-semibold{% elif visit.is_due_soon %}text-forest{% endif %}">due {{ visit.next_due_date|date:"d M Y" }}</span>{% endif %}
                 </div>
             </div>
             <div class="flex flex-col items-end gap-1 shrink-0">
@@ -108,7 +108,7 @@
                     <td class="text-sage">
                         {% if visit.service_provider %}{{ visit.service_provider.name }}{% else %}<span class="text-sage">-</span>{% endif %}
                     </td>
-                    <td class="{% if visit.next_due_date and visit.next_due_date < today %}text-error-red font-semibold{% elif visit.is_due_soon %}text-forest{% else %}text-sage{% endif %}">
+                    <td class="{% if visit.next_due_date and not visit.is_superseded and visit.next_due_date < today %}text-error-red font-semibold{% elif visit.is_due_soon %}text-forest{% else %}text-sage{% endif %}">
                         {% if visit.next_due_date %}{{ visit.next_due_date|date:"d M Y" }}{% else %}<span class="text-sage">-</span>{% endif %}
                     </td>
                     {% if feature_access.charges.view %}<td class="text-right">

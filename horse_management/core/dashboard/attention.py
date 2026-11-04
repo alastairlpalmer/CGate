@@ -308,13 +308,22 @@ def _farrier(ctx):
 
 
 def _vet_follow_ups(ctx):
+    from django.db.models import Exists, OuterRef
+
     from health.models import VetVisit
 
+    # A follow-up is done once the horse has another vet visit on or after
+    # its date. Without this check every follow-up ever recorded stayed
+    # "overdue" for ever.
+    seen_since = VetVisit.objects.filter(
+        horse_id=OuterRef('horse_id'),
+        date__gte=OuterRef('follow_up_date'),
+    ).exclude(pk=OuterRef('pk'))
     qs = VetVisit.objects.filter(
         horse__is_active=True,
         follow_up_date__isnull=False,
         follow_up_date__lte=ctx.horizon,
-    ).select_related('horse').order_by('follow_up_date')
+    ).exclude(Exists(seen_since)).select_related('horse').order_by('follow_up_date')
     full = ctx.can('health', LEVEL_FULL)
     items = []
     for visit in qs:
@@ -350,7 +359,8 @@ def _standing_egg_counts(ctx):
 
     since = ctx.today - timedelta(days=90)
     counts = WormEggCount.objects.filter(
-        horse__is_active=True, date__gte=since, count__gt=200,
+        horse__is_active=True, date__gte=since,
+        count__gte=WormEggCount.TREATMENT_THRESHOLD,
     ).select_related('horse').order_by('-date', '-pk')
     if not counts:
         ctx._standing_eggs = {}
@@ -473,8 +483,13 @@ def _breeding(ctx):
         if record.status != BreedingRecord.Status.CONFIRMED:
             continue
         if include_ehv:
+            done = None
             for month, due in sorted(record.ehv_vaccination_dates.items()):
                 if due - timedelta(days=14) <= ctx.today <= due + timedelta(days=7):
+                    if done is None:
+                        done = record.ehv_months_done()
+                    if month in done:
+                        continue
                     actions = []
                     if health_full:
                         actions.append(ctx.record_action(
