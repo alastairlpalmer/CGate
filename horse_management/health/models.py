@@ -663,7 +663,23 @@ class BreedingRecord(models.Model):
         super().__init__(*args, **kwargs)
         self._loaded_date_covered = self.date_covered
 
+    def _rearm_ehv_if_covering_moved(self):
+        """A corrected covering date moves the EHV doses: send them again.
+
+        Returns True when the sent months were cleared. Without this the
+        month-5 reminder went out for the old date and never for the new.
+        """
+        if (
+            self.pk and self._loaded_date_covered and self.ehv_reminders_sent
+            and self.date_covered != self._loaded_date_covered
+        ):
+            self.ehv_reminders_sent = ''
+            return True
+        return False
+
     def save(self, *args, **kwargs):
+        if self._rearm_ehv_if_covering_moved() and kwargs.get('update_fields') is not None:
+            kwargs['update_fields'] = list(kwargs['update_fields']) + ['ehv_reminders_sent']
         if self.date_covered and not self.due_date_is_manual:
             self.date_foal_due = self.date_covered + timedelta(days=self.GESTATION_DAYS)
         elif not self.date_foal_due and self.date_covered:
@@ -701,6 +717,8 @@ class BreedingRecord(models.Model):
         if self.date_covered != latest:
             self.date_covered = latest
             changed.append('date_covered')
+            if self._rearm_ehv_if_covering_moved():
+                changed.append('ehv_reminders_sent')
         if not self.due_date_is_manual:
             due = latest + timedelta(days=self.GESTATION_DAYS)
             if self.date_foal_due != due:

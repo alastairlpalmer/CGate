@@ -118,12 +118,17 @@ class Owner(models.Model):
         deleting would take the stays and invoices with it, or be refused
         by the database.
         """
+        from billing.models import ExtraCharge
+
         counts = {
             'stays': self.placements.count(),
             'ownership shares': self.ownership_shares.count(),
             'invoices': self.invoices.count(),
-            'extra charges': self.extra_charges.count(),
-            'documents': self.documents.count(),
+            # all_objects: a charge or document in Recently Deleted still
+            # points at the owner (a charge's owner is PROTECT), so a delete
+            # would fail with a 500.
+            'extra charges': ExtraCharge.all_objects.filter(owner=self).count(),
+            'documents': Document.all_objects.filter(owner=self).count(),
             'legacy ownership records': self.horse_ownerships.count(),
         }
         if hasattr(self, 'xero_contact'):
@@ -134,9 +139,12 @@ class Owner(models.Model):
     def has_history(self):
         """True at the first record that points at this owner: one cheap
         query per relation until a hit, not the full counts."""
+        from billing.models import ExtraCharge
+
         related = (
             self.placements, self.ownership_shares, self.invoices,
-            self.extra_charges, self.documents, self.horse_ownerships,
+            ExtraCharge.all_objects.filter(owner=self),
+            Document.all_objects.filter(owner=self), self.horse_ownerships,
         )
         if any(qs.exists() for qs in related):
             return True
@@ -1474,6 +1482,31 @@ class Document(SoftDeleteModel):
         from django.utils import timezone
         return bool(self.expiry_date) and self.expiry_date < timezone.localdate()
 
+
+
+def documents_needing_renewal(queryset, today=None):
+    """Documents whose expiry still matters: the shared rule for the
+    dashboard inbox and the yard's expiry email.
+
+    Leaves out documents of departed horses and archived owners, and an
+    expired document that was renewed: one of the same type, for the same
+    horse or owner, is still valid (a renewed insurance certificate left
+    the old one "expired" in the inbox for good). A document that has not
+    expired yet always stays: a yard can hold two policies of one type.
+    """
+    from django.db.models import Exists, OuterRef
+
+    today = today or timezone.localdate()
+    renewed = Document.objects.filter(
+        doc_type=OuterRef('doc_type'),
+        expiry_date__gte=today,
+    ).filter(
+        Q(horse_id=OuterRef('horse_id'))
+        | Q(horse__isnull=True, owner_id=OuterRef('owner_id'))
+    )
+    return queryset.filter(
+        Q(horse__is_active=True) | Q(horse__isnull=True, owner__is_archived=False)
+    ).exclude(Q(expiry_date__lt=today) & Exists(renewed))
 
 class HorsePhoto(models.Model):
     """A quick-add photo on a horse's record: condition shots, markings,

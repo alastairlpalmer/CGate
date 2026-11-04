@@ -214,6 +214,10 @@ def send_overdue_invoice_reminders():
         step = invoice.overdue_reminder_count
         if (today - invoice.due_date).days < schedule[step]:
             continue
+        # Nothing owed (a £0 invoice, or paid in full but not yet marked):
+        # no "Payment reminder" for £0.00.
+        if invoice.balance_due <= 0:
+            continue
         try:
             previous = invoice.last_overdue_reminder_at
             # Atomic claim on the step: update returns 0 if another worker
@@ -409,7 +413,7 @@ def send_document_expiry_reminders():
     if none is configured the sweep is skipped and nothing is consumed.
     Run daily via Celery Beat.
     """
-    from core.models import BusinessSettings, Document
+    from core.models import BusinessSettings, Document, documents_needing_renewal
 
     from .emails import send_document_expiry_summary
 
@@ -429,10 +433,13 @@ def send_document_expiry_reminders():
     # runs at once used to both email every document.
     with transaction.atomic():
         ids = list(
-            Document.objects.select_for_update(skip_locked=True).filter(
-                expiry_date__isnull=False,
-                expiry_date__lte=cutoff,
-                expiry_reminder_sent=False,
+            documents_needing_renewal(
+                Document.objects.select_for_update(skip_locked=True).filter(
+                    expiry_date__isnull=False,
+                    expiry_date__lte=cutoff,
+                    expiry_reminder_sent=False,
+                ),
+                today=today,
             ).values_list('pk', flat=True)
         )
         Document.objects.filter(pk__in=ids, expiry_reminder_sent=False).update(

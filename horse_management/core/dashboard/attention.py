@@ -17,6 +17,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, timedelta
+from urllib.parse import urlencode
 from decimal import Decimal
 
 from django.db.models import (
@@ -594,16 +595,18 @@ def _documents(ctx):
     """Passports, insurance and other documents expired or expiring within
     30 days. The yard gets an email for these; the inbox is where they get
     dealt with."""
-    from ..models import Document
+    from ..models import Document, documents_needing_renewal
 
-    qs = Document.objects.filter(
+    qs = documents_needing_renewal(Document.objects.filter(
         expiry_date__isnull=False,
         expiry_date__lte=ctx.today + timedelta(days=30),
-    ).filter(
-        Q(horse__isnull=True) | Q(horse__is_active=True),
-    ).select_related('horse', 'owner').order_by('expiry_date')
+    ), today=ctx.today).select_related('horse', 'owner').order_by('expiry_date')
+    # An owner's documents follow Owners access (as their files do).
+    owners_ok = ctx.can('owners')
     items = []
     for doc in qs:
+        if not doc.horse_id and not owners_ok:
+            continue
         due = doc.expiry_date
         if doc.horse_id:
             location, site = ctx.where(doc.horse_id)
@@ -813,7 +816,7 @@ def _feed(ctx):
             severity='overdue' if balance <= 0 else 'info',
             title=f'{type_labels.get(feed_type, feed_type)} · {site}',
             detail=f'Feed stock · {left}',
-            url=reverse('feed_dashboard') + f'?site={site}&feed_type={feed_type}',
+            url=reverse('feed_dashboard') + '?' + urlencode({'site': site, 'feed_type': feed_type}),
             site=site if site != 'Unassigned' else '',
             actions=actions,
             key=f'feed-{site}-{feed_type}-{unit}',

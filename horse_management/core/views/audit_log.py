@@ -19,7 +19,11 @@ def audit_log(request):
     category = request.GET.get('category', '')
     if category not in dict(audit.CATEGORIES):
         category = ''
-    before = parse_datetime(request.GET.get('before', '') or '')
+    try:
+        before = parse_datetime(request.GET.get('before', '') or '')
+    except ValueError:
+        # Well formed but impossible (30 February): not a 500.
+        before = None
     if before is not None and not isinstance(before, datetime):
         before = None
     entries, next_before = audit.timeline(category=category, before=before)

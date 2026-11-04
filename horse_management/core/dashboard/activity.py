@@ -93,7 +93,7 @@ def _horse(horse):
     return Name(horse.name, reverse('horse_detail', args=[horse.pk]), horse.color or '')
 
 
-def _placement_events(limit):
+def _placement_events(limit, site=''):
     """Arrivals, moves and departures from the placement log.
 
     A move closes one placement and opens another the next day; when both
@@ -101,10 +101,13 @@ def _placement_events(limit):
     """
     from ..models import Placement
 
-    starts = list(Placement.objects.select_related('horse', 'location').order_by(
+    placements = Placement.objects.all()
+    if site:
+        placements = placements.filter(location__site=site)
+    starts = list(placements.select_related('horse', 'location').order_by(
         '-start_date', '-pk',
     )[:limit])
-    ends = list(Placement.objects.filter(end_date__isnull=False).select_related(
+    ends = list(placements.filter(end_date__isnull=False).select_related(
         'horse', 'location',
     ).order_by('-end_date', '-pk')[:limit])
 
@@ -161,13 +164,23 @@ def recent(user, *, site='', today=None, limit=DEFAULT_LIMIT, max_rows=MAX_ROWS)
             ).values_list('horse_id', 'location__site')
         }
 
+    # Filter each source by site before taking its newest ``limit`` rows:
+    # filtering after, a busy site filled every source and a quiet site's
+    # events never reached the page. Records of horses standing on another
+    # site are dropped here; horses with no open stay (no site) stay, as
+    # the final filter keeps events with no site.
+    elsewhere = {horse_id for horse_id, loc_site in where.items() if loc_site != site}
+
+    def on_site(queryset):
+        return queryset.exclude(horse_id__in=elsewhere) if site else queryset
+
     events = []
 
     if can('horses'):
-        events.extend(_placement_events(limit))
+        events.extend(_placement_events(limit, site))
 
         from ..models import Document
-        for doc in Document.objects.select_related('horse', 'owner').order_by('-uploaded_at')[:limit]:
+        for doc in on_site(Document.objects).select_related('horse', 'owner').order_by('-uploaded_at')[:limit]:
             if doc.horse_id:
                 names = [_horse(doc.horse)]
             elif doc.owner_id:
@@ -184,7 +197,7 @@ def recent(user, *, site='', today=None, limit=DEFAULT_LIMIT, max_rows=MAX_ROWS)
         from health.models import (
             FarrierVisit, Vaccination, VetVisit, WormEggCount, WormingTreatment,
         )
-        for vax in Vaccination.objects.select_related('horse', 'vaccination_type').order_by(
+        for vax in on_site(Vaccination.objects).select_related('horse', 'vaccination_type').order_by(
             '-date_given', '-pk',
         )[:limit]:
             events.append(Event(
@@ -193,14 +206,14 @@ def recent(user, *, site='', today=None, limit=DEFAULT_LIMIT, max_rows=MAX_ROWS)
                 names=[_horse(vax.horse)], amount=cost(vax),
                 site=where.get(vax.horse_id, ''), sort_ts=_ts(vax.created_at),
             ))
-        for visit in FarrierVisit.objects.select_related('horse').order_by('-date', '-pk')[:limit]:
+        for visit in on_site(FarrierVisit.objects).select_related('horse').order_by('-date', '-pk')[:limit]:
             events.append(Event(
                 date=visit.date, kind='farrier',
                 what=f'Farrier · {visit.get_work_done_display()}',
                 names=[_horse(visit.horse)], amount=cost(visit),
                 site=where.get(visit.horse_id, ''), sort_ts=_ts(visit.created_at),
             ))
-        for visit in VetVisit.objects.select_related('horse').order_by('-date', '-pk')[:limit]:
+        for visit in on_site(VetVisit.objects).select_related('horse').order_by('-date', '-pk')[:limit]:
             reason = (visit.reason or '').strip()
             events.append(Event(
                 date=visit.date, kind='vet',
@@ -208,14 +221,14 @@ def recent(user, *, site='', today=None, limit=DEFAULT_LIMIT, max_rows=MAX_ROWS)
                 names=[_horse(visit.horse)], amount=cost(visit),
                 site=where.get(visit.horse_id, ''), sort_ts=_ts(visit.created_at),
             ))
-        for treatment in WormingTreatment.objects.select_related('horse').order_by('-date', '-pk')[:limit]:
+        for treatment in on_site(WormingTreatment.objects).select_related('horse').order_by('-date', '-pk')[:limit]:
             events.append(Event(
                 date=treatment.date, kind='worming',
                 what='Wormed' + (f' · {treatment.product_name}' if treatment.product_name else ''),
                 names=[_horse(treatment.horse)], amount=cost(treatment),
                 site=where.get(treatment.horse_id, ''), sort_ts=_ts(treatment.created_at),
             ))
-        for count in WormEggCount.objects.select_related('horse').order_by('-date', '-pk')[:limit]:
+        for count in on_site(WormEggCount.objects).select_related('horse').order_by('-date', '-pk')[:limit]:
             events.append(Event(
                 date=count.date, kind='egg_count',
                 what=f'Egg count · {count.count} EPG',
@@ -232,7 +245,7 @@ def recent(user, *, site='', today=None, limit=DEFAULT_LIMIT, max_rows=MAX_ROWS)
             worming_treatment__isnull=True, vet_visit__isnull=True,
             worm_egg_count__isnull=True,
         )
-        for charge in standalone.select_related('horse').order_by('-date', '-pk')[:limit]:
+        for charge in on_site(standalone).select_related('horse').order_by('-date', '-pk')[:limit]:
             events.append(Event(
                 date=charge.date, kind='charge',
                 what=f'{charge.get_charge_type_display()} charge',
@@ -245,9 +258,11 @@ def recent(user, *, site='', today=None, limit=DEFAULT_LIMIT, max_rows=MAX_ROWS)
         from invoicing.models import Invoice, Payment
         for payment in Payment.objects.select_related('invoice', 'invoice__owner').order_by('-date', '-pk')[:limit]:
             owner = payment.invoice.owner
+            # A credit note is a Payment row but not money received.
+            received = 'Credit note' if payment.method == Payment.Method.CREDIT_NOTE else 'Payment received'
             events.append(Event(
                 date=payment.date, kind='payment',
-                what=f'Payment received · {payment.invoice.invoice_number}',
+                what=f'{received} · {payment.invoice.invoice_number}',
                 names=[Name(owner.name, reverse('owner_detail', args=[owner.pk]))],
                 url=reverse('invoice_detail', args=[payment.invoice_id]),
                 amount=payment.amount, sort_ts=_ts(payment.created_at),
@@ -263,7 +278,7 @@ def recent(user, *, site='', today=None, limit=DEFAULT_LIMIT, max_rows=MAX_ROWS)
 
     if can('feed'):
         from billing.models import FeedOut
-        for feed in FeedOut.objects.select_related('location').order_by('-date', '-pk')[:limit]:
+        for feed in (FeedOut.objects.filter(location__site=site) if site else FeedOut.objects).select_related('location').order_by('-date', '-pk')[:limit]:
             events.append(Event(
                 date=feed.date, kind='feed',
                 what=f'{feed.get_feed_type_display()} fed out',
