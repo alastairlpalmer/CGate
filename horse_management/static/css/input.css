@@ -1130,6 +1130,15 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 .data-table tbody tr[data-horse-row].is-selected:hover {
     @apply bg-forest/[0.1] ring-2 ring-inset ring-forest;
 }
+/* Ticked rows in any table (and ticked phone list cards) use the same
+   selected style, so a bulk selection is as obvious as the previewed
+   horse. The horse list's tick box cell only counts while Select is on:
+   switched off, the boxes are hidden and may still hold old ticks. */
+.data-table tbody tr:has(> td:not([data-select-cell]) > input[type="checkbox"]:checked),
+.split-view.is-selecting .data-table tbody tr:has(> td[data-select-cell] > input[type="checkbox"]:checked),
+.list-card:has(input[type="checkbox"]:checked) {
+    @apply bg-forest/[0.1] ring-2 ring-inset ring-forest;
+}
 [data-horse-row].is-selected [data-horse-link] .font-medium { @apply text-forest font-semibold; }
 [data-horse-row].is-selected [data-horse-link] > img,
 [data-horse-row].is-selected [data-horse-link] > div:first-child {
