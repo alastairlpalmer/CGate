@@ -17,13 +17,19 @@ from .models import (
 )
 
 
-def get_grouped_location_choices():
+def get_grouped_location_choices(include_pk=None):
     """Build location choices grouped by site for <optgroup> rendering.
 
     Archived fields are left out — they are retired, so nothing new should
-    be placed on them.
+    be placed on them. ``include_pk`` keeps one archived field in the list:
+    the one a past stay was on, so that stay can still be edited.
     """
-    locations = Location.objects.active().order_by('site', 'name')
+    from django.db.models import Q
+
+    wanted = Q(pk__in=Location.objects.active().values('pk'))
+    if include_pk:
+        wanted |= Q(pk=include_pk)
+    locations = Location.objects.filter(wanted).order_by('site', 'name')
     choices = [('', '---------')]
     current_site = None
     group = []
@@ -390,7 +396,18 @@ class PlacementForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['location'].choices = get_grouped_location_choices()
+        # Active fields, plus the stay's own field if it was archived since:
+        # without it an old stay could not be saved without moving it.
+        # The queryset matches, so a crafted POST cannot pick another
+        # archived field.
+        own_location = self.instance.location_id if self.instance.pk else None
+        self.fields['location'].choices = get_grouped_location_choices(include_pk=own_location)
+        allowed = Location.objects.active()
+        if own_location:
+            allowed = Location.objects.filter(
+                Q(pk__in=allowed.values('pk')) | Q(pk=own_location)
+            )
+        self.fields['location'].queryset = allowed
         if self.instance.pk and self.instance.end_date is None:
             # The open stay is billed to whoever the Ownership card names,
             # and follows it (PlacementService.sync_placement_owner). An

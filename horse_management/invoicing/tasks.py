@@ -80,7 +80,7 @@ SEND_RETRY_BASE_SECONDS = 60
 
 
 @shared_task(bind=True)
-def send_invoice_email_task(self, invoice_pk):
+def send_invoice_email_task(self, invoice_pk, already_sent=False):
     """Email one claimed invoice and mark it sent.
 
     Runs after claim_invoice_for_sending. Outcomes: 'sent', 'failed'
@@ -94,9 +94,16 @@ def send_invoice_email_task(self, invoice_pk):
     """
     from django.db import transaction
 
+    from core.jobs import RETRYABLE_ERRORS
     from invoicing.models import Invoice
     from notifications.emails import send_invoice_email
     from notifications.mail import can_email
+
+    if already_sent:
+        # A retry after the email went out but recording it failed: record
+        # it, and do not send again.
+        Invoice.objects.get(pk=invoice_pk).mark_as_sent()
+        return 'sent'
 
     with transaction.atomic():
         invoice = (
@@ -136,7 +143,20 @@ def send_invoice_email_task(self, invoice_pk):
         sent = False
 
     if sent:
-        invoice.mark_as_sent()
+        try:
+            invoice.mark_as_sent()
+        except RETRYABLE_ERRORS as exc:
+            # The email went out but the database did not record it. The
+            # automatic retry ran the whole task and emailed the owner
+            # again; this retry only records the send.
+            logger.warning(
+                "Invoice %s was emailed but not marked sent (%s); recording it again.",
+                invoice.invoice_number, exc,
+            )
+            raise self.retry(
+                exc=exc, args=(invoice_pk,), kwargs={'already_sent': True},
+                countdown=SEND_RETRY_BASE_SECONDS,
+            )
         return 'sent'
 
     if not self.request.called_directly and self.request.retries < self.max_retries:
