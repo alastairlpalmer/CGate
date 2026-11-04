@@ -144,7 +144,14 @@ def send_invoice_email_task(self, invoice_pk, already_sent=False):
 
     if sent:
         try:
-            invoice.mark_as_sent()
+            if not invoice.mark_as_sent():
+                # Cancelled or deleted while the email was going out.
+                logger.warning(
+                    "Invoice %s was emailed but changed meanwhile; not marked sent.",
+                    invoice.invoice_number,
+                )
+                Invoice.objects.filter(pk=invoice.pk).update(send_queued_at=None)
+                return 'skipped'
         except RETRYABLE_ERRORS as exc:
             # The email went out but the database did not record it. The
             # automatic retry ran the whole task and emailed the owner
