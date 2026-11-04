@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Database Check - Yardway{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Database Check</h1>
+            <p class="page-subtitle">Where the live database differs from the app's code. This page only reads; it changes nothing.</p>
+        </div>
+    </div>
+
+    {% if not columns and not migrations %}
+    <div class="card p-5">
+        <p class="text-sm text-charcoal"><span class="badge-success">OK</span> The database matches the code.</p>
+    </div>
+    {% else %}
+    <div class="card overflow-hidden">
+        <div class="section-header">
+            <h2 class="section-title">Tables and columns</h2>
+            <span class="badge-info">{{ columns|length }}</span>
+        </div>
+        {% if columns %}
+        <ul class="divide-y divide-light-sage">
+            {% for line in columns %}<li class="px-5 py-2.5 text-sm text-charcoal font-mono break-all">{{ line }}</li>{% endfor %}
+        </ul>
+        {% else %}
+        <p class="px-5 py-4 text-sm text-sage">No differences.</p>
+        {% endif %}
+    </div>
+
+    <div class="card overflow-hidden">
+        <div class="section-header">
+            <h2 class="section-title">Migrations</h2>
+            <span class="badge-info">{{ migrations|length }}</span>
+        </div>
+        {% if migrations %}
+        <ul class="divide-y divide-light-sage">
+            {% for line in migrations %}<li class="px-5 py-2.5 text-sm text-charcoal font-mono break-all">{{ line }}</li>{% endfor %}
+        </ul>
+        {% else %}
+        <p class="px-5 py-4 text-sm text-sage">No differences.</p>
+        {% endif %}
+    </div>
+
+    <p class="text-xs text-sage">
+        An extra column marked "NOT NULL: inserts may fail" can stop records being saved.
+        Extra tables and columns that allow empty values are harmless leftovers.
+        The same check runs from a console with <code>python manage.py schema_check</code>.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}
