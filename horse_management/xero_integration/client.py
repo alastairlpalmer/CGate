@@ -5,7 +5,12 @@ Handles OAuth token management and authenticated API requests
 using the requests library directly.
 """
 
+import base64
+import json
 import logging
+import threading
+import time
+from contextlib import contextmanager
 from urllib.parse import urlencode
 
 import requests
@@ -17,6 +22,7 @@ logger = logging.getLogger(__name__)
 XERO_AUTHORIZE_URL = 'https://login.xero.com/identity/connect/authorize'
 XERO_TOKEN_URL = 'https://identity.xero.com/connect/token'
 XERO_CONNECTIONS_URL = 'https://api.xero.com/connections'
+XERO_REVOKE_URL = 'https://identity.xero.com/connect/revocation'
 XERO_API_BASE = 'https://api.xero.com/api.xro/2.0'
 
 # Longest error detail kept from a Xero response, for logs and messages.
@@ -47,6 +53,72 @@ def error_summary(response):
                 parts.append(problem['Message'])
     summary = '; '.join(dict.fromkeys(parts)) or 'no detail'
     return summary[:ERROR_SUMMARY_LENGTH]
+
+
+# Pacing for long runs of calls (bulk push). Xero allows 60 calls a minute
+# per organisation; inside paced_calls() each call waits until at least
+# `interval` seconds have passed since the previous one.
+_pacing = threading.local()
+
+
+@contextmanager
+def paced_calls(interval):
+    """Space every Xero API call made inside this block `interval` s apart."""
+    _pacing.interval = interval
+    _pacing.last_call = None
+    try:
+        yield
+    finally:
+        _pacing.interval = None
+        _pacing.last_call = None
+
+
+def _wait_for_pace():
+    interval = getattr(_pacing, 'interval', None)
+    if not interval:
+        return
+    last_call = getattr(_pacing, 'last_call', None)
+    if last_call is not None:
+        wait = interval - (time.monotonic() - last_call)
+        if wait > 0:
+            time.sleep(wait)
+    _pacing.last_call = time.monotonic()
+
+
+def _token_claims(access_token):
+    """The claims of a Xero access token (a JWT), without verifying it.
+
+    The token came straight from Xero's token endpoint over TLS, so it is
+    only read here, to find which authorisation it belongs to.
+    """
+    try:
+        payload = access_token.split('.')[1]
+        payload += '=' * (-len(payload) % 4)
+        claims = json.loads(base64.urlsafe_b64decode(payload))
+    except (IndexError, ValueError, AttributeError):
+        return {}
+    return claims if isinstance(claims, dict) else {}
+
+
+def choose_tenant(access_token, tenants):
+    """The organisation the user just authorised, or None if unclear.
+
+    Xero's connections list holds every organisation this app was ever
+    connected to and not removed in Xero, oldest first. The new access
+    token names the authorisation event, and the organisation(s) chosen
+    in that event carry the same authEventId.
+    """
+    organisations = [
+        t for t in tenants if t.get('tenantType', 'ORGANISATION') == 'ORGANISATION'
+    ]
+    event_id = _token_claims(access_token).get('authentication_event_id')
+    if event_id:
+        chosen = [t for t in organisations if t.get('authEventId') == event_id]
+        if len(chosen) == 1:
+            return chosen[0]
+    if len(organisations) == 1:
+        return organisations[0]
+    return None
 
 
 class XeroAPIError(Exception):
@@ -140,6 +212,34 @@ class XeroClient:
                 f'Failed to fetch connections: {response.status_code} ({error_summary(response)})'
             )
         return response.json()
+
+    @staticmethod
+    def revoke_refresh_token(refresh_token):
+        """Remove this app's access in Xero (all its organisations).
+
+        Returns True when Xero confirms. Without this, a disconnected
+        organisation stayed in Xero's connections list.
+        """
+        if not refresh_token:
+            return False
+        try:
+            response = requests.post(
+                XERO_REVOKE_URL,
+                data={'token': refresh_token},
+                auth=(settings.XERO_CLIENT_ID, settings.XERO_CLIENT_SECRET),
+                headers={'Content-Type': 'application/x-www-form-urlencoded'},
+                timeout=15,
+            )
+        except requests.RequestException as exc:
+            logger.warning('Could not reach Xero to revoke access: %s', exc)
+            return False
+        if response.status_code != 200:
+            logger.warning(
+                'Xero refused to revoke access: %s (%s)',
+                response.status_code, error_summary(response),
+            )
+            return False
+        return True
 
     # ── Token management ──
 
@@ -266,6 +366,7 @@ class XeroClient:
             headers['Idempotency-Key'] = idempotency_key
 
         try:
+            _wait_for_pace()
             response = requests.request(
                 method, url,
                 headers=headers,
@@ -278,6 +379,7 @@ class XeroClient:
                 # Token may have expired between check and request — try once more
                 self._refresh_access_token()
                 headers['Authorization'] = f'Bearer {self.connection.access_token}'
+                _wait_for_pace()
                 response = requests.request(
                     method, url,
                     headers=headers,

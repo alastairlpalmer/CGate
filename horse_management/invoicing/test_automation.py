@@ -33,6 +33,7 @@ def _placed_owner(name="Alice", email="a@example.com", horse_name="Ghost"):
 def _connected(is_connected=True):
     conn = MagicMock()
     conn.is_connected = is_connected
+    conn.xero_tenant_id = 'tenant'
     return patch(
         'xero_integration.models.XeroConnection.get_connection',
         return_value=conn,
@@ -172,7 +173,8 @@ class BulkPushToXeroTests(TestCase):
         ) as push:
             response = self._post([self.invoice.pk])
         push.assert_called_once_with(self.invoice)
-        self.assertContains(response, "Pushed 1 invoice")
+        # Paced to Xero's rate limit, so the worker does it, not the request.
+        self.assertContains(response, "Pushing 1 invoice to Xero in the background")
 
     def test_already_pushed_skipped(self):
         XeroInvoiceSync.objects.create(

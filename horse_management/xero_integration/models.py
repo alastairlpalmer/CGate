@@ -73,6 +73,10 @@ class XeroContactMapping(models.Model):
     )
     xero_contact_id = models.CharField(max_length=100, unique=True)
     xero_contact_name = models.CharField(max_length=200)
+    # The Xero organisation the contact is in. A contact ID from another
+    # organisation is no use for a push, so connecting to a different
+    # organisation clears these mappings (views.xero_callback).
+    xero_tenant_id = models.CharField(max_length=100, blank=True, default='', db_default='')
     last_synced_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -106,12 +110,28 @@ class XeroInvoiceSync(models.Model):
     last_pushed_at = models.DateTimeField(null=True, blank=True)
     last_status_check_at = models.DateTimeField(null=True, blank=True)
     error_message = models.TextField(blank=True)
+    # The Xero organisation the invoice was pushed to.
+    xero_tenant_id = models.CharField(max_length=100, blank=True, default='', db_default='')
+    # Part of the Idempotency-Key. It goes up when Xero has given a final
+    # answer that a new push must not replay: the draft was deleted or
+    # voided in Xero, or Xero refused the push (4xx). See idempotency_key.
+    push_round = models.PositiveIntegerField(default=0, db_default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'Xero Invoice Sync'
+
+    @staticmethod
+    def idempotency_key(invoice_pk, push_round):
+        """Xero's Idempotency-Key for one push of an invoice.
+
+        Round 0 keeps the key used before rounds existed, so a retry of a
+        push made by older code still matches it.
+        """
+        key = f'yardway-invoice-{invoice_pk}'
+        return key if not push_round else f'{key}-{push_round}'
 
     def __str__(self):
         return f'{self.invoice.invoice_number} — {self.get_sync_status_display()}'

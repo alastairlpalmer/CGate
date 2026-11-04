@@ -30,14 +30,16 @@ class XeroContactService:
 
         Returns the xero_contact_id (str).
         """
-        # 1. Check local mapping first
-        try:
-            mapping = XeroContactMapping.objects.get(owner=owner)
-            return mapping.xero_contact_id
-        except XeroContactMapping.DoesNotExist:
-            pass
-
         client = XeroClient()
+        tenant_id = XeroConnection.get_connection().xero_tenant_id
+
+        # 1. Check local mapping first. A mapping from another Xero
+        #    organisation is useless here: drop it and look up again.
+        mapping = XeroContactMapping.objects.filter(owner=owner).first()
+        if mapping is not None:
+            if mapping.xero_tenant_id in ('', tenant_id):
+                return mapping.xero_contact_id
+            mapping.delete()
 
         # 2. Search Xero by name
         existing = client.find_contact_by_name(owner.name)
@@ -60,6 +62,7 @@ class XeroContactService:
                 owner=owner,
                 xero_contact_id=existing['ContactID'],
                 xero_contact_name=existing['Name'],
+                xero_tenant_id=tenant_id,
             )
             return existing['ContactID']
 
@@ -88,6 +91,7 @@ class XeroContactService:
             owner=owner,
             xero_contact_id=created['ContactID'],
             xero_contact_name=created['Name'],
+            xero_tenant_id=tenant_id,
         )
         logger.info('Created Xero contact for %s: %s', owner.name, created['ContactID'])
         return created['ContactID']
@@ -186,7 +190,10 @@ def push_invoice_to_xero(invoice):
     Concurrency is instead handled by Xero's Idempotency-Key (a repeat POST
     for the same invoice returns the original result) plus a short locked
     read-modify-write of the sync record at the end, so two racing pushes
-    converge on one PUSHED record.
+    converge on one PUSHED record. The key includes the sync record's
+    push_round, which goes up after Xero's final "no" (a 4xx, or the draft
+    deleted or voided there): a repeat of the same key would only replay
+    that old answer.
 
     Returns the XeroInvoiceSync record.
     Raises XeroNotConnectedError, XeroTokenExpiredError, or XeroAPIError.
@@ -200,8 +207,13 @@ def push_invoice_to_xero(invoice):
         raise XeroNotConnectedError('Xero is not connected. Please connect first.')
 
     existing_sync = XeroInvoiceSync.objects.filter(invoice=invoice).first()
-    if existing_sync and existing_sync.sync_status == XeroInvoiceSync.SyncStatus.PUSHED:
+    if (
+        existing_sync
+        and existing_sync.sync_status == XeroInvoiceSync.SyncStatus.PUSHED
+        and existing_sync.xero_tenant_id in ('', conn.xero_tenant_id)
+    ):
         return existing_sync
+    push_round = existing_sync.push_round if existing_sync else 0
 
     try:
         # 1. Ensure contact exists
@@ -213,11 +225,19 @@ def push_invoice_to_xero(invoice):
         # 3. Push to Xero (idempotent per invoice)
         client = XeroClient()
         xero_invoice = client.create_invoice(
-            payload, idempotency_key=f'yardway-invoice-{invoice.pk}',
+            payload,
+            idempotency_key=XeroInvoiceSync.idempotency_key(invoice.pk, push_round),
         )
     except XeroAPIError as error:
         # XeroAuthError / XeroTokenExpiredError are XeroAPIError subclasses.
-        _record_push_error(invoice, str(error))
+        # A 4xx other than 401 (auth) and 429 (rate limit) is Xero's final
+        # answer to this request: the next push needs a new key.
+        refused = (
+            error.status_code is not None
+            and 400 <= error.status_code < 500
+            and error.status_code not in (401, 429)
+        )
+        _record_push_error(invoice, str(error), new_round=refused)
         raise
 
     # 4. Record sync state under a lock so a racing push cannot leave two
@@ -231,23 +251,33 @@ def push_invoice_to_xero(invoice):
         sync.sync_status = XeroInvoiceSync.SyncStatus.PUSHED
         sync.last_pushed_at = now
         sync.error_message = ''
+        sync.xero_tenant_id = conn.xero_tenant_id
         sync.save()
     return sync
 
 
-def _record_push_error(invoice, message):
-    """Write (or update) the sync record for a failed push."""
+def _record_push_error(invoice, message, new_round=False):
+    """Write (or update) the sync record for a failed push.
+
+    ``new_round``: Xero refused this push for good, so the next push must
+    use a new Idempotency-Key.
+    """
+    from django.db.models import F
+
     sync, created = XeroInvoiceSync.objects.get_or_create(
         invoice=invoice,
         defaults={
             'sync_status': XeroInvoiceSync.SyncStatus.ERROR,
             'error_message': message,
+            'push_round': 1 if new_round else 0,
         },
     )
     if not created and sync.sync_status != XeroInvoiceSync.SyncStatus.PUSHED:
-        sync.sync_status = XeroInvoiceSync.SyncStatus.ERROR
-        sync.error_message = message
-        sync.save(update_fields=['sync_status', 'error_message'])
+        XeroInvoiceSync.objects.filter(pk=sync.pk).update(
+            sync_status=XeroInvoiceSync.SyncStatus.ERROR,
+            error_message=message,
+            push_round=F('push_round') + (1 if new_round else 0),
+        )
 
 
 def check_xero_invoice_status(sync):
@@ -266,16 +296,25 @@ def check_xero_invoice_status(sync):
     sync.last_status_check_at = now
 
     if xero_status == 'PAID':
+        from django.db import transaction
+
         sync.sync_status = XeroInvoiceSync.SyncStatus.PAID_IN_XERO
-        # Update local invoice if not already paid
-        invoice = sync.invoice
-        if invoice.status in (Invoice.Status.SENT, Invoice.Status.OVERDUE, Invoice.Status.DRAFT):
-            invoice.mark_as_paid(method='xero', reference='Reported paid by Xero')
+        # Update local invoice if not already paid. Locked and re-read: two
+        # checks at once (two staff on the page, or the nightly sweep) each
+        # recorded the full balance as a payment.
+        with transaction.atomic():
+            invoice = Invoice.objects.select_for_update().get(pk=sync.invoice_id)
+            if invoice.status in (
+                Invoice.Status.SENT, Invoice.Status.OVERDUE, Invoice.Status.DRAFT,
+            ):
+                invoice.mark_as_paid(method='xero', reference='Reported paid by Xero')
+        sync.invoice = invoice
     elif xero_status == 'AUTHORISED':
         sync.sync_status = XeroInvoiceSync.SyncStatus.PUSHED
     elif xero_status == 'VOIDED':
         sync.sync_status = XeroInvoiceSync.SyncStatus.ERROR
         sync.error_message = 'Invoice voided in Xero'
+        sync.push_round += 1
         # Mirror the void locally — a SENT/OVERDUE local copy of a voided
         # Xero invoice keeps emailing the owner overdue reminders forever.
         invoice = sync.invoice
@@ -298,6 +337,8 @@ def check_xero_invoice_status(sync):
         sync.error_message = (
             'Invoice draft deleted in Xero — push again if it should exist'
         )
+        # A new key, or "push again" replays the deleted draft's response.
+        sync.push_round += 1
 
     sync.save()
     return sync

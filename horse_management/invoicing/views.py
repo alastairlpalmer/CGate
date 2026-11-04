@@ -844,12 +844,8 @@ def invoice_bulk_action(request):
                 f"{', '.join(blocked)}. Cancel these instead.",
             )
     elif action == 'push_xero':
-        from xero_integration.client import XeroAPIError, XeroTokenExpiredError
         from xero_integration.models import XeroConnection, XeroInvoiceSync
-        from xero_integration.services import (
-            XeroNotConnectedError,
-            push_invoice_to_xero,
-        )
+        from xero_integration.tasks import push_invoices_to_xero
 
         if not XeroConnection.get_connection().is_connected:
             messages.error(
@@ -857,7 +853,8 @@ def invoice_bulk_action(request):
             )
             return redirect(next_url)
 
-        pushed = skipped = failed = 0
+        to_push = []
+        skipped = 0
         for invoice in invoices:
             if invoice.status == Invoice.Status.CANCELLED:
                 skipped += 1
@@ -872,29 +869,25 @@ def invoice_bulk_action(request):
             if already:
                 skipped += 1
                 continue
-            try:
-                push_invoice_to_xero(invoice)
-                pushed += 1
-            except (XeroNotConnectedError, XeroTokenExpiredError) as exc:
-                # Connection-level failure — every remaining push would fail too.
-                messages.error(request, f"Xero push stopped: {exc}")
-                break
-            except XeroAPIError as exc:
-                failed += 1
-                logger.warning(
-                    "Xero push failed for %s: %s", invoice.invoice_number, exc
+            to_push.append(invoice.pk)
+
+        if to_push:
+            count = len(to_push)
+            plural = 's' if count != 1 else ''
+            # Paced to stay inside Xero's rate limit, so a large selection
+            # takes minutes: a worker does it, not this request. Without a
+            # worker (Vercel) it runs here, as before.
+            if getattr(settings, 'INVOICE_SEND_ASYNC', False):
+                push_invoices_to_xero.delay(to_push)
+                messages.success(
+                    request,
+                    f"Pushing {count} invoice{plural} to Xero in the background. "
+                    "This takes about 3 seconds for each invoice. Each invoice "
+                    "shows \"In Xero\" when it is done, or \"Retry Xero\" if it failed.",
                 )
-        if pushed:
-            messages.success(
-                request,
-                f"Pushed {pushed} invoice{'s' if pushed != 1 else ''} to Xero."
-            )
-        if failed:
-            messages.error(
-                request,
-                f"{failed} invoice{'s' if failed != 1 else ''} failed to push — "
-                "see the Xero status on each invoice for details."
-            )
+            else:
+                summary = push_invoices_to_xero(to_push)
+                messages.info(request, summary)
         if skipped:
             messages.info(
                 request,
