@@ -1,7 +1,7 @@
 // Run with: node --test 'static/js/tests/*.test.js'   (from horse_management/)
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { stepIndex, snapFor, translateYOf } = require('../split_view.js');
+const { stepIndex, snapFor, translateYOf, clampPaneWidth } = require('../split_view.js');
 
 // ── stepIndex: arrow keys walking the list ──
 
@@ -116,4 +116,27 @@ test('snapFor: a firm pull down puts the sheet away', () => {
 test('snapFor: pulling past the sheet asks for the whole page', () => {
     assert.equal(snapFor(704, 290, 640, 64), 'page');
     assert.equal(snapFor(703, 290, 640, 64), 'full');
+});
+
+// ── clampPaneWidth: the desktop resize bar ──
+
+test('clampPaneWidth: a width inside the limits is kept', () => {
+    assert.equal(clampPaneWidth(500, 1400, 336, 448), 500);
+});
+
+test('clampPaneWidth: the pane never goes below its minimum', () => {
+    assert.equal(clampPaneWidth(120, 1400, 336, 448), 336);
+});
+
+test('clampPaneWidth: the list always keeps its minimum beside the pane', () => {
+    assert.equal(clampPaneWidth(1300, 1400, 336, 448), 952);
+});
+
+test('clampPaneWidth: a screen too narrow for both keeps the pane minimum', () => {
+    assert.equal(clampPaneWidth(500, 700, 336, 448), 336);
+});
+
+test('clampPaneWidth: rounds to whole pixels and treats junk as the minimum', () => {
+    assert.equal(clampPaneWidth(500.6, 1400, 336, 448), 501);
+    assert.equal(clampPaneWidth('nope', 1400, 336, 448), 336);
 });

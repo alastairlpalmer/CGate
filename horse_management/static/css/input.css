@@ -312,22 +312,21 @@
     .show-chip-count { @apply inline-flex items-center justify-center min-w-[20px] px-1.5 h-5 text-[11px] font-semibold tabular-nums rounded-full bg-info-blue-50 text-info-blue; }
     .show-chip.is-active .show-chip-count { @apply bg-white/20 text-white; }
 
-    /* Mobile Bottom Tab Bar — the active tab inverts: its icon sits in a
-       filled Brim pill, so the current section is unmistakable */
+    /* Mobile Bottom Tab Bar — same language as the desktop sidebar: the
+       active tab's icon sits in a soft tile (light fill + hairline ring). */
     .tab-bar-item {
         @apply relative flex flex-col items-center justify-center flex-1 gap-1 px-1 text-sage/60 transition-colors duration-100 active:bg-light-sage/50 no-underline;
         min-width: 0;
     }
     .tab-bar-item.active { @apply text-forest; }
-    /* Active tab: the icon sits in a filled Brim pill (colours inverted), which
-       reads as "you are here" from across the room — the old 2px hairline did
-       not. The pill grows into place so the change of section is visible. */
+    /* Active tab: the icon sits in a soft tile that matches the desktop
+       sidebar's active item. The tile fades in so the change is visible. */
     .tab-bar-icon {
-        @apply relative inline-flex items-center justify-center w-14 h-8 rounded-full;
-        transition: background-color 0.22s ease-out, color 0.22s ease-out, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+        @apply relative inline-flex items-center justify-center w-14 h-8 rounded-btn ring-1 ring-inset ring-transparent;
+        transition: background-color 0.22s ease-out, color 0.22s ease-out, box-shadow 0.22s ease-out, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
     }
     .tab-bar-item:active .tab-bar-icon { transform: scale(0.9); }
-    .tab-bar-item.active .tab-bar-icon { @apply bg-forest text-white; }
+    .tab-bar-item.active .tab-bar-icon { @apply bg-forest/[0.08] ring-forest/[0.15] text-forest; }
     .tab-bar-item.active .tab-bar-label { @apply font-semibold; }
     .tab-bar-label {
         @apply text-[11px] font-medium leading-none text-center;
@@ -338,8 +337,10 @@
     }
 
     /* More Bottom Sheet nav items */
-    .sheet-nav-item { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-charcoal rounded-btn hover:bg-light-sage active:bg-light-sage/70 transition-colors duration-100; }
-    .sheet-nav-item-active { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-forest bg-sage-50 rounded-btn transition-colors duration-100; }
+    /* Same tile language as the desktop sidebar: hover is a lighter
+       preview of the active tile. */
+    .sheet-nav-item { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-charcoal rounded-btn ring-1 ring-inset ring-transparent hover:bg-forest/[0.04] hover:ring-forest/[0.08] active:bg-forest/[0.06] transition-all duration-100; }
+    .sheet-nav-item-active { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-forest bg-forest/[0.08] ring-1 ring-inset ring-forest/[0.15] hover:bg-forest/[0.08] hover:ring-forest/[0.15] rounded-btn transition-all duration-100; }
 
     /* Mobile list cards (cards < md, table at md+) — zebra to mirror the
        desktop table striping, so long lists stay scannable on phones */
@@ -1313,12 +1314,18 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
 }
 .split-view-body { @apply flex-1 min-h-0 overflow-y-auto overscroll-contain; }
 .split-view-hint { @apply hidden; }
+.split-view-resizer { display: none; }
+/* While dragging: keep the resize cursor everywhere and stop text
+   selection, so a fast drag does not highlight half the list. */
+.is-resizing-split, .is-resizing-split * { cursor: col-resize !important; user-select: none !important; }
 
 /* ── The pane: a column from lg ── */
 @media (min-width: 1024px) {
     .split-view.is-open {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(21rem, 26rem);
+        /* --split-pane-w is set by the resize bar (split_view.js). The
+           min() keeps at least 28rem for the list if the window shrinks. */
+        grid-template-columns: minmax(0, 1fr) minmax(21rem, min(var(--split-pane-w, 26rem), calc(100% - 29rem)));
         gap: 1rem;
         align-items: start;
     }
@@ -1337,6 +1344,50 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
     }
     .split-view-handle { display: none; }
     .split-view-chrome { touch-action: auto; }
+
+    /* The resize bar sits in the 1rem gap left of the pane. It is a thin
+       line that shows on hover, focus and drag, with a small grip in the
+       middle, so it is easy to find but quiet when not in use. */
+    .split-view-resizer {
+        display: block;
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: -1rem;
+        width: 1rem;
+        cursor: col-resize;
+        touch-action: none;
+        outline: none;
+    }
+    .split-view-resizer::before {
+        content: '';
+        position: absolute;
+        top: 0.75rem;
+        bottom: 0.75rem;
+        left: 50%;
+        width: 2px;
+        transform: translateX(-50%);
+        border-radius: 9999px;
+        @apply bg-forest/0 transition-colors duration-150;
+    }
+    .split-view-resizer::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 6px;
+        height: 2rem;
+        transform: translate(-50%, -50%);
+        border-radius: 9999px;
+        @apply bg-sage/25 transition-colors duration-150;
+    }
+    .split-view-resizer:hover::before,
+    .split-view-resizer:focus-visible::before,
+    .is-resizing-split .split-view-resizer::before { @apply bg-forest/25; }
+    .split-view-resizer:hover::after,
+    .split-view-resizer:focus-visible::after,
+    .is-resizing-split .split-view-resizer::after { @apply bg-forest/60; }
+    .split-view-resizer:focus-visible::after { @apply ring-2 ring-sage ring-offset-2; }
     .split-view-hint {
         @apply flex items-center justify-center gap-1 px-3 py-1.5 border-t border-light-sage text-[11px] text-sage shrink-0;
     }
