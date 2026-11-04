@@ -346,6 +346,17 @@ def sync_record_charge(record):
     details = _charge_details(record)
     if details is None:
         return None
+    # Lock the record and read its charge link again: two saves at once (a
+    # double-click on Save) both saw "no charge yet" and each created one,
+    # and the second link overwrote the first, leaving a live charge that
+    # no record could remove.
+    with transaction.atomic():
+        type(record)._default_manager.select_for_update().filter(pk=record.pk).first()
+        record.refresh_from_db(fields=['extra_charge'])
+        return _sync_locked_record_charge(record, details)
+
+
+def _sync_locked_record_charge(record, details):
     charge = record.extra_charge
     if charge is not None and charge.is_deleted:
         # Someone deleted this charge on purpose (it is in Recently
@@ -430,6 +441,18 @@ class CostNeedsChargesMixin:
         if not can_set_cost(self.request.user):
             hide_cost(form)
         return form
+
+    def post(self, request, *args, **kwargs):
+        # An edit saves the record and then syncs its charge. Lock the
+        # record for the whole request, so a second Save (a double-click)
+        # waits, then loads the record with the charge the first one
+        # linked. Without the lock both saw "no charge yet", both created
+        # one, and the second save wrote the first link away.
+        if 'pk' not in kwargs:
+            return super().post(request, *args, **kwargs)
+        with transaction.atomic():
+            self.model._default_manager.select_for_update().filter(pk=kwargs['pk']).first()
+            return super().post(request, *args, **kwargs)
 
 
 def _report_charge_sync(request, record, status):

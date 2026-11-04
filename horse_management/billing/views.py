@@ -3,7 +3,7 @@ Views for billing app.
 """
 
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from itertools import chain
 from operator import attrgetter
 
@@ -225,7 +225,31 @@ class ExtraChargeDeleteView(FeatureAccessMixin, DeleteView):
 @require_POST
 def charge_restore(request, pk):
     charge = get_object_or_404(ExtraCharge.all_objects.deleted(), pk=pk)
+    # A charge made from a health record follows the record. While the
+    # charge was deleted, edits to the record's cost were not passed on, so
+    # the restored charge could bill an old amount: bring it in line now.
+    record = charge.linked_health_record()
+    if record is not None and (not record.cost or record.cost <= 0):
+        messages.warning(
+            request,
+            "Not restored: the health record this charge was for now has no "
+            "cost. Enter the cost on the record to bill it again.",
+        )
+        return redirect(safe_next(request, reverse('charge_list')))
     charge.restore()
+    if record is not None:
+        from health.views import sync_record_charge
+
+        old_amount = charge.amount
+        record.refresh_from_db(fields=['extra_charge'])
+        sync_record_charge(record)
+        charge.refresh_from_db()
+        if charge.amount != old_amount:
+            messages.info(
+                request,
+                f"The amount was updated from £{old_amount:.2f} to £{charge.amount:.2f} "
+                "to match the cost on the health record.",
+            )
     messages.success(request, f"Charge restored: {charge.description or charge.get_charge_type_display()}, £{charge.amount:.2f}.")
     return redirect(safe_next(request, reverse('charge_list')))
 
@@ -391,7 +415,10 @@ class CostsListView(FeatureAccessMixin, ListView):
         # Summary totals — batch into 2 queries instead of 7
         month_start = today.replace(day=1)
         year_start = today.replace(month=1, day=1)
-        charge_agg = ExtraCharge.objects.aggregate(
+        # A recharged feed-out's charges pass on a cost already booked as a
+        # YardCost (the delivery or the feed-out itself): counting both
+        # showed £1,000 for £500 of hay.
+        charge_agg = ExtraCharge.objects.filter(feed_out__isnull=True).aggregate(
             month=Sum('amount', filter=Q(date__gte=month_start)),
             year=Sum('amount', filter=Q(date__gte=year_start)),
         )
@@ -766,10 +793,19 @@ def feed_out_create(request, location_pk):
                             skipped_ownerless.append(horse.name)
                     count = len(billable)
                     if count > 0:
-                        per_horse = (feed_out.total_cost / Decimal(count)).quantize(Decimal('0.01'))
-                        remainder = feed_out.total_cost - (per_horse * count)
+                        # Round each share down, then give the leftover
+                        # pennies out one at a time. Rounding to the nearest
+                        # penny could round up, and the negative remainder
+                        # put on the first horse took it below £0 (a 500 on
+                        # £0.04 over 7 horses).
+                        per_horse = (feed_out.total_cost / Decimal(count)).quantize(
+                            Decimal('0.01'), rounding=ROUND_DOWN,
+                        )
+                        leftover_pennies = int(
+                            (feed_out.total_cost - per_horse * count) / Decimal('0.01')
+                        )
                         for i, (horse, owner) in enumerate(billable):
-                            amount = per_horse + remainder if i == 0 else per_horse
+                            amount = per_horse + (Decimal('0.01') if i < leftover_pennies else 0)
                             ExtraCharge.objects.create(
                                 horse=horse,
                                 owner=owner,

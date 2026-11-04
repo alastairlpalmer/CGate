@@ -54,13 +54,23 @@ class OptionalCostMixin:
 
 
 class ActiveHorseFormMixin:
-    """Mixin to restrict horse/mare dropdown to active horses only."""
+    """Mixin to restrict horse/mare dropdown to active horses only.
+
+    An existing record keeps its own horse in the list even after that
+    horse has left: without it, every edit of a departed horse's record
+    failed with "Select a valid choice", so its cost (and charge) could
+    not be corrected.
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if 'horse' in self.fields:
-            self.fields['horse'].queryset = Horse.objects.filter(is_active=True)
-        if 'mare' in self.fields:
-            self.fields['mare'].queryset = Horse.objects.filter(is_active=True)
+        for name in ('horse', 'mare'):
+            if name not in self.fields:
+                continue
+            active = Q(is_active=True)
+            current_id = getattr(self.instance, f'{name}_id', None) if self.instance.pk else None
+            if current_id:
+                active |= Q(pk=current_id)
+            self.fields[name].queryset = Horse.objects.filter(active)
 
 
 class VaccinationForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFormMixin, forms.ModelForm):

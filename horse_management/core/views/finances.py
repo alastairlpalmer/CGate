@@ -74,7 +74,8 @@ def _finances_inner(request):
     # inside a UNION arm is a DatabaseError on SQLite and breaks the
     # month grouping everywhere else.
     charge_qs = (
-        ExtraCharge.objects.filter(date__gte=twelve_months_ago)
+        # Feed recharges pass on a cost already in YardCost: leave them out.
+        ExtraCharge.objects.filter(date__gte=twelve_months_ago, feed_out__isnull=True)
         .annotate(month=TruncMonth('date'))
         .values('month')
         .annotate(total=Sum('amount'))
