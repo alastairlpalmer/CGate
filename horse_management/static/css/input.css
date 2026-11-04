@@ -180,16 +180,9 @@
     .nav-link-active > svg { @apply text-[#E6E1D1]; }
     .nav-group-label { @apply px-3 pt-5 pb-1 text-[11px] font-semibold text-white/55 uppercase tracking-widest; }
 
-    /* Page Headers — every page title carries a short Brim→Saddle gradient bar
-       underneath: a small brand signature that warms up the page top without
-       shouting. */
+    /* Page Headers — plain title, no decorative bar underneath. */
     .page-header { @apply flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between; }
     .page-title { @apply text-2xl lg:text-3xl font-semibold text-charcoal tracking-[-0.02em] font-heading; }
-    .page-title::after {
-        content: '';
-        @apply block w-10 h-1 mt-2 rounded-full;
-        background-image: linear-gradient(90deg, theme(colors.forest.DEFAULT), theme(colors.saddle.DEFAULT));
-    }
     .page-subtitle { @apply mt-1 text-sm text-sage; }
 
     /* Detail / filter labels — sentence case, 13px. Uppercase tracking is
@@ -209,7 +202,7 @@
        top accent (brand teal by default; templates override with
        border-t-saddle / border-t-info-blue / border-t-sage to colour-code
        the metric) so the KPI row reads with more colour confidence. */
-    .kpi-card { @apply block p-5 lg:p-6 no-underline border-t-[3px] border-t-forest; }
+    .kpi-card { @apply block p-5 lg:p-6 no-underline; }
     .kpi-label { @apply text-[13px] font-medium text-charcoal-light; }
     .kpi-value { @apply font-mono tabular-nums text-4xl font-medium text-forest mt-2 leading-none; }
     /* min-h keeps all four cards equal height when only some have a meta line */
@@ -767,19 +760,15 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     /* Needs action: one line per thing to do. The list is a size container
        and the row lays itself out by the width it has (rules below the
        layer): narrow, the badge and buttons take a second line; from 40rem
-       the row is one line. The left edge says how urgent. */
+       the row is one line. The icon and a light tint say how urgent. */
     .card.is-hot, .card-raised.is-hot, .kpi-card.is-hot, .empty-state.is-hot { @apply border-saddle/40 shadow-card; }
     .card.is-hot > .section-header, .card-raised.is-hot > .section-header,
     .kpi-card.is-hot > .section-header, .empty-state.is-hot > .section-header { @apply bg-saddle-50 border-saddle/20; }
     .attn-list { container-type: inline-size; }
-    .attn-row { @apply border-l-[3px] border-l-transparent px-4 py-2.5 lg:px-5; }
-    /* The divider lives here, not in divide-y on the list: divide-* sets
-       border-color on every row after the first and would wash out the
-       coloured left edge. */
+    .attn-row { @apply px-4 py-2.5 lg:px-5; }
     .attn-row + .attn-row { @apply border-t border-t-light-sage; }
-    .attn-row.is-overdue { @apply border-l-error-red bg-error-red-50/40; }
-    .attn-row.is-due { @apply border-l-saddle bg-saddle-50/60; }
-    .attn-row.is-info { @apply border-l-sage-200; }
+    .attn-row.is-overdue { @apply bg-error-red-50/40; }
+    .attn-row.is-due { @apply bg-saddle-50/60; }
     .attn-item { @apply grid items-start gap-x-3 gap-y-1.5; grid-template-columns: 2.25rem minmax(0, 1fr); }
     .attn-item + .attn-item { @apply mt-2 border-t border-light-sage/70 pt-2; }
     .attn-icon { @apply grid h-9 w-9 shrink-0 place-items-center rounded-lg; }
