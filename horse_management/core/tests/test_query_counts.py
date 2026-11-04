@@ -106,5 +106,6 @@ class QueryCountTestCase(TestCase):
         # outstanding aggregates — invoice totals and part-payments — plus
         # unbilled + auth/session), +1 for the per-request session write
         # (SESSION_SAVE_EVERY_REQUEST, the rolling 30-day login), +1 for
-        # the credit notes taken off revenue.
-        self.assertMaxQueries(reverse('finances'), 14)
+        # the credit notes taken off revenue, +1 for the rate prices the
+        # forecast reads (RatePrice).
+        self.assertMaxQueries(reverse('finances'), 15)

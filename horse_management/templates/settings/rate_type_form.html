@@ -20,11 +20,13 @@
                     {{ form.name }}
                     {% if form.name.errors %}<p class="mt-1 text-sm text-error-red">{{ form.name.errors.0 }}</p>{% endif %}
                 </div>
+                {% if form.daily_rate %}
                 <div>
                     <label for="{{ form.daily_rate.id_for_label }}" class="text-sm font-medium text-charcoal">Daily Rate</label>
                     {{ form.daily_rate }}
                     {% if form.daily_rate.errors %}<p class="mt-1 text-sm text-error-red">{{ form.daily_rate.errors.0 }}</p>{% endif %}
                 </div>
+                {% endif %}
                 <div>
                     <label for="{{ form.description.id_for_label }}" class="text-sm font-medium text-charcoal">Description</label>
                     {{ form.description }}
@@ -40,6 +42,55 @@
             </footer>
         </form>
     </div>
+
+    {% if object %}
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">Price</h3>
+        </div>
+        <div class="p-4 sm:p-5 space-y-4">
+            <p class="text-sm text-charcoal">Now <strong class="tabular-nums">&pound;{{ object.daily_rate|floatformat:2 }}</strong> per day.</p>
+            <ul class="divide-y divide-light-sage text-sm" aria-label="Price history">
+                {% for price in prices %}
+                <li class="flex items-center justify-between gap-3 py-2">
+                    <span>
+                        <span class="tabular-nums font-medium">&pound;{{ price.daily_rate|floatformat:2 }}</span>
+                        <span class="text-sage">{% if price.effective_from == first_price_date %}from the start{% else %}from {{ price.effective_from|date:"d M Y" }}{% if price.effective_from > today %} (planned){% endif %}{% endif %}</span>
+                    </span>
+                    {% if price.effective_from != first_price_date %}
+                    <form method="post" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" name="delete_price" value="{{ price.pk }}" class="btn-ghost btn-xs">Remove</button>
+                    </form>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <form method="post" class="border-t border-light-sage">
+            {% csrf_token %}
+            <fieldset class="p-4 sm:p-5 space-y-4">
+                <legend class="text-sm font-semibold text-charcoal">Change price</legend>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label for="{{ price_form.daily_rate.id_for_label }}" class="text-sm font-medium text-charcoal">{{ price_form.daily_rate.label }}</label>
+                        {{ price_form.daily_rate }}
+                        {% if price_form.daily_rate.errors %}<p class="mt-1 text-sm text-error-red">{{ price_form.daily_rate.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ price_form.effective_from.id_for_label }}" class="text-sm font-medium text-charcoal">{{ price_form.effective_from.label }}</label>
+                        {{ price_form.effective_from }}
+                        {% if price_form.effective_from.errors %}<p class="mt-1 text-sm text-error-red">{{ price_form.effective_from.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+                <p class="text-xs text-sage">Days before this date keep the old price. Invoices already made never change.</p>
+            </fieldset>
+            <footer class="form-footer">
+                <button type="submit" name="change_price" value="1" class="btn-primary">Change price</button>
+            </footer>
+        </form>
+    </div>
+    {% endif %}
 
 </div>
 {% endblock %}

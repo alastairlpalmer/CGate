@@ -204,6 +204,10 @@ class RateTypeAdmin(admin.ModelAdmin):
     list_filter = ['is_active']
     search_fields = ['name']
 
+    def get_readonly_fields(self, request, obj=None):
+        # A price change has a date: Settings -> Rates -> Change price.
+        return ('daily_rate',) if obj else ()
+
 
 @admin.register(OwnershipShare)
 class OwnershipShareAdmin(admin.ModelAdmin):

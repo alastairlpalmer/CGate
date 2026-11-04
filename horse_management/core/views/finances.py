@@ -125,7 +125,8 @@ def _finances_inner(request):
 
     active_placements = list(Placement.objects.filter(
         end_date__isnull=True
-    ).select_related('rate_type').only('expected_departure', 'rate_type__daily_rate'))
+    ).select_related('rate_type').prefetch_related('rate_type__prices')
+     .only('expected_departure', 'rate_type__daily_rate'))
     forecast_labels = []
     forecast_revenue = []
     forecast_cost = []
@@ -143,7 +144,8 @@ def _finances_inner(request):
         for p in active_placements:
             if p.expected_departure and p.expected_departure < d:
                 continue
-            month_rev += p.rate_type.daily_rate * days_in_month
+            # The price planned for that month (RatePrice), not today's.
+            month_rev += p.rate_type.price_on(d) * days_in_month
         forecast_revenue.append(float(month_rev))
         forecast_cost.append(round(avg_cost, 2))
 

@@ -703,6 +703,26 @@ class RateTypeForm(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            # An existing rate's price changes from a date (RatePriceForm).
+            del self.fields['daily_rate']
+
+
+class RatePriceForm(forms.Form):
+    """A new daily price for a rate type, from a date in the past or future."""
+
+    daily_rate = forms.DecimalField(
+        label='New price per day (£)', min_value=Decimal('0.00'), max_digits=8, decimal_places=2,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
+    )
+    effective_from = forms.DateField(
+        label='From', input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+        help_text='The first day at the new price. It can be in the past or the future.',
+    )
+
 
 class BusinessSettingsForm(forms.ModelForm):
     class Meta:
