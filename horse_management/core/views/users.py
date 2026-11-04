@@ -49,6 +49,24 @@ def _managers_excluding(user_pks):
     )
 
 
+def _other_administrators(user):
+    """Active Administrators (superusers or the system role) other than ``user``."""
+    return User.objects.filter(is_active=True).exclude(pk=user.pk).filter(
+        Q(is_superuser=True) | Q(role_assignment__role__is_system=True)
+    )
+
+
+def _is_last_administrator(user):
+    """True when ``user`` is the only active Administrator.
+
+    With none left, no form offers the Administrator role any more, and the
+    audit log and two-step resets are closed to everyone.
+    """
+    from .. import mfa
+
+    return mfa.is_administrator(user) and not _other_administrators(user).exists()
+
+
 def _other_role_managers(user):
     return _managers_excluding([user.pk])
 
@@ -141,7 +159,14 @@ def user_update(request, pk):
                     and not target.is_superuser
                     and not _grants_user_management(new_role)
                 )
-                if demoting and is_self:
+                losing_admin = (
+                    not target.is_superuser
+                    and not getattr(new_role, 'is_system', False)
+                    and _is_last_administrator(target)
+                )
+                if losing_admin:
+                    messages.error(request, "This is the only Administrator. Make someone else an Administrator first.")
+                elif demoting and is_self:
                     messages.error(request, "You can't remove your own user-management access. Ask another administrator to change your role.")
                 elif demoting and not _other_role_managers(target).exists():
                     messages.error(request, "You can't demote the only user with access to Users & Roles. Give someone else a role with that access first.")
@@ -221,6 +246,8 @@ def user_update(request, pk):
         elif 'toggle_active' in request.POST:
             if is_self:
                 messages.error(request, "You can't deactivate your own account.")
+            elif target.is_active and _is_last_administrator(target):
+                messages.error(request, "You can't deactivate the only Administrator.")
             elif target.is_active and _is_manager(target) and not _other_role_managers(target).exists():
                 messages.error(request, "You can't deactivate the only user with access to Users & Roles.")
             else:

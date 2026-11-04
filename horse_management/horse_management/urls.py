@@ -104,10 +104,36 @@ if getattr(settings, 'SERVE_MEDIA', False) and not settings.DEBUG:
         ('business/', None),  # logo — any signed-in user (renders app-wide)
     )
 
+    def _document_feature(path):
+        """Owner documents follow Owners access; horse documents, Horses."""
+        from core.models import Document
+
+        document = Document.all_objects.filter(file=path).only('horse_id', 'owner_id').first()
+        if document is not None and document.horse_id is None and document.owner_id:
+            return 'owners'
+        return 'horses'
+
     @login_required
     def _gated_media_serve(request, path, document_root=None):
+        import posixpath
+
+        from django.http import Http404
+
+        # Check the path that will be served, not the raw one: serve()
+        # normalises it, so "business/../documents/x" passed the check for
+        # business/ (any signed-in user) and then served a passport.
+        normalised = posixpath.normpath(path)
+        if (
+            normalised != path
+            or '\\' in path
+            or normalised.startswith(('/', '..'))
+            or '/../' in f'/{normalised}/'
+        ):
+            raise Http404
         for prefix, feature in MEDIA_FEATURE_BY_PREFIX:
             if path.startswith(prefix):
+                if prefix == 'documents/':
+                    feature = _document_feature(path)
                 if feature and not has_feature_access(
                     request.user, feature, LEVEL_VIEW
                 ):

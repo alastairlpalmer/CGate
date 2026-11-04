@@ -6,7 +6,7 @@ and documents=<queryset>:
 <div class="card">
     <div class="section-header">
         <h3 class="section-title">Documents</h3>
-        {% if feature_access.horses.full %}
+        {% if horse and feature_access.horses.full or not horse and feature_access.owners.full %}
         <a href="{% url 'document_create' %}?{% if horse %}horse={{ horse.pk }}{% else %}owner={{ owner.pk }}{% endif %}" hx-get="{% url 'document_create' %}?{% if horse %}horse={{ horse.pk }}{% else %}owner={{ owner.pk }}{% endif %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add document"
            class="btn-ghost btn-xs">+ Add</a>
         {% endif %}
@@ -30,7 +30,7 @@ and documents=<queryset>:
                     &middot; Added {{ doc.uploaded_at|date:"d M Y" }}
                 </p>
             </div>
-            {% if feature_access.horses.full %}
+            {% if horse and feature_access.horses.full or not horse and feature_access.owners.full %}
             <form method="post" action="{% url 'document_delete' doc.pk %}" class="inline shrink-0"
                   hx-confirm="Delete “{{ doc.title }}”?">
                 {% csrf_token %}
@@ -46,6 +46,6 @@ and documents=<queryset>:
         {% endfor %}
     </ul>
     {% else %}
-    <div class="p-5 text-sm text-sage">No documents yet{% if feature_access.horses.full %} — add a passport scan or insurance certificate{% endif %}.</div>
+    <div class="p-5 text-sm text-sage">No documents yet{% if horse and feature_access.horses.full or not horse and feature_access.owners.full %} — add a passport scan or insurance certificate{% endif %}.</div>
     {% endif %}
 </div>
