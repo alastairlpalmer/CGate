@@ -312,22 +312,21 @@
     .show-chip-count { @apply inline-flex items-center justify-center min-w-[20px] px-1.5 h-5 text-[11px] font-semibold tabular-nums rounded-full bg-info-blue-50 text-info-blue; }
     .show-chip.is-active .show-chip-count { @apply bg-white/20 text-white; }
 
-    /* Mobile Bottom Tab Bar — the active tab inverts: its icon sits in a
-       filled Brim pill, so the current section is unmistakable */
+    /* Mobile Bottom Tab Bar — same language as the desktop sidebar: the
+       active tab's icon sits in a soft tile (light fill + hairline ring). */
     .tab-bar-item {
         @apply relative flex flex-col items-center justify-center flex-1 gap-1 px-1 text-sage/60 transition-colors duration-100 active:bg-light-sage/50 no-underline;
         min-width: 0;
     }
     .tab-bar-item.active { @apply text-forest; }
-    /* Active tab: the icon sits in a filled Brim pill (colours inverted), which
-       reads as "you are here" from across the room — the old 2px hairline did
-       not. The pill grows into place so the change of section is visible. */
+    /* Active tab: the icon sits in a soft tile that matches the desktop
+       sidebar's active item. The tile fades in so the change is visible. */
     .tab-bar-icon {
-        @apply relative inline-flex items-center justify-center w-14 h-8 rounded-full;
-        transition: background-color 0.22s ease-out, color 0.22s ease-out, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+        @apply relative inline-flex items-center justify-center w-14 h-8 rounded-btn ring-1 ring-inset ring-transparent;
+        transition: background-color 0.22s ease-out, color 0.22s ease-out, box-shadow 0.22s ease-out, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
     }
     .tab-bar-item:active .tab-bar-icon { transform: scale(0.9); }
-    .tab-bar-item.active .tab-bar-icon { @apply bg-forest text-white; }
+    .tab-bar-item.active .tab-bar-icon { @apply bg-forest/[0.08] ring-forest/[0.15] text-forest; }
     .tab-bar-item.active .tab-bar-label { @apply font-semibold; }
     .tab-bar-label {
         @apply text-[11px] font-medium leading-none text-center;
@@ -338,8 +337,10 @@
     }
 
     /* More Bottom Sheet nav items */
-    .sheet-nav-item { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-charcoal rounded-btn hover:bg-light-sage active:bg-light-sage/70 transition-colors duration-100; }
-    .sheet-nav-item-active { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-forest bg-sage-50 rounded-btn transition-colors duration-100; }
+    /* Same tile language as the desktop sidebar: hover is a lighter
+       preview of the active tile. */
+    .sheet-nav-item { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-charcoal rounded-btn ring-1 ring-inset ring-transparent hover:bg-forest/[0.04] hover:ring-forest/[0.08] active:bg-forest/[0.06] transition-all duration-100; }
+    .sheet-nav-item-active { @apply flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-forest bg-forest/[0.08] ring-1 ring-inset ring-forest/[0.15] hover:bg-forest/[0.08] hover:ring-forest/[0.15] rounded-btn transition-all duration-100; }
 
     /* Mobile list cards (cards < md, table at md+) — zebra to mirror the
        desktop table striping, so long lists stay scannable on phones */
