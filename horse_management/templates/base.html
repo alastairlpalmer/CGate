@@ -762,25 +762,66 @@
     // First load: the sheet is server-rendered, so the label is available now.
     window.Yardway.syncMoreTab();
 
-    // ── Form submission feedback — loading spinner on submit buttons ──
+    // ── Busy state on the button that sent a form ──
+    // The button shows a spinner and is disabled for exactly as long as its
+    // request runs: from htmx:beforeRequest (form values are already
+    // collected, so a named button like "Save & add another" still sends
+    // its value) to htmx:afterRequest. A failed request frees the button at
+    // once, and a slow one (a Xero push) cannot be sent twice.
+    function submitButtonFor(form, submitter) {
+        if (submitter && submitter.matches && submitter.matches('button[type="submit"]')) { return submitter; }
+        return form.querySelector('button[type="submit"]') ||
+            (form.id ? document.querySelector('button[type="submit"][form="' + form.id + '"]') : null);
+    }
+    function setBusy(btn, on) {
+        if (!btn) { return; }
+        btn.classList.toggle('btn-loading', on);
+        btn.disabled = on;
+        if (on) { btn.setAttribute('aria-busy', 'true'); } else { btn.removeAttribute('aria-busy'); }
+    }
+    function requestButton(detail) {
+        var elt = detail.elt;
+        if (!elt || !elt.matches) { return null; }
+        if (elt.matches('button')) { return elt; }
+        if (elt.matches('form')) {
+            var ev = detail.requestConfig && detail.requestConfig.triggeringEvent;
+            return submitButtonFor(elt, ev && ev.submitter);
+        }
+        return null;
+    }
+    document.body.addEventListener('htmx:beforeRequest', function (e) {
+        var verb = e.detail.requestConfig && e.detail.requestConfig.verb;
+        if (!verb || verb === 'get') { return; }  // searches and filters stay quiet
+        var btn = requestButton(e.detail);
+        if (btn) { setBusy(btn, true); e.detail.elt._busyButton = btn; }
+    });
+    document.body.addEventListener('htmx:afterRequest', function (e) {
+        var btn = e.detail.elt && e.detail.elt._busyButton;
+        if (!btn) { return; }
+        e.detail.elt._busyButton = null;
+        // After the swap: a button the response replaced is gone anyway; one
+        // that is still on the page (an error, a 204, a swap elsewhere) is
+        // freed for the next try.
+        setTimeout(function () { if (btn.isConnected) { setBusy(btn, false); } }, 0);
+    });
+    // Forms htmx does not send (hx-boost="false": Xero, file downloads).
     document.addEventListener('submit', function (e) {
-        // Spin the button that was actually clicked — forms with two submits
-        // (e.g. "Save & Add Another" before the primary button) used to
-        // always spin the first one.
-        var btn = e.submitter && e.submitter.matches('button[type="submit"]')
-            ? e.submitter
-            : e.target.querySelector('button[type="submit"]');
-        if (!btn) return;
-        // Forms behind a confirm question spin only once the user confirms
-        // (static/js/popup.js takes over), not while the dialog is open.
-        if (e.target.closest('[hx-confirm]') || btn.closest('[hx-confirm]')) return;
+        if (e.defaultPrevented) { return; }  // htmx (or Alpine) took it
+        var btn = submitButtonFor(e.target, e.submitter);
+        if (!btn) { return; }
+        // The browser builds the form data after this event, so a disabled
+        // submitter would lose its name/value. Only show it busy; the
+        // pointer-events rule on .btn-loading stops a second click.
         btn.classList.add('btn-loading');
-        btn.disabled = true;
-        // Safety net: re-enable after 8s
-        setTimeout(function () {
-            btn.classList.remove('btn-loading');
-            btn.disabled = false;
-        }, 8000);
+        btn.setAttribute('aria-busy', 'true');
+        // A download leaves the page in place: free the button after a
+        // while. A real navigation replaces the page first.
+        setTimeout(function () { if (btn.isConnected) { setBusy(btn, false); } }, 30000);
+    });
+    // Back/forward cache restores the page as it was left, spinner and all.
+    window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) { return; }
+        document.querySelectorAll('.btn-loading').forEach(function (btn) { setBusy(btn, false); });
     });
 })();
 </script>

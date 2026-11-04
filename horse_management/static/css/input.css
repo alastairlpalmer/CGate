@@ -551,17 +551,23 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 #health-skeleton.htmx-request + #health-table-area { display: none; }
 
 /* Button loading spinner */
+/* Busy button (set by base.html while its request runs). The label and
+   icon are hidden but keep their space, so the button does not change
+   size. The spinner uses the button's own text colour, so it shows on
+   every variant: white on primary, charcoal on secondary and ghost. */
 .btn-loading {
     position: relative;
-    color: transparent !important;
+    -webkit-text-fill-color: transparent;
     pointer-events: none;
+    cursor: progress;
 }
+.btn-loading > svg { visibility: hidden; }
 .btn-loading::after {
     content: '';
     position: absolute;
     width: 1rem;
     height: 1rem;
-    border: 2px solid white;
+    border: 2px solid currentColor;
     border-right-color: transparent;
     border-radius: 50%;
     animation: spin 0.6s linear infinite;
