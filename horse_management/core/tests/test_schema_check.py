@@ -4,11 +4,11 @@ from io import StringIO
 
 from django.core.management import CommandError, call_command
 from django.db import connection
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 
 from core.roles_testutils import make_admin, make_user_with_access
-from core.schema_drift import column_differences
+from core.schema_drift import column_differences, migration_differences
 
 
 class ColumnDifferencesTests(TestCase):
@@ -67,3 +67,56 @@ class DatabaseCheckPageTests(TestCase):
     def test_other_users_are_refused(self):
         self.client.force_login(make_user_with_access('office', users='full', settings='full'))
         self.assertEqual(self.client.get(reverse('database_check')).status_code, 403)
+
+
+class DropAprilLeftoversMigrationTests(TransactionTestCase):
+    """core 0049 removes what Database Check listed in production."""
+
+    def _migration(self):
+        import importlib
+        return importlib.import_module('core.migrations.0049_drop_april_leftovers')
+
+    def _run(self):
+        from django.apps import apps as global_apps
+        with connection.schema_editor() as editor:
+            self._migration().drop_leftovers(global_apps, editor)
+
+    def test_leftovers_are_dropped_and_the_database_matches(self):
+        from django.db.migrations.recorder import MigrationRecorder
+        MigrationRecorder(connection).ensure_schema()
+        with connection.cursor() as cursor:
+            cursor.execute('CREATE TABLE invoicing_invoicerun (id integer PRIMARY KEY)')
+            cursor.execute('CREATE TABLE core_settingschangelog (id integer PRIMARY KEY)')
+            cursor.execute(
+                'ALTER TABLE core_invoice ADD COLUMN run_id bigint NULL '
+                'REFERENCES invoicing_invoicerun (id)'
+            )
+            for column in ('currency_symbol', 'farrier_revisit_weeks', 'next_run_number',
+                           'invoice_due_warning_days', 'worm_egg_threshold',
+                           'xero_invoice_status'):
+                cursor.execute(
+                    f'ALTER TABLE core_businesssettings ADD COLUMN {column} '
+                    "varchar(10) NOT NULL DEFAULT '1'"
+                )
+            for app, name in self._migration().LEFTOVER_MIGRATION_RECORDS:
+                cursor.execute(
+                    "INSERT INTO django_migrations (app, name, applied) "
+                    "VALUES (%s, %s, CURRENT_TIMESTAMP)", [app, name],
+                )
+        self.assertEqual(len(column_differences()), 9)
+
+        self._run()
+
+        self.assertEqual(column_differences(), [])
+        self.assertNotIn('Applied but not in the code', ' '.join(migration_differences()))
+
+    def test_it_runs_on_a_database_without_leftovers(self):
+        self._run()
+        self._run()
+        self.assertEqual(column_differences(), [])
+
+    def test_no_migration_file_has_a_deleted_record_name(self):
+        from django.db.migrations.loader import MigrationLoader
+        on_disk = set(MigrationLoader(None, ignore_no_migrations=True).disk_migrations)
+        for record in self._migration().LEFTOVER_MIGRATION_RECORDS:
+            self.assertNotIn(record, on_disk)
