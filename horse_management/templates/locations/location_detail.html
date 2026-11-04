@@ -239,7 +239,7 @@
                         <th>Date</th>
                         <th>Type</th>
                         <th>Quantity</th>
-                        <th class="text-right">Cost</th>
+                        {% if feature_access.costs.view %}<th class="text-right">Cost</th>{% endif %}
                         <th>Recharged</th>
                         <th>Notes</th>
                     </tr>
@@ -252,7 +252,7 @@
                             <span class="badge-success">{{ fo.get_feed_type_display }}</span>
                         </td>
                         <td class="text-charcoal" data-label="Quantity">{{ fo.quantity|default:"—" }}</td>
-                        <td class="text-right font-medium text-charcoal tabular-nums" data-label="Cost">&pound;{{ fo.total_cost|floatformat:2 }}</td>
+                        {% if feature_access.costs.view %}<td class="text-right font-medium text-charcoal tabular-nums" data-label="Cost">&pound;{{ fo.total_cost|floatformat:2 }}</td>{% endif %}
                         <td data-label="Recharged">
                             {% if fo.is_recharged %}
                             <span class="badge-info">Recharged</span>

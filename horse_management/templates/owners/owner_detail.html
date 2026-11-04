@@ -339,10 +339,15 @@
                 <div class="min-w-0">
                     <p class="settings-row-title">Download their data</p>
                     <p class="settings-row-meta">Everything held about this owner, as a ZIP of spreadsheets and their documents. Use it to answer a subject access request.</p>
+                    {% if not feature_access.invoices.view or not feature_access.charges.view %}
+                    <p class="settings-row-meta">It includes their invoices, payments, charges and day rates, so it needs access to Invoices and Charges. Ask an Administrator.</p>
+                    {% endif %}
                 </div>
+                {% if feature_access.invoices.view and feature_access.charges.view %}
                 <div class="settings-actions">
                     <a href="{% url 'owner_data_export' owner.pk %}" hx-boost="false" class="btn-secondary btn-sm">Download</a>
                 </div>
+                {% endif %}
             </div>
             <div class="settings-row">
                 <div class="min-w-0">

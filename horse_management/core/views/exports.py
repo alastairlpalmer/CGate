@@ -11,7 +11,7 @@ from .. import audit, gdpr
 from ..csv_export import csv_response
 from ..downloads import attachment_header
 from ..models import AuditEvent, Horse, Owner, OwnershipShare
-from ..permissions import LEVEL_VIEW, feature_required
+from ..permissions import LEVEL_VIEW, feature_required, has_feature_access
 
 
 def _stamp():
@@ -57,8 +57,24 @@ def charges_csv(request):
 
 @feature_required('owners')
 def owner_data_export(request, pk):
-    """A subject access request: everything about one owner, as a ZIP."""
+    """A subject access request: everything about one owner, as a ZIP.
+
+    The ZIP holds their invoices, payments, charges and day rates. A subject
+    access request must be complete, so a user who may not see those gets
+    no ZIP rather than one with parts left out.
+    """
     owner = get_object_or_404(Owner, pk=pk)
+    if not (
+        has_feature_access(request.user, 'invoices', LEVEL_VIEW)
+        and has_feature_access(request.user, 'charges', LEVEL_VIEW)
+    ):
+        messages.error(
+            request,
+            "The data download includes invoices, payments, charges and day "
+            "rates, so it needs access to Invoices and Charges. Ask an "
+            "Administrator to download it.",
+        )
+        return redirect('owner_detail', pk=owner.pk)
     data = gdpr.export_owner(owner)
     audit.record(AuditEvent.Action.OWNER_EXPORTED, request=request, detail=gdpr.owner_label(owner))
     response = HttpResponse(data, content_type='application/zip')

@@ -51,7 +51,7 @@
                         <th>Reason</th>
                         <th>Vet</th>
                         <th>Follow-up</th>
-                        <th class="text-right">Cost</th>
+                        {% if feature_access.charges.view %}<th class="text-right">Cost</th>{% endif %}
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -67,9 +67,9 @@
                         <td class="{% if v.follow_up_date %}text-forest{% else %}text-sage{% endif %}" data-label="Follow-up">
                             {% if v.follow_up_date %}{{ v.follow_up_date|date:"d M Y" }}{% else %}-{% endif %}
                         </td>
-                        <td class="text-right" data-label="Cost">
+                        {% if feature_access.charges.view %}<td class="text-right" data-label="Cost">
                             &pound;{{ v.cost|floatformat:2 }}
-                        </td>
+                        </td>{% endif %}
                         <td>
                             <a href="{% url 'vet_visit_update' v.pk %}" hx-get="{% url 'vet_visit_update' v.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vet visit" class="btn-ghost btn-xs">Edit</a>
                         </td>

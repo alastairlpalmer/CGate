@@ -59,7 +59,7 @@
                 </div>
             </div>
             <div class="flex flex-col items-end gap-1 shrink-0">
-                <span class="font-semibold text-charcoal tabular-nums text-sm">&pound;{{ v.cost|floatformat:2 }}</span>
+                {% if feature_access.charges.view %}<span class="font-semibold text-charcoal tabular-nums text-sm">&pound;{{ v.cost|floatformat:2 }}</span>{% endif %}
                 <div class="list-card-actions">
                     <a href="{% url 'vet_visit_update' v.pk %}" hx-get="{% url 'vet_visit_update' v.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vet visit" class="btn-icon" title="Edit" aria-label="Edit vet visit">
                         <svg class="w-4 h-4" aria-hidden="true"><use href="#i-pencil"/></svg>
@@ -85,7 +85,7 @@
                     <th>Reason</th>
                     <th>Vet</th>
                     <th>Follow-up</th>
-                    <th class="text-right">Cost</th>
+                    {% if feature_access.charges.view %}<th class="text-right">Cost</th>{% endif %}
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -101,9 +101,9 @@
                     <td class="{% if v.follow_up_date %}text-forest{% else %}text-sage{% endif %}">
                         {% if v.follow_up_date %}{{ v.follow_up_date|date:"d M Y" }}{% else %}-{% endif %}
                     </td>
-                    <td class="text-right">
+                    {% if feature_access.charges.view %}<td class="text-right">
                         &pound;{{ v.cost|floatformat:2 }}
-                    </td>
+                    </td>{% endif %}
                     <td>
                         <a href="{% url 'vet_visit_update' v.pk %}" hx-get="{% url 'vet_visit_update' v.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vet visit" class="btn-ghost btn-xs">Edit</a>
                     </td>
