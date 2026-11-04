@@ -169,7 +169,11 @@
     .form-toggle[aria-checked="true"] .form-toggle-thumb { @apply translate-x-5; }
 
     /* Navigation (dark sidebar) */
-    .nav-link { @apply flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-btn text-white/70 hover:text-white hover:bg-white/10 transition-all duration-100 active:scale-[0.98]; }
+    /* Hover previews the active tile at a lighter strength: faint fill,
+       faint hairline ring and a cream tint on the icon. */
+    .nav-link { @apply flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-btn text-white/70 ring-1 ring-inset ring-transparent hover:text-white hover:bg-white/[0.05] hover:ring-white/[0.08] transition-all duration-100 active:scale-[0.98]; }
+    .nav-link > svg { @apply transition-colors duration-100; }
+    .nav-link:hover > svg { @apply text-[#E6E1D1]/80; }
     /* Active item: a quiet, crisp tile (soft fill + hairline ring), brighter
        text and a cream icon. No edge bar, so it reads clean and calm. */
     .nav-link-active { @apply flex items-center gap-3 px-3 py-2 text-sm font-semibold rounded-btn text-white bg-white/[0.08] ring-1 ring-inset ring-white/[0.12] transition-all duration-100 active:scale-[0.98]; }
