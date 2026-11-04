@@ -1122,14 +1122,20 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 /* Rows. The whole row is the target — split_view.js turns a click
    anywhere on it into a selection — so it has to look like one. */
 [data-horse-row] { cursor: pointer; }
+/* The selected row uses the same quiet language as the sidebar's active
+   item: a soft forest tint with a hairline ring, the name in forest, and
+   a ring round the photo. No coloured edge bar. The tint is stronger than
+   the hover tint, so the selection still reads while the mouse is on
+   another row. */
 [data-horse-row].is-selected,
-.data-table tbody tr[data-horse-row].is-selected { @apply bg-sage-50; }
-li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddle.DEFAULT'); }
-/* The bar goes on the row's leading cell — which is the tick box only
-   while Select is on, and the horse's name the rest of the time. */
-.split-view.is-selecting tr[data-horse-row].is-selected td:first-child,
-.split-view:not(.is-selecting) tr[data-horse-row].is-selected td:nth-child(2) {
-    box-shadow: inset 3px 0 0 0 theme('colors.saddle.DEFAULT');
+.data-table tbody tr[data-horse-row].is-selected,
+.data-table tbody tr[data-horse-row].is-selected:hover {
+    @apply bg-forest/[0.07] ring-1 ring-inset ring-forest/[0.18];
+}
+[data-horse-row].is-selected [data-horse-link] .font-medium { @apply text-forest font-semibold; }
+[data-horse-row].is-selected [data-horse-link] > img,
+[data-horse-row].is-selected [data-horse-link] > div:first-child {
+    @apply outline-2 outline-offset-2 outline-forest/45;
 }
 
 /* ── The horse row: one markup, two shapes ─────────────────────────────
@@ -1239,14 +1245,6 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
         inset: 0;
     }
 
-    /* The selected bar runs the height of the card, not of one cell. */
-    .horse-rows tbody tr[data-horse-row].is-selected {
-        box-shadow: inset 3px 0 0 0 theme('colors.saddle.DEFAULT');
-    }
-    .split-view.is-selecting .horse-rows tr[data-horse-row].is-selected td:first-child,
-    .split-view:not(.is-selecting) .horse-rows tr[data-horse-row].is-selected td:nth-child(2) {
-        box-shadow: none;
-    }
 
     /* An owner heading row (_owner_table.html) keeps its own shape: its
        cells hand their children straight to the row's flex line, so the
