@@ -6,6 +6,7 @@ Uses db_table to keep original table names, avoiding database migration changes.
 
 from datetime import timedelta
 from decimal import Decimal
+from types import SimpleNamespace
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -92,6 +93,11 @@ class Invoice(models.Model):
     # last failure reason so a queued send that fails is not invisible.
     send_queued_at = models.DateTimeField(null=True, blank=True)
     send_error = models.TextField(blank=True)
+    # The yard's details as they were when the invoice was issued (sent):
+    # name, address, VAT number, bank details. The PDF prints these, so a
+    # later change in Settings does not rewrite an invoice already issued.
+    # Empty on a draft, which shows the current details.
+    issuer = models.JSONField(null=True, blank=True)
 
     # Who changed what, and when (core/audit.py shows it). send_queued_at
     # is a claim flag set and cleared by every bulk send: tracking it
@@ -114,10 +120,35 @@ class Invoice(models.Model):
     def __str__(self):
         return f"{self.invoice_number} - {self.owner.name}"
 
+    ISSUER_FIELDS = (
+        'business_name', 'address', 'phone', 'email', 'website',
+        'vat_registration', 'bank_details', 'card_payment_url',
+    )
+    ISSUED_STATUSES = ('sent', 'overdue', 'paid')
+
+    @classmethod
+    def current_issuer(cls):
+        """The yard's details from Settings now, as stored on an invoice."""
+        from core.models import BusinessSettings
+
+        business = BusinessSettings.get_settings()
+        return {field: getattr(business, field, '') or '' for field in cls.ISSUER_FIELDS}
+
+    def issuer_details(self):
+        """The details to print: as issued, or the current ones on a draft."""
+        details = self.current_issuer()
+        if self.issuer:
+            details.update({k: v for k, v in self.issuer.items() if k in self.ISSUER_FIELDS})
+        return SimpleNamespace(**details)
+
     def save(self, *args, **kwargs):
         # Auto-calculate due date if not set
         if not self.due_date:
             self.due_date = self.period_end + timedelta(days=self.payment_terms_days)
+        if not self.issuer and self.status in self.ISSUED_STATUSES:
+            self.issuer = self.current_issuer()
+            if kwargs.get('update_fields') is not None:
+                kwargs['update_fields'] = list(kwargs['update_fields']) + ['issuer']
         super().save(*args, **kwargs)
 
     @property
@@ -154,6 +185,9 @@ class Invoice(models.Model):
             status__in=[self.Status.DRAFT, self.Status.SENT, self.Status.OVERDUE],
         ).update(status=self.Status.SENT, sent_at=now, send_queued_at=None, send_error='')
         if updated:
+            if not self.issuer:
+                self.issuer = self.current_issuer()
+                Invoice.objects.filter(pk=self.pk, issuer__isnull=True).update(issuer=self.issuer)
             self.status = self.Status.SENT
             self.sent_at = now
             self.send_queued_at = None
