@@ -23,7 +23,13 @@ User = get_user_model()
 class QueryCountTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
+        from core.models import BusinessSettings
         from core.roles_testutils import administrator_role, assign_role
+        # The settings row exists on a real yard. Made here, so the counts
+        # below do not depend on whether an earlier test in the same worker
+        # happened to create it (the page creates it on first use: +4
+        # queries, and the dashboard test failed or passed by test order).
+        BusinessSettings.get_settings()
         cls.user = User(
             username='perfuser',
             last_login=timezone.now(),
