@@ -12,6 +12,9 @@ buttons are the ones it has always had.
 {% endcomment %}
 <div class="loc-board hidden lg:flex" data-site-board
      data-preview-url="{% url 'location_preview' 0 %}"
+     data-resize-host="loc-board" data-resize-var="--loc-rail-w"
+     data-resize-panel=".loc-rail" data-resize-side="left"
+     data-resize-min="320" data-resize-min-other="352" data-resize-gap="16"
      data-site="{{ board_site }}">
 
     {% comment %}The source of the detail request, and nothing else.
@@ -193,6 +196,12 @@ buttons are the ones it has always had.
             </div>
         </div>
     </section>
+
+    {% comment %}Drag to give the rail or the map more room.
+    static/js/panel_resize.js remembers the width per page in localStorage.{% endcomment %}
+    <div class="resize-bar" data-resize-bar role="separator"
+         aria-orientation="vertical" aria-label="Resize the location list"
+         tabindex="0" title="Drag to resize · double-click to reset"></div>
 
     <!-- ── The map ── -->
     <section class="loc-board-map">

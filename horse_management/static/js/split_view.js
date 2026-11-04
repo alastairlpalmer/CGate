@@ -64,28 +64,7 @@
         return 0;
     }
 
-    /**
-     * The pane width a drag (or a remembered width) is allowed to take.
-     *
-     * The pane never gets narrower than `minPane`, and the list keeps at
-     * least `minList` beside it, so neither side can be squeezed into
-     * uselessness. When the screen is too narrow for both, the pane keeps
-     * its minimum and the list gives way, as it did before resizing.
-     */
-    function clampPaneWidth(width, containerWidth, minPane, minList) {
-        var lo = minPane || 336;
-        var hi = containerWidth - (minList || 448);
-        var w = Math.round(Number(width) || 0);
-        if (hi < lo) { return lo; }
-        if (w < lo) { return lo; }
-        if (w > hi) { return hi; }
-        return w;
-    }
-
-    var api = {
-        stepIndex: stepIndex, snapFor: snapFor, translateYOf: translateYOf,
-        clampPaneWidth: clampPaneWidth
-    };
+    var api = { stepIndex: stepIndex, snapFor: snapFor, translateYOf: translateYOf };
     root.YardwaySplitView = api;
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
@@ -480,7 +459,6 @@
         var container = root_();
         if (!container) { state.pk = null; return; }
         bindDrag();
-        applyStoredWidth();
         var pk = remembered();
         state.pk = null;
         // Not just "is the row in the page" but "is it on screen": a
@@ -533,120 +511,6 @@
         if (previousHook) { previousHook(main, responseText); }
         restore();
     };
-
-    // ── Desktop: resizable pane ──
-    //
-    // The bar between the list and the pane drags to give either side
-    // more room. The width is remembered per page in localStorage, so it
-    // is still there on the next visit. Double-click the bar to go back
-    // to the default width. With the bar focused, Left and Right resize
-    // by keyboard.
-
-    var MIN_PANE = 336;   // 21rem: the pane's content needs this much
-    var MIN_LIST = 448;   // 28rem: names and owners stay readable
-    var GAP = 16;         // the grid gap between the two columns
-    var KEY_STEP = 32;
-
-    function widthKey() { return 'yardway:split-width:' + window.location.pathname; }
-
-    function storedWidth() {
-        try { return parseInt(localStorage.getItem(widthKey()), 10) || null; }
-        catch (err) { return null; }
-    }
-
-    function storeWidth(px) {
-        try {
-            if (px) { localStorage.setItem(widthKey(), String(px)); }
-            else { localStorage.removeItem(widthKey()); }
-        } catch (err) { /* private mode: the width lasts for this page only */ }
-    }
-
-    function clampFor(container, px) {
-        return clampPaneWidth(px, container.clientWidth - GAP, MIN_PANE, MIN_LIST);
-    }
-
-    function setWidth(container, px) {
-        if (px) { container.style.setProperty('--split-pane-w', px + 'px'); }
-        else { container.style.removeProperty('--split-pane-w'); }
-        var bar = container.querySelector('[data-split-resizer]');
-        if (bar) {
-            var panel = pane();
-            bar.setAttribute('aria-valuenow', String(px || (panel ? Math.round(panel.offsetWidth) : 0)));
-        }
-    }
-
-    function applyStoredWidth() {
-        var container = root_();
-        if (!container) { return; }
-        var px = storedWidth();
-        setWidth(container, px ? clampFor(container, px) : null);
-    }
-
-    var resize = null;
-
-    document.addEventListener('pointerdown', function (e) {
-        var bar = e.target.closest ? e.target.closest('[data-split-resizer]') : null;
-        if (!bar || e.button !== 0 || !isDesktop()) { return; }
-        var container = root_();
-        var panel = pane();
-        if (!container || !panel) { return; }
-        e.preventDefault();
-        resize = {
-            bar: bar,
-            container: container,
-            startX: e.clientX,
-            startW: panel.getBoundingClientRect().width,
-            width: null
-        };
-        bar.setPointerCapture && bar.setPointerCapture(e.pointerId);
-        document.documentElement.classList.add('is-resizing-split');
-    });
-
-    document.addEventListener('pointermove', function (e) {
-        if (!resize) { return; }
-        // The pane is on the right: moving left makes it wider.
-        var px = clampFor(resize.container, resize.startW + (resize.startX - e.clientX));
-        resize.width = px;
-        setWidth(resize.container, px);
-    });
-
-    function endResize() {
-        if (!resize) { return; }
-        if (resize.width) { storeWidth(resize.width); }
-        resize = null;
-        document.documentElement.classList.remove('is-resizing-split');
-    }
-    document.addEventListener('pointerup', endResize);
-    document.addEventListener('pointercancel', endResize);
-
-    document.addEventListener('dblclick', function (e) {
-        var bar = e.target.closest ? e.target.closest('[data-split-resizer]') : null;
-        var container = root_();
-        if (!bar || !container) { return; }
-        storeWidth(null);
-        setWidth(container, null);
-    });
-
-    document.addEventListener('keydown', function (e) {
-        var bar = e.target.closest ? e.target.closest('[data-split-resizer]') : null;
-        if (!bar) { return; }
-        var delta = e.key === 'ArrowLeft' ? KEY_STEP : e.key === 'ArrowRight' ? -KEY_STEP : 0;
-        if (!delta) { return; }
-        var container = root_();
-        var panel = pane();
-        if (!container || !panel) { return; }
-        e.preventDefault();
-        var px = clampFor(container, panel.getBoundingClientRect().width + delta);
-        setWidth(container, px);
-        storeWidth(px);
-    });
-
-    // A narrower window can leave a remembered width too wide for the
-    // list to stay readable; clamp it again rather than squash the list.
-    window.addEventListener('resize', function () {
-        if (resize) { return; }
-        applyStoredWidth();
-    });
 
     // A rotation or a resize across the breakpoint changes which shape the
     // pane is; re-apply the right one.
