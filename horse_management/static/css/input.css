@@ -1590,17 +1590,23 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 .loc-sheet-hint { @apply shrink-0 min-h-[40px] px-2 flex items-center text-[13px] font-bold text-saddle whitespace-nowrap; }
 
 .loc-seg { @apply flex gap-1 p-1 rounded-btn bg-parchment flex-1 min-w-0; }
+/* The phone filter (All / Occupied / Rested) and the sort buttons use the
+   same selected style as the view switcher, the tables and the cards: a
+   forest tint, a solid 2px forest outline and a forest label. Hover on
+   another option is a light tint preview. */
 .loc-seg-item {
     @apply flex-1 min-h-[40px] grid place-items-center rounded-[6px] text-sm font-bold
            text-sage whitespace-nowrap transition-colors duration-100;
 }
-.loc-seg-item.is-active { @apply bg-white text-charcoal shadow-xs; }
+.loc-seg-item:not(.is-active):hover { @apply bg-forest/[0.04] text-charcoal; }
+.loc-seg-item.is-active { @apply bg-forest/[0.1] text-forest ring-2 ring-inset ring-forest; }
 
 .loc-sort {
     @apply min-h-[38px] px-3 flex items-center rounded-btn bg-parchment text-sm font-bold
            text-charcoal-light whitespace-nowrap transition-colors duration-100;
 }
-.loc-sort.is-active { @apply bg-forest text-white; }
+.loc-sort:not(.is-active):hover { @apply text-charcoal ring-1 ring-inset ring-forest/[0.2]; }
+.loc-sort.is-active { @apply bg-forest/[0.1] text-forest ring-2 ring-inset ring-forest; }
 
 /* ── One location in the list ── */
 .loc-row {
