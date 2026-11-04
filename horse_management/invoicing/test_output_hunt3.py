@@ -12,15 +12,31 @@ from billing.models import ExtraCharge
 from core.models import BusinessSettings, Horse, Location, Owner, Placement, RateType
 from core.roles_testutils import make_admin
 from invoicing.models import Invoice
-from invoicing.pdf import generate_invoice_pdf
 from invoicing.services import InvoiceService
 from invoicing.tasks import claim_invoice_for_sending, send_invoice_email_task
 from invoicing.utils import invoice_to_xero_rows
 
 
-def pdf_text(buffer):
-    from pypdf import PdfReader
-    return '\n'.join(page.extract_text() for page in PdfReader(buffer).pages)
+def pdf_text(invoice):
+    """The text the ReportLab invoice is built from (no PDF reader needed)."""
+    import reportlab.platypus as platypus
+
+    from invoicing.pdf import generate_invoice_pdf_reportlab
+
+    texts = []
+    real_paragraph, real_table = platypus.Paragraph, platypus.Table
+
+    def paragraph(text, *args, **kwargs):
+        texts.append(str(text))
+        return real_paragraph(text, *args, **kwargs)
+
+    def table(data, *args, **kwargs):
+        texts.extend(str(cell) for row in data for cell in row)
+        return real_table(data, *args, **kwargs)
+
+    with patch.object(platypus, 'Paragraph', paragraph), patch.object(platypus, 'Table', table):
+        generate_invoice_pdf_reportlab(invoice)
+    return '\n'.join(texts)
 
 
 class Base(TestCase):
@@ -103,7 +119,7 @@ class OutputTests(Base):
             created_at=datetime(2026, 7, 31, 23, 30, tzinfo=dt_tz.utc),
         )
         invoice.refresh_from_db()
-        self.assertIn('Date: 01/08/2026', pdf_text(generate_invoice_pdf(invoice)))
+        self.assertIn('Date: 01/08/2026', pdf_text(invoice))
 
     def test_the_vat_label_has_no_trailing_zeros(self):
         settings_row = BusinessSettings.get_settings()
@@ -111,7 +127,7 @@ class OutputTests(Base):
         settings_row.save()
         invoice = self.make()
         invoice.refresh_from_db()
-        self.assertIn('VAT (20%)', pdf_text(generate_invoice_pdf(invoice)))
+        self.assertIn('VAT (20%)', pdf_text(invoice))
 
 
 @override_settings(EMAIL_WEBHOOK_TOKEN='s3cret')
