@@ -51,11 +51,13 @@ def generate_monthly_draft_invoices():
 SEND_CLAIM_TIMEOUT = timedelta(minutes=15)
 
 
-def claim_invoice_for_sending(invoice_pk):
-    """Atomically mark a draft invoice as queued for sending.
+def claim_invoice_for_sending(invoice_pk, statuses=None):
+    """Atomically mark an invoice as queued for sending.
 
     Returns True when this caller won the claim. Another caller (a
     double-click, a second tab) sees False and must not enqueue again.
+    ``statuses``: the invoice statuses that may be claimed; drafts only
+    unless given (a re-send of a sent invoice passes SENT).
     """
     from django.db.models import Q
 
@@ -65,7 +67,7 @@ def claim_invoice_for_sending(invoice_pk):
     stale = now - SEND_CLAIM_TIMEOUT
     updated = Invoice.objects.filter(
         pk=invoice_pk,
-        status=Invoice.Status.DRAFT,
+        status__in=statuses or [Invoice.Status.DRAFT],
     ).filter(
         Q(send_queued_at__isnull=True) | Q(send_queued_at__lt=stale)
     ).update(send_queued_at=now, send_error='')
