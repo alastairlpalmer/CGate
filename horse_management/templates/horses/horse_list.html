@@ -450,6 +450,11 @@
     <aside id="horse-preview" class="split-view-pane" hidden
            hx-select="unset" hx-push-url="false" hx-swap="innerHTML"
            aria-label="Horse preview">
+        {% comment %}Desktop only: drag to give the list or the pane more room.
+        split_view.js remembers the width per page in localStorage.{% endcomment %}
+        <div class="split-view-resizer" data-split-resizer role="separator"
+             aria-orientation="vertical" aria-label="Resize the preview" aria-valuemin="336"
+             tabindex="0" title="Drag to resize · double-click to reset"></div>
         <div class="split-view-handle" aria-hidden="true"><span></span></div>
         <div class="split-view-chrome">
             <button type="button" class="split-view-step" id="horse-preview-prev"

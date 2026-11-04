@@ -1314,12 +1314,18 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
 }
 .split-view-body { @apply flex-1 min-h-0 overflow-y-auto overscroll-contain; }
 .split-view-hint { @apply hidden; }
+.split-view-resizer { display: none; }
+/* While dragging: keep the resize cursor everywhere and stop text
+   selection, so a fast drag does not highlight half the list. */
+.is-resizing-split, .is-resizing-split * { cursor: col-resize !important; user-select: none !important; }
 
 /* ── The pane: a column from lg ── */
 @media (min-width: 1024px) {
     .split-view.is-open {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(21rem, 26rem);
+        /* --split-pane-w is set by the resize bar (split_view.js). The
+           min() keeps at least 28rem for the list if the window shrinks. */
+        grid-template-columns: minmax(0, 1fr) minmax(21rem, min(var(--split-pane-w, 26rem), calc(100% - 29rem)));
         gap: 1rem;
         align-items: start;
     }
@@ -1338,6 +1344,50 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
     }
     .split-view-handle { display: none; }
     .split-view-chrome { touch-action: auto; }
+
+    /* The resize bar sits in the 1rem gap left of the pane. It is a thin
+       line that shows on hover, focus and drag, with a small grip in the
+       middle, so it is easy to find but quiet when not in use. */
+    .split-view-resizer {
+        display: block;
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: -1rem;
+        width: 1rem;
+        cursor: col-resize;
+        touch-action: none;
+        outline: none;
+    }
+    .split-view-resizer::before {
+        content: '';
+        position: absolute;
+        top: 0.75rem;
+        bottom: 0.75rem;
+        left: 50%;
+        width: 2px;
+        transform: translateX(-50%);
+        border-radius: 9999px;
+        @apply bg-forest/0 transition-colors duration-150;
+    }
+    .split-view-resizer::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 6px;
+        height: 2rem;
+        transform: translate(-50%, -50%);
+        border-radius: 9999px;
+        @apply bg-sage/25 transition-colors duration-150;
+    }
+    .split-view-resizer:hover::before,
+    .split-view-resizer:focus-visible::before,
+    .is-resizing-split .split-view-resizer::before { @apply bg-forest/25; }
+    .split-view-resizer:hover::after,
+    .split-view-resizer:focus-visible::after,
+    .is-resizing-split .split-view-resizer::after { @apply bg-forest/60; }
+    .split-view-resizer:focus-visible::after { @apply ring-2 ring-sage ring-offset-2; }
     .split-view-hint {
         @apply flex items-center justify-center gap-1 px-3 py-1.5 border-t border-light-sage text-[11px] text-sage shrink-0;
     }
