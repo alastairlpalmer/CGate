@@ -1725,10 +1725,24 @@ def breeding_covering_delete(request, pk):
     record = covering.record
     if request.method != 'POST':
         return HttpResponseBadRequest("POST required")
-    if record.coverings.count() <= 1:
+    if record.status not in BreedingRecord.ACTIVE_STATUSES and record.status != BreedingRecord.Status.BARREN:
+        # A finished record (born, lost): removing a covering moved its
+        # covering and due dates after the fact.
+        messages.error(request, f"This record is {record.get_status_display().lower()}; its coverings can't be changed.")
+    elif record.coverings.count() <= 1:
         messages.error(request, "A record needs at least one covering; edit the date instead.")
     else:
-        covering.delete()
+        with transaction.atomic():
+            covering.delete()
+            record.refresh_from_db()
+            # Undoing a re-cover: if a negative scan came after the covering
+            # that is now the latest, the mare is barren again (adding the
+            # covering had reopened her as Covered).
+            if record.status == BreedingRecord.Status.COVERED and record.scans.filter(
+                result=PregnancyScan.Result.NOT_IN_FOAL, date__gte=record.date_covered,
+            ).exists():
+                record.status = BreedingRecord.Status.BARREN
+                record.save(update_fields=['status', 'updated_at'])
         messages.success(request, f"Covering on {covering.date:%d %b %Y} removed.")
     return redirect('horse_detail', pk=record.mare_id)
 

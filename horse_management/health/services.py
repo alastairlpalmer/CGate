@@ -25,6 +25,11 @@ def record_foaling(record, *, foal_dob, foal_sex, foal_colour='', foal_name='',
         )
     mare = record.mare
     with transaction.atomic():
+        # Lock and read again: two saves at once (a double-click) both
+        # passed the check above and each created a foal.
+        locked = BreedingRecord.objects.select_for_update().get(pk=record.pk)
+        if not locked.can_record_foaling:
+            raise ValidationError('A foaling has already been recorded on this breeding record.')
         if existing_foal is not None:
             foal = existing_foal
             changed = []
@@ -58,6 +63,7 @@ def record_foaling(record, *, foal_dob, foal_sex, foal_colour='', foal_name='',
                 dam_name=mare.name,
                 sire_name=record.stallion_name,
                 breeding=f"By {record.stallion_name} out of {mare.name}",
+                microchip=foal_microchip or '',
                 has_passport=False,
                 is_active=True,
             )
@@ -190,10 +196,47 @@ def add_covering(record, *, date, method='', stallion_name='', vet=None, notes='
     return covering
 
 
+def _move_stay_boundary(horse, old_day, new_day):
+    """Move the stay that started on ``old_day`` to start on ``new_day``.
+
+    The stay before it (ending the day before) moves with it, so there is
+    no gap or overlap. Used when a foaling date is corrected: the foal's
+    stay and the mare's foaling-rate stay began on the old date, so the
+    foal was billed from before it was born.
+    """
+    from datetime import timedelta
+
+    from core.models import Placement
+
+    stay = Placement.objects.filter(horse=horse, start_date=old_day).first()
+    if stay is None:
+        return
+    before = Placement.objects.filter(horse=horse, end_date=old_day - timedelta(days=1)).first()
+    if (stay.end_date and new_day > stay.end_date) or (before and new_day <= before.start_date):
+        raise ValidationError(
+            f"{horse.name}'s stays changed after the foaling, so the date of "
+            "birth cannot be moved this far. Correct the stays first."
+        )
+    # Shorten before lengthening, so the two never overlap.
+    if before and new_day < old_day:
+        before.end_date = new_day - timedelta(days=1)
+        before.save()
+    stay.start_date = new_day
+    stay.save()
+    if before and new_day > old_day:
+        before.end_date = new_day - timedelta(days=1)
+        before.save()
+
+
 def update_foal_details(record, *, foal_name, foal_dob, foal_sex, foal_colour='',
                         foal_microchip='', foaling_notes=''):
     """Edit the foal's birth details on the record and its horse record."""
     with transaction.atomic():
+        old_dob = record.foal_dob
+        if old_dob and foal_dob and foal_dob != old_dob:
+            if record.foal is not None:
+                _move_stay_boundary(record.foal, old_dob, foal_dob)
+            _move_stay_boundary(record.mare, old_dob, foal_dob)
         record.foal_dob = foal_dob
         record.foal_sex = foal_sex
         record.foal_colour = foal_colour
@@ -206,7 +249,9 @@ def update_foal_details(record, *, foal_name, foal_dob, foal_sex, foal_colour=''
             foal.date_of_birth = foal_dob
             foal.sex = foal_sex
             foal.color = foal_colour
-            foal.save(update_fields=['name', 'date_of_birth', 'sex', 'color', 'updated_at'])
+            # The form says the record and the horse are kept in step.
+            foal.microchip = foal_microchip or foal.microchip
+            foal.save(update_fields=['name', 'date_of_birth', 'sex', 'color', 'microchip', 'updated_at'])
     return record
 
 
@@ -233,13 +278,26 @@ def record_weaning(record, *, weaned_date, foal_location=None, foal_rate_type=No
                 location = foal_location or foal_placement.location
                 rate = foal_rate_type or (foal_placement.rate_type if foal_placement else None)
                 owner = foal_placement.owner if foal_placement else foal.primary_owner
+                if owner is None and not foal_placement and mare.current_placement:
+                    # A foal of a mare billed through her stay alone has no
+                    # shares: bill it the way the mare is billed.
+                    owner = mare.current_placement.owner
+                if not foal_placement and (owner is None or rate is None):
+                    # Saying "weaned" and leaving the foal unplaced (and
+                    # never billed) was a silent failure.
+                    raise ValidationError(
+                        'The foal could not be placed: it has no owner. Add an '
+                        'owner on the foal page, then record the weaning.'
+                        if owner is None else
+                        'Pick the rate for the foal at its new location.'
+                    )
                 if foal_placement:
                     PlacementService.move_horse(
                         foal, new_location=location, move_date=weaned_date,
                         new_owner=owner, new_rate_type=rate,
                         notes=f"Weaned from {mare.name}",
                     )
-                elif owner and rate:
+                else:
                     PlacementService.arrive_horse(
                         foal, owner=owner, location=location, rate_type=rate,
                         arrival_date=weaned_date, notes=f"Weaned from {mare.name}",

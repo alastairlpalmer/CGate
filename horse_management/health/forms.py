@@ -590,8 +590,22 @@ class BreedingRecordForm(ActiveHorseFormMixin, forms.ModelForm):
         foal_q = Q(sex__in=(Horse.Sex.COLT, Horse.Sex.FILLY)) | Q(dam__isnull=False)
         if current_foal:
             foal_q |= Q(pk=current_foal)
-        self.fields['foal'].queryset = Horse.objects.filter(foal_q).order_by('-date_of_birth', 'name')
+        # A foal already linked to another breeding record is not offered:
+        # one foal on two records made the foal page pick one at random.
+        self.fields['foal'].queryset = Horse.objects.filter(foal_q).exclude(
+            Q(birth_record__isnull=False) & ~Q(birth_record=self.instance.pk or 0)
+        ).distinct().order_by('-date_of_birth', 'name')
         self.fields['foal'].required = False
+        # With several coverings the date follows the latest covering (see
+        # BreedingRecord.sync_from_coverings): typed here, it moved no
+        # covering and the next covering change put it back. Change the
+        # coverings instead.
+        if self.instance.pk and self.instance.coverings.count() > 1:
+            self.fields['date_covered'].disabled = True
+            self.fields['date_covered'].help_text = (
+                'This record has several coverings: the date is the latest one. '
+                'Add or remove a covering to change it.'
+            )
 
     def clean(self):
         cleaned_data = super().clean()
@@ -611,12 +625,24 @@ class BreedingRecordForm(ActiveHorseFormMixin, forms.ModelForm):
             self.instance.due_date_is_manual = bool(date_foal_due) and date_foal_due != auto_due
         mare = cleaned_data.get('mare')
         foal = cleaned_data.get('foal')
+        status = cleaned_data.get('status')
+        if mare and status in BreedingRecord.ACTIVE_STATUSES:
+            open_elsewhere = BreedingRecord.objects.filter(
+                mare=mare, status__in=BreedingRecord.ACTIVE_STATUSES,
+            ).exclude(pk=self.instance.pk)
+            if open_elsewhere.exists():
+                # Two open records meant two sets of reminders and two
+                # foaling-watch rows, while the mare page showed one.
+                self.add_error(
+                    'mare',
+                    f'{mare.name} already has an open breeding record. Add a covering '
+                    'to it, or close it first.',
+                )
         if mare and foal and foal.pk == mare.pk:
             self.add_error('foal', 'The foal cannot be the mare herself.')
         foal_dob = cleaned_data.get('foal_dob')
         if date_covered and foal_dob and foal_dob < date_covered:
             self.add_error('foal_dob', 'The foal cannot be born before the mare was covered.')
-        status = cleaned_data.get('status')
         if status == BreedingRecord.Status.BORN and not (foal or foal_dob):
             self.add_error(
                 'status',
@@ -915,7 +941,10 @@ class WeaningForm(forms.Form):
         self.foal = record.foal
         self.foal_placement = self.foal.current_placement if self.foal else None
         self.mare_placement = record.mare.current_placement
-        if not self.foal_placement:
+        # A foal with no stay yet can still be placed at weaning: it then
+        # needs a rate, so the field stays open (disabled, the rate posted
+        # was ignored and "Pick the rate" could never be met).
+        if not self.foal:
             self.fields['foal_rate_type'].disabled = True
         if not self.mare_placement:
             self.fields['mare_rate_type'].disabled = True
