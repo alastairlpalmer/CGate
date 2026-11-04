@@ -1314,10 +1314,6 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
 }
 .split-view-body { @apply flex-1 min-h-0 overflow-y-auto overscroll-contain; }
 .split-view-hint { @apply hidden; }
-.split-view-resizer { display: none; }
-/* While dragging: keep the resize cursor everywhere and stop text
-   selection, so a fast drag does not highlight half the list. */
-.is-resizing-split, .is-resizing-split * { cursor: col-resize !important; user-select: none !important; }
 
 /* ── The pane: a column from lg ── */
 @media (min-width: 1024px) {
@@ -1344,50 +1340,9 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
     }
     .split-view-handle { display: none; }
     .split-view-chrome { touch-action: auto; }
+    /* The resize bar sits in the 1rem gap left of the pane. */
+    .split-view-pane > .resize-bar { position: absolute; top: 0; bottom: 0; left: -1rem; }
 
-    /* The resize bar sits in the 1rem gap left of the pane. It is a thin
-       line that shows on hover, focus and drag, with a small grip in the
-       middle, so it is easy to find but quiet when not in use. */
-    .split-view-resizer {
-        display: block;
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: -1rem;
-        width: 1rem;
-        cursor: col-resize;
-        touch-action: none;
-        outline: none;
-    }
-    .split-view-resizer::before {
-        content: '';
-        position: absolute;
-        top: 0.75rem;
-        bottom: 0.75rem;
-        left: 50%;
-        width: 2px;
-        transform: translateX(-50%);
-        border-radius: 9999px;
-        @apply bg-forest/0 transition-colors duration-150;
-    }
-    .split-view-resizer::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 6px;
-        height: 2rem;
-        transform: translate(-50%, -50%);
-        border-radius: 9999px;
-        @apply bg-sage/25 transition-colors duration-150;
-    }
-    .split-view-resizer:hover::before,
-    .split-view-resizer:focus-visible::before,
-    .is-resizing-split .split-view-resizer::before { @apply bg-forest/25; }
-    .split-view-resizer:hover::after,
-    .split-view-resizer:focus-visible::after,
-    .is-resizing-split .split-view-resizer::after { @apply bg-forest/60; }
-    .split-view-resizer:focus-visible::after { @apply ring-2 ring-sage ring-offset-2; }
     .split-view-hint {
         @apply flex items-center justify-center gap-1 px-3 py-1.5 border-t border-light-sage text-[11px] text-sage shrink-0;
     }
@@ -1536,6 +1491,13 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
     display: flex;
     flex-direction: column;
     @apply bg-parchment;
+}
+/* The `display: flex` above is unlayered, so it beats the template's
+   `lg:hidden` utility. Without this the phone map stays in the page on
+   desktop at zero height, and its overflowing content shows through the
+   gap between the board's rail and map. */
+@media (min-width: 1024px) {
+    .loc-phone { display: none; }
 }
 
 /* Its own stacking context: the map's badges and controls sit at z-500
@@ -1711,6 +1673,12 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
    map was squeezed to 238 px — a map you cannot read is worse than the
    list on its own. */
 .loc-board > .loc-board-map { flex: 2 1 0%; min-width: 22rem; }
+/* The resize bar (static/js/panel_resize.js) sits in the gap between the
+   rail and the map. Its -1rem margins take it out of the flow, so the
+   gap stays 1rem. Once a width is stored, the rail takes it exactly. */
+.loc-board { position: relative; }
+.loc-board > .resize-bar { position: relative; flex: 0 0 1rem; margin-inline: -1rem; }
+.loc-board.has-resize-width > .loc-rail { flex: 0 0 var(--loc-rail-w); max-width: none; }
 
 .loc-rail {
     @apply flex flex-col min-h-0 bg-white border border-light-sage rounded-card overflow-hidden;
@@ -1792,3 +1760,51 @@ li[data-horse-row].is-selected { box-shadow: inset 3px 0 0 0 theme('colors.saddl
            bg-parchment/60 text-[13px] font-semibold text-charcoal
            transition-colors duration-100 hover:border-saddle hover:text-saddle;
 }
+
+/* ── Resize bar (static/js/panel_resize.js) ────────────────────────────
+   Drags to resize two panels side by side, desktop only. A thin line
+   shows on hover, focus and drag, with a small grip in the middle, so it
+   is easy to find but quiet when not in use. Each layout places it. */
+.resize-bar { display: none; }
+@media (min-width: 1024px) {
+    .resize-bar {
+        display: block;
+        width: 1rem;
+        cursor: col-resize;
+        touch-action: none;
+        outline: none;
+        z-index: 5;
+    }
+    .resize-bar::before {
+        content: '';
+        position: absolute;
+        top: 0.75rem;
+        bottom: 0.75rem;
+        left: 50%;
+        width: 2px;
+        transform: translateX(-50%);
+        border-radius: 9999px;
+        @apply bg-forest/0 transition-colors duration-150;
+    }
+    .resize-bar::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 6px;
+        height: 2rem;
+        transform: translate(-50%, -50%);
+        border-radius: 9999px;
+        @apply bg-sage/25 transition-colors duration-150;
+    }
+    .resize-bar:hover::before,
+    .resize-bar:focus-visible::before,
+    .is-resizing-panel .resize-bar::before { @apply bg-forest/25; }
+    .resize-bar:hover::after,
+    .resize-bar:focus-visible::after,
+    .is-resizing-panel .resize-bar::after { @apply bg-forest/60; }
+    .resize-bar:focus-visible::after { @apply ring-2 ring-sage ring-offset-2; }
+}
+/* While dragging: keep the resize cursor everywhere and stop text
+   selection, so a fast drag does not highlight half the page. */
+.is-resizing-panel, .is-resizing-panel * { cursor: col-resize !important; user-select: none !important; }

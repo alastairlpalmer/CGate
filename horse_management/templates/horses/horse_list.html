@@ -84,6 +84,9 @@
     The preview URL carries a 0 where the horse's key goes —
     static/js/split_view.js puts the real one in.{% endcomment %}
     <div class="split-view" data-split-view data-preview-url="{% url 'horse_preview' 0 %}"
+         data-resize-host="horse-list" data-resize-var="--split-pane-w"
+         data-resize-panel="#horse-preview" data-resize-side="right"
+         data-resize-min="336" data-resize-min-other="448" data-resize-gap="16"
          :class="selectMode && 'is-selecting'">
     <div class="split-view-main">
 
@@ -451,8 +454,8 @@
            hx-select="unset" hx-push-url="false" hx-swap="innerHTML"
            aria-label="Horse preview">
         {% comment %}Desktop only: drag to give the list or the pane more room.
-        split_view.js remembers the width per page in localStorage.{% endcomment %}
-        <div class="split-view-resizer" data-split-resizer role="separator"
+        panel_resize.js remembers the width per page in localStorage.{% endcomment %}
+        <div class="resize-bar" data-resize-bar role="separator"
              aria-orientation="vertical" aria-label="Resize the preview" aria-valuemin="336"
              tabindex="0" title="Drag to resize · double-click to reset"></div>
         <div class="split-view-handle" aria-hidden="true"><span></span></div>
