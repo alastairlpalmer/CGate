@@ -170,8 +170,10 @@
 
     /* Navigation (dark sidebar) */
     .nav-link { @apply flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-btn text-white/70 hover:text-white hover:bg-white/10 transition-all duration-100 active:scale-[0.98]; }
-    /* Active item carries a Crown-cream accent bar so the current page reads instantly */
-    .nav-link-active { @apply flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-btn text-white bg-white/15 hover:bg-white/20 transition-all duration-100 active:scale-[0.98] shadow-[inset_3px_0_0_0_#E6E1D1]; }
+    /* Active item: a quiet, crisp tile (soft fill + hairline ring), brighter
+       text and a cream icon. No edge bar, so it reads clean and calm. */
+    .nav-link-active { @apply flex items-center gap-3 px-3 py-2 text-sm font-semibold rounded-btn text-white bg-white/[0.08] ring-1 ring-inset ring-white/[0.12] transition-all duration-100 active:scale-[0.98]; }
+    .nav-link-active > svg { @apply text-[#E6E1D1]; }
     .nav-group-label { @apply px-3 pt-5 pb-1 text-[11px] font-semibold text-white/55 uppercase tracking-widest; }
 
     /* Page Headers — every page title carries a short Brim→Saddle gradient bar
