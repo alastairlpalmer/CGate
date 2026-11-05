@@ -104,7 +104,7 @@ def decrypt_file(source):
     target = source.with_name(source.name[:-len(SUFFIX)])
     with source.open('rb') as sealed_file:
         if sealed_file.read(len(MAGIC)) != MAGIC:
-            raise BackupKeyError(f'{source.name} is not an encrypted Yardway backup.')
+            raise BackupKeyError(f'{source.name} is not an encrypted Cgate backup.')
         key = _decryption_keys().get(sealed_file.read(_KEY_ID))
         if key is None:
             raise BackupKeyError(

@@ -1,1 +1,1 @@
-{% autoescape off %}You have been invited to Yardway{% endautoescape %}
+{% autoescape off %}You have been invited to Cgate{% endautoescape %}

@@ -185,11 +185,11 @@ def business_name():
     def _load():
         from core.models import BusinessSettings
         name = (BusinessSettings.get_settings().business_name or '').strip()
-        return name or 'Yardway'
+        return name or 'Cgate'
     try:
         return cache.get_or_set(BUSINESS_NAME_CACHE_KEY, _load, 300)
     except Exception:  # noqa: BLE001 — a cache or DB hiccup must not take the shell down
-        return 'Yardway'
+        return 'Cgate'
 
 
 @register.filter

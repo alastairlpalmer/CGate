@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>{% block title %}Yardway{% endblock %}</title>
+    <title>{% block title %}Cgate{% endblock %}</title>
     {% load static %}
     {% load cache_bust %}
     {% load ui_extras %}
@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/favicon-32.png' %}">
     <link rel="icon" type="image/png" sizes="16x16" href="{% static 'icons/favicon-16.png' %}">
     <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
-    <meta name="apple-mobile-web-app-title" content="Yardway">
+    <meta name="apple-mobile-web-app-title" content="Cgate">
     <!-- Brand fonts are self-hosted (static/fonts, declared in css/input.css).
          Preload the two text faces so the first paint uses them; JetBrains
          Mono is only for figures and can arrive with the stylesheet. -->
@@ -139,7 +139,7 @@
                     <line x1="15" y1="20" x2="21" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                 </svg>
             </div>
-            <span class="sidebar-label text-lg font-bold text-white tracking-tight font-heading truncate flex-1 min-w-0">{% business_name %}</span>
+            <span class="sidebar-label text-lg font-bold text-white tracking-tight font-heading truncate flex-1 min-w-0">Cgate</span>
             {# Kept out of #main-content so the choice survives every swap. #}
             <button type="button" class="sidebar-toggle" data-sidebar-toggle
                     aria-controls="app-sidebar-nav" aria-label="Collapse the sidebar"
@@ -290,7 +290,7 @@
                         <line x1="15" y1="16" x2="21" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         <line x1="15" y1="20" x2="21" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
-                    <span class="text-sm font-bold text-charcoal font-heading truncate">{% business_name %}</span>
+                    <span class="text-sm font-bold text-charcoal font-heading truncate">Cgate</span>
                 </div>
             </div>
         </header>
@@ -344,7 +344,7 @@
         <!-- Footer (hidden on mobile — tab bar replaces it) -->
         <footer class="border-t border-light-sage bg-white mt-auto hidden lg:block">
             <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-                <p class="text-center text-sage text-xs">Yardway &mdash; Equine livery management</p>
+                <p class="text-center text-sage text-xs">Cgate &mdash; Equine livery management</p>
             </div>
         </footer>
     </div>

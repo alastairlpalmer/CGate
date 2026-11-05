@@ -1,4 +1,4 @@
-# Yardway
+# Cgate
 
 A web application for managing horse livery operations including tracking horses by location, owner management, and automated invoicing.
 
