@@ -115,6 +115,11 @@ class Invoice(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['owner', 'status'], name='invoice_owner_status'),
+            # The list's default order, the overdue/aged-debtor/reminder
+            # filters, and the finances months (a full scan at 2,600 rows).
+            models.Index(fields=['created_at'], name='invoice_created'),
+            models.Index(fields=['status', 'due_date'], name='invoice_status_due'),
+            models.Index(fields=['period_end'], name='invoice_period_end'),
         ]
 
     def __str__(self):
@@ -201,7 +206,14 @@ class Invoice(models.Model):
 
     @property
     def amount_paid(self):
-        """Sum of recorded payments against this invoice."""
+        """Sum of recorded payments against this invoice.
+
+        A query annotating ``paid_total`` (the live payments' sum) saves the
+        SUM query per invoice, for loops over many invoices.
+        """
+        annotated = getattr(self, 'paid_total', None)
+        if annotated is not None:
+            return annotated
         return (
             self.payments.aggregate(total=models.Sum('amount'))['total']
             or Decimal('0.00')
@@ -535,6 +547,8 @@ class Payment(models.Model):
             models.CheckConstraint(condition=Q(amount__gt=0), name='payment_amount_positive'),
         ]
         ordering = ['-date', '-created_at']
+        # Reconciliation, finances and the money widget filter by date.
+        indexes = [models.Index(fields=['date'], name='payment_date')]
 
     def __str__(self):
         return f"£{self.amount} against {self.invoice.invoice_number} on {self.date}"

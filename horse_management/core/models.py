@@ -1601,6 +1601,8 @@ class Document(SoftDeleteModel):
 
     class Meta:
         ordering = ['-uploaded_at']
+        # Expiry reminders and the dashboard filter on it.
+        indexes = [models.Index(fields=['expiry_date'], name='document_expiry')]
 
     def __str__(self):
         attached_to = self.horse or self.owner
