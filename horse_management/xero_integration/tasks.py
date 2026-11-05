@@ -55,13 +55,17 @@ def sync_xero_invoice_statuses():
         ],
     ).select_related('invoice')
 
+    from . import services
+
+    # One client for the whole sweep: a token refresh carries over.
+    client = services.XeroClient()
     checked = paid = errors = 0
     rate_limit_retries = 0
     try:
         for sync in syncs:
             while True:
                 try:
-                    updated = check_xero_invoice_status(sync)
+                    updated = check_xero_invoice_status(sync, client=client)
                 except XeroTokenExpiredError:
                     # The connection needs re-authorising — no point continuing.
                     logger.warning(
@@ -136,8 +140,12 @@ def push_invoices_to_xero(invoice_ids):
     from invoicing.models import Invoice
 
     from .client import XeroAPIError, XeroTokenExpiredError, paced_calls
+    from . import services
     from .services import XeroNotConnectedError, push_invoice_to_xero
 
+    # One client for the whole push: the connection is read once and a
+    # token refresh carries over to the next invoice.
+    client = services.XeroClient()
     pushed = failed = 0
     rate_limit_retries = 0
     invoices = Invoice.objects.filter(pk__in=invoice_ids).select_related('owner')
@@ -148,7 +156,7 @@ def push_invoices_to_xero(invoice_ids):
                     continue
                 while True:
                     try:
-                        push_invoice_to_xero(invoice)
+                        push_invoice_to_xero(invoice, client=client)
                     except (XeroNotConnectedError, XeroTokenExpiredError) as exc:
                         # Every remaining push would fail the same way.
                         logger.warning("Xero bulk push stopped: %s", exc)

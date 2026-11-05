@@ -55,14 +55,17 @@ def send_vaccination_reminders():
         vaccination_type__is_active=True,
     ).select_related('horse', 'vaccination_type')
 
+    # A primary-course dose is reminded when its window opens; any other
+    # record the type's reminder days before the due date.
+    due = [v for v in vaccinations if today >= v.reminder_date]
+    # Owners for every horse in two queries, not three per record.
+    from core.models import prime_current_owners
+    prime_current_owners({v.horse_id: v.horse for v in due}.values())
+
     # One digest email per owner instead of one email per record — an owner
     # with several horses due used to get a separate 07:00 email for each.
     by_owner = {}
-    for vaccination in vaccinations:
-        # A primary-course dose is reminded when its window opens; any other
-        # record the type's reminder days before the due date.
-        if today < vaccination.reminder_date:
-            continue
+    for vaccination in due:
         owner = vaccination.horse.current_owner
         if not owner or not owner.email:
             # Left unclaimed: retried daily and picked up once an email
@@ -119,30 +122,29 @@ def send_farrier_reminders():
     # include overdue visits (next_due_date < today) so a horse that has slipped
     # past its farrier date still gets nudged — matching how vaccination
     # reminders behave.
-    from django.db.models import Max
+    from django.db.models import OuterRef, Subquery
 
-    horses_needing_farrier = FarrierVisit.objects.filter(
-        horse__is_active=True,
-        next_due_date__isnull=False,
-    ).values('horse').annotate(
-        latest_date=Max('date')
-    )
+    from core.models import prime_current_owners
+
+    # Each horse's current visit in one query: the latest date, newest
+    # first on a tie. The sent check comes after, so an older visit on the
+    # same day as a sent one is never picked (the owner got "Farrier Due"
+    # twice). Before, this was one query a horse.
+    latest = FarrierVisit.objects.filter(
+        horse=OuterRef('horse'), next_due_date__isnull=False,
+    ).order_by('-date', '-pk').values('pk')[:1]
+    visits = [
+        visit for visit in FarrierVisit.objects.filter(
+            horse__is_active=True, next_due_date__isnull=False,
+            pk=Subquery(latest),
+        ).select_related('horse')
+        if not visit.reminder_sent and visit.next_due_date <= two_weeks
+    ]
+    prime_current_owners(v.horse for v in visits)
 
     # One digest email per owner instead of one per horse.
     by_owner = {}
-    for entry in horses_needing_farrier:
-        # The horse's current visit (on the latest date, newest first),
-        # then the sent check. Filtering on reminder_sent first picked the
-        # older of two visits on the same day once the newer one was sent,
-        # and the owner got "Farrier Due" again the next day.
-        visit = FarrierVisit.objects.filter(
-            horse_id=entry['horse'],
-            date=entry['latest_date'],
-            next_due_date__isnull=False,
-        ).select_related('horse').order_by('-pk').first()
-
-        if not visit or visit.reminder_sent or visit.next_due_date > two_weeks:
-            continue
+    for visit in visits:
         owner = visit.horse.current_owner
         if not owner or not owner.email:
             continue  # unclaimed; retried once an email address exists

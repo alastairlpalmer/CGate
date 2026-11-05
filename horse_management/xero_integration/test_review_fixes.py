@@ -55,7 +55,7 @@ class BulkPushTaskTests(TestCase):
     def test_a_rate_limit_waits_and_tries_the_same_invoice_again(self, sleep):
         calls = []
 
-        def push(invoice):
+        def push(invoice, client=None):
             calls.append(invoice.pk)
             if len(calls) == 1:
                 raise XeroAPIError('429', status_code=429, retry_after=7)

@@ -25,12 +25,15 @@ class XeroContactService:
     """Manages the mapping between LivMan Owners and Xero Contacts."""
 
     @staticmethod
-    def ensure_contact_exists(owner):
+    def ensure_contact_exists(owner, client=None):
         """Get or create a Xero Contact for this Owner.
+
+        ``client``: a shared XeroClient (a bulk push passes one, so a new
+        client is not built for every invoice).
 
         Returns the xero_contact_id (str).
         """
-        client = XeroClient()
+        client = client or XeroClient()
         tenant_id = XeroConnection.get_connection().xero_tenant_id
 
         # 1. Check local mapping first. A mapping from another Xero
@@ -174,7 +177,7 @@ def build_xero_invoice_payload(invoice, xero_contact_id):
     }
 
 
-def push_invoice_to_xero(invoice):
+def push_invoice_to_xero(invoice, client=None):
     """Push a single invoice to Xero.
 
     The Xero round-trips (contact lookup, possible token refresh, invoice
@@ -202,6 +205,8 @@ def push_invoice_to_xero(invoice):
 
     from invoicing.models import Invoice
 
+    # One client for a whole bulk push when the caller passes one.
+    client = client or XeroClient()
     conn = XeroConnection.get_connection()
     if not conn.is_connected:
         raise XeroNotConnectedError('Xero is not connected. Please connect first.')
@@ -217,13 +222,12 @@ def push_invoice_to_xero(invoice):
 
     try:
         # 1. Ensure contact exists
-        contact_id = XeroContactService.ensure_contact_exists(invoice.owner)
+        contact_id = XeroContactService.ensure_contact_exists(invoice.owner, client=client)
 
         # 2. Build payload
         payload = build_xero_invoice_payload(invoice, contact_id)
 
         # 3. Push to Xero (idempotent per invoice)
-        client = XeroClient()
         xero_invoice = client.create_invoice(
             payload,
             idempotency_key=XeroInvoiceSync.idempotency_key(invoice.pk, push_round),
@@ -280,7 +284,7 @@ def _record_push_error(invoice, message, new_round=False):
         )
 
 
-def check_xero_invoice_status(sync):
+def check_xero_invoice_status(sync, client=None):
     """Check Xero for updated invoice status.
 
     Updates sync record and local invoice if Xero reports PAID.
@@ -288,7 +292,8 @@ def check_xero_invoice_status(sync):
     """
     from invoicing.models import Invoice
 
-    client = XeroClient()
+    # The nightly sweep passes one client for every invoice.
+    client = client or XeroClient()
     xero_invoice = client.get_invoice(sync.xero_invoice_id)
 
     xero_status = xero_invoice.get('Status', '')
