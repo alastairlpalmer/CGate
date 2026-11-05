@@ -162,3 +162,18 @@ def apply_data_retention():
     from core import gdpr
 
     return gdpr.apply_retention()
+
+
+@shared_task
+def apply_rate_prices():
+    """Bring each rate type's shown price up to today's (RatePrice).
+
+    Billing already prices every day from RatePrice; this only moves the
+    price shown on screens when a dated change comes into effect. Daily.
+    """
+    from core.models import RateType
+
+    changed = sum(
+        1 for rate in RateType.objects.prefetch_related('prices') if rate.apply_current_price()
+    )
+    return f"Updated {changed} rate price(s)."

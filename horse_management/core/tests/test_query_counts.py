@@ -23,7 +23,13 @@ User = get_user_model()
 class QueryCountTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
+        from core.models import BusinessSettings
         from core.roles_testutils import administrator_role, assign_role
+        # The settings row exists on a real yard. Made here, so the counts
+        # below do not depend on whether an earlier test in the same worker
+        # happened to create it (the page creates it on first use: +4
+        # queries, and the dashboard test failed or passed by test order).
+        BusinessSettings.get_settings()
         cls.user = User(
             username='perfuser',
             last_login=timezone.now(),
@@ -106,5 +112,6 @@ class QueryCountTestCase(TestCase):
         # outstanding aggregates — invoice totals and part-payments — plus
         # unbilled + auth/session), +1 for the per-request session write
         # (SESSION_SAVE_EVERY_REQUEST, the rolling 30-day login), +1 for
-        # the credit notes taken off revenue.
-        self.assertMaxQueries(reverse('finances'), 14)
+        # the credit notes taken off revenue, +1 for the rate prices the
+        # forecast reads (RatePrice).
+        self.assertMaxQueries(reverse('finances'), 15)

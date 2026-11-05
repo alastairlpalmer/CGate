@@ -104,7 +104,7 @@ def generate_invoice_pdf(invoice):
         logger.info("WeasyPrint unavailable (%s), using ReportLab fallback.", e)
         return generate_invoice_pdf_reportlab(invoice)
 
-    settings = BusinessSettings.get_settings()
+    settings = invoice.issuer_details()
 
     line_items = invoice.line_items.select_related(
         'horse', 'placement', 'charge'
@@ -139,7 +139,7 @@ def generate_invoice_pdf_reportlab(invoice):
         TableStyle,
     )
 
-    settings = BusinessSettings.get_settings()
+    settings = invoice.issuer_details()
     buffer = io.BytesIO()
 
     doc = SimpleDocTemplate(
@@ -487,7 +487,7 @@ def generate_credit_note_pdf(credit):
     from reportlab.lib.units import mm
     from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-    settings = BusinessSettings.get_settings()
+    settings = credit.invoice.issuer_details()
     invoice = credit.invoice
     owner = invoice.owner
     buffer = io.BytesIO()

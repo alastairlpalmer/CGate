@@ -82,19 +82,23 @@ class CustomerReferenceTests(TestCase):
 
 
 class VatLineTests(TestCase):
+    # The VAT number is set before the invoice is made: an issued invoice
+    # keeps the details from the day it was issued (Invoice.issuer).
     def setUp(self):
         self.settings_row = BusinessSettings.get_settings()
-        self.invoice = _invoice(Owner.objects.create(name='Vat Owner'), 'VAT-1')
+
+    def _issue(self):
+        return _invoice(Owner.objects.create(name='Vat Owner'), 'VAT-1')
 
     def test_not_registered_prints_no_vat_line(self):
         self.settings_row.vat_registration = 'N/A'
         self.settings_row.save()
-        self.assertNotIn('VAT Reg', _pdf_texts(self.invoice))
+        self.assertNotIn('VAT Reg', _pdf_texts(self._issue()))
 
     def test_registered_prints_the_number(self):
         self.settings_row.vat_registration = 'GB123456789'
         self.settings_row.save()
-        self.assertIn('VAT Reg: GB123456789', _pdf_texts(self.invoice))
+        self.assertIn('VAT Reg: GB123456789', _pdf_texts(self._issue()))
 
 
 class ReconciliationTests(TestCase):

@@ -4,7 +4,7 @@ Core models for horse management system.
 
 import logging
 import os
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from functools import cached_property
 from pathlib import Path
@@ -833,6 +833,88 @@ class RateType(models.Model):
     def __str__(self):
         return f"{self.name} (£{self.daily_rate}/day)"
 
+    # The first date of the price every rate type starts with. Prices
+    # added later start on the date chosen for them (past or future).
+    FIRST_PRICE_DATE = date(2000, 1, 1)
+
+    def save(self, *args, **kwargs):
+        creating = self.pk is None
+        super().save(*args, **kwargs)
+        if creating:
+            RatePrice.objects.create(
+                rate_type=self, daily_rate=self.daily_rate,
+                effective_from=self.FIRST_PRICE_DATE,
+            )
+
+    def apply_current_price(self, today=None):
+        """Set ``daily_rate`` (the price shown on screens) to today's price.
+
+        Billing reads the price for each day from RatePrice; this keeps the
+        displayed price right when a dated change comes into effect (the
+        nightly core.tasks.apply_rate_prices) or is added for a past date.
+        """
+        current = self.price_on(today or timezone.localdate())
+        if current != self.daily_rate:
+            RateType.objects.filter(pk=self.pk).update(daily_rate=current)
+            self.daily_rate = current
+            return True
+        return False
+
+    def _price_rows(self):
+        """[(effective_from, daily_rate)] oldest first. Uses a prefetch of
+        ``prices`` when there is one."""
+        rows = sorted(
+            (p.effective_from, p.daily_rate) for p in self.prices.all()
+        )
+        return rows or [(self.FIRST_PRICE_DATE, self.daily_rate)]
+
+    def price_on(self, day):
+        """The daily price that applies on ``day``."""
+        price = None
+        for start, daily_rate in self._price_rows():
+            if start > day:
+                break
+            price = daily_rate
+        return price if price is not None else self._price_rows()[0][1]
+
+    def price_segments(self, start, end):
+        """[(from, to, daily_rate)] covering ``start``..``end``, split where
+        the price changes."""
+        segments = []
+        changes = [day for day, _ in self._price_rows() if start < day <= end]
+        bounds = [start] + changes + [end + timedelta(days=1)]
+        for seg_start, next_start in zip(bounds, bounds[1:]):
+            segments.append((seg_start, next_start - timedelta(days=1), self.price_on(seg_start)))
+        return segments
+
+
+class RatePrice(models.Model):
+    """A rate type's daily price from a date on.
+
+    A price change applies from the date chosen, in the past or the future:
+    days before it keep the old price. Before this, editing the price
+    repriced every day not yet invoiced, including days before the change,
+    and co-owners billed either side of an edit paid different rates.
+    Invoices already issued never change.
+    """
+
+    rate_type = models.ForeignKey(RateType, on_delete=models.CASCADE, related_name='prices')
+    daily_rate = models.DecimalField(
+        max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0.00'))],
+    )
+    effective_from = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['rate_type', 'effective_from']
+        constraints = [
+            models.UniqueConstraint(fields=['rate_type', 'effective_from'], name='rateprice_one_per_day'),
+            models.CheckConstraint(condition=Q(daily_rate__gte=0), name='rateprice_daily_rate_not_negative'),
+        ]
+
+    def __str__(self):
+        return f"{self.rate_type.name}: £{self.daily_rate}/day from {self.effective_from:%d %b %Y}"
+
 
 class Placement(models.Model):
     """Tracks where a horse is located and who owns it."""
@@ -1044,9 +1126,22 @@ class Placement(models.Model):
         return (effective_end - effective_start).days + 1
 
     def calculate_charge(self, period_start, period_end):
-        """Calculate the charge for this placement in a billing period."""
-        days = self.get_days_in_period(period_start, period_end)
-        return days * self.daily_rate
+        """Calculate the charge for this placement in a billing period.
+
+        Each day at the rate type's price on that day (RatePrice).
+        """
+        return sum(
+            (((seg_end - seg_start).days + 1) * price
+             for seg_start, seg_end, price in self.price_segments(period_start, period_end)),
+            Decimal('0'),
+        )
+
+    def price_segments(self, period_start, period_end):
+        """[(from, to, daily_rate)] for the billable days in the period."""
+        start, end = self.get_effective_dates_in_period(period_start, period_end)
+        if start > end:
+            return []
+        return self.rate_type.price_segments(start, end)
 
 
 class HorseOwnership(models.Model):

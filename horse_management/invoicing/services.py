@@ -84,7 +84,9 @@ class InvoiceService:
             placement.horse_id,
             placement.owner_id,
             placement.rate_type.name,
-            placement.daily_rate,
+            # The rate type, not today's price: prices are per day now
+            # (RatePrice), and one rate type's days bill on one line.
+            placement.rate_type_id,
         )
 
     @classmethod
@@ -169,18 +171,36 @@ class InvoiceService:
         eff_end = max(e for _, e in effective)
 
         first = segments[0]
-        rate_str = f"£{first.daily_rate:g}"
         date_from = format_date_short(eff_start)
         date_to = format_date_short_year(eff_end)
+
+        # Days at each price, in date order: a price change inside the
+        # period (RatePrice) bills the days either side at their own price.
+        days_at_price = []
+        for placement in segments:
+            for seg_start, seg_end, price in placement.price_segments(period_start, period_end):
+                seg_days = (seg_end - seg_start).days + 1
+                if days_at_price and days_at_price[-1][1] == price:
+                    days_at_price[-1][0] += seg_days
+                else:
+                    days_at_price.append([seg_days, price])
+        start_price = days_at_price[0][1]
 
         share_note = ""
         if share_percentage < Decimal('100'):
             share_note = f" ({share_percentage:g}% share)"
 
-        description = (
-            f"{first.rate_type.name} {rate_str} per day "
-            f"- {days} days ({date_from} to {date_to}){share_note}"
-        )
+        if len({price for _, price in days_at_price}) == 1:
+            description = (
+                f"{first.rate_type.name} £{start_price:g} per day "
+                f"- {days} days ({date_from} to {date_to}){share_note}"
+            )
+        else:
+            parts = ', '.join(f"{n} days at £{price:g}" for n, price in days_at_price)
+            description = (
+                f"{first.rate_type.name} - {days} days ({date_from} to {date_to}): "
+                f"{parts}{share_note}"
+            )
         return {
             'horse': first.horse,
             # The line item keeps one placement FK; the first of the run is the
@@ -189,7 +209,7 @@ class InvoiceService:
             'placements': segments,
             'description': description,
             'days': days,
-            'daily_rate': first.daily_rate,
+            'daily_rate': start_price,
             'full_amount': full_amount,
             'amount': owner_amount,
             'share_percentage': share_percentage,
@@ -331,7 +351,7 @@ class InvoiceService:
                 start_date__lte=period_end,
             ).exclude(
                 end_date__lt=period_start
-            ).select_related('horse', 'location', 'rate_type')
+            ).select_related('horse', 'location', 'rate_type').prefetch_related('rate_type__prices')
 
         # --- Co-owned horses this owner has a share in: split by share % ---
         owner_shares = OwnershipShare.objects.filter(

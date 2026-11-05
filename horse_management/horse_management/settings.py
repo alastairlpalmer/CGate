@@ -603,6 +603,12 @@ CELERY_BEAT_SCHEDULE = {
     # Remove what has been in Recently Deleted for longer than
     # SOFT_DELETE_RETENTION_DAYS. After the backup, so the backup taken
     # just before a purge still holds the rows.
+    # A dated rate price change comes into effect on screens (billing
+    # already prices each day from RatePrice).
+    'apply-rate-prices': {
+        'task': 'core.tasks.apply_rate_prices',
+        'schedule': crontab(hour=0, minute=5),
+    },
     'purge-soft-deleted': {
         'task': 'core.tasks.purge_soft_deleted',
         'schedule': crontab(hour=BACKUP_HOUR, minute=30),

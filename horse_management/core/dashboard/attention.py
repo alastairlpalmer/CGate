@@ -245,7 +245,10 @@ def _vaccinations(ctx):
         next_due_date__isnull=False,
     ).filter(
         Q(next_due_date__lte=ctx.horizon) | Q(due_from__lte=ctx.horizon)
-    )).select_related('horse', 'vaccination_type').order_by('next_due_date')
+    )).filter(
+        # An inactive type is no longer given at the yard: not due.
+        vaccination_type__is_active=True,
+    ).select_related('horse', 'vaccination_type').order_by('next_due_date')
     full = ctx.can('health', LEVEL_FULL)
     items = []
     for vax in qs:

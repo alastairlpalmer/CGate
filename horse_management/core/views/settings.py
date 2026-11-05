@@ -13,6 +13,7 @@ from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
+from django.utils import timezone
 
 from ..dashboard_widgets import WIDGETS, WIDGETS_BY_KEY, widget_available
 from ..permissions import feature_required, has_feature_access
@@ -229,19 +230,68 @@ def rate_type_create(request):
 
 @feature_required('settings')
 def rate_type_update(request, pk):
-    """Edit a rate type."""
-    from ..forms import RateTypeForm
-    from ..models import RateType
+    """Edit a rate type, and change its price from a chosen date."""
+    from ..forms import RatePriceForm, RateTypeForm
+    from ..models import RatePrice, RateType
     rate = get_object_or_404(RateType, pk=pk)
-    if request.method == 'POST':
+    form = RateTypeForm(instance=rate)
+    price_form = RatePriceForm(initial={'effective_from': timezone.localdate()})
+    if request.method == 'POST' and 'change_price' in request.POST:
+        price_form = RatePriceForm(request.POST)
+        if price_form.is_valid():
+            day = price_form.cleaned_data['effective_from']
+            RatePrice.objects.update_or_create(
+                rate_type=rate, effective_from=day,
+                defaults={'daily_rate': price_form.cleaned_data['daily_rate']},
+            )
+            rate.apply_current_price()
+            messages.success(
+                request,
+                f"{rate.name} is £{price_form.cleaned_data['daily_rate']:.2f} per day "
+                f"from {day:%d %b %Y}.",
+            )
+            _warn_if_already_invoiced(request, rate, day)
+            return redirect('rate_type_update', pk=rate.pk)
+    elif request.method == 'POST' and 'delete_price' in request.POST:
+        price = RatePrice.objects.filter(
+            pk=request.POST.get('delete_price'), rate_type=rate,
+        ).exclude(effective_from=RateType.FIRST_PRICE_DATE).first()
+        if price:
+            price.delete()
+            rate.apply_current_price()
+            messages.success(request, f"Price change from {price.effective_from:%d %b %Y} removed.")
+            _warn_if_already_invoiced(request, rate, price.effective_from)
+        return redirect('rate_type_update', pk=rate.pk)
+    elif request.method == 'POST':
         form = RateTypeForm(request.POST, instance=rate)
         if form.is_valid():
             form.save()
             messages.success(request, "Rate type updated.")
             return redirect('app_settings')
-    else:
-        form = RateTypeForm(instance=rate)
-    return render(request, 'settings/rate_type_form.html', {'form': form, 'object': rate})
+    return render(request, 'settings/rate_type_form.html', {
+        'form': form, 'object': rate, 'price_form': price_form,
+        'prices': rate.prices.order_by('-effective_from'),
+        'first_price_date': RateType.FIRST_PRICE_DATE,
+        'today': timezone.localdate(),
+    })
+
+
+def _warn_if_already_invoiced(request, rate, day):
+    """Issued invoices keep their prices: say so when the change is inside them."""
+    from invoicing.models import Invoice, InvoiceLineItem
+
+    issued = InvoiceLineItem.objects.filter(
+        line_type=InvoiceLineItem.LineType.LIVERY,
+        placement__rate_type=rate,
+        invoice__period_end__gte=day,
+    ).exclude(invoice__status=Invoice.Status.CANCELLED).values('invoice').distinct().count()
+    if issued:
+        messages.warning(
+            request,
+            f"{issued} invoice{'s' if issued != 1 else ''} already cover days from "
+            f"{day:%d %b %Y} and keep the price they were made with. To bill the "
+            "difference, add a charge, or cancel and remake a draft.",
+        )
 
 
 @feature_required('settings')
