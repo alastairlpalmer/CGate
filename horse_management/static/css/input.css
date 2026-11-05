@@ -92,6 +92,23 @@
 
     /* 14px is a phone size; unclassed body text reads better at 15px on desktop */
     @media (min-width: 1024px) { body { font-size: 15px; } }
+
+    /* One keyboard focus ring for every link, button, tab and focusable
+       card: a solid forest outline just outside the element. It shows for
+       keyboard focus only (:focus-visible), never on a mouse click. :where
+       keeps it at zero weight and it sits in the base layer, so a control
+       that already draws its own focus style (form fields, .btn-*, chips)
+       keeps that style. On the dark sidebar the ring is cream. */
+    :where(a, button, summary, [role="button"], [role="tab"], [tabindex]:not([tabindex="-1"])):focus-visible {
+        outline: 2px solid theme(colors.forest.DEFAULT);
+        outline-offset: 2px;
+    }
+    /* Plain links have square corners; round the ring a little so it
+       matches the rest. A link with its own radius keeps it. */
+    :where(a):focus-visible { border-radius: 4px; }
+    .app-sidebar :where(a, button, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+        outline-color: theme(colors.sand.DEFAULT);
+    }
 }
 
 @layer components {
