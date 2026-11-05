@@ -1415,6 +1415,33 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 /* ── Preview body (horses/partials/preview.html) ── */
 .pane-body { @apply p-4 space-y-4; }
 
+/* The large photo at the top of the pane: full width, 3:2, so the horse
+   can be seen without opening the viewer. Thumbnails of the other photos
+   sit under it; the one on show has the same forest outline as other
+   selected things. */
+.preview-hero {
+    @apply relative block w-full aspect-[3/2] overflow-hidden rounded-card bg-parchment
+           ring-1 ring-light-sage shadow-xs cursor-zoom-in;
+}
+.preview-hero img { @apply w-full h-full object-cover; }
+.preview-hero:hover { @apply ring-2 ring-forest; }
+.preview-hero.is-empty {
+    @apply flex flex-col items-center justify-center gap-3 cursor-default ring-black/10;
+}
+.preview-hero.is-empty:hover { @apply ring-1; }
+.preview-hero-count {
+    @apply absolute right-2 bottom-2 rounded-full bg-charcoal/75 px-2 py-0.5
+           text-[11px] font-medium text-white tabular-nums;
+}
+.preview-thumbs { @apply mt-2 grid grid-cols-5 gap-1.5; }
+.preview-thumb {
+    @apply block w-full aspect-square overflow-hidden rounded-md bg-parchment
+           ring-1 ring-light-sage opacity-80 transition-opacity duration-100 cursor-pointer;
+}
+.preview-thumb img { @apply w-full h-full object-cover; }
+.preview-thumb:hover { @apply opacity-100; }
+.preview-thumb.is-active { @apply opacity-100 ring-0 outline-2 outline-offset-2 outline-forest; }
+
 .pane-stats { @apply grid grid-cols-3 divide-x divide-light-sage rounded-card border border-light-sage bg-parchment/60; }
 .pane-stat { @apply px-3 py-2.5 min-w-0; }
 .pane-stat-label { @apply block text-[10px] font-semibold text-sage uppercase tracking-widest; }

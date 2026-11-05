@@ -18,8 +18,9 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
-from core.models import Document, Horse, Location, Owner, Placement, RateType
-from core.roles_testutils import make_admin, make_user_with_access
+from core.models import Document, Horse, HorsePhoto, Location, Owner, Placement, RateType
+from core.roles_testutils import make_admin, make_user_with_access, make_viewer
+from core.tests.test_photo_popup import PhotoPopupTestCase, _photo
 from health.models import (
     FarrierVisit,
     Vaccination,
@@ -384,3 +385,56 @@ class PreviewQueryCountTests(PreviewFixture):
             'the preview pane got more expensive:\n'
             + '\n'.join(q['sql'][:120] for q in queries),
         )
+
+
+class PreviewPhotoTests(PhotoPopupTestCase):
+    """The large photo at the top of the pane, and the strip of thumbnails
+    under it that swaps it (horses/partials/preview.html)."""
+
+    def pane(self):
+        url = reverse('horse_preview', args=[self.horse.pk])
+        return self.client.get(url, **PANE).content.decode()
+
+    def test_no_photo_shows_the_coat_colour_and_an_add_photo_button(self):
+        body = self.pane()
+        self.assertIn('preview-hero is-empty', body)
+        self.assertIn(reverse('horse_photo_add', args=[self.horse.pk]), body)
+        self.assertNotIn('preview-thumbs', body)
+
+    def test_a_viewer_gets_no_add_photo_button(self):
+        self.client.force_login(make_viewer())
+        body = self.pane()
+        self.assertIn('preview-hero is-empty', body)
+        self.assertNotIn(reverse('horse_photo_add', args=[self.horse.pk]), body)
+
+    def test_one_photo_is_shown_large_with_no_strip(self):
+        self.horse.photo = _photo('profile.jpg')
+        self.horse.save()
+        body = self.pane()
+        self.assertIn(f'src="{self.horse.photo.url}"', body)
+        self.assertNotIn('preview-thumbs', body)
+        self.assertNotIn('preview-hero-count', body)
+
+    def test_more_photos_add_a_strip_led_by_the_profile_photo(self):
+        self.horse.photo = _photo('profile.jpg')
+        self.horse.save()
+        older = HorsePhoto.objects.create(horse=self.horse, image=_photo('a.jpg'), caption='Near fore')
+        newer = HorsePhoto.objects.create(horse=self.horse, image=_photo('b.jpg'))
+        body = self.pane()
+        self.assertIn('preview-thumbs', body)
+        self.assertIn('of 3', body)
+        # The large photo starts on the profile photo; the strip uses the
+        # small square renditions, newest upload first.
+        self.assertIn(f'src="{self.horse.photo.url}"', body)
+        thumbs = [self.horse.photo_thumb.url, newer.thumb.url, older.thumb.url]
+        positions = [body.index(f'src="{url}"') for url in thumbs]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn(': Near fore', body)
+
+    def test_the_strip_stops_at_the_limit(self):
+        from core.views.horses import PREVIEW_GALLERY_LIMIT
+
+        for n in range(PREVIEW_GALLERY_LIMIT + 2):
+            HorsePhoto.objects.create(horse=self.horse, image=_photo(f'{n}.jpg'))
+        body = self.pane()
+        self.assertEqual(body.count('aria-label="Show photo '), PREVIEW_GALLERY_LIMIT)

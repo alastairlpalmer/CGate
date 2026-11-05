@@ -1436,6 +1436,7 @@ def horse_preview(request, pk):
 
     return render(request, 'horses/partials/preview.html', {
         'horse': horse,
+        'gallery': _preview_gallery(horse),
         'current_placement': placement,
         'last_placement': last_placement,
         'owner': horse.current_owner,
@@ -1445,6 +1446,42 @@ def horse_preview(request, pk):
         'timeline_events': timeline[:12],
         'today': timezone.localdate(),
     })
+
+
+PREVIEW_GALLERY_LIMIT = 10
+
+
+def _preview_gallery(horse):
+    """The photos the preview pane shows: the profile photo first, then the
+    horse's other photos, newest first, up to PREVIEW_GALLERY_LIMIT.
+
+    Each entry has `src` (the upload itself, already capped at 2560px on
+    upload, for the large photo and the full-screen viewer), `thumb` (the
+    small square rendition for the strip, or the upload when there is none)
+    and `title` / `caption` / `href` for the full-screen viewer, which takes
+    the list as is (static/js/lightbox.js).
+    """
+    items = []
+    if horse.photo:
+        items.append({
+            'src': horse.photo.url,
+            'thumb': (horse.photo_thumb or horse.photo).url,
+            'title': horse.name,
+            'caption': 'Profile photo',
+            'href': '',
+        })
+    for photo in horse.photos.all()[:PREVIEW_GALLERY_LIMIT - len(items)]:
+        caption = photo.get_category_display()
+        if photo.caption:
+            caption = f'{caption}: {photo.caption}'
+        items.append({
+            'src': photo.image.url,
+            'thumb': (photo.thumb or photo.image).url,
+            'title': horse.name,
+            'caption': caption,
+            'href': '',
+        })
+    return items
 
 
 def _flash_superseded_trim(request, horse, placement):
