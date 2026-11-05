@@ -823,6 +823,36 @@ class Horse(models.Model):
         return self.ownership_shares.count() > 1
 
 
+
+def prime_current_owners(horses):
+    """Fill ``horse.current_owner`` for many horses in two queries.
+
+    ``current_owner`` costs up to three queries a horse; the reminder jobs
+    read it for every record due, which is hundreds of queries on a big
+    yard. Same rule as the property: the primary-contact share, else the
+    largest share, else the open placement's owner.
+    """
+    horses = [h for h in horses if 'current_owner' not in h.__dict__]
+    if not horses:
+        return
+    ids = {h.pk for h in horses}
+    share_owner = {}
+    for share in (
+        OwnershipShare.objects.filter(horse_id__in=ids).select_related('owner')
+        .order_by('horse_id', '-is_primary_contact', '-share_percentage', 'pk')
+    ):
+        share_owner.setdefault(share.horse_id, share.owner)
+    placement_owner = {}
+    missing = ids - share_owner.keys()
+    if missing:
+        for placement in (
+            Placement.objects.filter(horse_id__in=missing, end_date__isnull=True)
+            .select_related('owner').order_by('horse_id', '-start_date')
+        ):
+            placement_owner.setdefault(placement.horse_id, placement.owner)
+    for horse in horses:
+        horse.__dict__['current_owner'] = share_owner.get(horse.pk) or placement_owner.get(horse.pk)
+
 class RateType(models.Model):
     """Rate configuration for different livery types."""
 

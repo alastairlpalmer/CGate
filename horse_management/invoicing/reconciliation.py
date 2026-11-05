@@ -15,7 +15,6 @@ Rules, so the numbers can be checked by hand:
 from __future__ import annotations
 
 import re
-from calendar import monthrange
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
@@ -60,39 +59,80 @@ class Report:
         return t
 
 
+def _month_index(value, year):
+    """0 for anything before ``year``, else the month number (1-12)."""
+    if value.year < year:
+        return 0
+    return value.month
+
+
 def monthly_report(year: int) -> Report:
+    """Three grouped queries, whatever the size of the ledger.
+
+    Before, every invoice and payment ever made was loaded and looped over
+    once a month: a yard with years of history took about half a second.
+    Invoices are bucketed by local month of ``created_at`` (``TruncMonth``
+    uses the site time zone, as ``timezone.localtime`` did), so the figures
+    are the same.
+    """
+    from django.db.models import Count, Sum
+    from django.db.models.functions import TruncMonth
+
     report = Report(year=year)
-    invoices = list(
-        Invoice.objects.filter(status__in=ISSUED).only(
-            'pk', 'created_at', 'subtotal', 'vat_amount', 'total',
-        )
-    )
-    payments = list(Payment.objects.filter(invoice__status__in=ISSUED).only('invoice_id', 'date', 'amount', 'method'))
     today = timezone.localdate()
-    for m in range(1, 13):
-        start = date(year, m, 1)
-        if start > today:
-            break
-        end = date(year, m, monthrange(year, m)[1])
-        row = Month(month=start)
-        for inv in invoices:
-            issued = timezone.localtime(inv.created_at).date()
-            if start <= issued <= end:
-                row.invoice_count += 1
-                row.net += inv.subtotal
-                row.vat += inv.vat_amount
-                row.total += inv.total
-        in_month = [p for p in payments if start <= p.date <= end]
-        row.received = sum((p.amount for p in in_month if not p.is_credit_note), ZERO)
-        row.credited = sum((p.amount for p in in_month if p.is_credit_note), ZERO)
-        issued_by_end = {
-            inv.pk: inv.total for inv in invoices if timezone.localtime(inv.created_at).date() <= end
-        }
-        paid_by_end = sum(
-            (p.amount for p in payments if p.invoice_id in issued_by_end and p.date <= end), ZERO,
-        )
-        row.outstanding = sum(issued_by_end.values(), ZERO) - paid_by_end
-        report.months.append(row)
+    year_end = date(year, 12, 31)
+    last_month = 12 if year < today.year else (today.month if year == today.year else 0)
+
+    issued = Invoice.objects.filter(status__in=ISSUED)
+    # Index 0 holds everything issued before the year (it counts towards
+    # what is outstanding at each month end, not towards "invoiced").
+    inv_count = [0] * 13
+    inv_net = [ZERO] * 13
+    inv_vat = [ZERO] * 13
+    inv_total = [ZERO] * 13
+    for row in (
+        issued.annotate(m=TruncMonth('created_at')).values('m')
+        .annotate(n=Count('id'), net=Sum('subtotal'), vat=Sum('vat_amount'), total=Sum('total'))
+    ):
+        if row['m'].year > year:
+            continue
+        i = _month_index(row['m'], year)
+        inv_count[i] += row['n']
+        inv_net[i] += row['net'] or ZERO
+        inv_vat[i] += row['vat'] or ZERO
+        inv_total[i] += row['total'] or ZERO
+
+    received = [ZERO] * 13
+    credited = [ZERO] * 13
+    # paid[p][i]: paid in month p against invoices issued in month i.
+    paid = [[ZERO] * 13 for _ in range(13)]
+    for row in (
+        Payment.objects.filter(invoice__status__in=ISSUED, date__lte=year_end)
+        .annotate(pm=TruncMonth('date'), im=TruncMonth('invoice__created_at'))
+        .values('pm', 'im', 'method').annotate(amount=Sum('amount'))
+    ):
+        if row['im'].year > year:
+            continue
+        p = _month_index(row['pm'], year)
+        i = _month_index(row['im'], year)
+        amount = row['amount'] or ZERO
+        if p:
+            if row['method'] == Payment.Method.CREDIT_NOTE:
+                credited[p] += amount
+            else:
+                received[p] += amount
+        paid[p][i] += amount
+
+    issued_to_date = inv_total[0]
+    for m in range(1, last_month + 1):
+        issued_to_date += inv_total[m]
+        paid_to_date = sum((paid[p][i] for p in range(m + 1) for i in range(m + 1)), ZERO)
+        report.months.append(Month(
+            month=date(year, m, 1),
+            invoice_count=inv_count[m], net=inv_net[m], vat=inv_vat[m], total=inv_total[m],
+            received=received[m], credited=credited[m],
+            outstanding=issued_to_date - paid_to_date,
+        ))
     report.cancelled_count = Invoice.objects.filter(
         status=Invoice.Status.CANCELLED, created_at__year=year,
     ).count()

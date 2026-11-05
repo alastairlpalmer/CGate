@@ -16,7 +16,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from core.models import Horse, Owner
+from core.models import Horse, Owner, OwnershipShare
 from core.roles_testutils import make_admin
 from health.forms import VaccinationForm
 from health.models import Vaccination, VaccinationType
@@ -85,8 +85,10 @@ class CourseWindowTests(TestCase):
         from notifications.tasks import send_vaccination_reminders
         owner = Owner.objects.create(name='Sue', email='sue@example.com')
         today = timezone.localdate()
-        with mock.patch.object(Horse, 'current_owner', new=owner, create=True), \
-                mock.patch('notifications.tasks.send_vaccination_digest', return_value=True) as send:
+        OwnershipShare.objects.create(
+            horse=self.horse, owner=owner, share_percentage=100, is_primary_contact=True,
+        )
+        with mock.patch('notifications.tasks.send_vaccination_digest', return_value=True) as send:
             Vaccination.objects.create(
                 horse=self.horse, vaccination_type=self.flu,
                 date_given=today - timedelta(days=10), course_stage='primary_1',

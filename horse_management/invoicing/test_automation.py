@@ -3,6 +3,7 @@ payment sync, and the bulk push-to-Xero action."""
 
 from datetime import date, timedelta
 from decimal import Decimal
+from unittest import mock
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
@@ -172,7 +173,7 @@ class BulkPushToXeroTests(TestCase):
             'xero_integration.services.push_invoice_to_xero'
         ) as push:
             response = self._post([self.invoice.pk])
-        push.assert_called_once_with(self.invoice)
+        push.assert_called_once_with(self.invoice, client=mock.ANY)
         # Paced to Xero's rate limit, so the worker does it, not the request.
         self.assertContains(response, "Pushing 1 invoice to Xero in the background")
 
