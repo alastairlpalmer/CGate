@@ -586,6 +586,17 @@ def owner_statement_email(request, owner_pk):
         return redirect('owner_statement', owner_pk=owner_pk)
 
     from notifications.emails import send_owner_statement
+    from notifications.mail import can_email
+
+    if not can_email(owner):
+        # A bounced address: "check email configuration" sent staff to the
+        # wrong place.
+        messages.error(
+            request,
+            f"Emails to {owner.email} are not arriving (the address bounced). "
+            "Check the address on the owner page, then send again.",
+        )
+        return redirect('owner_statement', owner_pk=owner_pk)
 
     if send_owner_statement(owner):
         messages.success(request, f"Statement emailed to {owner.email}.")

@@ -19,7 +19,7 @@
     <p>Dear {{ invoice.owner.name }},</p>
 
     <div class="alert">
-        <strong>{% if final %}Final notice{% elif stage > 1 %}Second reminder{% else %}Payment overdue{% endif %}</strong><br>
+        <strong>{% if final %}Final notice{% elif stage > 1 %}{{ reminder_label }}{% else %}Payment overdue{% endif %}</strong><br>
         Your invoice {{ invoice.invoice_number }}{% if invoice.customer_reference %} (your reference {{ invoice.customer_reference }}){% endif %} is now overdue.
     </div>
 
