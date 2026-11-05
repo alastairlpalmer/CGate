@@ -770,6 +770,52 @@
     // First load: the sheet is server-rendered, so the label is available now.
     window.Yardway.syncMoreTab();
 
+    // ── A list that reloads after a filter or search change ──
+    // The top progress bar runs only for full page changes, so a filter
+    // change that swaps #list-results had no feedback at all. Mark the list
+    // busy for the length of the request; the CSS waits 120 ms before it
+    // dims, so a fast reload does not flicker.
+    document.body.addEventListener('htmx:beforeRequest', function (e) {
+        var t = e.detail.target;
+        if (t && t.id === 'list-results') {
+            t.classList.add('is-loading');
+            t.setAttribute('aria-busy', 'true');
+        }
+    });
+    document.body.addEventListener('htmx:afterRequest', function (e) {
+        var t = e.detail.target;
+        if (t && t.id === 'list-results' && t.isConnected) {
+            t.classList.remove('is-loading');
+            t.removeAttribute('aria-busy');
+        }
+    });
+
+    // ── Sticky table headers (desktop) ──
+    // A header can stick to the top of the page only when no box between
+    // it and the page scrolls. The table's own side-scroll wrapper does,
+    // so it is switched off (.table-fits) only while the table fits its
+    // width; a wide table keeps its side scroll and a normal header.
+    // --app-bar-h is how far down the header stops: just under the
+    // sticky app bar.
+    function markTablesThatFit() {
+        var bar = document.querySelector('.app-bar');
+        if (bar) {
+            document.documentElement.style.setProperty('--app-bar-h', bar.offsetHeight + 'px');
+        }
+        document.querySelectorAll('.data-table').forEach(function (table) {
+            var wrap = table.parentElement;
+            if (!wrap || !wrap.matches('.overflow-x-auto, .md\\:overflow-x-auto')) { return; }
+            wrap.classList.toggle('table-fits', table.offsetWidth <= wrap.clientWidth + 1);
+        });
+    }
+    document.addEventListener('DOMContentLoaded', markTablesThatFit);
+    document.body.addEventListener('htmx:afterSettle', markTablesThatFit);
+    var fitTimer = null;
+    window.addEventListener('resize', function () {
+        clearTimeout(fitTimer);
+        fitTimer = setTimeout(markTablesThatFit, 100);
+    });
+
     // ── Busy state on the button that sent a form ──
     // The button shows a spinner and is disabled for exactly as long as its
     // request runs: from htmx:beforeRequest (form values are already
