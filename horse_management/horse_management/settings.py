@@ -361,7 +361,7 @@ EMAIL_TIMEOUT = env.int('EMAIL_TIMEOUT', default=30)
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@yardway.local')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@cgate.local')
 
 # Off-site backups (core/backup/)
 # ------------------------------
@@ -803,7 +803,7 @@ RESEND_WEBHOOK_SECRET = env('RESEND_WEBHOOK_SECRET', default='')
 # yard back in during an emergency, and set it back afterwards.
 MFA_REQUIRED_FOR_ADMINS = env.bool('MFA_REQUIRED_FOR_ADMINS', default=True)
 # The name authenticator apps show next to the six-digit code.
-OTP_TOTP_ISSUER = env('OTP_TOTP_ISSUER', default='Yardway')
+OTP_TOTP_ISSUER = env('OTP_TOTP_ISSUER', default='Cgate')
 
 # CSRF cookie
 CSRF_COOKIE_HTTPONLY = True

@@ -74,7 +74,7 @@ def run_nightly_backup():
 
 def _notify_failure(exc):
     """Tell someone. Never let this hide the original failure."""
-    subject = 'Yardway backup FAILED'
+    subject = 'Cgate backup FAILED'
     body = (
         'The nightly off-site backup did not complete.\n\n'
         f'Error: {exc}\n\n'

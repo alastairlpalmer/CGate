@@ -93,9 +93,9 @@ def xero_callback(request):
         if tenant is None:
             messages.error(
                 request,
-                'More than one Xero organisation is connected to Yardway, and '
+                'More than one Xero organisation is connected to Cgate, and '
                 'Xero did not say which one you chose. In Xero, open Settings '
-                '→ Connected apps, remove Yardway from the organisations you '
+                '→ Connected apps, remove Cgate from the organisations you '
                 'do not want, then connect again.',
             )
             return redirect('app_settings')
@@ -168,7 +168,7 @@ def _clear_links_to_other_organisations(tenant_id):
 @feature_required('xero')
 @require_POST
 def xero_disconnect(request):
-    """Disconnect from Xero, and remove Yardway's access in Xero too."""
+    """Disconnect from Xero, and remove Cgate's access in Xero too."""
     conn = XeroConnection.get_connection()
     # Without the revoke, the organisation stayed in Xero's connections
     # list, and the next connect could pick it again.
@@ -187,8 +187,8 @@ def xero_disconnect(request):
     if not revoked:
         messages.warning(
             request,
-            'Xero did not confirm that Yardway\'s access was removed. In Xero, '
-            'open Settings → Connected apps and remove Yardway there.',
+            'Xero did not confirm that Cgate\'s access was removed. In Xero, '
+            'open Settings → Connected apps and remove Cgate there.',
         )
     return redirect('app_settings')
 

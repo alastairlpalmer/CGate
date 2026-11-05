@@ -1,6 +1,6 @@
 {
-    "name": "Yardway",
-    "short_name": "Yardway",
+    "name": "Cgate",
+    "short_name": "Cgate",
     "description": "Horse livery management: horses, placements, health records and invoicing.",
     "start_url": "/",
     "scope": "/",

@@ -1,6 +1,6 @@
 {% autoescape off %}Hello{% if user.first_name %} {{ user.first_name }}{% endif %},
 
-{{ invited_by }} has made you a Yardway account.
+{{ invited_by }} has made you a Cgate account.
 
 To choose your password and sign in, open this link:
 
