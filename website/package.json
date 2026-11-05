@@ -13,7 +13,7 @@
     "placeholders": "node scripts/placeholders.mjs"
   },
   "dependencies": {
-    "astro": "7.4.1",
+    "astro": "7.4.4",
     "embla-carousel": "8.6.0",
     "embla-carousel-autoplay": "8.6.0",
     "embla-carousel-class-names": "8.6.0",
