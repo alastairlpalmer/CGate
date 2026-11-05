@@ -508,6 +508,26 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 }
 .page-enter { animation: page-in 0.2s ease-out both; }
 
+/* Page changes (boosted navigation, hx-swap "transition:true" on <body>).
+   The old page fades out quickly and the new one fades in with a small
+   rise. The sidebar, the phone header and the phone tab bar have names
+   of their own, so they stay still instead of fading with the page. */
+.app-sidebar { view-transition-name: app-sidebar; }
+[data-mobile-brand] { view-transition-name: mobile-brand; }
+#mobile-tab-bar { view-transition-name: mobile-tab-bar; }
+::view-transition-old(root) { animation: 90ms ease-in both vt-fade-out; }
+::view-transition-new(root) { animation: 200ms cubic-bezier(0.22, 1, 0.36, 1) both vt-rise-in; }
+::view-transition-group(app-sidebar),
+::view-transition-group(mobile-brand),
+::view-transition-group(mobile-tab-bar) { animation: none; }
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-rise-in { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) { animation: none !important; }
+}
+
 /* HTMX swap transitions — smooth fade during content swaps */
 #main-content {
     transition: opacity 0.12s ease-out;

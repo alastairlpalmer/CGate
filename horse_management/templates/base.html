@@ -109,7 +109,7 @@
 </head>
 <body class="bg-parchment font-body antialiased text-charcoal" x-data="{ moreSheetOpen: false }"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-      hx-boost="true" hx-swap="outerHTML show:window:top" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
+      hx-boost="true" hx-swap="outerHTML show:window:top transition:true" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
 
     <!-- ── Progress Bar ── -->
     <div id="htmx-progress"
@@ -662,9 +662,14 @@
         window.scrollTo({ top: 0, behavior: 'instant' });
         var main = document.getElementById('main-content');
         if (!main) return;
-        main.classList.remove('page-enter');
-        void main.offsetWidth;
-        main.classList.add('page-enter');
+        // Browsers with view transitions already animate the change
+        // (hx-swap "transition:true" on <body>, styled in input.css), so the
+        // entrance animation runs only where they are not supported.
+        if (!document.startViewTransition) {
+            main.classList.remove('page-enter');
+            void main.offsetWidth;
+            main.classList.add('page-enter');
+        }
         // Update nav active states based on current path.
         // Only the link with the longest matching href prefix is active, so
         // nested routes (e.g. /health/breeding/ under /health/) highlight one
