@@ -40,8 +40,8 @@
             <div x-show="filtersOpen" x-collapse x-cloak>
             <div class="card px-4 py-3 sm:px-5 sm:py-4 grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div>
-                    <label class="dt-label mb-1">Invoiced</label>
-                    <select name="invoiced" class="form-select" data-filter-field
+                    <label for="filter-invoiced" class="dt-label mb-1">Invoiced</label>
+                    <select id="filter-invoiced" name="invoiced" class="form-select" data-filter-field
                             hx-get="{{ request.path }}" hx-trigger="change"
                             hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
                             hx-include="closest form" hx-push-url="true">
@@ -51,8 +51,8 @@
                     </select>
                 </div>
                 <div>
-                    <label class="dt-label mb-1">Type</label>
-                    <select name="type" class="form-select" data-filter-field
+                    <label for="filter-type" class="dt-label mb-1">Type</label>
+                    <select id="filter-type" name="type" class="form-select" data-filter-field
                             hx-get="{{ request.path }}" hx-trigger="change"
                             hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
                             hx-include="closest form" hx-push-url="true">
@@ -63,8 +63,8 @@
                     </select>
                 </div>
                 <div>
-                    <label class="dt-label mb-1">Horse</label>
-                    <select name="horse" class="form-select" data-filter-field
+                    <label for="filter-horse" class="dt-label mb-1">Horse</label>
+                    <select id="filter-horse" name="horse" class="form-select" data-filter-field
                             hx-get="{{ request.path }}" hx-trigger="change"
                             hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
                             hx-include="closest form" hx-push-url="true">
@@ -75,8 +75,8 @@
                     </select>
                 </div>
                 <div>
-                    <label class="dt-label mb-1">Owner</label>
-                    <select name="owner" class="form-select" data-filter-field
+                    <label for="filter-owner" class="dt-label mb-1">Owner</label>
+                    <select id="filter-owner" name="owner" class="form-select" data-filter-field
                             hx-get="{{ request.path }}" hx-trigger="change"
                             hx-target="#list-results" hx-select="#list-results" hx-swap="outerHTML"
                             hx-include="closest form" hx-push-url="true">

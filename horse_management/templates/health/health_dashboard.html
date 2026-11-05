@@ -19,6 +19,7 @@
             <nav class="-mb-px flex gap-4 overflow-x-auto tab-strip-fade" aria-label="Health tabs">
                 {% for tab_key, tab_label in tabs %}
                 <button
+                    :aria-current="activeTab === '{{ tab_key }}' ? 'page' : null"
                     hx-boost="false"
                     hx-get="{% url 'health_dashboard' %}?type={{ tab_key }}"
                     hx-target="#health-table-area" hx-select="unset"

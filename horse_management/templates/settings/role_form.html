@@ -36,12 +36,12 @@
                 <div>
                     <label for="{{ form.name.id_for_label }}" class="text-sm font-medium text-charcoal">Role Name</label>
                     {{ form.name }}
-                    {% if form.name.errors %}<p class="mt-1 text-sm text-error-red">{{ form.name.errors.0 }}</p>{% endif %}
+                    {% if form.name.errors %}<p id="{{ form.name.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.name.errors.0 }}</p>{% endif %}
                 </div>
                 <div>
                     <label for="{{ form.description.id_for_label }}" class="text-sm font-medium text-charcoal">Description</label>
                     {{ form.description }}
-                    {% if form.description.errors %}<p class="mt-1 text-sm text-error-red">{{ form.description.errors.0 }}</p>{% endif %}
+                    {% if form.description.errors %}<p id="{{ form.description.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.description.errors.0 }}</p>{% endif %}
                     <p class="text-xs text-sage mt-0.5">{{ form.description.help_text }}</p>
                 </div>
             </fieldset>

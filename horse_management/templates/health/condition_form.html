@@ -34,7 +34,7 @@
                         <label for="{{ form.horse.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.horse.label }}</label>
                         {{ form.horse }}
                         {% if form.horse.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.horse.errors.0 }}</p>
+                          <p id="{{ form.horse.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.horse.errors.0 }}</p>
                         {% endif %}
                     </div>
 
@@ -42,7 +42,7 @@
                         <label for="{{ form.name.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.name.label }}</label>
                         {{ form.name }}
                         {% if form.name.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.name.errors.0 }}</p>
+                          <p id="{{ form.name.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.name.errors.0 }}</p>
                         {% endif %}
                         <p class="text-xs text-sage mt-1">e.g. Laminitis, Sweet Itch, Colic</p>
                     </div>
@@ -51,7 +51,7 @@
                         <label for="{{ form.diagnosed_date.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.diagnosed_date.label }}</label>
                         {{ form.diagnosed_date }}
                         {% if form.diagnosed_date.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.diagnosed_date.errors.0 }}</p>
+                          <p id="{{ form.diagnosed_date.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.diagnosed_date.errors.0 }}</p>
                         {% endif %}
                     </div>
 
@@ -59,7 +59,7 @@
                         <label for="{{ form.status.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.status.label }}</label>
                         {{ form.status }}
                         {% if form.status.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.status.errors.0 }}</p>
+                          <p id="{{ form.status.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.status.errors.0 }}</p>
                         {% endif %}
                     </div>
 
@@ -67,7 +67,7 @@
                         <label for="{{ form.notes.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.notes.label }}</label>
                         {{ form.notes }}
                         {% if form.notes.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.notes.errors.0 }}</p>
+                          <p id="{{ form.notes.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.notes.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>

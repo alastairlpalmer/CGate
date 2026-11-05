@@ -34,14 +34,14 @@
                         <label for="id_date" class="block text-sm font-medium text-charcoal">Date *</label>
                         {{ form.date }}
                         {% if form.date.errors %}
-                        <p class="mt-1 text-sm text-error-red">{{ form.date.errors.0 }}</p>
+                        <p id="{{ form.date.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.date.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
                         <label for="id_amount" class="block text-sm font-medium text-charcoal">Amount (&pound;) *</label>
                         {{ form.amount }}
                         {% if form.amount.errors %}
-                        <p class="mt-1 text-sm text-error-red">{{ form.amount.errors.0 }}</p>
+                        <p id="{{ form.amount.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.amount.errors.0 }}</p>
                         {% endif %}
                         <p class="mt-1 text-xs text-sage">Part payments are fine — the invoice stays open until the balance reaches zero.</p>
                     </div>
@@ -51,7 +51,7 @@
                     <label for="id_method" class="block text-sm font-medium text-charcoal">Method *</label>
                     {{ form.method }}
                     {% if form.method.errors %}
-                    <p class="mt-1 text-sm text-error-red">{{ form.method.errors.0 }}</p>
+                    <p id="{{ form.method.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.method.errors.0 }}</p>
                     {% endif %}
                 </div>
 
@@ -59,7 +59,7 @@
                     <label for="id_reference" class="block text-sm font-medium text-charcoal">Reference</label>
                     {{ form.reference }}
                     {% if form.reference.errors %}
-                    <p class="mt-1 text-sm text-error-red">{{ form.reference.errors.0 }}</p>
+                    <p id="{{ form.reference.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.reference.errors.0 }}</p>
                     {% endif %}
                     <p class="mt-1 text-xs text-sage">{{ form.reference.help_text }}</p>
                 </div>
@@ -68,7 +68,7 @@
                     <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
                     {{ form.notes }}
                     {% if form.notes.errors %}
-                    <p class="mt-1 text-sm text-error-red">{{ form.notes.errors.0 }}</p>
+                    <p id="{{ form.notes.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.notes.errors.0 }}</p>
                     {% endif %}
                 </div>
             </div>

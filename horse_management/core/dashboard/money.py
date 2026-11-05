@@ -79,8 +79,9 @@ def snapshot(user, *, today=None):
                 overdue_count += 1
 
         # Money in: credit notes lower what is owed but bring nothing in.
+        # The last 30 days including today (days=30 counted 31).
         received = Payment.objects.filter(
-            date__gte=today - timedelta(days=30),
+            date__gte=today - timedelta(days=29),
         ).exclude(method=Payment.Method.CREDIT_NOTE).aggregate(total=Coalesce(Sum('amount'), Value(ZERO)), count=Count('id'))
 
         send_errors = Invoice.objects.exclude(send_error='').count()

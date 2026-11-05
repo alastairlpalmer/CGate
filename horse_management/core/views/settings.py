@@ -9,6 +9,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import connection, models
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -28,19 +29,27 @@ def _location_groups(queryset):
     Working the counts out here keeps them out of the template and turns
     what would be several queries per row into one.
     """
+    from billing.models import FeedOut
+
+    from ..models import Placement
+
+    # Exists, not COUNT(DISTINCT) over two joins: joining stays and feed-outs
+    # in one query multiplied the rows (stays x feed-outs per field).
     locations = list(
         queryset.annotate(
-            placement_count=models.Count('placements', distinct=True),
-            feed_out_count=models.Count('feed_outs', distinct=True),
-            live_horse_count=models.Count(
-                'placements__horse',
-                filter=models.Q(placements__end_date__isnull=True),
-                distinct=True,
+            placement_count=Coalesce(models.Subquery(
+                Placement.objects.filter(location=models.OuterRef('pk'))
+                .values('location').annotate(n=models.Count('pk')).values('n')[:1]
+            ), 0),
+            has_feed_outs=models.Exists(FeedOut.objects.filter(location=models.OuterRef('pk'))),
+            live_horse_count=models.Subquery(
+                Placement.objects.filter(location=models.OuterRef('pk'), end_date__isnull=True)
+                .values('location').annotate(n=models.Count('horse', distinct=True)).values('n')[:1]
             ),
         )
     )
     for loc in locations:
-        loc.can_be_deleted = not (loc.placement_count or loc.feed_out_count)
+        loc.can_be_deleted = not (loc.placement_count or loc.has_feed_outs)
         loc.can_be_archived = not loc.is_archived and not loc.live_horse_count
 
     groups = []

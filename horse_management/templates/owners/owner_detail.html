@@ -133,7 +133,7 @@
                     <thead>
                         <tr>
                             <th class="w-10">
-                                <input type="checkbox" data-select-all @change="toggleAll($event)" class="form-checkbox rounded">
+                                <input type="checkbox" data-select-all aria-label="Select all horses" @change="toggleAll($event)" class="form-checkbox rounded">
                             </th>
                             <th>Name</th>
                             <th>Details</th>
@@ -145,7 +145,7 @@
                         <tr>
                             <td>
                                 <input type="checkbox"
-                                       data-horse-checkbox
+                                       data-horse-checkbox aria-label="Select {{ horse.name }}"
                                        value="{{ horse.pk }}"
                                        @change="toggleHorse({{ horse.pk }})"
                                        :checked="isSelected({{ horse.pk }})"
@@ -192,7 +192,9 @@
     <!-- Other Horses (departed / inactive) -->
     {% if departed_horses %}
     <div class="card overflow-hidden" x-data="{ open: false }">
-        <div class="section-header cursor-pointer" @click="open = !open">
+        <div class="section-header cursor-pointer" @click="open = !open"
+             role="button" tabindex="0" :aria-expanded="open.toString()"
+             @keydown.enter.prevent="open = !open" @keydown.space.prevent="open = !open">
             <div class="flex items-center gap-2">
                 <h2 class="section-title">Other Horses</h2>
                 <span class="badge-info">{{ departed_horses|length }}</span>

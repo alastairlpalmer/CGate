@@ -210,10 +210,16 @@ def invoice_to_xero_rows(invoice, account_code='200'):
 
     address_lines = _parse_address_lines(invoice.owner.address)
 
-    line_items = list(
-        invoice.line_items.select_related('horse', 'charge')
-        .order_by('line_type', 'description')
-    )
+    # Prefetched by the CSV export (one query for every invoice instead of
+    # one per invoice); fetched here otherwise.
+    prefetched = getattr(invoice, '_prefetched_objects_cache', {}).get('line_items')
+    if prefetched is not None:
+        line_items = list(prefetched)
+    else:
+        line_items = list(
+            invoice.line_items.select_related('horse', 'charge')
+            .order_by('line_type', 'description')
+        )
 
     # Xero rounds VAT per line on import; the app computes it once on the
     # subtotal, so multi-line invoices with odd pennies can disagree with the

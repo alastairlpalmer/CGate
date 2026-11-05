@@ -134,19 +134,19 @@
     <div class="border-b border-light-sage">
         <nav class="flex gap-6 overflow-x-auto tab-strip-fade">
             <a href="{% url 'location_detail' location.pk %}"
-               class="{% if current_tab == 'current' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}">
+               class="{% if current_tab == 'current' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}"{% if current_tab == 'current' %} aria-current="page"{% endif %}>
                 Current Horses
             </a>
             <a href="{% url 'location_detail' location.pk %}?tab=feed"
-               class="{% if current_tab == 'feed' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}">
+               class="{% if current_tab == 'feed' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}"{% if current_tab == 'feed' %} aria-current="page"{% endif %}>
                 Feed History
             </a>
             <a href="{% url 'location_detail' location.pk %}?tab=history"
-               class="{% if current_tab == 'history' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}">
+               class="{% if current_tab == 'history' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}"{% if current_tab == 'history' %} aria-current="page"{% endif %}>
                 History
             </a>
             <a href="{% url 'location_detail' location.pk %}?tab=usage"
-               class="{% if current_tab == 'usage' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}">
+               class="{% if current_tab == 'usage' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}"{% if current_tab == 'usage' %} aria-current="page"{% endif %}>
                 Usage
             </a>
         </nav>
@@ -593,7 +593,7 @@
                 <thead>
                     <tr>
                         <th class="w-10">
-                            <input type="checkbox" data-select-all @change="toggleAll($event)" class="form-checkbox rounded">
+                            <input type="checkbox" data-select-all aria-label="Select all horses" @change="toggleAll($event)" class="form-checkbox rounded">
                         </th>
                         <th>Name</th>
                         <th>Details</th>
@@ -606,7 +606,7 @@
                     <tr>
                         <td>
                             <input type="checkbox"
-                                   data-horse-checkbox
+                                   data-horse-checkbox aria-label="Select {{ horse.name }}"
                                    value="{{ horse.pk }}"
                                    @change="toggleHorse({{ horse.pk }})"
                                    :checked="isSelected({{ horse.pk }})"

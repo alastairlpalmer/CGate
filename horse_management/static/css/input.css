@@ -127,7 +127,7 @@
     .btn-danger,
     .btn-success,
     .btn-ghost { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-btn transition-all duration-150 focus:outline-hidden focus:ring-2 focus:ring-offset-2 cursor-pointer active:scale-[0.97] touch-manipulation min-h-[44px] sm:min-h-0; }
-    .btn-primary { @apply bg-saddle text-white hover:bg-saddle-dark focus:ring-saddle/40 shadow-xs; }
+    .btn-primary { @apply bg-saddle text-white hover:bg-saddle-dark focus:ring-saddle shadow-xs; }
     .btn-secondary { @apply bg-white text-charcoal border border-sage/30 hover:bg-light-sage focus:ring-sage; }
     .btn-danger { @apply bg-error-red text-white hover:bg-error-red/90 focus:ring-error-red shadow-xs; }
     .btn-success { @apply bg-forest text-white hover:bg-forest-light focus:ring-sage shadow-xs; }
@@ -156,7 +156,7 @@
     .badge-success { @apply bg-sage-50 text-forest ring-1 ring-inset ring-sage/20; }
     .badge-warning { @apply bg-sand-50 text-saddle ring-1 ring-inset ring-sand/40; }
     .badge-danger { @apply bg-error-red-50 text-error-red ring-1 ring-inset ring-error-red/20; }
-    .badge-info { @apply bg-info-blue-50 text-info-blue ring-1 ring-inset ring-info-blue/20; }
+    .badge-info { @apply bg-info-blue-50 text-[#246A87] ring-1 ring-inset ring-info-blue/20; }
     .badge-neutral { @apply bg-light-sage text-charcoal-light ring-1 ring-inset ring-sage/10; }
 
     /* Data Tables — cool sage-tinted header band separates columns from the
@@ -195,7 +195,7 @@
        text and a cream icon. No edge bar, so it reads clean and calm. */
     .nav-link-active { @apply flex items-center gap-3 px-3 py-2 text-sm font-semibold rounded-btn text-white bg-white/[0.08] ring-1 ring-inset ring-white/[0.12] transition-all duration-100 active:scale-[0.98]; }
     .nav-link-active > svg { @apply text-[#E6E1D1]; }
-    .nav-group-label { @apply px-3 pt-5 pb-1 text-[11px] font-semibold text-white/55 uppercase tracking-widest; }
+    .nav-group-label { @apply px-3 pt-5 pb-1 text-[11px] font-semibold text-white/70 uppercase tracking-widest; }
 
     /* Page Headers — plain title, no decorative bar underneath. */
     .page-header { @apply flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between; }
@@ -237,7 +237,7 @@
 
     /* Results inside the panel */
     .quick-find-group-label { @apply px-4 pt-2.5 pb-1 text-[11px] font-semibold text-sage uppercase tracking-widest; }
-    .quick-find-item { @apply flex items-center gap-3 mx-1.5 px-2.5 py-2 rounded-btn text-sm text-charcoal hover:bg-light-sage focus:bg-light-sage focus:outline-hidden transition-colors duration-100; }
+    .quick-find-item { @apply flex items-center gap-3 mx-1.5 px-2.5 py-2 rounded-btn text-sm text-charcoal hover:bg-light-sage focus:bg-light-sage focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest transition-colors duration-100; }
     .quick-find-icon { @apply inline-flex items-center justify-center w-7 h-7 rounded-lg bg-sage-50 text-forest shrink-0; }
     .quick-find-tag { @apply text-xs text-sage shrink-0; }
     .quick-find-more { @apply flex items-center gap-1.5 mx-1.5 px-2.5 py-1.5 rounded-btn text-xs font-medium text-forest hover:bg-light-sage focus:bg-light-sage focus:outline-hidden transition-colors duration-100; }
@@ -331,7 +331,7 @@
     /* Mobile Bottom Tab Bar — same language as the desktop sidebar: the
        active tab's icon sits in a soft tile (light fill + hairline ring). */
     .tab-bar-item {
-        @apply relative flex flex-col items-center justify-center flex-1 gap-1 px-1 text-sage/60 transition-colors duration-100 active:bg-light-sage/50 no-underline;
+        @apply relative flex flex-col items-center justify-center flex-1 gap-1 px-1 text-sage transition-colors duration-100 active:bg-light-sage/50 no-underline;
         min-width: 0;
     }
     .tab-bar-item.active { @apply text-forest; }
@@ -1431,6 +1431,33 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 
 /* ── Preview body (horses/partials/preview.html) ── */
 .pane-body { @apply p-4 space-y-4; }
+
+/* The large photo at the top of the pane: full width, 3:2, so the horse
+   can be seen without opening the viewer. Thumbnails of the other photos
+   sit under it; the one on show has the same forest outline as other
+   selected things. */
+.preview-hero {
+    @apply relative block w-full aspect-[3/2] overflow-hidden rounded-card bg-parchment
+           ring-1 ring-light-sage shadow-xs cursor-zoom-in;
+}
+.preview-hero img { @apply w-full h-full object-cover; }
+.preview-hero:hover { @apply ring-2 ring-forest; }
+.preview-hero.is-empty {
+    @apply flex flex-col items-center justify-center gap-3 cursor-default ring-black/10;
+}
+.preview-hero.is-empty:hover { @apply ring-1; }
+.preview-hero-count {
+    @apply absolute right-2 bottom-2 rounded-full bg-charcoal/75 px-2 py-0.5
+           text-[11px] font-medium text-white tabular-nums;
+}
+.preview-thumbs { @apply mt-2 grid grid-cols-5 gap-1.5; }
+.preview-thumb {
+    @apply block w-full aspect-square overflow-hidden rounded-md bg-parchment
+           ring-1 ring-light-sage opacity-80 transition-opacity duration-100 cursor-pointer;
+}
+.preview-thumb img { @apply w-full h-full object-cover; }
+.preview-thumb:hover { @apply opacity-100; }
+.preview-thumb.is-active { @apply opacity-100 ring-0 outline-2 outline-offset-2 outline-forest; }
 
 .pane-stats { @apply grid grid-cols-3 divide-x divide-light-sage rounded-card border border-light-sage bg-parchment/60; }
 .pane-stat { @apply px-3 py-2.5 min-w-0; }

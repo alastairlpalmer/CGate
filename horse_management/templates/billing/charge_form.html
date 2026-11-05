@@ -32,7 +32,7 @@
                         <label for="{{ form.service_item.id_for_label }}" class="block text-sm font-medium text-charcoal">{{ form.service_item.label }}</label>
                         {{ form.service_item }}
                         {% if form.service_item.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.service_item.errors.0 }}</p>
+                          <p id="{{ form.service_item.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.service_item.errors.0 }}</p>
                         {% endif %}
                         <p class="text-xs text-sage mt-1">Pick a service to fill in the type, description and amount. Choose Other to enter everything yourself.</p>
                         {% if form.service_item.help_text %}<p class="text-xs text-sage mt-1">{{ form.service_item.help_text }}</p>{% endif %}
@@ -41,42 +41,42 @@
                         <label for="id_horse" class="block text-sm font-medium text-charcoal">Horse *</label>
                         {{ form.horse }}
                         {% if form.horse.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.horse.errors.0 }}</p>
+                          <p id="{{ form.horse.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.horse.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
                         <label for="id_owner" class="block text-sm font-medium text-charcoal">Bill To (Owner) *</label>
                         {{ form.owner }}
                         {% if form.owner.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.owner.errors.0 }}</p>
+                          <p id="{{ form.owner.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.owner.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
                         <label for="id_charge_type" class="block text-sm font-medium text-charcoal">Type *</label>
                         {{ form.charge_type }}
                         {% if form.charge_type.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.charge_type.errors.0 }}</p>
+                          <p id="{{ form.charge_type.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.charge_type.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
                         <label for="id_date" class="block text-sm font-medium text-charcoal">Date *</label>
                         {{ form.date }}
                         {% if form.date.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.date.errors.0 }}</p>
+                          <p id="{{ form.date.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.date.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
                         <label for="id_service_provider" class="block text-sm font-medium text-charcoal">Service Provider</label>
                         {{ form.service_provider }}
                         {% if form.service_provider.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.service_provider.errors.0 }}</p>
+                          <p id="{{ form.service_provider.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.service_provider.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
                         <label for="id_amount" class="block text-sm font-medium text-charcoal">Amount *</label>
                         {{ form.amount }}
                         {% if form.amount.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.amount.errors.0 }}</p>
+                          <p id="{{ form.amount.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.amount.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
@@ -90,14 +90,14 @@
                         <label for="id_description" class="block text-sm font-medium text-charcoal">Description *</label>
                         {{ form.description }}
                         {% if form.description.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.description.errors.0 }}</p>
+                          <p id="{{ form.description.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.description.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div class="sm:col-span-2">
                         <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
                         {{ form.notes }}
                         {% if form.notes.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.notes.errors.0 }}</p>
+                          <p id="{{ form.notes.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.notes.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
@@ -111,7 +111,7 @@
                         <label for="id_receipt_image" class="block text-sm font-medium text-charcoal">Receipt Image</label>
                         {{ form.receipt_image }}
                         {% if form.receipt_image.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.receipt_image.errors.0 }}</p>
+                          <p id="{{ form.receipt_image.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.receipt_image.errors.0 }}</p>
                         {% endif %}
                         {% if object.receipt_image %}
                         <p class="mt-1 text-sm text-sage">
