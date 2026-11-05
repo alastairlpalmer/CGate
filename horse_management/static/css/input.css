@@ -508,6 +508,37 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 }
 .page-enter { animation: page-in 0.2s ease-out both; }
 
+/* A list reloading after a filter or search change (base.html). The
+   delay keeps fast reloads from flickering. */
+#list-results { transition: opacity 0.15s ease-out; }
+#list-results.is-loading {
+    opacity: 0.55;
+    pointer-events: none;
+    transition: opacity 0.15s ease-out 0.12s;
+}
+
+/* Sticky table headers on desktop. The header stops just under the
+   sticky app bar (--app-bar-h, measured in base.html). It works only when
+   no box between the table and the page scrolls or hides overflow:
+   - a card holding a table clips instead of hiding (overflow: clip keeps
+     the rounded corners but is not a scroll box);
+   - the table's side-scroll wrapper is switched off only while the table
+     fits (.table-fits, set in base.html), so a wide table keeps its side
+     scroll and a normal header.
+   The header cells get a solid fill and a hairline, so rows do not show
+   through as they pass under. */
+@media (min-width: 1024px) {
+    .card:has(.table-fits > .data-table) { overflow: clip; }
+    .table-fits { overflow-x: clip; }
+    .table-fits > .data-table thead th {
+        position: sticky;
+        top: var(--app-bar-h, 4rem);
+        z-index: 5;
+        background-color: #eff2f3;
+        box-shadow: inset 0 -1px 0 theme('colors.light-sage');
+    }
+}
+
 /* Page changes (boosted navigation, hx-swap "transition:true" on <body>).
    The old page fades out quickly and the new one fades in with a small
    rise. The sidebar, the phone header and the phone tab bar have names
