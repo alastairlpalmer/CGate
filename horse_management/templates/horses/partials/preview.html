@@ -14,10 +14,60 @@ does from the horse page, so nothing here has to know it is in a pane.
 {% endcomment %}
 <div id="horse-preview-content" class="pane-body" data-preview-for="{{ horse.pk }}">
 
+    <!-- ── Photo ──
+         A large photo across the pane, so the horse can be seen without
+         opening the viewer. With more than one photo, a strip of
+         thumbnails under it swaps the large photo; a click on the large
+         photo opens the viewer at that photo, and the viewer steps through
+         the rest. Without Alpine the first photo still shows. -->
+    {% if gallery %}
+    <div class="preview-gallery"
+         x-data="{ i: 0, photos: JSON.parse($el.querySelector('script[type=\'application/json\']').textContent) }">
+        {{ gallery|json_script }}
+        <button type="button" class="preview-hero"
+                title="View photo full screen"
+                aria-label="View the photos of {{ horse.name }} full screen"
+                @click="$store.lightbox && $store.lightbox.show({ photos: photos, index: i }, $el)">
+            <img src="{{ gallery.0.src }}" :src="photos[i].src"
+                 alt="{{ horse.name }}: {{ gallery.0.caption }}" :alt="'{{ horse.name|escapejs }}: ' + photos[i].caption"
+                 decoding="async">
+            {% if gallery|length > 1 %}
+            <span class="preview-hero-count" aria-hidden="true"><span x-text="i + 1">1</span> of {{ gallery|length }}</span>
+            {% endif %}
+        </button>
+        {% if gallery|length > 1 %}
+        <ul class="preview-thumbs" aria-label="Photos of {{ horse.name }}">
+            {% for photo in gallery %}
+            <li>
+                <button type="button" class="preview-thumb{% if forloop.first %} is-active{% endif %}"
+                        :class="{ 'is-active': i === {{ forloop.counter0 }} }"
+                        :aria-pressed="(i === {{ forloop.counter0 }}).toString()"
+                        aria-pressed="{% if forloop.first %}true{% else %}false{% endif %}"
+                        aria-label="Show photo {{ forloop.counter }}: {{ photo.caption }}"
+                        @click="i = {{ forloop.counter0 }}">
+                    <img src="{{ photo.thumb }}" alt="" loading="lazy" decoding="async">
+                </button>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    {% else %}
+    {% with coat=horse.color|coat_colour %}
+    <div class="preview-hero is-empty" style="background:{{ coat.0 }};color:{{ coat.1 }}" title="{{ horse.get_color_display }}">
+        <svg class="w-20 h-20 opacity-90" aria-hidden="true"><use href="#i-horse"/></svg>
+        {% if feature_access.horses.full %}
+        <a href="{% url 'horse_photo_add' horse.pk %}" class="btn-secondary preview-hero-add"
+           hx-get="{% url 'horse_photo_add' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Add photos for {{ horse.name }}">Add photo</a>
+        {% endif %}
+    </div>
+    {% endwith %}
+    {% endif %}
+
     <!-- ── Who ── -->
-    <div class="flex items-start gap-4">
-        {% include 'horses/_horse_avatar.html' with horse=horse size='lg' %}
-        <div class="min-w-0 flex-1">
+    <div>
+        <div class="min-w-0">
             <h2 class="text-xl font-semibold font-heading text-charcoal leading-tight">{{ horse.name }}</h2>
             <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
                 {% if horse.is_active %}
