@@ -29,7 +29,7 @@
                     <label for="id_status" class="block text-sm font-medium text-charcoal">Status</label>
                     {{ form.status }}
                     {% if form.status.errors %}
-                      <p class="mt-1 text-sm text-error-red">{{ form.status.errors.0 }}</p>
+                      <p id="{{ form.status.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.status.errors.0 }}</p>
                     {% endif %}
                 </div>
 
@@ -38,14 +38,14 @@
                         <label for="id_payment_terms_days" class="block text-sm font-medium text-charcoal">Payment Terms (days)</label>
                         {{ form.payment_terms_days }}
                         {% if form.payment_terms_days.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.payment_terms_days.errors.0 }}</p>
+                          <p id="{{ form.payment_terms_days.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.payment_terms_days.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
                         <label for="id_due_date" class="block text-sm font-medium text-charcoal">Due Date</label>
                         {{ form.due_date }}
                         {% if form.due_date.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.due_date.errors.0 }}</p>
+                          <p id="{{ form.due_date.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.due_date.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
@@ -56,7 +56,7 @@
                     <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
                     {{ form.notes }}
                     {% if form.notes.errors %}
-                      <p class="mt-1 text-sm text-error-red">{{ form.notes.errors.0 }}</p>
+                      <p id="{{ form.notes.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.notes.errors.0 }}</p>
                     {% endif %}
                 </div>
             </div>

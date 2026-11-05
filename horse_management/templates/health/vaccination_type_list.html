@@ -26,8 +26,8 @@
     <div class="card px-5 py-4">
         <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-                <label class="dt-label mb-1">Status</label>
-                <select name="status" class="form-select">
+                <label for="filter-status" class="dt-label mb-1">Status</label>
+                <select id="filter-status" name="status" class="form-select">
                     <option value="">All</option>
                     <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
                     <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>

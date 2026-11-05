@@ -176,6 +176,9 @@ def send_ehv_reminder(breeding_record, month_number):
         return False
 
 
+REMINDER_LABELS = {2: 'Second reminder', 3: 'Third reminder', 4: 'Fourth reminder', 5: 'Fifth reminder'}
+
+
 def send_invoice_overdue_reminder(invoice, stage=1, final=False):
     """Send overdue invoice reminder email.
 
@@ -187,10 +190,13 @@ def send_invoice_overdue_reminder(invoice, stage=1, final=False):
 
     business = BusinessSettings.get_settings()
 
+    # "Second reminder" was used for every stage after the first: with
+    # four or more steps in OVERDUE_REMINDER_DAYS the third said "second".
+    reminder_label = REMINDER_LABELS.get(stage, f"Reminder {stage}")
     if final:
         subject = f"Final notice: Invoice {invoice.invoice_number}"
     elif stage > 1:
-        subject = f"Second reminder: Invoice {invoice.invoice_number}"
+        subject = f"{reminder_label}: Invoice {invoice.invoice_number}"
     else:
         subject = f"Payment Reminder: Invoice {invoice.invoice_number}"
 
@@ -198,6 +204,7 @@ def send_invoice_overdue_reminder(invoice, stage=1, final=False):
         'invoice': invoice,
         'business': business,
         'stage': stage,
+        'reminder_label': reminder_label,
         'final': final,
     }
 

@@ -20,7 +20,7 @@ from core.permissions import (
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -32,7 +32,7 @@ from django.views.generic import DetailView, ListView, UpdateView
 from core import audit
 from core.views._undo import undo_tag
 from core.models import Owner
-from invoicing.models import LIVE_PAYMENTS, Invoice, Payment
+from invoicing.models import LIVE_PAYMENTS, Invoice, InvoiceLineItem, Payment
 
 from .forms import InvoiceCreateForm, InvoiceUpdateForm, MonthlyInvoiceForm, PaymentForm
 from .pdf import generate_invoice_pdf, generate_owner_statement_pdf
@@ -586,6 +586,17 @@ def owner_statement_email(request, owner_pk):
         return redirect('owner_statement', owner_pk=owner_pk)
 
     from notifications.emails import send_owner_statement
+    from notifications.mail import can_email
+
+    if not can_email(owner):
+        # A bounced address: "check email configuration" sent staff to the
+        # wrong place.
+        messages.error(
+            request,
+            f"Emails to {owner.email} are not arriving (the address bounced). "
+            "Check the address on the owner page, then send again.",
+        )
+        return redirect('owner_statement', owner_pk=owner_pk)
 
     if send_owner_statement(owner):
         messages.success(request, f"Statement emailed to {owner.email}.")
@@ -1022,6 +1033,10 @@ def invoice_export_csv(request):
     queryset = _apply_period_filter(queryset, request)
 
     output = io.StringIO()
+    queryset = queryset.prefetch_related(Prefetch(
+        'line_items',
+        queryset=InvoiceLineItem.objects.select_related('horse', 'charge').order_by('line_type', 'description'),
+    ))
     try:
         write_xero_csv(list(queryset), output)
     except UnsupportedVatRateError as exc:

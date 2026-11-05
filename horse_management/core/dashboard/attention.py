@@ -983,7 +983,41 @@ def rows(items, user):
         ))
 
     result.sort(key=lambda row: row.sort_key)
-    return result
+    return _collapse_invoice_rows(result)
+
+
+# Overdue invoices shown one row each before the rest fold into one row. A
+# yard with 400 overdue invoices rendered 400 rows (a 1 MB page).
+INVOICE_ROWS_SHOWN = 5
+
+
+def _collapse_invoice_rows(rows_):
+    invoice_rows = [
+        row for row in rows_
+        if row.kind == 'single' and row.items and row.items[0].kind == 'invoice'
+    ]
+    if len(invoice_rows) <= INVOICE_ROWS_SHOWN:
+        return rows_
+    hidden = invoice_rows[INVOICE_ROWS_SHOWN:]
+    hidden_keys = {row.key for row in hidden}
+    items = [row.items[0] for row in hidden]
+    total = sum((item.amount or Decimal('0')) for item in items)
+    worst = min(items, key=lambda i: SEVERITY_ORDER[i.severity])
+    first_due = min((i.due_date for i in items if i.due_date), default=None)
+    summary_item = AttentionItem(
+        kind='invoice', severity=worst.severity,
+        title=f'{len(items)} more unpaid invoices',
+        detail=f'£{total:,.2f} owed · see aged debtors',
+        url=reverse('aged_debtors'), due_date=first_due,
+        delta=worst.delta, amount=total, key='invoices-more',
+    )
+    kept = [row for row in rows_ if row.key not in hidden_keys]
+    kept.append(Row(
+        kind='single', severity=worst.severity, title=summary_item.title,
+        subtitle='', items=[summary_item], url=summary_item.url, key='invoices-more',
+    ))
+    kept.sort(key=lambda row: row.sort_key)
+    return kept
 
 
 def summary(inbox_rows, upcoming_items, today):

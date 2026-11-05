@@ -33,7 +33,7 @@ in the batch could be saved. Behaviour lives in static/js/photo_quick_add.js.
                 {% endfor %}
             </div>
             {% if form.category.errors %}
-            <p class="mt-1 text-xs text-error-red">{{ form.category.errors.0 }}</p>
+            <p id="{{ form.category.auto_id }}_error" class="mt-1 text-xs text-error-red" role="alert">{{ form.category.errors.0 }}</p>
             {% endif %}
         </div>
 
@@ -66,7 +66,7 @@ in the batch could be saved. Behaviour lives in static/js/photo_quick_add.js.
         <input type="file" name="images" multiple accept="image/*" x-ref="images"
                class="form-input" :class="{ 'hidden': true }">
         {% if form.images.errors %}
-        <p class="text-xs text-error-red">{{ form.images.errors.0 }}</p>
+        <p id="{{ form.images.auto_id }}_error" class="text-xs text-error-red" role="alert">{{ form.images.errors.0 }}</p>
         {% endif %}
 
         <!-- Pending photos -->
@@ -97,7 +97,7 @@ in the batch could be saved. Behaviour lives in static/js/photo_quick_add.js.
             <label for="id_caption" class="block text-sm font-medium text-charcoal">Note</label>
             {{ form.caption }}
             {% if form.caption.errors %}
-            <p class="mt-1 text-xs text-error-red">{{ form.caption.errors.0 }}</p>
+            <p id="{{ form.caption.auto_id }}_error" class="mt-1 text-xs text-error-red" role="alert">{{ form.caption.errors.0 }}</p>
             {% endif %}
         </div>
 

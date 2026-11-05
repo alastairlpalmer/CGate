@@ -32,12 +32,12 @@
                     <div>
                         <label for="id_doc_type" class="block text-sm font-medium text-charcoal">Type *</label>
                         {{ form.doc_type }}
-                        {% if form.doc_type.errors %}<p class="mt-1 text-sm text-error-red">{{ form.doc_type.errors.0 }}</p>{% endif %}
+                        {% if form.doc_type.errors %}<p id="{{ form.doc_type.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.doc_type.errors.0 }}</p>{% endif %}
                     </div>
                     <div>
                         <label for="id_expiry_date" class="block text-sm font-medium text-charcoal">Expiry Date</label>
                         {{ form.expiry_date }}
-                        {% if form.expiry_date.errors %}<p class="mt-1 text-sm text-error-red">{{ form.expiry_date.errors.0 }}</p>{% endif %}
+                        {% if form.expiry_date.errors %}<p id="{{ form.expiry_date.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.expiry_date.errors.0 }}</p>{% endif %}
                         <p class="mt-1 text-xs text-sage">{{ form.expiry_date.help_text }}</p>
                     </div>
                 </div>
@@ -46,20 +46,20 @@
                     <label for="id_title" class="block text-sm font-medium text-charcoal">Title</label>
                     {{ form.title }}
                     <p class="mt-1 text-xs text-sage">Leave blank to use the document type.</p>
-                    {% if form.title.errors %}<p class="mt-1 text-sm text-error-red">{{ form.title.errors.0 }}</p>{% endif %}
+                    {% if form.title.errors %}<p id="{{ form.title.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.title.errors.0 }}</p>{% endif %}
                 </div>
 
                 <div>
                     <label for="id_file" class="block text-sm font-medium text-charcoal">File *</label>
                     {{ form.file }}
-                    {% if form.file.errors %}<p class="mt-1 text-sm text-error-red">{{ form.file.errors.0 }}</p>{% endif %}
+                    {% if form.file.errors %}<p id="{{ form.file.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.file.errors.0 }}</p>{% endif %}
                     <p class="mt-1 text-xs text-sage">PDF, image or Word document, up to 5&nbsp;MB. On a phone you can photograph the document directly.</p>
                 </div>
 
                 <div>
                     <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
                     {{ form.notes }}
-                    {% if form.notes.errors %}<p class="mt-1 text-sm text-error-red">{{ form.notes.errors.0 }}</p>{% endif %}
+                    {% if form.notes.errors %}<p id="{{ form.notes.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.notes.errors.0 }}</p>{% endif %}
                 </div>
             </div>
 

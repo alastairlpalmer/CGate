@@ -34,7 +34,7 @@
                         <label for="{{ form.service_item.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.service_item.label }}</label>
                         {{ form.service_item }}
                         {% if form.service_item.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.service_item.errors.0 }}</p>
+                          <p id="{{ form.service_item.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.service_item.errors.0 }}</p>
                         {% endif %}
                         <p class="text-xs text-sage mt-1">Pick a service to fill in the price. Choose Other to enter everything yourself.</p>
                     </div>
@@ -42,7 +42,7 @@
                         <label for="{{ form.horse.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.horse.label }}</label>
                         {{ form.horse }}
                         {% if form.horse.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.horse.errors.0 }}</p>
+                          <p id="{{ form.horse.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.horse.errors.0 }}</p>
                         {% endif %}
                     </div>
 
@@ -50,7 +50,7 @@
                         <label for="{{ form.date.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.date.label }}</label>
                         {{ form.date }}
                         {% if form.date.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.date.errors.0 }}</p>
+                          <p id="{{ form.date.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.date.errors.0 }}</p>
                         {% endif %}
                     </div>
 
@@ -58,7 +58,7 @@
                         <label for="{{ form.count.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.count.label }}</label>
                         {{ form.count }}
                         {% if form.count.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.count.errors.0 }}</p>
+                          <p id="{{ form.count.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.count.errors.0 }}</p>
                         {% endif %}
                         <p class="text-xs text-sage mt-1">Eggs per gram. 200 or more is considered high.</p>
                     </div>
@@ -67,7 +67,7 @@
                         <label for="{{ form.sample_type.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.sample_type.label }}</label>
                         {{ form.sample_type }}
                         {% if form.sample_type.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.sample_type.errors.0 }}</p>
+                          <p id="{{ form.sample_type.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.sample_type.errors.0 }}</p>
                         {% endif %}
                     </div>
 
@@ -75,7 +75,7 @@
                         <label for="{{ form.lab_name.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.lab_name.label }}</label>
                         {{ form.lab_name }}
                         {% if form.lab_name.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.lab_name.errors.0 }}</p>
+                          <p id="{{ form.lab_name.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.lab_name.errors.0 }}</p>
                         {% endif %}
                     </div>
 
@@ -84,7 +84,7 @@
                         <label for="{{ form.cost.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.cost.label }}</label>
                         {{ form.cost }}
                         {% if form.cost.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.cost.errors.0 }}</p>
+                          <p id="{{ form.cost.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.cost.errors.0 }}</p>
                         {% endif %}
                         <p class="text-xs text-sage mt-1">If set, creates a billable charge</p>
                     </div>
@@ -94,7 +94,7 @@
                         <label for="{{ form.notes.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.notes.label }}</label>
                         {{ form.notes }}
                         {% if form.notes.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.notes.errors.0 }}</p>
+                          <p id="{{ form.notes.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.notes.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>

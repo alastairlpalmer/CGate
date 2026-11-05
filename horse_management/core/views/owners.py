@@ -25,6 +25,8 @@ class OwnerListView(FeatureAccessMixin, ListView):
     model = Owner
     template_name = 'owners/owner_list.html'
     context_object_name = 'owners'
+    # 50 a page, as the health and charge lists: 120 owners made a 680 KB page.
+    paginate_by = 50
 
     @property
     def showing_archived(self):

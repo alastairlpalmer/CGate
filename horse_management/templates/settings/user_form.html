@@ -27,24 +27,24 @@
                     <div>
                         <label for="{{ form.first_name.id_for_label }}" class="text-sm font-medium text-charcoal">First Name</label>
                         {{ form.first_name }}
-                        {% if form.first_name.errors %}<p class="mt-1 text-sm text-error-red">{{ form.first_name.errors.0 }}</p>{% endif %}
+                        {% if form.first_name.errors %}<p id="{{ form.first_name.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.first_name.errors.0 }}</p>{% endif %}
                     </div>
                     <div>
                         <label for="{{ form.last_name.id_for_label }}" class="text-sm font-medium text-charcoal">Last Name</label>
                         {{ form.last_name }}
-                        {% if form.last_name.errors %}<p class="mt-1 text-sm text-error-red">{{ form.last_name.errors.0 }}</p>{% endif %}
+                        {% if form.last_name.errors %}<p id="{{ form.last_name.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.last_name.errors.0 }}</p>{% endif %}
                     </div>
                 </div>
                 <div>
                     <label for="{{ form.email.id_for_label }}" class="text-sm font-medium text-charcoal">Email</label>
                     {{ form.email }}
-                    {% if form.email.errors %}<p class="mt-1 text-sm text-error-red">{{ form.email.errors.0 }}</p>{% endif %}
+                    {% if form.email.errors %}<p id="{{ form.email.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.email.errors.0 }}</p>{% endif %}
                     <p class="text-xs text-sage mt-0.5">Used to sign in.</p>
                 </div>
                 <div>
                     <label for="{{ form.role.id_for_label }}" class="text-sm font-medium text-charcoal">Role</label>
                     {{ form.role }}
-                    {% if form.role.errors %}<p class="mt-1 text-sm text-error-red">{{ form.role.errors.0 }}</p>{% endif %}
+                    {% if form.role.errors %}<p id="{{ form.role.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.role.errors.0 }}</p>{% endif %}
                     <p class="text-xs text-sage mt-0.5">{{ form.role.help_text }}</p>
                     {% if is_self %}<p class="text-xs text-saddle mt-0.5">You can't remove your own access to Users &amp; Roles — ask another administrator.</p>{% endif %}
                 </div>
@@ -53,12 +53,12 @@
                 <div>
                     <label for="{{ form.password1.id_for_label }}" class="text-sm font-medium text-charcoal">Password (optional)</label>
                     {{ form.password1 }}
-                    {% if form.password1.errors %}<p class="mt-1 text-sm text-error-red">{{ form.password1.errors.0 }}</p>{% endif %}
+                    {% if form.password1.errors %}<p id="{{ form.password1.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.password1.errors.0 }}</p>{% endif %}
                 </div>
                 <div>
                     <label for="{{ form.password2.id_for_label }}" class="text-sm font-medium text-charcoal">Confirm Password</label>
                     {{ form.password2 }}
-                    {% if form.password2.errors %}<p class="mt-1 text-sm text-error-red">{{ form.password2.errors.0 }}</p>{% endif %}
+                    {% if form.password2.errors %}<p id="{{ form.password2.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.password2.errors.0 }}</p>{% endif %}
                 </div>
                 {% endif %}
                 {% if form.non_field_errors %}<p class="text-sm text-error-red">{{ form.non_field_errors.0 }}</p>{% endif %}

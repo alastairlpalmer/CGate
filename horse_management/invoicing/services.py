@@ -660,9 +660,15 @@ class InvoiceService:
             horse=horse,
         )
 
+        # Line items are written in one INSERT (bulk_create) and plain
+        # charges marked invoiced in one UPDATE: one query each per line
+        # made the monthly run about 37 queries per invoice.
+        new_lines = []
+        plain_charges = []
+
         # Add livery line items
         for charge in livery_charges:
-            InvoiceLineItem.objects.create(
+            new_lines.append(InvoiceLineItem(
                 invoice=invoice,
                 horse=charge['horse'],
                 placement=charge['placement'],
@@ -672,7 +678,7 @@ class InvoiceService:
                 unit_price=charge['daily_rate'],
                 line_total=charge['amount'],
                 share_percentage=charge['share_percentage'],
-            )
+            ))
 
         # Add extra charge line items (priced above, same pass)
         for charge in extra_charges:
@@ -692,7 +698,7 @@ class InvoiceService:
                 InvoiceLineItem.LineType.OTHER
             )
 
-            InvoiceLineItem.objects.create(
+            new_lines.append(InvoiceLineItem(
                 invoice=invoice,
                 horse=charge['horse'],
                 charge=charge['charge'],
@@ -702,14 +708,21 @@ class InvoiceService:
                 unit_price=charge['amount'],
                 line_total=charge['amount'],
                 share_percentage=charge['share_percentage'],
-            )
+            ))
 
+        InvoiceLineItem.objects.bulk_create(new_lines)
+
+        for charge in extra_charges:
             # Mark split charges as invoiced only when all co-owners have been billed
             extra_charge = charge['charge']
             if extra_charge.split_by_ownership:
                 cls._maybe_mark_split_charge_invoiced(extra_charge, invoice, owner)
             else:
-                extra_charge.mark_as_invoiced(invoice)
+                extra_charge.invoiced = True
+                extra_charge.invoice = invoice
+                plain_charges.append(extra_charge.pk)
+        if plain_charges:
+            ExtraCharge.all_objects.filter(pk__in=plain_charges).update(invoiced=True, invoice=invoice)
 
         # Recalculate totals
         invoice.recalculate_totals()

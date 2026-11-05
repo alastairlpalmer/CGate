@@ -25,16 +25,16 @@
     <div class="card px-5 py-4">
         <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-                <label class="dt-label mb-1">Status</label>
-                <select name="status" class="form-select">
+                <label for="filter-status" class="dt-label mb-1">Status</label>
+                <select id="filter-status" name="status" class="form-select">
                     <option value="">All</option>
                     <option value="due" {% if request.GET.status == 'due' %}selected{% endif %}>Due Soon</option>
                     <option value="overdue" {% if request.GET.status == 'overdue' %}selected{% endif %}>Overdue</option>
                 </select>
             </div>
             <div>
-                <label class="dt-label mb-1">Horse</label>
-                <select name="horse" class="form-select">
+                <label for="filter-horse" class="dt-label mb-1">Horse</label>
+                <select id="filter-horse" name="horse" class="form-select">
                     <option value="">All horses</option>
                     {% for h in horses %}
                     <option value="{{ h.pk }}" {% if request.GET.horse == h.pk|stringformat:"s" %}selected{% endif %}>{{ h.name }}</option>

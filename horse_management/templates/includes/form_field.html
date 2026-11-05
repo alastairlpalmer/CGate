@@ -21,12 +21,12 @@ Parameters:
         </label>
         {{ field }}
         {% if field.errors %}
-        <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ field.errors.0 }}</p>
+        <p id="{{ field.auto_id }}_error" class="form-error mt-1 text-xs text-error-red" role="alert">{{ field.errors.0 }}</p>
         {% endif %}
         {% if help %}
-        <p class="mt-1 text-xs text-sage">{{ help }}</p>
+        <p id="{{ field.auto_id }}_helptext" class="mt-1 text-xs text-sage">{{ help }}</p>
         {% elif field.help_text %}
-        <p class="mt-1 text-xs text-sage">{{ field.help_text }}</p>
+        <p id="{{ field.auto_id }}_helptext" class="mt-1 text-xs text-sage">{{ field.help_text }}</p>
         {% endif %}
     {% else %}
         <label class="inline-flex items-center gap-2 cursor-pointer">
@@ -34,12 +34,12 @@ Parameters:
             <span class="text-sm font-medium text-charcoal">{{ label|default:field.label }}</span>
         </label>
         {% if field.errors %}
-        <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ field.errors.0 }}</p>
+        <p id="{{ field.auto_id }}_error" class="form-error mt-1 text-xs text-error-red" role="alert">{{ field.errors.0 }}</p>
         {% endif %}
         {% if help %}
-        <p class="mt-1 text-xs text-sage">{{ help }}</p>
+        <p id="{{ field.auto_id }}_helptext" class="mt-1 text-xs text-sage">{{ help }}</p>
         {% elif field.help_text %}
-        <p class="mt-1 text-xs text-sage">{{ field.help_text }}</p>
+        <p id="{{ field.auto_id }}_helptext" class="mt-1 text-xs text-sage">{{ field.help_text }}</p>
         {% endif %}
     {% endif %}
 </div>

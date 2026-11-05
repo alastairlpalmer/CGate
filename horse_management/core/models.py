@@ -113,6 +113,19 @@ class Owner(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        # Keep archived_at in step with is_archived, whichever path archives
+        # (Django admin set only the flag, and the retention job, which
+        # counts from archived_at, never anonymised that owner).
+        if self.is_archived and self.archived_at is None:
+            self.archived_at = timezone.now()
+        elif not self.is_archived and self.archived_at is not None:
+            self.archived_at = None
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None and 'is_archived' in update_fields:
+            kwargs['update_fields'] = list(set(update_fields) | {'archived_at'})
+        super().save(*args, **kwargs)
+
     # ── Archive / delete ────────────────────────────────────────────
     def history_counts(self):
         """What points at this owner, as ``{label: count}`` (zeros left out).
@@ -1588,6 +1601,8 @@ class Document(SoftDeleteModel):
 
     class Meta:
         ordering = ['-uploaded_at']
+        # Expiry reminders and the dashboard filter on it.
+        indexes = [models.Index(fields=['expiry_date'], name='document_expiry')]
 
     def __str__(self):
         attached_to = self.horse or self.owner

@@ -249,11 +249,45 @@
         var verb = e.detail.requestConfig && e.detail.requestConfig.verb;
         var fresh = !!e.detail.target.querySelector('[data-popup-fresh]');
         if (s) { s.dirty = !!verb && verb !== 'get' && !fresh; }
-        if (!window.matchMedia('(min-width: 640px)').matches) { return; }
+        // A form back with errors: put the user on the first field in
+        // error, at every width, so they hear and see what to fix (on
+        // phones focus used to drop to the page body).
+        var invalid = e.detail.target.querySelector('[aria-invalid="true"]');
+        if (invalid) { invalid.focus(); return; }
+        if (!window.matchMedia('(min-width: 640px)').matches) {
+            var panel = document.getElementById('popup-panel');
+            if (panel) { panel.focus({ preventScroll: true }); }
+            return;
+        }
         var first = e.detail.target.querySelector(
             'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])'
         );
         if (first) { first.focus({ preventScroll: true }); }
+    });
+
+    // Keep Tab inside the open sheet (it is aria-modal): from the last
+    // control Tab went on to the sidebar and page behind the scrim.
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Tab') { return; }
+        var s = store();
+        var panel = document.getElementById('popup-panel');
+        if (!s || !s.open || !panel) { return; }
+        var focusable = Array.prototype.filter.call(
+            panel.querySelectorAll(
+                'a[href], button:not([disabled]), input:not([type="hidden"]):not([disabled]), ' +
+                'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            ),
+            function (el) { return el.offsetParent !== null || el === document.activeElement; }
+        );
+        if (!focusable.length) { e.preventDefault(); panel.focus(); return; }
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+        var inside = panel.contains(document.activeElement);
+        if (e.shiftKey && (document.activeElement === first || !inside)) {
+            e.preventDefault(); last.focus();
+        } else if (!e.shiftKey && (document.activeElement === last || !inside)) {
+            e.preventDefault(); first.focus();
+        }
     });
 
     ['htmx:responseError', 'htmx:sendError', 'htmx:timeout'].forEach(function (name) {

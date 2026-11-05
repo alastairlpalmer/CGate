@@ -102,6 +102,7 @@
             </table>
         </div>
     </div>
+    {% include 'includes/pagination.html' %}
     {% elif showing_archived %}
     {% url 'owner_list' as owner_list_url %}
     {% include 'includes/empty_state.html' with variant='filtered' title='No archived owners' body='Owners you archive are listed here. Their records are kept.' clear_url=owner_list_url clear_label='Back to owners' %}

@@ -30,7 +30,7 @@
                         <label for="id_horse" class="block text-sm font-medium text-charcoal">Horse <span class="text-error-red">*</span></label>
                         {{ form.horse }}
                         {% if form.horse.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.horse.errors.0 }}</p>
+                        <p id="{{ form.horse.auto_id }}_error" class="mt-1 text-xs text-error-red" role="alert">{{ form.horse.errors.0 }}</p>
                         {% endif %}
                     </div>
                     {% if form.owner %}
@@ -38,7 +38,7 @@
                         <label for="id_owner" class="block text-sm font-medium text-charcoal">Owner <span class="text-error-red">*</span></label>
                         {{ form.owner }}
                         {% if form.owner.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.owner.errors.0 }}</p>
+                        <p id="{{ form.owner.auto_id }}_error" class="mt-1 text-xs text-error-red" role="alert">{{ form.owner.errors.0 }}</p>
                         {% endif %}
                     </div>
                     {% else %}
@@ -48,7 +48,7 @@
                         <label for="id_location" class="block text-sm font-medium text-charcoal">Location <span class="text-error-red">*</span></label>
                         {{ form.location }}
                         {% if form.location.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.location.errors.0 }}</p>
+                        <p id="{{ form.location.auto_id }}_error" class="mt-1 text-xs text-error-red" role="alert">{{ form.location.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
@@ -62,7 +62,7 @@
                         <label for="id_rate_type" class="block text-sm font-medium text-charcoal">Rate Type <span class="text-error-red">*</span></label>
                         {{ form.rate_type }}
                         {% if form.rate_type.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.rate_type.errors.0 }}</p>
+                        <p id="{{ form.rate_type.auto_id }}_error" class="mt-1 text-xs text-error-red" role="alert">{{ form.rate_type.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div></div>
@@ -70,14 +70,14 @@
                         <label for="id_start_date" class="block text-sm font-medium text-charcoal">Start Date <span class="text-error-red">*</span></label>
                         {{ form.start_date }}
                         {% if form.start_date.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.start_date.errors.0 }}</p>
+                        <p id="{{ form.start_date.auto_id }}_error" class="mt-1 text-xs text-error-red" role="alert">{{ form.start_date.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
                         <label for="id_end_date" class="block text-sm font-medium text-charcoal">End Date</label>
                         {{ form.end_date }}
                         {% if form.end_date.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.end_date.errors.0 }}</p>
+                        <p id="{{ form.end_date.auto_id }}_error" class="mt-1 text-xs text-error-red" role="alert">{{ form.end_date.errors.0 }}</p>
                         {% endif %}
                         <p class="mt-1 text-xs text-sage">Leave blank if this is a current placement</p>
                     </div>
@@ -85,7 +85,7 @@
                         <label for="id_expected_departure" class="block text-sm font-medium text-charcoal">Expected Departure</label>
                         {{ form.expected_departure }}
                         {% if form.expected_departure.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.expected_departure.errors.0 }}</p>
+                        <p id="{{ form.expected_departure.auto_id }}_error" class="mt-1 text-xs text-error-red" role="alert">{{ form.expected_departure.errors.0 }}</p>
                         {% endif %}
                         <p class="mt-1 text-xs text-sage">When is this horse expected to leave? (for forecasting)</p>
                     </div>
@@ -100,7 +100,7 @@
                         <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
                         {{ form.notes }}
                         {% if form.notes.errors %}
-                        <p class="mt-1 text-xs text-error-red">{{ form.notes.errors.0 }}</p>
+                        <p id="{{ form.notes.auto_id }}_error" class="mt-1 text-xs text-error-red" role="alert">{{ form.notes.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>

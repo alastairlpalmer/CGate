@@ -23,9 +23,12 @@ so it needs no breakpoint of its own.
 {% endcomment %}
 <tr class="group" id="horse-{{ horse.pk }}" data-horse-row data-horse-pk="{{ horse.pk }}" {{ row_attrs|default:''|safe }}>
     <td data-col="select" data-select-cell>
-        <input type="checkbox" data-horse-checkbox value="{{ horse.pk }}"
+        {# A 44px tap area around the 20px box, as on the invoice list. #}
+        <label class="inline-flex items-center justify-center w-11 h-11 -m-3 cursor-pointer">
+        <input type="checkbox" data-horse-checkbox aria-label="Select {{ horse.name }}" value="{{ horse.pk }}"
                @change="toggleHorse({{ horse.pk }})" :checked="isSelected({{ horse.pk }})"
                class="form-checkbox rounded">
+        </label>
     </td>
     <td data-col="name">
         <a href="{% url 'horse_detail' horse.pk %}" data-horse-link class="flex items-center gap-3 group/name">

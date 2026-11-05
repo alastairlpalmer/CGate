@@ -34,7 +34,7 @@
                         <label for="{{ form.service_item.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.service_item.label }}</label>
                         {{ form.service_item }}
                         {% if form.service_item.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.service_item.errors.0 }}</p>
+                          <p id="{{ form.service_item.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.service_item.errors.0 }}</p>
                         {% endif %}
                         <p class="text-xs text-sage mt-1">Pick a service to fill in the price. Choose Other to enter everything yourself.</p>
                     </div>
@@ -42,7 +42,7 @@
                         <label for="{{ form.horse.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.horse.label }}</label>
                         {{ form.horse }}
                         {% if form.horse.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.horse.errors.0 }}</p>
+                          <p id="{{ form.horse.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.horse.errors.0 }}</p>
                         {% endif %}
                     </div>
 
@@ -50,7 +50,7 @@
                         <label for="{{ form.date.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.date.label }}</label>
                         {{ form.date }}
                         {% if form.date.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.date.errors.0 }}</p>
+                          <p id="{{ form.date.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.date.errors.0 }}</p>
                         {% endif %}
                     </div>
 
@@ -58,7 +58,7 @@
                         <label for="{{ form.product_name.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.product_name.label }}</label>
                         {{ form.product_name }}
                         {% if form.product_name.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.product_name.errors.0 }}</p>
+                          <p id="{{ form.product_name.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.product_name.errors.0 }}</p>
                         {% endif %}
                     </div>
 
@@ -66,7 +66,7 @@
                         <label for="{{ form.active_ingredient.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.active_ingredient.label }}</label>
                         {{ form.active_ingredient }}
                         {% if form.active_ingredient.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.active_ingredient.errors.0 }}</p>
+                          <p id="{{ form.active_ingredient.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.active_ingredient.errors.0 }}</p>
                         {% endif %}
                     </div>
 
@@ -74,7 +74,7 @@
                         <label for="{{ form.dose.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.dose.label }}</label>
                         {{ form.dose }}
                         {% if form.dose.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.dose.errors.0 }}</p>
+                          <p id="{{ form.dose.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.dose.errors.0 }}</p>
                         {% endif %}
                     </div>
 
@@ -82,7 +82,7 @@
                         <label for="{{ form.administered_by.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.administered_by.label }}</label>
                         {{ form.administered_by }}
                         {% if form.administered_by.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.administered_by.errors.0 }}</p>
+                          <p id="{{ form.administered_by.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.administered_by.errors.0 }}</p>
                         {% endif %}
                     </div>
 
@@ -91,7 +91,7 @@
                         {{ form.next_due_date }}
                         <p class="mt-1 text-xs text-sage">Leave blank for 13 weeks after the dose.</p>
                         {% if form.next_due_date.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.next_due_date.errors.0 }}</p>
+                          <p id="{{ form.next_due_date.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.next_due_date.errors.0 }}</p>
                         {% endif %}
                     </div>
 
@@ -101,7 +101,7 @@
                         {{ form.cost }}
                         <p class="mt-1 text-xs text-sage">A cost above 0 adds a charge to the owner's next invoice.</p>
                         {% if form.cost.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.cost.errors.0 }}</p>
+                          <p id="{{ form.cost.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.cost.errors.0 }}</p>
                         {% endif %}
                     </div>
                     {% endif %}
@@ -110,7 +110,7 @@
                         <label for="{{ form.notes.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.notes.label }}</label>
                         {{ form.notes }}
                         {% if form.notes.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.notes.errors.0 }}</p>
+                          <p id="{{ form.notes.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.notes.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
