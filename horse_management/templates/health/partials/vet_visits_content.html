@@ -20,8 +20,8 @@
           class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <input type="hidden" name="type" value="vet_visits">
         <div>
-            <label class="dt-label mb-1">Horse</label>
-            <select name="horse" class="form-select">
+            <label for="filter-horse" class="dt-label mb-1">Horse</label>
+            <select id="filter-horse" name="horse" class="form-select">
                 <option value="">All horses</option>
                 {% for h in horses %}
                 <option value="{{ h.pk }}" {% if request.GET.horse == h.pk|stringformat:"s" %}selected{% endif %}>{{ h.name }}</option>

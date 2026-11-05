@@ -76,8 +76,8 @@
                     <form x-show="showDate" x-cloak x-transition method="post" action="{% url 'horse_depart' horse.pk %}"
                           class="flex flex-wrap items-center gap-1.5 bg-error-red-50 border border-error-red/20 rounded-btn p-1 pl-2.5">
                         {% csrf_token %}
-                        <label class="text-xs font-medium text-error-red">Depart on</label>
-                        <input type="date" name="departure_date" class="form-input !mt-0 text-sm py-1 px-2 w-auto" value="{{ today|date:'Y-m-d' }}" required>
+                        <label for="filter-departure_date" class="text-xs font-medium text-error-red">Depart on</label>
+                        <input id="filter-departure_date" type="date" name="departure_date" class="form-input !mt-0 text-sm py-1 px-2 w-auto" value="{{ today|date:'Y-m-d' }}" required>
                         <button type="submit" class="btn bg-error-red text-white hover:bg-error-red/90 text-xs px-2.5 py-1 min-h-[44px] sm:min-h-0">Confirm</button>
                         <button type="button" @click="showDate = false" class="btn-ghost btn-xs" aria-label="Cancel">
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -612,25 +612,25 @@
                                     <span class="flex items-center gap-2 shrink-0">
                                         {% if event.type == 'placement' and feature_access.locations.full %}
                                         <a href="{% url 'placement_update' event.obj.pk %}?next={{ request.path|urlencode }}" hx-get="{% url 'placement_update' event.obj.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit placement"
-                                           class="link text-xs tap-pad" title="Correct dates or rate">Edit</a>
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" title="Correct dates or rate" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% elif event.type == 'vaccination' and feature_access.health.full %}
                                         <a href="{% url 'vaccination_update' event.obj.pk %}" hx-get="{% url 'vaccination_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vaccination"
-                                           class="link text-xs tap-pad">Edit</a>
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% elif event.type == 'farrier' and feature_access.health.full %}
                                         <a href="{% url 'farrier_update' event.obj.pk %}" hx-get="{% url 'farrier_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit farrier visit"
-                                           class="link text-xs tap-pad">Edit</a>
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% elif event.type == 'worming' and feature_access.health.full %}
                                         <a href="{% url 'worming_update' event.obj.pk %}" hx-get="{% url 'worming_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit worming"
-                                           class="link text-xs tap-pad">Edit</a>
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% elif event.type == 'egg_count' and feature_access.health.full %}
                                         <a href="{% url 'egg_count_update' event.obj.pk %}" hx-get="{% url 'egg_count_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit egg count"
-                                           class="link text-xs tap-pad">Edit</a>
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% elif event.type == 'vet_visit' and feature_access.health.full %}
                                         <a href="{% url 'vet_visit_update' event.obj.pk %}" hx-get="{% url 'vet_visit_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vet visit"
-                                           class="link text-xs tap-pad">Edit</a>
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% elif event.type == 'breeding' and feature_access.breeding.full %}
                                         <a href="{% url 'breeding_update' event.obj.pk %}" hx-get="{% url 'breeding_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record"
-                                           class="link text-xs tap-pad">Edit</a>
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% endif %}
                                         <span class="text-xs text-sage" title="{{ event.date|date:"d M Y" }}">{{ event.date|ago_label }}</span>
                                     </span>

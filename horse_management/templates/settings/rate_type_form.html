@@ -18,13 +18,13 @@
                 <div>
                     <label for="{{ form.name.id_for_label }}" class="text-sm font-medium text-charcoal">Name</label>
                     {{ form.name }}
-                    {% if form.name.errors %}<p class="mt-1 text-sm text-error-red">{{ form.name.errors.0 }}</p>{% endif %}
+                    {% if form.name.errors %}<p id="{{ form.name.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.name.errors.0 }}</p>{% endif %}
                 </div>
                 {% if form.daily_rate %}
                 <div>
                     <label for="{{ form.daily_rate.id_for_label }}" class="text-sm font-medium text-charcoal">Daily Rate</label>
                     {{ form.daily_rate }}
-                    {% if form.daily_rate.errors %}<p class="mt-1 text-sm text-error-red">{{ form.daily_rate.errors.0 }}</p>{% endif %}
+                    {% if form.daily_rate.errors %}<p id="{{ form.daily_rate.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.daily_rate.errors.0 }}</p>{% endif %}
                 </div>
                 {% endif %}
                 <div>

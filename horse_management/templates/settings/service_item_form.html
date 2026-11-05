@@ -24,7 +24,7 @@
                 <div>
                     <label for="{{ form.name.id_for_label }}" class="text-sm font-medium text-charcoal">Name</label>
                     {{ form.name }}
-                    {% if form.name.errors %}<p class="mt-1 text-sm text-error-red">{{ form.name.errors.0 }}</p>{% endif %}
+                    {% if form.name.errors %}<p id="{{ form.name.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.name.errors.0 }}</p>{% endif %}
                 </div>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
@@ -34,33 +34,33 @@
                             <option value="{{ value }}"{% if form.category.value|stringformat:"s" == value|stringformat:"s" %} selected{% endif %}>{{ label }}</option>
                             {% endfor %}
                         </select>
-                        {% if form.category.errors %}<p class="mt-1 text-sm text-error-red">{{ form.category.errors.0 }}</p>{% endif %}
+                        {% if form.category.errors %}<p id="{{ form.category.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.category.errors.0 }}</p>{% endif %}
                         <p class="mt-1 text-xs text-sage">{{ form.category.help_text }}</p>
                     </div>
                     <div>
                         <label for="{{ form.price.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.price.label }}</label>
                         {{ form.price }}
-                        {% if form.price.errors %}<p class="mt-1 text-sm text-error-red">{{ form.price.errors.0 }}</p>{% endif %}
+                        {% if form.price.errors %}<p id="{{ form.price.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.price.errors.0 }}</p>{% endif %}
                         <p class="mt-1 text-xs text-sage">{{ form.price.help_text }}</p>
                     </div>
                 </div>
                 <div x-show="category === 'farrier'" x-cloak>
                     <label for="{{ form.farrier_work.id_for_label }}" class="text-sm font-medium text-charcoal">Recorded as</label>
                     {{ form.farrier_work }}
-                    {% if form.farrier_work.errors %}<p class="mt-1 text-sm text-error-red">{{ form.farrier_work.errors.0 }}</p>{% endif %}
+                    {% if form.farrier_work.errors %}<p id="{{ form.farrier_work.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.farrier_work.errors.0 }}</p>{% endif %}
                     <p class="mt-1 text-xs text-sage">{{ form.farrier_work.help_text }}</p>
                 </div>
                 <div x-show="category === 'vaccination'" x-cloak>
                     <label for="{{ form.vaccination_type.id_for_label }}" class="text-sm font-medium text-charcoal">Vaccination type</label>
                     {{ form.vaccination_type }}
-                    {% if form.vaccination_type.errors %}<p class="mt-1 text-sm text-error-red">{{ form.vaccination_type.errors.0 }}</p>{% endif %}
+                    {% if form.vaccination_type.errors %}<p id="{{ form.vaccination_type.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.vaccination_type.errors.0 }}</p>{% endif %}
                     <p class="mt-1 text-xs text-sage">{{ form.vaccination_type.help_text }}</p>
                 </div>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <label for="{{ form.sort_order.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.sort_order.label }}</label>
                         {{ form.sort_order }}
-                        {% if form.sort_order.errors %}<p class="mt-1 text-sm text-error-red">{{ form.sort_order.errors.0 }}</p>{% endif %}
+                        {% if form.sort_order.errors %}<p id="{{ form.sort_order.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.sort_order.errors.0 }}</p>{% endif %}
                         <p class="mt-1 text-xs text-sage">{{ form.sort_order.help_text }}</p>
                     </div>
                     <div class="flex items-center gap-2 sm:pt-6">

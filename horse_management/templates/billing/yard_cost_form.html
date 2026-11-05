@@ -32,28 +32,28 @@
                         <label for="id_category" class="block text-sm font-medium text-charcoal">Category *</label>
                         {{ form.category }}
                         {% if form.category.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.category.errors.0 }}</p>
+                          <p id="{{ form.category.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.category.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
                         <label for="id_date" class="block text-sm font-medium text-charcoal">Date *</label>
                         {{ form.date }}
                         {% if form.date.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.date.errors.0 }}</p>
+                          <p id="{{ form.date.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.date.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
                         <label for="id_supplier" class="block text-sm font-medium text-charcoal">Supplier</label>
                         {{ form.supplier }}
                         {% if form.supplier.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.supplier.errors.0 }}</p>
+                          <p id="{{ form.supplier.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.supplier.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
                         <label for="id_amount" class="block text-sm font-medium text-charcoal">Amount *</label>
                         {{ form.amount }}
                         {% if form.amount.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.amount.errors.0 }}</p>
+                          <p id="{{ form.amount.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.amount.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
@@ -61,7 +61,7 @@
                         {{ form.vat_amount }}
                         <p class="mt-1 text-xs text-sage">Leave as 0 if not VAT registered</p>
                         {% if form.vat_amount.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.vat_amount.errors.0 }}</p>
+                          <p id="{{ form.vat_amount.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.vat_amount.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
@@ -75,14 +75,14 @@
                         <label for="id_description" class="block text-sm font-medium text-charcoal">Description *</label>
                         {{ form.description }}
                         {% if form.description.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.description.errors.0 }}</p>
+                          <p id="{{ form.description.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.description.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
                         <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
                         {{ form.notes }}
                         {% if form.notes.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.notes.errors.0 }}</p>
+                          <p id="{{ form.notes.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.notes.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
@@ -104,14 +104,14 @@
                         <label for="id_recurrence_interval" class="block text-sm font-medium text-charcoal">Recurrence</label>
                         {{ form.recurrence_interval }}
                         {% if form.recurrence_interval.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.recurrence_interval.errors.0 }}</p>
+                          <p id="{{ form.recurrence_interval.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.recurrence_interval.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div x-show="isRecurring" x-transition x-cloak>
                         <label for="id_recurrence_end_date" class="block text-sm font-medium text-charcoal">End Date</label>
                         {{ form.recurrence_end_date }}
                         {% if form.recurrence_end_date.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.recurrence_end_date.errors.0 }}</p>
+                          <p id="{{ form.recurrence_end_date.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.recurrence_end_date.errors.0 }}</p>
                         {% endif %}
                         <p class="mt-1 text-xs text-sage">Leave blank if ongoing</p>
                     </div>
@@ -119,7 +119,7 @@
                         <label for="id_receipt_image" class="block text-sm font-medium text-charcoal">Receipt Image</label>
                         {{ form.receipt_image }}
                         {% if form.receipt_image.errors %}
-                          <p class="mt-1 text-sm text-error-red">{{ form.receipt_image.errors.0 }}</p>
+                          <p id="{{ form.receipt_image.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.receipt_image.errors.0 }}</p>
                         {% endif %}
                         {% if object.receipt_image %}
                         <p class="mt-1 text-sm text-sage">

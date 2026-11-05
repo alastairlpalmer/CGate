@@ -22,8 +22,8 @@
     <div class="card px-5 py-4">
         <form method="get" class="flex flex-wrap items-end gap-4">
             <div>
-                <label class="dt-label mb-1">Type</label>
-                <select name="type" class="form-select w-auto">
+                <label for="filter-type" class="dt-label mb-1">Type</label>
+                <select id="filter-type" name="type" class="form-select w-auto">
                     <option value="">All types</option>
                     {% for value, label in provider_types %}
                     <option value="{{ value }}" {% if request.GET.type == value %}selected{% endif %}>{{ label }}</option>

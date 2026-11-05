@@ -27,7 +27,10 @@ module.exports = {
       },
       // Secondary — muted teal tint of Brim (re-derived from the old sage green).
       sage: {
-        DEFAULT: '#6A8990',
+        // #56737A: 4.5:1 or better on white, cream and parchment (WCAG AA
+        // for small text). #6A8990 was 3.4–3.8:1 and failed on ~300
+        // labels, dates and row actions.
+        DEFAULT: '#56737A',
         50: '#EFF3F4',
         100: '#DBE4E6',
         200: '#BCCCD0',
@@ -68,7 +71,9 @@ module.exports = {
         100: '#F5D5D2',
       },
       'info-blue': {
-        DEFAULT: '#2E86AB',
+        // #246A87: 4.5:1 or better as small text on white and its tints
+        // (#2E86AB was 4.1:1).
+        DEFAULT: '#246A87',
         50: '#EFF7FA',
         100: '#D2EAF2',
       },

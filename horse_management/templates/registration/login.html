@@ -24,8 +24,8 @@
             </div>
 
             <!-- Tagline -->
-            <h1 class="text-2xl font-semibold text-white mb-2 font-heading">Equine livery management</h1>
-            <p class="text-white/60 mb-10 text-base">Everything you need to manage your yard in one place.</p>
+            <p class="text-2xl font-semibold text-white mb-2 font-heading">Equine livery management</p>
+            <p class="text-white/75 mb-10 text-base">Everything you need to manage your yard in one place.</p>
 
             <!-- Feature bullets -->
             <ul class="space-y-5">
@@ -35,7 +35,7 @@
                     </svg>
                     <div>
                         <p class="text-white font-medium">Track health records</p>
-                        <p class="text-white/50 text-sm">Vaccinations, farrier visits, and vet records for every horse.</p>
+                        <p class="text-white/75 text-sm">Vaccinations, farrier visits, and vet records for every horse.</p>
                     </div>
                 </li>
                 <li class="flex items-start gap-3">
@@ -44,7 +44,7 @@
                     </svg>
                     <div>
                         <p class="text-white font-medium">Manage billing and invoices</p>
-                        <p class="text-white/50 text-sm">Generate invoices and keep billing organised across all owners.</p>
+                        <p class="text-white/75 text-sm">Generate invoices and keep billing organised across all owners.</p>
                     </div>
                 </li>
                 <li class="flex items-start gap-3">
@@ -53,14 +53,14 @@
                     </svg>
                     <div>
                         <p class="text-white font-medium">Monitor locations and placements</p>
-                        <p class="text-white/50 text-sm">Track where every horse is and manage moves between sites.</p>
+                        <p class="text-white/75 text-sm">Track where every horse is and manage moves between sites.</p>
                     </div>
                 </li>
             </ul>
         </div>
 
         <!-- Right form panel -->
-        <div class="flex flex-1 flex-col justify-center px-6 py-12 sm:px-12 lg:w-1/2 lg:px-16 xl:px-24 bg-parchment">
+        <div role="main" class="flex flex-1 flex-col justify-center px-6 py-12 sm:px-12 lg:w-1/2 lg:px-16 xl:px-24 bg-parchment">
             <div class="mx-auto w-full max-w-sm">
 
                 <!-- Mobile logo -->
@@ -74,12 +74,12 @@
                     <span class="text-2xl font-bold text-charcoal tracking-tight font-heading">Yardway</span>
                 </div>
 
-                <h2 class="text-2xl font-bold text-charcoal mb-1 font-heading">Sign in to your account</h2>
+                <h1 class="text-2xl font-bold text-charcoal mb-1 font-heading">Sign in to your account</h1>
                 <p class="text-sm text-sage mb-8">Enter your credentials to access the dashboard.</p>
 
                 <!-- Error message -->
                 {% if form.errors %}
-                <div class="alert-error mb-6">
+                <div class="alert-error mb-6" role="alert">
                     <svg class="h-5 w-5 text-error-red mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
                     </svg>
@@ -97,7 +97,7 @@
                             type="text"
                             name="username"
                             id="id_username"
-                            autocomplete="username email"
+                            autocomplete="username"
                             inputmode="email"
                             autocapitalize="none"
                             required

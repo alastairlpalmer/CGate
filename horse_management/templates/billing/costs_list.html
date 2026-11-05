@@ -91,8 +91,8 @@
         <div class="card px-5 py-4 flex flex-wrap items-end gap-4">
             <!-- Category -->
             <div>
-                <label class="dt-label mb-1">Category</label>
-                <select name="category" class="form-select w-auto" data-filter-field>
+                <label for="filter-category" class="dt-label mb-1">Category</label>
+                <select id="filter-category" name="category" class="form-select w-auto" data-filter-field>
                     <option value="">All categories</option>
                     {% for val, label in all_categories %}
                     <option value="{{ val }}" {% if request.GET.category == val %}selected{% endif %}>{{ label }}</option>
@@ -102,8 +102,8 @@
 
             <!-- Source -->
             <div>
-                <label class="dt-label mb-1">Type</label>
-                <select name="source" class="form-select w-auto" data-filter-field>
+                <label for="filter-source" class="dt-label mb-1">Type</label>
+                <select id="filter-source" name="source" class="form-select w-auto" data-filter-field>
                     <option value="">All costs</option>
                     <option value="rechargeable" {% if request.GET.source == 'rechargeable' %}selected{% endif %}>Rechargeable only</option>
                     <option value="yard" {% if request.GET.source == 'yard' %}selected{% endif %}>Yard costs only</option>
@@ -112,8 +112,8 @@
 
             <!-- Supplier -->
             <div>
-                <label class="dt-label mb-1">Supplier</label>
-                <input type="text" name="supplier" value="{{ request.GET.supplier }}" placeholder="Search supplier..." class="form-input w-auto" data-filter-field>
+                <label for="filter-supplier" class="dt-label mb-1">Supplier</label>
+                <input id="filter-supplier" type="text" name="supplier" value="{{ request.GET.supplier }}" placeholder="Search supplier..." class="form-input w-auto" data-filter-field>
             </div>
 
             <!-- Hidden period pass-through -->
