@@ -152,7 +152,7 @@ KIND_ICONS = {
     # activity log kinds
     'arrival': 'gate',
     'move': 'gate',
-    'worming': 'egg',
+    'worming': 'wormer',
     'charge': 'pound',
     'payment': 'pound',
 }

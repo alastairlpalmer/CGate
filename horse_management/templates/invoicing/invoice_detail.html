@@ -221,38 +221,25 @@
             </div>
         </div>
 
-        <!-- Totals Card -->
+        <!-- Balance Card. Net and VAT are under the line items, as on the
+             PDF, so this card only says what is owed (UX plan C6). -->
         <div class="card">
             <div class="section-header">
-                <h3 class="section-title">Totals</h3>
+                <h3 class="section-title">Balance</h3>
             </div>
             <div class="p-5 lg:p-6">
-                <div class="bg-light-sage border border-sand rounded-xl p-6 text-center">
-                    <p class="dt-label mb-1">
-                        {% if amount_paid > 0 %}Balance Due{% else %}Amount Due{% endif %}
-                    </p>
-                    <p class="text-3xl font-bold text-charcoal">{{ balance_due|gbp }}</p>
-                </div>
-                <div class="mt-4 space-y-2">
-                    <div class="flex justify-between text-sm">
-                        <span class="text-sage">Net Total</span>
-                        <span class="text-charcoal">{{ invoice.subtotal|gbp }}</span>
+                <p class="dt-label">{% if amount_paid > 0 %}Balance due{% else %}Amount due{% endif %}</p>
+                <p class="mt-1 font-heading text-3xl font-semibold tracking-[-0.02em] tabular-nums {% if balance_due > 0 and invoice.is_overdue and invoice.status != 'draft' %}text-error-red{% else %}text-charcoal{% endif %}">{{ balance_due|gbp }}</p>
+                <dl class="mt-4 space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <dt class="text-sage">Invoice total</dt>
+                        <dd class="text-charcoal tabular-nums">{{ invoice.total|gbp }}</dd>
                     </div>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-sage">VAT{% if invoice.vat_rate > 0 %} ({{ invoice.vat_rate|floatformat:"-2" }}%){% endif %}</span>
-                        <span class="text-charcoal">{{ invoice.vat_amount|gbp }}</span>
+                    <div class="flex justify-between">
+                        <dt class="text-sage">Paid to date</dt>
+                        <dd class="tabular-nums {% if amount_paid > 0 %}text-forest font-medium{% else %}text-charcoal{% endif %}">{% if amount_paid > 0 %}&minus;{% endif %}{{ amount_paid|gbp }}</dd>
                     </div>
-                    {% if amount_paid > 0 %}
-                    <div class="flex justify-between text-sm">
-                        <span class="text-sage">Invoice Total</span>
-                        <span class="text-charcoal">{{ invoice.total|gbp }}</span>
-                    </div>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-sage">Paid to Date</span>
-                        <span class="text-forest font-medium">&minus;{{ amount_paid|gbp }}</span>
-                    </div>
-                    {% endif %}
-                </div>
+                </dl>
             </div>
         </div>
     </div>

@@ -202,7 +202,12 @@ def _dashboard_inner(request):
 
     sites_overview = []
     if 'yard_board' in visible:
-        flagged = {(item.site, item.location) for item in inbox_items if item.location}
+        flagged = {}
+        for item in inbox_items:
+            if item.location:
+                what = item.detail.split(' · ', 1)[0] if item.detail else item.kind
+                flagged.setdefault((item.site, item.location), []).append(
+                    f'{item.title}: {what[:1].lower()}{what[1:]}' if item.title else what)
         sites_overview = board.sites_overview(site=site, today=today, flagged=flagged)
 
     in_foal = []
@@ -266,10 +271,32 @@ def dashboard_activity(request):
     if 'activity' not in pref.visible_keys():
         return HttpResponse('')
     today = timezone.localdate()
+    days = activity_data.recent(request.user, site=pref.site, today=today)
     return render(request, 'partials/dashboard/activity.html', {
-        'days': activity_data.recent(request.user, site=pref.site, today=today),
+        'days': days,
+        'folded_count': _fold_activity(days),
         'site': pref.site,
     })
+
+
+ACTIVITY_SHOWN = 8
+
+
+def _fold_activity(days, shown=ACTIVITY_SHOWN):
+    """Mark every event after the first ``shown`` as ``folded``, and a day
+    as folded when all its events are. Returns how many are folded.
+
+    The card shows the newest changes and a "Show all" button for the rest,
+    so a busy week cannot make it far taller than the cards beside it
+    (UX plan D4).
+    """
+    seen = 0
+    for day in days:
+        for event in day['events']:
+            event.folded = seen >= shown
+            seen += 1
+        day['folded'] = all(event.folded for event in day['events'])
+    return max(seen - shown, 0)
 
 
 # ── Quick find ──────────────────────────────────────────────────────────────

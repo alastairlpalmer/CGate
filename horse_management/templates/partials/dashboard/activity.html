@@ -6,6 +6,9 @@ paint. Context: days (core.dashboard.activity.recent), site.
 Each row: a tinted glyph for the kind, the horses (or owner, or location)
 as chips with their coat colour, what happened, and any money on the right.
 A farrier round or a batch of vaccinations is one row naming every horse.
+The first eight rows show; the rest fold behind "Show N earlier changes"
+(core.views.dashboard._fold_activity), so the card stays near the height
+of the cards beside it.
 {% endcomment %}
 <div class="card overflow-hidden h-full">
     <div class="section-header">
@@ -13,11 +16,12 @@ A farrier round or a batch of vaccinations is one row naming every horse.
         {% if feature_access.horses.view %}<a href="{% url 'horse_list' %}?tab=movements" class="text-xs link tap-pad">Movements &rarr;</a>{% endif %}
     </div>
     {% if days %}
+    <div x-data="{ all: false }">
     <div class="log">
         {% for day in days %}
-        <p class="log-day"><span>{{ day.label }}{% if day.with_date %} <span class="text-sage/70">&middot; {{ day.date|date:"j M" }}</span>{% endif %}</span></p>
+        <p class="log-day"{% if day.folded %} x-show="all" x-cloak{% endif %}><span>{{ day.label }}{% if day.with_date %} <span class="text-sage/70">&middot; {{ day.date|date:"j M" }}</span>{% endif %}</span></p>
         {% for event in day.events %}
-        <div class="log-event">
+        <div class="log-event"{% if event.folded %} x-show="all" x-cloak{% endif %}>
             <span class="log-icon log-icon-{{ event.group }}" aria-hidden="true"><svg class="w-4 h-4"><use href="#i-{{ event.kind|kind_icon }}"/></svg></span>
             <div class="log-body">
                 {% for n in event.names %}
@@ -30,6 +34,15 @@ A farrier round or a batch of vaccinations is one row naming every horse.
         </div>
         {% endfor %}
         {% endfor %}
+    </div>
+    {% if folded_count %}
+    <div class="border-t border-light-sage px-5 py-2.5 text-center">
+        <button type="button" class="link text-sm tap-pad" @click="all = !all" :aria-expanded="all ? 'true' : 'false'">
+            <span x-show="!all">Show {{ folded_count }} earlier change{{ folded_count|pluralize }}</span>
+            <span x-show="all" x-cloak>Show fewer</span>
+        </button>
+    </div>
+    {% endif %}
     </div>
     {% else %}
     <p class="px-5 py-8 text-center text-sm text-sage">Nothing recorded yet{% if site %} at {{ site }}{% endif %}.</p>

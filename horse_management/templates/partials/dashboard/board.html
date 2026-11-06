@@ -20,13 +20,13 @@ so the two never disagree at a glance.
                 <p class="board-site-meta">
                     <b>{{ band.horses }}</b>{% if band.has_capacity %}<span class="text-sage/70">/{{ band.capacity }}</span>{% endif %} horse{{ band.horses|pluralize }}
                     {% if band.resting %}<br>{{ band.resting }} resting{% endif %}
-                    {% if band.flagged %}<br><span class="text-saddle">{{ band.flagged }} location{{ band.flagged|pluralize }} need{{ band.flagged|pluralize:"s," }} attention</span>{% endif %}
+                    {% if band.flagged %}<br><span class="text-saddle">{{ band.flagged }} location{{ band.flagged|pluralize }} need{{ band.flagged|pluralize:"s," }} attention</span>{% for tile in band.tiles %}{% if tile.flag_reasons %}<span class="board-flag-reason"><b>{{ tile.location.name }}</b> · {{ tile.flag_reasons|join:", " }}</span>{% endif %}{% endfor %}{% endif %}
                 </p>
             </div>
             <div class="board-tiles">
                 {% for tile in band.tiles %}
                 <a href="{% url 'location_detail' tile.location.pk %}" class="board-tile{% if tile.flagged %} is-flagged{% endif %}"
-                   title="{{ tile.location.name }}{% if tile.holds_horses %} · {{ tile.count }} horse{{ tile.count|pluralize }}{% if tile.capacity %} of {{ tile.capacity }}{% endif %}{% else %} · {{ tile.usage_label }}{% endif %}{% if tile.flagged %} · needs attention{% endif %}">
+                   title="{{ tile.location.name }}{% if tile.holds_horses %} · {{ tile.count }} horse{{ tile.count|pluralize }}{% if tile.capacity %} of {{ tile.capacity }}{% endif %}{% else %} · {{ tile.usage_label }}{% endif %}{% if tile.flagged %} · needs attention{% if tile.flag_reasons %}: {{ tile.flag_reasons|join:", " }}{% endif %}{% endif %}">
                     <span class="min-w-0">
                         <span class="board-tile-name">{{ tile.location.name }}</span>
                         <span class="board-tile-meta{% if tile.usage == 'rested' %} text-sage{% elif tile.usage == 'hay' %} text-info-blue{% elif tile.usage == 'arable' or tile.usage == 'mixed' %} text-saddle{% endif %}">
