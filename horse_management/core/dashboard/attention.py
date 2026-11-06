@@ -845,15 +845,20 @@ COLLECTORS = (
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
-def collect(user, *, site='', today=None, horizon_days=HORIZON_DAYS, kinds=None):
+def collect(user, *, site='', today=None, horizon_days=HORIZON_DAYS, kinds=None,
+            placements=None):
     """Every attention item the user may see, most urgent first.
 
     ``site`` keeps items standing on that site plus items with no site
     (an invoice belongs to an owner, not a location). ``kinds`` limits the
     collectors that run, for callers that only want the health kinds.
+    ``placements`` (``{horse_id: (location name, site)}``) saves the
+    placements query for a caller that has them loaded already.
     """
     today = today or timezone.localdate()
     ctx = _Context(user, today, horizon_days)
+    if placements is not None:
+        ctx._placements = placements
     items = []
     for kind, feature, collector in COLLECTORS:
         if kinds is not None and kind not in kinds:

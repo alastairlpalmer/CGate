@@ -95,9 +95,13 @@
             afterDraw(chart) {
                 if (!(forecastIdx > 0)) return;
                 const x = chart.scales.x.getPixelForValue(forecastIdx - 0.5);
-                const { top, bottom } = chart.chartArea;
+                const { top, bottom, right } = chart.chartArea;
                 const ctx = chart.ctx;
                 ctx.save();
+                // A light wash over the forecast months, so they read as a
+                // different kind of number before the reader finds the legend.
+                ctx.fillStyle = 'rgba(106, 137, 144, 0.07)';
+                ctx.fillRect(x, top, right - x, bottom - top);
                 ctx.strokeStyle = colors.sand;
                 ctx.setLineDash([4, 4]);
                 ctx.beginPath();
@@ -106,8 +110,9 @@
                 ctx.stroke();
                 ctx.setLineDash([]);
                 ctx.fillStyle = colors.sage;
-                ctx.font = "10px 'Source Sans 3', sans-serif";
-                ctx.fillText('Forecast', x + 4, top + 10);
+                ctx.font = "11px 'Source Sans 3', sans-serif";
+                // Above the plot, not on it, so it never covers a line.
+                ctx.fillText('Forecast →', x + 4, top - 6);
                 ctx.restore();
             },
         };
@@ -123,7 +128,9 @@
                         borderColor: colors.forest,
                         backgroundColor: colors.forest + '18',
                         fill: true,
-                        tension: 0.3,
+                        // Straight lines: a curve between monthly points
+                        // draws highs and lows that never happened.
+                        tension: 0,
                         pointRadius: 3,
                         pointHoverRadius: 5,
                         segment: {
@@ -136,7 +143,9 @@
                         borderColor: colors.red,
                         backgroundColor: colors.red + '12',
                         fill: true,
-                        tension: 0.3,
+                        // Straight lines: a curve between monthly points
+                        // draws highs and lows that never happened.
+                        tension: 0,
                         pointRadius: 3,
                         pointHoverRadius: 5,
                         segment: {
@@ -148,6 +157,7 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: { padding: { top: 18 } },
                 interaction: { intersect: false, mode: 'index' },
                 plugins: {
                     legend: { position: 'top', labels: { usePointStyle: true, padding: 20, font: { family: "'Source Sans 3', sans-serif", size: 12 } } },
@@ -165,7 +175,7 @@
                 },
                 scales: {
                     x: { grid: { display: false }, ticks: { font: { family: "'Source Sans 3', sans-serif", size: 11 }, color: '#6A8990' } },
-                    y: { grid: { color: colors.lightSage }, ticks: { font: { family: "'JetBrains Mono', monospace", size: 11 }, color: '#6A8990', callback: v => '£' + v.toLocaleString() } },
+                    y: { grid: { color: colors.lightSage }, ticks: { font: { family: "'Source Sans 3', sans-serif", size: 11 }, color: '#6A8990', callback: v => '£' + v.toLocaleString() } },
                 },
             },
         });

@@ -173,13 +173,24 @@
                 {% include 'horses/_sort_menu.html' with menu_align='left' %}
             </div>
             {% endif %}
+            {% if needs_action_count or needs_action_only %}
+            {% comment %}Health filter (UX plan H1): the horses with a health
+            item overdue or due within 14 days. The dot after each name says
+            which.{% endcomment %}
+            <a href="{% if needs_action_only %}{% querystring needs=None page=None %}{% else %}{% querystring needs='1' page=None %}{% endif %}"
+               class="needs-chip{% if needs_action_only %} is-active{% endif %} ml-auto"
+               {% if needs_action_only %}aria-current="true"{% endif %}>
+                <span class="health-dot is-overdue" aria-hidden="true"></span>
+                Needs action{% if not needs_action_only %} <b>{{ needs_action_count }}</b>{% else %} · show all{% endif %}
+            </a>
+            {% endif %}
             {% if not shows_movements %}
             {% comment %}Select turns the tick boxes and the bulk bar on.
             Off by default: a row is for reading, and a click on one opens
             the pane.{% endcomment %}
             <button type="button" @click="toggleSelectMode()"
                     :aria-pressed="selectMode ? 'true' : 'false'"
-                    class="btn-ghost btn-xs shrink-0 whitespace-nowrap ml-auto"
+                    class="btn-ghost btn-xs shrink-0 whitespace-nowrap{% if not needs_action_count and not needs_action_only %} ml-auto{% endif %}"
                     :class="selectMode && 'bg-light-sage text-charcoal'"
                     x-text="selectMode ? 'Done' : 'Select'">Select</button>
             {% endif %}

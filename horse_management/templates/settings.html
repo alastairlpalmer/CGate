@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load ui_extras %}
 
 {% block title %}Settings - Cgate{% endblock %}
 
@@ -501,7 +502,7 @@
                 <div class="settings-row">
                     <div class="min-w-0">
                         <p class="settings-row-title">{{ item.name }}</p>
-                        <p class="settings-row-meta font-mono tabular-nums">{{ item.price_label }} per horse{% if item.farrier_work %} &middot; {{ item.get_farrier_work_display }}{% endif %}{% if item.vaccination_type %} &middot; {{ item.vaccination_type.name }}{% endif %}</p>
+                        <p class="settings-row-meta tabular-nums">{{ item.price_label }} per horse{% if item.farrier_work %} &middot; {{ item.get_farrier_work_display }}{% endif %}{% if item.vaccination_type %} &middot; {{ item.vaccination_type.name }}{% endif %}</p>
                     </div>
                     <div class="settings-actions">
                         {% if not item.is_active %}<span class="badge-warning">Inactive</span>{% endif %}
@@ -531,7 +532,7 @@
                 <div class="settings-row">
                     <div class="min-w-0">
                         <p class="settings-row-title">{{ rate.name }}</p>
-                        <p class="settings-row-meta font-mono tabular-nums">&pound;{{ rate.daily_rate }}/day</p>
+                        <p class="settings-row-meta tabular-nums">{{ rate.daily_rate|gbp }}/day</p>
                     </div>
                     <div class="settings-actions">
                         {% if not rate.is_active %}<span class="badge-warning">Inactive</span>{% endif %}

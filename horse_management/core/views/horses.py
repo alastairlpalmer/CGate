@@ -57,6 +57,7 @@ from ..permissions import (
     FeatureAccessMixin,
     access_map,
     feature_required,
+    has_feature_access,
 )
 from ..models import Horse, Location, Owner, OwnershipShare, Placement
 from .placements import movement_history
@@ -859,6 +860,17 @@ class HorseListView(FeatureAccessMixin, ListView):
         horses = list(context['horses'])
         for h in horses:
             h.resolved_owner = _get_owner(h)
+
+        # Health warnings beside each name, from the dashboard's own rules,
+        # and the "Needs action" filter (UX plan H1).
+        if self.status == 'current' and not self.shows_movements:
+            flags = _health_flags(self.request.user, horses)
+            for h in horses:
+                h.health_flag = flags.get(h.pk)
+            context['needs_action_count'] = sum(1 for h in horses if h.health_flag)
+            context['needs_action_only'] = self.request.GET.get('needs') == '1'
+            if context['needs_action_only']:
+                horses = [h for h in horses if h.health_flag]
 
         # Build grouped data for current tab (not when searching or departed)
         if self.shows_movements:
@@ -1845,3 +1857,50 @@ def manage_ownership_shares(request, pk):
         'horse': horse,
         'formset': formset,
     })
+
+
+# Vaccinations and farrier: the two most common due items, one query
+# each. Worming (two queries), vet follow-ups and high egg counts stay on
+# the dashboard and the Health page, because more would take the list past
+# its query budget (core/tests/test_query_counts.py).
+HEALTH_FLAG_KINDS = frozenset({'vaccination', 'farrier'})
+HEALTH_FLAG_DAYS = 14
+
+
+def _health_flags(user, horses=()):
+    """``{horse pk: flag}`` for horses with a health item overdue or due in
+    the next fortnight, from the same collectors as the dashboard, so the
+    list and the dashboard never disagree. A flag is ``{'severity':
+    'overdue' | 'due', 'text': 'Vaccination overdue, …'}``; overdue wins
+    when a horse has both. A fixed handful of queries, whatever the size of
+    the list.
+    """
+    from ..dashboard import attention
+
+    if not has_feature_access(user, 'health', LEVEL_VIEW):
+        return {}
+    # The list has each horse's open placement loaded already.
+    placements = {}
+    for h in horses:
+        open_stays = getattr(h, 'active_placements', None) or []
+        if open_stays and open_stays[0].location_id:
+            loc = open_stays[0].location
+            placements[h.pk] = (loc.name, loc.site)
+    flags = {}
+    for item in attention.collect(
+        user, kinds=HEALTH_FLAG_KINDS, horizon_days=HEALTH_FLAG_DAYS,
+        placements=placements,
+    ):
+        if item.horse_id is None or item.severity not in ('overdue', 'due'):
+            continue
+        what = item.detail.split(' · ', 1)[0] if item.detail else item.kind
+        line = f"{what} {'overdue' if item.severity == 'overdue' else 'due soon'}"
+        flag = flags.setdefault(item.horse_id, {'severity': item.severity, 'lines': []})
+        if item.severity == 'overdue':
+            flag['severity'] = 'overdue'
+        if line not in flag['lines']:
+            flag['lines'].append(line)
+    for flag in flags.values():
+        flag['text'] = '; '.join(flag['lines'])
+    return flags
+

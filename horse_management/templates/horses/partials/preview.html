@@ -113,7 +113,7 @@ does from the horse page, so nothing here has to know it is in a pane.
             <dd class="pane-stat-value">
                 {% if current_placement.rate_type %}
                 {% if feature_access.charges.view %}
-                <span class="font-mono">{{ current_placement.rate_type.daily_rate|gbp }}/day</span>
+                <span class="tabular-nums">{{ current_placement.rate_type.daily_rate|gbp }}/day</span>
                 <span class="pane-stat-note">{{ current_placement.rate_type.name }}</span>
                 {% else %}
                 {{ current_placement.rate_type.name }}

@@ -10,8 +10,10 @@ def sites_overview(*, site='', today=None, flagged=frozenset()):
     """One band per site, one tile per active location.
 
     ``flagged`` is a set of ``(site, location name)`` pairs that have an
-    attention item; their tiles get a marker. Two queries regardless of the
-    number of locations.
+    attention item; their tiles get a marker. It may also be a dict from
+    those pairs to the reasons (short lines such as "Bella: vaccination"),
+    which the tile carries as ``flag_reasons`` so the board can say why
+    (UX plan D4). Two queries regardless of the number of locations.
     """
     from ..models import Location, LocationUsagePeriod
 
@@ -63,6 +65,7 @@ def sites_overview(*, site='', today=None, flagged=frozenset()):
             'rest_days': rest_days,
             'rest_since': period.start_date if rest_days is not None else None,
             'flagged': (loc.site, loc.name) in flagged,
+            'flag_reasons': list(flagged.get((loc.site, loc.name), [])) if isinstance(flagged, dict) else [],
         }
         band = sites.setdefault(loc.site, {
             'name': loc.site,

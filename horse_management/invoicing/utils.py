@@ -4,6 +4,7 @@ Utility functions for invoice formatting and grouping.
 
 import csv
 import io
+import re
 from collections import OrderedDict
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -78,7 +79,17 @@ def group_line_items_by_horse(line_items):
             if len(shares) == 1 and next(iter(shares)) < 100 else ''
         )
 
-    return list(groups.values())
+    # Horses in name order, so the reader finds a horse where they expect
+    # it (UX plan C5). Numbers sort as numbers ("Star 2" before "Star 10"),
+    # and the lines with no horse come last.
+    return sorted(groups.values(), key=_horse_group_key)
+
+
+def _horse_group_key(group):
+    if group['horse'] is None:
+        return (1, [])
+    parts = re.split(r'(\d+)', group['horse_name'].casefold())
+    return (0, [(0, int(p), '') if p.isdigit() else (1, 0, p) for p in parts])
 
 
 def group_preview_charges_by_horse(all_charges):
