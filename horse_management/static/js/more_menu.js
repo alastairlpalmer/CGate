@@ -101,8 +101,11 @@
                 items: function () {
                     var panel = this.$refs.panel;
                     if (!panel) return [];
+                    // Leave out items hidden at this width (md:hidden and the
+                    // like): they cannot take focus.
                     return Array.prototype.slice.call(
-                        panel.querySelectorAll('[role="menuitem"]:not([disabled])'));
+                        panel.querySelectorAll('[role="menuitem"]:not([disabled])'))
+                        .filter(function (el) { return el.getClientRects().length > 0; });
                 },
                 show: function (focusFirst) {
                     this.open = true;

@@ -11,19 +11,19 @@
     {% if feature_access.invoices.full %}
     <!-- Bulk-action form lives outside the table so per-row send forms don't nest.
          Row checkboxes and the action-bar buttons attach via form="bulk-invoice-form". -->
-    <form id="bulk-invoice-form" method="post" action="{% url 'invoice_bulk_action' %}">
+    <form id="bulk-invoice-form" class="hidden" method="post" action="{% url 'invoice_bulk_action' %}">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ request.get_full_path }}">
     </form>
     {% endif %}
 
     <!-- Page Header -->
-    {% comment %}No visible <h1>: the tab bar names the section you are in
-    (the More tab relabels itself, see base.html) and the sidebar highlights
-    it on desktop. The heading stays for screen readers and the outline.
+    {% comment %}The <h1> shows from `lg` only. On a phone the tab bar names the
+    section, so a title row would cost a screen line for nothing; on a wide
+    screen the page needs a title to say where you are (UX plan B1).
     {% endcomment %}
-    <h1 class="sr-only">Invoices</h1>
     <div class="page-header">
+        <h1 class="sr-only lg:not-sr-only page-title">Invoices</h1>
         <div class="flex flex-wrap items-center gap-2 sm:gap-3">
             <a href="{% url 'invoice_generate' %}" class="btn-secondary">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -50,7 +50,7 @@
         {% include 'includes/_filter_toggle.html' %}
         <form method="get" class="space-y-3">
             <div class="flex items-center gap-2">
-                {% include 'includes/search_bar.html' with placeholder="Search invoices…" action_url=request.path %}
+                {% include 'includes/search_bar.html' with placeholder="Filter invoices by owner or number…" action_url=request.path %}
             </div>
             <div x-show="filtersOpen" x-collapse x-cloak>
             <div class="card px-4 py-3 sm:px-5 sm:py-4 grid grid-cols-2 sm:grid-cols-4 gap-3">

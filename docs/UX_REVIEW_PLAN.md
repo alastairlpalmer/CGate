@@ -14,8 +14,9 @@ templates and `static/css/input.css` to confirm each finding.
 | Phase | State |
 |---|---|
 | 1. Quick fixes | Done (alastairlpalmer/CGate#242) |
-| 2. Action hierarchy | Done in this branch: shared More menu (`static/js/more_menu.js`), A1 to A4, B2 |
-| 3 to 5 | Not started |
+| 2. Action hierarchy | Done (alastairlpalmer/CGate#243) |
+| 3. Phone lists and orientation | Done in this branch: E1, E2, B1, B3, G1, G2 |
+| 4 and 5 | Not started |
 
 ## 1. Summary
 

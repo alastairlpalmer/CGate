@@ -4,7 +4,7 @@ One horse in the horse list. One markup, two shapes.
 From `md` this is a table row. Below `md` the `.horse-rows` block in
 input.css re-lays the same cells on a grid, as a stacked card:
 
-    [ ] avatar  Name                            [icons]
+    [ ] avatar  Name (two lines at most)            [⋯]
                 age · colour · sex
                 Owner · Location
 
@@ -66,12 +66,14 @@ so it needs no breakpoint of its own.
     {% endif %}
     <td data-col="actions" class="pr-5 split-optional">
         {% comment %}One visible action, Move, the one used most. Photo and
-        Edit are in the row's More menu (docs/UX_REVIEW_PLAN.md A4).
+        Edit are in the row's More menu (docs/UX_REVIEW_PLAN.md A4). On a
+        phone the row shows the menu button only, so the name has the width
+        (E1); Move is then the menu's first item.
         {% endcomment %}
         <div class="flex items-center justify-end gap-1">
             <a href="{% url 'horse_move' horse.pk %}" hx-get="{% url 'horse_move' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
                data-popup-title="Move {{ horse.name }}"
-               class="btn-icon" title="Move" aria-label="Move {{ horse.name }}">
+               class="btn-icon hidden md:inline-flex" title="Move" aria-label="Move {{ horse.name }}">
                 <svg class="w-4 h-4" aria-hidden="true"><use href="#i-arrows-lr"/></svg>
             </a>
             <div class="more-menu" x-data="moreMenu" @click.outside="close(false)" @keydown.escape="close(true)">
@@ -79,6 +81,12 @@ so it needs no breakpoint of its own.
                 <div class="more-menu-panel" x-ref="panel" x-show="open" x-cloak
                      role="menu" aria-label="More actions for {{ horse.name }}"
                      @keydown="onPanelKey($event)" @click="close(false)">
+                    {# On a phone the row has room for one button, so Move is here too. #}
+                    <a href="{% url 'horse_move' horse.pk %}" hx-get="{% url 'horse_move' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                       data-popup-title="Move {{ horse.name }}" role="menuitem" class="more-menu-item md:hidden">
+                        <svg aria-hidden="true"><use href="#i-arrows-lr"/></svg>
+                        Move
+                    </a>
                     <a href="{% url 'horse_update' horse.pk %}" hx-get="{% url 'horse_quick_edit' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
                        data-popup-title="Edit {{ horse.name }}" role="menuitem" class="more-menu-item">
                         <svg aria-hidden="true"><use href="#i-pencil"/></svg>

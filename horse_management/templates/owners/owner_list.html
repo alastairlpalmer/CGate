@@ -5,11 +5,11 @@
 {% block content %}
 <div class="space-y-6">
 
-    {% comment %}No visible <h1>: the tab bar names the section you are in
-    (the More tab relabels itself, see base.html) and the sidebar highlights
-    it on desktop. The heading stays for screen readers and the outline.
+    {% comment %}The <h1> shows from `lg` only. On a phone the tab bar names the
+    section, so a title row would cost a screen line for nothing; on a wide
+    screen the page needs a title to say where you are (UX plan B1).
     {% endcomment %}
-    <h1 class="sr-only">Owners</h1>
+    <h1 class="sr-only lg:not-sr-only page-title">Owners</h1>
 
     <div id="list-results" class="space-y-6">
 

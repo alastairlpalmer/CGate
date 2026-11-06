@@ -196,6 +196,31 @@ def sort_grouped_locations(grouped):
     return result
 
 
+CARD_HORSE_NAMES = 3
+
+
+def _attach_horse_names(locations):
+    """Give each location card the names of the first horses on it.
+
+    One query for the whole page: ``horse_names`` holds up to
+    CARD_HORSE_NAMES names in name order, ``more_horses`` the rest of the
+    count. The card then says who is there, not only how many (UX plan G1).
+    """
+    names = {}
+    for location_id, name in (
+        Placement.objects.filter(
+            location__in=[loc.pk for loc in locations],
+            end_date__isnull=True,
+            horse__is_active=True,
+        ).order_by('horse__name').values_list('location_id', 'horse__name').distinct()
+    ):
+        names.setdefault(location_id, []).append(name)
+    for loc in locations:
+        found = names.get(loc.pk, [])
+        loc.horse_names = found[:CARD_HORSE_NAMES]
+        loc.more_horses = max(loc.horse_count - len(loc.horse_names), 0)
+
+
 class LocationListView(FeatureAccessMixin, ListView):
     feature = 'locations'
     access_level = LEVEL_VIEW
@@ -358,6 +383,7 @@ class LocationListView(FeatureAccessMixin, ListView):
                         loc.capacity - loc.horse_count
                         if loc.capacity is not None else None
                     )
+            _attach_horse_names(context['locations'])
             sort = self.request.GET.get('sort', LOCATION_SORT_FULLEST)
             if sort not in LOCATION_SORTS:
                 sort = LOCATION_SORT_FULLEST

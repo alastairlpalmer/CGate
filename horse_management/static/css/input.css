@@ -347,6 +347,10 @@
     /* Scroll the rail instead of wrapping it when the labels outgrow the phone */
     .segmented-scroll { @apply -mx-4 px-4 overflow-x-auto sm:mx-0 sm:px-0 sm:overflow-visible; scrollbar-width: none; }
     .segmented-scroll::-webkit-scrollbar { display: none; }
+    /* The horse list's View rail: on a phone the words carry it, so the
+       leading icons go and all four options fit on one line (UX plan E2).
+       The open option's chevron is its last child, so it stays. */
+    .view-rail .segmented-item > svg:first-child { @apply max-sm:hidden; }
 
     /* Toolbar strip above a list: the segmented rail plus any page action */
     .list-toolbar { @apply flex flex-col gap-2.5; }
@@ -1258,7 +1262,7 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
    (horses/horse_list.html, horses/_owner_table.html). Below `md` the same
    cells re-lay on a grid as a stacked card:
 
-       [ ] avatar  Name                         [icons]
+       [ ] avatar  Name (two lines at most)     [⋯]
                    age · colour · sex
                    Owner · Location
 
@@ -1314,6 +1318,14 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
         @apply text-xs;
     }
     .horse-rows tbody td[data-col="name"] { grid-column: 2 / 4; grid-row: 1; }
+    /* A long name gets two lines, then an ellipsis, so one horse never
+       takes the height of four. */
+    .horse-rows tbody td[data-col="name"] .font-medium {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+    }
     .horse-rows tbody td[data-col="owner"] { grid-column: 2; grid-row: 2; }
     .horse-rows tbody td[data-col="location"] { grid-column: 3; grid-row: 2; }
     /* The meta line starts where the name does, clear of the avatar
