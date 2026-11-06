@@ -56,10 +56,15 @@ def _passport_title(index, total):
 def _use_as_profile(horse, photo):
     """Copy a HorsePhoto's image onto Horse.photo — the picture shown next
     to the horse's name. The log entry keeps its own file; Horse.save()
-    regenerates the avatar thumbnail from the new photo."""
+    regenerates the avatar thumbnail from the new photo.
+
+    The copy is named ``profile-from-<photo pk>``, so the preview gallery
+    can tell it is the same picture and show it once
+    (core.views.horses._profile_source)."""
     photo.image.open('rb')
     try:
-        horse.photo.save(Path(photo.image.name).name, photo.image, save=False)
+        suffix = Path(photo.image.name).suffix.lower() or '.jpg'
+        horse.photo.save(f'profile-from-{photo.pk}{suffix}', photo.image, save=False)
     finally:
         photo.image.close()
     horse.save(update_fields=['photo'])
