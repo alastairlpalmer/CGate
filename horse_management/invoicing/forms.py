@@ -9,6 +9,7 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 
 from core.models import Owner
+from core.widgets import MoneyInput
 from invoicing.models import Invoice, Payment
 from core.templatetags.ui_extras import gbp
 
@@ -167,7 +168,7 @@ class PaymentForm(forms.ModelForm):
         fields = ['date', 'amount', 'method', 'reference', 'notes']
         widgets = {
             'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
-            'amount': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
+            'amount': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'method': forms.Select(attrs={'class': 'form-select'}),
             'reference': forms.TextInput(attrs={'class': 'form-input'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
@@ -198,7 +199,7 @@ class CreditNoteForm(forms.Form):
     date = forms.DateField(widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}))
     amount = forms.DecimalField(
         max_digits=10, decimal_places=2, min_value=Decimal('0.01'),
-        widget=forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
+        widget=MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
     )
     reason = forms.CharField(
         max_length=500,

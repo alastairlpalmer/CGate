@@ -9,6 +9,7 @@ from django import forms
 
 from core.forms import owners_for_picker
 from core.images import heic_to_jpeg
+from core.widgets import MoneyInput
 
 from .models import ExtraCharge, FeedOut, FeedStock, ServiceItem, ServiceProvider, YardCost
 
@@ -131,8 +132,12 @@ class ServicePickerMixin:
         cost_field = self.fields.get(self.service_cost_field)
         if cost_field is not None:
             cost_field.widget.attrs.setdefault('data-service-cost', '')
-        # The picker leads: choose the service, then only touch what differs.
-        self.fields = {'service_item': picker, **self.fields}
+        # The picker comes straight after the horse, which the record is
+        # about (UX plan F1), and before everything the service fills in:
+        # choose the service, then only touch what differs.
+        lead = {name: self.fields[name] for name in ('horse', 'mare') if name in self.fields}
+        rest = {name: field for name, field in self.fields.items() if name not in lead}
+        self.fields = {**lead, 'service_item': picker, **rest}
 
     def clean(self):
         cleaned_data = super().clean()
@@ -170,7 +175,7 @@ class ServiceItemForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Wormer - Equimax'}),
             'category': forms.Select(attrs={'class': 'form-select'}),
-            'price': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
+            'price': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
             'farrier_work': forms.Select(attrs={'class': 'form-select'}),
             'vaccination_type': forms.Select(attrs={'class': 'form-select'}),
             'sort_order': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric', 'min': '0'}),
@@ -220,7 +225,7 @@ class ExtraChargeForm(ServicePickerMixin, forms.ModelForm):
             'charge_type': forms.Select(attrs={'class': 'form-select'}),
             'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'description': forms.TextInput(attrs={'class': 'form-input'}),
-            'amount': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
+            'amount': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'split_by_ownership': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
             'receipt_image': forms.FileInput(attrs={'class': 'form-input'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
@@ -263,7 +268,7 @@ class BulkChargeForm(ServicePickerMixin, forms.ModelForm):
             'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'charge_type': forms.Select(attrs={'class': 'form-select'}),
             'description': forms.TextInput(attrs={'class': 'form-input'}),
-            'amount': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
+            'amount': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
             'service_provider': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
@@ -297,7 +302,7 @@ class YardCostForm(forms.ModelForm):
             'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'supplier': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Local Hay Merchant'}),
             'description': forms.TextInput(attrs={'class': 'form-input'}),
-            'amount': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
+            'amount': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'vat_amount': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'is_recurring': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
             'recurrence_interval': forms.Select(attrs={'class': 'form-select'}),
@@ -352,7 +357,7 @@ class FeedStockForm(forms.ModelForm):
             'unit': forms.Select(attrs={'class': 'form-select'}),
             'entry_type': forms.Select(attrs={'class': 'form-select'}),
             'supplier': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Local Hay Merchant'}),
-            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
+            'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 

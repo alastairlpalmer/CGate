@@ -4,7 +4,7 @@
 {% block title %}Settings - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-8">
+<div class="space-y-6">
 
     <!-- Page Header -->
     <div class="page-header">
@@ -14,31 +14,41 @@
         </div>
     </div>
 
-    <!-- Jump to a group: settings is a long page, so give it a table of contents -->
-    <nav class="settings-jump" aria-label="Settings sections">
-        {% if feature_access.settings.full %}<a href="#business" class="settings-jump-link">Business</a>{% endif %}
-        {% if feature_access.users.full %}<a href="#people" class="settings-jump-link">Users &amp; Roles</a>{% endif %}
-        {% if feature_access.settings.full %}
-        <a href="#yard" class="settings-jump-link">Yard setup</a>
-        <a href="#billing" class="settings-jump-link">Billing</a>
-        {% endif %}
-        <a href="#you" class="settings-jump-link">Your preferences</a>
-        {% if feature_access.settings.full %}<a href="#data" class="settings-jump-link">Data</a>{% endif %}
+    {% comment %}One group at a time (UX plan F2): a menu on the left on a
+    wide screen, a row of chips on a phone. static/js/settings_nav.js picks
+    the group from the address (#billing, or #services inside it), else the
+    last one open in this tab, else the first. Without JavaScript every
+    group shows.{% endcomment %}
+    <div class="settings-layout" x-data="settingsSections">
+    <nav class="settings-nav" aria-label="Settings sections">
+        {% if feature_access.settings.full %}<a href="#business" class="settings-nav-link" :class="current === 'business' && 'is-active'" :aria-current="current === 'business' ? 'page' : null" @click.prevent="show('business')">Business</a>{% endif %}
+        {% if feature_access.users.full %}<a href="#people" class="settings-nav-link" :class="current === 'people' && 'is-active'" :aria-current="current === 'people' ? 'page' : null" @click.prevent="show('people')">Users &amp; Roles</a>{% endif %}
+        {% if feature_access.settings.full %}<a href="#yard" class="settings-nav-link" :class="current === 'yard' && 'is-active'" :aria-current="current === 'yard' ? 'page' : null" @click.prevent="show('yard')">Yard setup</a>{% endif %}
+        {% if feature_access.settings.full %}<a href="#billing" class="settings-nav-link" :class="current === 'billing' && 'is-active'" :aria-current="current === 'billing' ? 'page' : null" @click.prevent="show('billing')">Billing</a>{% endif %}
+        <a href="#you" class="settings-nav-link" :class="current === 'you' && 'is-active'" :aria-current="current === 'you' ? 'page' : null" @click.prevent="show('you')">Your preferences</a>
+        {% if feature_access.settings.full %}<a href="#data" class="settings-nav-link" :class="current === 'data' && 'is-active'" :aria-current="current === 'data' ? 'page' : null" @click.prevent="show('data')">Data</a>{% endif %}
     </nav>
+    <div class="settings-panels" x-ref="panels">
+
 
     {% if feature_access.settings.full %}
     <!-- ══ Business ══ -->
-    <section id="business" class="space-y-4 scroll-mt-24">
+    <section id="business" data-settings-section class="space-y-4 scroll-mt-24" x-show="!current || current === 'business'">
         <div class="settings-band">
             <span class="settings-band-title">Business</span>
             <span class="settings-band-rule"></span>
         </div>
 
-        <div class="card overflow-hidden">
+        {# No overflow-hidden here: it would stop the save bar sticking. #}
+        <div class="card">
             <div class="section-header">
                 <h3 class="section-title">Business Details</h3>
             </div>
-            <form method="post">
+            {% comment %}Save rule (UX plan F2): text fields save with this
+            button; the bar sticks to the foot of the screen once something
+            has changed, so the change cannot be left unsaved by mistake. The
+            switches elsewhere on this page save at once.{% endcomment %}
+            <form method="post" x-data="{ dirty: false }" @input="dirty = true" @change="dirty = true">
                 {% csrf_token %}
                 <input type="hidden" name="save_business" value="1">
 
@@ -122,8 +132,9 @@
                     </label>
                 </div>
 
-                <div class="px-5 py-4 flex justify-end border-t border-light-sage">
-                    <button type="submit" class="btn-primary btn-sm">Save Business Details</button>
+                <div class="settings-save-bar" :class="dirty && 'is-dirty'">
+                    <span class="text-xs text-saddle font-medium" x-show="dirty" x-cloak role="status">Unsaved changes</span>
+                    <button type="submit" class="btn-primary btn-sm ml-auto">Save Business Details</button>
                 </div>
             </form>
         </div>
@@ -132,7 +143,7 @@
 
     {% if feature_access.users.full %}
     <!-- ══ Users & Roles ══ -->
-    <section id="people" class="space-y-4 scroll-mt-24">
+    <section id="people" data-settings-section class="space-y-4 scroll-mt-24" x-show="!current || current === 'people'">
         <div class="settings-band">
             <span class="settings-band-title">Users &amp; Roles</span>
             <span class="settings-band-rule"></span>
@@ -251,7 +262,7 @@
 
     {% if feature_access.settings.full %}
     <!-- ══ Yard setup ══ -->
-    <section id="yard" class="space-y-4 scroll-mt-24">
+    <section id="yard" data-settings-section class="space-y-4 scroll-mt-24" x-show="!current || current === 'yard'">
         <div class="settings-band">
             <span class="settings-band-title">Yard setup</span>
             <span class="settings-band-rule"></span>
@@ -474,7 +485,7 @@
     </section>
 
     <!-- ══ Billing ══ -->
-    <section id="billing" class="space-y-4 scroll-mt-24">
+    <section id="billing" data-settings-section class="space-y-4 scroll-mt-24" x-show="!current || current === 'billing'">
         <div class="settings-band">
             <span class="settings-band-title">Billing</span>
             <span class="settings-band-rule"></span>
@@ -591,7 +602,7 @@
     {% endif %}
 
     <!-- ══ Your preferences ══ -->
-    <section id="you" class="space-y-4 scroll-mt-24">
+    <section id="you" data-settings-section class="space-y-4 scroll-mt-24" x-show="!current || current === 'you'">
         <div class="settings-band">
             <span class="settings-band-title">Your preferences</span>
             <span class="settings-band-rule"></span>
@@ -638,7 +649,7 @@
 
     {% if feature_access.settings.full %}
     <!-- ══ Data ══ -->
-    <section id="data" class="space-y-4 scroll-mt-24">
+    <section id="data" data-settings-section class="space-y-4 scroll-mt-24" x-show="!current || current === 'data'">
         <div class="settings-band">
             <span class="settings-band-title">Data</span>
             <span class="settings-band-rule"></span>
@@ -663,5 +674,7 @@
     </section>
     {% endif %}
 
+    </div>{# /.settings-panels #}
+    </div>{# /.settings-layout #}
 </div>
 {% endblock %}

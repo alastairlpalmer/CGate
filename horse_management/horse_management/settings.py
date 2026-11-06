@@ -84,6 +84,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
+    # For FORM_RENDERER below: the built-in widget templates.
+    'django.forms',
 
     # Third party
     'django_htmx',
@@ -172,6 +174,10 @@ TEMPLATES = [
         },
     },
 ]
+
+# Widget templates come from TEMPLATES, so templates/django/forms/ can
+# override one (the blank select option, UX plan F1).
+FORM_RENDERER = 'django.forms.renderers.TemplatesSetting'
 
 WSGI_APPLICATION = 'horse_management.wsgi.application'
 

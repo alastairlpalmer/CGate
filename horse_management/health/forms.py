@@ -11,6 +11,7 @@ from django.utils import timezone
 from billing.forms import ServicePickerMixin
 from core.forms import MoveHorseForm
 from core.models import Horse
+from core.widgets import MoneyInput
 from .models import (
     BreedingRecord,
     Covering,
@@ -71,6 +72,10 @@ class ActiveHorseFormMixin:
             if current_id:
                 active |= Q(pk=current_id)
             self.fields[name].queryset = Horse.objects.filter(active)
+            self.fields[name].empty_label = 'Choose a mare…' if name == 'mare' else 'Choose a horse…'
+        # Who comes first: the record is about this horse, so the pop-up
+        # and the full page both ask for it before anything else (UX plan F1).
+        self.order_fields([name for name in ('horse', 'mare') if name in self.fields])
 
 
 class VaccinationForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFormMixin, forms.ModelForm):
@@ -91,7 +96,7 @@ class VaccinationForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFormMixi
             'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'vet': forms.Select(attrs={'class': 'form-select'}),
             'batch_number': forms.TextInput(attrs={'class': 'form-input'}),
-            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
+            'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -219,7 +224,7 @@ class FarrierVisitForm(ServicePickerMixin, ActiveHorseFormMixin, forms.ModelForm
             'service_provider': forms.Select(attrs={'class': 'form-select'}),
             'work_done': forms.Select(attrs={'class': 'form-select'}),
             'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
-            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
+            'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -282,7 +287,7 @@ class WormingTreatmentForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFor
             'dose': forms.TextInput(attrs={'class': 'form-input'}),
             'administered_by': forms.TextInput(attrs={'class': 'form-input'}),
             'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
-            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
+            'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -319,7 +324,7 @@ class WormEggCountForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFormMix
             'count': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
             'lab_name': forms.TextInput(attrs={'class': 'form-input'}),
             'sample_type': forms.Select(attrs={'class': 'form-select'}),
-            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
+            'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -355,7 +360,7 @@ class VetVisitForm(ServicePickerMixin, ActiveHorseFormMixin, forms.ModelForm):
             'diagnosis': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'treatment': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'follow_up_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
-            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
+            'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -385,7 +390,7 @@ class BulkVaccinationForm(ServicePickerMixin, OptionalCostMixin, forms.ModelForm
             'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'vet': forms.Select(attrs={'class': 'form-select'}),
             'batch_number': forms.TextInput(attrs={'class': 'form-input'}),
-            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
+            'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -416,7 +421,7 @@ class BulkFarrierVisitForm(ServicePickerMixin, forms.ModelForm):
             'service_provider': forms.Select(attrs={'class': 'form-select'}),
             'work_done': forms.Select(attrs={'class': 'form-select'}),
             'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
-            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
+            'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -436,7 +441,7 @@ class BulkWormingTreatmentForm(ServicePickerMixin, OptionalCostMixin, forms.Mode
             'active_ingredient': forms.TextInput(attrs={'class': 'form-input'}),
             'dose': forms.TextInput(attrs={'class': 'form-input'}),
             'administered_by': forms.TextInput(attrs={'class': 'form-input'}),
-            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
+            'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -457,7 +462,7 @@ class BulkWormEggCountForm(ServicePickerMixin, OptionalCostMixin, forms.ModelFor
             'count': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
             'lab_name': forms.TextInput(attrs={'class': 'form-input'}),
             'sample_type': forms.Select(attrs={'class': 'form-select'}),
-            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
+            'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
@@ -479,7 +484,7 @@ class BulkVetVisitForm(ServicePickerMixin, forms.ModelForm):
             'diagnosis': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'treatment': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'follow_up_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
-            'cost': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
+            'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 

@@ -173,6 +173,15 @@
     /* Forms */
     .form-input { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-xs focus:outline-hidden focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150 min-h-[44px] sm:min-h-0; }
     .form-select { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-xs focus:outline-hidden focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150 min-h-[44px] sm:min-h-0; }
+    /* Money box (core.widgets.MoneyInput): "£" drawn inside on the left.
+       The input keeps its mt-1, so the sign is centred on the box below it. */
+    .money-input { @apply relative; }
+    .money-input-prefix { @apply pointer-events-none absolute left-3 top-[calc(50%+0.125rem)] -translate-y-1/2 text-sm text-sage; }
+    .money-input .form-input { @apply pl-7; }
+    /* A select and its "+" button joined into one control. */
+    .input-group { @apply mt-1 flex items-stretch; }
+    .input-group > .form-select { @apply mt-0 rounded-r-none; }
+    .input-group > .input-group-button { @apply -ml-px inline-flex items-center justify-center min-w-[44px] px-3 rounded-r-btn border border-sage/30 bg-white text-charcoal hover:bg-light-sage focus:outline-hidden focus:ring-2 focus:ring-sage/20; }
     .form-textarea { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-xs focus:outline-hidden focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150; }
     .form-checkbox { @apply h-5 w-5 rounded-sm border-sage/30 text-forest focus:ring-sage; }
 
@@ -435,6 +444,16 @@
 
     /* Jump-to chips under the page header */
     .settings-jump { @apply flex flex-wrap gap-2; }
+    /* Settings in groups (static/js/settings_nav.js): a menu on the left
+       from lg, a row of chips above the group on a phone. */
+    .settings-layout { @apply flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8; }
+    .settings-nav { @apply flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 lg:sticky lg:top-24 lg:mx-0 lg:px-0 lg:w-52 lg:shrink-0 lg:flex-col lg:gap-0.5 lg:overflow-visible; scrollbar-width: none; }
+    .settings-nav::-webkit-scrollbar { display: none; }
+    .settings-nav-link { @apply inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-sage/30 bg-white px-3 py-1.5 text-sm font-medium text-charcoal-light no-underline min-h-[40px] hover:bg-light-sage lg:rounded-btn lg:border-transparent lg:bg-transparent lg:px-3 lg:py-2; }
+    .settings-nav-link.is-active { @apply border-forest bg-forest/[0.06] text-forest lg:border-transparent lg:bg-forest/[0.08]; }
+    .settings-panels { @apply min-w-0 flex-1 space-y-8; }
+    .settings-save-bar { @apply flex items-center gap-3 px-5 py-4 border-t border-light-sage bg-white; }
+    .settings-save-bar.is-dirty { @apply sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] lg:bottom-0 z-20 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]; }
     .settings-jump-link { @apply inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium text-forest bg-white border border-sage/30 no-underline hover:bg-light-sage hover:border-sage/50 transition-colors duration-100; }
 
     /* Rows inside a settings card. The list sits flush to the card edges and
@@ -531,6 +550,10 @@ textarea, select {
     input[type="url"], input[type="tel"], input[type="date"], input[type="datetime-local"],
     textarea, select { font-size: 0.875rem; } /* restore text-sm at sm+ */
 }
+/* Unlayered, like the rule above, so they win over it: room for the "£" in
+   a money box, and a select joined to its "+" button. */
+.money-input input { padding-left: 1.75rem; }
+.input-group > select { margin-top: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
 /* Selects: replace the browser's grey gradient with a white field and a Brim chevron */
 select:not([multiple]):not([size]) {
     appearance: none; -webkit-appearance: none;
