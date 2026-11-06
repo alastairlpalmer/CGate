@@ -15,7 +15,7 @@ from .. import audit
 from ..forms import OwnerForm
 from ._next import safe_next
 from ._popup import PopupFormMixin
-from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
+from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required, has_feature_access
 from ..models import Horse, Owner, OwnershipShare, Placement
 
 
@@ -114,7 +114,47 @@ class OwnerDetailView(FeatureAccessMixin, DetailView):
         context['history_entries'] = audit.history_for(owner)
         context['owner_has_invoices'] = owner.invoices.exists()
         context['owner_retention_years'] = settings.OWNER_RETENTION_YEARS
+        context['money'] = _owner_money(self.request.user, owner, context['extra_charges'])
         return context
+
+
+def _owner_money(user, owner, unbilled_charges):
+    """The figures the owner page leads with (docs/UX_REVIEW_PLAN.md A3).
+
+    Outstanding uses the aged-debtors rule: sent and overdue invoices, less
+    live payments and credit notes. A figure is None when the user may not
+    see that kind of money, so the page leaves the tile out.
+    """
+    from decimal import Decimal
+
+    from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Value
+    from django.db.models.functions import Coalesce
+
+    from invoicing.models import LIVE_PAYMENTS, Invoice, Payment
+
+    money = {'outstanding': None, 'drafts': None, 'last_payment': None, 'unbilled': None}
+    if has_feature_access(user, 'invoices', LEVEL_VIEW):
+        zero = Value(Decimal('0.00'))
+        open_invoices = owner.invoices.filter(
+            status__in=[Invoice.Status.SENT, Invoice.Status.OVERDUE],
+        ).annotate(balance=ExpressionWrapper(
+            F('total') - Coalesce(Sum('payments__amount', filter=LIVE_PAYMENTS), zero),
+            output_field=DecimalField(max_digits=10, decimal_places=2),
+        ))
+        money['outstanding'] = sum(
+            (inv.balance for inv in open_invoices if inv.balance > 0), Decimal('0.00'))
+        money['overdue'] = any(
+            inv.balance > 0 and inv.status == Invoice.Status.OVERDUE for inv in open_invoices)
+        money['drafts'] = owner.invoices.filter(status=Invoice.Status.DRAFT).aggregate(
+            total=Coalesce(Sum('total'), zero))['total']
+        money['last_payment'] = (
+            Payment.objects.filter(invoice__owner=owner)
+            .exclude(method=Payment.Method.CREDIT_NOTE)
+            .order_by('-date', '-pk').first()
+        )
+    if has_feature_access(user, 'charges', LEVEL_VIEW):
+        money['unbilled'] = sum((c.amount for c in unbilled_charges), Decimal('0.00'))
+    return money
 
 
 class OwnerCreateView(PopupFormMixin, FeatureAccessMixin, CreateView):

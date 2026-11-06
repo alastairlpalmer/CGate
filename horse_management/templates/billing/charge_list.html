@@ -14,7 +14,6 @@
     <h1 class="sr-only">Extra Charges</h1>
     <div class="page-header">
         <div class="flex items-center gap-3">
-            <a href="{% url 'charges_csv' %}" hx-boost="false" class="btn-secondary">Export CSV</a>
             <a href="{% url 'provider_list' %}" class="btn-secondary">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0"/>
@@ -128,9 +127,16 @@
                     <span class="font-semibold text-charcoal tabular-nums">{{ charge.amount|gbp }}</span>
                     {% if not charge.invoiced %}
                     <div class="list-card-actions mt-1">
-                        <a href="{% url 'charge_delete' charge.pk %}" class="btn-icon-danger" title="Delete" aria-label="Delete charge">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
-                        </a>
+                        <div class="more-menu" x-data="moreMenu" @click.outside="close(false)" @keydown.escape="close(true)">
+                                    {% include 'includes/_more_button.html' with compact=True label="More actions for this charge" %}
+                                    <div class="more-menu-panel" x-ref="panel" x-show="open" x-cloak role="menu" aria-label="More actions for this charge"
+                                         @keydown="onPanelKey($event)" @click="close(false)">
+                                        <a href="{% url 'charge_delete' charge.pk %}" role="menuitem" class="more-menu-item is-danger">
+                                            <svg aria-hidden="true"><use href="#i-trash"/></svg>
+                                            Delete charge
+                                        </a>
+                                    </div>
+                                </div>
                     </div>
                     {% endif %}
                 </div>
@@ -181,7 +187,16 @@
                             <div class="flex items-center gap-1">
                                 <a href="{% url 'charge_update' charge.pk %}" hx-get="{% url 'charge_update' charge.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit charge" class="btn-ghost btn-xs">Edit</a>
                                 {% if not charge.invoiced %}
-                                <a href="{% url 'charge_delete' charge.pk %}" class="btn-ghost btn-xs text-error-red hover:text-error-red hover:bg-error-red-50">Delete</a>
+                                <div class="more-menu" x-data="moreMenu" @click.outside="close(false)" @keydown.escape="close(true)">
+                                    {% include 'includes/_more_button.html' with compact=True label="More actions for this charge" %}
+                                    <div class="more-menu-panel" x-ref="panel" x-show="open" x-cloak role="menu" aria-label="More actions for this charge"
+                                         @keydown="onPanelKey($event)" @click="close(false)">
+                                        <a href="{% url 'charge_delete' charge.pk %}" role="menuitem" class="more-menu-item is-danger">
+                                            <svg aria-hidden="true"><use href="#i-trash"/></svg>
+                                            Delete charge
+                                        </a>
+                                    </div>
+                                </div>
                                 {% endif %}
                             </div>
                         </td>
@@ -204,6 +219,9 @@
     {% endif %}
 
     {% include 'includes/pagination.html' %}
+
+    {# Export sits under the list, as on the horse list, so the header leads with Add Charge. #}
+    <p class="text-right"><a href="{% url 'charges_csv' %}" hx-boost="false" class="text-sm font-medium text-forest hover:text-sage">Export all charges (CSV)</a></p>
 
     </div><!-- /#list-results -->
 

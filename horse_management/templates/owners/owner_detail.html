@@ -16,41 +16,86 @@
                 <h1 class="page-title">{{ owner.name }}</h1>
             </div>
         </div>
-        <div class="flex flex-wrap items-center gap-3">
-            {% if owner.is_archived %}
-            <form method="post" action="{% url 'owner_restore' owner.pk %}" class="inline">
-                {% csrf_token %}
-                <button type="submit" class="btn-secondary">Restore</button>
-            </form>
-            {% elif owner_has_history %}
-            <form method="post" action="{% url 'owner_archive' owner.pk %}" class="inline" data-confirm-danger="false"
-                  hx-confirm="Archive {{ owner.name }}? They leave the Owners page and every picker. Their stays and invoices are kept, and you can restore them later.">
-                {% csrf_token %}
-                <button type="submit" class="btn-secondary"{% if archive_blockers %} disabled title="{{ archive_blockers|join:' ' }}"{% endif %}>Archive</button>
-            </form>
-            {% else %}
-            <form method="post" action="{% url 'owner_delete' owner.pk %}" class="inline"
-                  hx-confirm="Delete {{ owner.name }}? Nothing points at this owner, so this removes them for good.">
-                {% csrf_token %}
-                <button type="submit" class="btn-secondary text-error-red">Delete</button>
-            </form>
-            {% endif %}
-            <a href="{% url 'owner_statement' owner.pk %}" class="btn-secondary">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                </svg>
-                Statement
+        {% comment %}One main button (Create invoice), then Statement and Edit.
+        Archive, delete and the personal-data tools are rare, so they are in
+        More, with the destructive ones last (docs/UX_REVIEW_PLAN.md A3).
+        {% endcomment %}
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+            <a href="{% url 'owner_update' owner.pk %}" hx-get="{% url 'owner_update' owner.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit {{ owner.name }}" class="btn-secondary" aria-label="Edit {{ owner.name }}" title="Edit">
+                <svg class="w-4 h-4" aria-hidden="true"><use href="#i-pencil"/></svg>
+                <span class="hidden sm:inline">Edit</span>
             </a>
-            <a href="{% url 'invoice_create' %}?owner={{ owner.pk }}" class="btn-success">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+            <a href="{% url 'owner_statement' owner.pk %}" class="btn-secondary" aria-label="Statement for {{ owner.name }}" title="Statement">
+                <svg class="w-4 h-4" aria-hidden="true"><use href="#i-document"/></svg>
+                <span class="hidden sm:inline">Statement</span>
+            </a>
+            {% if not owner.is_archived %}
+            <a href="{% url 'invoice_create' %}?owner={{ owner.pk }}" class="btn-primary">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                 </svg>
                 Create Invoice
             </a>
-            <a href="{% url 'owner_update' owner.pk %}" hx-get="{% url 'owner_update' owner.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit {{ owner.name }}" class="btn-secondary">
-                <svg class="w-4 h-4" aria-hidden="true"><use href="#i-pencil"/></svg>
-                Edit
-            </a>
+            {% endif %}
+            {% if feature_access.owners.full %}
+            <div class="more-menu" x-data="moreMenu" @click.outside="close(false)" @keydown.escape="close(true)">
+                {% include 'includes/_more_button.html' with label="More actions for "|add:owner.name %}
+                <div class="more-menu-panel" x-ref="panel" x-show="open" x-cloak x-transition.opacity
+                     role="menu" aria-label="More actions for {{ owner.name }}"
+                     @keydown="onPanelKey($event)" @click="close(false)">
+                    <p class="more-menu-label">Personal data</p>
+                    {% if feature_access.invoices.view and feature_access.charges.view %}
+                    <a href="{% url 'owner_data_export' owner.pk %}" hx-boost="false" role="menuitem" class="more-menu-item"
+                       title="Everything held about this owner, as a ZIP of spreadsheets and their documents. Use it to answer a subject access request.">
+                        <svg aria-hidden="true"><use href="#i-download"/></svg>
+                        Download their data
+                    </a>
+                    {% else %}
+                    <p class="more-menu-note">Downloading their data needs access to Invoices and Charges.</p>
+                    {% endif %}
+                    {% if owner.is_archived %}
+                    <form method="post" action="{% url 'owner_erase' owner.pk %}"
+                          hx-confirm="{% if owner_has_invoices %}Erase this owner's personal data? Email, phone, notes, account code and documents go, including earlier copies. Name and address stay on their invoices for {{ owner_retention_years }} years, then go automatically. This cannot be undone.{% else %}Erase this owner's personal data? They have no invoices, so everything goes: name, address, contact details and documents. This cannot be undone.{% endif %}">
+                        {% csrf_token %}
+                        {% if not owner_has_invoices %}<input type="hidden" name="scope" value="all">{% endif %}
+                        <button type="submit" role="menuitem" class="more-menu-item is-danger">
+                            <svg aria-hidden="true"><use href="#i-trash"/></svg>
+                            Erase their details
+                        </button>
+                    </form>
+                    {% else %}
+                    <p class="more-menu-note">To erase their details, archive this owner first.</p>
+                    {% endif %}
+                    <div class="more-menu-sep" role="separator"></div>
+                    {% if owner.is_archived %}
+                    <form method="post" action="{% url 'owner_restore' owner.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" role="menuitem" class="more-menu-item">Restore owner</button>
+                    </form>
+                    {% elif owner_has_history %}
+                    {% if archive_blockers %}
+                    <button type="button" role="menuitem" class="more-menu-item" disabled aria-describedby="owner-archive-note">Archive owner</button>
+                    <p class="more-menu-note" id="owner-archive-note">{{ archive_blockers|join:' ' }} Then you can archive this owner.</p>
+                    {% else %}
+                    <form method="post" action="{% url 'owner_archive' owner.pk %}" data-confirm-danger="false"
+                          hx-confirm="Archive {{ owner.name }}? They leave the Owners page and every picker. Their stays and invoices are kept, and you can restore them later.">
+                        {% csrf_token %}
+                        <button type="submit" role="menuitem" class="more-menu-item">Archive owner</button>
+                    </form>
+                    {% endif %}
+                    {% else %}
+                    <form method="post" action="{% url 'owner_delete' owner.pk %}"
+                          hx-confirm="Delete {{ owner.name }}? Nothing points at this owner, so this removes them for good.">
+                        {% csrf_token %}
+                        <button type="submit" role="menuitem" class="more-menu-item is-danger">
+                            <svg aria-hidden="true"><use href="#i-trash"/></svg>
+                            Delete owner
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -58,9 +103,43 @@
     <div class="rounded-lg border border-sage/20 bg-sage-50 px-4 py-3 text-sm text-forest" role="status">
         Archived{% if owner.archived_at %} on {{ owner.archived_at|date:"j M Y" }}{% endif %}. This owner is hidden from the Owners page and from every picker. Their stays and invoices are kept. Restore them to use them again.
     </div>
-    {% elif archive_blockers %}
-    <p class="text-xs text-sage" id="owner-archive-note">{{ archive_blockers|join:' ' }} Then you can archive this owner.</p>
     {% endif %}
+
+    {% comment %}What this owner owes and has, before anything else. A tile
+    is left out when the user may not see that kind of money.{% endcomment %}
+    <div class="summary-strip">
+        {% if money.outstanding is not None %}
+        <a href="{% url 'owner_statement' owner.pk %}" class="summary-tile">
+            <span class="summary-tile-label">Outstanding</span>
+            <span class="summary-tile-value{% if money.overdue %} text-error-red{% endif %}">{{ money.outstanding|gbp }}</span>
+            <span class="summary-tile-meta">{% if money.overdue %}Some is overdue{% elif money.outstanding %}Not yet due{% else %}Nothing owed{% endif %}{% if money.drafts %} · {{ money.drafts|gbp }} in drafts{% endif %}</span>
+        </a>
+        {% endif %}
+        {% if money.unbilled is not None %}
+        <a href="{% if extra_charges %}#owner-unbilled{% else %}{% url 'charge_list' %}{% endif %}" class="summary-tile" hx-boost="false">
+            <span class="summary-tile-label">Unbilled charges</span>
+            <span class="summary-tile-value">{{ money.unbilled|gbp }}</span>
+            <span class="summary-tile-meta">{% with n=extra_charges|length %}{{ n }} charge{{ n|pluralize }} not on an invoice{% endwith %}</span>
+        </a>
+        {% endif %}
+        {% if money.outstanding is not None %}
+        <a href="{% url 'owner_statement' owner.pk %}" class="summary-tile">
+            <span class="summary-tile-label">Last payment</span>
+            {% if money.last_payment %}
+            <span class="summary-tile-value">{{ money.last_payment.amount|gbp }}</span>
+            <span class="summary-tile-meta">{{ money.last_payment.date|date:"j M Y" }}</span>
+            {% else %}
+            <span class="summary-tile-value text-sage">None</span>
+            <span class="summary-tile-meta">No payments recorded</span>
+            {% endif %}
+        </a>
+        {% endif %}
+        <a href="#owner-horses" class="summary-tile" hx-boost="false">
+            <span class="summary-tile-label">Horses</span>
+            <span class="summary-tile-value">{{ horses|length }}</span>
+            <span class="summary-tile-meta">On the yard now{% if departed_horses %} · {{ departed_horses|length }} departed{% endif %}</span>
+        </a>
+    </div>
 
     <!-- Contact + Horses Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -123,7 +202,7 @@
         </div>
 
         <!-- Horses Card -->
-        <div class="lg:col-span-2 card overflow-hidden">
+        <div class="lg:col-span-2 card overflow-hidden scroll-mt-20" id="owner-horses">
             <div class="section-header">
                 <h2 class="section-title">Current Horses</h2>
                 <span class="badge-info">{{ horses|length }}</span>
@@ -247,7 +326,7 @@
 
     <!-- Unbilled Charges — Finance data: only for roles with charges access -->
     {% if extra_charges and feature_access.charges.view %}
-    <div class="card overflow-hidden">
+    <div class="card overflow-hidden scroll-mt-20" id="owner-unbilled">
         <div class="section-header">
             <h2 class="section-title">Unbilled Charges</h2>
         </div>
@@ -327,53 +406,6 @@
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
-    </div>
-    {% endif %}
-
-    {% if feature_access.owners.full %}
-    <!-- ── Personal data (core/gdpr.py) ── -->
-    <div class="card">
-        <div class="section-header">
-            <h3 class="section-title">Personal Data</h3>
-        </div>
-        <div class="settings-rows">
-            <div class="settings-row">
-                <div class="min-w-0">
-                    <p class="settings-row-title">Download their data</p>
-                    <p class="settings-row-meta">Everything held about this owner, as a ZIP of spreadsheets and their documents. Use it to answer a subject access request.</p>
-                    {% if not feature_access.invoices.view or not feature_access.charges.view %}
-                    <p class="settings-row-meta">It includes their invoices, payments, charges and day rates, so it needs access to Invoices and Charges. Ask an Administrator.</p>
-                    {% endif %}
-                </div>
-                {% if feature_access.invoices.view and feature_access.charges.view %}
-                <div class="settings-actions">
-                    <a href="{% url 'owner_data_export' owner.pk %}" hx-boost="false" class="btn-secondary btn-sm">Download</a>
-                </div>
-                {% endif %}
-            </div>
-            <div class="settings-row">
-                <div class="min-w-0">
-                    <p class="settings-row-title">Erase their details</p>
-                    {% if not owner.is_archived %}
-                    <p class="settings-row-meta">Archive this owner first.</p>
-                    {% elif owner_has_invoices %}
-                    <p class="settings-row-meta">Removes email, phone, notes, account code and documents, including earlier copies. Name and address stay on their invoices for {{ owner_retention_years }} years, then go automatically.</p>
-                    {% else %}
-                    <p class="settings-row-meta">This owner has no invoices, so everything can go: name, address, contact details and documents.</p>
-                    {% endif %}
-                </div>
-                {% if owner.is_archived %}
-                <div class="settings-actions">
-                    <form method="post" action="{% url 'owner_erase' owner.pk %}"
-                          hx-confirm="Erase this owner's personal data? This cannot be undone.">
-                        {% csrf_token %}
-                        {% if not owner_has_invoices %}<input type="hidden" name="scope" value="all">{% endif %}
-                        <button type="submit" class="btn-secondary btn-sm text-error-red border-error-red/30 hover:bg-error-red-50">Erase</button>
-                    </form>
-                </div>
-                {% endif %}
-            </div>
         </div>
     </div>
     {% endif %}
