@@ -23,6 +23,7 @@ group_kind ('owner'), feature_access.
             <tr>
                 <th class="w-10" data-select-cell><span class="sr-only">Select</span></th>
                 <th>Horse</th>
+                {% if needs_action_only %}<th>Needs</th>{% endif %}
                 <th class="split-optional">Location</th>
                 <th class="w-24 text-right pr-5 split-optional">Actions</th>
             </tr>
@@ -37,7 +38,7 @@ group_kind ('owner'), feature_access.
                            aria-label="Select every horse of {{ group.name }}">
                     {% endif %}
                 </td>
-                <td colspan="2" class="!py-2">
+                <td colspan="{% if needs_action_only %}3{% else %}2{% endif %}" class="!py-2">
                     <div class="flex items-center gap-2.5 min-w-0">
                         <button type="button" class="inline-flex items-center justify-center w-11 h-11 -m-3 sm:w-6 sm:h-6 sm:m-0 text-sage hover:text-charcoal transition-transform duration-150" :class="collapsed && '-rotate-90'"
                                 :aria-expanded="collapsed ? 'false' : 'true'" aria-label="Show or hide {{ group.name|default:'this owner' }}">
@@ -63,7 +64,7 @@ group_kind ('owner'), feature_access.
             {% include 'horses/_horse_row.html' with row_attrs='x-show="!collapsed"' %}
             {% empty %}
             <tr class="is-empty" x-show="!collapsed">
-                <td colspan="4" class="text-sm text-sage px-5 py-3.5">No horses here.</td>
+                <td colspan="{% if needs_action_only %}5{% else %}4{% endif %}" class="text-sm text-sage px-5 py-3.5">No horses here.</td>
             </tr>
             {% endfor %}
         </tbody>
