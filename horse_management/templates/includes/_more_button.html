@@ -1,0 +1,15 @@
+{% comment %}
+The button that opens a More menu (static/js/more_menu.js). Render it as
+the first child of a `.more-menu` element with x-data="moreMenu".
+
+  label    optional — the name a screen reader hears, for example
+           "More actions for INV00001". Default "More actions".
+  compact  optional — an icon-only button for a table row.
+{% endcomment %}
+<button type="button" x-ref="trigger" @click="toggle()" @keydown="onTriggerKey($event)"
+        aria-haspopup="menu" :aria-expanded="open ? 'true' : 'false'"
+        aria-label="{{ label|default:'More actions' }}" title="{{ label|default:'More actions' }}"
+        class="{% if compact %}btn-icon{% else %}btn-secondary more-menu-trigger{% endif %}">
+    <svg class="w-4 h-4" aria-hidden="true"><use href="#i-dots"/></svg>
+    {% if not compact %}<span>More</span>{% endif %}
+</button>

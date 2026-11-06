@@ -146,7 +146,7 @@ class EraseTests(TestCase):
     def test_owner_page_offers_it(self):
         _archive(self.owner)
         response = self.client.get(reverse('owner_detail', args=[self.owner.pk]))
-        self.assertContains(response, 'Personal Data')
+        self.assertContains(response, 'Personal data')
         self.assertContains(response, reverse('owner_erase', args=[self.owner.pk]))
 
 

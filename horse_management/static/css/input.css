@@ -246,6 +246,42 @@
     .quick-find-row > .quick-find-item { @apply mx-0 flex-1 min-w-0 hover:bg-transparent focus:bg-transparent; }
     .quick-find-open { @apply inline-flex items-center justify-center w-8 h-8 mr-1 rounded-btn text-sage shrink-0 hover:bg-white hover:text-forest hover:shadow-xs focus:outline-hidden focus:bg-white focus:text-forest transition-colors duration-100; }
     .app-bar-add-item { @apply flex items-center gap-2.5 px-4 py-2.5 text-sm text-charcoal hover:bg-parchment focus:bg-parchment focus:outline-hidden transition-colors duration-100; }
+
+    /* Horse page record shortcuts (templates/horses/_quick_actions.html):
+       one quiet style for every tile, so no record looks more urgent than
+       another. .qa-strip is the phone row of four under the header. */
+    .qa-tile { @apply flex flex-col items-center justify-center gap-1.5 p-3 min-h-[44px] rounded-card border border-light-sage bg-white text-center hover:border-sage/40 hover:shadow-xs transition-all duration-150; }
+    .qa-tile-icon { @apply grid w-9 h-9 place-items-center rounded-full bg-sage-50 text-forest; }
+    .qa-tile-icon svg { @apply w-4 h-4; }
+    .qa-tile-label { @apply text-xs font-medium text-charcoal-light; }
+    .qa-strip { @apply grid grid-cols-4 gap-2; }
+    .qa-strip .qa-tile { @apply p-2; }
+
+    /* More menu (static/js/more_menu.js): the actions a page does not lead
+       with. One main button stays outside; the rest live here, with a
+       destructive action last, in red, under a divider. */
+    .more-menu { @apply relative inline-flex; }
+    .more-menu-trigger { @apply px-3; }
+    .more-menu-panel { @apply absolute right-0 top-full mt-2 z-40 w-max min-w-[13rem] max-w-[calc(100vw-2rem)] py-1 bg-white rounded-lg shadow-lg border border-light-sage text-left; }
+    .more-menu-panel.is-left { @apply left-0 right-auto; }
+    .more-menu-panel form { @apply contents; }
+    .more-menu-item { @apply flex w-full items-center gap-2.5 px-3.5 py-2 min-h-[44px] sm:min-h-[38px] text-sm text-charcoal text-left whitespace-nowrap cursor-pointer hover:bg-parchment focus:bg-parchment focus:outline-hidden transition-colors duration-100; }
+    .more-menu-item svg { @apply w-4 h-4 shrink-0 text-sage; }
+    .more-menu-item.is-danger, .more-menu-item.is-danger svg { @apply text-error-red; }
+    .more-menu-item.is-danger:hover, .more-menu-item.is-danger:focus { @apply bg-error-red-50; }
+    .more-menu-sep { @apply my-1 border-t border-light-sage; }
+    /* The row or cell holding an open menu sits over the rows after it. */
+    .has-open-menu { position: relative; z-index: 30 !important; }
+    .more-menu-label { @apply px-3.5 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sage; }
+    .more-menu-note { @apply px-3.5 pb-2 max-w-[18rem] text-xs text-sage whitespace-normal; }
+    .more-menu-item:disabled { @apply cursor-not-allowed text-sage hover:bg-transparent; }
+
+    /* Summary strip: the figures a record page leads with (owner page). */
+    .summary-strip { @apply grid grid-cols-2 lg:grid-cols-4 gap-3; }
+    .summary-tile { @apply flex flex-col gap-0.5 rounded-card border border-light-sage bg-white px-4 py-3 min-w-0 hover:border-sage/40 hover:shadow-xs transition-all duration-150; }
+    .summary-tile-label { @apply text-xs font-medium text-sage; }
+    .summary-tile-value { @apply text-xl font-semibold text-charcoal tabular-nums truncate; }
+    .summary-tile-meta { @apply text-xs text-sage truncate; }
 }
 
 /* Search panel: no blank strip while the results are still on their way

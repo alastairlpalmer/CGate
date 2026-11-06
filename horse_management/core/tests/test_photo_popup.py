@@ -212,10 +212,11 @@ class PhotoTriggerTests(PhotoPopupTestCase):
                 self.assertContains(response, f'hx-get="{self.url}')
                 self.assertContains(response, f'href="{self.url}')
 
-    def test_horse_detail_has_three_photo_entry_points(self):
-        # Header button, Photos card "+ Add", Quick Actions tile
+    def test_horse_detail_has_two_photo_entry_points(self):
+        # Photos card "+ Add" and the Record card tile. The header no longer
+        # has a Photo button: it leads with Move (docs/UX_REVIEW_PLAN.md A2).
         response = self.client.get(reverse('horse_detail', args=[self.horse.pk]))
-        self.assertContains(response, 'data-popup-title="Add photos for Dobbin"', count=3)
+        self.assertContains(response, 'data-popup-title="Add photos for Dobbin"', count=2)
 
     def test_location_detail_keeps_arrival_preselect(self):
         response = self.client.get(reverse('location_detail', args=[self.location.pk]))

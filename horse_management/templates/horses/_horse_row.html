@@ -65,24 +65,38 @@ so it needs no breakpoint of its own.
     </td>
     {% endif %}
     <td data-col="actions" class="pr-5 split-optional">
+        {% comment %}One visible action, Move, the one used most. Photo and
+        Edit are in the row's More menu (docs/UX_REVIEW_PLAN.md A4).
+        {% endcomment %}
         <div class="flex items-center justify-end gap-1">
-            {% if feature_access.horses.full %}
-            <a href="{% url 'horse_photo_add' horse.pk %}" hx-get="{% url 'horse_photo_add' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-               data-popup-title="Add photos for {{ horse.name }}"
-               class="btn-icon" title="Quick add photos" aria-label="Quick add photos of {{ horse.name }}">
-                <svg class="w-4 h-4" aria-hidden="true"><use href="#i-camera"/></svg>
-            </a>
-            {% endif %}
-            <a href="{% url 'horse_update' horse.pk %}" hx-get="{% url 'horse_quick_edit' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-               data-popup-title="Edit {{ horse.name }}"
-               class="btn-icon" title="Edit" aria-label="Edit {{ horse.name }}">
-                <svg class="w-4 h-4" aria-hidden="true"><use href="#i-pencil"/></svg>
-            </a>
             <a href="{% url 'horse_move' horse.pk %}" hx-get="{% url 'horse_move' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
                data-popup-title="Move {{ horse.name }}"
                class="btn-icon" title="Move" aria-label="Move {{ horse.name }}">
                 <svg class="w-4 h-4" aria-hidden="true"><use href="#i-arrows-lr"/></svg>
             </a>
+            <div class="more-menu" x-data="moreMenu" @click.outside="close(false)" @keydown.escape="close(true)">
+                {% include 'includes/_more_button.html' with compact=True label="More actions for "|add:horse.name %}
+                <div class="more-menu-panel" x-ref="panel" x-show="open" x-cloak
+                     role="menu" aria-label="More actions for {{ horse.name }}"
+                     @keydown="onPanelKey($event)" @click="close(false)">
+                    <a href="{% url 'horse_update' horse.pk %}" hx-get="{% url 'horse_quick_edit' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                       data-popup-title="Edit {{ horse.name }}" role="menuitem" class="more-menu-item">
+                        <svg aria-hidden="true"><use href="#i-pencil"/></svg>
+                        Edit
+                    </a>
+                    {% if feature_access.horses.full %}
+                    <a href="{% url 'horse_photo_add' horse.pk %}" hx-get="{% url 'horse_photo_add' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                       data-popup-title="Add photos for {{ horse.name }}" role="menuitem" class="more-menu-item">
+                        <svg aria-hidden="true"><use href="#i-camera"/></svg>
+                        Add photos
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'horse_detail' horse.pk %}" role="menuitem" class="more-menu-item">
+                        <svg aria-hidden="true"><use href="#i-horse"/></svg>
+                        Open horse page
+                    </a>
+                </div>
+            </div>
         </div>
     </td>
 </tr>

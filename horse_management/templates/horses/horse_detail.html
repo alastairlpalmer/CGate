@@ -62,18 +62,61 @@
                 </div>
             </div>
             {% if feature_access.horses.full %}
-            <div class="flex items-center gap-2 shrink-0 flex-wrap">
-                {% if current_placement %}
-                {# Move lives in Quick Actions as the primary action — no duplicate here #}
-                <div x-data="{ showDate: false }" class="relative">
-                    <button x-show="!showDate" type="button" @click="showDate = true"
-                            class="btn-secondary text-error-red border-error-red/30 hover:bg-error-red-50">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/>
+            {% comment %}One main button: Move while the horse is here, Log
+            arrival when it is not. Edit beside it. Depart is rare and final,
+            so it is in More, last, in red (docs/UX_REVIEW_PLAN.md A2). The
+            depart date form opens in place under the buttons.{% endcomment %}
+            <div x-data="{ showDate: false }" class="flex flex-col items-start sm:items-end gap-2 shrink-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                    {% if current_placement %}
+                    <a href="{% url 'horse_move' horse.pk %}?next={{ request.path|urlencode }}" title="Move to a different location"
+                       hx-get="{% url 'horse_move' horse.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                       data-popup-title="Move {{ horse.name }}" class="btn-primary">
+                        <svg class="w-4 h-4" aria-hidden="true"><use href="#i-arrows-lr"/></svg>
+                        Move
+                    </a>
+                    {% else %}
+                    <a href="{% url 'horse_arrive' horse.pk %}" hx-get="{% url 'horse_arrive' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Log arrival for {{ horse.name }}" class="btn-primary">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                         </svg>
-                        Depart
-                    </button>
-                    <form x-show="showDate" x-cloak x-transition method="post" action="{% url 'horse_depart' horse.pk %}"
+                        Log Arrival
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'horse_update' horse.pk %}" class="btn-secondary" title="Edit horse details"
+                       hx-get="{% url 'horse_quick_edit' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                       data-popup-title="Edit {{ horse.name }}">
+                        <svg class="w-4 h-4" aria-hidden="true"><use href="#i-pencil"/></svg>
+                        Edit
+                    </a>
+                    <div class="more-menu" x-data="moreMenu" @click.outside="close(false)" @keydown.escape="close(true)">
+                        {% include 'includes/_more_button.html' with label="More actions for "|add:horse.name %}
+                        <div class="more-menu-panel" x-ref="panel" x-show="open" x-cloak x-transition.opacity
+                             role="menu" aria-label="More actions for {{ horse.name }}"
+                             @keydown="onPanelKey($event)" @click="close(false)">
+                            <a href="{% url 'horse_ownership' horse.pk %}" role="menuitem" class="more-menu-item">
+                                <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
+                                Manage ownership
+                            </a>
+                            <a href="{% url 'horse_update' horse.pk %}" role="menuitem" class="more-menu-item">
+                                <svg aria-hidden="true"><use href="#i-pencil"/></svg>
+                                Full edit page
+                            </a>
+                            {% if current_placement %}
+                            <div class="more-menu-sep" role="separator"></div>
+                            <button type="button" role="menuitem" class="more-menu-item is-danger"
+                                    @click="showDate = true; $nextTick(() => document.getElementById('filter-departure_date')?.focus())">
+                                <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/>
+                                </svg>
+                                Depart…
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% if current_placement %}
+                <form x-show="showDate" x-cloak x-transition method="post" action="{% url 'horse_depart' horse.pk %}"
                           class="flex flex-wrap items-center gap-1.5 bg-error-red-50 border border-error-red/20 rounded-btn p-1 pl-2.5">
                         {% csrf_token %}
                         <label for="filter-departure_date" class="text-xs font-medium text-error-red">Depart on</label>
@@ -83,31 +126,35 @@
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </form>
-                </div>
-                {% else %}
-                <a href="{% url 'horse_arrive' horse.pk %}" hx-get="{% url 'horse_arrive' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Log arrival for {{ horse.name }}" class="btn-success">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                    </svg>
-                    Log Arrival
-                </a>
                 {% endif %}
-                <a href="{% url 'horse_photo_add' horse.pk %}" class="btn-secondary" title="Quick add photos"
-                   hx-get="{% url 'horse_photo_add' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-                   data-popup-title="Add photos for {{ horse.name }}">
-                    <svg class="w-4 h-4" aria-hidden="true"><use href="#i-camera"/></svg>
-                    <span class="hidden sm:inline">Photo</span>
-                </a>
-                <a href="{% url 'horse_update' horse.pk %}" class="btn-secondary" title="Edit horse details"
-                   hx-get="{% url 'horse_quick_edit' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-                   data-popup-title="Edit {{ horse.name }}">
-                    <svg class="w-4 h-4" aria-hidden="true"><use href="#i-pencil"/></svg>
-                    <span class="hidden sm:inline">Edit</span>
-                </a>
             </div>
             {% endif %}
         </div>
     </div>
+
+    {% if feature_access.health.full %}
+    {% comment %}On a phone the Record card is at the foot of a long page, so
+    the three most used records sit here, under the header. "All" jumps to
+    the full card.{% endcomment %}
+    <nav class="qa-strip lg:hidden" aria-label="Record for {{ horse.name }}">
+        <a href="{% url 'vaccination_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vaccination_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Vaccination for {{ horse.name }}" class="qa-tile">
+            <span class="qa-tile-icon"><svg aria-hidden="true"><use href="#i-syringe"/></svg></span>
+            <span class="qa-tile-label">Vaccination</span>
+        </a>
+        <a href="{% url 'farrier_create' %}?horse={{ horse.pk }}" hx-get="{% url 'farrier_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Farrier visit for {{ horse.name }}" class="qa-tile">
+            <span class="qa-tile-icon"><svg aria-hidden="true"><use href="#i-horseshoe"/></svg></span>
+            <span class="qa-tile-label">Farrier</span>
+        </a>
+        <a href="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Vet visit for {{ horse.name }}" class="qa-tile">
+            <span class="qa-tile-icon"><svg aria-hidden="true"><use href="#i-stethoscope"/></svg></span>
+            <span class="qa-tile-label">Vet visit</span>
+        </a>
+        <a href="#quick-actions" class="qa-tile" hx-boost="false">
+            <span class="qa-tile-icon"><svg class="w-4 h-4" aria-hidden="true"><use href="#i-dots"/></svg></span>
+            <span class="qa-tile-label">All</span>
+        </a>
+    </nav>
+    {% endif %}
 
     {% if feature_access.horses.full and current_placement and not horse.is_active %}
     <!-- Stranded state: flagged departed but a placement is still open -->
@@ -215,7 +262,9 @@
                 </div>
             </div>
 
-            <!-- Details & Conditions -->
+            <!-- Details & Conditions. Passport and status are badges in the
+                 header, so the card only shows what the header does not. -->
+            {% if horse.breeding or horse.notes or horse.passport_number or medical_conditions %}
             <div class="card">
                 <div class="section-header">
                     <h3 class="section-title">Details</h3>
@@ -229,26 +278,12 @@
                             <dd class="mt-1 text-sm text-charcoal">{{ horse.breeding }}</dd>
                         </div>
                         {% endif %}
+                        {% if horse.passport_number %}
                         <div>
-                            <dt class="dt-label">Passport</dt>
-                            <dd class="mt-1 text-sm text-charcoal">
-                                {% if horse.has_passport %}
-                                    {% if horse.passport_number %}{{ horse.passport_number }}{% else %}Yes{% endif %}
-                                {% else %}
-                                    <span class="badge-warning">No passport</span>
-                                {% endif %}
-                            </dd>
+                            <dt class="dt-label">Passport number</dt>
+                            <dd class="mt-1 text-sm text-charcoal font-mono">{{ horse.passport_number }}</dd>
                         </div>
-                        <div>
-                            <dt class="dt-label">Status</dt>
-                            <dd class="mt-1">
-                                {% if horse.is_active %}
-                                <span class="badge-success">Active</span>
-                                {% else %}
-                                <span class="badge-neutral">Inactive</span>
-                                {% endif %}
-                            </dd>
-                        </div>
+                        {% endif %}
                         {% if horse.notes %}
                         <div class="sm:col-span-2">
                             <dt class="dt-label">Notes</dt>
@@ -281,6 +316,7 @@
                     {% endif %}
                 </div>
             </div>
+            {% endif %}
 
             {% if horse.is_mare and feature_access.breeding.view %}
             {% if active_pregnancy %}
@@ -765,140 +801,16 @@
             {% include 'horses/_photo_grid_card.html' with photos=photos photo_count=photo_count horse=horse %}
 
             <!-- Quick Actions -->
-            <div class="card">
+            {% if feature_access.health.full or feature_access.horses.full or feature_access.charges.full %}
+            <div class="card" id="quick-actions">
                 <div class="section-header">
-                    <h3 class="section-title">Quick Actions</h3>
+                    <h3 class="section-title">Record</h3>
                 </div>
-                <div class="p-3">
-                    <div class="grid grid-cols-2 gap-2">
-                        {% if feature_access.horses.full %}
-                        {# Primary action — full-width, brand-filled so it leads the set #}
-                        {% if current_placement %}
-                        <a href="{% url 'horse_move' horse.pk %}?next={{ request.path|urlencode }}" title="Move to a different location"
-                           hx-get="{% url 'horse_move' horse.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-                           data-popup-title="Move {{ horse.name }}"
-                           class="group/qa col-span-2 flex items-center justify-center gap-2.5 p-3 rounded-card bg-forest text-white shadow-xs hover:bg-forest-light hover:shadow-md hover:-translate-y-0.5 transition-all duration-150">
-                            <span class="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center group-hover/qa:bg-white/25 transition-colors">
-                                <svg class="w-4 h-4" aria-hidden="true"><use href="#i-arrows-lr"/></svg>
-                            </span>
-                            <span class="text-sm font-semibold">Move to Location</span>
-                        </a>
-                        {% else %}
-                        <a href="{% url 'horse_arrive' horse.pk %}" hx-get="{% url 'horse_arrive' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Log arrival for {{ horse.name }}" title="Log this horse's arrival"
-                           class="group/qa col-span-2 flex items-center justify-center gap-2.5 p-3 rounded-card bg-forest text-white shadow-xs hover:bg-forest-light hover:shadow-md hover:-translate-y-0.5 transition-all duration-150">
-                            <span class="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center group-hover/qa:bg-white/25 transition-colors">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                                </svg>
-                            </span>
-                            <span class="text-sm font-semibold">Log Arrival</span>
-                        </a>
-                        {% endif %}
-                        {% endif %}
-                        {% if feature_access.health.full %}
-                        <a href="{% url 'vaccination_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vaccination_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Vaccination for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-sage/40 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
-                            <div class="w-9 h-9 rounded-full bg-sage-50 flex items-center justify-center group-hover/qa:bg-sage-100 transition-colors">
-                                <svg class="w-4 h-4 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3"/>
-                                </svg>
-                            </div>
-                            <span class="text-xs font-medium text-charcoal-light">Vaccination</span>
-                        </a>
-                        <a href="{% url 'farrier_create' %}?horse={{ horse.pk }}" hx-get="{% url 'farrier_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Farrier visit for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-saddle/40 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
-                            <div class="w-9 h-9 rounded-full bg-saddle-50 flex items-center justify-center group-hover/qa:bg-saddle-100 transition-colors">
-                                <svg class="w-4 h-4 text-saddle" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.648 3.203a.75.75 0 01-1.088-.791l1.078-6.29-4.57-4.454a.75.75 0 01.416-1.28l6.317-.917L11.11 1.607a.75.75 0 011.78 0l3.186 6.45 6.317.917a.75.75 0 01.416 1.28l-4.57 4.454 1.078 6.29a.75.75 0 01-1.088.791L12 15.17z"/>
-                                </svg>
-                            </div>
-                            <span class="text-xs font-medium text-charcoal-light">Farrier</span>
-                        </a>
-                        <a href="{% url 'worming_create' %}?horse={{ horse.pk }}" hx-get="{% url 'worming_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Worming for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-sand/60 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
-                            <div class="w-9 h-9 rounded-full bg-sand-50 flex items-center justify-center group-hover/qa:bg-sand-100 transition-colors">
-                                <svg class="w-4 h-4 text-saddle" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19 14.5M14.25 3.104c.251.023.501.05.75.082M19 14.5l-1.386 4.16a2.25 2.25 0 01-2.137 1.59H8.523a2.25 2.25 0 01-2.137-1.59L5 14.5m14 0H5"/>
-                                </svg>
-                            </div>
-                            <span class="text-xs font-medium text-charcoal-light">Worming</span>
-                        </a>
-                        <a href="{% url 'egg_count_create' %}?horse={{ horse.pk }}" hx-get="{% url 'egg_count_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Egg count for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-sand/60 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
-                            <div class="w-9 h-9 rounded-full bg-sand-50 flex items-center justify-center group-hover/qa:bg-sand-100 transition-colors">
-                                <svg class="w-4 h-4 text-saddle" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/>
-                                </svg>
-                            </div>
-                            <span class="text-xs font-medium text-charcoal-light">Egg Count</span>
-                        </a>
-                        <a href="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-get="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Condition for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-error-red/30 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
-                            <div class="w-9 h-9 rounded-full bg-error-red-50 flex items-center justify-center group-hover/qa:bg-error-red-100 transition-colors">
-                                <svg class="w-4 h-4 text-error-red" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/>
-                                </svg>
-                            </div>
-                            <span class="text-xs font-medium text-charcoal-light">Condition</span>
-                        </a>
-                        <a href="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Vet visit for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-error-red/30 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
-                            <div class="w-9 h-9 rounded-full bg-error-red-50 flex items-center justify-center group-hover/qa:bg-error-red-100 transition-colors">
-                                <svg class="w-4 h-4 text-error-red" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                            </div>
-                            <span class="text-xs font-medium text-charcoal-light">Vet Visit</span>
-                        </a>
-                        {% endif %}{# feature_access.health.full #}
-                        {% if horse.is_mare and feature_access.breeding.full %}
-                        {% if active_pregnancy %}
-                        <a href="{% url 'breeding_foaling' active_pregnancy.pk %}" hx-get="{% url 'breeding_foaling' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-forest/30 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
-                            <div class="w-9 h-9 rounded-full bg-sage-50 flex items-center justify-center group-hover/qa:bg-sage-100 transition-colors">
-                                <svg class="w-4 h-4 text-forest" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
-                                </svg>
-                            </div>
-                            <span class="text-xs font-medium text-charcoal-light">Foaling</span>
-                        </a>
-                        {% else %}
-                        <a href="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-get="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record a covering for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-forest/30 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
-                            <div class="w-9 h-9 rounded-full bg-sage-50 flex items-center justify-center group-hover/qa:bg-sage-100 transition-colors">
-                                <svg class="w-4 h-4 text-forest" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
-                                </svg>
-                            </div>
-                            <span class="text-xs font-medium text-charcoal-light">Covering</span>
-                        </a>
-                        {% endif %}
-                        {% endif %}
-                        {% if feature_access.horses.full %}
-                        <a href="{% url 'horse_photo_add' horse.pk %}"
-                           hx-get="{% url 'horse_photo_add' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-                           data-popup-title="Add photos for {{ horse.name }}"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-info-blue/30 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
-                            <div class="w-9 h-9 rounded-full bg-info-blue-50 flex items-center justify-center group-hover/qa:bg-info-blue-100 transition-colors">
-                                <svg class="w-4 h-4 text-info-blue" aria-hidden="true"><use href="#i-camera"/></svg>
-                            </div>
-                            <span class="text-xs font-medium text-charcoal-light">Photo</span>
-                        </a>
-                        {% endif %}
-                        {% if feature_access.charges.full %}
-                        <a href="{% url 'charge_create' %}?horse={{ horse.pk }}" hx-get="{% url 'charge_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Other charge for {{ horse.name }}" title="Bill something that has no health record, e.g. transport or feed"
-                           class="group/qa flex flex-col items-center gap-1.5 p-3 rounded-card border border-light-sage hover:border-info-blue/30 hover:shadow-xs hover:-translate-y-0.5 transition-all duration-150 bg-white">
-                            <div class="w-9 h-9 rounded-full bg-info-blue-50 flex items-center justify-center group-hover/qa:bg-info-blue-100 transition-colors">
-                                <svg class="w-4 h-4 text-info-blue" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75"/>
-                                </svg>
-                            </div>
-                            <span class="text-xs font-medium text-charcoal-light">Other charge</span>
-                        </a>
-                        {% endif %}
-                    </div>
+                <div class="p-3 grid grid-cols-2 gap-2">
+                    {% include 'horses/_quick_actions.html' %}
                 </div>
             </div>
+            {% endif %}
 
         </div>
     </div>
