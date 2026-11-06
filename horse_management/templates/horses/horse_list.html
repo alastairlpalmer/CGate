@@ -5,11 +5,11 @@
 {% block content %}
 <div class="space-y-4" x-data="bulkActions">
 
-    {% comment %}No visible <h1>. The bottom tab bar (and the sidebar on
-    desktop) already say which section you are in, so a title row was paying
-    rent for nothing. The heading stays for screen readers and for the
-    document outline.{% endcomment %}
-    <h1 class="sr-only">Horses</h1>
+    {% comment %}The <h1> shows from `lg` only. On a phone the tab bar names the
+    section, so a title row would cost a screen line for nothing; on a wide
+    screen the page needs a title to say where you are (UX plan B1).
+    {% endcomment %}
+    <h1 class="sr-only lg:not-sr-only page-title">Horses</h1>
     {% if remember_location %}
     {# One location's list: remembered for the dashboard's "Back to …" chip #}
     <span hidden data-remember-location="{{ remember_location.pk }}" data-remember-name="{{ remember_location.name }}"></span>
@@ -108,7 +108,7 @@
             <span class="hidden sm:inline text-xs uppercase tracking-wider font-semibold text-sage shrink-0">View</span>
             <div class="relative min-w-0" x-data="{ sortOpen: false }">
                 <div class="segmented-scroll">
-                    <div class="segmented" x-data="segmented" role="group" aria-label="View">
+                    <div class="segmented view-rail" x-data="segmented" role="group" aria-label="View">
                         <span class="segmented-thumb" x-ref="thumb" aria-hidden="true"></span>
                         {% include 'horses/_group_toggle_button.html' with key='all' label='All' %}
                         {% if 'location' in available_axes %}{% include 'horses/_group_toggle_button.html' with key='location' label='Location' %}{% endif %}

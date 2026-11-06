@@ -15,9 +15,11 @@ one click away on the Map/Cards switch.
 
 <div class="space-y-6{% if board_payload and location_view == 'map' %} hidden lg:block{% endif %}">
 
-    {% comment %}No visible <h1>: the tab bar and sidebar both name this
-    section. The heading stays for screen readers and the outline.{% endcomment %}
-    <h1 class="sr-only">Locations</h1>
+    {% comment %}The <h1> shows from `lg` only. On a phone the tab bar names the
+    section, so a title row would cost a screen line for nothing; on a wide
+    screen the page needs a title to say where you are (UX plan B1).
+    {% endcomment %}
+    <h1 class="sr-only lg:not-sr-only page-title">Locations</h1>
 
     {% comment %}One row of chrome, not two. The section switch and the
     layout switch are both "what am I looking at", and stacking them cost
@@ -59,6 +61,45 @@ one click away on the Map/Cards switch.
             </div>
         </div>
     {% endif %}
+    {% if current_tab != 'usage' %}{% if location_view != 'map' or not board_payload %}
+    {% comment %}Sort, on the same row as the view switches, at the right
+    (UX plan G2): two stacked switch rows read as two separate menus.
+    {% endcomment %}
+        <form method="get" class="flex items-center gap-2 sm:gap-3 sm:ml-auto min-w-0">
+            <!-- Preserve the non-default sort across live searches -->
+            {% if location_sort == 'default' %}<input type="hidden" name="sort" value="default">{% endif %}
+
+            <!-- Sort toggle: fullest locations first (default) or plain site/name order -->
+            <div class="flex items-center gap-2 text-sm text-sage min-w-0" data-testid="location-sort">
+                <span class="text-xs uppercase tracking-wider font-semibold hidden sm:inline shrink-0">Sort</span>
+                <div class="segmented-scroll">
+                    <div class="segmented" x-data="segmented" role="group" aria-label="Sort locations">
+                        <span class="segmented-thumb" x-ref="thumb" aria-hidden="true"></span>
+                        <a href="{% url 'location_list' %}{% if request.GET.search %}?search={{ request.GET.search|urlencode }}{% endif %}"
+                           @click="pick($el)"
+                           title="Show locations with the most horses first"
+                           {% if location_sort != 'default' %}aria-current="true"{% endif %}
+                           class="segmented-item{% if location_sort != 'default' %} is-active{% endif %}">
+                            <svg class="segmented-icon" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h9.75m4.5-4.5v12m0 0l-3.75-3.75M17.25 21L21 17.25"/>
+                            </svg>
+                            Most horses first
+                        </a>
+                        <a href="{% url 'location_list' %}?sort=default{% if request.GET.search %}&search={{ request.GET.search|urlencode }}{% endif %}"
+                           @click="pick($el)"
+                           title="Show sites and locations in name order"
+                           {% if location_sort == 'default' %}aria-current="true"{% endif %}
+                           class="segmented-item{% if location_sort == 'default' %} is-active{% endif %}">
+                            <svg class="segmented-icon" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
+                            </svg>
+                            Default
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    {% endif %}{% endif %}
     </div>{# /chrome #}
 
     {% if current_tab == 'usage' %}
@@ -153,46 +194,6 @@ one click away on the Map/Cards switch.
     {% include 'locations/_site_board.html' %}
     {% else %}
 
-    {% comment %}Sort. The card around this row went with the search box it
-    used to hold — the rail carries its own surface, so a second one only
-    added height. The app bar finds a location from any page.{% endcomment %}
-    <div>
-        <form method="get" class="flex flex-wrap items-center gap-2 sm:gap-3">
-            <!-- Preserve the non-default sort across live searches -->
-            {% if location_sort == 'default' %}<input type="hidden" name="sort" value="default">{% endif %}
-
-            <!-- Sort toggle: fullest locations first (default) or plain site/name order -->
-            <div class="flex items-center gap-2 text-sm text-sage min-w-0" data-testid="location-sort">
-                <span class="text-xs uppercase tracking-wider font-semibold hidden sm:inline shrink-0">Sort</span>
-                <div class="segmented-scroll">
-                    <div class="segmented" x-data="segmented" role="group" aria-label="Sort locations">
-                        <span class="segmented-thumb" x-ref="thumb" aria-hidden="true"></span>
-                        <a href="{% url 'location_list' %}{% if request.GET.search %}?search={{ request.GET.search|urlencode }}{% endif %}"
-                           @click="pick($el)"
-                           title="Show locations with the most horses first"
-                           {% if location_sort != 'default' %}aria-current="true"{% endif %}
-                           class="segmented-item{% if location_sort != 'default' %} is-active{% endif %}">
-                            <svg class="segmented-icon" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h9.75m4.5-4.5v12m0 0l-3.75-3.75M17.25 21L21 17.25"/>
-                            </svg>
-                            Most horses first
-                        </a>
-                        <a href="{% url 'location_list' %}?sort=default{% if request.GET.search %}&search={{ request.GET.search|urlencode }}{% endif %}"
-                           @click="pick($el)"
-                           title="Show sites and locations in name order"
-                           {% if location_sort == 'default' %}aria-current="true"{% endif %}
-                           class="segmented-item{% if location_sort == 'default' %} is-active{% endif %}">
-                            <svg class="segmented-icon" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
-                            </svg>
-                            Default
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </form>
-    </div>
-
     <div id="list-results" class="space-y-6">
 
     {% if grouped_locations %}
@@ -227,6 +228,13 @@ one click away on the Map/Cards switch.
                                         {{ location.name }}
                                     </a>
                                 </h3>
+                                {% comment %}Who is here, not only how many (UX plan G1).
+                                The land use shows only when it is not the usual
+                                "Horses", which the names already say.{% endcomment %}
+                                <p class="mt-1 text-sm text-charcoal-light line-clamp-2">
+                                    {% if location.horse_names %}{{ location.horse_names|join:", " }}{% if location.more_horses %} <span class="text-sage">+{{ location.more_horses }} more</span>{% endif %}{% elif location.horse_count %}{{ location.horse_count }} horse{{ location.horse_count|pluralize }}{% else %}<span class="text-sage">No horses</span>{% endif %}
+                                </p>
+                                {% if location.usage != 'horses' %}
                                 <div class="mt-1">
                                     <span class="inline-flex items-center gap-1 text-xs font-medium
                                         {% if location.usage == 'horses' %}text-forest
@@ -251,6 +259,7 @@ one click away on the Map/Cards switch.
                                         {{ location.get_usage_display }}
                                     </span>
                                 </div>
+                                {% endif %}
                                 {% if location.description %}
                                 <p class="text-sm text-sage mt-1 line-clamp-2">{{ location.description }}</p>
                                 {% endif %}
