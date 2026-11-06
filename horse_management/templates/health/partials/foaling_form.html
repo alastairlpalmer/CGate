@@ -14,8 +14,8 @@ record and closes the breeding record as Born in one save.
 
         <div class="rounded-lg bg-sand-50 border border-sand-100 px-3 py-2 text-sm text-charcoal-light">
             <span class="font-medium text-charcoal">{{ mare.name }}</span> &times; {{ record.stallion_name }}
-            &middot; covered {{ record.date_covered|date:"d M Y" }}
-            {% if record.date_foal_due %}&middot; due {{ record.date_foal_due|date:"d M Y" }}{% endif %}
+            &middot; covered {{ record.date_covered|date:"j M Y" }}
+            {% if record.date_foal_due %}&middot; due {{ record.date_foal_due|date:"j M Y" }}{% endif %}
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">

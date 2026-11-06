@@ -9,7 +9,7 @@ the history panels on record pages.
             <p class="text-sm text-charcoal">
                 <span class="font-medium">{{ e.what }}</span>{% if e.subject %} · {{ e.subject }}{% endif %}
             </p>
-            <time class="text-xs text-sage whitespace-nowrap" datetime="{{ e.when|date:'c' }}">{{ e.when|date:"d M Y, H:i" }}</time>
+            <time class="text-xs text-sage whitespace-nowrap" datetime="{{ e.when|date:'c' }}">{{ e.when|date:"j M Y, H:i" }}</time>
         </div>
         <p class="text-xs text-sage mt-0.5">By {{ e.who }}{% if e.detail %} · {{ e.detail }}{% endif %}</p>
         {% if e.changes %}

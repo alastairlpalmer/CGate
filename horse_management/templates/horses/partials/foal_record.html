@@ -28,7 +28,7 @@ BreedingRecord), foal_milestones, foal_notes, foal_note_form, today.
             <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                 <div>
                     <dt class="text-forest text-xs font-medium">Foaled</dt>
-                    <dd class="text-charcoal font-medium">{% if br.foal_dob %}{{ br.foal_dob|date:"d M Y" }}{% else %}-{% endif %}</dd>
+                    <dd class="text-charcoal font-medium">{% if br.foal_dob %}{{ br.foal_dob|date:"j M Y" }}{% else %}-{% endif %}</dd>
                     {% if horse.days_old is not None %}<dd class="text-xs text-sage">{{ horse.days_old }} day{{ horse.days_old|pluralize }} ago</dd>{% endif %}
                 </div>
                 <div>
@@ -39,7 +39,7 @@ BreedingRecord), foal_milestones, foal_notes, foal_note_form, today.
                 <div>
                     <dt class="text-forest text-xs font-medium">Sire</dt>
                     <dd class="text-charcoal font-medium">{{ br.stallion_name|default:"-" }}</dd>
-                    <dd class="text-xs text-sage">covered {{ br.date_covered|date:"d M Y" }}</dd>
+                    <dd class="text-xs text-sage">covered {{ br.date_covered|date:"j M Y" }}</dd>
                 </div>
                 <div>
                     <dt class="text-forest text-xs font-medium">Sex &amp; colour</dt>
@@ -51,7 +51,7 @@ BreedingRecord), foal_milestones, foal_notes, foal_note_form, today.
             <p class="mt-3 pt-3 border-t border-sand text-sm text-charcoal"><span class="text-forest text-xs font-medium">Foaling notes</span><br>{{ br.foaling_notes|linebreaksbr }}</p>
             {% endif %}
             {% if br.is_weaned %}
-            <p class="mt-3 pt-3 border-t border-sand text-sm text-charcoal"><span class="text-forest text-xs font-medium">Weaned</span><br>{{ br.weaned_date|date:"d M Y" }}{% if br.weaning_notes %} &middot; {{ br.weaning_notes }}{% endif %}</p>
+            <p class="mt-3 pt-3 border-t border-sand text-sm text-charcoal"><span class="text-forest text-xs font-medium">Weaned</span><br>{{ br.weaned_date|date:"j M Y" }}{% if br.weaning_notes %} &middot; {{ br.weaning_notes }}{% endif %}</p>
             {% endif %}
         </div>
 
@@ -64,7 +64,7 @@ BreedingRecord), foal_milestones, foal_notes, foal_note_form, today.
                     <span class="milestone-dot" aria-hidden="true">{% if done %}<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>{% endif %}</span>
                     <span class="milestone-text">
                         <span class="milestone-label">{{ label }}</span>
-                        <span class="milestone-meta">{% if done %}{% if when %}Done {{ when|date:"d M Y" }}{% else %}Done{% endif %}{% else %}{{ hint }}{% endif %}</span>
+                        <span class="milestone-meta">{% if done %}{% if when %}Done {{ when|date:"j M Y" }}{% else %}Done{% endif %}{% else %}{{ hint }}{% endif %}</span>
                     </span>
                     {% if feature_access.breeding.full and not done %}
                     <span class="milestone-action">

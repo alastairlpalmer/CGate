@@ -15,6 +15,7 @@ from django.utils import timezone
 from core.models import BusinessSettings
 
 from .utils import group_line_items_by_horse
+from core.templatetags.ui_extras import gbp
 
 
 def _pct(value):
@@ -429,16 +430,16 @@ def generate_owner_statement_pdf(owner, statement):
             invoice.invoice_number,
             f"{timezone.localtime(invoice.created_at):%d/%m/%Y}",
             f"{invoice.period_start:%d/%m/%y} – {invoice.period_end:%d/%m/%y}",
-            f"£{invoice.total:.2f}",
-            f"£{row['paid']:.2f}",
-            f"£{row['balance']:.2f}",
+            f"{gbp(invoice.total)}",
+            f"{gbp(row['paid'])}",
+            f"{gbp(row['balance'])}",
         ])
     totals = statement['totals']
     table_data.append([
         '', '', 'Totals:',
-        f"£{totals['invoiced']:.2f}",
-        f"£{totals['paid']:.2f}",
-        f"£{totals['balance']:.2f}",
+        f"{gbp(totals['invoiced'])}",
+        f"{gbp(totals['paid'])}",
+        f"{gbp(totals['balance'])}",
     ])
 
     table = Table(
@@ -460,7 +461,7 @@ def generate_owner_statement_pdf(owner, statement):
     elements.append(table)
     elements.append(Spacer(1, 8*mm))
     elements.append(Paragraph(
-        f"<b>Balance outstanding: £{totals['balance']:.2f}</b>", normal_style
+        f"<b>Balance outstanding: {gbp(totals['balance'])}</b>", normal_style
     ))
 
     if settings.bank_details:
@@ -518,7 +519,7 @@ def generate_credit_note_pdf(credit):
     meta.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP')]))
     elements += [meta, Spacer(1, 8*mm)]
     lines = Table(
-        [['Reason', 'Amount'], [Paragraph(_esc(credit.notes or ''), normal), f"£{credit.amount:.2f}"]],
+        [['Reason', 'Amount'], [Paragraph(_esc(credit.notes or ''), normal), f"{gbp(credit.amount)}"]],
         colWidths=[130*mm, 40*mm],
     )
     lines.setStyle(TableStyle([
@@ -531,7 +532,7 @@ def generate_credit_note_pdf(credit):
     elements += [lines, Spacer(1, 6*mm)]
     elements.append(Paragraph(
         f"This credit note reduces the amount due on invoice {_esc(invoice.invoice_number)} "
-        f"by £{credit.amount:.2f}.", normal,
+        f"by {gbp(credit.amount)}.", normal,
     ))
     doc.build(elements)
     buffer.seek(0)

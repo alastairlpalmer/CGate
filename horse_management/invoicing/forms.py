@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from core.models import Owner
 from invoicing.models import Invoice, Payment
+from core.templatetags.ui_extras import gbp
 
 # Refresh the live preview panel whenever the owner or period changes — the
 # invoice_preview endpoint reads owner/period_start/period_end from the
@@ -185,7 +186,7 @@ class PaymentForm(forms.ModelForm):
         if self.invoice is not None and amount > self.invoice.balance_due:
             raise forms.ValidationError(
                 f"Amount exceeds the outstanding balance "
-                f"(£{self.invoice.balance_due:.2f}). Overpayments are not "
+                f"({gbp(self.invoice.balance_due)}). Overpayments are not "
                 "supported — record up to the balance, or issue a credit note."
             )
         return amount
@@ -213,7 +214,7 @@ class CreditNoteForm(forms.Form):
         amount = self.cleaned_data['amount']
         if amount > self.invoice.balance_due:
             raise forms.ValidationError(
-                f"A credit note cannot be more than the £{self.invoice.balance_due:.2f} "
+                f"A credit note cannot be more than the {gbp(self.invoice.balance_due)} "
                 "still owed. Refund any money already paid outside the app."
             )
         return amount

@@ -11,7 +11,7 @@ foal and re-rating the mare and foal are opt-in.
         {% include 'includes/form_errors.html' with form=form intro="The weaning wasn't saved:" %}
         <div class="rounded-lg bg-sand-50 border border-sand-100 px-3 py-2 text-sm text-charcoal-light">
             <span class="font-medium text-charcoal">{% if foal %}{{ foal.name }}{% else %}The foal{% endif %}</span>
-            &middot; foaled {{ record.foal_dob|date:"d M Y" }} ({{ record.foal_age_label }})
+            &middot; foaled {{ record.foal_dob|date:"j M Y" }} ({{ record.foal_age_label }})
             &middot; out of <span class="font-medium text-charcoal">{{ mare.name }}</span>
             {% if form.foal_placement %}&middot; foal at {{ form.foal_placement.location.name }} on {{ form.foal_placement.rate_type.name }}{% endif %}
         </div>

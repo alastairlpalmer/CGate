@@ -23,7 +23,7 @@
                     <div class="min-w-0">
                         <p class="text-sm font-medium text-charcoal">{{ task.short_name }}</p>
                         <p class="text-xs text-sage mt-0.5">
-                            Failed {{ task.failed_at|date:"d M Y, H:i" }}
+                            Failed {{ task.failed_at|date:"j M Y, H:i" }}
                             {% if task.retries %}&middot; tried {{ task.retries|add:1 }} times{% endif %}
                         </p>
                         <p class="text-sm text-charcoal mt-1 break-words">{{ task.error }}</p>
@@ -65,7 +65,7 @@
                     {% if item.run.status == 'success' %}<span class="badge-success">Finished</span>
                     {% elif item.run.status == 'failed' %}<span class="badge-danger">Failed</span>
                     {% else %}<span class="badge-info">Running</span>{% endif %}
-                    <p class="text-xs text-sage mt-0.5">{{ item.run.started_at|date:"d M Y, H:i" }}</p>
+                    <p class="text-xs text-sage mt-0.5">{{ item.run.started_at|date:"j M Y, H:i" }}</p>
                     {% else %}
                     <span class="badge-neutral">Not run yet</span>
                     {% endif %}

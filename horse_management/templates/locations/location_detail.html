@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load ui_extras %}
 
 {% block title %}{{ location.name }} - Cgate{% endblock %}
 
@@ -198,10 +199,10 @@
                         <td class="text-sage" data-label="Rate">
                             {{ placement.rate_type.name }}{% if feature_access.charges.view %} (&pound;{{ placement.rate_type.daily_rate }}/day){% endif %}
                         </td>
-                        <td class="text-sage" data-label="Arrived">{{ placement.start_date|date:"d M Y" }}</td>
+                        <td class="text-sage" data-label="Arrived">{{ placement.start_date|date:"j M Y" }}</td>
                         <td data-label="Departed">
                             {% if placement.end_date %}
-                                <span class="text-sage">{{ placement.end_date|date:"d M Y" }}</span>
+                                <span class="text-sage">{{ placement.end_date|date:"j M Y" }}</span>
                             {% else %}
                                 <span class="badge-success">Current</span>
                             {% endif %}
@@ -247,12 +248,12 @@
                 <tbody>
                     {% for fo in feed_outs %}
                     <tr>
-                        <td class="text-sage tabular-nums" data-label="Date">{{ fo.date|date:"d M Y" }}</td>
+                        <td class="text-sage tabular-nums" data-label="Date">{{ fo.date|date:"j M Y" }}</td>
                         <td data-label="Type">
-                            <span class="badge-success">{{ fo.get_feed_type_display }}</span>
+                            <span class="badge-neutral">{{ fo.get_feed_type_display }}</span>
                         </td>
                         <td class="text-charcoal" data-label="Quantity">{{ fo.quantity|default:"—" }}</td>
-                        {% if feature_access.costs.view %}<td class="text-right font-medium text-charcoal tabular-nums" data-label="Cost">&pound;{{ fo.total_cost|floatformat:2 }}</td>{% endif %}
+                        {% if feature_access.costs.view %}<td class="text-right font-medium text-charcoal tabular-nums" data-label="Cost">{{ fo.total_cost|gbp }}</td>{% endif %}
                         <td data-label="Recharged">
                             {% if fo.is_recharged %}
                             <span class="badge-info">Recharged</span>
@@ -449,10 +450,10 @@
                     {% for period in usage_periods %}
                     <tr>
                         <td class="font-medium text-charcoal" data-label="Usage">{{ period.get_usage_display }}</td>
-                        <td class="text-sage tabular-nums" data-label="From">{{ period.start_date|date:"d M Y" }}</td>
+                        <td class="text-sage tabular-nums" data-label="From">{{ period.start_date|date:"j M Y" }}</td>
                         <td data-label="To">
                             {% if period.end_date %}
-                                <span class="text-sage tabular-nums">{{ period.end_date|date:"d M Y" }}</span>
+                                <span class="text-sage tabular-nums">{{ period.end_date|date:"j M Y" }}</span>
                             {% else %}
                                 <span class="badge-success">Current</span>
                             {% endif %}

@@ -19,6 +19,7 @@ from django.utils import timezone
 from ..dashboard_widgets import WIDGETS, WIDGETS_BY_KEY, widget_available
 from ..permissions import feature_required, has_feature_access
 from ..models import DashboardPreference, Location
+from core.templatetags.ui_extras import gbp
 
 logger = logging.getLogger(__name__)
 
@@ -256,7 +257,7 @@ def rate_type_update(request, pk):
             rate.apply_current_price()
             messages.success(
                 request,
-                f"{rate.name} is £{price_form.cleaned_data['daily_rate']:.2f} per day "
+                f"{rate.name} is {gbp(price_form.cleaned_data['daily_rate'])} per day "
                 f"from {day:%d %b %Y}.",
             )
             _warn_if_already_invoiced(request, rate, day)

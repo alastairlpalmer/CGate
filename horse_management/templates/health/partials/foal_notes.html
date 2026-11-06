@@ -30,7 +30,7 @@ note_form, can_edit, today.
     <ul class="divide-y divide-light-sage rounded-lg border border-light-sage">
         {% for n in notes %}
         <li class="flex items-start gap-3 px-3 py-2 text-sm">
-            <span class="font-mono text-xs text-sage shrink-0 pt-0.5 w-20">{{ n.date|date:"d M Y" }}</span>
+            <span class="font-mono text-xs text-sage shrink-0 pt-0.5 w-20">{{ n.date|date:"j M Y" }}</span>
             <span class="flex-1 text-charcoal">{{ n.note|linebreaksbr }}</span>
             {% if can_edit %}
             <form method="post" action="{% url 'breeding_foal_note_delete' n.pk %}"

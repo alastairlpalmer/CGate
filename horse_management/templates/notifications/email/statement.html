@@ -1,4 +1,5 @@
 {% extends "notifications/email/_base.html" %}
+{% load ui_extras %}
 
 {% block extra_styles %}
         .balance {
@@ -29,15 +30,15 @@
             {% for row in statement.rows %}
             <tr>
                 <td>{{ row.invoice.invoice_number }}</td>
-                <td class="num">£{{ row.invoice.total|floatformat:2 }}</td>
-                <td class="num">£{{ row.paid|floatformat:2 }}</td>
-                <td class="num">£{{ row.balance|floatformat:2 }}</td>
+                <td class="num">{{ row.invoice.total|gbp }}</td>
+                <td class="num">{{ row.paid|gbp }}</td>
+                <td class="num">{{ row.balance|gbp }}</td>
             </tr>
             {% endfor %}
         </table>
     </div>
 
-    <p>Balance outstanding: <span class="balance">£{{ statement.totals.balance|floatformat:2 }}</span></p>
+    <p>Balance outstanding: <span class="balance">{{ statement.totals.balance|gbp }}</span></p>
 
     {% if business.bank_details %}
     <p><strong>Payment details:</strong><br>{{ business.bank_details|linebreaksbr }}</p>

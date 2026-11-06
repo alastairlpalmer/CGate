@@ -110,25 +110,25 @@
                     <a href="{% url 'horse_detail' br.mare.pk %}" class="list-card-link">
                         <span class="list-card-title">{{ br.mare.name }}</span>
                     </a>
-                    <div class="list-card-meta">&times; {{ br.stallion_name }} &middot; covered {{ br.date_covered|date:"d M Y" }}</div>
+                    <div class="list-card-meta">&times; {{ br.stallion_name }} &middot; covered {{ br.date_covered|date:"j M Y" }}</div>
                     {% if br.is_active_pregnancy %}
                     <div class="foal-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ br.gestation_progress }}" aria-label="Gestation progress">
                         <i style="width: {{ br.gestation_progress }}%"></i>
                     </div>
                     <div class="list-card-meta mt-1.5">
                         Day {{ br.day_of_gestation }} of 340
-                        {% if br.date_foal_due %} &middot; foal {% if br.is_past_due %}<span class="text-error-red font-medium">due date passed</span>{% else %}{{ br.date_foal_due|due_label }}{% endif %} ({{ br.date_foal_due|date:"d M Y" }}){% endif %}
+                        {% if br.date_foal_due %} &middot; foal {% if br.is_past_due %}<span class="text-error-red font-medium">due date passed</span>{% else %}{{ br.date_foal_due|due_label }}{% endif %} ({{ br.date_foal_due|date:"j M Y" }}){% endif %}
                     </div>
                     {% with ehv=br.next_ehv %}{% if ehv %}
-                    <div class="list-card-meta">EHV month {{ ehv.month }} {{ ehv.date|due_label }} ({{ ehv.date|date:"d M" }})</div>
+                    <div class="list-card-meta">EHV month {{ ehv.month }} {{ ehv.date|due_label }} ({{ ehv.date|date:"j M" }})</div>
                     {% endif %}{% endwith %}
                     {% elif br.foal %}
                     <div class="list-card-meta">
                         Foal: <a href="{% url 'horse_detail' br.foal.pk %}" class="relative z-10 link">{{ br.foal.name }}</a>
-                        {% if br.foal_dob %} &middot; foaled {{ br.foal_dob|date:"d M Y" }} &middot; {{ br.foal_age_label }}{% endif %}
+                        {% if br.foal_dob %} &middot; foaled {{ br.foal_dob|date:"j M Y" }} &middot; {{ br.foal_age_label }}{% endif %}
                     </div>
                     {% elif br.status == 'born' and br.foal_dob %}
-                    <div class="list-card-meta">Born {{ br.foal_dob|date:"d M Y" }} &middot; no horse record linked</div>
+                    <div class="list-card-meta">Born {{ br.foal_dob|date:"j M Y" }} &middot; no horse record linked</div>
                     {% endif %}
                     <div class="mt-1.5 flex items-center gap-2 flex-wrap">
                         {% include 'health/partials/breeding_status_badge.html' with br=br %}
@@ -184,7 +184,7 @@
                         </td>
                         <td>{{ br.stallion_name }}</td>
                         <td class="text-sage whitespace-nowrap">
-                            {{ br.date_covered|date:"d M Y" }}
+                            {{ br.date_covered|date:"j M Y" }}
                             {% with n=br.coverings.all|length %}{% if n > 1 %}<div class="text-xs">{{ n }} coverings</div>{% endif %}{% endwith %}
                             {% if br.is_active_pregnancy %}
                             <div class="foal-bar !mt-1.5 w-24" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ br.gestation_progress }}" aria-label="Gestation progress">
@@ -199,17 +199,17 @@
                         </td>
                         <td class="whitespace-nowrap">
                             {% if br.date_foal_due and br.is_active_pregnancy %}
-                                <span class="{% if br.is_past_due %}text-error-red font-semibold{% elif br.is_due_soon %}text-forest font-medium{% else %}text-charcoal{% endif %}">{{ br.date_foal_due|date:"d M Y" }}</span>
+                                <span class="{% if br.is_past_due %}text-error-red font-semibold{% elif br.is_due_soon %}text-forest font-medium{% else %}text-charcoal{% endif %}">{{ br.date_foal_due|date:"j M Y" }}</span>
                                 <div class="text-xs {% if br.is_past_due %}text-error-red{% else %}text-sage{% endif %}">{% if br.is_past_due %}Due date passed{% else %}{{ br.date_foal_due|due_label }}{% endif %}</div>
                             {% elif br.date_foal_due %}
-                                <span class="text-sage">{{ br.date_foal_due|date:"d M Y" }}</span>
+                                <span class="text-sage">{{ br.date_foal_due|date:"j M Y" }}</span>
                             {% else %}<span class="text-sage">-</span>{% endif %}
                         </td>
                         <td class="whitespace-nowrap">
                             {% with ehv=br.next_ehv %}
                             {% if ehv %}
                                 <span class="text-charcoal">Month {{ ehv.month }}</span>
-                                <div class="text-xs text-sage">{{ ehv.date|date:"d M Y" }} &middot; {{ ehv.date|due_label }}{% if ehv.sent %} &middot; reminder sent{% endif %}</div>
+                                <div class="text-xs text-sage">{{ ehv.date|date:"j M Y" }} &middot; {{ ehv.date|due_label }}{% if ehv.sent %} &middot; reminder sent{% endif %}</div>
                             {% elif br.is_active_pregnancy %}
                                 <span class="text-sage text-xs">Course complete</span>
                             {% else %}<span class="text-sage">-</span>{% endif %}
@@ -218,9 +218,9 @@
                         <td>
                             {% if br.foal %}
                             <a href="{% url 'horse_detail' br.foal.pk %}" class="link tap-pad">{{ br.foal.name }}</a>
-                            {% if br.foal_dob %}<div class="text-xs text-sage">foaled {{ br.foal_dob|date:"d M Y" }} &middot; {{ br.foal_age_label }}{% if br.is_weaned %} &middot; weaned{% endif %}</div>{% endif %}
+                            {% if br.foal_dob %}<div class="text-xs text-sage">foaled {{ br.foal_dob|date:"j M Y" }} &middot; {{ br.foal_age_label }}{% if br.is_weaned %} &middot; weaned{% endif %}</div>{% endif %}
                             {% elif br.status == 'born' and br.foal_dob %}
-                            <span class="text-charcoal">born {{ br.foal_dob|date:"d M Y" }}</span>
+                            <span class="text-charcoal">born {{ br.foal_dob|date:"j M Y" }}</span>
                             <div class="text-xs text-sage">no horse record linked</div>
                             {% else %}<span class="text-sage">-</span>{% endif %}
                         </td>

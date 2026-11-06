@@ -24,9 +24,9 @@ photos is a (sliced) queryset of HorsePhoto; photo_count the unsliced total.
                    class="block cursor-zoom-in"
                    data-lightbox-src="{{ photo.image.url }}"
                    data-lightbox-title="{{ horse.name }}"
-                   data-lightbox-caption="{{ photo.get_category_display }}{% if photo.caption %} — {{ photo.caption }}{% endif %} ({{ photo.uploaded_at|date:'d M Y' }})"
+                   data-lightbox-caption="{{ photo.get_category_display }}{% if photo.caption %} — {{ photo.caption }}{% endif %} ({{ photo.uploaded_at|date:"j M Y" }})"
                    data-lightbox-group="horse-photos"
-                   title="{{ photo.get_category_display }}{% if photo.caption %} — {{ photo.caption }}{% endif %} ({{ photo.uploaded_at|date:'d M Y' }})">
+                   title="{{ photo.get_category_display }}{% if photo.caption %} — {{ photo.caption }}{% endif %} ({{ photo.uploaded_at|date:"j M Y" }})">
                     <img src="{% if photo.thumb %}{{ photo.thumb.url }}{% else %}{{ photo.image.url }}{% endif %}"
                          alt="{{ photo.get_category_display }} photo of {{ horse.name }}"
                          class="w-full aspect-square object-cover rounded-card ring-1 ring-light-sage"

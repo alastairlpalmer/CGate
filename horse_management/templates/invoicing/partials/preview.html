@@ -1,3 +1,4 @@
+{% load ui_extras %}
 {% if preview.blocker %}
 <div class="mb-4 rounded-xl bg-error-red-50 border border-error-red/20 p-3 text-sm text-error-red space-y-1">
     <p>{{ preview.blocker.invoice_number }} already covers {{ preview.blocker.period_start|date:"j M Y" }} to {{ preview.blocker.period_end|date:"j M Y" }}. Change the dates so they do not overlap it.</p>
@@ -24,7 +25,7 @@
     <div>
         <h4 class="text-sm font-bold text-charcoal mb-1 bg-sand-50 px-3 py-2 rounded{% if preview.per_horse %} flex justify-between gap-4{% endif %}">
             <span>{{ group.horse_name }}{% for charge in group.charges %}{% if forloop.first %}{% if charge.share_percentage < 100 %} ({{ charge.share_percentage|floatformat:2 }}% share){% endif %}{% endif %}{% endfor %}</span>
-            {% if preview.per_horse %}<span class="whitespace-nowrap">Net &pound;{{ group.subtotal|floatformat:2 }}</span>{% endif %}
+            {% if preview.per_horse %}<span class="whitespace-nowrap">Net {{ group.subtotal|gbp }}</span>{% endif %}
         </h4>
         <ul class="divide-y divide-light-sage border border-light-sage rounded-btn">
             {% for charge in group.charges %}
@@ -35,11 +36,11 @@
                             {{ charge.description }}
                         {% else %}
                             <span class="ml-4 text-charcoal-light">
-                                {% if charge.date %}{{ charge.date|date:"d/m/Y" }}: {% endif %}{{ charge.description }}
+                                {% if charge.date %}{{ charge.date|date:"j M Y" }}: {% endif %}{{ charge.description }}
                             </span>
                         {% endif %}
                     </span>
-                    <span class="text-charcoal font-medium ml-4 whitespace-nowrap">&pound;{{ charge.amount|floatformat:2 }}</span>
+                    <span class="text-charcoal font-medium ml-4 whitespace-nowrap">{{ charge.amount|gbp }}</span>
                 </div>
             </li>
             {% endfor %}
@@ -50,15 +51,15 @@
     <div class="border-t pt-4 space-y-1">
         <div class="flex justify-between text-sm text-charcoal-light">
             <span>Net Total</span>
-            <span>&pound;{{ preview.subtotal|floatformat:2 }}</span>
+            <span>{{ preview.subtotal|gbp }}</span>
         </div>
         <div class="flex justify-between text-sm text-charcoal-light">
             <span>VAT{% if preview.vat_rate > 0 %} ({{ preview.vat_rate|floatformat:"-2" }}%){% endif %}</span>
-            <span>&pound;{{ preview.vat_amount|floatformat:2 }}</span>
+            <span>{{ preview.vat_amount|gbp }}</span>
         </div>
         <div class="flex justify-between text-lg font-bold border-t pt-2">
             <span>Amount Due</span>
-            <span>&pound;{{ preview.total|floatformat:2 }}</span>
+            <span>{{ preview.total|gbp }}</span>
         </div>
     </div>
 </div>

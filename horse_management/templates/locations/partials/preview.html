@@ -145,13 +145,13 @@ to know which shell it is being shown in.
                         <span class="loc-horse-owner">{{ placement.owner.name }}</span>
                         {% endif %}
                     </span>
-                    <span class="loc-horse-since">{{ placement.start_date|date:"d M" }}</span>
+                    <span class="loc-horse-since">{{ placement.start_date|date:"j M" }}</span>
                 </a>
             </li>
             {% endfor %}
         </ul>
         {% elif rest_days is not None %}
-        <p class="text-sm text-sage">Empty &mdash; resting since {{ rest_since|date:"d M Y" }}.</p>
+        <p class="text-sm text-sage">Empty &mdash; resting since {{ rest_since|date:"j M Y" }}.</p>
         {% else %}
         <p class="text-sm text-sage">No horses here.</p>
         {% endif %}

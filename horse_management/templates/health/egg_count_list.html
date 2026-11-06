@@ -61,7 +61,7 @@
                         <td data-label="Horse">
                             <a href="{% url 'horse_detail' ec.horse.pk %}" class="link tap-pad">{{ ec.horse.name }}</a>
                         </td>
-                        <td class="text-sage" data-label="Date">{{ ec.date|date:"d M Y" }}</td>
+                        <td class="text-sage" data-label="Date">{{ ec.date|date:"j M Y" }}</td>
                         <td class="{% if ec.is_high %}text-error-red{% endif %} font-semibold" data-label="Count EPG">
                             {{ ec.count }}
                         </td>

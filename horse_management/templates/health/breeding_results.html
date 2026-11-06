@@ -94,11 +94,11 @@
                     <tr>
                         <td><a href="{% url 'horse_detail' br.mare.pk %}" class="link tap-pad">{{ br.mare.name }}</a></td>
                         <td>{{ br.stallion_name }}</td>
-                        <td class="whitespace-nowrap text-sage">{{ br.covering_count }} &middot; {{ br.first_covering_date|date:"d M" }}{% if br.covering_count > 1 %} &ndash; {{ br.date_covered|date:"d M" }}{% endif %}</td>
+                        <td class="whitespace-nowrap text-sage">{{ br.covering_count }} &middot; {{ br.first_covering_date|date:"j M" }}{% if br.covering_count > 1 %} &ndash; {{ br.date_covered|date:"j M" }}{% endif %}</td>
                         <td class="text-xs">{% include 'health/partials/scan_result_label.html' with result=br.scan_14_result %}</td>
                         <td class="text-xs">{% include 'health/partials/scan_result_label.html' with result=br.scan_heartbeat_result %}</td>
                         <td>{% include 'health/partials/breeding_status_badge.html' with br=br %}</td>
-                        <td class="whitespace-nowrap">{% if br.foal %}<a href="{% url 'horse_detail' br.foal.pk %}" class="link tap-pad">{{ br.foal.name }}</a>{% elif br.foal_dob %}{{ br.foal_dob|date:"d M Y" }}{% else %}<span class="text-sage">-</span>{% endif %}</td>
+                        <td class="whitespace-nowrap">{% if br.foal %}<a href="{% url 'horse_detail' br.foal.pk %}" class="link tap-pad">{{ br.foal.name }}</a>{% elif br.foal_dob %}{{ br.foal_dob|date:"j M Y" }}{% else %}<span class="text-sage">-</span>{% endif %}</td>
                         {% if can_edit %}
                         <td class="text-right whitespace-nowrap">
                             <a href="{% url 'breeding_update' br.pk %}" hx-get="{% url 'breeding_update' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record" class="btn-ghost btn-xs">Edit</a>

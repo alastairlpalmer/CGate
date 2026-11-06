@@ -93,10 +93,10 @@
                         <td class="text-sage" data-label="Rate">
                             {{ placement.rate_type.name }}{% if feature_access.charges.view %} (&pound;{{ placement.rate_type.daily_rate }}/day){% endif %}
                         </td>
-                        <td class="text-sage" data-label="Arrived">{{ placement.start_date|date:"d M Y" }}</td>
+                        <td class="text-sage" data-label="Arrived">{{ placement.start_date|date:"j M Y" }}</td>
                         <td data-label="Departed">
                             {% if placement.end_date %}
-                                <span class="text-sage">{{ placement.end_date|date:"d M Y" }}</span>
+                                <span class="text-sage">{{ placement.end_date|date:"j M Y" }}</span>
                             {% else %}
                                 <span class="badge-success">Current</span>
                             {% endif %}

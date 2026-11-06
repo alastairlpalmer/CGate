@@ -536,7 +536,7 @@ class DashboardPageTests(TestCase):
         self.client.force_login(user)
         body = self.client.get(reverse('dashboard')).content.decode()
         self.assertIn('Watcher', body)
-        self.assertNotIn('Record visit', body)
+        self.assertNotIn('Record farrier visit', body)
 
     def test_site_switch_is_remembered_and_narrows_the_inbox(self):
         somerford = Location.objects.create(name='Sandhills', site='Somerford')

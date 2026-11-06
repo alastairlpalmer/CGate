@@ -22,12 +22,12 @@ and documents=<queryset>:
                     {% if doc.expiry_date %}
                     &middot;
                     {% if doc.is_expired %}
-                    <span class="text-error-red font-semibold">Expired {{ doc.expiry_date|date:"d M Y" }}</span>
+                    <span class="text-error-red font-semibold">Expired {{ doc.expiry_date|date:"j M Y" }}</span>
                     {% else %}
-                    Expires {{ doc.expiry_date|date:"d M Y" }}
+                    Expires {{ doc.expiry_date|date:"j M Y" }}
                     {% endif %}
                     {% endif %}
-                    &middot; Added {{ doc.uploaded_at|date:"d M Y" }}
+                    &middot; Added {{ doc.uploaded_at|date:"j M Y" }}
                 </p>
             </div>
             {% if horse and feature_access.horses.full or not horse and feature_access.owners.full %}

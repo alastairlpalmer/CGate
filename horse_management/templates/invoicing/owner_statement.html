@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load ui_extras %}
 
 {% block title %}Statement - {{ owner.name }} - Cgate{% endblock %}
 
@@ -37,15 +38,15 @@
     <div class="grid grid-cols-1 min-[360px]:grid-cols-3 gap-4">
         <div class="card p-5 lg:p-6">
             <p class="dt-label">Invoiced</p>
-            <p class="mt-1 text-2xl font-bold text-charcoal tabular-nums">&pound;{{ statement.totals.invoiced|floatformat:2 }}</p>
+            <p class="mt-1 text-2xl font-bold text-charcoal tabular-nums">{{ statement.totals.invoiced|gbp }}</p>
         </div>
         <div class="card p-5 lg:p-6">
             <p class="dt-label">Paid</p>
-            <p class="mt-1 text-2xl font-bold text-forest tabular-nums">&pound;{{ statement.totals.paid|floatformat:2 }}</p>
+            <p class="mt-1 text-2xl font-bold text-forest tabular-nums">{{ statement.totals.paid|gbp }}</p>
         </div>
         <div class="card p-5 lg:p-6">
             <p class="dt-label">Balance</p>
-            <p class="mt-1 text-2xl font-bold {% if statement.totals.balance > 0 %}text-error-red{% else %}text-charcoal{% endif %} tabular-nums">&pound;{{ statement.totals.balance|floatformat:2 }}</p>
+            <p class="mt-1 text-2xl font-bold {% if statement.totals.balance > 0 %}text-error-red{% else %}text-charcoal{% endif %} tabular-nums">{{ statement.totals.balance|gbp }}</p>
         </div>
     </div>
 
@@ -70,16 +71,17 @@
                         <td data-label="Invoice">
                             <a href="{% url 'invoice_detail' row.invoice.pk %}" class="link tap-pad">{{ row.invoice.invoice_number }}</a>
                         </td>
-                        <td class="text-sage" data-label="Issued">{{ row.invoice.created_at|date:"d M Y" }}</td>
-                        <td class="text-sage" data-label="Period">{{ row.invoice.period_start|date:"d M" }} &ndash; {{ row.invoice.period_end|date:"d M Y" }}</td>
+                        <td class="text-sage" data-label="Issued">{{ row.invoice.created_at|date:"j M Y" }}</td>
+                        <td class="text-sage" data-label="Period">{{ row.invoice.period_start|date:"j M" }} &ndash; {{ row.invoice.period_end|date:"j M Y" }}</td>
                         <td data-label="Status">
                             <span class="{{ row.invoice.status_badge_class }}">
                                 {{ row.invoice.status_label }}
                             </span>
+                            {% if row.invoice.draft_due_passed %}<span class="block mt-1 text-xs font-medium text-saddle whitespace-nowrap">Not sent · due date passed</span>{% endif %}
                         </td>
-                        <td class="text-right tabular-nums" data-label="Total">&pound;{{ row.invoice.total|floatformat:2 }}</td>
-                        <td class="text-right tabular-nums text-forest" data-label="Paid">&pound;{{ row.paid|floatformat:2 }}</td>
-                        <td class="text-right tabular-nums font-semibold {% if row.balance > 0 %}text-error-red{% endif %}" data-label="Balance">&pound;{{ row.balance|floatformat:2 }}</td>
+                        <td class="text-right tabular-nums" data-label="Total">{{ row.invoice.total|gbp }}</td>
+                        <td class="text-right tabular-nums text-forest" data-label="Paid">{{ row.paid|gbp }}</td>
+                        <td class="text-right tabular-nums font-semibold {% if row.balance > 0 %}text-error-red{% endif %}" data-label="Balance">{{ row.balance|gbp }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

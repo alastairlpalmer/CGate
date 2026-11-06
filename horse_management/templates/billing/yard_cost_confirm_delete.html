@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load ui_extras %}
 
 {% block title %}Delete Yard Cost - Cgate{% endblock %}
 
@@ -23,7 +24,7 @@
         <div class="card bg-parchment p-4 mt-4 mb-6 text-left">
             <p class="font-medium text-charcoal">{{ object.get_category_display }}</p>
             <p class="text-sm text-sage mt-1">{{ object.description }}</p>
-            <p class="text-sm text-sage mt-1">{{ object.date|date:"d M Y" }} &mdash; &pound;{{ object.amount|floatformat:2 }}</p>
+            <p class="text-sm text-sage mt-1">{{ object.date|date:"j M Y" }} &mdash; {{ object.amount|gbp }}</p>
         </div>
 
         <!-- Actions -->

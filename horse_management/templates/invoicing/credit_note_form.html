@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load ui_extras %}
 
 {% block title %}Credit Note - {{ invoice.invoice_number }} - Cgate{% endblock %}
 
@@ -9,7 +10,7 @@
             <h1 class="page-title">Issue Credit Note</h1>
             <p class="page-subtitle">
                 Against invoice {{ invoice.invoice_number }} &middot; {{ invoice.owner.name }} &middot;
-                &pound;{{ invoice.balance_due|floatformat:2 }} outstanding
+                {{ invoice.balance_due|gbp }} outstanding
             </p>
         </div>
     </div>

@@ -28,6 +28,7 @@ from core.views._undo import undo_tag
 
 from .forms import ExtraChargeForm, FeedOutForm, FeedStockForm, ServiceProviderForm, YardCostForm
 from .models import ExtraCharge, FeedOut, FeedStock, ServiceProvider, YardCost
+from core.templatetags.ui_extras import gbp
 
 
 class ExtraChargeListView(FeatureAccessMixin, ListView):
@@ -247,10 +248,10 @@ def charge_restore(request, pk):
         if charge.amount != old_amount:
             messages.info(
                 request,
-                f"The amount was updated from £{old_amount:.2f} to £{charge.amount:.2f} "
+                f"The amount was updated from {gbp(old_amount)} to {gbp(charge.amount)} "
                 "to match the cost on the health record.",
             )
-    messages.success(request, f"Charge restored: {charge.description or charge.get_charge_type_display()}, £{charge.amount:.2f}.")
+    messages.success(request, f"Charge restored: {charge.description or charge.get_charge_type_display()}, {gbp(charge.amount)}.")
     return redirect(safe_next(request, reverse('charge_list')))
 
 
@@ -510,7 +511,7 @@ class YardCostDeleteView(FeatureAccessMixin, DeleteView):
 def yard_cost_restore(request, pk):
     cost = get_object_or_404(YardCost.all_objects.deleted(), pk=pk)
     cost.restore()
-    messages.success(request, f"Yard cost restored: {cost.description}, £{cost.amount:.2f}.")
+    messages.success(request, f"Yard cost restored: {cost.description}, {gbp(cost.amount)}.")
     return redirect(safe_next(request, reverse('costs_list')))
 
 

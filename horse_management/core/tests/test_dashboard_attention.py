@@ -357,7 +357,7 @@ class HealthListsTests(DashboardDataTestCase):
         self.assertEqual([e['horse'].name for e in action_required], ['Overdue'])
         self.assertEqual(action_required[0]['type'], 'Vaccination')
         self.assertEqual(action_required[0]['detail'], 'Flu')
-        self.assertEqual(action_required[0]['action_label'], 'Re-vaccinate')
+        self.assertEqual(action_required[0]['action_label'], 'Record vaccination')
         self.assertEqual(sorted(e['horse'].name for e in coming_up), ['Farrier10', 'Vax20'])
 
 

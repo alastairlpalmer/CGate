@@ -21,10 +21,10 @@
     <div class="details">
         <p><strong>Mare:</strong> {{ mare.name }}</p>
         <p><strong>Stallion:</strong> {{ breeding_record.stallion_name }}</p>
-        <p><strong>Date Covered:</strong> {{ breeding_record.date_covered|date:"d/m/Y" }}</p>
-        <p><strong>EHV Vaccination Due:</strong> {{ due_date|date:"d/m/Y" }} (Month {{ month_number }})</p>
+        <p><strong>Date Covered:</strong> {{ breeding_record.date_covered|date:"j M Y" }}</p>
+        <p><strong>EHV Vaccination Due:</strong> {{ due_date|date:"j M Y" }} (Month {{ month_number }})</p>
         {% if breeding_record.date_foal_due %}
-        <p><strong>Foal Due Date:</strong> {{ breeding_record.date_foal_due|date:"d/m/Y" }}</p>
+        <p><strong>Foal Due Date:</strong> {{ breeding_record.date_foal_due|date:"j M Y" }}</p>
         {% endif %}
     </div>
 

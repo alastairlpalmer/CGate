@@ -75,8 +75,8 @@
                         <th>Horse</th>
                         <th>Type</th>
                         <th>Detail</th>
-                        <th>Due</th>
-                        <th></th>
+                        <th class="text-right">Due</th>
+                        <th><span class="sr-only">Action</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -86,13 +86,13 @@
                             <span class="inline-flex items-center gap-2">{% include 'horses/_coat_dot.html' with horse=item.horse %}<a href="{% url 'horse_detail' item.horse.pk %}" class="link font-medium tap-pad">{{ item.horse.name }}</a></span>
                         </td>
                         <td data-label="Type">
-                            <span class="{% if item.type == 'Farrier' %}badge-warning{% else %}badge-danger{% endif %}">{{ item.type }}</span>
+                            <span class="badge-neutral">{{ item.type }}</span>
                         </td>
                         <td class="text-charcoal" data-label="Detail">{{ item.detail }}</td>
                         <td data-label="Due">
                             <div class="text-right">
                                 <span class="text-error-red font-medium">{{ item.due_date|due_label }}</span>
-                                <p class="text-xs text-sage">{{ item.due_date|date:"d M Y" }}</p>
+                                <p class="text-xs text-sage">{{ item.due_date|date:"j M Y" }}</p>
                             </div>
                         </td>
                         <td class="text-right">
@@ -120,8 +120,8 @@
                         <th>Horse</th>
                         <th>Type</th>
                         <th>Detail</th>
-                        <th>Due</th>
-                        <th></th>
+                        <th class="text-right">Due</th>
+                        <th><span class="sr-only">Action</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -131,13 +131,13 @@
                             <span class="inline-flex items-center gap-2">{% include 'horses/_coat_dot.html' with horse=item.horse %}<a href="{% url 'horse_detail' item.horse.pk %}" class="link font-medium tap-pad">{{ item.horse.name }}</a></span>
                         </td>
                         <td data-label="Type">
-                            <span class="badge-success">{{ item.type }}</span>
+                            <span class="badge-neutral">{{ item.type }}</span>
                         </td>
                         <td class="text-charcoal" data-label="Detail">{{ item.detail }}</td>
                         <td data-label="Due">
                             <div class="text-right">
                                 <span class="text-forest">{{ item.due_date|due_label }}</span>
-                                <p class="text-xs text-sage">{{ item.due_date|date:"d M Y" }}</p>
+                                <p class="text-xs text-sage">{{ item.due_date|date:"j M Y" }}</p>
                             </div>
                         </td>
                         <td class="text-right">

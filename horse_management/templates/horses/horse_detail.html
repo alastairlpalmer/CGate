@@ -36,14 +36,14 @@
                             Passport
                         </span>
                         {% else %}
-                        <span class="badge-danger" title="No passport on record">No passport</span>
+                        <span class="badge-warning" title="No passport on record">No passport</span>
                         {% endif %}
                     </div>
                     <p class="mt-1.5 text-sm text-sage">
                         {% if horse.is_youngster %}<span class="text-charcoal-light font-medium">{{ horse.age_label }}</span> &middot; {% elif horse.calculated_age %}<span class="text-charcoal-light font-medium">{{ horse.calculated_age }}yo</span> &middot; {% endif %}
                         {{ horse.get_color_display }} &middot;
                         {{ horse.get_sex_display }}
-                        {% if horse.date_of_birth %}<span class="ml-1 text-sage/80">· {% if horse.is_youngster %}foaled{% else %}born{% endif %} {{ horse.date_of_birth|date:"d M Y" }}</span>{% endif %}
+                        {% if horse.date_of_birth %}<span class="ml-1 text-sage/80">· {% if horse.is_youngster %}foaled{% else %}born{% endif %} {{ horse.date_of_birth|date:"j M Y" }}</span>{% endif %}
                     </p>
                     {% if horse.current_owner %}
                     <p class="mt-2 text-sm text-charcoal-light flex items-center gap-1.5">
@@ -185,12 +185,12 @@
                         </div>
                         <div>
                             <dt class="dt-label">Arrived</dt>
-                            <dd class="mt-1 text-sm text-charcoal tabular-nums">{{ current_placement.start_date|date:"d M Y" }}</dd>
+                            <dd class="mt-1 text-sm text-charcoal tabular-nums">{{ current_placement.start_date|date:"j M Y" }}</dd>
                         </div>
                         {% if current_placement.expected_departure %}
                         <div class="sm:col-span-2 mt-1 pt-3 border-t border-light-sage/70">
                             <dt class="dt-label">Expected Departure</dt>
-                            <dd class="mt-1 text-sm text-forest font-medium tabular-nums">{{ current_placement.expected_departure|date:"d M Y" }}</dd>
+                            <dd class="mt-1 text-sm text-forest font-medium tabular-nums">{{ current_placement.expected_departure|date:"j M Y" }}</dd>
                         </div>
                         {% endif %}
                     </dl>
@@ -235,7 +235,7 @@
                                 {% if horse.has_passport %}
                                     {% if horse.passport_number %}{{ horse.passport_number }}{% else %}Yes{% endif %}
                                 {% else %}
-                                    <span class="badge-danger">No passport</span>
+                                    <span class="badge-warning">No passport</span>
                                 {% endif %}
                             </dd>
                         </div>
@@ -265,7 +265,7 @@
                             <div class="flex items-center justify-between py-1">
                                 <div>
                                     <span class="text-sm font-medium text-charcoal">{{ c.name }}</span>
-                                    {% if c.diagnosed_date %}<span class="text-xs text-sage ml-2">since {{ c.diagnosed_date|date:"d M Y" }}</span>{% endif %}
+                                    {% if c.diagnosed_date %}<span class="text-xs text-sage ml-2">since {{ c.diagnosed_date|date:"j M Y" }}</span>{% endif %}
                                 </div>
                                 {% if c.status == 'active' %}
                                 <span class="badge-danger">Active</span>
@@ -313,12 +313,12 @@
                             </div>
                             <div>
                                 <dt class="text-forest text-xs font-medium">Date covered</dt>
-                                <dd class="text-charcoal">{{ active_pregnancy.date_covered|date:"d M Y" }}</dd>
+                                <dd class="text-charcoal">{{ active_pregnancy.date_covered|date:"j M Y" }}</dd>
                             </div>
                             <div>
                                 <dt class="text-forest text-xs font-medium">Foal due</dt>
                                 <dd class="{% if active_pregnancy.is_past_due %}text-error-red{% else %}text-charcoal{% endif %} font-medium">
-                                    {% if active_pregnancy.date_foal_due %}{{ active_pregnancy.date_foal_due|date:"d M Y" }}{% else %}-{% endif %}
+                                    {% if active_pregnancy.date_foal_due %}{{ active_pregnancy.date_foal_due|date:"j M Y" }}{% else %}-{% endif %}
                                 </dd>
                                 {% if active_pregnancy.date_foal_due %}
                                 <dd class="text-xs {% if active_pregnancy.is_past_due %}text-error-red{% else %}text-sage{% endif %}">{% if active_pregnancy.is_past_due %}Due date passed{% else %}{{ active_pregnancy.date_foal_due|due_label }}{% endif %}</dd>
@@ -327,8 +327,8 @@
                             <div>
                                 <dt class="text-forest text-xs font-medium">Scans</dt>
                                 <dd class="text-charcoal text-xs">
-                                    14-day: {% if active_pregnancy.date_scanned_14_days %}{{ active_pregnancy.date_scanned_14_days|date:"d M Y" }}{% else %}<span class="text-sage">not yet</span>{% endif %}<br>
-                                    Heartbeat: {% if active_pregnancy.date_scanned_heartbeat %}{{ active_pregnancy.date_scanned_heartbeat|date:"d M Y" }}{% else %}<span class="text-sage">not yet</span>{% endif %}
+                                    14-day: {% if active_pregnancy.date_scanned_14_days %}{{ active_pregnancy.date_scanned_14_days|date:"j M Y" }}{% else %}<span class="text-sage">not yet</span>{% endif %}<br>
+                                    Heartbeat: {% if active_pregnancy.date_scanned_heartbeat %}{{ active_pregnancy.date_scanned_heartbeat|date:"j M Y" }}{% else %}<span class="text-sage">not yet</span>{% endif %}
                                 </dd>
                             </div>
                         </dl>
@@ -350,7 +350,7 @@
                                 {% for month, date in ehv_dates.items %}
                                 <div class="{% if month in active_pregnancy.sent_ehv_months %}bg-sage-50 border-sage/20{% elif date < today %}bg-white border-sand-100 opacity-70{% else %}bg-white border-sand-100{% endif %} border rounded-lg p-2">
                                     <span class="font-medium text-charcoal">Month {{ month }}</span><br>
-                                    <span class="text-sage">{{ date|date:"d M Y" }}</span><br>
+                                    <span class="text-sage">{{ date|date:"j M Y" }}</span><br>
                                     <span class="text-sage">{% if month in active_pregnancy.sent_ehv_months %}reminder sent{% elif date < today %}passed{% else %}{{ date|due_label }}{% endif %}</span>
                                 </div>
                                 {% endfor %}
@@ -373,7 +373,7 @@
                 <div class="p-5 lg:p-6 text-sm">
                     {% with last=breeding_records.0 %}
                     {% if last %}
-                    <p class="text-charcoal">Not in foal. Last record: {{ last.stallion_name }}, covered {{ last.date_covered|date:"d M Y" }} &middot; {% include 'health/partials/breeding_status_badge.html' with br=last %}</p>
+                    <p class="text-charcoal">Not in foal. Last record: {{ last.stallion_name }}, covered {{ last.date_covered|date:"j M Y" }} &middot; {% include 'health/partials/breeding_status_badge.html' with br=last %}</p>
                     {% else %}
                     <p class="text-sage">No breeding records yet.{% if feature_access.breeding.full %} Record a covering to start tracking scans, EHV doses and the foal due date.{% endif %}</p>
                     {% endif %}
@@ -413,7 +413,7 @@
                                 <td>{{ br.stallion_name }}</td>
                                 <td class="whitespace-nowrap text-sage">
                                     {% with cs=br.coverings.all %}
-                                    {{ cs|length }} &middot; {{ br.first_covering_date|date:"d M" }}{% if cs|length > 1 %} &ndash; {{ br.date_covered|date:"d M" }}{% endif %}
+                                    {{ cs|length }} &middot; {{ br.first_covering_date|date:"j M" }}{% if cs|length > 1 %} &ndash; {{ br.date_covered|date:"j M" }}{% endif %}
                                     {% endwith %}
                                 </td>
                                 <td class="whitespace-nowrap text-xs">
@@ -422,8 +422,8 @@
                                 </td>
                                 <td>{% include 'health/partials/breeding_status_badge.html' with br=br %}</td>
                                 <td class="whitespace-nowrap">
-                                    {% if br.foal %}<a href="{% url 'horse_detail' br.foal.pk %}" class="link tap-pad">{{ br.foal.name }}</a>{% if br.foal_dob %}<div class="text-xs text-sage">{{ br.foal_dob|date:"d M Y" }}</div>{% endif %}
-                                    {% elif br.foal_dob %}<span class="text-charcoal">{{ br.foal_dob|date:"d M Y" }}</span><div class="text-xs text-sage">not linked</div>
+                                    {% if br.foal %}<a href="{% url 'horse_detail' br.foal.pk %}" class="link tap-pad">{{ br.foal.name }}</a>{% if br.foal_dob %}<div class="text-xs text-sage">{{ br.foal_dob|date:"j M Y" }}</div>{% endif %}
+                                    {% elif br.foal_dob %}<span class="text-charcoal">{{ br.foal_dob|date:"j M Y" }}</span><div class="text-xs text-sage">not linked</div>
                                     {% else %}<span class="text-sage">-</span>{% endif %}
                                 </td>
                                 {% if feature_access.breeding.full %}
@@ -466,11 +466,11 @@
                                 {% with fr=foal.birth_record.all.0 %}
                                 <tr>
                                     <td class="whitespace-nowrap"><a href="{% url 'horse_detail' foal.pk %}" class="link tap-pad">{{ foal.name }}</a></td>
-                                    <td class="text-sage whitespace-nowrap">{% if foal.date_of_birth %}{{ foal.date_of_birth|date:"d M Y" }}{% else %}-{% endif %}</td>
+                                    <td class="text-sage whitespace-nowrap">{% if foal.date_of_birth %}{{ foal.date_of_birth|date:"j M Y" }}{% else %}-{% endif %}</td>
                                     <td class="text-charcoal whitespace-nowrap">{{ foal.age_label|default:"-" }}</td>
                                     <td class="text-sage">{{ foal.get_sex_display|default:"-" }}{% if foal.color %} &middot; {{ foal.get_color_display }}{% endif %}</td>
                                     <td class="text-sage">{{ foal.sire_name|default:"-" }}</td>
-                                    <td>{% if fr %}{% if fr.is_weaned %}<span class="badge-neutral">Weaned {{ fr.weaned_date|date:"d M Y" }}</span>{% else %}<span class="badge-success">At foot</span>{% endif %}{% else %}<span class="text-sage">-</span>{% endif %}</td>
+                                    <td>{% if fr %}{% if fr.is_weaned %}<span class="badge-neutral">Weaned {{ fr.weaned_date|date:"j M Y" }}</span>{% else %}<span class="badge-success">At foot</span>{% endif %}{% else %}<span class="text-sage">-</span>{% endif %}</td>
                                     {% if feature_access.breeding.full %}
                                     <td class="text-right whitespace-nowrap">
                                         {% if fr.can_wean %}<a href="{% url 'breeding_wean' fr.pk %}" hx-get="{% url 'breeding_wean' fr.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Wean {{ foal.name }}" class="btn-secondary btn-xs">Wean</a>{% endif %}
@@ -632,7 +632,7 @@
                                         <a href="{% url 'breeding_update' event.obj.pk %}" hx-get="{% url 'breeding_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record"
                                            class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% endif %}
-                                        <span class="text-xs text-sage" title="{{ event.date|date:"d M Y" }}">{{ event.date|ago_label }}</span>
+                                        <span class="text-xs text-sage" title="{{ event.date|date:"j M Y" }}">{{ event.date|ago_label }}</span>
                                     </span>
                                 </div>
 
@@ -642,19 +642,19 @@
                                     <p class="text-charcoal font-medium">{{ event.obj.location.name }}</p>
                                     <p class="text-sage text-xs mt-0.5">
                                         {% if horse.current_owner and event.obj.owner_id != horse.current_owner.pk %}Billed to {{ event.obj.owner.name }} &middot; {% endif %}{% if feature_access.charges.view %}&pound;{{ event.obj.rate_type.daily_rate }}/day
-                                        &middot; {% endif %}{{ event.obj.start_date|date:"d M Y" }} &ndash;
-                                        {% if event.obj.end_date %}{{ event.obj.end_date|date:"d M Y" }}{% else %}<span class="text-forest font-medium">Present</span>{% endif %}
+                                        &middot; {% endif %}{{ event.obj.start_date|date:"j M Y" }} &ndash;
+                                        {% if event.obj.end_date %}{{ event.obj.end_date|date:"j M Y" }}{% else %}<span class="text-forest font-medium">Present</span>{% endif %}
                                     </p>
 
                                     {% elif event.type == 'vaccination' %}
                                     <p class="text-charcoal font-medium">{{ event.obj.vaccination_type.name }}</p>
                                     {% if event.obj.next_due_date or event.obj.cost and feature_access.charges.view %}
                                     <p class="text-sage text-xs mt-0.5">
-                                        {% if event.obj.cost and feature_access.charges.view %}&pound;{{ event.obj.cost|floatformat:2 }}{% endif %}
+                                        {% if event.obj.cost and feature_access.charges.view %}{{ event.obj.cost|gbp }}{% endif %}
                                         {% if event.obj.next_due_date %}
                                         {% if event.obj.cost and feature_access.charges.view %}&middot; {% endif %}
                                         <span class="{% if event.attention %}text-saddle font-medium{% elif event.obj.is_due_soon %}text-forest font-medium{% endif %}">
-                                            {% if event.obj.course_stage %}{{ event.obj.get_course_stage_display }} &middot; {% endif %}Next due: {% if event.obj.due_from %}{{ event.obj.due_from|date:"d M" }} &ndash; {% endif %}{{ event.obj.next_due_date|date:"d M Y" }}{% if event.attention %} &middot; Overdue{% endif %}
+                                            {% if event.obj.course_stage %}{{ event.obj.get_course_stage_display }} &middot; {% endif %}Next due: {% if event.obj.due_from %}{{ event.obj.due_from|date:"j M" }} &ndash; {% endif %}{{ event.obj.next_due_date|date:"j M Y" }}{% if event.attention %} &middot; Overdue{% endif %}
                                         </span>
                                         {% endif %}
                                     </p>
@@ -663,11 +663,11 @@
                                     {% elif event.type == 'farrier' %}
                                     <p class="text-charcoal font-medium">{{ event.obj.get_work_done_display }}</p>
                                     <p class="text-sage text-xs mt-0.5">
-                                        {% if event.obj.cost and feature_access.charges.view %}&pound;{{ event.obj.cost|floatformat:2 }}{% endif %}
+                                        {% if event.obj.cost and feature_access.charges.view %}{{ event.obj.cost|gbp }}{% endif %}
                                         {% if event.obj.next_due_date %}
                                         {% if event.obj.cost and feature_access.charges.view %}&middot; {% endif %}
                                         <span class="{% if event.attention %}text-saddle font-medium{% elif event.obj.is_due_soon %}text-forest font-medium{% endif %}">
-                                            Next: {{ event.obj.next_due_date|date:"d M Y" }}{% if event.attention %} &middot; Overdue{% endif %}
+                                            Next: {{ event.obj.next_due_date|date:"j M Y" }}{% if event.attention %} &middot; Overdue{% endif %}
                                         </span>
                                         {% endif %}
                                     </p>
@@ -676,9 +676,9 @@
                                     <p class="text-charcoal font-medium">{{ event.obj.reason|truncatewords:10 }}</p>
                                     <p class="text-sage text-xs mt-0.5">
                                         {% if event.obj.vet %}{{ event.obj.vet.name }}{% endif %}
-                                        {% if event.obj.cost and feature_access.charges.view %}&middot; &pound;{{ event.obj.cost|floatformat:2 }}{% endif %}
+                                        {% if event.obj.cost and feature_access.charges.view %}&middot; {{ event.obj.cost|gbp }}{% endif %}
                                         {% if event.obj.follow_up_date %}
-                                        &middot; <span class="text-forest font-medium">Follow-up: {{ event.obj.follow_up_date|date:"d M Y" }}</span>
+                                        &middot; <span class="text-forest font-medium">Follow-up: {{ event.obj.follow_up_date|date:"j M Y" }}</span>
                                         {% endif %}
                                     </p>
 
@@ -703,7 +703,7 @@
                                     <p class="text-sage text-xs mt-0.5">
                                         {{ event.obj.active_ingredient|default:"" }}
                                         {% if event.obj.administered_by %}{% if event.obj.active_ingredient %}&middot; {% endif %}By: {{ event.obj.administered_by }}{% endif %}
-                                        {% if event.obj.cost and feature_access.charges.view %}{% if event.obj.active_ingredient or event.obj.administered_by %}&middot; {% endif %}&pound;{{ event.obj.cost|floatformat:2 }}{% endif %}
+                                        {% if event.obj.cost and feature_access.charges.view %}{% if event.obj.active_ingredient or event.obj.administered_by %}&middot; {% endif %}{{ event.obj.cost|gbp }}{% endif %}
                                     </p>
 
                                     {% elif event.type == 'egg_count' %}
@@ -711,7 +711,7 @@
                                         {{ event.obj.count }} EPG
                                         <span class="{{ event.obj.level_badge_class }} ml-1">{{ event.obj.level_label }}</span>
                                     </p>
-                                    <p class="text-sage text-xs mt-0.5">{{ event.obj.get_sample_type_display }}{% if event.obj.cost and feature_access.charges.view %} &middot; &pound;{{ event.obj.cost|floatformat:2 }}{% endif %}</p>
+                                    <p class="text-sage text-xs mt-0.5">{{ event.obj.get_sample_type_display }}{% if event.obj.cost and feature_access.charges.view %} &middot; {{ event.obj.cost|gbp }}{% endif %}</p>
                                     {% endif %}
                                 </div>
                             </div>

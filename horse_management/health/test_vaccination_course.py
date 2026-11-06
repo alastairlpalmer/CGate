@@ -260,7 +260,7 @@ class HorseTimelineCostTests(TestCase):
         self.client.force_login(make_admin())
         response = self.get_page()
         for amount in ('31.50', '27.25', '12.40', '18.90'):
-            self.assertContains(response, f'&pound;{amount}')
+            self.assertContains(response, f'£{amount}')
 
     def test_costs_hidden_without_charges_access(self):
         from core.roles_testutils import make_user_with_access

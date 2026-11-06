@@ -60,7 +60,7 @@
                 <a href="{% url 'horse_detail' vax.horse.pk %}" class="list-card-link">
                     <span class="list-card-title">{{ vax.horse.name }}</span>
                 </a>
-                <div class="list-card-meta">{{ vax.vaccination_type.name }} &middot; given {{ vax.date_given|date:"d M Y" }}</div>
+                <div class="list-card-meta">{{ vax.vaccination_type.name }} &middot; given {{ vax.date_given|date:"j M Y" }}</div>
                 <div class="mt-1.5 flex items-center gap-1.5">
                     {% if vax.next_due_date and not vax.is_superseded and vax.next_due_date < today %}
                     <span class="badge-danger">Overdue</span>
@@ -72,7 +72,7 @@
                     <span class="badge-success">OK</span>
                     {% endif %}
                     {% if vax.next_due_date %}
-                    <span class="text-xs {% if not vax.is_superseded and vax.next_due_date < today %}text-error-red font-semibold{% elif vax.is_due_soon %}text-forest{% else %}text-sage{% endif %}">due {% if vax.due_from %}{{ vax.due_from|date:"d M" }} &ndash; {% endif %}{{ vax.next_due_date|date:"d M Y" }}</span>
+                    <span class="text-xs {% if not vax.is_superseded and vax.next_due_date < today %}text-error-red font-semibold{% elif vax.is_due_soon %}text-forest{% else %}text-sage{% endif %}">due {% if vax.due_from %}{{ vax.due_from|date:"j M" }} &ndash; {% endif %}{{ vax.next_due_date|date:"j M Y" }}</span>
                     {% endif %}
                 </div>
             </div>
@@ -80,7 +80,7 @@
                 <a href="{% url 'vaccination_update' vax.pk %}" hx-get="{% url 'vaccination_update' vax.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vaccination" class="btn-icon" title="Edit" aria-label="Edit vaccination">
                     <svg class="w-4 h-4" aria-hidden="true"><use href="#i-pencil"/></svg>
                 </a>
-                <a href="{% url 'vaccination_create' %}?horse={{ vax.horse.pk }}&next={{ request.get_full_path|urlencode }}" hx-get="{% url 'vaccination_create' %}?horse={{ vax.horse.pk }}&next={{ request.get_full_path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Re-vaccinate {{ vax.horse.name }}" class="btn-icon" title="Re-vaccinate" aria-label="Re-vaccinate {{ vax.horse.name }}">
+                <a href="{% url 'vaccination_create' %}?horse={{ vax.horse.pk }}&next={{ request.get_full_path|urlencode }}" hx-get="{% url 'vaccination_create' %}?horse={{ vax.horse.pk }}&next={{ request.get_full_path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record vaccination for {{ vax.horse.name }}" class="btn-icon" title="Record vaccination" aria-label="Record vaccination for {{ vax.horse.name }}">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </a>
             </div>
@@ -113,9 +113,9 @@
                         <a href="{% url 'horse_detail' vax.horse.pk %}" class="link tap-pad">{{ vax.horse.name }}</a>
                     </td>
                     <td>{{ vax.vaccination_type.name }}</td>
-                    <td class="text-sage">{{ vax.date_given|date:"d M Y" }}</td>
+                    <td class="text-sage">{{ vax.date_given|date:"j M Y" }}</td>
                     <td class="{% if vax.next_due_date and not vax.is_superseded and vax.next_due_date < today %}text-error-red font-semibold{% elif vax.is_due_soon %}text-forest{% else %}text-sage{% endif %}">
-                        {% if vax.due_from %}{{ vax.due_from|date:"d M" }} &ndash; {% endif %}{{ vax.next_due_date|date:"d M Y" }}
+                        {% if vax.due_from %}{{ vax.due_from|date:"j M" }} &ndash; {% endif %}{{ vax.next_due_date|date:"j M Y" }}
                         {% if vax.course_stage %}<span class="block text-xs text-sage font-normal">after {{ vax.get_course_stage_display }}</span>{% endif %}
                     </td>
                     <td>
@@ -132,7 +132,7 @@
                     <td>
                         <div class="flex items-center gap-1">
                             <a href="{% url 'vaccination_update' vax.pk %}" hx-get="{% url 'vaccination_update' vax.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vaccination" class="btn-ghost btn-xs">Edit</a>
-                            <a href="{% url 'vaccination_create' %}?horse={{ vax.horse.pk }}&next={{ request.get_full_path|urlencode }}" hx-get="{% url 'vaccination_create' %}?horse={{ vax.horse.pk }}&next={{ request.get_full_path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Re-vaccinate {{ vax.horse.name }}" class="btn-ghost btn-xs">Re-vaccinate</a>
+                            <a href="{% url 'vaccination_create' %}?horse={{ vax.horse.pk }}&next={{ request.get_full_path|urlencode }}" hx-get="{% url 'vaccination_create' %}?horse={{ vax.horse.pk }}&next={{ request.get_full_path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record vaccination for {{ vax.horse.name }}" class="btn-ghost btn-xs">Record vaccination</a>
                         </div>
                     </td>
                 </tr>
