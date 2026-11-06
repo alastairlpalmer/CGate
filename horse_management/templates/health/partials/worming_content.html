@@ -52,7 +52,7 @@
                 <a href="{% url 'horse_detail' t.horse.pk %}" class="list-card-link">
                     <span class="list-card-title">{{ t.horse.name }}</span>
                 </a>
-                <div class="list-card-meta">{{ t.product_name }} &middot; {{ t.date|date:"d M Y" }}</div>
+                <div class="list-card-meta">{{ t.product_name }} &middot; {{ t.date|date:"j M Y" }}</div>
                 <div class="list-card-meta truncate">
                     {% if t.active_ingredient %}{{ t.active_ingredient }}{% endif %}
                     {% if t.administered_by %}{% if t.active_ingredient %} &middot; {% endif %}by {{ t.administered_by }}{% endif %}
@@ -91,7 +91,7 @@
                     <td>
                         <a href="{% url 'horse_detail' t.horse.pk %}" class="link tap-pad">{{ t.horse.name }}</a>
                     </td>
-                    <td class="text-sage">{{ t.date|date:"d M Y" }}</td>
+                    <td class="text-sage">{{ t.date|date:"j M Y" }}</td>
                     <td>{{ t.product_name }}</td>
                     <td class="text-sage">{{ t.active_ingredient|default:"-" }}</td>
                     <td class="text-sage">{{ t.administered_by|default:"-" }}</td>

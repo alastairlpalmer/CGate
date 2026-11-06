@@ -22,11 +22,11 @@
     {% for e in entries %}
     <div class="item">
         <p><strong>{{ e.record.mare.name }}</strong> &times; {{ e.record.stallion_name }}</p>
-        <p><strong>{{ e.label }}:</strong> {{ e.due|date:"d/m/Y" }}</p>
+        <p><strong>{{ e.label }}:</strong> {{ e.due|date:"j M Y" }}</p>
         {% if e.key == 'scan14' or e.key == 'heartbeat' %}
-        <p>Last covered {{ e.record.date_covered|date:"d/m/Y" }}. Please book the scan with your vet and let us know the result.</p>
+        <p>Last covered {{ e.record.date_covered|date:"j M Y" }}. Please book the scan with your vet and let us know the result.</p>
         {% else %}
-        <p>Expected foaling date {{ e.record.date_foal_due|date:"d/m/Y" }}. Please make sure we have your instructions for the foaling and the vet on call.</p>
+        <p>Expected foaling date {{ e.record.date_foal_due|date:"j M Y" }}. Please make sure we have your instructions for the foaling and the vet on call.</p>
         {% endif %}
     </div>
     {% endfor %}

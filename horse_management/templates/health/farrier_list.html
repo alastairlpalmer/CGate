@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load ui_extras %}
 
 {% block title %}Farrier Visits - Cgate{% endblock %}
 
@@ -69,16 +70,16 @@
                         <td data-label="Horse">
                             <a href="{% url 'horse_detail' visit.horse.pk %}" class="link tap-pad">{{ visit.horse.name }}</a>
                         </td>
-                        <td class="text-sage" data-label="Date">{{ visit.date|date:"d M Y" }}</td>
+                        <td class="text-sage" data-label="Date">{{ visit.date|date:"j M Y" }}</td>
                         <td data-label="Work Done">{{ visit.get_work_done_display }}</td>
                         <td class="text-sage" data-label="Farrier">
                             {% if visit.service_provider %}{{ visit.service_provider.name }}{% else %}<span class="text-sage">-</span>{% endif %}
                         </td>
                         <td class="{% if visit.next_due_date and not visit.is_superseded and visit.next_due_date < today %}text-error-red font-semibold{% elif visit.is_due_soon %}text-forest{% else %}text-sage{% endif %}" data-label="Next Due">
-                            {% if visit.next_due_date %}{{ visit.next_due_date|date:"d M Y" }}{% else %}<span class="text-sage">-</span>{% endif %}
+                            {% if visit.next_due_date %}{{ visit.next_due_date|date:"j M Y" }}{% else %}<span class="text-sage">-</span>{% endif %}
                         </td>
                         {% if feature_access.charges.view %}<td class="text-right" data-label="Cost">
-                            {% if visit.cost %}&pound;{{ visit.cost|floatformat:2 }}{% else %}<span class="text-sage">-</span>{% endif %}
+                            {% if visit.cost %}{{ visit.cost|gbp }}{% else %}<span class="text-sage">-</span>{% endif %}
                         </td>{% endif %}
                         <td>
                             <a href="{% url 'farrier_update' visit.pk %}" hx-get="{% url 'farrier_update' visit.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit farrier visit" class="btn-ghost btn-xs">Edit</a>

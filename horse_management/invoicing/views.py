@@ -43,6 +43,7 @@ from .services import (
     StatementService,
 )
 from .utils import UnsupportedVatRateError, group_line_items_by_horse, write_xero_csv
+from core.templatetags.ui_extras import gbp
 
 logger = logging.getLogger(__name__)
 
@@ -633,14 +634,14 @@ def payment_create(request, pk):
             if invoice.balance_due <= 0:
                 messages.success(
                     request,
-                    f"Payment of £{payment.amount:.2f} recorded — "
+                    f"Payment of {gbp(payment.amount)} recorded — "
                     f"invoice {invoice.invoice_number} is now fully paid."
                 )
             else:
                 messages.success(
                     request,
-                    f"Payment of £{payment.amount:.2f} recorded — "
-                    f"£{invoice.balance_due:.2f} still outstanding."
+                    f"Payment of {gbp(payment.amount)} recorded — "
+                    f"{gbp(invoice.balance_due)} still outstanding."
                 )
             if in_popup:
                 return popup_saved_response()
@@ -684,8 +685,8 @@ def credit_note_create(request, pk):
                 invoice.refresh_from_db()
                 messages.success(
                     request,
-                    f"Credit note {credit.credit_note_number} for £{credit.amount:.2f} issued. "
-                    f"£{invoice.balance_due:.2f} now outstanding. Enter it in Xero too.",
+                    f"Credit note {credit.credit_note_number} for {gbp(credit.amount)} issued. "
+                    f"{gbp(invoice.balance_due)} now outstanding. Enter it in Xero too.",
                 )
                 return redirect('invoice_detail', pk=invoice.pk)
     else:
@@ -725,7 +726,7 @@ def payment_void(request, pk):
     invoice.refresh_from_db()
     messages.success(
         request,
-        f"Payment of £{payment.amount:.2f} voided. £{invoice.balance_due:.2f} now outstanding.",
+        f"Payment of {gbp(payment.amount)} voided. {gbp(invoice.balance_due)} now outstanding.",
         extra_tags=undo_tag(reverse('payment_unvoid', args=[payment.pk])),
     )
     return redirect('invoice_detail', pk=invoice.pk)
@@ -741,12 +742,12 @@ def payment_unvoid(request, pk):
     if payment.amount > invoice.balance_due:
         messages.error(
             request,
-            f"Restoring this £{payment.amount:.2f} payment would pay more than the "
-            f"£{invoice.balance_due:.2f} outstanding. Void the other payment first.",
+            f"Restoring this {gbp(payment.amount)} payment would pay more than the "
+            f"{gbp(invoice.balance_due)} outstanding. Void the other payment first.",
         )
         return redirect('invoice_detail', pk=invoice.pk)
     payment.unvoid()
-    messages.success(request, f"Payment of £{payment.amount:.2f} restored.")
+    messages.success(request, f"Payment of {gbp(payment.amount)} restored.")
     return redirect('invoice_detail', pk=invoice.pk)
 
 

@@ -1,3 +1,4 @@
+{% load ui_extras %}
 <!-- Header + Add Button -->
 <div class="flex items-center justify-between mb-4">
     <div></div>
@@ -60,14 +61,14 @@
                 <a href="{% url 'horse_detail' visit.horse.pk %}" class="list-card-link">
                     <span class="list-card-title">{{ visit.horse.name }}</span>
                 </a>
-                <div class="list-card-meta">{{ visit.get_work_done_display }} &middot; {{ visit.date|date:"d M Y" }}</div>
+                <div class="list-card-meta">{{ visit.get_work_done_display }} &middot; {{ visit.date|date:"j M Y" }}</div>
                 <div class="list-card-meta truncate">
                     {% if visit.service_provider %}{{ visit.service_provider.name }}{% endif %}
-                    {% if visit.next_due_date %}{% if visit.service_provider %} &middot; {% endif %}<span class="{% if not visit.is_superseded and visit.next_due_date < today %}text-error-red font-semibold{% elif visit.is_due_soon %}text-forest{% endif %}">due {{ visit.next_due_date|date:"d M Y" }}</span>{% endif %}
+                    {% if visit.next_due_date %}{% if visit.service_provider %} &middot; {% endif %}<span class="{% if not visit.is_superseded and visit.next_due_date < today %}text-error-red font-semibold{% elif visit.is_due_soon %}text-forest{% endif %}">due {{ visit.next_due_date|date:"j M Y" }}</span>{% endif %}
                 </div>
             </div>
             <div class="flex flex-col items-end gap-1 shrink-0">
-                {% if feature_access.charges.view %}{% if visit.cost %}<span class="font-semibold text-charcoal tabular-nums text-sm">&pound;{{ visit.cost|floatformat:2 }}</span>{% endif %}{% endif %}
+                {% if feature_access.charges.view %}{% if visit.cost %}<span class="font-semibold text-charcoal tabular-nums text-sm">{{ visit.cost|gbp }}</span>{% endif %}{% endif %}
                 <div class="list-card-actions">
                     <a href="{% url 'farrier_update' visit.pk %}" hx-get="{% url 'farrier_update' visit.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit farrier visit" class="btn-icon" title="Edit" aria-label="Edit farrier visit">
                         <svg class="w-4 h-4" aria-hidden="true"><use href="#i-pencil"/></svg>
@@ -103,16 +104,16 @@
                     <td>
                         <a href="{% url 'horse_detail' visit.horse.pk %}" class="link tap-pad">{{ visit.horse.name }}</a>
                     </td>
-                    <td class="text-sage">{{ visit.date|date:"d M Y" }}</td>
+                    <td class="text-sage">{{ visit.date|date:"j M Y" }}</td>
                     <td>{{ visit.get_work_done_display }}</td>
                     <td class="text-sage">
                         {% if visit.service_provider %}{{ visit.service_provider.name }}{% else %}<span class="text-sage">-</span>{% endif %}
                     </td>
                     <td class="{% if visit.next_due_date and not visit.is_superseded and visit.next_due_date < today %}text-error-red font-semibold{% elif visit.is_due_soon %}text-forest{% else %}text-sage{% endif %}">
-                        {% if visit.next_due_date %}{{ visit.next_due_date|date:"d M Y" }}{% else %}<span class="text-sage">-</span>{% endif %}
+                        {% if visit.next_due_date %}{{ visit.next_due_date|date:"j M Y" }}{% else %}<span class="text-sage">-</span>{% endif %}
                     </td>
                     {% if feature_access.charges.view %}<td class="text-right">
-                        {% if visit.cost %}&pound;{{ visit.cost|floatformat:2 }}{% else %}<span class="text-sage">-</span>{% endif %}
+                        {% if visit.cost %}{{ visit.cost|gbp }}{% else %}<span class="text-sage">-</span>{% endif %}
                     </td>{% endif %}
                     <td>
                         <a href="{% url 'farrier_update' visit.pk %}" hx-get="{% url 'farrier_update' visit.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit farrier visit" class="btn-ghost btn-xs">Edit</a>

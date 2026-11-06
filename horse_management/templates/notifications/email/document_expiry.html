@@ -26,7 +26,7 @@
                 <td>{{ doc.get_doc_type_display }}</td>
                 <td>{% if doc.horse %}{{ doc.horse.name }}{% else %}{{ doc.owner.name }}{% endif %}</td>
                 <td{% if doc.expiry_date < today %} class="expired"{% endif %}>
-                    {{ doc.expiry_date|date:"d M Y" }}{% if doc.expiry_date < today %} (expired){% endif %}
+                    {{ doc.expiry_date|date:"j M Y" }}{% if doc.expiry_date < today %} (expired){% endif %}
                 </td>
             </tr>
             {% endfor %}

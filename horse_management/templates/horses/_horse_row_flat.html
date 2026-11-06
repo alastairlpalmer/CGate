@@ -59,14 +59,14 @@ as it was on the card list this replaced.
     </td>
     {% if departed %}
     <td data-col="status" class="text-sm text-sage tabular-nums split-optional">
-        {% with p=horse.last_placements.0 %}{% if p and p.end_date %}{{ p.end_date|date:"d M Y" }}{% else %}&mdash;{% endif %}{% endwith %}
+        {% with p=horse.last_placements.0 %}{% if p and p.end_date %}{{ p.end_date|date:"j M Y" }}{% else %}&mdash;{% endif %}{% endwith %}
     </td>
     {% else %}
     <td data-col="status" class="split-optional">
         {% if horse.is_active %}
         <span class="badge-success"><span class="w-1.5 h-1.5 rounded-full bg-forest mr-1.5"></span>Active</span>
         {% else %}
-        <span class="badge-neutral">Departed{% with p=horse.last_placements.0 %}{% if p and p.end_date %}<span class="hidden md:inline">&nbsp;· {{ p.end_date|date:"d M Y" }}</span>{% endif %}{% endwith %}</span>
+        <span class="badge-neutral">Departed{% with p=horse.last_placements.0 %}{% if p and p.end_date %}<span class="hidden md:inline">&nbsp;· {{ p.end_date|date:"j M Y" }}</span>{% endif %}{% endwith %}</span>
         {% endif %}
     </td>
     {% endif %}

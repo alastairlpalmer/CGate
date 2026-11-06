@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load ui_extras %}
 
 {% block title %}{{ owner.name }} - Cgate{% endblock %}
 
@@ -81,7 +82,7 @@
                         <div class="mt-2 alert-error" role="alert">
                             <div class="text-sm">
                                 <p class="font-medium">Emails to this address are not arriving.</p>
-                                <p>{{ owner.email_bounce_reason|default:"Bounced" }}, {{ owner.email_bounced_at|date:"d M Y" }}. Nothing more is sent until you change the address{% if feature_access.owners.full %} or mark it as working{% endif %}.</p>
+                                <p>{{ owner.email_bounce_reason|default:"Bounced" }}, {{ owner.email_bounced_at|date:"j M Y" }}. Nothing more is sent until you change the address{% if feature_access.owners.full %} or mark it as working{% endif %}.</p>
                                 {% if feature_access.owners.full %}
                                 <form method="post" action="{% url 'owner_email_ok' owner.pk %}" class="mt-2">
                                     {% csrf_token %}
@@ -232,7 +233,7 @@
                             </td>
                             <td class="text-xs text-sage" data-label="Departed">
                                 {% with placement=horse.last_placements.0 %}
-                                {% if placement and placement.end_date %}{{ placement.end_date|date:"d M Y" }}{% else %}&mdash;{% endif %}
+                                {% if placement and placement.end_date %}{{ placement.end_date|date:"j M Y" }}{% else %}&mdash;{% endif %}
                                 {% endwith %}
                             </td>
                         </tr>
@@ -264,11 +265,11 @@
                 <tbody>
                     {% for charge in extra_charges %}
                     <tr>
-                        <td class="text-sage" data-label="Date">{{ charge.date|date:"d M Y" }}</td>
+                        <td class="text-sage" data-label="Date">{{ charge.date|date:"j M Y" }}</td>
                         <td class="text-charcoal font-medium" data-label="Horse">{{ charge.horse.name }}</td>
                         <td class="text-sage" data-label="Type">{{ charge.get_charge_type_display }}</td>
                         <td class="text-sage" data-label="Description">{{ charge.description }}</td>
-                        <td class="text-charcoal font-medium text-right" data-label="Amount">&pound;{{ charge.amount|floatformat:2 }}</td>
+                        <td class="text-charcoal font-medium text-right" data-label="Amount">{{ charge.amount|gbp }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -305,7 +306,7 @@
                         <td class="text-sage" data-label="Period">
                             {{ invoice.period_start }} - {{ invoice.period_end }}
                         </td>
-                        <td class="text-charcoal font-medium" data-label="Total">&pound;{{ invoice.total|floatformat:2 }}</td>
+                        <td class="text-charcoal font-medium" data-label="Total">{{ invoice.total|gbp }}</td>
                         <td data-label="Status">
                             {% if invoice.status == 'paid' %}
                             <span class="badge-success">{{ invoice.get_status_display }}</span>
@@ -317,7 +318,7 @@
                             <span class="badge-neutral">{{ invoice.get_status_display }}</span>
                             {% endif %}
                         </td>
-                        <td class="text-sage" data-label="Due Date">{{ invoice.due_date|date:"d M Y" }}</td>
+                        <td class="text-sage" data-label="Due Date">{{ invoice.due_date|date:"j M Y" }}</td>
                     </tr>
                     {% empty %}
                     <tr>

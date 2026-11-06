@@ -65,7 +65,7 @@
                     <div class="foal-cal-bar{% if row.record.status == 'born' %} is-born{% endif %}{% if row.past_due %} is-past-due{% endif %}"
                          style="left: {{ row.left }}%; width: {{ row.width }}%;"
                          role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ row.progress }}"
-                         aria-label="{{ row.mare.name }}: {% if row.record.status == 'born' %}foaled {{ row.end|date:'d M Y' }}{% else %}day {{ row.record.day_of_gestation }} of 340, due {{ row.due|date:'d M Y' }}{% endif %}">
+                         aria-label="{{ row.mare.name }}: {% if row.record.status == 'born' %}foaled {{ row.end|date:"j M Y" }}{% else %}day {{ row.record.day_of_gestation }} of 340, due {{ row.due|date:"j M Y" }}{% endif %}">
                         <i style="width: {{ row.progress }}%"></i>
                     </div>
                     {% for mk in row.markers %}

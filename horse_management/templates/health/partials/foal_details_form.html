@@ -9,7 +9,7 @@ record together.
     <div class="p-4 sm:p-5 space-y-4 sm:space-y-5">
         {% include 'includes/form_errors.html' with form=form intro="The details weren't saved:" %}
         <div class="rounded-lg bg-sand-50 border border-sand-100 px-3 py-2 text-sm text-charcoal-light">
-            Out of <span class="font-medium text-charcoal">{{ mare.name }}</span> by {{ record.stallion_name }} &middot; covered {{ record.date_covered|date:"d M Y" }}
+            Out of <span class="font-medium text-charcoal">{{ mare.name }}</span> by {{ record.stallion_name }} &middot; covered {{ record.date_covered|date:"j M Y" }}
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             <div class="sm:col-span-2{% if form.foal_name.errors %} field-invalid{% endif %}">

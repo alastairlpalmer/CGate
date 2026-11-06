@@ -80,7 +80,7 @@ does from the horse page, so nothing here has to know it is in a pane.
                 {% endif %}
             </div>
             <p class="mt-2 text-sm text-sage">
-                {% if horse.calculated_age %}<span class="text-charcoal-light font-medium">{{ horse.calculated_age }}yo</span> · {% endif %}{{ horse.get_color_display|default:"Colour not set" }} · {{ horse.get_sex_display|default:"Sex not set" }}{% if horse.date_of_birth %} · born {{ horse.date_of_birth|date:"d M Y" }}{% endif %}
+                {% if horse.calculated_age %}<span class="text-charcoal-light font-medium">{{ horse.calculated_age }}yo</span> · {% endif %}{{ horse.get_color_display|default:"Colour not set" }} · {{ horse.get_sex_display|default:"Sex not set" }}{% if horse.date_of_birth %} · born {{ horse.date_of_birth|date:"j M Y" }}{% endif %}
             </p>
             {% if ownership_shares %}
             <p class="mt-1 text-sm text-sage">
@@ -128,9 +128,9 @@ does from the horse page, so nothing here has to know it is in a pane.
             <dd class="pane-stat-value">
                 {% if current_placement %}
                 {{ current_placement.start_date|stay_length }}
-                <span class="pane-stat-note">from {{ current_placement.start_date|date:"d M Y" }}</span>
+                <span class="pane-stat-note">from {{ current_placement.start_date|date:"j M Y" }}</span>
                 {% elif last_placement.end_date %}
-                <span class="text-sage">Left {{ last_placement.end_date|date:"d M Y" }}</span>
+                <span class="text-sage">Left {{ last_placement.end_date|date:"j M Y" }}</span>
                 {% else %}
                 <span class="text-sage">&mdash;</span>
                 {% endif %}
@@ -200,7 +200,7 @@ does from the horse page, so nothing here has to know it is in a pane.
                 <span class="min-w-0 flex-1">
                     <a href="{{ document.file.url }}" target="_blank" rel="noopener" class="block text-sm font-medium text-charcoal hover:text-forest truncate">{{ document.title }}</a>
                     <span class="block text-xs text-sage truncate">
-                        {{ document.get_doc_type_display }} · Added {{ document.uploaded_at|date:"d M Y" }}{% if document.expiry_date %} · {% if document.is_expired %}<span class="text-error-red">Expired {{ document.expiry_date|date:"d M Y" }}</span>{% else %}Expires {{ document.expiry_date|date:"d M Y" }}{% endif %}{% endif %}
+                        {{ document.get_doc_type_display }} · Added {{ document.uploaded_at|date:"j M Y" }}{% if document.expiry_date %} · {% if document.is_expired %}<span class="text-error-red">Expired {{ document.expiry_date|date:"j M Y" }}</span>{% else %}Expires {{ document.expiry_date|date:"j M Y" }}{% endif %}{% endif %}
                     </span>
                 </span>
             </li>
@@ -255,16 +255,16 @@ does from the horse page, so nothing here has to know it is in a pane.
                     </span>
                     <span class="pane-event-note">
                         {% if event.type == 'placement' %}{% if event.obj.rate_type %}{{ event.obj.rate_type.name }}{% if feature_access.charges.view %} · {{ event.obj.rate_type.daily_rate|gbp }}/day{% endif %}{% else %}No rate set{% endif %}
-                        {% elif event.type == 'vaccination' %}{% if event.obj.vet %}Given by {{ event.obj.vet.name }}{% else %}Vaccination{% endif %}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"d M Y" }}{% endif %}
-                        {% elif event.type == 'farrier' %}{% if event.obj.service_provider %}{{ event.obj.service_provider.name }}{% else %}Farrier visit{% endif %}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"d M Y" }}{% endif %}
-                        {% elif event.type == 'worming' %}{{ event.obj.product_name }}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"d M Y" }}{% endif %}
+                        {% elif event.type == 'vaccination' %}{% if event.obj.vet %}Given by {{ event.obj.vet.name }}{% else %}Vaccination{% endif %}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"j M Y" }}{% endif %}
+                        {% elif event.type == 'farrier' %}{% if event.obj.service_provider %}{{ event.obj.service_provider.name }}{% else %}Farrier visit{% endif %}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"j M Y" }}{% endif %}
+                        {% elif event.type == 'worming' %}{{ event.obj.product_name }}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"j M Y" }}{% endif %}
                         {% elif event.type == 'egg_count' %}{{ event.obj.count }} eggs per gram{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}
                         {% elif event.type == 'vet_visit' %}{% if event.obj.vet %}{{ event.obj.vet.name }}{% else %}Vet visit{% endif %}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}
                         {% elif event.type == 'breeding' %}{{ event.obj.get_status_display }}
                         {% endif %}
                     </span>
                 </span>
-                <span class="pane-event-date">{{ event.date|date:"d M Y" }}</span>
+                <span class="pane-event-date">{{ event.date|date:"j M Y" }}</span>
             </li>
             {% endfor %}
         </ul>

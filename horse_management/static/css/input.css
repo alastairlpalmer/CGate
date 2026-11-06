@@ -1061,15 +1061,18 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 /* Needs action rows decide their shape by the width of their list, not the
    viewport (see .attn-list). From 34rem a row is one line: the name, what
    is due, how late, the button. The text block is a flex line whose parts
-   give way in order — where the horse is first, then what is due, the
-   name last — so the words that matter survive a narrow column. Where the
+   give way in order — where the horse is first, then what is due — and
+   the name keeps its width (up to half the line), so the words that
+   matter survive a narrow column. Where the
    horse is and the exact date join in from 48rem. */
 @container (min-width: 34rem) {
     .attn-item { grid-template-columns: 2.25rem minmax(0, 1fr) auto auto; align-items: center; }
     .attn-text { display: flex; align-items: baseline; min-width: 0; white-space: nowrap; }
     .attn-text > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .attn-text > .coat-dot { flex: 0 0 auto; overflow: visible; }
-    .attn-title { order: 1; flex: 0 1 auto; }
+    /* The name never gives way to the detail: it keeps its width, up to
+       half the line, so a row cannot read "O… · Left Bot…". */
+    .attn-title { order: 1; flex: 0 0 auto; max-width: 50%; }
     .attn-detail { order: 2; display: inline; flex: 0 2 auto; }
     .attn-sub { order: 3; display: none; flex: 0 20 auto; margin-left: 0; }
     .attn-text > .attn-detail:not(:first-child)::before,

@@ -200,23 +200,26 @@ class BulkDeleteTests(DraftDeleteTestCase):
 
 
 class StatusLabelTests(DraftDeleteTestCase):
-    """A draft past its due date was never sent: "Draft (past due)", not
-    "Overdue"."""
+    """A draft past its due date was never sent: "Draft" with a "Not sent ·
+    due date passed" warning, not "Overdue"."""
 
     def test_past_due_draft(self):
         self.draft.due_date = date(2020, 1, 1)
-        self.assertEqual(self.draft.status_label, 'Draft (past due)')
+        self.assertEqual(self.draft.status_label, 'Draft')
+        self.assertTrue(self.draft.draft_due_passed)
         self.assertEqual(self.draft.status_badge_class, 'badge-info')
 
     def test_sent_past_due_is_overdue(self):
         self.draft.status = Invoice.Status.SENT
         self.draft.due_date = date(2020, 1, 1)
         self.assertEqual(self.draft.status_label, 'Overdue')
+        self.assertFalse(self.draft.draft_due_passed)
         self.assertEqual(self.draft.status_badge_class, 'badge-danger')
 
     def test_paid_and_plain_draft(self):
         self.draft.due_date = date(2099, 1, 1)
         self.assertEqual(self.draft.status_label, 'Draft')
+        self.assertFalse(self.draft.draft_due_passed)
         self.draft.status = Invoice.Status.PAID
         self.assertEqual(self.draft.status_label, 'Paid')
         self.assertEqual(self.draft.status_badge_class, 'badge-success')
@@ -224,4 +227,5 @@ class StatusLabelTests(DraftDeleteTestCase):
     def test_list_shows_draft_past_due(self):
         Invoice.objects.filter(pk=self.draft.pk).update(due_date=date(2020, 1, 1))
         response = self.client.get(reverse("invoice_list"))
-        self.assertContains(response, "Draft (past due)")
+        self.assertContains(response, "Not sent · due date passed")
+        self.assertNotContains(response, "Draft (past due)")

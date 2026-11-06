@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load ui_extras %}
 
 {% block title %}Vet Visits - Cgate{% endblock %}
 
@@ -61,14 +62,14 @@
                         <td data-label="Horse">
                             <a href="{% url 'horse_detail' v.horse.pk %}" class="link tap-pad">{{ v.horse.name }}</a>
                         </td>
-                        <td class="text-sage" data-label="Date">{{ v.date|date:"d M Y" }}</td>
+                        <td class="text-sage" data-label="Date">{{ v.date|date:"j M Y" }}</td>
                         <td data-label="Reason">{{ v.reason|truncatewords:10 }}</td>
                         <td class="text-sage" data-label="Vet">{% if v.vet %}{{ v.vet.name }}{% else %}<span class="text-sage">-</span>{% endif %}</td>
                         <td class="{% if v.follow_up_date %}text-forest{% else %}text-sage{% endif %}" data-label="Follow-up">
-                            {% if v.follow_up_date %}{{ v.follow_up_date|date:"d M Y" }}{% else %}-{% endif %}
+                            {% if v.follow_up_date %}{{ v.follow_up_date|date:"j M Y" }}{% else %}-{% endif %}
                         </td>
                         {% if feature_access.charges.view %}<td class="text-right" data-label="Cost">
-                            &pound;{{ v.cost|floatformat:2 }}
+                            {{ v.cost|gbp }}
                         </td>{% endif %}
                         <td>
                             <a href="{% url 'vet_visit_update' v.pk %}" hx-get="{% url 'vet_visit_update' v.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vet visit" class="btn-ghost btn-xs">Edit</a>

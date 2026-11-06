@@ -9,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 
 from ..permissions import LEVEL_FULL, has_feature_access
+from core.templatetags.ui_extras import gbp
 
 
 @login_required
@@ -23,7 +24,7 @@ def recently_deleted(request):
             'title': 'Charges',
             'restore_url': 'charge_restore',
             'rows': [
-                (c, f"{c.horse.name}: {c.description or c.get_charge_type_display()}, £{c.amount:.2f} ({c.date:%d %b %Y})")
+                (c, f"{c.horse.name}: {c.description or c.get_charge_type_display()}, {gbp(c.amount)} ({c.date:%d %b %Y})")
                 for c in ExtraCharge.all_objects.deleted().select_related('horse', 'deleted_by').order_by('-deleted_at')
             ],
         })
@@ -32,7 +33,7 @@ def recently_deleted(request):
             'title': 'Yard costs',
             'restore_url': 'yard_cost_restore',
             'rows': [
-                (c, f"{c.description}, £{c.amount:.2f} ({c.date:%d %b %Y})")
+                (c, f"{c.description}, {gbp(c.amount)} ({c.date:%d %b %Y})")
                 for c in YardCost.all_objects.deleted().select_related('deleted_by').order_by('-deleted_at')
             ],
         })

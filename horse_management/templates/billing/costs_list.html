@@ -52,19 +52,19 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="card p-5 lg:p-6">
             <dt class="text-xs font-medium text-sage uppercase tracking-wide">This Month</dt>
-            <dd class="mt-1 text-2xl font-bold text-charcoal">&pound;{{ month_total|floatformat:2 }}</dd>
+            <dd class="mt-1 text-2xl font-bold text-charcoal">{{ month_total|gbp }}</dd>
         </div>
         <div class="card p-5 lg:p-6">
             <dt class="text-xs font-medium text-sage uppercase tracking-wide">This Year</dt>
-            <dd class="mt-1 text-2xl font-bold text-charcoal">&pound;{{ year_total|floatformat:2 }}</dd>
+            <dd class="mt-1 text-2xl font-bold text-charcoal">{{ year_total|gbp }}</dd>
         </div>
         <div class="card p-5 lg:p-6">
             <dt class="text-xs font-medium text-sage uppercase tracking-wide">Rechargeable Unbilled</dt>
-            <dd class="mt-1 text-2xl font-bold text-forest">&pound;{{ unbilled_total|floatformat:2 }}</dd>
+            <dd class="mt-1 text-2xl font-bold text-forest">{{ unbilled_total|gbp }}</dd>
         </div>
         <div class="card p-5 lg:p-6">
             <dt class="text-xs font-medium text-sage uppercase tracking-wide">Yard Costs (Month)</dt>
-            <dd class="mt-1 text-2xl font-bold text-charcoal">&pound;{{ yard_month_total|floatformat:2 }}</dd>
+            <dd class="mt-1 text-2xl font-bold text-charcoal">{{ yard_month_total|gbp }}</dd>
         </div>
     </div>
 
@@ -151,15 +151,15 @@
                 <tbody>
                     {% for cost in costs %}
                     <tr>
-                        <td class="text-sage" data-label="Date" title="{{ cost.date|date:"d M Y" }}">{{ cost.date|ago_label }}</td>
+                        <td class="text-sage" data-label="Date" title="{{ cost.date|date:"j M Y" }}">{{ cost.date|ago_label }}</td>
                         <td data-label="Category">
-                            <span class="{% if cost.category_key == 'hay' or cost.category_key == 'straw' or cost.category_key == 'feed' %}badge-success{% elif cost.category_key == 'vet' %}badge-danger{% elif cost.category_key == 'farrier' %}badge-warning{% elif cost.category_key == 'staff' or cost.category_key == 'rent' %}badge-info{% else %}badge-neutral{% endif %}">
+                            <span class="badge-neutral">
                                 {{ cost.category }}
                             </span>
                         </td>
                         <td class="text-charcoal" data-label="Description" title="{{ cost.description }}">{{ cost.description|truncatewords:10 }}</td>
                         <td class="text-sage" data-label="Supplier">{{ cost.supplier|default:"—" }}</td>
-                        <td class="text-right font-medium text-charcoal tabular-nums" data-label="Amount">&pound;{{ cost.amount|floatformat:2 }}</td>
+                        <td class="text-right font-medium text-charcoal tabular-nums" data-label="Amount">{{ cost.amount|gbp }}</td>
                         <td data-label="Horse">
                             {% if cost.horse_pk %}
                             <a href="{% url 'horse_detail' cost.horse_pk %}" class="link tap-pad">{{ cost.horse }}</a>

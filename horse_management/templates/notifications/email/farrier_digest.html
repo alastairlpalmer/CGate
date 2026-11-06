@@ -41,9 +41,9 @@
         {% for visit in visits %}
         <tr>
             <td>{{ visit.horse.name }}</td>
-            <td>{{ visit.date|date:"d/m/Y" }}</td>
+            <td>{{ visit.date|date:"j M Y" }}</td>
             <td>{{ visit.get_work_done_display }}</td>
-            <td>{{ visit.next_due_date|date:"d/m/Y" }}</td>
+            <td>{{ visit.next_due_date|date:"j M Y" }}</td>
         </tr>
         {% endfor %}
     </table>

@@ -79,6 +79,7 @@ from .models import (
     current_farrier_visits,
     current_vaccinations,
 )
+from core.templatetags.ui_extras import gbp
 
 
 # ─── Health Dashboard ────────────────────────────────────────────────
@@ -732,7 +733,7 @@ def bulk_health_apply(request):
         success_msg = f"{label} set for {count} horse{plural}."
     elif action_type == 'charge':
         success_msg = (
-            f"£{form.cleaned_data['amount']:,.2f} charged to the owner"
+            f"{gbp(form.cleaned_data['amount'])} charged to the owner"
             f"{'s' if count != 1 else ''} of {count} horse{plural}."
         )
     else:

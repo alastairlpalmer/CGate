@@ -11,6 +11,7 @@ from core.uploads import validate_file_content
 from core.softdelete import SoftDeleteModel
 from django.db import models
 from django.db.models import F, Q
+from core.templatetags.ui_extras import gbp
 
 
 class ServiceProvider(models.Model):
@@ -494,7 +495,7 @@ class ServiceItem(models.Model):
 
     @property
     def price_label(self):
-        return f"£{self.price:,.2f}"
+        return f"{gbp(self.price)}"
 
     def fill_value(self, attr):
         """The value a record form field takes from this item, or None.

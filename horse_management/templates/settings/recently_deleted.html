@@ -23,8 +23,8 @@
                 <div class="min-w-0">
                     <p class="text-sm text-charcoal">{{ label }}</p>
                     <p class="text-xs text-sage mt-0.5">
-                        Deleted {{ obj.deleted_at|date:"d M Y, H:i" }}{% if obj.deleted_by %} by {{ obj.deleted_by.email|default:obj.deleted_by.username }}{% endif %}
-                        &middot; removed for good on {{ obj.purge_after|date:"d M Y" }}
+                        Deleted {{ obj.deleted_at|date:"j M Y, H:i" }}{% if obj.deleted_by %} by {{ obj.deleted_by.email|default:obj.deleted_by.username }}{% endif %}
+                        &middot; removed for good on {{ obj.purge_after|date:"j M Y" }}
                     </p>
                 </div>
                 <form method="post" action="{% url section.restore_url obj.pk %}" class="shrink-0">

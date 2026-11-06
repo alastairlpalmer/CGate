@@ -52,7 +52,7 @@
                 <a href="{% url 'horse_detail' ec.horse.pk %}" class="list-card-link">
                     <span class="list-card-title">{{ ec.horse.name }}</span>
                 </a>
-                <div class="list-card-meta">{{ ec.date|date:"d M Y" }} &middot; {{ ec.get_sample_type_display }}{% if ec.lab_name %} &middot; {{ ec.lab_name }}{% endif %}</div>
+                <div class="list-card-meta">{{ ec.date|date:"j M Y" }} &middot; {{ ec.get_sample_type_display }}{% if ec.lab_name %} &middot; {{ ec.lab_name }}{% endif %}</div>
                 <div class="mt-1.5 flex items-center gap-1.5">
                     <span class="{{ ec.level_badge_class }}">{{ ec.level_label }}</span>
                     <span class="text-xs font-semibold {% if ec.is_high %}text-error-red{% else %}text-charcoal{% endif %}">{{ ec.count }} EPG</span>
@@ -92,7 +92,7 @@
                     <td>
                         <a href="{% url 'horse_detail' ec.horse.pk %}" class="link tap-pad">{{ ec.horse.name }}</a>
                     </td>
-                    <td class="text-sage">{{ ec.date|date:"d M Y" }}</td>
+                    <td class="text-sage">{{ ec.date|date:"j M Y" }}</td>
                     <td class="{% if ec.is_high %}text-error-red{% endif %} font-semibold">
                         {{ ec.count }}
                     </td>

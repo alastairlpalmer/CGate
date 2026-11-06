@@ -364,15 +364,21 @@ class Invoice(models.Model):
     def status_label(self):
         """The status word the lists show.
 
-        A draft past its due date was never sent, so it is "Draft (past
-        due)", not "Overdue": nobody owes it yet, and it can still be
-        deleted.
+        A draft past its due date was never sent, so it stays "Draft", not
+        "Overdue": nobody owes it yet, and it can still be deleted. The
+        lists show ``draft_due_passed`` as a separate warning line.
         """
         if self.status == self.Status.DRAFT:
-            return 'Draft (past due)' if self.is_overdue else 'Draft'
+            return 'Draft'
         if self.is_overdue:
             return 'Overdue'
         return self.get_status_display()
+
+    @property
+    def draft_due_passed(self):
+        """True for a draft that was never sent and whose due date has
+        passed. The lists show it as "Not sent · due date passed"."""
+        return self.status == self.Status.DRAFT and self.is_overdue
 
     @property
     def status_badge_class(self):

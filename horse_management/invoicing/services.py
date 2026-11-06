@@ -20,6 +20,7 @@ from core.models import (
 )
 from invoicing.models import LIVE_PAYMENTS, Invoice, InvoiceLineItem, Payment
 from .utils import format_date_short, format_date_short_year, group_preview_charges_by_horse
+from core.templatetags.ui_extras import gbp
 
 
 class DuplicateInvoiceError(Exception):
@@ -1127,7 +1128,7 @@ def issue_credit_note(invoice, amount, reason, date, user=None):
     if invoice.status not in (Invoice.Status.SENT, Invoice.Status.OVERDUE, Invoice.Status.PAID):
         raise CreditNoteRefused("Only an invoice that has been sent can be credited. Edit a draft instead.")
     if amount <= 0 or amount > invoice.balance_due:
-        raise CreditNoteRefused(f"A credit note must be between £0.01 and the £{invoice.balance_due:.2f} still owed.")
+        raise CreditNoteRefused(f"A credit note must be between £0.01 and the {gbp(invoice.balance_due)} still owed.")
     number = BusinessSettings.get_settings().get_next_credit_note_number()
     credit = Payment.objects.create(
         invoice=invoice, date=date, amount=amount,

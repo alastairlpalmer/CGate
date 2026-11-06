@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load ui_extras %}
 
 {% block title %}Extra Charges - Cgate{% endblock %}
 
@@ -110,10 +111,10 @@
                         <span class="list-card-title line-clamp-2">{{ charge.description }}</span>
                     </a>
                     <div class="list-card-meta">
-                        {{ charge.date|date:"d M Y" }} &middot; {{ charge.horse.name }} &middot; {{ charge.owner.name }}
+                        {{ charge.date|date:"j M Y" }} &middot; {{ charge.horse.name }} &middot; {{ charge.owner.name }}
                     </div>
                     <div class="mt-1.5 flex items-center gap-1.5">
-                        <span class="{% if charge.charge_type == 'vet' %}badge-danger{% elif charge.charge_type == 'farrier' %}badge-warning{% elif charge.charge_type == 'feed' %}badge-success{% else %}badge-neutral{% endif %}">
+                        <span class="badge-neutral">
                             {{ charge.get_charge_type_display }}
                         </span>
                         {% if charge.invoiced %}
@@ -124,7 +125,7 @@
                     </div>
                 </div>
                 <div class="flex flex-col items-end gap-1 shrink-0">
-                    <span class="font-semibold text-charcoal tabular-nums">&pound;{{ charge.amount|floatformat:2 }}</span>
+                    <span class="font-semibold text-charcoal tabular-nums">{{ charge.amount|gbp }}</span>
                     {% if not charge.invoiced %}
                     <div class="list-card-actions mt-1">
                         <a href="{% url 'charge_delete' charge.pk %}" class="btn-icon-danger" title="Delete" aria-label="Delete charge">
@@ -155,7 +156,7 @@
                 <tbody>
                     {% for charge in charges %}
                     <tr>
-                        <td class="text-sage">{{ charge.date|date:"d M Y" }}</td>
+                        <td class="text-sage whitespace-nowrap">{{ charge.date|date:"j M Y" }}</td>
                         <td>
                             <a href="{% url 'horse_detail' charge.horse.pk %}" class="link tap-pad">{{ charge.horse.name }}</a>
                         </td>
@@ -163,12 +164,12 @@
                             <a href="{% url 'owner_detail' charge.owner.pk %}" class="link tap-pad">{{ charge.owner.name }}</a>
                         </td>
                         <td>
-                            <span class="{% if charge.charge_type == 'vet' %}badge-danger{% elif charge.charge_type == 'farrier' %}badge-warning{% elif charge.charge_type == 'feed' %}badge-success{% else %}badge-neutral{% endif %}">
+                            <span class="badge-neutral">
                                 {{ charge.get_charge_type_display }}
                             </span>
                         </td>
                         <td class="text-charcoal" title="{{ charge.description }}">{{ charge.description|truncatewords:10 }}</td>
-                        <td class="text-right font-medium text-charcoal">&pound;{{ charge.amount|floatformat:2 }}</td>
+                        <td class="text-right font-medium text-charcoal whitespace-nowrap">{{ charge.amount|gbp }}</td>
                         <td>
                             {% if charge.invoiced %}
                                 <span class="badge-success">Invoiced</span>

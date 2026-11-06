@@ -60,7 +60,7 @@
                         <td data-label="Horse">
                             <a href="{% url 'horse_detail' t.horse.pk %}" class="link tap-pad">{{ t.horse.name }}</a>
                         </td>
-                        <td class="text-sage" data-label="Date">{{ t.date|date:"d M Y" }}</td>
+                        <td class="text-sage" data-label="Date">{{ t.date|date:"j M Y" }}</td>
                         <td data-label="Product">{{ t.product_name }}</td>
                         <td class="text-sage" data-label="Active Ingredient">{{ t.active_ingredient|default:"-" }}</td>
                         <td class="text-sage" data-label="Administered By">{{ t.administered_by|default:"-" }}</td>

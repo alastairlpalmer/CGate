@@ -1,3 +1,4 @@
+{% load ui_extras %}
 <!-- Header + Add Button -->
 <div class="flex items-center justify-between mb-4">
     <div></div>
@@ -54,12 +55,12 @@
                 </a>
                 <div class="list-card-meta line-clamp-2">{{ v.reason|truncatewords:10 }}</div>
                 <div class="list-card-meta">
-                    {{ v.date|date:"d M Y" }}{% if v.vet %} &middot; {{ v.vet.name }}{% endif %}
-                    {% if v.follow_up_date %} &middot; <span class="text-forest">follow-up {{ v.follow_up_date|date:"d M Y" }}</span>{% endif %}
+                    {{ v.date|date:"j M Y" }}{% if v.vet %} &middot; {{ v.vet.name }}{% endif %}
+                    {% if v.follow_up_date %} &middot; <span class="text-forest">follow-up {{ v.follow_up_date|date:"j M Y" }}</span>{% endif %}
                 </div>
             </div>
             <div class="flex flex-col items-end gap-1 shrink-0">
-                {% if feature_access.charges.view %}<span class="font-semibold text-charcoal tabular-nums text-sm">&pound;{{ v.cost|floatformat:2 }}</span>{% endif %}
+                {% if feature_access.charges.view %}<span class="font-semibold text-charcoal tabular-nums text-sm">{{ v.cost|gbp }}</span>{% endif %}
                 <div class="list-card-actions">
                     <a href="{% url 'vet_visit_update' v.pk %}" hx-get="{% url 'vet_visit_update' v.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vet visit" class="btn-icon" title="Edit" aria-label="Edit vet visit">
                         <svg class="w-4 h-4" aria-hidden="true"><use href="#i-pencil"/></svg>
@@ -95,14 +96,14 @@
                     <td>
                         <a href="{% url 'horse_detail' v.horse.pk %}" class="link tap-pad">{{ v.horse.name }}</a>
                     </td>
-                    <td class="text-sage">{{ v.date|date:"d M Y" }}</td>
+                    <td class="text-sage">{{ v.date|date:"j M Y" }}</td>
                     <td>{{ v.reason|truncatewords:10 }}</td>
                     <td class="text-sage">{% if v.vet %}{{ v.vet.name }}{% else %}<span class="text-sage">-</span>{% endif %}</td>
                     <td class="{% if v.follow_up_date %}text-forest{% else %}text-sage{% endif %}">
-                        {% if v.follow_up_date %}{{ v.follow_up_date|date:"d M Y" }}{% else %}-{% endif %}
+                        {% if v.follow_up_date %}{{ v.follow_up_date|date:"j M Y" }}{% else %}-{% endif %}
                     </td>
                     {% if feature_access.charges.view %}<td class="text-right">
-                        &pound;{{ v.cost|floatformat:2 }}
+                        {{ v.cost|gbp }}
                     </td>{% endif %}
                     <td>
                         <a href="{% url 'vet_visit_update' v.pk %}" hx-get="{% url 'vet_visit_update' v.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vet visit" class="btn-ghost btn-xs">Edit</a>

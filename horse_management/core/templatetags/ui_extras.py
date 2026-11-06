@@ -1,7 +1,7 @@
 """Custom template filters for UI improvements."""
 
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from django import template
 from django.core.cache import cache
@@ -165,9 +165,14 @@ def kind_icon(kind):
 
 @register.filter
 def gbp(value):
-    """``value|gbp`` → ``£1,234.50``. None and blanks render as £0.00."""
+    """``value|gbp`` → ``£1,234.50``. None and blanks render as £0.00.
+
+    Rounds half up, the same as ``floatformat:2``, so a total never moves
+    by a penny when a template changes from one to the other.
+    """
     try:
-        amount = Decimal(value or 0)
+        amount = Decimal(str(value) if isinstance(value, float) else (value or 0))
+        amount = amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
     except (InvalidOperation, TypeError, ValueError):
         return value
     sign = '-' if amount < 0 else ''

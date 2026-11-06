@@ -28,6 +28,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from ..permissions import LEVEL_FULL, LEVEL_VIEW, has_feature_access
+from core.templatetags.ui_extras import gbp
 
 HORIZON_DAYS = 14
 
@@ -268,7 +269,7 @@ def _vaccinations(ctx):
         actions = []
         if full:
             actions.append(ctx.record_action(
-                'vaccination_create', vax.horse, 'Record', 'Record vaccination',
+                'vaccination_create', vax.horse, 'Record vaccination', 'Record vaccination',
                 primary=deadline < ctx.today,
             ))
         items.append(ctx.horse_item(
@@ -300,7 +301,7 @@ def _farrier(ctx):
         actions = []
         if full:
             actions.append(ctx.record_action(
-                'farrier_create', visit.horse, 'Record visit', 'Record farrier visit',
+                'farrier_create', visit.horse, 'Record farrier visit', 'Record farrier visit',
                 primary=due < ctx.today,
             ))
         items.append(ctx.horse_item(
@@ -497,7 +498,7 @@ def _breeding(ctx):
                     actions = []
                     if health_full:
                         actions.append(ctx.record_action(
-                            'vaccination_create', mare, 'Record', 'Record EHV vaccination',
+                            'vaccination_create', mare, 'Record vaccination', 'Record EHV vaccination',
                             primary=due < ctx.today,
                         ))
                     items.append(ctx.horse_item(
@@ -560,7 +561,7 @@ def _foals(ctx):
             actions = []
             if health_full:
                 actions.append(ctx.record_action(
-                    'vet_visit_create', foal, 'Record', f'Vet visit for {foal.name}',
+                    'vet_visit_create', foal, 'Record vet visit', f'Vet visit for {foal.name}',
                     primary=True,
                 ))
             items.append(ctx.horse_item(
@@ -765,7 +766,7 @@ def _invoices(ctx):
             kind='invoice',
             severity=ctx.severity_for(due),
             title=invoice.invoice_number,
-            detail=f'{invoice.owner.name} · £{invoice.balance:,.2f}{partial} outstanding',
+            detail=f'{invoice.owner.name} · {gbp(invoice.balance)}{partial} outstanding',
             url=reverse('invoice_detail', args=[invoice.pk]),
             due_date=due,
             delta=ctx.delta(due),
@@ -1007,7 +1008,7 @@ def _collapse_invoice_rows(rows_):
     summary_item = AttentionItem(
         kind='invoice', severity=worst.severity,
         title=f'{len(items)} more unpaid invoices',
-        detail=f'£{total:,.2f} owed · see aged debtors',
+        detail=f'{gbp(total)} owed · see aged debtors',
         url=reverse('aged_debtors'), due_date=first_due,
         delta=worst.delta, amount=total, key='invoices-more',
     )
@@ -1052,7 +1053,11 @@ def health_lists(user, *, today=None):
     items = collect(
         user, today=today, horizon_days=30, kinds={'vaccination', 'farrier', 'vet'},
     )
-    action_labels = {'vaccination': 'Re-vaccinate', 'farrier': 'Book', 'vet': 'New Visit'}
+    action_labels = {
+        'vaccination': 'Record vaccination',
+        'farrier': 'Record farrier visit',
+        'vet': 'Record vet visit',
+    }
     type_labels = {'vaccination': 'Vaccination', 'farrier': 'Farrier', 'vet': 'Vet Follow-up'}
     action_required, coming_up = [], []
     for item in items:

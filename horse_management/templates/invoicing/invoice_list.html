@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load ui_extras %}
 
 {% block title %}Invoices - Cgate{% endblock %}
 
@@ -113,9 +114,9 @@
     <!-- Filtered totals (whole result set, not just this page) -->
     <div class="card px-4 py-3 sm:px-5 flex flex-wrap items-center gap-x-6 gap-y-1.5 text-sm">
         <span class="text-sage">{{ summary_count }} invoice{{ summary_count|pluralize }}</span>
-        <span class="text-charcoal">Invoiced: <strong class="tabular-nums">&pound;{{ summary_invoiced|floatformat:2 }}</strong></span>
+        <span class="text-charcoal">Invoiced: <strong class="tabular-nums">{{ summary_invoiced|gbp }}</strong></span>
         <span class="{% if summary_outstanding > 0 %}text-error-red{% else %}text-charcoal{% endif %}">
-            Outstanding: <strong class="tabular-nums">&pound;{{ summary_outstanding|floatformat:2 }}</strong>
+            Outstanding: <strong class="tabular-nums">{{ summary_outstanding|gbp }}</strong>
         </span>
     </div>
 
@@ -138,11 +139,12 @@
                         <span class="list-card-title">{{ invoice.invoice_number }}</span>
                     </a>
                     <div class="list-card-meta truncate">{{ invoice.owner.name }}{% if invoice.horse %} · {{ invoice.horse.name }}{% endif %}</div>
-                    <div class="list-card-meta">{{ invoice.period_start|date:"d M" }} &ndash; {{ invoice.period_end|date:"d M Y" }}</div>
+                    <div class="list-card-meta">{{ invoice.period_start|date:"j M" }} &ndash; {{ invoice.period_end|date:"j M Y" }}</div>
                     <div class="mt-1.5 flex items-center gap-1.5">
-                        <span class="{{ invoice.status_badge_class }}">
+                        <span class="{{ invoice.status_badge_class }} whitespace-nowrap">
                             {{ invoice.status_label }}
                         </span>
+                            {% if invoice.draft_due_passed %}<span class="block mt-1 text-xs font-medium text-saddle whitespace-nowrap">Not sent · due date passed</span>{% endif %}
                         {% if invoice.is_send_queued %}<span class="badge-info" title="Queued — the email is being sent">Sending…</span>{% elif invoice.send_error and invoice.status == 'draft' %}<span class="badge-danger" title="{{ invoice.send_error }}">Send failed</span>{% endif %}
                         {% if invoice.xero_sync and invoice.xero_sync.sync_status == 'pushed' or invoice.xero_sync and invoice.xero_sync.sync_status == 'paid_in_xero' %}
                         <span class="text-info-blue" title="Synced to Xero">
@@ -152,11 +154,11 @@
                     </div>
                 </div>
                 <div class="flex flex-col items-end gap-1 shrink-0">
-                    <span class="font-semibold text-charcoal tabular-nums">&pound;{{ invoice.total|floatformat:2 }}</span>
+                    <span class="font-semibold text-charcoal tabular-nums">{{ invoice.total|gbp }}</span>
                     {% if invoice.status != 'paid' and invoice.status != 'cancelled' and invoice.balance != invoice.total %}
-                    <span class="text-xs text-saddle font-medium tabular-nums">&pound;{{ invoice.balance|floatformat:2 }} due</span>
+                    <span class="text-xs text-saddle font-medium tabular-nums">{{ invoice.balance|gbp }} due</span>
                     {% endif %}
-                    <span class="text-xs {% if invoice.is_overdue and invoice.status != 'paid' %}text-error-red font-medium{% else %}text-sage{% endif %}">Due {{ invoice.due_date|date:"d M Y" }}</span>
+                    <span class="text-xs {% if invoice.is_overdue and invoice.status != 'paid' %}text-error-red font-medium{% else %}text-sage{% endif %}">Due {{ invoice.due_date|date:"j M Y" }}</span>
                     <div class="list-card-actions mt-1">
                         <a href="{% url 'invoice_pdf' invoice.pk %}" class="btn-icon" hx-boost="false" title="Download PDF" aria-label="Download PDF of {{ invoice.invoice_number }}">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
@@ -187,12 +189,12 @@
                                    @change="document.querySelectorAll('input[data-invoice-cb]').forEach(cb => cb.checked = $event.target.checked); refreshInv()">
                         </th>
                         {% endif %}
-                        <th>Invoice #</th>
+                        <th class="whitespace-nowrap">Invoice</th>
                         <th>Owner</th>
                         <th>Period</th>
                         <th class="text-right">Total</th>
                         <th>Status</th>
-                        <th>Due Date</th>
+                        <th class="whitespace-nowrap">Due date</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -214,17 +216,18 @@
                             <a href="{% url 'owner_detail' invoice.owner.pk %}" class="link tap-pad">{{ invoice.owner.name }}</a>
                             {% if invoice.horse %}<span class="block text-xs text-sage">{{ invoice.horse.name }}</span>{% endif %}
                         </td>
-                        <td class="text-sage">{{ invoice.period_start }} - {{ invoice.period_end }}</td>
-                        <td class="text-right font-medium text-charcoal">
-                            &pound;{{ invoice.total|floatformat:2 }}
+                        <td class="text-sage whitespace-nowrap">{% if invoice.period_start.year == invoice.period_end.year %}{{ invoice.period_start|date:"j M" }}{% else %}{{ invoice.period_start|date:"j M Y" }}{% endif %} – {{ invoice.period_end|date:"j M Y" }}</td>
+                        <td class="text-right font-medium text-charcoal whitespace-nowrap">
+                            {{ invoice.total|gbp }}
                             {% if invoice.status != 'paid' and invoice.status != 'cancelled' and invoice.balance != invoice.total %}
-                            <span class="block text-xs font-normal text-sage">&pound;{{ invoice.balance|floatformat:2 }} due</span>
+                            <span class="block text-xs font-normal text-sage">{{ invoice.balance|gbp }} due</span>
                             {% endif %}
                         </td>
                         <td>
-                            <span class="{{ invoice.status_badge_class }}">
+                            <span class="{{ invoice.status_badge_class }} whitespace-nowrap">
                                 {{ invoice.status_label }}
                             </span>
+                            {% if invoice.draft_due_passed %}<span class="block mt-1 text-xs font-medium text-saddle whitespace-nowrap">Not sent · due date passed</span>{% endif %}
                             {% if invoice.is_send_queued %}<span class="badge-info ml-1" title="Queued — the email is being sent">Sending…</span>{% elif invoice.send_error and invoice.status == 'draft' %}<span class="badge-danger ml-1" title="{{ invoice.send_error }}">Send failed</span>{% endif %}
                             {% if invoice.xero_sync and invoice.xero_sync.sync_status == 'pushed' or invoice.xero_sync and invoice.xero_sync.sync_status == 'paid_in_xero' %}
                             <span class="inline-block ml-1 text-info-blue" title="Synced to Xero">
@@ -234,8 +237,8 @@
                             </span>
                             {% endif %}
                         </td>
-                        <td class="{% if invoice.is_overdue and invoice.status != 'paid' %}text-error-red font-medium{% else %}text-sage{% endif %}">
-                            {{ invoice.due_date|date:"d M Y" }}
+                        <td class="whitespace-nowrap {% if invoice.is_overdue and invoice.status != 'paid' %}text-error-red font-medium{% else %}text-sage{% endif %}">
+                            {{ invoice.due_date|date:"j M Y" }}
                         </td>
                         <td>
                             <div class="flex items-center gap-1">
