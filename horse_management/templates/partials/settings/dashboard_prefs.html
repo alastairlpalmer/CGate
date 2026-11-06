@@ -2,10 +2,11 @@
     <p class="settings-note">Show or hide widgets on your home dashboard. Changes save automatically.</p>
     <div class="settings-rows">
         {% for item in flat_items %}
-        <div class="settings-row" data-widget-key="{{ item.key }}">
+        <div class="settings-row" data-widget-key="{{ item.key }}" x-data="{ on: {{ item.visible|yesno:'true,false' }}, saved: false }">
             <span class="settings-row-title truncate">{{ item.name }}</span>
+            {# Each switch saves at once and says so (UX plan F2). #}
+            <span class="ml-auto text-xs text-forest" x-show="saved" x-cloak x-transition.opacity role="status">Saved</span>
             <button type="button" role="switch"
-                    x-data="{ on: {{ item.visible|yesno:'true,false' }} }"
                     :aria-checked="on ? 'true' : 'false'"
                     aria-checked="{{ item.visible|yesno:'true,false' }}"
                     @click="on = !on;
@@ -13,7 +14,7 @@
                               values: { key: '{{ item.key }}', visible: on ? 'true' : 'false' },
                               swap: 'none',
                               headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-                            });"
+                            }).then(() => { saved = true; setTimeout(() => saved = false, 1500); });"
                     class="form-toggle shrink-0"
                     aria-label="Toggle {{ item.name }}">
                 <span class="form-toggle-thumb"></span>

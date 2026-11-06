@@ -1,0 +1,3 @@
+{% comment %}Django's option, with its blank "---------" spelt as "Choose…":
+dashes read as a broken field (UX plan F1). A form that sets its own empty
+label (e.g. "Choose a horse…") keeps it.{% endcomment %}<option value="{{ widget.value|stringformat:'s' }}"{% include "django/forms/widgets/attrs.html" %}>{% if widget.label == '---------' %}Choose…{% else %}{{ widget.label }}{% endif %}</option>

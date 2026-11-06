@@ -30,6 +30,14 @@
                 <legend class="section-title">Vaccination Details</legend>
 
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <label for="{{ form.horse.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.horse.label }}</label>
+                        {{ form.horse }}
+                        {% if form.horse.errors %}
+                          <p id="{{ form.horse.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.horse.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
                     <div class="sm:col-span-2{% if form.service_item.errors %} field-invalid{% endif %}">
                         <label for="{{ form.service_item.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.service_item.label }}</label>
                         {{ form.service_item }}
@@ -39,14 +47,6 @@
                         <p class="text-xs text-sage mt-1">Pick a service to fill in the price. Choose Other to enter everything yourself.</p>
                     </div>
                     <div class="sm:col-span-2">
-                        <label for="{{ form.horse.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.horse.label }}</label>
-                        {{ form.horse }}
-                        {% if form.horse.errors %}
-                          <p id="{{ form.horse.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.horse.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-
-                    <div class="sm:col-span-2">
                         <label for="{{ form.vaccination_type.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.vaccination_type.label }}</label>
                         {{ form.vaccination_type }}
                         {% if form.vaccination_type.errors %}
@@ -54,7 +54,15 @@
                         {% endif %}
                     </div>
 
-                    {% include "includes/form_field.html" with field=form.new_type_name %}
+                    {% comment %}A new type is rare, so its box waits behind a link
+                    (UX plan F1). It opens by itself when it holds a value or an
+                    error.{% endcomment %}
+                    <div class="sm:col-span-2 -mt-3" x-data="{ open: {% if form.new_type_name.value or form.new_type_name.errors %}true{% else %}false{% endif %} }">
+                        <button type="button" class="link text-xs tap-pad" x-show="!open" @click="open = true; $nextTick(() => document.getElementById('{{ form.new_type_name.id_for_label }}').focus())">+ Add a new vaccination type</button>
+                        <div x-show="open" {% if not form.new_type_name.value and not form.new_type_name.errors %}x-cloak{% endif %}>
+                            {% include "includes/form_field.html" with field=form.new_type_name %}
+                        </div>
+                    </div>
                     {% include "includes/form_field.html" with field=form.course_stage %}
 
                     <div>
@@ -76,13 +84,11 @@
 
                     <div x-data="{ adding: false }">
                         <label for="{{ form.vet.id_for_label }}" class="text-sm font-medium text-charcoal">Vet</label>
-                        <div class="flex gap-2 items-start">
-                            <div class="flex-1">
-                                {{ form.vet }}
-                            </div>
+                        <div class="input-group">
+                            {{ form.vet }}
                             <button type="button"
                                     @click="adding = !adding"
-                                    class="btn-secondary min-w-[44px] px-2 py-1.5 text-sm"
+                                    class="input-group-button text-sm"
                                     title="Add new vet"
                                     :aria-label="adding ? 'Cancel adding vet' : 'Add new vet'">
                                 <span x-text="adding ? '✕' : '+'"></span>

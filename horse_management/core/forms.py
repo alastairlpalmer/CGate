@@ -12,6 +12,7 @@ from django.db.models import Q
 
 from .geo import coords_from_link, parse_coords_text
 from .images import heic_to_jpeg
+from .widgets import MoneyInput
 from .models import (
     BusinessSettings, Document, Horse, HorsePhoto, Location, Owner,
     OwnershipShare, Placement, RateType, SiteSettings, validate_coordinate_pair,
@@ -698,7 +699,7 @@ class RateTypeForm(forms.ModelForm):
         fields = ['name', 'daily_rate', 'description', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
-            'daily_rate': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
+            'daily_rate': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'description': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
         }
@@ -715,7 +716,7 @@ class RatePriceForm(forms.Form):
 
     daily_rate = forms.DecimalField(
         label='New price per day (£)', min_value=Decimal('0.00'), max_digits=8, decimal_places=2,
-        widget=forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
+        widget=MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
     )
     effective_from = forms.DateField(
         label='From', input_formats=['%Y-%m-%d'],

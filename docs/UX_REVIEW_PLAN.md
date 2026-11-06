@@ -16,8 +16,8 @@ templates and `static/css/input.css` to confirm each finding.
 | 1. Quick fixes | Done (alastairlpalmer/CGate#242) |
 | 2. Action hierarchy | Done (alastairlpalmer/CGate#243) |
 | 3. Phone lists and orientation | Done (alastairlpalmer/CGate#244) |
-| 4. Data views | Done in this branch: C3, C5, C6, D2, D3, D4, H1 (see notes in the pull request) |
-| 5. Forms and settings | Not started |
+| 4. Data views | Done (alastairlpalmer/CGate#245) |
+| 5. Forms and settings | Done in this branch: F1, F2 |
 
 ## 1. Summary
 
