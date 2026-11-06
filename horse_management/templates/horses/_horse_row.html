@@ -1,3 +1,4 @@
+{% load ui_extras %}
 {% comment %}
 One horse in the horse list. One markup, two shapes.
 
@@ -42,6 +43,27 @@ so it needs no breakpoint of its own.
             </div>
         </a>
     </td>
+    {% if needs_action_only %}
+    {% comment %}What this horse needs (the "Needs action" view): the
+    dashboard's wording, how late it is, and its record button. Lifted over
+    the row's tap target on a phone, so the buttons work.{% endcomment %}
+    <td data-col="needs">
+        <ul class="needs-list">
+            {% for need in horse.health_flag.items %}
+            <li class="needs-item">
+                <span class="health-dot is-{{ need.severity }}" aria-hidden="true"></span>
+                <span class="needs-body">
+                    <span class="needs-text">
+                        <span class="text-charcoal">{{ need.detail }}</span>
+                        <span class="{% if need.severity == 'overdue' %}text-error-red{% else %}text-saddle{% endif %} whitespace-nowrap">{{ need.due_date|due_label }}</span>
+                    </span>
+                    {% if need.action %}{% include 'partials/dashboard/_action.html' with action=need.action %}{% endif %}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+    </td>
+    {% endif %}
     {% if group_kind != 'owner' %}
     <td data-col="owner" class="text-sm">
         <div class="flex items-center gap-2 min-w-0">

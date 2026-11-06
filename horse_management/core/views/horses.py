@@ -1918,8 +1918,10 @@ def _health_flags(user, horses=()):
     """``{horse pk: flag}`` for horses with a health item overdue or due in
     the next fortnight, from the same collectors as the dashboard, so the
     list and the dashboard never disagree. A flag is ``{'severity':
-    'overdue' | 'due', 'text': 'Vaccination overdue, …'}``; overdue wins
-    when a horse has both. A fixed handful of queries, whatever the size of
+    'overdue' | 'due', 'text': 'Vaccination overdue, …', 'items': [...]}``;
+    overdue wins when a horse has both. ``items`` (earliest due first)
+    feeds the Needs column of the "Needs action" view: ``detail``,
+    ``due_date``, ``severity`` and the record ``action``. A fixed handful of queries, whatever the size of
     the list.
     """
     from ..dashboard import attention
@@ -1942,12 +1944,22 @@ def _health_flags(user, horses=()):
             continue
         what = item.detail.split(' · ', 1)[0] if item.detail else item.kind
         line = f"{what} {'overdue' if item.severity == 'overdue' else 'due soon'}"
-        flag = flags.setdefault(item.horse_id, {'severity': item.severity, 'lines': []})
+        flag = flags.setdefault(
+            item.horse_id, {'severity': item.severity, 'lines': [], 'items': []})
         if item.severity == 'overdue':
             flag['severity'] = 'overdue'
         if line not in flag['lines']:
             flag['lines'].append(line)
+        # What the Needs column shows: the dashboard's own wording ("Farrier ·
+        # Full set"), when it was due, and its record button.
+        flag['items'].append({
+            'severity': item.severity,
+            'detail': item.detail or what,
+            'due_date': item.due_date,
+            'action': item.actions[0] if item.actions else None,
+        })
     for flag in flags.values():
         flag['text'] = '; '.join(flag['lines'])
+        flag['items'].sort(key=lambda entry: entry['due_date'] or date.max)
     return flags
 
