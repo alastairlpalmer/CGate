@@ -151,6 +151,17 @@ class XeroTokenExpiredError(XeroAuthError):
     """Raised when refresh token has expired (re-auth required)."""
 
 
+class XeroOrganisationAccessError(XeroTokenExpiredError):
+    """Raised when Xero refuses access to the connected organisation (403).
+
+    The token itself still works, but the organisation is no longer in
+    this app's Xero connections (Cgate was removed under Settings ->
+    Connected apps in Xero, or the organisation was disconnected from
+    another device). Only a new connection fixes this, so it is a
+    XeroTokenExpiredError: the sweeps stop and the page says "reconnect".
+    """
+
+
 class XeroClient:
     """HTTP client for Xero API with automatic token management."""
 
@@ -392,6 +403,9 @@ class XeroClient:
                 f'Network error talking to Xero: {exc}',
             ) from exc
 
+        if response.status_code == 403:
+            self._raise_for_forbidden(response)
+
         if response.status_code >= 400:
             retry_after = None
             if response.status_code == 429:
@@ -407,6 +421,51 @@ class XeroClient:
             )
 
         return response.json()
+
+    def _raise_for_forbidden(self, response):
+        """Explain a 403 from Xero, and stop using a dead connection.
+
+        Xero answers 403 "AuthenticationUnsuccessful" when the
+        Xero-Tenant-Id is not an organisation the token may use. The token
+        refreshes without error, so the connection looked fine, and every
+        push failed with a bare "403". Xero's connections list says which
+        case it is.
+        """
+        detail = error_summary(response)
+        conn = self.connection
+        name = conn.xero_tenant_name or 'the connected organisation'
+        try:
+            tenants = self.get_tenant_connections(conn.access_token)
+        except (XeroAPIError, requests.RequestException, ValueError):
+            tenants = None
+
+        if tenants is not None and not any(
+            isinstance(t, dict) and t.get('tenantId') == conn.xero_tenant_id
+            for t in tenants
+        ):
+            from .models import XeroConnection
+
+            XeroConnection.objects.filter(pk=conn.pk).update(is_active=False)
+            conn.is_active = False
+            logger.warning(
+                'Xero organisation %s is no longer connected; marked the '
+                'connection inactive (%s)', conn.xero_tenant_id, detail,
+            )
+            raise XeroOrganisationAccessError(
+                f'Cgate no longer has access to the Xero organisation '
+                f'"{name}". Connect to Xero again in Settings, then push again.',
+                status_code=403,
+                response_body=detail,
+            )
+
+        raise XeroAPIError(
+            f'Xero refused access to "{name}" (403: {detail}). The Xero user '
+            'who connected Cgate may not have the Standard or Adviser role in '
+            'this organisation. In Settings, disconnect Xero and connect again '
+            'as a user with that role.',
+            status_code=403,
+            response_body=detail,
+        )
 
     # ── Contacts ──
 
