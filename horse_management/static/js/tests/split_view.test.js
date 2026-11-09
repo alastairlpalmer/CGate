@@ -118,3 +118,26 @@ test('snapFor: pulling past the sheet asks for the whole page', () => {
     assert.equal(snapFor(703, 290, 640, 64), 'full');
 });
 
+
+// ── snapFor with a flick: one step in its direction ──
+
+test('snapFor: a quick flick up opens the sheet fully from peek', () => {
+    assert.equal(snapFor(PEEK + 20, PEEK, FULL, OVERSHOOT, 0.9, 'peek'), 'full');
+});
+
+test('snapFor: a quick flick down from full drops to peek, not closed', () => {
+    assert.equal(snapFor(FULL - 40, PEEK, FULL, OVERSHOOT, -0.9, 'full'), 'peek');
+});
+
+test('snapFor: a quick flick down from peek puts the sheet away', () => {
+    assert.equal(snapFor(PEEK - 20, PEEK, FULL, OVERSHOOT, -0.9, 'peek'), 'closed');
+});
+
+test('snapFor: a slow release still lands by position', () => {
+    assert.equal(snapFor(PEEK + 20, PEEK, FULL, OVERSHOOT, 0.1, 'peek'), 'peek');
+    assert.equal(snapFor(FULL, PEEK, FULL, OVERSHOOT, -0.1, 'full'), 'full');
+});
+
+test('snapFor: a pull past full still opens the page, flick or not', () => {
+    assert.equal(snapFor(FULL + 100, PEEK, FULL, OVERSHOOT, -0.9, 'full'), 'page');
+});

@@ -39,8 +39,19 @@
      * answer is 'page': the reader has asked for more than the sheet
      * holds, so the horse's own page is what they get.
      */
-    function snapFor(visible, peekHeight, fullHeight, overshoot) {
+    // A release faster than this (px per ms) is a flick.
+    var FLICK = 0.45;
+
+    function snapFor(visible, peekHeight, fullHeight, overshoot, velocity, from) {
         if (visible >= fullHeight + (overshoot || 64)) { return 'page'; }
+        // A flick goes one step in its direction, however short the drag:
+        // waiting for the finger to cross the midpoint is what made the
+        // sheet feel heavy. `velocity` is px/ms, up positive; `from` is the
+        // state the drag began in.
+        if (velocity !== undefined && Math.abs(velocity) >= FLICK) {
+            if (velocity > 0) { return 'full'; }
+            return from === 'full' ? 'peek' : 'closed';
+        }
         var midpoint = (peekHeight + fullHeight) / 2;
         if (visible >= midpoint) { return 'full'; }
         // Dragged well below the peek height: the reader is putting it away.
@@ -200,7 +211,13 @@
         var changed = state.pk !== pk;
         state.pk = String(pk);
         container.classList.add('is-open');
-        panel.hidden = false;
+        if (panel.hidden) {
+            panel.hidden = false;
+            // Read layout once so the sheet starts from its closed
+            // position: unhidden and moved in the same frame, it has no
+            // start to animate from and jumps in instead of sliding up.
+            void panel.offsetHeight;
+        }
         remember(state.pk);
         if (changed && window.htmx) {
             // The pane is named as the source so htmx reads hx-push-url
@@ -379,7 +396,11 @@
             heights: heights,
             inBody: inBody,
             moved: false,
-            frame: 0
+            frame: 0,
+            state: state.sheet,
+            lastY: e.touches[0].clientY,
+            lastT: Date.now(),
+            velocity: 0
         };
         panel.classList.add('is-dragging');
     }
@@ -393,6 +414,13 @@
         if (drag.inBody && state.sheet === 'full' && delta > 0) { return; }
         drag.visible = Math.max(0, drag.from + delta);
         drag.moved = drag.moved || Math.abs(delta) > 4;
+        // Speed over the last stretch of the gesture, smoothed, up positive.
+        var now = Date.now();
+        var y = e.touches[0].clientY;
+        var dt = Math.max(1, now - drag.lastT);
+        drag.velocity = 0.6 * ((drag.lastY - y) / dt) + 0.4 * drag.velocity;
+        drag.lastY = y;
+        drag.lastT = now;
         if (drag.moved && e.cancelable) { e.preventDefault(); }
         paint(panel);
     }
@@ -423,9 +451,12 @@
         var visible = drag.visible;
         var heights = drag.heights;
         var moved = drag.moved;
+        // A finger that stopped before lifting is not a flick.
+        var velocity = Date.now() - drag.lastT > 80 ? 0 : drag.velocity;
+        var from = drag.state;
         drag = null;
         if (!moved || visible === undefined) { return; }
-        var landing = snapFor(visible, heights.peek, heights.full, OVERSHOOT);
+        var landing = snapFor(visible, heights.peek, heights.full, OVERSHOOT, velocity, from);
         if (landing === 'page') { goToPage(); return; }
         if (landing === 'closed') { close(); return; }
         setSheet(landing);

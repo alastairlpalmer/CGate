@@ -42,17 +42,34 @@
     }
 
     // Where a fixed panel goes: its right edge under the button's right
-    // edge, kept inside the window, and above the button when it does not
+    // edge (its left edge under the button's left edge with `alignLeft`,
+    // for a button at the start of a row), kept inside the window, and above the button when it does not
     // fit below. `rect` is the button's getBoundingClientRect().
-    function placeFixed(rect, width, height, viewWidth, viewHeight) {
+    function placeFixed(rect, width, height, viewWidth, viewHeight, alignLeft) {
         var GAP = 6, EDGE = 8;
-        var left = Math.min(Math.max(rect.right - width, EDGE), viewWidth - width - EDGE);
+        var start = alignLeft ? rect.left : rect.right - width;
+        var left = Math.min(Math.max(start, EDGE), viewWidth - width - EDGE);
         left = Math.max(left, EDGE);
         var top = rect.bottom + GAP;
         if (top + height > viewHeight - EDGE && rect.top - GAP - height >= EDGE) {
             top = rect.top - GAP - height;
         }
         return { top: Math.round(top), left: Math.round(left) };
+    }
+
+    // The box that position: fixed is measured from: the window, unless an
+    // ancestor has a transform, filter or perspective.
+    function fixedOrigin(el) {
+        for (var node = el.parentElement; node && node !== document.body; node = node.parentElement) {
+            var cs = window.getComputedStyle(node);
+            if ((cs.transform && cs.transform !== 'none') ||
+                (cs.filter && cs.filter !== 'none') ||
+                (cs.perspective && cs.perspective !== 'none')) {
+                var r = node.getBoundingClientRect();
+                return { top: r.top, left: r.left };
+            }
+        }
+        return { top: 0, left: 0 };
     }
 
     function register(Alpine) {
@@ -91,10 +108,14 @@
                     }
                     var pos = placeFixed(trigger.getBoundingClientRect(),
                         panel.offsetWidth, panel.offsetHeight,
-                        window.innerWidth, bottom);
+                        window.innerWidth, bottom, panel.classList.contains('is-left'));
+                    // Inside a transformed parent (the horse sheet on a
+                    // phone slides on a transform) "fixed" is measured from
+                    // that parent, not the window, so take its corner off.
+                    var origin = fixedOrigin(panel);
                     panel.style.position = 'fixed';
-                    panel.style.top = pos.top + 'px';
-                    panel.style.left = pos.left + 'px';
+                    panel.style.top = (pos.top - origin.top) + 'px';
+                    panel.style.left = (pos.left - origin.left) + 'px';
                     panel.style.right = 'auto';
                     panel.style.marginTop = '0';
                 },

@@ -16,6 +16,12 @@ module.exports = {
       white: '#fff',
       // Brand primary — "Brim" (muted dark teal/slate blue-green).
       // Token name kept as `forest` so existing bg-forest/text-forest usages repoint cleanly.
+      // Meadow green: the Record button on the horse pane, the one place a
+      // green says "add a record". White text on it is 5.3:1.
+      meadow: {
+        DEFAULT: '#3F7A4F',
+        dark: '#346842',
+      },
       forest: {
         DEFAULT: '#3D5A63',
         light: '#4F727D',

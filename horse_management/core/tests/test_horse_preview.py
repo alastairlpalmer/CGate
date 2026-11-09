@@ -510,3 +510,21 @@ class ProfileSourceTests(SimpleTestCase):
     def test_an_unclear_name_matches_nothing(self):
         self.assertIsNone(self.source('horses/image.jpg', 'p/image.jpg', 'q/image.jpg'))
         self.assertIsNone(self.source('horses/profile.jpg', 'p/a.jpg'))
+
+
+class PreviewRecordMenuTests(PreviewFixture):
+    """The green Record menu sits in the action row, after Move."""
+
+    def test_record_menu_follows_move(self):
+        self.client.force_login(make_admin())
+        body = self.pane()
+        self.assertIn('class="btn-record', body)
+        self.assertIn('aria-label="Record for Antoinette"', body)
+        self.assertLess(body.index('class="btn-primary">Move</a>'),
+                        body.index('class="btn-record'))
+        self.assertIn('Farrier visit for Antoinette', body)
+
+    def test_a_view_only_user_has_no_record_menu(self):
+        self.client.force_login(make_user_with_access(
+            'looker', horses='view', health='view', charges='view'))
+        self.assertNotIn('btn-record', self.pane())

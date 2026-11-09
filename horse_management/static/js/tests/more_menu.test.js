@@ -50,3 +50,7 @@ test('placeFixed: never past the left or right edge of the window', () => {
     assert.equal(placeFixed(button(100, 120), 200, 150, 390, 844).left, 8);
     assert.equal(placeFixed(button(100, 400), 200, 150, 390, 844).left, 182);
 });
+
+test('placeFixed: a menu for a button at the start of a row opens rightward', () => {
+    assert.equal(placeFixed(button(100, 120), 200, 150, 1440, 900, true).left, 88);
+});

@@ -138,13 +138,17 @@ does from the horse page, so nothing here has to know it is in a pane.
         </div>
     </dl>
 
-    <!-- ── Day-to-day actions ── -->
-    {% if feature_access.horses.full %}
+    <!-- ── Day-to-day actions ──
+         Record (green) opens a menu of the records you can add, beside
+         Move, Depart and Edit, so the commonest jobs are in one place. -->
+    {% if feature_access.horses.full or feature_access.health.full or feature_access.charges.full %}
     <div class="flex flex-wrap items-center gap-2" x-data="{ departing: false }">
+        {% if feature_access.horses.full %}
         {% if current_placement %}
         <a href="{% url 'horse_move' horse.pk %}" hx-get="{% url 'horse_move' horse.pk %}"
            hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
            data-popup-title="Move {{ horse.name }}" class="btn-primary">Move</a>
+        {% include 'horses/partials/_record_menu.html' %}
         <button type="button" x-show="!departing" @click="departing = true"
                 class="btn-secondary text-error-red border-error-red/30 hover:bg-error-red-50">Depart</button>
         <form x-show="departing" x-cloak method="post" action="{% url 'horse_depart' horse.pk %}?next={{ request.get_full_path|urlencode }}"
@@ -162,10 +166,14 @@ does from the horse page, so nothing here has to know it is in a pane.
         <a href="{% url 'horse_arrive' horse.pk %}" hx-get="{% url 'horse_arrive' horse.pk %}"
            hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
            data-popup-title="Log arrival for {{ horse.name }}" class="btn-primary">Log arrival</a>
+        {% include 'horses/partials/_record_menu.html' %}
         {% endif %}
         <a href="{% url 'horse_update' horse.pk %}" hx-get="{% url 'horse_quick_edit' horse.pk %}"
            hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
            data-popup-title="Edit {{ horse.name }}" class="btn-secondary">Edit</a>
+        {% else %}
+        {% include 'horses/partials/_record_menu.html' %}
+        {% endif %}
     </div>
     {% endif %}
 
@@ -215,11 +223,6 @@ does from the horse page, so nothing here has to know it is in a pane.
     <section class="pane-section" x-data="{ filter: 'all' }">
         <div class="pane-section-head">
             <h3 class="pane-section-title">Timeline</h3>
-            {% if feature_access.health.full %}
-            <a href="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vet_visit_create' %}?horse={{ horse.pk }}"
-               hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-               data-popup-title="Vet visit for {{ horse.name }}" class="pane-section-action">+ Record</a>
-            {% endif %}
         </div>
 
         {% comment %}Egg counts ride under Worming: they are the reason a
