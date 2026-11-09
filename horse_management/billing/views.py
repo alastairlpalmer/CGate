@@ -15,7 +15,7 @@ from core.permissions import (
 from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_response
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum
-from django.http import JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -26,7 +26,9 @@ from core.models import Horse, Owner
 from core.views._next import safe_next
 from core.views._undo import undo_tag
 
-from .forms import ExtraChargeForm, FeedOutForm, FeedStockForm, ServiceProviderForm, YardCostForm
+from .forms import (
+    ExtraChargeForm, FeedOutForm, FeedStockForm, MultiHorseChargeForm, ServiceProviderForm, YardCostForm,
+)
 from .models import ExtraCharge, FeedOut, FeedStock, ServiceProvider, YardCost
 from core.templatetags.ui_extras import gbp
 
@@ -92,24 +94,47 @@ class ExtraChargeCreateView(PopupFormMixin, FeatureAccessMixin, CreateView):
     template_name = 'billing/charge_form.html'
     success_url = reverse_lazy('charge_list')
 
+    def get_form_class(self):
+        # The pop-up sheet (a horse's Quick Action) is about one horse; the
+        # full page lets the user tick several and adds a charge for each.
+        return ExtraChargeForm if self.in_popup else MultiHorseChargeForm
+
     def get_initial(self):
         initial = super().get_initial()
-        horse_id = self.request.GET.get('horse')
-        if horse_id:
-            initial['horse'] = horse_id
-            try:
-                horse = Horse.objects.get(pk=horse_id)
-                if horse.current_owner:
-                    initial['owner'] = horse.current_owner.pk
-            except (Horse.DoesNotExist, ValueError):
-                pass
         initial['date'] = timezone.localdate()
+        horse_id = self.request.GET.get('horse', '')
+        if not horse_id.isdigit():
+            return initial
+        if not self.in_popup:
+            # Pre-tick it. Bill To stays on "Each horse's current owner",
+            # which bills this horse's owner anyway.
+            initial['horses'] = [horse_id]
+            return initial
+        initial['horse'] = horse_id
+        horse = Horse.objects.filter(pk=horse_id).first()
+        if horse and horse.current_owner:
+            initial['owner'] = horse.current_owner.pk
         return initial
 
     def form_valid(self, form):
-        messages.success(self.request, "Charge added successfully.")
-        _warn_if_owner_unrelated(self.request, form)
-        return super().form_valid(form)
+        if not isinstance(form, MultiHorseChargeForm):
+            messages.success(self.request, "Charge added successfully.")
+            _warn_if_owner_unrelated(self.request, form)
+            return super().form_valid(form)
+        charges = form.save_charges()
+        self.object = charges[0]
+        if len(charges) == 1:
+            messages.success(self.request, "Charge added successfully.")
+        else:
+            messages.success(
+                self.request,
+                f"{len(charges)} charges added, one for each horse "
+                f"({gbp(form.cleaned_data['amount'])} each).",
+            )
+        if form.cleaned_data.get('owner'):
+            for charge in charges:
+                _warn_if_owner_unrelated(self.request, horse=charge.horse, owner=charge.owner)
+        return HttpResponseRedirect(self.get_success_url())
 
 
 @feature_required('charges', LEVEL_VIEW)
@@ -124,11 +149,12 @@ def horse_owner(request):
     return JsonResponse({'owner_id': owner_id})
 
 
-def _warn_if_owner_unrelated(request, form):
+def _warn_if_owner_unrelated(request, form=None, horse=None, owner=None):
     """Warn (without blocking) when a charge bills someone who neither owns
     nor part-owns the horse — usually a mis-picked dropdown."""
-    horse = form.cleaned_data.get('horse')
-    owner = form.cleaned_data.get('owner')
+    if form is not None:
+        horse = form.cleaned_data.get('horse')
+        owner = form.cleaned_data.get('owner')
     if not horse or not owner:
         return
     related_ids = set(
