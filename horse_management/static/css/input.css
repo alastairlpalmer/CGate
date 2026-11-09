@@ -131,6 +131,7 @@
     .btn-secondary { @apply bg-white text-charcoal border border-sage/30 hover:bg-light-sage focus:ring-sage; }
     .btn-danger { @apply bg-error-red text-white hover:bg-error-red/90 focus:ring-error-red shadow-xs; }
     .btn-success { @apply bg-forest text-white hover:bg-forest-light focus:ring-sage shadow-xs; }
+    .btn-record { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-btn bg-meadow text-white hover:bg-meadow-dark focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-meadow shadow-xs cursor-pointer active:scale-[0.97] touch-manipulation min-h-[44px] sm:min-h-0 transition-all duration-150; }
     .btn-ghost { @apply text-sage hover:text-charcoal hover:bg-light-sage focus:ring-sage; }
     .btn-xs { @apply px-2 py-1 text-xs rounded-sm; }
     /* Icon-only action button — 44px touch target on mobile, compact on desktop */
@@ -1485,6 +1486,17 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 .split-view-pane.is-peek { touch-action: none; }
 .split-view-pane.is-full .split-view-body { touch-action: pan-y; }
 
+/* Feedback for a tap on a horse: the row darkens under the finger at
+   once, and the sheet's body fades while the next horse loads (htmx puts
+   htmx-request on the pane, the request's source), so a slow network
+   never looks like a missed tap. */
+#horse-preview-body { transition: opacity 150ms ease-out; }
+.split-view-pane.htmx-request #horse-preview-body { opacity: 0.45; }
+@media (pointer: coarse) {
+    tr[data-horse-row] { -webkit-tap-highlight-color: transparent; }
+    tr[data-horse-row]:active > td { background-color: rgb(61 90 99 / 0.08); }
+}
+
 .split-view-handle { @apply flex justify-center pt-2.5 pb-1 shrink-0; touch-action: none; }
 .split-view-handle span { @apply block w-10 h-1 rounded-full bg-sage/30; }
 
@@ -1681,10 +1693,13 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     body:has([data-phone-map]) [data-app-search]:not(:focus-within) .app-search-input::placeholder {
         color: transparent;
     }
-    /* The magnifier centres itself in the collapsed box. */
+    /* The magnifier centres itself in the collapsed box. Tailwind 4's
+       -translate-y-1/2 uses the `translate` property, which reads
+       --tw-translate-x. A `transform` here as well moved the icon up
+       twice. */
     body:has([data-phone-map]) [data-app-search]:not(:focus-within) > div > svg:first-child {
         left: 50%;
-        transform: translate(-50%, -50%);
+        --tw-translate-x: -50%;
     }
 }
 
@@ -1762,14 +1777,16 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
        inside the sheet on every frame of a drag, which is what made it
        heavy; a transform is the compositor's job and the contents are
        never measured again. The percentages are of the sheet's own box,
-       which is the whole shell, so 76% down leaves 24% showing — the
-       three heights this used to set. */
-    height: 100%;
+       which is the shell less the tab bar under it.
+       The sheet's bottom sits above the tab bar, so its height must leave
+       out the same strip. At 100% its top was 4.5rem above the shell, and
+       at full height the head slid under the app bar. */
+    height: calc(100% - 4rem - max(env(safe-area-inset-bottom, 0px), 8px));
     transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1);
 }
-.loc-sheet.is-peek { transform: translateY(76%); }
-.loc-sheet.is-half { transform: translateY(42%); }
-.loc-sheet.is-full { transform: translateY(8%); }
+.loc-sheet.is-peek { transform: translateY(73%); }
+.loc-sheet.is-half { transform: translateY(34%); }
+.loc-sheet.is-full { transform: translateY(6%); }
 .loc-sheet.is-dragging { transition: none; will-change: transform; }
 
 /* The handle and the head are the sheet's; the list scrolls. A pull from

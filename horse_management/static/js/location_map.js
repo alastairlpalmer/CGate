@@ -181,15 +181,19 @@
                     // works). On a touch screen one finger scrolls the page;
                     // on the Map tab two fingers move and zoom the map, and
                     // the dashboard card opens the Map tab on a tap.
+                    // The phone map is different: it is the whole page, with
+                    // no page under it to scroll, so one finger moves it and
+                    // a pinch zooms it, as in any maps app.
                     var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
                     var fine = !coarse;
+                    var phone = this.variant === 'phone';
                     this.map = L.map(el, {
                         attributionControl: false,
                         zoomControl: full || fine,
-                        dragging: fine,
+                        dragging: fine || phone,
                         scrollWheelZoom: fine,
-                        touchZoom: full,
-                        doubleClickZoom: full || fine,
+                        touchZoom: full || phone,
+                        doubleClickZoom: full || fine || phone,
                         boxZoom: false,
                         keyboard: full,
                         tap: false,
