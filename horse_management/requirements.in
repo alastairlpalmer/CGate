@@ -52,7 +52,7 @@ gunicorn~=26.2
 psycopg2-binary~=2.9.11
 
 # PDF Generation
-reportlab~=4.4.10
+reportlab~=5.1.0
 
 # Task queue
 celery~=5.6.3
