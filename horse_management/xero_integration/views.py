@@ -15,7 +15,13 @@ from django.views.decorators.http import require_POST
 
 from invoicing.models import Invoice
 
-from .client import XeroAPIError, XeroClient, XeroTokenExpiredError, choose_tenant
+from .client import (
+    XeroAPIError,
+    XeroClient,
+    XeroOrganisationAccessError,
+    XeroTokenExpiredError,
+    choose_tenant,
+)
 from .models import XeroConnection, XeroContactMapping, XeroInvoiceSync
 from .services import (
     XeroNotConnectedError,
@@ -215,10 +221,14 @@ def xero_push_invoice(request, pk):
 
     except XeroNotConnectedError:
         messages.error(request, 'Xero is not connected. Please connect first.')
+    except XeroOrganisationAccessError as e:
+        messages.error(request, str(e))
     except XeroTokenExpiredError:
         messages.error(request, 'Xero session expired. Please reconnect.')
     except XeroAPIError as e:
-        messages.error(request, f'Xero API error: {e}')
+        # The message already starts with "Xero API error: ..." for a plain
+        # API failure; a second prefix read "Xero API error: Xero API error".
+        messages.error(request, f'Could not push to Xero. {e}')
     except Exception:
         logger.exception('Unexpected error pushing invoice %s to Xero', invoice.invoice_number)
         messages.error(request, 'Failed to push the invoice to Xero. Check the server log, then try again.')
