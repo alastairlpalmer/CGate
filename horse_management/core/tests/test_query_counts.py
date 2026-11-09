@@ -89,8 +89,11 @@ class QueryCountTestCase(TestCase):
         self.assertMaxQueries(reverse('health_dashboard') + '?type=vaccinations', 11)
 
     def test_horse_list_query_count(self):
-        # Constant queries regardless of horse count (prefetches, no N+1)
-        self.assertMaxQueries(reverse('horse_list'), 15)
+        # Constant queries regardless of horse count (prefetches, no N+1).
+        # 17 since the list flags every health kind the dashboard collects
+        # (vaccination, farrier, worming, vet, egg count): a fixed handful,
+        # not one per horse (core.tests.test_ux_phase4).
+        self.assertMaxQueries(reverse('horse_list'), 17)
 
     def test_dashboard_query_count(self):
         # Measured 17 after the chart queries moved to the Finances page,

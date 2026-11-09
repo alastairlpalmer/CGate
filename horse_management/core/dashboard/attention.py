@@ -337,7 +337,7 @@ def _vet_follow_ups(ctx):
         actions = []
         if full:
             actions.append(ctx.record_action(
-                'vet_visit_create', visit.horse, 'New visit', 'Record vet visit',
+                'vet_visit_create', visit.horse, 'Record vet visit', 'Record vet visit',
                 primary=due < ctx.today,
             ))
         items.append(ctx.horse_item(

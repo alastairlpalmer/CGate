@@ -165,3 +165,41 @@ class NeedsColumnTests(HealthListBase):
         body = self.body(needs='1')
         self.assertIn('3 days overdue', body)
         self.assertNotIn('Record farrier visit', body)
+
+
+class AllHealthKindsTests(HealthListBase):
+    """Worming, vet follow-ups and high egg counts are flagged as well as
+    vaccinations and farrier visits."""
+
+    def test_worming_vet_and_egg_count_are_flagged(self):
+        from health.models import VetVisit, WormEggCount, WormingTreatment
+        WormingTreatment.objects.create(
+            horse=self.fine, date=self.today - timedelta(days=100),
+            next_due_date=self.today - timedelta(days=2), product_name='Equest',
+        )
+        VetVisit.objects.create(
+            horse=self.fine, date=self.today - timedelta(days=20),
+            reason='Lameness check', follow_up_date=self.today + timedelta(days=3),
+        )
+        WormEggCount.objects.create(
+            horse=self.soon, date=self.today - timedelta(days=4), count=450,
+        )
+        body = self.body(needs='1')
+        self.assertIn('Needs action · show all', body)
+        self.assertIn('Worming · last was Equest', body)
+        self.assertIn('2 days overdue', body)
+        self.assertIn('Vet follow-up · Lameness check', body)
+        self.assertIn('Record vet visit', body)
+        self.assertIn('Egg count 450 EPG', body)
+        self.assertIn('Record worming', body)
+        # Dobbin had nothing due before; now he is on the list.
+        self.assertIn('Dobbin', body)
+
+    def test_a_high_egg_count_alone_is_a_due_flag(self):
+        from health.models import WormEggCount
+        WormEggCount.objects.create(
+            horse=self.fine, date=self.today - timedelta(days=4), count=450,
+        )
+        body = self.body()
+        row = body.split(f'id="horse-{self.fine.pk}"', 1)[1].split('</tr>', 1)[0]
+        self.assertIn('class="health-dot is-due" title="High egg count"', row)
