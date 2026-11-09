@@ -86,7 +86,25 @@ def mfa_required(user) -> bool:
     """
     if not getattr(settings, 'MFA_REQUIRED_FOR_ADMINS', True):
         return False
-    return is_administrator(user)
+    return is_administrator(user) and not is_exempt(user)
+
+
+def is_exempt(user) -> bool:
+    """True when an Administrator has excused this user (``MFAExemption``)."""
+    from .models import MFAExemption
+    if not getattr(user, 'pk', None):
+        return False
+    return MFAExemption.objects.filter(user=user).exists()
+
+
+def set_exempt(user, exempt: bool, granted_by=None) -> bool:
+    """Add or remove the exemption. True when something changed."""
+    from .models import MFAExemption
+    if exempt:
+        _, created = MFAExemption.objects.get_or_create(user=user, defaults={'granted_by': granted_by})
+        return created
+    deleted, _ = MFAExemption.objects.filter(user=user).delete()
+    return bool(deleted)
 
 
 def recovery_codes_left(user) -> int:
@@ -98,6 +116,7 @@ def mfa_status(user) -> dict:
     return {
         'enabled': has_mfa(user),
         'required': mfa_required(user),
+        'exempt': is_exempt(user),
         'recovery_codes_left': recovery_codes_left(user),
     }
 

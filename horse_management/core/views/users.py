@@ -243,6 +243,28 @@ def user_update(request, pk):
                 )
             return redirect('user_update', pk=target.pk)
 
+        elif 'mfa_exempt' in request.POST:
+            exempt = request.POST.get('mfa_exempt') == '1'
+            if is_self:
+                messages.error(request, "You can't change your own two-step sign-in exemption. Ask another Administrator.")
+            elif not mfa.is_administrator(request.user):
+                messages.error(request, "Only an Administrator can change who must use two-step sign-in.")
+            elif mfa.set_exempt(target, exempt, granted_by=request.user):
+                audit.record(
+                    AuditEvent.Action.MFA_EXEMPTED if exempt else AuditEvent.Action.MFA_EXEMPTION_REMOVED,
+                    request=request, target=target,
+                )
+                who = target.email or target.username
+                if exempt:
+                    messages.success(request, f"{who} no longer needs two-step sign-in.")
+                else:
+                    messages.success(
+                        request,
+                        f"{who} is no longer excused from two-step sign-in."
+                        + (" Their role needs it, so they must set it up when they next sign in." if mfa.mfa_required(target) else ""),
+                    )
+            return redirect('user_update', pk=target.pk)
+
         elif 'toggle_active' in request.POST:
             if is_self:
                 messages.error(request, "You can't deactivate your own account.")

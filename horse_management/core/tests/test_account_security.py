@@ -429,6 +429,47 @@ class MFARequiredForAdminsTests(TestCase):
         self.assertEqual(self.client.get(reverse('dashboard')).status_code, 200)
 
 
+@override_settings(MFA_REQUIRED_FOR_ADMINS=True)
+class MFAExemptionTests(TestCase):
+    """An Administrator excuses one user from two-step sign-in."""
+
+    def setUp(self):
+        self.target = make_admin('noapp', email='noapp@example.com')
+        self.admin = make_admin('granter', email='granter@example.com')
+        device, _ = enrol(self.admin)
+        self.client.force_login(self.admin)
+        self.client.post(reverse('mfa_verify'), {'code': totp_code(device, 1)})
+
+    def test_exempt_administrator_is_not_sent_to_setup(self):
+        self.client.post(reverse('user_update', args=[self.target.pk]), {'mfa_exempt': '1'})
+        self.assertTrue(mfa.is_exempt(self.target))
+        self.assertFalse(mfa.mfa_required(self.target))
+        other = Client()
+        other.force_login(self.target)
+        self.assertEqual(other.get(reverse('dashboard')).status_code, 200)
+        from core.models import AuditEvent
+        self.assertTrue(AuditEvent.objects.filter(
+            action=AuditEvent.Action.MFA_EXEMPTED, target_user=self.target).exists())
+
+    def test_removing_the_exemption_requires_it_again(self):
+        mfa.set_exempt(self.target, True)
+        self.client.post(reverse('user_update', args=[self.target.pk]), {'mfa_exempt': '0'})
+        self.assertFalse(mfa.is_exempt(self.target))
+        self.assertTrue(mfa.mfa_required(self.target))
+
+    def test_cannot_exempt_yourself(self):
+        self.client.post(reverse('user_update', args=[self.admin.pk]), {'mfa_exempt': '1'})
+        self.assertFalse(mfa.is_exempt(self.admin))
+
+    def test_user_manager_who_is_not_an_administrator_cannot(self):
+        user = make_user_with_access('plain', dashboard='full')
+        manager = make_user_with_access('manager2', users='full', settings='full')
+        client = Client()
+        client.force_login(manager)
+        client.post(reverse('user_update', args=[user.pk]), {'mfa_exempt': '1'})
+        self.assertFalse(mfa.is_exempt(user))
+
+
 class AdminMFAResetTests(TestCase):
     """For the user who lost their phone and their recovery codes."""
 

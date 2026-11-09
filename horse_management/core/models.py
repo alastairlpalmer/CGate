@@ -1829,6 +1829,29 @@ class UserRole(models.Model):
         return f"{self.user} → {self.role}"
 
 
+class MFAExemption(models.Model):
+    """A user who may use the app without two-step sign-in, even when
+    their role needs it (``core.mfa.mfa_required``).
+
+    Only an Administrator can add or remove one, never for themselves, and
+    each change goes in the audit trail. The row existing is the exemption.
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='mfa_exemption',
+    )
+    granted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='+',
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"{self.user} (exempt from two-step sign-in)"
+
+
 class BackupRun(models.Model):
     """One attempt at an off-site backup, successful or not.
 
@@ -1980,6 +2003,8 @@ class AuditEvent(models.Model):
         MFA_RESET = 'mfa_reset', 'Two-step sign-in turned off for someone else'
         MFA_RECOVERY_CODE_USED = 'mfa_recovery_code_used', 'Recovery code used'
         MFA_RECOVERY_CODES_RENEWED = 'mfa_recovery_codes_renewed', 'New recovery codes made'
+        MFA_EXEMPTED = 'mfa_exempted', 'Excused from two-step sign-in'
+        MFA_EXEMPTION_REMOVED = 'mfa_exemption_removed', 'No longer excused from two-step sign-in'
         OWNER_EXPORTED = 'owner_exported', "Owner's personal data exported"
         OWNER_ERASED = 'owner_erased', "Owner's contact details erased"
         OWNER_ANONYMISED = 'owner_anonymised', 'Owner anonymised'
