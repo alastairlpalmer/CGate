@@ -120,7 +120,11 @@ class PhotoPopupPostTests(PhotoPopupTestCase):
         self.assertEqual(response.status_code, 204)
         self.horse.refresh_from_db()
         self.assertTrue(self.horse.photo)
-        self.assertIn('first', self.horse.photo.name)
+        # The copy is named after the log photo it came from, so the preview
+        # gallery shows it once (core.views.horses._profile_source).
+        first = HorsePhoto.objects.filter(horse=self.horse).order_by('pk').first()
+        self.assertIn(f'profile-from-{first.pk}', self.horse.photo.name)
+        self.assertIn('first', first.image.name)
         self.assertTrue(self.horse.photo_thumb, 'avatar thumbnail should be generated')
         # The log entry keeps its own file
         self.assertEqual(HorsePhoto.objects.filter(horse=self.horse).count(), 2)
@@ -165,7 +169,7 @@ class UseAsProfileViewTests(PhotoPopupTestCase):
         self.assertRedirects(response, reverse('horse_detail', args=[self.horse.pk]))
         self.horse.refresh_from_db()
         self.assertTrue(self.horse.photo)
-        self.assertIn('legs', self.horse.photo.name)
+        self.assertIn(f'profile-from-{self.photo.pk}', self.horse.photo.name)
         self.assertTrue(self.horse.photo_thumb)
         self.assertEqual(HorsePhoto.objects.count(), 1)
 

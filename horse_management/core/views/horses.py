@@ -2,7 +2,9 @@
 Horse views — CRUD, move, arrive, depart, ownership.
 """
 
+import re
 from datetime import date, timedelta
+from pathlib import PurePosixPath
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -1482,7 +1484,14 @@ def _preview_gallery(horse):
             'caption': 'Profile photo',
             'href': '',
         })
-    for photo in horse.photos.all()[:PREVIEW_GALLERY_LIMIT - len(items)]:
+    # "Use as profile picture" copies a log photo onto Horse.photo, so the
+    # same picture is in both places. Show it once, as the profile photo:
+    # a horse with one photo is "1 photo", not "1 of 2".
+    log = list(horse.photos.all()[:PREVIEW_GALLERY_LIMIT + 1])
+    source = _profile_source(horse.photo.name, log) if horse.photo else None
+    if source is not None:
+        log = [photo for photo in log if photo.pk != source.pk]
+    for photo in log[:PREVIEW_GALLERY_LIMIT - len(items)]:
         caption = photo.get_category_display()
         if photo.caption:
             caption = f'{caption}: {photo.caption}'
@@ -1494,6 +1503,44 @@ def _preview_gallery(horse):
             'href': '',
         })
     return items
+
+
+# Django keeps an upload's name and, when the name is taken, adds "_" and
+# seven random letters or digits (Storage.get_available_name).
+_TAKEN_NAME_SUFFIX = re.compile(r'_[A-Za-z0-9]{7}$')
+# The name core.views.photos._use_as_profile gives the copy it makes.
+_PROFILE_FROM = re.compile(r'^profile-from-(\d+)(?:_[A-Za-z0-9]{7})?$')
+
+
+def _profile_source(profile_name, log):
+    """The photo in ``log`` (HorsePhoto list) that the profile photo
+    ``profile_name`` was copied from by "Use as profile picture", or None.
+
+    Copies made now are named ``profile-from-<pk>``. Older copies kept the
+    log photo's own name, sometimes with Django's "_xxxxxxx" suffix, so
+    they are matched by name: an exact match first, then without the
+    suffix. Phones name every upload "image.jpg", so a name that fits more
+    than one photo matches none: a duplicate left in is better than a photo
+    hidden by mistake. Reads no files.
+    """
+    if not profile_name or not log:
+        return None
+    profile = PurePosixPath(profile_name)
+    marked = _PROFILE_FROM.match(profile.stem)
+    if marked:
+        pk = int(marked.group(1))
+        return next((photo for photo in log if photo.pk == pk), None)
+    same_type = [
+        photo for photo in log
+        if PurePosixPath(photo.image.name).suffix.lower() == profile.suffix.lower()
+    ]
+    for stem in (profile.stem, _TAKEN_NAME_SUFFIX.sub('', profile.stem)):
+        found = [photo for photo in same_type if PurePosixPath(photo.image.name).stem == stem]
+        if len(found) == 1:
+            return found[0]
+        if found:
+            return None
+    return None
 
 
 def _flash_superseded_trim(request, horse, placement):

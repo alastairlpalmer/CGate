@@ -13,7 +13,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db import connection
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
@@ -438,3 +438,75 @@ class PreviewPhotoTests(PhotoPopupTestCase):
             HorsePhoto.objects.create(horse=self.horse, image=_photo(f'{n}.jpg'))
         body = self.pane()
         self.assertEqual(body.count('aria-label="Show photo '), PREVIEW_GALLERY_LIMIT)
+
+
+class PreviewDuplicatePhotoTests(PhotoPopupTestCase):
+    """A log photo used as the profile picture is the same picture twice in
+    storage. The pane shows it once (core.views.horses._profile_source)."""
+
+    def pane(self):
+        url = reverse('horse_preview', args=[self.horse.pk])
+        return self.client.get(url, **PANE).content.decode()
+
+    def _use_as_profile(self, photo):
+        from core.views.photos import _use_as_profile
+        _use_as_profile(self.horse, photo)
+        self.horse.refresh_from_db()
+
+    def test_one_photo_used_as_profile_shows_once(self):
+        only = HorsePhoto.objects.create(horse=self.horse, image=_photo('image.jpg'))
+        self._use_as_profile(only)
+        self.assertIn(f'profile-from-{only.pk}', self.horse.photo.name)
+        body = self.pane()
+        self.assertNotIn('preview-thumbs', body)
+        self.assertNotIn('preview-hero-count', body)
+        self.assertNotIn(only.thumb.url, body)
+
+    def test_two_photos_one_used_as_profile_count_two(self):
+        older = HorsePhoto.objects.create(horse=self.horse, image=_photo('image.jpg'))
+        newer = HorsePhoto.objects.create(horse=self.horse, image=_photo('image.jpg'))
+        self._use_as_profile(older)
+        body = self.pane()
+        self.assertIn('of 2', body)
+        self.assertEqual(body.count('aria-label="Show photo '), 2)
+        self.assertIn(newer.thumb.url, body)
+        self.assertNotIn(older.thumb.url, body)
+
+    def test_a_separate_profile_upload_hides_nothing(self):
+        self.horse.photo = _photo('profile.jpg')
+        self.horse.save()
+        HorsePhoto.objects.create(horse=self.horse, image=_photo('a.jpg'))
+        self.assertIn('of 2', self.pane())
+
+
+class ProfileSourceTests(SimpleTestCase):
+    """Copies made before copies were named profile-from-<pk>."""
+
+    @staticmethod
+    def log(*names):
+        from types import SimpleNamespace
+        return [SimpleNamespace(pk=i, image=SimpleNamespace(name=n)) for i, n in enumerate(names, 1)]
+
+    def source(self, profile, *names):
+        from core.views.horses import _profile_source
+        found = _profile_source(profile, self.log(*names))
+        return found.pk if found else None
+
+    def test_marked_copy(self):
+        self.assertEqual(self.source('horses/profile-from-2.jpg', 'a/x.jpg', 'a/y.jpg'), 2)
+        self.assertEqual(self.source('horses/profile-from-2_AbC1234.jpg', 'a/x.jpg', 'a/y.jpg'), 2)
+
+    def test_exact_old_name(self):
+        self.assertEqual(self.source('horses/snap.jpg', 'p/2026/11/snap.jpg', 'p/2026/11/other.jpg'), 1)
+
+    def test_old_name_with_django_suffix(self):
+        self.assertEqual(self.source('horses/snap_Q1w2e3r.jpg', 'p/other.jpg', 'p/snap.jpg'), 2)
+
+    def test_exact_match_beats_the_suffix_rule(self):
+        # Phones call every upload image.jpg: the copy of image_AbC1234 is
+        # that photo, not image.
+        self.assertEqual(self.source('horses/image_AbC1234.jpg', 'p/image.jpg', 'p/image_AbC1234.jpg'), 2)
+
+    def test_an_unclear_name_matches_nothing(self):
+        self.assertIsNone(self.source('horses/image.jpg', 'p/image.jpg', 'q/image.jpg'))
+        self.assertIsNone(self.source('horses/profile.jpg', 'p/a.jpg'))
