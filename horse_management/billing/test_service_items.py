@@ -203,7 +203,7 @@ class ServiceFillTests(ServiceDirectoryBase):
     def test_charge_form_fills_description_type_and_amount(self):
         response = self.client.post(reverse('charge_create'), {
             'service_item': str(self.transport.pk),
-            'horse': self.horse.pk,
+            'horses': [self.horse.pk],
             'owner': self.owner.pk,
             'service_provider': '',
             'charge_type': 'other',

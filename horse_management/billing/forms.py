@@ -6,9 +6,11 @@ import json
 from decimal import Decimal
 
 from django import forms
+from django.db import transaction
 
 from core.forms import owners_for_picker
 from core.images import heic_to_jpeg
+from core.models import Horse, prime_current_owners
 from core.widgets import MoneyInput
 
 from .models import ExtraCharge, FeedOut, FeedStock, ServiceItem, ServiceProvider, YardCost
@@ -247,6 +249,62 @@ class ExtraChargeForm(ServicePickerMixin, forms.ModelForm):
 
     def clean_receipt_image(self):
         return heic_to_jpeg(self.cleaned_data.get('receipt_image'))
+
+
+class MultiHorseChargeForm(ExtraChargeForm):
+    """Add Charge page: tick one or more horses, one charge per horse.
+
+    "Bill To" is optional here. Blank bills each horse's current owner
+    (the bulk-charge rule); a chosen owner pays for every ticked horse.
+    The view saves the charges (see ``save_charges``), not ``save()``.
+    """
+
+    horses = forms.ModelMultipleChoiceField(
+        queryset=Horse.objects.filter(is_active=True),
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-checkbox rounded'}),
+        error_messages={'required': 'Tick at least one horse.'},
+    )
+
+    class Meta(ExtraChargeForm.Meta):
+        fields = [f for f in ExtraChargeForm.Meta.fields if f != 'horse']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Horses first, then the service picker (UX plan F1).
+        self.fields = {'horses': self.fields.pop('horses'), **self.fields}
+        owner = self.fields['owner']
+        owner.required = False
+        owner.empty_label = "Each horse's current owner"
+        self.fields['amount'].label = 'Amount per horse'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        horses = list(cleaned_data.get('horses') or [])
+        if horses and not cleaned_data.get('owner'):
+            prime_current_owners(horses)
+            no_owner = [h.name for h in horses if not h.current_owner]
+            if no_owner:
+                self.add_error('owner', (
+                    f"No current owner to bill for: {', '.join(no_owner)}. "
+                    "Choose who pays in Bill To, or untick those horses."
+                ))
+        cleaned_data['horses'] = horses
+        return cleaned_data
+
+    def save_charges(self):
+        """Create one charge per ticked horse and return them."""
+        owner = self.cleaned_data.get('owner')
+        charges = []
+        with transaction.atomic():
+            for horse in self.cleaned_data['horses']:
+                charge = self.save(commit=False)
+                charge.pk = None
+                charge._state.adding = True
+                charge.horse = horse
+                charge.owner = owner or horse.current_owner
+                charge.save()
+                charges.append(charge)
+        return charges
 
 
 class BulkChargeForm(ServicePickerMixin, forms.ModelForm):

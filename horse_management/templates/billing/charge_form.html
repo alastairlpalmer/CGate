@@ -37,6 +37,37 @@
                         <p class="text-xs text-sage mt-1">Pick a service to fill in the type, description and amount. Choose Other to enter everything yourself.</p>
                         {% if form.service_item.help_text %}<p class="text-xs text-sage mt-1">{{ form.service_item.help_text }}</p>{% endif %}
                     </div>
+                    {% if form.horses %}
+                    <div class="sm:col-span-2{% if form.horses.errors %} field-invalid{% endif %}" data-horse-picker>
+                        <div class="flex items-baseline justify-between gap-2">
+                            <span id="horses-label" class="block text-sm font-medium text-charcoal">Horses *</span>
+                            <span class="text-xs text-sage" data-horse-count aria-live="polite">0 ticked</span>
+                        </div>
+                        <input type="search" class="form-input mt-1" placeholder="Filter horses…" aria-label="Filter horses" data-horse-filter>
+                        <div class="mt-2 max-h-60 overflow-y-auto rounded border border-light-sage divide-y divide-light-sage" role="group" aria-labelledby="horses-label">
+                            {% for cb in form.horses %}
+                            <label class="flex items-center gap-3 px-3 py-2 text-sm text-charcoal cursor-pointer hover:bg-light-sage/30" data-horse-row data-name="{{ cb.choice_label|lower }}">
+                                {{ cb.tag }}
+                                <span>{{ cb.choice_label }}</span>
+                            </label>
+                            {% empty %}
+                            <p class="px-3 py-2 text-sm text-sage">No active horses.</p>
+                            {% endfor %}
+                        </div>
+                        {% if form.horses.errors %}
+                          <p id="{{ form.horses.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.horses.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-xs text-sage mt-1">Tick one or more horses. Each ticked horse gets its own charge for the full amount.</p>
+                    </div>
+                    <div class="sm:col-span-2{% if form.owner.errors %} field-invalid{% endif %}">
+                        <label for="id_owner" class="block text-sm font-medium text-charcoal">Bill To (Owner)</label>
+                        {{ form.owner }}
+                        {% if form.owner.errors %}
+                          <p id="{{ form.owner.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.owner.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-xs text-sage mt-1">Leave as "Each horse's current owner" to bill every horse's owner. Choose an owner to bill that person for all ticked horses.</p>
+                    </div>
+                    {% else %}
                     <div>
                         <label for="id_horse" class="block text-sm font-medium text-charcoal">Horse *</label>
                         {{ form.horse }}
@@ -51,6 +82,7 @@
                           <p id="{{ form.owner.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.owner.errors.0 }}</p>
                         {% endif %}
                     </div>
+                    {% endif %}
                     <div>
                         <label for="id_charge_type" class="block text-sm font-medium text-charcoal">Type *</label>
                         {{ form.charge_type }}
@@ -73,7 +105,7 @@
                         {% endif %}
                     </div>
                     <div>
-                        <label for="id_amount" class="block text-sm font-medium text-charcoal">Amount *</label>
+                        <label for="id_amount" class="block text-sm font-medium text-charcoal">{% if form.horses %}Amount per horse{% else %}Amount{% endif %} *</label>
                         {{ form.amount }}
                         {% if form.amount.errors %}
                           <p id="{{ form.amount.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.amount.errors.0 }}</p>
@@ -135,22 +167,79 @@
 </div>
 
 <script>
-/* Picking a horse auto-selects its current owner in "Bill To" (still
-   overridable). Delegated + guarded so it survives hx-boost page swaps. */
+/* Single horse: picking it auto-selects its current owner in "Bill To"
+   (still overridable). Ticked horses: one tick fills that horse's owner
+   the same way; more than one resets an auto-filled owner to "Each
+   horse's current owner". Delegated + guarded so it survives hx-boost
+   page swaps. */
 (function () {
     if (window.__chargeOwnerSync) return;
     window.__chargeOwnerSync = true;
-    document.addEventListener('change', function (e) {
-        if (!e.target.matches || !e.target.matches('#charge-form select[name="horse"]')) return;
-        var ownerSelect = document.querySelector('#charge-form select[name="owner"]');
-        if (!ownerSelect || !e.target.value) return;
-        fetch('{% url "horse_owner" %}?horse=' + encodeURIComponent(e.target.value))
+
+    function ownerSelect() {
+        return document.querySelector('#charge-form select[name="owner"]');
+    }
+
+    function fillOwner(horseId) {
+        var select = ownerSelect();
+        if (!select || !horseId) return;
+        fetch('{% url "horse_owner" %}?horse=' + encodeURIComponent(horseId))
             .then(function (r) { return r.json(); })
             .then(function (data) {
-                if (data.owner_id) ownerSelect.value = data.owner_id;
+                if (data.owner_id) {
+                    select.value = data.owner_id;
+                    select.dataset.autoFilled = String(data.owner_id);
+                }
             })
             .catch(function () { /* leave the manual selection untouched */ });
+    }
+
+    function syncTicked() {
+        var form = document.getElementById('charge-form');
+        if (!form) return;
+        var ticked = form.querySelectorAll('input[name="horses"]:checked');
+        var counter = form.querySelector('[data-horse-count]');
+        if (counter) counter.textContent = ticked.length + ' ticked';
+        var select = ownerSelect();
+        if (!select) return;
+        var auto = select.dataset.autoFilled;
+        var wasAuto = !select.value || (auto && select.value === auto);
+        if (!wasAuto) return;
+        if (ticked.length === 1) {
+            fillOwner(ticked[0].value);
+        } else {
+            select.value = '';
+            delete select.dataset.autoFilled;
+        }
+    }
+
+    document.addEventListener('change', function (e) {
+        if (!e.target.matches) return;
+        if (e.target.matches('#charge-form select[name="horse"]')) {
+            fillOwner(e.target.value);
+        } else if (e.target.matches('#charge-form input[name="horses"]')) {
+            syncTicked();
+        }
     });
+
+    document.addEventListener('input', function (e) {
+        if (!e.target.matches || !e.target.matches('#charge-form [data-horse-filter]')) return;
+        var q = e.target.value.trim().toLowerCase();
+        document.querySelectorAll('#charge-form [data-horse-row]').forEach(function (row) {
+            row.hidden = q !== '' && row.dataset.name.indexOf(q) === -1;
+        });
+    });
+
+    /* Show the count when the page loads with ticks (back button, errors). */
+    function initCount() {
+        var form = document.getElementById('charge-form');
+        if (!form) return;
+        var counter = form.querySelector('[data-horse-count]');
+        if (counter) counter.textContent = form.querySelectorAll('input[name="horses"]:checked').length + ' ticked';
+    }
+    document.addEventListener('DOMContentLoaded', initCount);
+    document.addEventListener('htmx:afterSettle', initCount);
+    initCount();
 })();
 </script>
 {% endblock %}
