@@ -5,7 +5,7 @@
     "watch:css": "tailwindcss -i static/css/input.css -o static/css/styles.css --watch"
   },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.3.3",
+    "@tailwindcss/cli": "^4.3.4",
     "tailwindcss": "^4.3.3"
   },
   "overrides": {
