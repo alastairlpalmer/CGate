@@ -1906,11 +1906,9 @@ def manage_ownership_shares(request, pk):
     })
 
 
-# Vaccinations and farrier: the two most common due items, one query
-# each. Worming (two queries), vet follow-ups and high egg counts stay on
-# the dashboard and the Health page, because more would take the list past
-# its query budget (core/tests/test_query_counts.py).
-HEALTH_FLAG_KINDS = frozenset({'vaccination', 'farrier'})
+# Every health kind the dashboard collects for a horse. A high egg count
+# has no due date (it needs worming now), so it counts as due.
+HEALTH_FLAG_KINDS = frozenset({'vaccination', 'farrier', 'worming', 'vet', 'egg_count'})
 HEALTH_FLAG_DAYS = 14
 
 
@@ -1940,21 +1938,27 @@ def _health_flags(user, horses=()):
         user, kinds=HEALTH_FLAG_KINDS, horizon_days=HEALTH_FLAG_DAYS,
         placements=placements,
     ):
-        if item.horse_id is None or item.severity not in ('overdue', 'due'):
+        if item.horse_id is None:
             continue
-        what = item.detail.split(' · ', 1)[0] if item.detail else item.kind
-        line = f"{what} {'overdue' if item.severity == 'overdue' else 'due soon'}"
+        severity = item.severity
+        if item.kind == 'egg_count':
+            severity, line = 'due', 'High egg count'
+        elif severity in ('overdue', 'due'):
+            what = item.detail.split(' · ', 1)[0] if item.detail else item.kind
+            line = f"{what} {'overdue' if severity == 'overdue' else 'due soon'}"
+        else:
+            continue
         flag = flags.setdefault(
-            item.horse_id, {'severity': item.severity, 'lines': [], 'items': []})
-        if item.severity == 'overdue':
+            item.horse_id, {'severity': severity, 'lines': [], 'items': []})
+        if severity == 'overdue':
             flag['severity'] = 'overdue'
         if line not in flag['lines']:
             flag['lines'].append(line)
         # What the Needs column shows: the dashboard's own wording ("Farrier ·
         # Full set"), when it was due, and its record button.
         flag['items'].append({
-            'severity': item.severity,
-            'detail': item.detail or what,
+            'severity': severity,
+            'detail': item.detail or line,
             'due_date': item.due_date,
             'action': item.actions[0] if item.actions else None,
         })
