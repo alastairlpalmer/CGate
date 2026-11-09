@@ -274,6 +274,12 @@
     .health-dot { @apply inline-block h-2 w-2 rounded-full align-middle ml-1; }
     .health-dot.is-overdue { @apply bg-error-red; }
     .health-dot.is-due { @apply bg-saddle; }
+    /* The Needs column of the "Needs action" view (horses/_horse_row.html). */
+    .needs-list { @apply space-y-1.5; }
+    .needs-item { @apply flex items-start gap-2 text-sm; }
+    .needs-item .health-dot { @apply ml-0 mt-1.5 shrink-0; }
+    .needs-body { @apply flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1; }
+    .needs-text { @apply flex flex-wrap items-baseline gap-x-2 min-w-0; }
     .needs-chip { @apply inline-flex items-center gap-1.5 shrink-0 rounded-full border border-light-sage bg-white px-3 py-1.5 text-xs font-medium text-charcoal hover:border-sage/40 min-h-[36px]; }
     .needs-chip b { @apply font-semibold tabular-nums; }
     .needs-chip.is-active { @apply border-forest bg-forest/[0.06] text-forest; }
@@ -1357,6 +1363,16 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
         @apply text-xs;
     }
     .horse-rows tbody td[data-col="name"] { grid-column: 2 / 4; grid-row: 1; }
+    /* The Needs cell ("Needs action" view): its own line under the meta
+       line, and above the name's tap overlay so its buttons can be used. */
+    .horse-rows tbody tr[data-horse-row] > td[data-col="needs"] {
+        grid-column: 2 / 4;
+        grid-row: 3;
+        padding-left: 2.75rem;
+        margin-top: 0.5rem;
+        position: relative;
+        z-index: 10;
+    }
     /* A long name gets two lines, then an ellipsis, so one horse never
        takes the height of four. */
     .horse-rows tbody td[data-col="name"] .font-medium {

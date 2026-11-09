@@ -59,7 +59,9 @@ class ActivityFoldTests(SimpleTestCase):
         self.assertFalse(days[0]['folded'])
 
 
-class HorseListHealthTests(TestCase):
+class HealthListBase(TestCase):
+    """Three horses: farrier 3 days overdue, farrier due in 5 days, fine."""
+
     def setUp(self):
         self.today = timezone.localdate()
         owner = Owner.objects.create(name='Roz Tobin')
@@ -89,6 +91,9 @@ class HorseListHealthTests(TestCase):
 
     def body(self, **params):
         return self.client.get(reverse('horse_list'), params).content.decode()
+
+
+class HorseListHealthTests(HealthListBase):
 
     def test_rows_carry_a_dot_with_words(self):
         body = self.body()
@@ -123,3 +128,40 @@ class HorseListHealthTests(TestCase):
                 next_due_date=self.today - timedelta(days=1),
             )
         self.assertEqual(queries(), before)
+
+
+class NeedsColumnTests(HealthListBase):
+    """The "Needs action" view says what each horse needs, how late it is,
+    and gives the record button, on the table and on a phone card."""
+
+    def test_the_needs_view_has_a_needs_column(self):
+        body = self.body(needs='1')
+        self.assertIn('<th>Needs</th>', body)
+        self.assertIn('<td data-col="needs">', body)
+        self.assertIn('Farrier · ', body)
+        self.assertIn('3 days overdue', body)
+        self.assertIn('in 5 days', body)
+        self.assertIn('Record farrier visit', body)
+
+    def test_overdue_comes_before_due_soon_for_one_horse(self):
+        from health.models import Vaccination, VaccinationType
+        flu = VaccinationType.objects.create(name='Flu', interval_months=12)
+        Vaccination.objects.create(
+            horse=self.late, vaccination_type=flu,
+            date_given=self.today - timedelta(days=360),
+            next_due_date=self.today + timedelta(days=4),
+        )
+        body = self.body(needs='1')
+        row = body.split(f'id="horse-{self.late.pk}"', 1)[1].split('</tr>', 1)[0]
+        self.assertLess(row.index('3 days overdue'), row.index('in 4 days'))
+
+    def test_the_full_list_has_no_needs_column(self):
+        body = self.body()
+        self.assertNotIn('<th>Needs</th>', body)
+        self.assertNotIn('data-col="needs"', body)
+
+    def test_a_view_only_user_sees_what_is_needed_without_buttons(self):
+        self.client.force_login(make_user_with_access('looker', horses='view', health='view'))
+        body = self.body(needs='1')
+        self.assertIn('3 days overdue', body)
+        self.assertNotIn('Record farrier visit', body)

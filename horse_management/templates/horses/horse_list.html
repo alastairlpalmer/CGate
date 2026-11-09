@@ -389,6 +389,7 @@
                                 <input type="checkbox" data-select-all aria-label="Select all horses" @change="toggleAll($event)" class="form-checkbox rounded" @click.stop>
                             </th>
                             <th>Horse</th>
+                            {% if needs_action_only %}<th>Needs</th>{% endif %}
                             {% if group_kind != 'owner' %}
                             <th>Owner</th>
                             {% endif %}
