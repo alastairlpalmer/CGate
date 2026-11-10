@@ -1,6 +1,6 @@
 # Google sign-in: review and plan
 
-Date: 10 November 2026. Status: plan only. No application code is changed.
+Date: 10 November 2026. Status: phase 1 is built. Phases 2 to 4 are a plan.
 
 ## 1. Summary
 
@@ -439,13 +439,13 @@ Each phase is one pull request and can go live by itself.
 - [ ] Answer the decisions in section 9.
 - [ ] Do the console setup in section 7 for local development.
 
-### Phase 1: repair the invitation flow (small)
+### Phase 1: repair the invitation flow (done)
 
 No Google code. Useful with or without the other phases.
 
-- [ ] "Send invitation again" on the user edit page, with an audit event.
-- [ ] Correct the email text and the expired-link page (fault 1).
-- [ ] Tests: resend makes the old link invalid; the expired page gives the
+- [x] "Send invitation again" on the user edit page, with an audit event.
+- [x] Correct the email text and the expired-link page (fault 1).
+- [x] Tests: resend makes the old link invalid; the expired page gives the
       correct advice.
 
 ### Phase 2: Google sign-in for linked users (main work)
