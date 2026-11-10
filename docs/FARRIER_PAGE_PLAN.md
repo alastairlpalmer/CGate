@@ -75,6 +75,15 @@ So the farrier gets a **separate page** with its **own access key**. It shows on
 
 The page is built for a phone first: big buttons and one column. It uses the existing app layout (PWA).
 
+### Getting to the page: the yard QR code
+
+- A printed QR code hangs on the tack room door (and, if useful, in the feed room).
+- The farrier scans it with the phone camera. It opens the farrier page.
+- **First time:** the farrier signs in, then adds the page to the phone's home screen. After that, the farrier taps the icon or scans the code.
+- **Next times:** the phone stays signed in (section 9), so the scan goes straight to Today's visit.
+- The QR code holds only the page address. It holds no password or key. A person who scans it and has no farrier login sees the normal sign-in page and nothing else.
+- Yardway makes the code. Staff open **Settings → Users → Farrier → Print QR code**. This uses the `qrcode` library that two-step sign-in already uses, so there is no new package.
+
 ### Screen 1: Today's visit (the main screen)
 
 - Header: "Farrier visit · 10 Nov 2026" and a counter "3 horses · £255".
@@ -160,9 +169,10 @@ We do not change `ExtraCharge` or the invoice code. The farrier lines use the sa
 ## 9. Sign-in and security
 
 - **Login:** the farrier gets a normal Yardway login (email and password). Brute-force lockout (django-axes) already applies.
-- **Two-step sign-in:** today it is required for admins only (`MFA_REQUIRED_FOR_ADMINS`). For the test, the farrier role does not need it. Decide before Option B (section 12, question 3).
+- **Two-step sign-in:** today it is required for admins only (`MFA_REQUIRED_FOR_ADMINS`). For the test, the farrier role does not need it. Decide before Option B (section 12, question 4).
 - **Stay signed in:** a long session on the farrier's phone (for example 30 days), so the farrier does not type a password in a field. Only for the Farrier role.
 - **Personal data:** the farrier sees horse names, photos and locations only. Add the farrier as a data recipient in `docs/DATA_RETENTION.md`.
+- **QR code:** it holds only the page address, not a login. If the code is copied or photographed, nobody gets in without the farrier's password. If we end the farrier's access, the code stays on the door and does nothing.
 - **Agreement:** a short written note with the farrier: what they can see, what they must not share, and how we end access.
 
 ## 10. Build steps
@@ -174,9 +184,9 @@ We do not change `ExtraCharge` or the invoice code. The farrier lines use the sa
 | 3 | Screen 1, Today's visit: horse list, due first, search, location filter, price panel (HTMX, same pop-up sheet as the bulk form). | 2 |
 | 4 | Screen 2, Finish visit: one transaction, records and charges through `sync_record_charge`, yard email. Tests: co-owned horse, no owner, double tap, price change. | 1 |
 | 5 | Screens 3 and 4: My prices, My visits, same-day edit. | 1 |
-| 6 | Yard side: visit page with line status, farrier statement, "Record payment to farrier". | 1 |
+| 6 | Yard side: visit page with line status, farrier statement, "Record payment to farrier", and "Print QR code" (an A5 sheet with the code and the yard name). | 1 |
 | 7 | Check on a real phone at our yard (mobile QA script in `horse_management/tools/qa/`), fixes, `docs/DATA_RETENTION.md` update. | 1 |
-| 8 | Set-up with the farrier: login, price list, a 10-minute show-and-try at the yard. | 1 (with the farrier) |
+| 8 | Set-up with the farrier: put the QR code on the tack room door, first sign-in, add the page to the home screen, enter the price list, a 10-minute show-and-try at the yard. | 1 (with the farrier) |
 
 Before each push: `ruff check .`, `python manage.py makemigrations --check --dry-run`, and the test suite, as in the README.
 
