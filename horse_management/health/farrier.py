@@ -171,46 +171,68 @@ def _get_or_open_visit(provider, user):
     return visit
 
 
-def record_line(provider, user, horse, *, item=None, work_done=None, price=None, note=''):
-    """Add or change this horse's line on the provider's open visit.
+MAX_PRICE = '9999.99'
 
-    One line per horse per visit: a second tap replaces the first. ``item``
-    is one of the provider's own prices; without it, ``work_done`` and
-    ``price`` are required ("Other"). A ``price`` with an item overrides
-    the item's price for this horse only.
 
-    No charge is made here. Charges are made when the farrier taps Finish
-    visit (step 4), through ``sync_record_charge``.
-    """
+def parse_price(value):
+    """A price from a form, as Decimal to the penny, or LineError."""
     from decimal import Decimal, InvalidOperation
 
-    from django.db import transaction
+    try:
+        price = Decimal(str(value).strip().lstrip('£')).quantize(Decimal('0.01'))
+    except (InvalidOperation, TypeError, ValueError):
+        raise LineError("Enter a price, for example 95 or 95.00.") from None
+    if price < 0 or price > Decimal(MAX_PRICE):
+        raise LineError("Enter a price between £0 and £9,999.99.")
+    return price
 
+
+def _line_values(provider, *, item=None, work_done=None, price=None, note=''):
+    """Check a line's work, price and note: ``(work_done, price, notes)``.
+
+    ``item`` is one of the provider's own active prices; without it,
+    ``work_done`` and ``price`` are required ("Other"). A ``price`` with
+    an item overrides the item's price for this horse only.
+    """
     from .models import FarrierVisit
 
-    work_types = dict(FarrierVisit.WorkType.choices)
-    if not horse.is_active:
-        raise LineError("This horse has left the yard.")
     if item is not None:
         if item.provider_id != provider.pk or not item.is_active:
             raise LineError("That price is not on your list.")
         work_done = item.farrier_work or work_done or FarrierVisit.WorkType.REMEDIAL
         if price in (None, ''):
             price = item.price
-    if work_done not in work_types:
+    if work_done not in dict(FarrierVisit.WorkType.choices):
         raise LineError("Choose the work done.")
-    try:
-        price = Decimal(str(price)).quantize(Decimal('0.01'))
-    except (InvalidOperation, TypeError, ValueError):
-        raise LineError("Enter a price, for example 95 or 95.00.") from None
-    if price < 0 or price > Decimal('9999.99'):
-        raise LineError("Enter a price between £0 and £9,999.99.")
+    if price in (None, ''):
+        raise LineError("Enter a price, for example 95 or 95.00.")
+    price = parse_price(price)
     note = (note or '').strip()[:500]
     # The price's name goes in the notes only when its work type does not
     # already say it (a custom price with no farrier work type).
     label = item.name if item is not None and not item.farrier_work else ''
     notes = ' · '.join(part for part in (label, note) if part)
+    return work_done, price, notes
 
+
+def record_line(provider, user, horse, *, item=None, work_done=None, price=None, note=''):
+    """Add or change this horse's line on the provider's open visit.
+
+    One line per horse per visit: a second tap replaces the first. See
+    ``_line_values`` for the price rules.
+
+    No charge is made here. Charges are made when the farrier taps Finish
+    visit (step 4), through ``sync_record_charge``.
+    """
+    from django.db import transaction
+
+    from .models import FarrierVisit
+
+    if not horse.is_active:
+        raise LineError("This horse has left the yard.")
+    work_done, price, notes = _line_values(
+        provider, item=item, work_done=work_done, price=price, note=note,
+    )
     with transaction.atomic():
         visit = _get_or_open_visit(provider, user)
         line = visit.farrier_visits.select_for_update().filter(horse=horse).first()
@@ -343,3 +365,115 @@ def send_visit_emails(visit_pk):
         send_farrier_visit_summary(visit, lines, farrier_email_address(visit.provider)),
         send_yard_visit_summary(visit, lines),
     )
+
+
+# --- Same-day changes to a finished visit ---------------------------------
+
+def can_change_finished(visit, today=None):
+    """True while the farrier may still change a finished visit.
+
+    Same day only, and only until the yard has checked the visit
+    (docs/FARRIER_PAGE_PLAN.md, section 5, screen 4). Each line is also
+    refused once its charge is on a live invoice.
+    """
+    from django.utils import timezone
+
+    today = today or timezone.localdate()
+    return (
+        not visit.is_open
+        and visit.date == today
+        and visit.checked_at is None
+    )
+
+
+def get_finished_line(provider, visit_pk, line_pk):
+    """A line on one of this provider's visits, or 404."""
+    from .models import FarrierVisit
+
+    visit = get_visit(provider, visit_pk)
+    line = get_object_or_404(
+        FarrierVisit.objects.select_related('horse', 'extra_charge'), pk=line_pk, provider_visit=visit,
+    )
+    return visit, line
+
+
+def _guard_finished_change(visit, line):
+    if not can_change_finished(visit):
+        raise LineError("This visit can no longer be changed here. Ask the yard.")
+    if line.extra_charge is not None and line.extra_charge.on_live_invoice:
+        raise LineError("This line is already on an invoice. Ask the yard to change it.")
+
+
+def change_finished_line(provider, visit, line, *, item=None, work_done=None, price=None, note=''):
+    """Change one line of a finished visit, and its charge, on the same day.
+
+    The charge follows through ``sync_record_charge``: a new amount and
+    description, a charge made if the line was free before, or the charge
+    removed if the price is now £0.
+    """
+    from django.db import transaction
+
+    from .views import sync_record_charge
+
+    _guard_finished_change(visit, line)
+    work_done, price, notes = _line_values(
+        provider, item=item, work_done=work_done, price=price, note=note,
+    )
+    with transaction.atomic():
+        line.work_done = work_done
+        line.cost = price
+        line.notes = notes
+        line.save()
+        status = sync_record_charge(line)
+    return status
+
+
+def remove_finished_line(provider, visit, line):
+    """Take one line off a finished visit on the same day, with its charge."""
+    from django.db import transaction
+
+    from .views import sync_record_charge
+
+    _guard_finished_change(visit, line)
+    with transaction.atomic():
+        line.cost = 0
+        line.save(update_fields=['cost'])
+        sync_record_charge(line)
+        line.delete()
+
+
+# --- My prices -------------------------------------------------------------
+
+def save_price(provider, *, name, work_done, price, item=None):
+    """Add a price to the provider's list, or change one of theirs."""
+    from django.db.models import Max
+
+    from .models import FarrierVisit
+
+    name = (name or '').strip()
+    if not name:
+        raise LineError("Enter a name, for example Full set.")
+    if len(name) > 120:
+        raise LineError("Use 120 characters or fewer for the name.")
+    if work_done and work_done not in dict(FarrierVisit.WorkType.choices):
+        raise LineError("Choose a work type from the list.")
+    price = parse_price(price)
+    clash = price_list(provider, active_only=False).filter(name__iexact=name)
+    if item is not None:
+        clash = clash.exclude(pk=item.pk)
+    if clash.exists():
+        raise LineError("You already have a price with this name.")
+    if item is None:
+        top = price_list(provider, active_only=False).aggregate(top=Max('sort_order'))['top']
+        item = ServiceItem(
+            provider=provider,
+            category=ServiceItem.Category.FARRIER,
+            sort_order=(top or 0) + 1,
+        )
+    elif item.provider_id != provider.pk:
+        raise LineError("That price is not on your list.")
+    item.name = name
+    item.farrier_work = work_done or ''
+    item.price = price
+    item.save()
+    return item

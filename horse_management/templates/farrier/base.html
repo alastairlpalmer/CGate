@@ -30,7 +30,7 @@ links to pages a farrier may not open (docs/FARRIER_PAGE_PLAN.md, section 4).
             {% url 'farrier:today' as today_url %}{% url 'farrier:visit_list' as visits_url %}{% url 'farrier:price_list' as prices_url %}
             <a href="{{ today_url }}" class="flex-1 text-center py-3 font-heading font-semibold {% if request.path == today_url %}text-saddle border-b-2 border-saddle{% else %}text-sage{% endif %}">Today</a>
             <a href="{{ visits_url }}" class="flex-1 text-center py-3 font-heading font-semibold {% if request.path|slice:':16' == visits_url %}text-saddle border-b-2 border-saddle{% else %}text-sage{% endif %}">My visits</a>
-            <a href="{{ prices_url }}" class="flex-1 text-center py-3 font-heading font-semibold {% if request.path == prices_url %}text-saddle border-b-2 border-saddle{% else %}text-sage{% endif %}">My prices</a>
+            <a href="{{ prices_url }}" class="flex-1 text-center py-3 font-heading font-semibold {% if request.path|slice:':16' == prices_url %}text-saddle border-b-2 border-saddle{% else %}text-sage{% endif %}">My prices</a>
         </div>
     </nav>
     {% endif %}

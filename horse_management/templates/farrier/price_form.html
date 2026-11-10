@@ -1,0 +1,31 @@
+{% extends "farrier/base.html" %}
+{% block title %}{% if item %}Edit price{% else %}Add a price{% endif %}{% endblock %}
+{% block heading %}{% if item %}Edit price{% else %}Add a price{% endif %}{% endblock %}
+{% block content %}
+{% if error %}<p class="rounded-lg px-4 py-3 bg-error-red-50 text-error-red" role="alert">{{ error }}</p>{% endif %}
+<form method="post" class="bg-white rounded-lg border border-light-sage p-4 space-y-4">
+    {% csrf_token %}
+    <label class="block">
+        <span class="text-sm text-sage">Name on the button</span>
+        <input type="text" name="name" value="{{ values.name }}" maxlength="120" required
+               class="mt-1 w-full rounded-lg border border-light-sage px-3 py-2" placeholder="For example: Full set">
+    </label>
+    <label class="block">
+        <span class="text-sm text-sage">Work type (what the yard's records show)</span>
+        <select name="work_done" class="mt-1 w-full rounded-lg border border-light-sage px-3 py-2 bg-white">
+            <option value=""{% if not values.work_done %} selected{% endif %}>Other work</option>
+            {% for value, label in work_types %}
+            <option value="{{ value }}"{% if values.work_done == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label class="block">
+        <span class="text-sm text-sage">Price (£)</span>
+        <input type="text" name="price" value="{{ values.price }}" inputmode="decimal" required
+               class="mt-1 w-full rounded-lg border border-light-sage px-3 py-2" placeholder="95.00">
+    </label>
+    <p class="text-sm text-sage">A new price is used on visits from now on. Visits you already sent keep their price.</p>
+    <button type="submit" class="w-full rounded-lg bg-saddle text-white font-heading font-bold py-3">Save price</button>
+</form>
+<a href="{% url 'farrier:price_list' %}" class="block text-center text-forest underline">Back to my prices</a>
+{% endblock %}

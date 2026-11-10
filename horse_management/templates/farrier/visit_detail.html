@@ -23,7 +23,7 @@
             <span>{{ line.cost|gbp }}</span>
         </div>
         {% if line.notes %}<p class="text-sm text-sage">{{ line.notes }}</p>{% endif %}
-        {% if not visit.is_open %}<p class="text-sm text-sage">Next due {{ line.next_due_date|date:"j M" }}</p>{% endif %}
+        {% if not visit.is_open %}<p class="text-sm text-sage">Next due {{ line.next_due_date|date:"j M" }}{% if can_change %} · <a href="{% url 'farrier:line_edit' visit.pk line.pk %}" class="text-forest underline">Change</a>{% endif %}</p>{% endif %}
     </div>
     {% empty %}
     <p class="px-4 py-3 text-sage">No horses on this visit yet.</p>
@@ -41,7 +41,7 @@
     {% endif %}
     <a href="{% url 'farrier:today' %}" class="block text-center text-forest underline">Back to the horses</a>
 {% else %}
-<p class="text-sm text-sage">{% if visit.is_paid %}Paid by the yard on {{ visit.paid_on|date:"j M Y" }}.{% else %}With the yard. Not paid yet.{% endif %}</p>
+<p class="text-sm text-sage">{% if visit.is_paid %}Paid by the yard on {{ visit.paid_on|date:"j M Y" }}.{% else %}With the yard. Not paid yet.{% endif %}{% if can_change %} You can change a line today, until the yard checks the visit.{% endif %}</p>
 {% if done %}<a href="{% url 'farrier:today' %}" class="block text-center rounded-lg border border-forest text-forest font-heading font-semibold py-3">Done</a>{% endif %}
 {% endif %}
 {% endblock %}

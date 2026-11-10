@@ -3,8 +3,8 @@
 Step 2 built the gate and the scoped pages. Step 3 adds Today's visit:
 the horse list (due first, search, location filter) and the price panel
 that records a line. Step 4 adds Finish visit, which bills every line
-and sends the farrier and the yard a summary. Editing prices (step 5)
-comes next. Every view here is wrapped in ``provider_page`` and
+and sends the farrier and the yard a summary. Step 5 adds My prices (add,
+edit, hide) and same-day changes to a finished visit. Every view here is wrapped in ``provider_page`` and
 reads data only through the scoped helpers in ``health.farrier``.
 """
 
@@ -186,6 +186,7 @@ def visit_detail(request, pk):
         'visit': visit,
         'lines': visit.farrier_visits.select_related('horse').order_by('horse__name'),
         'done': request.GET.get('done') == '1' and not visit.is_open,
+        'can_change': farrier.can_change_finished(visit),
         'email_to': farrier.farrier_email_address(provider),
     })
 
@@ -198,3 +199,105 @@ def price_list(request):
         'provider': provider,
         'prices': farrier.price_list(provider, active_only=False),
     })
+
+
+def _price_form(request, provider, item=None):
+    """Add or edit one of the farrier's prices (one view for both)."""
+    values = {
+        'name': item.name if item else '',
+        'work_done': item.farrier_work if item else '',
+        'price': f'{item.price:.2f}' if item else '',
+    }
+    error = ''
+    if request.method == 'POST':
+        values = {key: request.POST.get(key, '').strip() for key in values}
+        try:
+            farrier.save_price(
+                provider, name=values['name'], work_done=values['work_done'],
+                price=values['price'], item=item,
+            )
+        except LineError as exc:
+            error = str(exc)
+        else:
+            messages.success(request, f"Saved {values['name']}.")
+            return redirect('farrier:price_list')
+    return render(request, 'farrier/price_form.html', {
+        'provider': provider,
+        'item': item,
+        'values': values,
+        'error': error,
+        'work_types': FarrierVisit.WorkType.choices,
+    })
+
+
+@provider_page
+def price_add(request):
+    return _price_form(request, request.provider)
+
+
+@provider_page
+def price_edit(request, pk):
+    return _price_form(request, request.provider, farrier.get_price(request.provider, pk))
+
+
+@provider_page
+@require_POST
+def price_toggle(request, pk):
+    """Hide a price from the visit screen, or show it again."""
+    item = farrier.get_price(request.provider, pk)
+    item.is_active = not item.is_active
+    item.save(update_fields=['is_active', 'updated_at'])
+    messages.success(request, f"{item.name} is {'shown' if item.is_active else 'hidden'}.")
+    return redirect('farrier:price_list')
+
+
+@provider_page
+def line_edit(request, visit_pk, pk):
+    """Change one line of a finished visit, on the same day."""
+    provider = request.provider
+    visit, line = farrier.get_finished_line(provider, visit_pk, pk)
+    detail_url = reverse('farrier:visit_detail', args=[visit.pk])
+    if not farrier.can_change_finished(visit):
+        messages.error(request, "This visit can no longer be changed here. Ask the yard.")
+        return redirect(detail_url)
+    error = ''
+    if request.method == 'POST':
+        item_pk = request.POST.get('item', '')
+        item = farrier.get_price(provider, int(item_pk)) if item_pk.isdigit() else None
+        try:
+            farrier.change_finished_line(
+                provider, visit, line,
+                item=item,
+                work_done=request.POST.get('work_done') or None,
+                price=request.POST.get('price') or None,
+                note=request.POST.get('note', ''),
+            )
+        except LineError as exc:
+            error = str(exc)
+        else:
+            messages.success(request, f"Changed {line.horse.name}. The yard's charge is updated.")
+            return redirect(detail_url)
+    return render(request, 'farrier/line_form.html', {
+        'provider': provider,
+        'visit': visit,
+        'line': line,
+        'prices': farrier.price_list(provider),
+        'work_types': FarrierVisit.WorkType.choices,
+        'error': error,
+    })
+
+
+@provider_page
+@require_POST
+def line_remove(request, visit_pk, pk):
+    """Take one line off a finished visit, on the same day."""
+    provider = request.provider
+    visit, line = farrier.get_finished_line(provider, visit_pk, pk)
+    name = line.horse.name
+    try:
+        farrier.remove_finished_line(provider, visit, line)
+    except LineError as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, f"Removed {name} from this visit. The yard's charge is removed.")
+    return redirect('farrier:visit_detail', visit.pk)

@@ -18,5 +18,10 @@ urlpatterns = [
     path('visit/finish/', views.visit_finish, name='visit_finish'),
     path('visits/', views.visit_list, name='visit_list'),
     path('visits/<int:pk>/', views.visit_detail, name='visit_detail'),
+    path('visits/<int:visit_pk>/lines/<int:pk>/', views.line_edit, name='line_edit'),
+    path('visits/<int:visit_pk>/lines/<int:pk>/remove/', views.line_remove, name='line_remove'),
     path('prices/', views.price_list, name='price_list'),
+    path('prices/add/', views.price_add, name='price_add'),
+    path('prices/<int:pk>/', views.price_edit, name='price_edit'),
+    path('prices/<int:pk>/toggle/', views.price_toggle, name='price_toggle'),
 ]
