@@ -80,7 +80,9 @@ class ServicePickerField(forms.ChoiceField):
         self.load_items(self.category)
 
     def load_items(self, category):
-        queryset = ServiceItem.objects.filter(is_active=True)
+        # Staff forms offer the yard's directory only, never a visiting
+        # professional's own price list.
+        queryset = ServiceItem.objects.yard().filter(is_active=True)
         if isinstance(category, str):
             queryset = queryset.filter(category=category)
         elif category:
