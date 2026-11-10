@@ -1,13 +1,29 @@
 {% extends "farrier/base.html" %}
 {% load ui_extras %}
-{% block title %}Visit {{ visit.date|date:"j M Y" }}{% endblock %}
-{% block heading %}Visit · {{ visit.date|date:"j M Y" }}{% endblock %}
+{% block title %}{% if visit.is_open %}Review visit{% else %}Visit {{ visit.date|date:"j M Y" }}{% endif %}{% endblock %}
+{% block heading %}{% if visit.is_open %}Review visit{% else %}Visit · {{ visit.date|date:"j M Y" }}{% endif %}{% endblock %}
 {% block content %}
+{% if done %}
+<div class="bg-white rounded-lg border border-meadow p-4 space-y-1 text-center" role="status">
+    <p class="text-3xl text-meadow" aria-hidden="true">&#10003;</p>
+    <p class="font-heading font-bold text-lg">Sent to the yard</p>
+    <p>{{ lines|length }} horse{{ lines|length|pluralize }} · {{ visit.total|gbp }}. You do not need to send a bill.</p>
+    {% if email_to %}
+    <p class="text-sm text-sage">A summary is on its way to {{ email_to }}.</p>
+    {% else %}
+    <p class="text-sm text-sage">Ask the yard to add your email address to get a summary after each visit.</p>
+    {% endif %}
+</div>
+{% endif %}
 <div class="bg-white rounded-lg border border-light-sage divide-y divide-light-sage">
     {% for line in lines %}
-    <div class="px-4 py-3 flex justify-between gap-3">
-        <span>{{ line.horse.name }} · {{ line.get_work_done_display }}</span>
-        <span>{{ line.cost|gbp }}</span>
+    <div class="px-4 py-3 space-y-0.5">
+        <div class="flex justify-between gap-3">
+            <span class="font-semibold">{{ line.horse.name }} · {{ line.get_work_done_display }}</span>
+            <span>{{ line.cost|gbp }}</span>
+        </div>
+        {% if line.notes %}<p class="text-sm text-sage">{{ line.notes }}</p>{% endif %}
+        {% if not visit.is_open %}<p class="text-sm text-sage">Next due {{ line.next_due_date|date:"j M" }}</p>{% endif %}
     </div>
     {% empty %}
     <p class="px-4 py-3 text-sage">No horses on this visit yet.</p>
@@ -16,5 +32,16 @@
         <span>Total</span><span>{{ visit.total|gbp }}</span>
     </div>
 </div>
-<p class="text-sm text-sage">{% if visit.is_open %}Open{% elif visit.is_paid %}Paid by the yard on {{ visit.paid_on|date:"j M Y" }}{% else %}Sent to the yard. Not paid yet.{% endif %}</p>
+{% if visit.is_open %}
+    {% if lines %}
+    <form method="post" action="{% url 'farrier:visit_finish' %}">
+        {% csrf_token %}
+        <button type="submit" class="w-full rounded-lg bg-saddle text-white font-heading font-bold py-3">Finish visit · send {{ lines|length }} line{{ lines|length|pluralize }} ({{ visit.total|gbp }}) to the yard</button>
+    </form>
+    {% endif %}
+    <a href="{% url 'farrier:today' %}" class="block text-center text-forest underline">Back to the horses</a>
+{% else %}
+<p class="text-sm text-sage">{% if visit.is_paid %}Paid by the yard on {{ visit.paid_on|date:"j M Y" }}.{% else %}With the yard. Not paid yet.{% endif %}</p>
+{% if done %}<a href="{% url 'farrier:today' %}" class="block text-center rounded-lg border border-forest text-forest font-heading font-semibold py-3">Done</a>{% endif %}
+{% endif %}
 {% endblock %}

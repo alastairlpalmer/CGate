@@ -32,7 +32,7 @@
             <div class="grid grid-cols-2 gap-2">
                 {% for item in prices %}
                 <button type="submit" name="item" value="{{ item.pk }}"
-                        class="rounded-lg border bg-white px-2 py-3 text-sm font-semibold {% if horse.line and item.name in horse.line.notes %}border-meadow text-meadow{% else %}border-light-sage text-forest{% endif %}">
+                        class="rounded-lg border bg-white px-2 py-3 text-sm font-semibold {% if horse.line and horse.line.work_done == item.farrier_work and horse.line.cost == item.price %}border-meadow text-meadow{% else %}border-light-sage text-forest{% endif %}">
                     {{ item.name }} {{ item.price|gbp }}
                 </button>
                 {% endfor %}

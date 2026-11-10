@@ -143,7 +143,16 @@ class RecordLineTests(TodayBase):
         self.assertEqual(line.cost, Decimal('95.00'))
         self.assertEqual(line.service_provider, self.provider)
         self.assertEqual(line.date, visit.date)
-        self.assertIn('Full set', line.notes)
+        # The work type already says "Full set"; no repeat in the notes.
+        self.assertEqual(line.notes, '')
+
+    def test_custom_price_without_a_work_type_keeps_its_name(self):
+        rasp = ServiceItem.objects.create(name='Rasp and balance', category='farrier',
+                                          price=Decimal('25.00'), provider=self.provider)
+        self.add(self.bramble, item=rasp.pk, note='Left hind')
+        line = self.line(self.bramble)
+        self.assertEqual(line.work_done, 'remedial')
+        self.assertEqual(line.notes, 'Rasp and balance · Left hind')
 
     def test_no_charge_until_finish(self):
         self.add(self.bramble, item=self.full_set.pk)

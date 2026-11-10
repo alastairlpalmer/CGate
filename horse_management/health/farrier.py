@@ -206,7 +206,10 @@ def record_line(provider, user, horse, *, item=None, work_done=None, price=None,
     if price < 0 or price > Decimal('9999.99'):
         raise LineError("Enter a price between £0 and £9,999.99.")
     note = (note or '').strip()[:500]
-    notes = ' · '.join(part for part in (item.name if item else '', note) if part)
+    # The price's name goes in the notes only when its work type does not
+    # already say it (a custom price with no farrier work type).
+    label = item.name if item is not None and not item.farrier_work else ''
+    notes = ' · '.join(part for part in (label, note) if part)
 
     with transaction.atomic():
         visit = _get_or_open_visit(provider, user)
@@ -239,3 +242,104 @@ def remove_line(provider, horse):
             raise LineError("This line is already billed. Ask the yard to change it.")
         line.delete()
         return True
+
+
+# --- Finish visit ----------------------------------------------------------
+
+class FinishedLine:
+    """One line of a finished visit, as the farrier and the yard see it."""
+
+    def __init__(self, record, status):
+        self.record = record
+        self.horse = record.horse
+        self.work = record.get_work_done_display()
+        self.cost = record.cost
+        self.next_due = record.next_due_date
+        self.note = record.notes
+        # 'created' or 'updated': on the owner's next invoice. 'no_owner':
+        # kept, not billed. 'invoiced': already on an invoice (unchanged).
+        self.status = status
+        charge = record.extra_charge
+        self.billed_to = charge.owner if charge is not None else None
+
+    @property
+    def billed(self):
+        """True when the line has a charge on an owner's account."""
+        return self.record.extra_charge_id is not None
+
+
+def finish_visit(provider, user):
+    """Close the provider's open visit and bill every line.
+
+    Each line goes through ``sync_record_charge`` (the one billing path,
+    docs/FARRIER_PAGE_PLAN.md, section 8, rule 1): a charge for the
+    horse's current owner, split between co-owners when the invoice is
+    made. A horse with no owner keeps its record and is not billed.
+
+    Runs once: the provider row is locked, and a second tap finds no open
+    visit and returns None. After the transaction commits, the farrier
+    and the yard each get a summary email.
+
+    Returns ``(visit, lines)`` or None when there is nothing to finish.
+    """
+    from django.db import transaction
+    from django.utils import timezone
+
+    from billing.models import ServiceProvider
+
+    from .views import sync_record_charge
+
+    with transaction.atomic():
+        ServiceProvider.objects.select_for_update().filter(pk=provider.pk).first()
+        visit = open_visit(provider)
+        if visit is None:
+            return None
+        records = list(
+            visit.farrier_visits.select_for_update()
+            .select_related('horse').order_by('horse__name')
+        )
+        if not records:
+            raise LineError("Add at least one horse before you finish.")
+        lines = []
+        for record in records:
+            status = sync_record_charge(record)
+            record.refresh_from_db()
+            lines.append(FinishedLine(record, status))
+        visit.status = ProviderVisit.Status.FINISHED
+        visit.finished_at = timezone.now()
+        visit.save(update_fields=['status', 'finished_at', 'updated_at'])
+        transaction.on_commit(lambda: send_visit_emails(visit.pk))
+    return visit, lines
+
+
+def finished_lines(visit):
+    """The lines of a finished visit, rebuilt for the done screen."""
+    lines = []
+    for record in visit.farrier_visits.select_related('horse', 'extra_charge__owner').order_by('horse__name'):
+        status = 'created' if record.extra_charge_id else ('no_owner' if record.cost > 0 else None)
+        lines.append(FinishedLine(record, status))
+    return lines
+
+
+def farrier_email_address(provider):
+    """Where the farrier's summary goes: the provider's email, else the login's."""
+    if provider.email:
+        return provider.email
+    user = provider.user
+    return getattr(user, 'email', '') or ''
+
+
+def send_visit_emails(visit_pk):
+    """Email the visit summary to the farrier and to the yard.
+
+    A failed email never undoes the visit: the charges are already made.
+    Returns ``(farrier_sent, yard_sent)``.
+    """
+    from notifications.emails import send_farrier_visit_summary, send_yard_visit_summary
+
+    visit = ProviderVisit.objects.select_related('provider__user').get(pk=visit_pk)
+    lines = finished_lines(visit)
+    return (
+        send_farrier_visit_summary(visit, lines, farrier_email_address(visit.provider)),
+        send_yard_visit_summary(visit, lines),
+    )

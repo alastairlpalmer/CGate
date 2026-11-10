@@ -2,7 +2,7 @@
 
 **Goal:** Our farrier records each visit on a phone in under 2 minutes. Yardway bills each owner on the monthly invoice. The yard pays the farrier one amount each month. Nobody types the same data twice.
 **Scope:** One farrier, our own yard, our own horses. About 8 weeks of use after the build.
-**Status:** Steps 1 to 3 built (data, Farrier role, access gate and fence, Today's visit with the horse list and price panel). Steps 4 to 8 not built.
+**Status:** Steps 1 to 4 built (data, Farrier role, access gate and fence, Today's visit, Finish visit with billing and summary emails). Steps 5 to 8 not built.
 **Build estimate:** 7 to 9 working days, plus 1 day of set-up with the farrier.
 
 ---
@@ -112,7 +112,8 @@ Tap a horse. A small panel opens with the farrier's price buttons:
 
 - A list of every line: horse, work, price, note. Total at the bottom.
 - **Finish visit** button. It asks once: "Send 6 lines (£510) to the yard?"
-- After this: "Done. The yard has your visit." It shows a link to "My visits".
+- After this: "Sent to the yard. You do not need to send a bill." It shows each horse, the work, the price and the next due date, and a link to "My visits".
+- **Summary message to the farrier:** an email straight after Finish, so they can move on: each horse, the work, the price, any note, the next due date, and the total. It never names owners. It goes to the provider's email, or else the login's email. (Added 10 Nov 2026 at the user's request.)
 
 ### Screen 3: My prices
 

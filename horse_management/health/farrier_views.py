@@ -2,8 +2,9 @@
 
 Step 2 built the gate and the scoped pages. Step 3 adds Today's visit:
 the horse list (due first, search, location filter) and the price panel
-that records a line. Finish visit (step 4) and editing prices (step 5)
-come next. Every view here is wrapped in ``provider_page`` and
+that records a line. Step 4 adds Finish visit, which bills every line
+and sends the farrier and the yard a summary. Editing prices (step 5)
+comes next. Every view here is wrapped in ``provider_page`` and
 reads data only through the scoped helpers in ``health.farrier``.
 """
 
@@ -139,6 +140,33 @@ def horse_remove(request, pk):
 
 
 @provider_page
+@require_POST
+def visit_finish(request):
+    """Finish visit: bill every line and send the summaries.
+
+    A second tap (or a slow network resending) finds no open visit and
+    goes to the last finished visit instead of billing again.
+    """
+    provider = request.provider
+    try:
+        result = farrier.finish_visit(provider, request.user)
+    except LineError as exc:
+        messages.error(request, str(exc))
+        return redirect('farrier:today')
+    if result is None:
+        last = farrier.visits(provider).filter(status='finished').first()
+        if last is None:
+            return redirect('farrier:today')
+        return redirect(f"{reverse('farrier:visit_detail', args=[last.pk])}?done=1")
+    visit, _ = result
+    url = f"{reverse('farrier:visit_detail', args=[visit.pk])}?done=1"
+    if getattr(request, 'htmx', False):
+        from django_htmx.http import HttpResponseClientRedirect
+        return HttpResponseClientRedirect(url)
+    return redirect(url)
+
+
+@provider_page
 def visit_list(request):
     """My visits: every visit this farrier has recorded."""
     provider = request.provider
@@ -157,6 +185,8 @@ def visit_detail(request, pk):
         'provider': provider,
         'visit': visit,
         'lines': visit.farrier_visits.select_related('horse').order_by('horse__name'),
+        'done': request.GET.get('done') == '1' and not visit.is_open,
+        'email_to': farrier.farrier_email_address(provider),
     })
 
 

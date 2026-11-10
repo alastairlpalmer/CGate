@@ -312,3 +312,63 @@ def send_breeding_digest(owner, entries):
     except Exception as e:
         logger.error(f"Failed to send email: {e}")
         return False
+
+
+def send_farrier_visit_summary(visit, lines, to_email):
+    """The farrier's copy of a finished visit, so they can move on.
+
+    Horse, work, price, note and next due date for each line, and the
+    total. No owner names: the farrier never sees them
+    (docs/FARRIER_PAGE_PLAN.md, section 5).
+    """
+    if not to_email or not lines:
+        return False
+    from django.urls import reverse
+
+    from .mail import absolute_url
+
+    business = BusinessSettings.get_settings()
+    total = sum((line.cost for line in lines), start=0)
+    count = len(lines)
+    subject = f"Visit sent: {count} horse{'s' if count != 1 else ''}, £{total:,.2f}"
+    html_content = render_to_string('notifications/email/farrier_visit_summary.html', {
+        'business': business,
+        'visit': visit,
+        'lines': lines,
+        'total': total,
+        'visits_url': absolute_url(reverse('farrier:visit_list')),
+    })
+    try:
+        message(subject, html_content, [to_email]).send()
+        return True
+    except Exception:
+        logger.exception("Failed to send the visit summary to the farrier (visit %s)", visit.pk)
+        return False
+
+
+def send_yard_visit_summary(visit, lines):
+    """The yard's copy of a finished farrier visit, with who each line bills."""
+    business = BusinessSettings.get_settings()
+    if not business.email or not lines:
+        return False
+    from django.urls import reverse
+
+    from .mail import absolute_url
+
+    total = sum((line.cost for line in lines), start=0)
+    count = len(lines)
+    subject = f"Farrier visit: {visit.provider.name}, {count} horse{'s' if count != 1 else ''}, £{total:,.2f}"
+    html_content = render_to_string('notifications/email/farrier_visit_yard.html', {
+        'business': business,
+        'visit': visit,
+        'lines': lines,
+        'total': total,
+        'not_billed': [line for line in lines if not line.billed and line.cost > 0],
+        'farrier_list_url': absolute_url(reverse('farrier_list')),
+    })
+    try:
+        message(subject, html_content, [business.email]).send()
+        return True
+    except Exception:
+        logger.exception("Failed to send the farrier visit summary to the yard (visit %s)", visit.pk)
+        return False
