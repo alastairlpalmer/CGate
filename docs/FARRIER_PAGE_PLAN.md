@@ -202,12 +202,17 @@ Before each push: `ruff check .`, `python manage.py makemigrations --check --dry
 **Pass:** the farrier uses it on every visit, and both sides save real time.
 **Then:** run the same test with Tim (vet), and plan Option B.
 
-## 12. Open questions (answer before the build)
+## 12. Decisions and open questions
 
-1. **Price:** does the yard bill owners the same price the farrier charges, or add a fee? The plan assumes the same price (the yard makes no margin).
-2. **Phone signal:** does the farrier have a signal in every field and stable? If not, the page must save lines on the phone and send them later. That adds about 2 days.
-3. **Two-step sign-in** for the farrier: required or not during the test?
-4. **VAT:** is the farrier VAT registered? If yes, the yard's recharge and the `YardCost` need the VAT amount. Check with the accountant.
+Decided on 10 Nov 2026:
+
+1. **Price:** the yard bills owners the same price the farrier charges. The yard makes no margin.
+2. **Phone signal:** good in every field and stable. The page does not need to work offline.
+3. **VAT:** the farrier is not VAT registered. No VAT on farrier lines or on the `YardCost`.
+
+Still open:
+
+4. **Two-step sign-in** for the farrier: required or not during the test?
 5. **Owners:** tell owners that farrier lines will appear on the monthly invoice, if they do not already.
 6. **Horses the farrier must not see:** for example, horses in a closed stable. The plan shows all active horses.
 
