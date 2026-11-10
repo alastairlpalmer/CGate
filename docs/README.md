@@ -20,6 +20,7 @@
 | [`LOCATION_MAPPING_PLAN.md`](LOCATION_MAPPING_PLAN.md) | Design for coordinates, field boundaries and the map tab. |
 | [`DASHBOARD_REDESIGN_PLAN.md`](DASHBOARD_REDESIGN_PLAN.md) | Dashboard redesign. |
 | [`POPUP_EDIT_PLAN.md`](POPUP_EDIT_PLAN.md) | Popup editing. |
+| [`FARRIER_PAGE_PLAN.md`](FARRIER_PAGE_PLAN.md) | Farrier page test (Option A): our farrier records visits on a phone; charges go on owners' monthly invoices; the yard pays the farrier monthly. |
 | [`UX_REVIEW_PLAN.md`](UX_REVIEW_PLAN.md) | UX and visual review (Nov 2026): findings and a phased plan for hierarchy, consistency and phone lists. |
 | [`UI_AUDIT.md`](UI_AUDIT.md) | Interface audit. |
 
