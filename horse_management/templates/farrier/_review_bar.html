@@ -1,0 +1,5 @@
+<div id="review-bar"{% if oob %} hx-swap-oob="true"{% endif %}>
+{% if visit and visit.farrier_visits.exists %}
+<a href="{% url 'farrier:visit_detail' visit.pk %}" class="block text-center rounded-lg border border-forest text-forest font-heading font-semibold py-3">Review visit ({{ visit.farrier_visits.count }})</a>
+{% endif %}
+</div>

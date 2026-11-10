@@ -1,0 +1,1 @@
+{% load ui_extras %}<span id="visit-counter"{% if oob %} hx-swap-oob="true"{% endif %} class="text-sm text-white/80">{% if visit %}{% with n=visit.farrier_visits.count %}{{ n }} horse{{ n|pluralize }} · {{ visit.total|gbp }}{% endwith %}{% else %}No horses yet{% endif %}</span>

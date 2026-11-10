@@ -1,21 +1,22 @@
-{% load static ui_extras %}<!DOCTYPE html>
+{% load static ui_extras cache_bust %}<!DOCTYPE html>
 <html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}Farrier visit{% endblock %} - Cgate</title>
     {% include "registration/_auth_head.html" %}
+    <script src="{% static_v 'js/htmx.min.js' %}"></script>
 </head>
 {% comment %}
 The farrier page has its own frame, not base.html: the staff navigation
 links to pages a farrier may not open (docs/FARRIER_PAGE_PLAN.md, section 4).
 {% endcomment %}
-<body class="min-h-full font-body antialiased bg-parchment text-charcoal">
+<body class="min-h-full font-body antialiased bg-parchment text-charcoal" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
     <header class="bg-forest text-white px-4 py-3">
         <div class="max-w-xl mx-auto flex items-center justify-between gap-3">
             <div>
                 <p class="font-heading font-bold text-lg leading-tight">{% block heading %}Farrier visit{% endblock %}</p>
-                {% if provider %}<p class="text-sm text-white/80">{{ provider.name }}</p>{% endif %}
+                {% if provider %}<p class="text-sm text-white/80">{{ provider.name }}{% block header_extra %}{% endblock %}</p>{% endif %}
             </div>
             <form method="post" action="{% url 'logout' %}">
                 {% csrf_token %}
@@ -34,6 +35,9 @@ links to pages a farrier may not open (docs/FARRIER_PAGE_PLAN.md, section 4).
     </nav>
     {% endif %}
     <main class="max-w-xl mx-auto px-4 py-5 space-y-4">
+        {% for message in messages %}
+        <p class="rounded-lg px-4 py-3 {% if message.tags == 'error' %}bg-error-red-50 text-error-red{% else %}bg-sage-50 text-forest{% endif %}" role="status">{{ message }}</p>
+        {% endfor %}
         {% block content %}{% endblock %}
     </main>
 </body>

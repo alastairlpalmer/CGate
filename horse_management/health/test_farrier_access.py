@@ -208,9 +208,14 @@ class ScopeTests(TestCase):
         self.assertEqual(list(response.context['visits']), [self.mine])
 
     def test_prices_hold_only_own_items(self):
-        for name in ('price_list', 'today'):
-            with self.subTest(page=name):
-                response = self.client.get(reverse(f'farrier:{name}'))
+        pages = {
+            'My prices': self.client.get(reverse('farrier:price_list')),
+            'price panel': self.client.get(
+                reverse('farrier:horse_panel', args=[self.horse.pk]), HTTP_HX_REQUEST='true',
+            ),
+        }
+        for page, response in pages.items():
+            with self.subTest(page=page):
                 self.assertContains(response, 'My full set')
                 self.assertNotContains(response, 'Rival trim')
                 self.assertNotContains(response, 'Yard trim')

@@ -1,28 +1,20 @@
 {% extends "farrier/base.html" %}
-{% load ui_extras %}
 {% block title %}Today's visit{% endblock %}
 {% block heading %}Farrier visit · {% now "j M" %}{% endblock %}
+{% block header_extra %} · {% include "farrier/_counter.html" %}{% endblock %}
 {% block content %}
-{% if visit %}
-<div class="bg-white rounded-lg border border-light-sage p-4 space-y-1">
-    <p class="font-heading font-semibold">Visit open since {{ visit.started_at|time:"H:i" }}</p>
-    <p class="text-sage">{{ visit.farrier_visits.count }} horse{{ visit.farrier_visits.count|pluralize }} · {{ visit.total|gbp }}</p>
-    <a href="{% url 'farrier:visit_detail' visit.pk %}" class="text-forest underline">See the lines</a>
-</div>
-{% else %}
-<div class="bg-white rounded-lg border border-light-sage p-4 space-y-1">
-    <p class="font-heading font-semibold">No visit open.</p>
-    <p class="text-sage">Recording horses on this page comes next.</p>
-</div>
-{% endif %}
-<div class="space-y-2">
-    <p class="text-sm uppercase tracking-wide text-sage">Your prices</p>
-    {% for item in prices %}
-    <div class="bg-white rounded-lg border border-light-sage px-4 py-3 flex justify-between gap-3">
-        <span>{{ item.name }}</span><span class="font-semibold">{{ item.price|gbp }}</span>
-    </div>
-    {% empty %}
-    <p class="text-sage">No prices yet. Add them under My prices.</p>
-    {% endfor %}
-</div>
+<form method="get" action="{% url 'farrier:today' %}" class="grid grid-cols-3 gap-2"
+      hx-get="{% url 'farrier:today' %}" hx-target="#horse-list" hx-swap="outerHTML" hx-push-url="false" hx-select="unset"
+      hx-trigger="input changed delay:300ms from:input[name=q], change from:select[name=location], submit">
+    <input type="search" name="q" value="{{ search }}" placeholder="Search horse…" aria-label="Search horse"
+           class="col-span-2 rounded-lg border border-light-sage px-3 py-2 bg-white">
+    <select name="location" aria-label="Location" class="rounded-lg border border-light-sage px-2 py-2 bg-white">
+        <option value="">All places</option>
+        {% for location in locations %}
+        <option value="{{ location.pk }}"{% if location.pk == location_id %} selected{% endif %}>{{ location.name }}</option>
+        {% endfor %}
+    </select>
+</form>
+{% include "farrier/_horse_list.html" %}
+{% include "farrier/_review_bar.html" %}
 {% endblock %}

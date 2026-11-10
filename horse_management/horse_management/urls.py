@@ -93,7 +93,7 @@ if getattr(settings, 'SERVE_MEDIA', False) and not settings.DEBUG:
     from django.urls import re_path
     from django.views.static import serve as media_serve
 
-    from core.permissions import LEVEL_VIEW, has_feature_access
+    from core.permissions import LEVEL_VIEW, has_feature_access, is_provider_only
 
     # Login alone isn't authorization: passports, insurance documents and
     # supplier receipts live at guessable /media/ paths, and a role built
@@ -137,6 +137,10 @@ if getattr(settings, 'SERVE_MEDIA', False) and not settings.DEBUG:
             if path.startswith(prefix):
                 if prefix == 'documents/':
                     feature = _document_feature(path)
+                # A farrier's login may load horse profile photos (the
+                # farrier page shows them) and nothing else here.
+                if prefix == 'horses/' and is_provider_only(request.user):
+                    break
                 if feature and not has_feature_access(
                     request.user, feature, LEVEL_VIEW
                 ):
