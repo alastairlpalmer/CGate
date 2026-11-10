@@ -105,6 +105,21 @@
             <h3 class="section-title">Sign-In Security</h3>
         </div>
         <div class="settings-rows">
+            {% if can_be_invited %}
+            <div class="settings-row">
+                <div class="min-w-0">
+                    <p class="settings-row-title">No password yet</p>
+                    <p class="settings-row-meta">{% if object.last_login %}This user has no password, so they cannot sign in.{% else %}This user has not accepted their invitation.{% endif %} Send a new invitation if the link has expired or the email was lost. Links sent before stop working.</p>
+                </div>
+                <div class="settings-actions">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="resend_invite" value="1">
+                        <button type="submit" class="btn-primary btn-sm">Send Invitation Again</button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
             <div class="settings-row">
                 <div class="min-w-0">
                     <p class="settings-row-title">{% if locked_out %}Locked out{% else %}Not locked out{% endif %}</p>
