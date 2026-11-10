@@ -52,7 +52,7 @@ These come from section 1 of this doc.
 1. Tim holds the button and speaks. The phone records the audio.
 2. With a signal, a speech-to-text service types the note in a few seconds. With no signal, the phone keeps the audio and types the note when the signal comes back.
 3. The app tidies the text into short parts: what Tim found, what was done, and when to check again. It suggests a follow-up date when the note gives one.
-4. **Tim always checks and edits the text before he saves it.** Nothing goes on a record or a bill until Tim has checked it.
+4. **Tim always checks and edits the text before saving it.** Nothing goes on a record or a bill until Tim has checked it.
 5. A word list of equine and drug terms improves accuracy. Tim can add words.
 6. The audio is deleted when the note is saved. Only the text stays.
 
