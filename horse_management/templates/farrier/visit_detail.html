@@ -1,0 +1,20 @@
+{% extends "farrier/base.html" %}
+{% load ui_extras %}
+{% block title %}Visit {{ visit.date|date:"j M Y" }}{% endblock %}
+{% block heading %}Visit · {{ visit.date|date:"j M Y" }}{% endblock %}
+{% block content %}
+<div class="bg-white rounded-lg border border-light-sage divide-y divide-light-sage">
+    {% for line in lines %}
+    <div class="px-4 py-3 flex justify-between gap-3">
+        <span>{{ line.horse.name }} · {{ line.get_work_done_display }}</span>
+        <span>{{ line.cost|gbp }}</span>
+    </div>
+    {% empty %}
+    <p class="px-4 py-3 text-sage">No horses on this visit yet.</p>
+    {% endfor %}
+    <div class="px-4 py-3 flex justify-between gap-3 font-heading font-bold">
+        <span>Total</span><span>{{ visit.total|gbp }}</span>
+    </div>
+</div>
+<p class="text-sm text-sage">{% if visit.is_open %}Open{% elif visit.is_paid %}Paid by the yard on {{ visit.paid_on|date:"j M Y" }}{% else %}Sent to the yard. Not paid yet.{% endif %}</p>
+{% endblock %}

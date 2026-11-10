@@ -77,6 +77,9 @@ urlpatterns = [
     path('', include('core.urls')),
     path('invoicing/', include('invoicing.urls')),
     path('health/', include('health.urls')),
+    # The farrier's own page (docs/FARRIER_PAGE_PLAN.md). The prefix must
+    # match ProviderPortalMiddleware.PORTAL_PREFIX.
+    path('farrier/', include('health.farrier_urls')),
     path('billing/', include('billing.urls')),
     path('xero/', include('xero_integration.urls')),
 ]

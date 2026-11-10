@@ -2,7 +2,7 @@
 
 **Goal:** Our farrier records each visit on a phone in under 2 minutes. Yardway bills each owner on the monthly invoice. The yard pays the farrier one amount each month. Nobody types the same data twice.
 **Scope:** One farrier, our own yard, our own horses. About 8 weeks of use after the build.
-**Status:** Step 1 built (data, access key, Farrier role). Steps 2 to 8 not built.
+**Status:** Steps 1 and 2 built (data, Farrier role, access gate and fence, scoped read-only pages). Steps 3 to 8 not built.
 **Build estimate:** 7 to 9 working days, plus 1 day of set-up with the farrier.
 
 ---

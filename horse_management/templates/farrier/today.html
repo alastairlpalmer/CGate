@@ -1,0 +1,28 @@
+{% extends "farrier/base.html" %}
+{% load ui_extras %}
+{% block title %}Today's visit{% endblock %}
+{% block heading %}Farrier visit · {% now "j M" %}{% endblock %}
+{% block content %}
+{% if visit %}
+<div class="bg-white rounded-lg border border-light-sage p-4 space-y-1">
+    <p class="font-heading font-semibold">Visit open since {{ visit.started_at|time:"H:i" }}</p>
+    <p class="text-sage">{{ visit.farrier_visits.count }} horse{{ visit.farrier_visits.count|pluralize }} · {{ visit.total|gbp }}</p>
+    <a href="{% url 'farrier:visit_detail' visit.pk %}" class="text-forest underline">See the lines</a>
+</div>
+{% else %}
+<div class="bg-white rounded-lg border border-light-sage p-4 space-y-1">
+    <p class="font-heading font-semibold">No visit open.</p>
+    <p class="text-sage">Recording horses on this page comes next.</p>
+</div>
+{% endif %}
+<div class="space-y-2">
+    <p class="text-sm uppercase tracking-wide text-sage">Your prices</p>
+    {% for item in prices %}
+    <div class="bg-white rounded-lg border border-light-sage px-4 py-3 flex justify-between gap-3">
+        <span>{{ item.name }}</span><span class="font-semibold">{{ item.price|gbp }}</span>
+    </div>
+    {% empty %}
+    <p class="text-sage">No prices yet. Add them under My prices.</p>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -151,3 +151,62 @@ class PermissionsPolicyMiddleware:
         if self.value:
             response.headers.setdefault('Permissions-Policy', self.value)
         return response
+
+
+class ProviderPortalMiddleware:
+    """Keep a visiting professional's login on their own page.
+
+    A Farrier-role user (``core.permissions.is_provider_only``) may reach
+    the farrier page, horse profile photos, the two-step sign-in
+    pages, changing their password, and signing out. Every other path,
+    including staff pages that only check that someone is signed in, the
+    Django admin and HTMX endpoints, sends them to Today's visit. A POST
+    to a staff URL is redirected too, so it never runs.
+
+    Must come after MFAMiddleware, so a farrier who still owes a code is
+    held at the code page first. See docs/FARRIER_PAGE_PLAN.md, section 4.
+    """
+
+    PORTAL_PREFIX = '/farrier/'
+    ALLOWED_NAMES = (
+        'logout', 'password_change', 'password_change_done',
+        'mfa_verify', 'mfa_setup', 'mfa_new_recovery_codes',
+    )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if self._must_redirect(request):
+            return self._redirect(request)
+        return self.get_response(request)
+
+    def _must_redirect(self, request):
+        from django.conf import settings
+        from django.urls import reverse
+
+        from core.permissions import is_provider_only
+
+        user = getattr(request, 'user', None)
+        if user is None or not is_provider_only(user):
+            return False
+        path = request.path
+        if path.startswith(self.PORTAL_PREFIX) or path.startswith(settings.STATIC_URL):
+            return False
+        # Horse profile photos only (the horse list shows them). Every
+        # other upload (passports, receipts, owner documents) stays fenced,
+        # and the media view's own role check still applies on top.
+        if settings.MEDIA_URL and path.startswith(f'{settings.MEDIA_URL}horses/'):
+            return False
+        return path not in {reverse(name) for name in self.ALLOWED_NAMES}
+
+    @staticmethod
+    def _redirect(request):
+        from django.http import HttpResponseRedirect
+        from django.urls import reverse
+        from django_htmx.http import HttpResponseClientRedirect
+
+        url = reverse('farrier:today')
+        if request.headers.get('HX-Request') == 'true':
+            return HttpResponseClientRedirect(url)
+        return HttpResponseRedirect(url)

@@ -1,0 +1,40 @@
+{% load static ui_extras %}<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{% block title %}Farrier visit{% endblock %} - Cgate</title>
+    {% include "registration/_auth_head.html" %}
+</head>
+{% comment %}
+The farrier page has its own frame, not base.html: the staff navigation
+links to pages a farrier may not open (docs/FARRIER_PAGE_PLAN.md, section 4).
+{% endcomment %}
+<body class="min-h-full font-body antialiased bg-parchment text-charcoal">
+    <header class="bg-forest text-white px-4 py-3">
+        <div class="max-w-xl mx-auto flex items-center justify-between gap-3">
+            <div>
+                <p class="font-heading font-bold text-lg leading-tight">{% block heading %}Farrier visit{% endblock %}</p>
+                {% if provider %}<p class="text-sm text-white/80">{{ provider.name }}</p>{% endif %}
+            </div>
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="text-sm text-white/80 underline">Sign out</button>
+            </form>
+        </div>
+    </header>
+    {% if provider %}
+    <nav class="bg-white border-b border-light-sage" aria-label="Farrier page">
+        <div class="max-w-xl mx-auto flex">
+            {% url 'farrier:today' as today_url %}{% url 'farrier:visit_list' as visits_url %}{% url 'farrier:price_list' as prices_url %}
+            <a href="{{ today_url }}" class="flex-1 text-center py-3 font-heading font-semibold {% if request.path == today_url %}text-saddle border-b-2 border-saddle{% else %}text-sage{% endif %}">Today</a>
+            <a href="{{ visits_url }}" class="flex-1 text-center py-3 font-heading font-semibold {% if request.path|slice:':16' == visits_url %}text-saddle border-b-2 border-saddle{% else %}text-sage{% endif %}">My visits</a>
+            <a href="{{ prices_url }}" class="flex-1 text-center py-3 font-heading font-semibold {% if request.path == prices_url %}text-saddle border-b-2 border-saddle{% else %}text-sage{% endif %}">My prices</a>
+        </div>
+    </nav>
+    {% endif %}
+    <main class="max-w-xl mx-auto px-4 py-5 space-y-4">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

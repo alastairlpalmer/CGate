@@ -1,0 +1,17 @@
+{% extends "farrier/base.html" %}
+{% load ui_extras %}
+{% block title %}My visits{% endblock %}
+{% block heading %}My visits{% endblock %}
+{% block content %}
+{% for visit in visits %}
+<a href="{% url 'farrier:visit_detail' visit.pk %}" class="block bg-white rounded-lg border border-light-sage px-4 py-3">
+    <div class="flex justify-between gap-3">
+        <span class="font-heading font-semibold">{{ visit.date|date:"j M Y" }}</span>
+        <span class="font-semibold">{{ visit.total|gbp }}</span>
+    </div>
+    <p class="text-sm text-sage">{{ visit.farrier_visits.all|length }} horse{{ visit.farrier_visits.all|length|pluralize }} · {% if visit.is_open %}Open{% elif visit.is_paid %}Paid {{ visit.paid_on|date:"j M" }}{% else %}Not paid yet{% endif %}</p>
+</a>
+{% empty %}
+<p class="text-sage">No visits yet.</p>
+{% endfor %}
+{% endblock %}

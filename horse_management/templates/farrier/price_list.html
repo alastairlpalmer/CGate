@@ -1,0 +1,16 @@
+{% extends "farrier/base.html" %}
+{% load ui_extras %}
+{% block title %}My prices{% endblock %}
+{% block heading %}My prices{% endblock %}
+{% block content %}
+<div class="bg-white rounded-lg border border-light-sage divide-y divide-light-sage">
+    {% for item in prices %}
+    <div class="px-4 py-3 flex justify-between gap-3 {% if not item.is_active %}text-sage{% endif %}">
+        <span>{{ item.name }}{% if not item.is_active %} (hidden){% endif %}</span>
+        <span class="font-semibold">{{ item.price|gbp }}</span>
+    </div>
+    {% empty %}
+    <p class="px-4 py-3 text-sage">No prices yet. The yard can add them for you for now.</p>
+    {% endfor %}
+</div>
+{% endblock %}
