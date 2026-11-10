@@ -1252,9 +1252,11 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .data-table tbody tr:focus-within .btn-icon-danger { opacity: 1; }
 }
 
-/* ── Horse list split view ─────────────────────────────────────────────
-   The list and one horse's record, side by side (horses/horse_list.html,
-   horses/partials/preview.html, static/js/split_view.js).
+/* ── List split view ───────────────────────────────────────────────────
+   A list and one record, side by side (static/js/split_view.js). The
+   horse list was first (horses/horse_list.html, horses/partials/
+   preview.html); the owner and invoice lists use the same classes
+   (owners/owner_list.html, invoicing/invoice_list.html).
 
    One set of markup, two shapes. From `lg` the pane is a sticky column
    beside the list. Below `lg` the same element is a bottom sheet that
@@ -1270,6 +1272,9 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
    which takes none of the table's width. */
 @media (min-width: 1024px) {
     .split-view.is-open .split-optional { display: none; }
+    /* A note that stays on one line in the full-width table may wrap
+       once the pane has taken half the page. */
+    .split-view.is-open .split-wrap { white-space: normal; }
 }
 
 /* Tick boxes wait for the Select switch (the selectMode flag on the
@@ -1279,13 +1284,17 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 
 /* Rows. The whole row is the target — split_view.js turns a click
    anywhere on it into a selection — so it has to look like one. */
-[data-horse-row] { cursor: pointer; }
+[data-horse-row], [data-split-row] { cursor: pointer; }
 /* The selected row has to be obvious at a glance: a clear forest tint,
    a solid 2px forest outline round the whole row, the name in forest,
    and a solid ring round the photo. No coloured edge bar. */
 [data-horse-row].is-selected,
 .data-table tbody tr[data-horse-row].is-selected,
-.data-table tbody tr[data-horse-row].is-selected:hover {
+.data-table tbody tr[data-horse-row].is-selected:hover,
+[data-split-row].is-selected,
+.list-card[data-split-row].is-selected,
+.data-table tbody tr[data-split-row].is-selected,
+.data-table tbody tr[data-split-row].is-selected:hover {
     @apply bg-forest/[0.1] ring-2 ring-inset ring-forest;
 }
 /* Ticked rows in any table (and ticked phone list cards) use the same
@@ -1298,6 +1307,8 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     @apply bg-forest/[0.1] ring-2 ring-inset ring-forest;
 }
 [data-horse-row].is-selected [data-horse-link] .font-medium { @apply text-forest font-semibold; }
+[data-split-row].is-selected [data-split-link],
+[data-split-row].is-selected [data-split-link] .list-card-title { @apply text-forest font-semibold; }
 [data-horse-row].is-selected [data-horse-link] > img,
 [data-horse-row].is-selected [data-horse-link] > div:first-child {
     @apply outline-2 outline-offset-2 outline-forest;
@@ -1490,11 +1501,12 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
    once, and the sheet's body fades while the next horse loads (htmx puts
    htmx-request on the pane, the request's source), so a slow network
    never looks like a missed tap. */
-#horse-preview-body { transition: opacity 150ms ease-out; }
-.split-view-pane.htmx-request #horse-preview-body { opacity: 0.45; }
+.split-view-body { transition: opacity 150ms ease-out; }
+.split-view-pane.htmx-request .split-view-body { opacity: 0.45; }
 @media (pointer: coarse) {
-    tr[data-horse-row] { -webkit-tap-highlight-color: transparent; }
-    tr[data-horse-row]:active > td { background-color: rgb(61 90 99 / 0.08); }
+    tr[data-horse-row], [data-split-row] { -webkit-tap-highlight-color: transparent; }
+    tr[data-horse-row]:active > td,
+    tr[data-split-row]:active > td { background-color: rgb(61 90 99 / 0.08); }
 }
 
 .split-view-handle { @apply flex justify-center pt-2.5 pb-1 shrink-0; touch-action: none; }
@@ -1513,7 +1525,9 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
         display: grid;
         /* --split-pane-w is set by the resize bar (split_view.js). The
            min() keeps at least 28rem for the list if the window shrinks. */
-        grid-template-columns: minmax(0, 1fr) minmax(21rem, min(var(--split-pane-w, 26rem), calc(100% - 29rem)));
+        /* --split-pane-default lets a list ask for a wider pane to start
+           with (the invoice list: its pane holds a table and a PDF). */
+        grid-template-columns: minmax(0, 1fr) minmax(21rem, min(var(--split-pane-w, var(--split-pane-default, 26rem)), calc(100% - 29rem)));
         gap: 1rem;
         align-items: start;
     }
@@ -1578,6 +1592,9 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 .preview-thumb.is-active { @apply opacity-100 ring-0 outline-2 outline-offset-2 outline-forest; }
 
 .pane-stats { @apply grid grid-cols-3 divide-x divide-light-sage rounded-card border border-light-sage bg-parchment/60; }
+/* As many columns as there are tiles: a role that may not see money
+   gets fewer tiles, and they share the width. */
+.pane-stats.is-auto { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
 .pane-stat { @apply px-3 py-2.5 min-w-0; }
 .pane-stat-label { @apply block text-[10px] font-semibold text-sage uppercase tracking-widest; }
 .pane-stat-value { @apply mt-0.5 text-sm font-medium text-charcoal; }
@@ -1614,6 +1631,55 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 .pane-event-title { @apply block text-sm font-medium text-charcoal; }
 .pane-event-note { @apply block text-xs text-sage; }
 .pane-event-date { @apply text-xs text-sage tabular-nums shrink-0 whitespace-nowrap; }
+
+/* ── Pane tabs (invoicing/partials/pane.html) ──
+   One record, more than one view of it. The rail stays at the top of the
+   pane while the view under it scrolls. */
+.pane-tabs {
+    @apply sticky top-0 z-10 flex gap-1 px-4 pt-3 pb-2 bg-white border-b border-light-sage;
+}
+.pane-tab {
+    @apply flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-btn text-sm font-medium text-sage transition-colors duration-100;
+}
+.pane-tab:hover { @apply bg-light-sage text-charcoal; }
+.pane-tab.is-active { @apply bg-forest text-white hover:bg-forest hover:text-white; }
+
+/* Label and value on one line, value to the right; long values wrap. */
+.pane-list { @apply mt-2 space-y-2; }
+.pane-list .pane-row-value { @apply min-w-0 break-words; }
+.pane-list .pane-row-label { @apply shrink-0; }
+
+/* A short list of linked records: an owner's horses, their invoices. */
+.pane-items { @apply mt-1 divide-y divide-light-sage; }
+.pane-item { @apply flex items-center justify-between gap-3 py-2 min-w-0; }
+.pane-item-title { @apply block text-sm font-medium text-charcoal truncate; }
+a.pane-item-title:hover { @apply text-forest; }
+.pane-item-note { @apply block text-xs text-sage truncate; }
+.pane-item-end { @apply shrink-0 text-right text-sm font-medium text-charcoal tabular-nums; }
+
+/* Invoice lines: the horse leads, its lines sit under it. */
+.pane-lines { @apply mt-2 w-full text-sm; }
+.pane-lines th { @apply pt-2 pb-1 text-left font-semibold text-charcoal; }
+.pane-lines td { @apply py-1 align-top text-charcoal-light; }
+.pane-lines td:last-child { @apply pl-3 text-right text-charcoal tabular-nums whitespace-nowrap; }
+.pane-lines tfoot td { @apply text-sage; }
+.pane-lines tfoot tr:first-child td { @apply pt-2 border-t border-light-sage; }
+.pane-lines tfoot tr.is-total td { @apply pt-1.5 font-semibold text-charcoal; }
+
+/* The PDF itself. The frame takes the height the pane has left, so the
+   PDF viewer scrolls, not the pane round it. */
+.pane-pdf { @apply flex flex-col gap-3; }
+.pane-pdf-frame {
+    @apply hidden w-full rounded-card border border-light-sage bg-parchment;
+    height: calc(100dvh - 15rem);
+    min-height: 24rem;
+}
+@media (min-width: 1024px) {
+    .pane-pdf-frame { display: block; }
+    .pane-pdf-phone { display: none; }
+}
+/* A frame swallows the pointer, so a drag across it would stop dead. */
+.is-resizing-panel iframe { pointer-events: none; }
 
 .pane-dot-placement { @apply bg-info-blue; }
 .pane-dot-vaccination { @apply bg-sage; }

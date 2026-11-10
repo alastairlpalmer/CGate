@@ -1,0 +1,12 @@
+{% comment %}
+Owner preview — the body of the owner list's side pane, and of its sheet
+on a phone (core.views.owners.owner_preview).
+
+The pane's own chrome (previous/next, the counter, Open full page, close)
+is in owner_list.html and stays put across swaps — only this body is
+replaced when you pick another owner. static/js/split_view.js asks htmx
+for #owner-preview-content by name.
+{% endcomment %}
+<div id="owner-preview-content" class="pane-body" data-preview-for="{{ owner.pk }}">
+    {% include 'owners/partials/_preview_body.html' %}
+</div>
