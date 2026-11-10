@@ -123,7 +123,7 @@
             <div class="settings-row">
                 <div class="min-w-0">
                     <p class="settings-row-title">Two-step sign-in {% if mfa.enabled %}on{% else %}off{% endif %}</p>
-                    <p class="settings-row-meta">{% if mfa.enabled %}{{ mfa.recovery_codes_left }} recovery code{{ mfa.recovery_codes_left|pluralize }} left.{% elif mfa.required %}Their role needs it. They will set it up when they next sign in.{% else %}They can turn it on from their Account Security page.{% endif %}</p>
+                    <p class="settings-row-meta">{% if mfa.enabled %}{{ mfa.recovery_codes_left }} recovery code{{ mfa.recovery_codes_left|pluralize }} left.{% elif mfa.required %}Their role needs it. They will set it up when they next sign in.{% elif mfa.exempt %}Excused by an Administrator. They do not need it.{% else %}They can turn it on from their Account Security page.{% endif %}</p>
                 </div>
                 {% if mfa.enabled and can_reset_mfa %}
                 <div class="settings-actions">
@@ -136,6 +136,22 @@
                 </div>
                 {% endif %}
             </div>
+            {% if can_reset_mfa %}
+            <div class="settings-row">
+                <div class="min-w-0">
+                    <p class="settings-row-title">Excused from two-step sign-in {% if mfa.exempt %}yes{% else %}no{% endif %}</p>
+                    <p class="settings-row-meta">{% if mfa.exempt %}They can use the app without a code from their phone, even if their role needs one.{% else %}Excuse this user when they cannot use an authenticator app. Their account is then protected only by their password.{% endif %}</p>
+                </div>
+                <div class="settings-actions">
+                    <form method="post"
+                          {% if not mfa.exempt %}hx-confirm="Excuse {{ object.email|default:object.username }} from two-step sign-in? Their account will be protected only by their password."{% endif %}>
+                        {% csrf_token %}
+                        <input type="hidden" name="mfa_exempt" value="{% if mfa.exempt %}0{% else %}1{% endif %}">
+                        <button type="submit" class="btn-secondary btn-sm">{% if mfa.exempt %}Remove Exemption{% else %}Excuse{% endif %}</button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
             <div class="settings-row">
                 <div class="min-w-0">
                     <p class="settings-row-title">Signed-in devices</p>
