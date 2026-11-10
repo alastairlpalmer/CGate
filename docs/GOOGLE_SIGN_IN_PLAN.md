@@ -1,6 +1,6 @@
 # Google sign-in: review and plan
 
-Date: 10 November 2026. Status: phase 1 is built. Phases 2 to 4 are a plan.
+Date: 10 November 2026. Status: phases 1 and 2 are built. Phases 3 and 4 are a plan.
 
 ## 1. Summary
 
@@ -448,15 +448,29 @@ No Google code. Useful with or without the other phases.
 - [x] Tests: resend makes the old link invalid; the expired page gives the
       correct advice.
 
-### Phase 2: Google sign-in for linked users (main work)
+### Phase 2: Google sign-in for linked users (done)
 
-- [ ] `GoogleIdentity` model and migration.
-- [ ] `core/google_oidc.py` with unit tests. Use `unittest.mock` for the
+- [x] `GoogleIdentity` model and migration.
+- [x] `core/google_oidc.py` with unit tests. Use `unittest.mock` for the
       token request, as the Xero tests do.
-- [ ] `google_start`, `google_callback`, `GoogleBackend`, settings, URLs.
-- [ ] Button on the sign-in page. CSP `form-action` entry.
-- [ ] Flow C (connect and disconnect) on the Account security page.
-- [ ] Audit events.
+- [x] `google_start`, `google_callback`, `GoogleBackend`, settings, URLs.
+- [x] Button on the sign-in page. CSP `form-action` entry.
+- [x] Flow C (connect and disconnect) on the Account security page.
+- [x] Audit events.
+
+Built against mocked Google replies (`core/tests/test_google_sign_in.py`).
+It is not yet tested against the real Google service. Differences from
+the design in section 5:
+
+- `GoogleIdentity` has no `HistoricalRecords`. The link and unlink are
+  `AuditEvent` rows, and a history row for each sign-in (`last_used_at`)
+  would be noise.
+- `GoogleBackend` is a `BaseBackend`, not a `ModelBackend`, so that
+  permissions are not answered twice.
+- The start of the flow is limited to `GOOGLE_SIGN_IN_LIMIT_PER_IP` (30)
+  for each IP address in an hour.
+- A person with no linked Google account can only use flow C (connect
+  from Account Security) until phase 3 adds the invitation button.
 
 ### Phase 3: invitation with Google
 

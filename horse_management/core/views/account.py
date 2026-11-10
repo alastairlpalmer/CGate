@@ -69,8 +69,12 @@ def account_security(request):
     """The user's own security page: password, two-step sign-in, devices."""
     from ..mfa import mfa_status
 
+    from ..models import GoogleIdentity
+
     return render(request, 'account/security.html', {
         'mfa': mfa_status(request.user),
+        'google_identity': GoogleIdentity.objects.filter(user=request.user).first(),
+        'has_password': request.user.has_usable_password(),
     })
 
 

@@ -1,9 +1,10 @@
 """
-Authentication backend that accepts an email address or a username.
+Authentication backends: email address or username with a password, and
+Google sign-in.
 """
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.backends import ModelBackend
+from django.contrib.auth.backends import BaseBackend, ModelBackend
 from django.db.models import Q
 
 
@@ -43,3 +44,24 @@ class EmailOrUsernameBackend(ModelBackend):
         if user.check_password(password) and self.user_can_authenticate(user):
             return user
         return None
+
+
+class GoogleBackend(BaseBackend):
+    """The backend named on a session that signed in with Google.
+
+    It checks nothing by itself: ``authenticate`` always answers ``None``,
+    so a password form can never sign in through it. The Google checks are
+    in ``core/views/google.py``, which then calls ``login()`` with this
+    backend's name. Django needs the class only to load the user again on
+    each later request, and a deactivated user is not loaded.
+
+    Permissions are answered by ``EmailOrUsernameBackend``, which Django
+    asks for every user whichever backend signed them in.
+    """
+
+    def authenticate(self, request, **credentials):
+        return None
+
+    def get_user(self, user_id):
+        user = get_user_model()._default_manager.filter(pk=user_id).first()
+        return user if user is not None and user.is_active else None

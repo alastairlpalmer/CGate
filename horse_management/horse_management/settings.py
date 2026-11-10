@@ -161,6 +161,7 @@ TEMPLATES = [
                 'core.permissions.feature_access_context',
                 'core.analytics.template_context',
                 'core.context_processors.location_maps',
+                'core.context_processors.google_sign_in',
             ],
             'loaders': [
                 ('django.template.loaders.cached.Loader', [
@@ -699,7 +700,24 @@ CELERY_BEAT_SCHEDULE = {
 AUTHENTICATION_BACKENDS = [
     'axes.backends.AxesStandaloneBackend',
     'core.auth_backends.EmailOrUsernameBackend',
+    # Checks nothing itself; it only names a session that signed in with
+    # Google (core/views/google.py).
+    'core.auth_backends.GoogleBackend',
 ]
+
+# Sign in with Google (core/google_oidc.py, docs/GOOGLE_SIGN_IN_PLAN.md).
+# Off until both values are set: no button is shown and the addresses
+# under /accounts/google/ answer 404. The values come from an OAuth client
+# of type "Web application" in the Google Cloud console, with
+# https://<site>/accounts/google/callback/ as an authorised redirect URI.
+# Google sign-in never creates a user; an Administrator still does that.
+GOOGLE_OAUTH_CLIENT_ID = env('GOOGLE_OAUTH_CLIENT_ID', default='').strip()
+GOOGLE_OAUTH_CLIENT_SECRET = env('GOOGLE_OAUTH_CLIENT_SECRET', default='').strip()
+GOOGLE_SIGN_IN_ENABLED = bool(GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET)
+# Starts of the Google flow from one IP address in the window. The form is
+# public, like password reset; a yard office shares one address.
+GOOGLE_SIGN_IN_LIMIT_PER_IP = env.int('GOOGLE_SIGN_IN_LIMIT_PER_IP', default=30)
+GOOGLE_SIGN_IN_LIMIT_WINDOW = 60 * 60
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 LOGIN_URL = '/accounts/login/'
@@ -929,6 +947,12 @@ CSP_POLICY = {
 if POSTHOG_API_KEY and not POSTHOG_PROXY:
     CSP_POLICY['DIRECTIVES']['connect-src'] += [POSTHOG_HOST, POSTHOG_ASSET_HOST]
     CSP_POLICY['DIRECTIVES']['script-src'] += [POSTHOG_ASSET_HOST]
+
+# The "Sign in with Google" button posts a form to this site, which answers
+# with a redirect to Google. Chrome applies form-action to that redirect
+# too, so Google's sign-in host has to be allowed or the button is blocked.
+if GOOGLE_SIGN_IN_ENABLED:
+    CSP_POLICY['DIRECTIVES']['form-action'] += ['https://accounts.google.com']
 
 # Set CSP_ENFORCE=True to switch from reporting to blocking. Do that only
 # after the report-only console is quiet.
