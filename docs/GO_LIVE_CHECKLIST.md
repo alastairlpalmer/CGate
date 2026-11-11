@@ -361,6 +361,10 @@ around security settings is exactly what a reviewer flags.
       no wildcards
 - [ ] Update `XERO_REDIRECT_URI` on Railway **and** in the Xero developer
       portal
+- [ ] If Google sign-in is on: add
+      `https://<domain>/accounts/google/callback/` to the OAuth client's
+      authorised redirect URIs in the Google Cloud console, and the domain
+      to its authorised domains (`docs/GOOGLE_SIGN_IN_PLAN.md`, section 7)
 - [ ] Optional: put Cloudflare in front (free) for DDoS protection and a WAF
 
 ### 5.2 Email that arrives

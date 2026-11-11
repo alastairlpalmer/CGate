@@ -21,6 +21,7 @@ deployment can change them without a code change.
 | Record history (invoices, payments, owners, roles, business settings) | As the record | Audit trail | Owner history is cleared with the owner (rows above). |
 | Sign-in and account events | 2 years (`AUDIT_EVENT_RETENTION_DAYS`) | Security investigation | Weekly retention job. |
 | Staff accounts | While employed | Access | Deactivate on leaving; delete when no longer needed. |
+| Linked Google account (Google's account ID, Google email, Workspace domain, date last used) | While the link exists | Sign in with Google | The user disconnects it on Account Security, or an administrator does on Settings → Users. Deleted with the staff account. No Google token is kept. |
 | Off-site backups | 7 daily, 4 weekly, 12 monthly | Disaster recovery | Age out under the backup retention (`core/backup/retention.py`). Erased data is gone from all backups within 12 months. |
 
 ## A subject access request

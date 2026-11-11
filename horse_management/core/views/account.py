@@ -127,7 +127,11 @@ invite_token_generator = InviteTokenGenerator()
 
 
 def send_invite(request, user):
-    """Email ``user`` a link to choose their first password."""
+    """Email ``user`` a link to finish setting up their account.
+
+    On the page the link opens they choose a password, or, when Google
+    sign-in is on, connect their Google account.
+    """
     from django.contrib.auth.forms import PasswordResetForm
     from django.contrib.sites.shortcuts import get_current_site
     from django.utils.encoding import force_bytes
@@ -144,6 +148,7 @@ def send_invite(request, user):
         'protocol': 'https' if request.is_secure() else 'http',
         'invited_by': request.user.get_full_name() or request.user.email,
         'valid_days': max(1, settings.INVITE_TIMEOUT // (24 * 60 * 60)),
+        'google_sign_in': settings.GOOGLE_SIGN_IN_ENABLED,
     }
     PasswordResetForm().send_mail(
         'registration/invite_subject.txt',
@@ -159,6 +164,13 @@ class InviteConfirmView(UnlockingPasswordResetConfirmView):
     token_generator = invite_token_generator
     success_url = reverse_lazy('password_reset_complete')
     extra_context = {'invite': True}
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # The "Continue with Google" form names the user by this. The token
+        # stays in the session, where the parent view keeps it.
+        context['uidb64'] = self.kwargs.get('uidb64', '')
+        return context
 
 
 # ── Two-step sign-in ─────────────────────────────────────────────────────────

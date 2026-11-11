@@ -49,7 +49,7 @@
                     {% if is_self %}<p class="text-xs text-saddle mt-0.5">You can't remove your own access to Users &amp; Roles — ask another administrator.</p>{% endif %}
                 </div>
                 {% if not object %}
-                <p class="text-sm text-sage">Leave the password blank to email the new user an invitation to choose their own. Then nobody else knows it.</p>
+                <p class="text-sm text-sage">Leave the password blank to email the new user an invitation. {% if google_sign_in_enabled %}They then sign in with Google or choose their own password.{% else %}They then choose their own password.{% endif %} Then nobody else knows it.</p>
                 <div>
                     <label for="{{ form.password1.id_for_label }}" class="text-sm font-medium text-charcoal">Password (optional)</label>
                     {{ form.password1 }}
@@ -105,6 +105,28 @@
             <h3 class="section-title">Sign-In Security</h3>
         </div>
         <div class="settings-rows">
+            <div class="settings-row">
+                <div class="min-w-0">
+                    <p class="settings-row-title">Signs in with {% if google_identity and has_password %}Google or a password{% elif google_identity %}Google{% elif has_password %}a password{% else %}nothing yet{% endif %}</p>
+                    {% if google_identity %}
+                    <p class="settings-row-meta">Google account {{ google_identity.email }}. {% if google_identity.last_used_at %}Last used {{ google_identity.last_used_at|date:"j M Y" }}.{% else %}Not used yet.{% endif %}{% if not is_self %} Disconnect it if they lost the Google account or changed it. This signs them out everywhere.{% endif %}</p>
+                    {% elif has_password %}
+                    <p class="settings-row-meta">No Google account connected.{% if google_sign_in_enabled %} They can connect one from their Account Security page.{% endif %}</p>
+                    {% else %}
+                    <p class="settings-row-meta">No password and no Google account.</p>
+                    {% endif %}
+                </div>
+                {% if google_identity and not is_self %}
+                <div class="settings-actions">
+                    <form method="post"
+                          hx-confirm="Disconnect Google for {{ object.email|default:object.username }}? They will be signed out everywhere.{% if not has_password %} They have no password, so you must then send them a new invitation.{% endif %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="google_disconnect" value="1">
+                        <button type="submit" class="btn-secondary btn-sm text-error-red border-error-red/30 hover:bg-error-red-50">Disconnect Google</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
             {% if can_be_invited %}
             <div class="settings-row">
                 <div class="min-w-0">
