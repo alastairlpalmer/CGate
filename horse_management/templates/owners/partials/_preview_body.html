@@ -78,8 +78,9 @@ No photos or avatars: an owner's record is text.
 </div>
 
 <!-- ── Contact ── -->
-<section class="pane-section">
-    <h3 class="pane-section-title">Contact</h3>
+<section class="pane-section is-boxed">
+    <div class="pane-section-head"><h3 class="pane-section-title">Contact</h3></div>
+    <div class="pane-box-body">
     {% if owner.email or owner.phone or owner.address or owner.notes %}
     <dl class="pane-list">
         {% if owner.email %}
@@ -114,50 +115,76 @@ No photos or avatars: an owner's record is text.
     <p class="mt-2 text-xs text-sage">Health reminder emails are off.</p>
     {% endif %}
     {% else %}
-    <p class="text-sm text-sage py-2">No contact details recorded.</p>
+    <p class="text-sm text-sage py-1">No contact details recorded.</p>
     {% endif %}
+    </div>
 </section>
 
-<!-- ── Horses ── -->
-<section class="pane-section">
+<!-- ── Horses ──
+     One row each with short columns. Over 6 horses the list stops growing
+     and scrolls, and a search bar shows under the head (paneFilter in base.html). -->
+<section class="pane-section is-boxed"{% if horses|length > 6 %} x-data="paneFilter"{% endif %} data-owner-horses>
     <div class="pane-section-head">
         <h3 class="pane-section-title">Horses on the yard</h3>
         {% if feature_access.horses.view and horses %}
-        <a href="{% url 'horse_list' %}?owner={{ owner.pk }}" class="pane-section-action">See in the list</a>
+        <a href="{% url 'horse_list' %}?owner={{ owner.pk }}" class="pane-section-action whitespace-nowrap">See in the list</a>
         {% endif %}
     </div>
+    {% if horses|length > 6 %}
+    <label class="pane-search" data-horse-search>
+        <span class="sr-only">Search {{ owner.name }}'s horses</span>
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+        <input type="search" x-model="q" placeholder="Search {{ horses|length }} horses" autocomplete="off" spellcheck="false">
+    </label>
+    {% endif %}
     {% if horses %}
-    <ul class="pane-items">
-        {% for horse in horses %}
-        <li class="pane-item">
-            <span class="min-w-0">
-                {% if feature_access.horses.view %}
-                <a href="{% url 'horse_detail' horse.pk %}" class="pane-item-title">{{ horse.name }}</a>
-                {% else %}
-                <span class="pane-item-title">{{ horse.name }}</span>
-                {% endif %}
-                <span class="pane-item-note">{% if horse.age %}{{ horse.age }}yo{% endif %}{% if horse.age and horse.color %} · {% endif %}{{ horse.get_color_display }}{% if horse.sex %}{% if horse.age or horse.color %} · {% endif %}{{ horse.get_sex_display }}{% endif %}{% if horse.share_pct and horse.share_pct < 100 %} · {{ horse.share_pct|floatformat:"-2" }}% share{% endif %}</span>
-            </span>
-            <span class="shrink-0 text-xs text-sage text-right">{% with placement=horse.active_placements.0 %}{% if placement %}{{ placement.location.name }}{% else %}Not placed{% endif %}{% endwith %}</span>
-        </li>
-        {% endfor %}
-    </ul>
+    <div class="{% if horses|length > 6 %}pane-scroll{% endif %}">
+        <div class="pane-horse pane-horse-head px-3" aria-hidden="true">
+            <span>Name</span><span>Age</span><span>Colour</span><span>Sex</span><span class="pane-horse-loc">Location</span>
+        </div>
+        <ul class="pane-items is-striped">
+            {% for horse in horses %}
+            {% with placement=horse.active_placements.0 %}
+            <li class="pane-horse px-3" data-horse-name="{{ horse.name|lower }}"{% if horses|length > 6 %} x-show="match($el.dataset.horseName)"{% endif %}>
+                <span class="min-w-0">
+                    <span class="flex items-baseline min-w-0">
+                        {% if feature_access.horses.view %}
+                        <a href="{% url 'horse_detail' horse.pk %}" class="pane-item-title min-w-0">{{ horse.name }}</a>
+                        {% else %}
+                        <span class="pane-item-title min-w-0">{{ horse.name }}</span>
+                        {% endif %}
+                        {% if horse.share_pct and horse.share_pct < 100 %}<span class="pane-horse-share whitespace-nowrap">{{ horse.share_pct|floatformat:"-2" }}%</span>{% endif %}
+                    </span>
+                    <span class="pane-horse-sub">{% if placement %}{{ placement.location.name }}{% else %}Not placed{% endif %}</span>
+                </span>
+                {% with age=horse.age_label %}<span class="pane-horse-cell tabular-nums"{% if age %} title="{{ age }}"{% endif %}>{{ age|default:"-" }}</span>{% endwith %}
+                <span class="pane-horse-cell">{{ horse.get_color_display|default:"-" }}</span>
+                <span class="pane-horse-cell">{{ horse.get_sex_display|default:"-" }}</span>
+                <span class="pane-horse-loc">{% if placement %}{{ placement.location.name }}{% else %}Not placed{% endif %}</span>
+            </li>
+            {% endwith %}
+            {% endfor %}
+        </ul>
+        {% if horses|length > 6 %}
+        <p class="px-3 py-2 text-sm text-sage" x-show="none()" x-cloak>No horse matches "<span x-text="q.trim()"></span>".</p>
+        {% endif %}
+    </div>
     {% else %}
-    <p class="text-sm text-sage py-2">No horses on the yard.</p>
+    <p class="pane-box-body text-sm text-sage">No horses on the yard.</p>
     {% endif %}
     {% if departed_horses %}
-    <p class="text-xs text-sage pt-1">{{ departed_horses|length }} departed horse{{ departed_horses|length|pluralize }} on their page.</p>
+    <p class="px-3 py-1.5 text-xs text-sage border-t border-light-sage">{{ departed_horses|length }} departed horse{{ departed_horses|length|pluralize }} on their page.</p>
     {% endif %}
 </section>
 
 <!-- ── Unbilled charges: only for roles with charges access ── -->
 {% if money.unbilled is not None and extra_charges %}
-<section class="pane-section">
+<section class="pane-section is-boxed">
     <div class="pane-section-head">
         <h3 class="pane-section-title">Unbilled charges</h3>
         <span class="text-xs text-sage tabular-nums">{{ money.unbilled|gbp }}</span>
     </div>
-    <ul class="pane-items">
+    <ul class="pane-items is-striped">
         {% for charge in extra_charges %}
         <li class="pane-item">
             <span class="min-w-0">
@@ -169,14 +196,14 @@ No photos or avatars: an owner's record is text.
         {% endfor %}
     </ul>
     {% if extra_charge_more %}
-    <p class="text-xs text-sage pt-1">{{ extra_charge_more }} more on their page.</p>
+    <p class="px-3 py-1.5 text-xs text-sage border-t border-light-sage">{{ extra_charge_more }} more on their page.</p>
     {% endif %}
 </section>
 {% endif %}
 
 <!-- ── Recent invoices: only for roles with invoices access ── -->
 {% if feature_access.invoices.view %}
-<section class="pane-section">
+<section class="pane-section is-boxed">
     <div class="pane-section-head">
         <h3 class="pane-section-title">Recent invoices</h3>
         {% if invoice_count > invoices|length %}
@@ -184,7 +211,7 @@ No photos or avatars: an owner's record is text.
         {% endif %}
     </div>
     {% if invoices %}
-    <ul class="pane-items">
+    <ul class="pane-items is-striped">
         {% for invoice in invoices %}
         <li class="pane-item">
             <span class="min-w-0">
@@ -199,13 +226,13 @@ No photos or avatars: an owner's record is text.
         {% endfor %}
     </ul>
     {% else %}
-    <p class="text-sm text-sage py-2">No invoices yet.</p>
+    <p class="pane-box-body text-sm text-sage">No invoices yet.</p>
     {% endif %}
 </section>
 {% endif %}
 
 <!-- ── Documents ── -->
-<section class="pane-section">
+<section class="pane-section is-boxed">
     <div class="pane-section-head">
         <h3 class="pane-section-title">Documents</h3>
         {% if feature_access.owners.full %}
@@ -215,9 +242,9 @@ No photos or avatars: an owner's record is text.
         {% endif %}
     </div>
     {% if documents %}
-    <ul class="divide-y divide-light-sage">
+    <ul class="pane-items is-striped">
         {% for document in documents %}
-        <li class="flex items-center gap-3 py-2">
+        <li class="flex items-center gap-3 py-2 px-3">
             <span class="pane-doc-icon" aria-hidden="true">DOC</span>
             <span class="min-w-0 flex-1">
                 <a href="{{ document.file.url }}" target="_blank" rel="noopener" hx-boost="false" class="block text-sm font-medium text-charcoal hover:text-forest truncate">{{ document.title }}</a>
@@ -229,6 +256,6 @@ No photos or avatars: an owner's record is text.
         {% endfor %}
     </ul>
     {% else %}
-    <p class="text-sm text-sage py-2">Nothing on file.</p>
+    <p class="pane-box-body text-sm text-sage">Nothing on file.</p>
     {% endif %}
 </section>

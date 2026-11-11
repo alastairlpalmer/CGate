@@ -1657,6 +1657,43 @@ a.pane-item-title:hover { @apply text-forest; }
 .pane-item-note { @apply block text-xs text-sage truncate; }
 .pane-item-end { @apply shrink-0 text-right text-sm font-medium text-charcoal tabular-nums; }
 
+/* Boxed sections (the owner pane): each section is its own card with a
+   tinted head strip, so a long pane reads as separate blocks, not one
+   white sheet. Same border and tint as .pane-stats above. */
+.pane-section.is-boxed { @apply border-t-0 pt-0 rounded-card border border-light-sage bg-white overflow-hidden; container-type: inline-size; }
+.pane-section.is-boxed > .pane-section-head { @apply px-3 py-2 bg-parchment/60 border-b border-light-sage min-h-9; }
+.pane-box-body { @apply px-3 py-2; }
+.pane-box-body > .pane-list { @apply mt-0; }
+.pane-section.is-boxed .pane-items { @apply mt-0; }
+.pane-section.is-boxed .pane-item { @apply px-3; }
+/* A light tint on every other row, and on hover, so the eye keeps its line. */
+.pane-items.is-striped > li:nth-child(even of :not([style*="display: none"])) { @apply bg-parchment/40; }
+.pane-items.is-striped > li:hover { @apply bg-light-sage/40; }
+
+/* The owner's horses: one row each, with short columns.
+   Wide pane:   Name | Age | Colour | Sex | Location
+   Narrow pane: Name (location under it) | Age | Colour | Sex */
+.pane-horse { display: grid; grid-template-columns: minmax(0, 1fr) 3.25rem 4.5rem 4.25rem minmax(0, 7rem); @apply items-center gap-x-3 py-2; }
+.pane-horse-head { @apply py-1.5 text-[10px] font-semibold text-sage uppercase tracking-widest bg-white sticky top-0 z-[1] border-b border-light-sage; }
+.pane-horse-cell { @apply text-xs text-charcoal-light truncate; }
+.pane-horse-loc { @apply text-xs text-sage text-right truncate; }
+.pane-horse-head .pane-horse-loc { @apply text-[10px]; }
+.pane-horse-sub { @apply hidden text-xs text-sage truncate; }
+.pane-horse-share { @apply ml-1 text-[11px] font-normal text-sage; }
+@container (max-width: 26rem) {
+    .pane-horse { grid-template-columns: minmax(0, 1fr) 3rem 3.75rem 3.75rem; @apply gap-x-2; }
+    .pane-horse .pane-horse-loc { @apply hidden; }
+    .pane-horse-sub { @apply block; }
+}
+/* A long list stops growing: about six rows show, the rest scroll. */
+.pane-scroll { @apply max-h-72 overflow-y-auto overscroll-contain; }
+
+/* The search bar under a section head: one thin row, full width. 16px
+   text on a phone stops iOS zooming in when it gets focus. */
+.pane-search { @apply relative block px-3 py-2 border-b border-light-sage; }
+.pane-search svg { @apply absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sage pointer-events-none; }
+.pane-search input { @apply block w-full pl-7 pr-2 py-1 text-base sm:text-sm rounded-btn border border-light-sage bg-parchment/40 text-charcoal placeholder:text-sage focus:outline-hidden focus:ring-2 focus:ring-forest/20 focus:border-sage focus:bg-white; }
+
 /* Invoice lines: the horse leads, its lines sit under it. */
 .pane-lines { @apply mt-2 w-full text-sm; }
 .pane-lines th { @apply pt-2 pb-1 text-left font-semibold text-charcoal; }
