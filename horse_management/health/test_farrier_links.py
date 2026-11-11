@@ -40,7 +40,7 @@ class FarrierTabButtonTests(TestCase):
         self.client.force_login(make_user_with_access('office', health='full', charges='view'))
         response = self.client.get(FARRIER_TAB)
         self.assertContains(response, TAB_BUTTON)
-        self.assertContains(response, 'Farrier visits (from the farrier page)')
+        self.assertContains(response, '>Farrier Visits</a>')
         self.assertContains(response, f'href="{VISITS_URL}"')
 
     def test_the_tab_loaded_by_htmx_has_the_button_too(self):

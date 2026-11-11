@@ -193,9 +193,9 @@
             {% endif %}
             {% if feature_access.charges.view %}
             <a href="{% url 'provider_visit_list' %}" data-nav="farrier-visits"
-               class="{% if '/health/farrier-visits/' in request.path %}nav-link-active{% else %}nav-link{% endif %}" title="Farrier visits">
+               class="{% if '/health/farrier-visits/' in request.path %}nav-link-active{% else %}nav-link{% endif %}" title="Farrier Visits">
                 <svg class="w-5 h-5 shrink-0" aria-hidden="true"><use href="#i-horseshoe"/></svg>
-                <span class="sidebar-label">Farrier visits</span>
+                <span class="sidebar-label">Farrier Visits</span>
             </a>
             {% endif %}
             {% if feature_access.breeding.view %}
@@ -444,7 +444,7 @@
                 {% if feature_access.charges.view %}
                 <a href="{% url 'provider_visit_list' %}" data-nav="farrier-visits" class="sheet-nav-item {% if '/health/farrier-visits/' in request.path %}sheet-nav-item-active{% endif %}">
                     <svg class="w-5 h-5 shrink-0" aria-hidden="true"><use href="#i-horseshoe"/></svg>
-                    Farrier visits
+                    Farrier Visits
                 </a>
                 {% endif %}
                 {% if feature_access.breeding.view %}

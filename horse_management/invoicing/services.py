@@ -248,6 +248,20 @@ class InvoiceService:
         return pct
 
     @staticmethod
+    def _charge_line_description(charge):
+        """The invoice line text for an extra charge: "<type> - <description>".
+
+        A charge made from a health record already starts with its type
+        ("Farrier - Full Set", "Vaccination - Flu"), so the type is not put
+        in front a second time ("Farrier - Farrier - Full Set").
+        """
+        label = charge.get_charge_type_display()
+        description = charge.description or ''
+        if description.lower().startswith(f"{label.lower()} - "):
+            return description
+        return f"{label} - {description}"
+
+    @staticmethod
     def _reconciled_amount(full_amount, owner_id, all_shares):
         """This owner's monetary share of ``full_amount`` for a co-owned item.
 
@@ -450,7 +464,7 @@ class InvoiceService:
             charges.append({
                 'horse': charge.horse,
                 'charge': charge,
-                'description': f"{charge.get_charge_type_display()} - {charge.description}",
+                'description': cls._charge_line_description(charge),
                 'date': charge.date,
                 'days': 1,
                 'daily_rate': charge.amount,
@@ -504,7 +518,7 @@ class InvoiceService:
                 charges.append({
                     'horse': charge.horse,
                     'charge': charge,
-                    'description': f"{charge.get_charge_type_display()} - {charge.description}{share_note}",
+                    'description': f"{cls._charge_line_description(charge)}{share_note}",
                     'date': charge.date,
                     'days': 1,
                     'daily_rate': charge.amount,
