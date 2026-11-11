@@ -42,20 +42,20 @@
             {% endif %}
             <label class="block text-sm">
                 <span class="text-sage">Note (optional)</span>
-                <input type="text" name="note" maxlength="500" value="" class="mt-1 w-full rounded-lg border border-light-sage px-3 py-2" placeholder="For example: loose clench LF">
+                <input type="text" name="note" maxlength="500" value="" class="mt-1 w-full min-h-[44px] rounded-lg border border-light-sage px-3 py-2" placeholder="For example: loose clench LF">
             </label>
             <label class="block text-sm">
                 <span class="text-sage">Different price for this horse (optional)</span>
-                <input type="text" name="price" inputmode="decimal" class="mt-1 w-full rounded-lg border border-light-sage px-3 py-2" placeholder="Leave empty to use your price">
+                <input type="text" name="price" inputmode="decimal" class="mt-1 w-full min-h-[44px] rounded-lg border border-light-sage px-3 py-2" placeholder="Leave empty to use your price">
             </label>
             <details class="text-sm">
-                <summary class="cursor-pointer text-forest font-semibold py-1">Other or remedial work</summary>
+                <summary class="cursor-pointer text-forest font-semibold py-3">Other or remedial work</summary>
                 <div class="mt-2 grid grid-cols-2 gap-2">
-                    <select name="work_done" class="rounded-lg border border-light-sage px-2 py-2 bg-white" aria-label="Work done">
+                    <select name="work_done" class="min-h-[44px] rounded-lg border border-light-sage px-2 py-2 bg-white" aria-label="Work done">
                         <option value="">Work done…</option>
                         {% for value, label in work_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
                     </select>
-                    <button type="submit" name="item" value="" class="rounded-lg bg-saddle text-white font-semibold px-2 py-2">Add with the price above</button>
+                    <button type="submit" name="item" value="" class="min-h-[44px] rounded-lg bg-saddle text-white font-semibold px-2 py-2">Add with the price above</button>
                 </div>
             </details>
         </form>
@@ -63,7 +63,7 @@
         <form method="post" action="{% url 'farrier:horse_remove' horse.pk %}"
               hx-post="{% url 'farrier:horse_remove' horse.pk %}" hx-target="#horse-{{ horse.pk }}" hx-swap="outerHTML" hx-push-url="false" hx-select="unset">
             {% csrf_token %}
-            <button type="submit" class="text-sm text-error-red underline">Remove {{ horse.name }} from this visit</button>
+            <button type="submit" class="min-h-[44px] text-sm text-error-red underline">Remove {{ horse.name }} from this visit</button>
         </form>
         {% endif %}
     </div>

@@ -40,8 +40,9 @@ def _list_context(request, provider, open_pk=None):
         'open_pk': open_pk,
         'prices': farrier.price_list(provider),
         'work_types': FarrierVisit.WorkType.choices,
-        # Others are folded unless the farrier is looking for a horse.
-        'others_open': bool(search or location_id),
+        # Others are folded unless the farrier is looking for a horse, or
+        # nothing is due (a first visit: no farrier records yet).
+        'others_open': bool(search or location_id or not due),
     }
 
 

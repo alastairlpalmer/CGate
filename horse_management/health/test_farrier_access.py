@@ -233,3 +233,39 @@ class ScopeTests(TestCase):
         response = self.client.get(reverse('farrier:visit_detail', args=[self.mine.pk]))
         self.assertNotContains(response, 'Private Owner Name')
         self.assertNotContains(response, 'owner@example.com')
+
+
+class StaySignedInTests(TestCase):
+    """Section 9: the farrier should not type a password in a field."""
+
+    def test_farrier_session_idles_for_the_longer_window(self):
+        from django.conf import settings
+
+        user, _ = make_farrier()
+        self.client.force_login(user)
+        self.client.get(TODAY_URL)
+        self.assertEqual(self.client.session.get_expiry_age(), settings.PROVIDER_SESSION_IDLE_AGE)
+        self.assertGreater(settings.PROVIDER_SESSION_IDLE_AGE, settings.SESSION_COOKIE_AGE)
+
+    def test_staff_session_keeps_the_normal_window(self):
+        from django.conf import settings
+
+        self.client.force_login(make_admin('boss'))
+        self.client.get('/')
+        self.assertEqual(self.client.session.get_expiry_age(), settings.SESSION_COOKIE_AGE)
+
+    def test_the_absolute_cap_still_signs_the_farrier_out(self):
+        import time
+
+        from django.conf import settings
+
+        from core.middleware import SESSION_STARTED_KEY
+
+        user, _ = make_farrier()
+        self.client.force_login(user)
+        session = self.client.session
+        session[SESSION_STARTED_KEY] = int(time.time()) - settings.SESSION_ABSOLUTE_AGE - 60
+        session.save()
+        response = self.client.get(TODAY_URL)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('login', response['Location'])
