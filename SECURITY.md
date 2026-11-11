@@ -61,9 +61,17 @@ no cross-customer isolation boundary to get wrong.
   permanent account ID, not by email address. No Google token is stored.
   Two-step sign-in rules apply after a Google sign-in as they do after a
   password.
-- New users can be invited by email to choose their own password, so an
-  administrator never needs to know it. Invitation links expire after
-  3 days and work once.
+- A Google account is linked in one of two ways: by the user, from their
+  Account Security page while signed in; or on the invitation page. The
+  invitation link proves the mailbox, and the Google account must have the
+  same verified email address. A leaked invitation link alone is not
+  enough to link a Google account.
+- An administrator can disconnect a user's Google account (Settings →
+  Users), for example when the user loses it. This ends all the user's
+  sessions. A user with no password then needs a new invitation.
+- New users can be invited by email to sign in with Google or choose their
+  own password, so an administrator never needs to know it. Invitation
+  links expire after 3 days and work once.
 - Every feature area is gated by a role (`core/permissions.py`). Templates
   hide what a role cannot use, and every view re-checks — hiding is not
   enforcement.

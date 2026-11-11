@@ -2,7 +2,7 @@
 
 {{ invited_by }} has made you a Cgate account.
 
-To choose your password and sign in, open this link:
+To finish setting up your account, open this link.{% if google_sign_in %} You can sign in with Google or choose a password.{% else %} You then choose your password.{% endif %}
 
 {{ protocol }}://{{ domain }}{% url 'invite_confirm' uidb64=uid token=token %}
 

@@ -1,6 +1,6 @@
 # Google sign-in: review and plan
 
-Date: 10 November 2026. Status: phases 1 and 2 are built. Phases 3 and 4 are a plan.
+Date: 10 November 2026. Status: phases 1, 2 and 3 are built. Phase 4 is a plan.
 
 ## 1. Summary
 
@@ -472,12 +472,30 @@ the design in section 5:
 - A person with no linked Google account can only use flow C (connect
   from Account Security) until phase 3 adds the invitation button.
 
-### Phase 3: invitation with Google
+### Phase 3: invitation with Google (done)
 
-- [ ] "Continue with Google" on the invitation page (flow A).
-- [ ] Administrator controls: sign-in row and "Disconnect Google".
-- [ ] Update `SECURITY.md`, `.env.example`, `GO_LIVE_CHECKLIST.md`,
+- [x] "Continue with Google" on the invitation page (flow A).
+- [x] Administrator controls: sign-in row and "Disconnect Google".
+- [x] Update `SECURITY.md`, `.env.example`, `GO_LIVE_CHECKLIST.md`,
       `DATA_RETENTION.md`.
+
+Tests: `InviteTests` and `AdminControlTests` in
+`core/tests/test_google_sign_in.py`. Differences from the design in
+section 5:
+
+- The invitation form sends the user's `uidb64`. `start` reads the token
+  from the session, where the invitation page keeps it, and checks it
+  against that user.
+- If Google returns the wrong account, the account is in use, or the
+  person cancels, they go back to the invitation page. The page still
+  works, so they can try another Google account or choose a password.
+- If the Administrator left the last name blank, it comes from Google.
+  The app never replaces a name that the Administrator typed.
+- "Send invitation again" is not shown for a user who has a Google
+  account linked. That link already opens the account. To send a new
+  invitation, disconnect Google first.
+- An Administrator cannot disconnect their own Google account on the
+  Users page. They use Account Security, which needs a password first.
 
 ### Phase 4: go live
 
