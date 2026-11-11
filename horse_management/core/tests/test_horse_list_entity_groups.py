@@ -287,7 +287,6 @@ class EntityGroupSpineTests(TestCase):
         )
         for params, label in (
             ({'search': 'a'}, 'Departed'),
-            # The page prints 'j M Y' (no leading zero): '%d' failed on days 1-9.
             ({'status': 'departed'}, date_format(today - timedelta(days=10), 'j M Y')),
         ):
             with self.subTest(**params):

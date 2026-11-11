@@ -16,7 +16,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from .. import audit, mfa
 from ..account_security import clear_lockout, is_locked_out, sign_out_everywhere
 from ..forms import AdminSetPasswordForm, UserCreateForm, UserUpdateForm
-from ..models import AuditEvent
+from ..models import AuditEvent, GoogleIdentity
 from ..permissions import (
     LEVEL_FULL,
     LEVEL_ORDER,
@@ -89,12 +89,18 @@ def _is_manager(user):
 def _can_be_invited(user):
     """True when an invitation is the way in for ``user``.
 
-    That is an active account with an email address and no password: a
-    new user who has not accepted yet, or whose link has expired. The
+    That is an active account with an email address, no password and no
+    Google account: a new user who has not accepted yet, or whose link has
+    expired, or whose Google account an Administrator disconnected. The
     password reset email is no help to them, because Django sends none to
     an account without a password.
     """
-    return bool(user.is_active and user.email and not user.has_usable_password())
+    return bool(
+        user.is_active
+        and user.email
+        and not user.has_usable_password()
+        and not GoogleIdentity.objects.filter(user=user).exists()
+    )
 
 
 @feature_required('users')
@@ -120,7 +126,7 @@ def user_create(request):
                         "Check the email settings, then set a password for them below.",
                     )
                     return redirect('user_update', pk=user.pk)
-                messages.success(request, f"User {user.email} created. An invitation to choose a password is on its way.")
+                messages.success(request, f"User {user.email} created. An invitation is on its way.")
             else:
                 messages.success(request, f"User {user.email} created.")
             return redirect('app_settings')
@@ -244,6 +250,38 @@ def user_update(request, pk):
                     )
             return redirect('user_update', pk=target.pk)
 
+        elif 'google_disconnect' in request.POST:
+            identity = GoogleIdentity.objects.filter(user=target).first()
+            if is_self:
+                messages.error(request, "Disconnect your own Google account on your Account Security page.")
+            elif identity is None:
+                messages.info(request, f"{target.email or target.username} has no Google account connected.")
+            else:
+                # For a lost or changed Google account. Whoever holds the
+                # old one may still be signed in, so end every session.
+                google_email = identity.email
+                identity.delete()
+                ended = sign_out_everywhere(target)
+                audit.record(
+                    AuditEvent.Action.GOOGLE_UNLINKED, request=request, target=target,
+                    detail=f"{google_email}; disconnected by an administrator; "
+                           f"{ended} session{'s' if ended != 1 else ''} ended",
+                )
+                who = target.email or target.username
+                if target.has_usable_password():
+                    messages.success(
+                        request,
+                        f"Google disconnected for {who}. They have been signed out everywhere "
+                        "and can sign in with their password.",
+                    )
+                else:
+                    messages.success(
+                        request,
+                        f"Google disconnected for {who}. They have been signed out everywhere. "
+                        "They have no password, so send them a new invitation.",
+                    )
+            return redirect('user_update', pk=target.pk)
+
         elif 'unlock' in request.POST:
             cleared = clear_lockout(target)
             if cleared:
@@ -331,6 +369,8 @@ def user_update(request, pk):
         'is_self': is_self,
         'locked_out': is_locked_out(target),
         'can_be_invited': _can_be_invited(target),
+        'google_identity': GoogleIdentity.objects.filter(user=target).first(),
+        'has_password': target.has_usable_password(),
         'mfa': mfa.mfa_status(target),
         'can_reset_mfa': mfa.is_administrator(request.user) and not is_self,
         'history_entries': _user_history(target),

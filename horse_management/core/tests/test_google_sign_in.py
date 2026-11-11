@@ -8,6 +8,7 @@ session, the checks on the reply, and who is let in.
 
 import base64
 import json
+import re
 import time
 from unittest import mock
 from urllib.parse import parse_qs, urlparse
@@ -15,6 +16,7 @@ from urllib.parse import parse_qs, urlparse
 import requests
 from axes.handlers.proxy import AxesProxyHandler
 from django.contrib.auth import BACKEND_SESSION_KEY, get_user_model
+from django.core import mail
 from django.core.cache import cache
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
@@ -301,7 +303,7 @@ class StartTests(GoogleFlowMixin, TestCase):
         self.assertNotIn(flow['code_verifier'], response.url)
 
     def test_an_unknown_mode_is_a_sign_in(self):
-        self.start(mode='invite')
+        self.start(mode='bogus')
         self.assertEqual(self.flow()['mode'], 'login')
 
     def test_an_unsafe_next_is_dropped(self):
@@ -657,6 +659,264 @@ class ConnectTests(GoogleFlowMixin, TestCase):
         self.link()
         self.user.delete()
         self.assertFalse(GoogleIdentity.objects.exists())
+
+
+# ── Accepting an invitation with Google (phase 3, flow A) ────────────────────
+
+@override_settings(**ON)
+class InviteTests(GoogleFlowMixin, TestCase):
+    """The invitation link proves the mailbox; Google proves the account."""
+
+    def setUp(self):
+        super().setUp()
+        from core.models import Role
+
+        self.admin = make_admin('inviter', email='inviter@example.com', first_name='Ada')
+        role = Role.objects.create(name='Groom', access={'horses': 'view'})
+        admin_client = Client()
+        admin_client.force_login(self.admin)
+        admin_client.post(reverse('user_create'), {
+            'first_name': 'Nina', 'last_name': '', 'email': 'new@example.com',
+            'role': role.pk, 'password1': '', 'password2': '',
+        })
+        self.invited = User.objects.get(email='new@example.com')
+        self.admin_client = admin_client
+        match = re.search(r'https?://[^/]+(/accounts/invite/\S+)', mail.outbox[-1].body)
+        self.link_url = match.group(1)
+        self.uidb64 = self.link_url.split('/')[3]
+
+    def open_invitation(self, client=None):
+        """Open the emailed link, as the browser does: the token moves into
+        the session and the address changes to ``set-password``."""
+        client = client or self.client
+        response = client.get(self.link_url)
+        self.assertEqual(response.status_code, 302)
+        return client.get(response.url)
+
+    def accept(self, client=None, **kwargs):
+        client = client or self.client
+        self.open_invitation(client)
+        self.start(client, mode='invite', uidb64=self.uidb64)
+        return self.callback(client, **kwargs)
+
+    def google(self, **changes):
+        return {'email': 'new@example.com', 'sub': 'new-person-sub', **changes}
+
+    # The page and the email
+
+    def test_invitation_page_offers_google_and_a_password(self):
+        page = self.open_invitation()
+        self.assertContains(page, 'Continue with Google')
+        self.assertContains(page, 'name="mode" value="invite"')
+        self.assertContains(page, f'name="uidb64" value="{self.uidb64}"')
+        self.assertContains(page, 'name="new_password1"')
+
+    @override_settings(GOOGLE_SIGN_IN_ENABLED=False)
+    def test_no_google_button_when_the_feature_is_off(self):
+        self.assertNotContains(self.open_invitation(), 'Continue with Google')
+
+    def test_invitation_email_mentions_google(self):
+        self.assertIn('sign in with Google or choose a password', mail.outbox[-1].body)
+
+    @override_settings(GOOGLE_SIGN_IN_ENABLED=False)
+    def test_invitation_email_without_google(self):
+        mail.outbox.clear()
+        self.admin_client.post(reverse('user_update', args=[self.invited.pk]), {'resend_invite': '1'})
+        self.assertNotIn('Google', mail.outbox[-1].body)
+
+    # Starting
+
+    def test_start_hints_the_invited_address(self):
+        self.open_invitation()
+        response = self.start(mode='invite', uidb64=self.uidb64)
+        query = parse_qs(urlparse(response.url).query)
+        self.assertEqual(query['login_hint'], ['new@example.com'])
+        flow = self.flow()
+        self.assertEqual(flow['mode'], 'invite')
+        self.assertEqual(flow['invite_user_id'], self.invited.pk)
+
+    def test_start_needs_the_invitation_opened_in_this_session(self):
+        response = self.start(mode='invite', uidb64=self.uidb64)
+        self.assertRedirects(response, reverse('login'), fetch_redirect_response=False)
+        self.assertNotIn(SESSION_KEY, self.client.session)
+
+    def test_start_refuses_another_users_id(self):
+        self.open_invitation()
+        from django.utils.encoding import force_bytes
+        from django.utils.http import urlsafe_base64_encode
+
+        other = urlsafe_base64_encode(force_bytes(self.user.pk))
+        response = self.start(mode='invite', uidb64=other)
+        self.assertRedirects(response, reverse('login'), fetch_redirect_response=False)
+        self.assertNotIn(SESSION_KEY, self.client.session)
+
+    # Finishing
+
+    def test_accepting_links_the_account_and_signs_in(self):
+        response = self.accept(claims=self.google(given_name='Nia', family_name='Rider'))
+        self.assertRedirects(response, reverse('dashboard'), fetch_redirect_response=False)
+        self.assertEqual(int(self.signed_in_as()), self.invited.pk)
+        self.assertEqual(self.client.session[BACKEND_SESSION_KEY], 'core.auth_backends.GoogleBackend')
+        identity = GoogleIdentity.objects.get(user=self.invited)
+        self.assertEqual(identity.sub, 'new-person-sub')
+        self.invited.refresh_from_db()
+        self.assertFalse(self.invited.has_usable_password())
+        # The name the Administrator typed stays; what they left blank
+        # comes from Google.
+        self.assertEqual((self.invited.first_name, self.invited.last_name), ('Nina', 'Rider'))
+        actions = set(AuditEvent.objects.filter(target_user=self.invited).values_list('action', flat=True))
+        self.assertIn(AuditEvent.Action.GOOGLE_LINKED, actions)
+        self.assertIn(AuditEvent.Action.INVITE_ACCEPTED, actions)
+
+        # And it signs in again next time.
+        self.client.post(reverse('logout'))
+        self.sign_in(claims=self.google())
+        self.assertEqual(int(self.signed_in_as()), self.invited.pk)
+
+    def test_the_link_works_once(self):
+        self.accept(claims=self.google())
+        self.client.post(reverse('logout'))
+        again = Client().get(self.link_url)
+        self.assertContains(again, 'expired or was already used')
+
+    def test_another_email_address_is_refused(self):
+        response = self.accept(claims=self.google(email='someone.else@gmail.com'))
+        # Back to the invitation page, which still works.
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(f'/accounts/invite/{self.uidb64}/set-password/', response.url)
+        self.assertFalse(GoogleIdentity.objects.exists())
+        self.assertIsNone(self.signed_in_as())
+        page = self.client.get(response.url)
+        self.assertContains(page, 'someone.else@gmail.com')
+        self.assertContains(page, 'name="new_password1"')
+        self.assertTrue(AuditEvent.objects.filter(
+            action=AuditEvent.Action.GOOGLE_SIGN_IN_REFUSED, target_user=self.invited,
+        ).exists())
+
+    def test_email_case_is_ignored(self):
+        self.accept(claims=self.google(email='New@Example.COM'))
+        self.assertEqual(int(self.signed_in_as()), self.invited.pk)
+
+    def test_a_google_account_linked_to_another_user_is_refused(self):
+        self.link()  # jo@example.com has SUB
+        response = self.accept(claims=self.google(sub=SUB))
+        self.assertIn('/set-password/', response.url)
+        self.assertFalse(GoogleIdentity.objects.filter(user=self.invited).exists())
+        self.assertIsNone(self.signed_in_as())
+        self.assertContains(self.client.get(response.url), 'connected to another Cgate user')
+
+    def test_an_invitation_sent_again_while_at_google_is_refused(self):
+        self.open_invitation()
+        self.start(mode='invite', uidb64=self.uidb64)
+        # The Administrator sends a new invitation; the old token is void.
+        self.admin_client.post(reverse('user_update', args=[self.invited.pk]), {'resend_invite': '1'})
+        response = self.callback(claims=self.google())
+        self.assertRedirects(response, reverse('login'), fetch_redirect_response=False)
+        self.assertFalse(GoogleIdentity.objects.exists())
+        self.assertIsNone(self.signed_in_as())
+
+    def test_a_user_deactivated_while_at_google_is_refused(self):
+        self.open_invitation()
+        self.start(mode='invite', uidb64=self.uidb64)
+        User.objects.filter(pk=self.invited.pk).update(is_active=False)
+        self.callback(claims=self.google())
+        self.assertFalse(GoogleIdentity.objects.exists())
+        self.assertIsNone(self.signed_in_as())
+
+    def test_cancel_at_google_goes_back_to_the_invitation(self):
+        self.open_invitation()
+        self.start(mode='invite', uidb64=self.uidb64)
+        response = self.callback(error='access_denied', code=None)
+        self.assertIn('/set-password/', response.url)
+        self.assertContains(self.client.get(response.url), 'cancelled')
+
+    def test_the_password_still_works_after_a_refusal(self):
+        response = self.accept(claims=self.google(email='wrong@gmail.com'))
+        new_pw = 'my-own-long-password'
+        self.client.post(response.url, {'new_password1': new_pw, 'new_password2': new_pw})
+        self.invited.refresh_from_db()
+        self.assertTrue(self.invited.check_password(new_pw))
+
+    @override_settings(MFA_REQUIRED_FOR_ADMINS=True)
+    def test_an_administrator_must_still_set_up_two_step_sign_in(self):
+        from core.models import UserRole
+        from core.roles_testutils import administrator_role
+
+        UserRole.objects.filter(user=self.invited).update(role=administrator_role())
+        response = self.accept(claims=self.google())
+        self.assertEqual(int(self.signed_in_as()), self.invited.pk)
+        follow = self.client.get(response.url)
+        self.assertEqual(follow.status_code, 302)
+        self.assertIn(reverse('mfa_setup'), follow.url)
+
+
+# ── Administrator controls (phase 3) ─────────────────────────────────────────
+
+@override_settings(**ON)
+class AdminControlTests(GoogleFlowMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.admin = make_admin('boss', email='boss@example.com')
+        self.client.force_login(self.admin)
+        self.url = reverse('user_update', args=[self.user.pk])
+
+    def test_sign_in_row_shows_the_password(self):
+        page = self.client.get(self.url)
+        self.assertContains(page, 'Signs in with a password')
+        self.assertNotContains(page, 'Disconnect Google')
+
+    def test_sign_in_row_shows_google(self):
+        self.link()
+        page = self.client.get(self.url)
+        self.assertContains(page, 'Signs in with Google or a password')
+        self.assertContains(page, 'Google account jo@example.com')
+        self.assertContains(page, 'Disconnect Google')
+
+    def test_disconnect_removes_the_link_and_ends_sessions(self):
+        self.link()
+        jo = Client()
+        jo.force_login(self.user)
+        self.client.post(self.url, {'google_disconnect': '1'})
+        self.assertFalse(GoogleIdentity.objects.exists())
+        self.assertIsNone(jo.session.get('_auth_user_id'))
+        event = AuditEvent.objects.get(action=AuditEvent.Action.GOOGLE_UNLINKED)
+        self.assertEqual(event.target_user, self.user)
+        self.assertEqual(event.actor, self.admin)
+
+    def test_a_google_only_user_can_then_be_invited_again(self):
+        self.link()
+        self.user.set_unusable_password()
+        self.user.save(update_fields=['password'])
+        page = self.client.get(self.url)
+        self.assertContains(page, 'Signs in with Google<')
+        self.assertNotContains(page, 'Send Invitation Again')
+        mail.outbox.clear()
+        # An invitation now would be no use: the Google link still opens
+        # the account. The view refuses it, as the page hides it.
+        self.client.post(self.url, {'resend_invite': '1'})
+        self.assertEqual(len(mail.outbox), 0)
+
+        self.client.post(self.url, {'google_disconnect': '1'})
+        page = self.client.get(self.url)
+        self.assertContains(page, 'send them a new invitation')
+        self.assertContains(page, 'Send Invitation Again')
+        self.client.post(self.url, {'resend_invite': '1'})
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_own_google_account_is_not_disconnected_here(self):
+        self.link(user=self.admin, email='boss@example.com')
+        page = self.client.get(reverse('user_update', args=[self.admin.pk]))
+        self.assertNotContains(page, 'Disconnect Google</button>')
+        self.client.post(reverse('user_update', args=[self.admin.pk]), {'google_disconnect': '1'})
+        self.assertTrue(GoogleIdentity.objects.filter(user=self.admin).exists())
+
+    def test_a_manager_cannot_disconnect_an_administrator(self):
+        other_admin = make_admin('admin2', email='admin2@example.com')
+        self.link(user=other_admin, email='admin2@example.com')
+        manager = make_user_with_access('manager@example.com', users='full')
+        self.client.force_login(manager)
+        self.client.post(reverse('user_update', args=[other_admin.pk]), {'google_disconnect': '1'})
+        self.assertTrue(GoogleIdentity.objects.filter(user=other_admin).exists())
 
 
 class ContentSecurityPolicyTests(SimpleTestCase):
