@@ -87,7 +87,6 @@ from core.templatetags.ui_extras import gbp
 HEALTH_TABS = [
     ('overview', 'Overview'),
     ('vaccinations', 'Vaccinations'),
-    ('farrier', 'Farrier'),
     ('worming', 'Worming'),
     ('egg_counts', 'Egg Counts'),
     ('conditions', 'Conditions'),
@@ -95,9 +94,50 @@ HEALTH_TABS = [
 ]
 
 
+def farrier_records_context(request, today):
+    """The farrier records table (any farrier, staff-entered or from the
+    farrier page) with its Status and Horse filters, 50 a page."""
+    context = {}
+    queryset = FarrierVisit.objects.select_related(
+        'horse', 'service_provider'
+    ).filter(horse__is_active=True)
+    status = request.GET.get('status')
+    if status == 'due':
+        queryset = current_farrier_visits(queryset).filter(
+            next_due_date__lte=today + timedelta(days=14),
+            next_due_date__gte=today,
+        )
+    elif status == 'overdue':
+        queryset = current_farrier_visits(queryset).filter(
+            next_due_date__lt=today,
+        )
+    else:
+        # Every record, each marked when a newer one replaced it: a
+        # replaced record's past due date is not \"Overdue\".
+        queryset = annotate_superseded(queryset, **FARRIER_GROUP)
+    horse = request.GET.get('horse')
+    if horse and horse.isdigit():
+        queryset = queryset.filter(horse_id=horse)
+    paginator = Paginator(queryset.order_by('-date'), 50)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    context['visits'] = page_obj
+    context['page_obj'] = page_obj
+    context['is_paginated'] = page_obj.has_other_pages()
+    context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
+    return context
+
+
 @feature_required('health', LEVEL_VIEW)
 def health_dashboard(request):
     tab = request.GET.get('type', 'overview')
+    if tab == 'farrier':
+        # Farrier records moved to the Farrier page (one place for all
+        # farrier work). Old links, bookmarks and the dashboard's "due"
+        # rows keep their filters.
+        query = request.GET.copy()
+        query.pop('type', None)
+        url = reverse('farrier_list')
+        return redirect(f'{url}?{query.urlencode()}' if query else url)
     if tab not in {t[0] for t in HEALTH_TABS}:
         # The tab name is interpolated into a partial template path below;
         # an unknown value was a TemplateDoesNotExist 500 (or a
@@ -167,34 +207,6 @@ def health_dashboard(request):
         paginator = Paginator(queryset.order_by('is_superseded', 'next_due_date'), 50)
         page_obj = paginator.get_page(request.GET.get('page'))
         context['vaccinations'] = page_obj
-        context['page_obj'] = page_obj
-        context['is_paginated'] = page_obj.has_other_pages()
-        context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
-
-    elif tab == 'farrier':
-        queryset = FarrierVisit.objects.select_related(
-            'horse', 'service_provider'
-        ).filter(horse__is_active=True)
-        status = request.GET.get('status')
-        if status == 'due':
-            queryset = current_farrier_visits(queryset).filter(
-                next_due_date__lte=today + timedelta(days=14),
-                next_due_date__gte=today,
-            )
-        elif status == 'overdue':
-            queryset = current_farrier_visits(queryset).filter(
-                next_due_date__lt=today,
-            )
-        else:
-            # Every record, each marked when a newer one replaced it: a
-            # replaced record's past due date is not \"Overdue\".
-            queryset = annotate_superseded(queryset, **FARRIER_GROUP)
-        horse = request.GET.get('horse')
-        if horse and horse.isdigit():
-            queryset = queryset.filter(horse_id=horse)
-        paginator = Paginator(queryset.order_by('-date'), 50)
-        page_obj = paginator.get_page(request.GET.get('page'))
-        context['visits'] = page_obj
         context['page_obj'] = page_obj
         context['is_paginated'] = page_obj.has_other_pages()
         context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
@@ -828,6 +840,8 @@ class HealthRecordSuccessUrlMixin:
         horse_id = self.request.GET.get('horse', '')
         if horse_id.isdigit():
             return reverse('horse_detail', kwargs={'pk': horse_id})
+        if self.dashboard_type == 'farrier':
+            return reverse('farrier_list')
         return reverse('health_dashboard') + f'?type={self.dashboard_type}'
 
     def get_context_data(self, **kwargs):
@@ -926,52 +940,6 @@ class VaccinationTypeUpdateView(FeatureAccessMixin, UpdateView):
 
 # ─── Farrier Views ───────────────────────────────────────────────────
 
-class FarrierListView(FeatureAccessMixin, ListView):
-    feature = 'health'
-    access_level = LEVEL_VIEW
-    model = FarrierVisit
-    template_name = 'health/farrier_list.html'
-    context_object_name = 'visits'
-    paginate_by = 50
-
-    def get_queryset(self):
-        queryset = FarrierVisit.objects.select_related(
-            'horse', 'service_provider'
-        ).filter(horse__is_active=True)
-
-        # Filter by status
-        status = self.request.GET.get('status')
-        today = timezone.localdate()
-
-        if status == 'due':
-            two_weeks = today + timedelta(days=14)
-            queryset = current_farrier_visits(queryset).filter(
-                next_due_date__lte=two_weeks,
-                next_due_date__gte=today
-            )
-        elif status == 'overdue':
-            queryset = current_farrier_visits(queryset).filter(
-                next_due_date__lt=today,
-            )
-        else:
-            # Every record, each marked when a newer one replaced it: a
-            # replaced record's past due date is not \"Overdue\".
-            queryset = annotate_superseded(queryset, **FARRIER_GROUP)
-
-        # Filter by horse
-        horse = self.request.GET.get('horse')
-        if horse and horse.isdigit():
-            queryset = queryset.filter(horse_id=horse)
-
-        return queryset.order_by('-date')
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
-        context['today'] = timezone.localdate()
-        return context
-
-
 class FarrierCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
     feature = 'health'
     model = FarrierVisit
@@ -1004,7 +972,7 @@ class FarrierUpdateView(CostNeedsChargesMixin, PopupFormMixin, FeatureAccessMixi
     template_name = 'health/farrier_form.html'
 
     def get_success_url(self):
-        return reverse('health_dashboard') + '?type=farrier'
+        return reverse('farrier_list')
 
     def form_valid(self, form):
         response = super().form_valid(form)

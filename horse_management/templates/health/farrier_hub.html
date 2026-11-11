@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}Farrier - Cgate{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    {% include 'health/_farrier_header.html' %}
+    <div id="health-table-area" hx-boost="false">
+        {% include 'health/partials/farrier_content.html' %}
+    </div>
+</div>
+{% endblock %}

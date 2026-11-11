@@ -119,7 +119,6 @@ class HealthListCostTests(MoneyVisibilityBase):
         self.pages = [
             reverse('farrier_list'),
             reverse('vet_visit_list'),
-            reverse('health_dashboard') + '?type=farrier',
             reverse('health_dashboard') + '?type=vet_visits',
         ]
 

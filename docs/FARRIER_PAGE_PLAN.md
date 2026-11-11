@@ -265,7 +265,7 @@ Still open:
 
 The yard manager makes a list for a visit date: the horses, the work wanted (or "farrier to decide") and a note.
 
-- **Where:** Health → Farrier → **Farrier's list**, or the **Farrier's list** button on Farrier Visits (`/health/farrier-visits/list/`). Health: view to see it, Health: full to change it.
+- **Where:** **Farrier** in the menu → **Farrier's list** tab (`/health/farrier-visits/list/`). Health: view to see it, Health: full to change it.
 - **The farrier:** on that date, the horses on the list are at the top of **Due now**, tagged **On the list**, with the yard's request under the name. In the horse's panel, the price button for the work wanted is outlined.
 - **Done:** an item is done when the farrier records a line for that horse on that date. The list page shows each item as **To do**, **Done** (with the work and price) or **Not done** (after the date).
 - **Data:** `FarrierJob` (provider, date, horse, work wanted, note), one per horse per day.
@@ -286,3 +286,13 @@ The farrier page shows **Due now** (the yard's list, then horses due within 14 d
 - **With the work:** each line has "Notes for the yard": why the work was done, issues, suggested treatment (up to 1,000 characters). It is saved on the farrier record.
 - **On its own:** "Note only, no work or charge" saves a `FarrierNote` on the horse. It makes no charge and does not change the farrier due date. It joins the day's visit when the farrier taps Finish.
 - **Where the yard sees them:** on the horse's page (the timeline: "Farrier", and "Farrier note"), in the horse preview, and on the visit page under Farrier Visits.
+
+## 17. One Farrier page for the yard office
+
+**Farrier** in the menu (desktop and phone) opens one page for all farrier work, with three tabs:
+
+- **Records:** every farrier record, by any farrier (this was the Farrier tab on the Health page). Filters, Add a record, Edit.
+- **Visits from the farrier's phone:** check each visit, the monthly statement and payment.
+- **Farrier's list:** what the yard wants done on a visit date.
+
+**Print QR code** is in the page header. The Health page no longer has a Farrier tab; old links to it open the Records tab with the same filters. Records and the list need Health: view; the visits tab needs Charges: view. A Farrier-role login never sees this page.

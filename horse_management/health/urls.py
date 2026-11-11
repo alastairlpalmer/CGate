@@ -25,7 +25,8 @@ urlpatterns = [
     path('vaccination-types/<int:pk>/edit/', views.VaccinationTypeUpdateView.as_view(), name='vaccination_type_update'),
 
     # Farrier
-    path('farrier/', views.FarrierListView.as_view(), name='farrier_list'),
+    # The Farrier page: records, visits from the farrier page, the list.
+    path('farrier/', farrier_yard_views.farrier_hub, name='farrier_list'),
     # Visits recorded on the farrier's own page (docs/FARRIER_PAGE_PLAN.md, section 6).
     path('farrier-visits/', farrier_yard_views.provider_visit_list, name='provider_visit_list'),
     path('farrier-visits/qr/', farrier_yard_views.farrier_qr, name='farrier_qr'),

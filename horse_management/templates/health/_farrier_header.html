@@ -1,0 +1,30 @@
+{% comment %}
+The Farrier page's header and tabs: one place for all farrier work.
+Needs ``hub_tab``: 'records', 'visits' or 'list'.
+{% endcomment %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Farrier</h1>
+        <p class="page-subtitle">Farrier records, the visits from the farrier's phone, and the list for the farrier.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+        {% if feature_access.settings.full %}<a href="{% url 'farrier_qr' %}" class="btn-secondary">Print QR code</a>{% endif %}
+        {% if hub_tab == 'records' and feature_access.health.full %}
+        <a href="{% url 'farrier_create' %}" hx-get="{% url 'farrier_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add farrier visit" class="btn-primary">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            Add a record
+        </a>
+        {% endif %}
+    </div>
+</div>
+<nav class="border-b border-light-sage -mb-px flex gap-6 overflow-x-auto" aria-label="Farrier" data-farrier-tabs>
+    {% if feature_access.health.view %}
+    <a href="{% url 'farrier_list' %}" class="{% if hub_tab == 'records' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}" data-farrier-tab="records"{% if hub_tab == 'records' %} aria-current="page"{% endif %}>Records</a>
+    {% endif %}
+    {% if feature_access.charges.view %}
+    <a href="{% url 'provider_visit_list' %}" class="{% if hub_tab == 'visits' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}" data-farrier-tab="visits"{% if hub_tab == 'visits' %} aria-current="page"{% endif %}>Visits from the farrier's phone</a>
+    {% endif %}
+    {% if feature_access.health.view %}
+    <a href="{% url 'farrier_job_list' %}" class="{% if hub_tab == 'list' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}" data-farrier-tab="list"{% if hub_tab == 'list' %} aria-current="page"{% endif %}>Farrier's list</a>
+    {% endif %}
+</nav>

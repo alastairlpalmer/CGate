@@ -1,28 +1,13 @@
 {% load ui_extras %}
-<!-- Header + Add Button -->
-<div class="flex flex-wrap items-center justify-end gap-3 mb-4">
-    <a href="{% url 'farrier_job_list' %}" class="btn-secondary" data-farrier-list-link>Farrier's list</a>
-    {% if feature_access.charges.view %}
-    <a href="{% url 'provider_visit_list' %}" class="btn-secondary" data-farrier-visits-link>Farrier Visits</a>
-    {% endif %}
-    <a href="{% url 'farrier_create' %}" hx-get="{% url 'farrier_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add farrier visit" class="btn-primary">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-        </svg>
-        Add Visit
-    </a>
-</div>
-
 <!-- Filter Bar -->
 <div class="card px-5 py-4 mb-4">
     <form hx-boost="false"
-          hx-get="{% url 'health_dashboard' %}"
+          hx-get="{{ records_url }}"
           hx-target="#health-table-area" hx-select="unset"
           hx-swap="innerHTML"
           hx-push-url="true"
           hx-trigger="change, submit"
           class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <input type="hidden" name="type" value="farrier">
         <div>
             <label for="filter-status" class="dt-label mb-1">Status</label>
             <select id="filter-status" name="status" class="form-select">
@@ -44,7 +29,7 @@
             <button type="submit" class="btn-secondary">Filter</button>
             <button type="button"
                     hx-boost="false"
-                    hx-get="{% url 'health_dashboard' %}?type=farrier"
+                    hx-get="{{ records_url }}"
                     hx-target="#health-table-area" hx-select="unset"
                     hx-swap="innerHTML"
                     hx-push-url="true"
@@ -82,7 +67,7 @@
         {% empty %}
         <li class="py-12 text-center">
             <p class="text-sm font-medium text-sage">No farrier visits recorded</p>
-            <a href="{% url 'farrier_create' %}" class="btn-primary mt-4 inline-flex">Add your first visit</a>
+            {% if feature_access.health.full %}<a href="{% url 'farrier_create' %}" class="btn-primary mt-4 inline-flex">Add your first record</a>{% endif %}
         </li>
         {% endfor %}
     </ul>
@@ -126,13 +111,15 @@
                 <tr>
                     <td colspan="7">
                         <div class="py-12 text-center">
-                            <p class="text-sm font-medium text-sage">No farrier visits recorded</p>
+                            <p class="text-sm font-medium text-sage">No farrier records yet</p>
+                            {% if feature_access.health.full %}
                             <a href="{% url 'farrier_create' %}" class="btn-primary mt-4 inline-flex">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                                 </svg>
-                                Add your first visit
+                                Add your first record
                             </a>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
