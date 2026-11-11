@@ -1,7 +1,7 @@
 {% load ui_extras %}
 
 <!-- Stat Cards -->
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+<div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
     <div class="card p-5 lg:p-6">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full {% if stat_overdue_vax > 0 %}bg-error-red-50{% else %}bg-light-sage{% endif %} flex items-center justify-center shrink-0">
@@ -10,17 +10,6 @@
             <div>
                 <p class="text-2xl font-bold {% if stat_overdue_vax > 0 %}text-error-red{% else %}text-charcoal{% endif %}">{{ stat_overdue_vax }}</p>
                 <p class="text-xs text-sage">Overdue Vaccinations</p>
-            </div>
-        </div>
-    </div>
-    <div class="card p-5 lg:p-6">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full {% if stat_due_farrier > 0 %}bg-saddle-50{% else %}bg-light-sage{% endif %} flex items-center justify-center shrink-0">
-                <svg class="w-5 h-5 {% if stat_due_farrier > 0 %}text-saddle{% else %}text-sage{% endif %}" aria-hidden="true"><use href="#i-horseshoe"/></svg>
-            </div>
-            <div>
-                <p class="text-2xl font-bold {% if stat_due_farrier > 0 %}text-saddle{% else %}text-charcoal{% endif %}">{{ stat_due_farrier }}</p>
-                <p class="text-xs text-sage">Farrier Due</p>
             </div>
         </div>
     </div>

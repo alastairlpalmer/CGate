@@ -351,14 +351,37 @@ class HealthListsTests(DashboardDataTestCase):
     def test_health_page_windows(self):
         self.vaccination(self.horse('Overdue'), -3)
         self.vaccination(self.horse('Vax20'), 20)      # in: 30-day window
-        self.farrier(self.horse('Farrier20'), 20)      # out: 14-day window
-        self.farrier(self.horse('Farrier10'), 10)      # in
+        self.farrier(self.horse('FarrierLate'), -2)    # out: farrier has its own page
+        self.farrier(self.horse('Farrier10'), 10)      # out
         action_required, coming_up = attention.health_lists(self.admin, today=self.today)
         self.assertEqual([e['horse'].name for e in action_required], ['Overdue'])
         self.assertEqual(action_required[0]['type'], 'Vaccination')
         self.assertEqual(action_required[0]['detail'], 'Flu')
         self.assertEqual(action_required[0]['action_label'], 'Record vaccination')
-        self.assertEqual(sorted(e['horse'].name for e in coming_up), ['Farrier10', 'Vax20'])
+        self.assertEqual([e['horse'].name for e in coming_up], ['Vax20'])
+
+    def test_overview_page_has_no_farrier_items(self):
+        self.farrier(self.horse('FarrierLate'), -2)
+        self.client.force_login(self.admin)
+        body = self.client.get(reverse('health_dashboard')).content.decode()
+        self.assertNotIn('FarrierLate', body)
+        self.assertNotIn('Record farrier visit', body)
+        self.assertNotIn('Farrier Due', body)
+
+
+class FarrierDueTests(DashboardDataTestCase):
+    def test_farrier_page_shows_due_horses(self):
+        self.farrier(self.horse('FarrierLate'), -2)   # in: overdue
+        self.farrier(self.horse('Farrier10'), 10)     # in: 14-day window
+        self.farrier(self.horse('Farrier20'), 20)     # out
+        due = attention.farrier_due(self.admin, today=self.today)
+        self.assertEqual([item.horse.name for item, _ in due], ['FarrierLate', 'Farrier10'])
+        self.client.force_login(self.admin)
+        body = self.client.get(reverse('farrier_list')).content.decode()
+        self.assertIn('data-farrier-due', body)
+        self.assertIn('2 days overdue', body)
+        self.assertIn('in 10 days', body)
+        self.assertNotIn('Farrier20', body.split('data-farrier-due', 1)[1].split('</ul>', 1)[0])
 
 
 class UpcomingTests(DashboardDataTestCase):

@@ -178,7 +178,6 @@ def health_dashboard(request):
             'high_egg_counts': high_egg_counts,
             'active_conditions': active_conditions,
             'stat_overdue_vax': sum(1 for e in action_required if e['type'] == 'Vaccination'),
-            'stat_due_farrier': sum(1 for e in action_required + coming_up if e['type'] == 'Farrier'),
             'stat_vet_followups': sum(1 for e in action_required + coming_up if e['type'] == 'Vet Follow-up'),
             'stat_high_eggs': len(high_egg_counts),
         })
