@@ -2,7 +2,7 @@
 <!-- Header + Add Button -->
 <div class="flex flex-wrap items-center justify-end gap-3 mb-4">
     {% if feature_access.charges.view %}
-    <a href="{% url 'provider_visit_list' %}" class="btn-secondary" data-farrier-visits-link>Farrier visits (from the farrier page)</a>
+    <a href="{% url 'provider_visit_list' %}" class="btn-secondary" data-farrier-visits-link>Farrier Visits</a>
     {% endif %}
     <a href="{% url 'farrier_create' %}" hx-get="{% url 'farrier_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add farrier visit" class="btn-primary">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
