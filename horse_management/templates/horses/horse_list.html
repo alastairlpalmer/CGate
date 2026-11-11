@@ -492,7 +492,13 @@
                 </svg>
             </button>
         </div>
-        <div class="split-view-body" id="horse-preview-body"></div>
+        {% comment %}The body puts the page's own navigation settings back
+        for what is inside it. The pane above turns them off for its own
+        request, and a link in the record (an owner, a horse) inherited that:
+        the page it went to was put inside this page, and the address bar did
+        not change.{% endcomment %}
+        <div class="split-view-body" id="horse-preview-body"
+             hx-select="#main-content" hx-push-url="true" hx-swap="outerHTML show:window:top transition:true"></div>
         <p class="split-view-hint">&uarr; &darr; or J K to flick through &middot; Esc to close</p>
     </aside>
 

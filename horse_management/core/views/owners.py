@@ -5,7 +5,7 @@ Owner views — CRUD and detail.
 from django.conf import settings
 from django.contrib import messages
 from django.db.models import Count, Prefetch, Q
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -69,38 +69,7 @@ class OwnerDetailView(FeatureAccessMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Single query for all horses, split active/departed in Python
-        active_placements = Prefetch(
-            'placements',
-            queryset=Placement.objects.filter(
-                end_date__isnull=True
-            ).select_related('location'),
-            to_attr='active_placements',
-        )
-        last_placements = Prefetch(
-            'placements',
-            queryset=Placement.objects.select_related('location').order_by('-end_date'),
-            to_attr='last_placements',
-        )
-        shares = OwnershipShare.objects.filter(owner=self.object).select_related('horse')
-        share_map = {s.horse_id: s.share_percentage for s in shares}
-
-        all_horses = list(Horse.objects.filter(
-            ownership_shares__owner=self.object,
-        ).distinct().prefetch_related(active_placements, last_placements))
-
-        # Attach share_pct and split into active/departed
-        active_horses = []
-        departed_horses = []
-        for horse in all_horses:
-            horse.share_pct = share_map.get(horse.pk)
-            if horse.is_active:
-                active_horses.append(horse)
-            else:
-                departed_horses.append(horse)
-
-        context['horses'] = active_horses
-        context['departed_horses'] = departed_horses
+        context['horses'], context['departed_horses'] = _owner_horses(self.object)
 
         context['invoices'] = self.object.invoices.all()[:10]
         context['extra_charges'] = self.object.extra_charges.filter(
@@ -116,6 +85,95 @@ class OwnerDetailView(FeatureAccessMixin, DetailView):
         context['owner_retention_years'] = settings.OWNER_RETENTION_YEARS
         context['money'] = _owner_money(self.request.user, owner, context['extra_charges'])
         return context
+
+
+def _owner_horses(owner):
+    """The owner's horses, as (on the yard now, departed).
+
+    One query for all of them, split in Python. Each horse carries
+    ``share_pct`` (this owner's share) and its ``active_placements`` and
+    ``last_placements``.
+    """
+    active_placements = Prefetch(
+        'placements',
+        queryset=Placement.objects.filter(
+            end_date__isnull=True
+        ).select_related('location'),
+        to_attr='active_placements',
+    )
+    last_placements = Prefetch(
+        'placements',
+        queryset=Placement.objects.select_related('location').order_by('-end_date'),
+        to_attr='last_placements',
+    )
+    shares = OwnershipShare.objects.filter(owner=owner).select_related('horse')
+    share_map = {s.horse_id: s.share_percentage for s in shares}
+
+    all_horses = Horse.objects.filter(
+        ownership_shares__owner=owner,
+    ).distinct().prefetch_related(active_placements, last_placements)
+
+    active_horses = []
+    departed_horses = []
+    for horse in all_horses:
+        horse.share_pct = share_map.get(horse.pk)
+        if horse.is_active:
+            active_horses.append(horse)
+        else:
+            departed_horses.append(horse)
+    return active_horses, departed_horses
+
+
+PREVIEW_ROWS = 5
+
+
+def owner_preview_context(user, owner):
+    """What the owner pane shows (owners/partials/_preview_body.html).
+
+    Shared by the owner list's pane and the Owner tab of the invoice
+    list's pane, so the two always say the same thing. Money the user may
+    not see is left out here, not only in the template.
+    """
+    horses, departed_horses = _owner_horses(owner)
+    extra_charges = []
+    if has_feature_access(user, 'charges', LEVEL_VIEW):
+        extra_charges = list(
+            owner.extra_charges.filter(invoiced=False).select_related('horse')
+        )
+    invoices = []
+    invoice_count = 0
+    if has_feature_access(user, 'invoices', LEVEL_VIEW):
+        invoice_count = owner.invoices.count()
+        invoices = list(owner.invoices.all()[:PREVIEW_ROWS])
+    return {
+        'owner': owner,
+        'horses': horses,
+        'departed_horses': departed_horses,
+        'money': _owner_money(user, owner, extra_charges),
+        'extra_charges': extra_charges[:PREVIEW_ROWS],
+        'extra_charge_count': len(extra_charges),
+        'extra_charge_more': max(len(extra_charges) - PREVIEW_ROWS, 0),
+        'invoices': invoices,
+        'invoice_count': invoice_count,
+        'documents': list(owner.documents.all()[:6]),
+    }
+
+
+@feature_required('owners', LEVEL_VIEW)
+def owner_preview(request, pk):
+    """The owner list's preview pane, and its sheet on a phone.
+
+    A direct visit (or no JavaScript) goes to the owner's page instead, so
+    every row on the list stays an ordinary link.
+    """
+    htmx = getattr(request, 'htmx', None)
+    if not htmx or htmx.target != 'owner-preview-body':
+        return redirect('owner_detail', pk=pk)
+    owner = get_object_or_404(Owner, pk=pk)
+    return render(
+        request, 'owners/partials/preview.html',
+        owner_preview_context(request.user, owner),
+    )
 
 
 def _owner_money(user, owner, unbilled_charges):

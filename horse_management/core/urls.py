@@ -49,6 +49,7 @@ urlpatterns = [
     path('owners/<int:pk>/email-ok/', export_views.owner_email_ok, name='owner_email_ok'),
     path('owners/add/', views.OwnerCreateView.as_view(), name='owner_create'),
     path('owners/<int:pk>/', views.OwnerDetailView.as_view(), name='owner_detail'),
+    path('owners/<int:pk>/preview/', views.owner_preview, name='owner_preview'),
     path('owners/<int:pk>/edit/', views.OwnerUpdateView.as_view(), name='owner_update'),
     path('owners/<int:pk>/archive/', views.owner_archive, name='owner_archive'),
     path('owners/<int:pk>/restore/', views.owner_restore, name='owner_restore'),

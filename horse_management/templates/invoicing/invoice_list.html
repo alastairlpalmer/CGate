@@ -102,6 +102,21 @@
         </form>
     </div>
 
+    {% comment %}The split view, as on the horse list: a click on a row
+    opens the invoice in a pane beside the list (a sheet on a phone). The
+    list keeps its own id so the filters can still swap it on its own; the
+    pane sits outside that id. The preview URL carries a 0 where the
+    invoice's key goes — static/js/split_view.js puts the real one in.
+    The pane starts wider than the horse list's: it holds a table of lines
+    and the PDF.{% endcomment %}
+    <div class="split-view" data-split-view data-split-pane="invoice-preview"
+         data-preview-url="{% url 'invoice_pane' 0 %}"
+         data-resize-host="invoice-list" data-resize-var="--split-pane-w"
+         data-resize-panel="#invoice-preview" data-resize-side="right"
+         data-resize-min="336" data-resize-min-other="448" data-resize-gap="16"
+         style="--split-pane-default: 30rem">
+    <div class="split-view-main">
+
     <div id="list-results" class="space-y-6">
 
     {% if invoices %}
@@ -119,7 +134,7 @@
         <!-- Mobile cards -->
         <ul class="divide-y divide-light-sage md:hidden">
             {% for invoice in invoices %}
-            <li class="list-card">
+            <li class="list-card" data-split-row data-split-pk="{{ invoice.pk }}">
                 {% if feature_access.invoices.full %}
                 <label class="relative z-10 inline-flex items-center justify-center w-11 h-11 -ml-2 -my-1.5 shrink-0 cursor-pointer">
                     <input type="checkbox" data-invoice-cb form="bulk-invoice-form"
@@ -129,7 +144,7 @@
                 </label>
                 {% endif %}
                 <div class="flex-1 min-w-0">
-                    <a href="{% url 'invoice_detail' invoice.pk %}" class="list-card-link">
+                    <a href="{% url 'invoice_detail' invoice.pk %}" class="list-card-link" data-split-link data-split-tab="invoice">
                         <span class="list-card-title">{{ invoice.invoice_number }}</span>
                     </a>
                     <div class="list-card-meta truncate">{{ invoice.owner.name }}{% if invoice.horse %} · {{ invoice.horse.name }}{% endif %}</div>
@@ -185,16 +200,17 @@
                         {% endif %}
                         <th class="whitespace-nowrap">Invoice</th>
                         <th>Owner</th>
-                        <th>Period</th>
+                        {# The pane shows the period, the due date and the actions, so the list gives their width back. #}
+                        <th class="split-optional">Period</th>
                         <th class="text-right">Total</th>
                         <th>Status</th>
-                        <th class="whitespace-nowrap">Due date</th>
-                        <th>Actions</th>
+                        <th class="whitespace-nowrap split-optional">Due date</th>
+                        <th class="split-optional">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for invoice in invoices %}
-                    <tr>
+                    <tr data-split-row data-split-pk="{{ invoice.pk }}">
                         {% if feature_access.invoices.full %}
                         <td class="w-10">
                             <input type="checkbox" data-invoice-cb form="bulk-invoice-form"
@@ -204,13 +220,14 @@
                         </td>
                         {% endif %}
                         <td>
-                            <a href="{% url 'invoice_detail' invoice.pk %}" class="link tap-pad">{{ invoice.invoice_number }}</a>
+                            <a href="{% url 'invoice_detail' invoice.pk %}" class="link tap-pad" data-split-link data-split-tab="invoice">{{ invoice.invoice_number }}</a>
                         </td>
                         <td>
-                            <a href="{% url 'owner_detail' invoice.owner.pk %}" class="link tap-pad">{{ invoice.owner.name }}</a>
+                            {# A click opens the pane on its Owner tab; Ctrl-click still opens the owner's page. #}
+                            <a href="{% url 'owner_detail' invoice.owner.pk %}" class="link tap-pad" data-split-tab="owner">{{ invoice.owner.name }}</a>
                             {% if invoice.horse %}<span class="block text-xs text-sage">{{ invoice.horse.name }}</span>{% endif %}
                         </td>
-                        <td class="text-sage whitespace-nowrap">{% if invoice.period_start.year == invoice.period_end.year %}{{ invoice.period_start|date:"j M" }}{% else %}{{ invoice.period_start|date:"j M Y" }}{% endif %} – {{ invoice.period_end|date:"j M Y" }}</td>
+                        <td class="text-sage whitespace-nowrap split-optional">{% if invoice.period_start.year == invoice.period_end.year %}{{ invoice.period_start|date:"j M" }}{% else %}{{ invoice.period_start|date:"j M Y" }}{% endif %} – {{ invoice.period_end|date:"j M Y" }}</td>
                         <td class="text-right font-medium text-charcoal whitespace-nowrap">
                             {{ invoice.total|gbp }}
                             {% if invoice.status != 'paid' and invoice.status != 'cancelled' and invoice.balance != invoice.total %}
@@ -221,7 +238,7 @@
                             <span class="{{ invoice.status_badge_class }} whitespace-nowrap">
                                 {{ invoice.status_label }}
                             </span>
-                            {% if invoice.draft_due_passed %}<span class="block mt-1 text-xs font-medium text-saddle whitespace-nowrap">Not sent · due date passed</span>{% endif %}
+                            {% if invoice.draft_due_passed %}<span class="block mt-1 text-xs font-medium text-saddle whitespace-nowrap split-wrap">Not sent · due date passed</span>{% endif %}
                             {% if invoice.is_send_queued %}<span class="badge-info ml-1" title="Queued — the email is being sent">Sending…</span>{% elif invoice.send_error and invoice.status == 'draft' %}<span class="badge-danger ml-1" title="{{ invoice.send_error }}">Send failed</span>{% endif %}
                             {% if invoice.xero_sync and invoice.xero_sync.sync_status == 'pushed' or invoice.xero_sync and invoice.xero_sync.sync_status == 'paid_in_xero' %}
                             <span class="inline-block ml-1 text-info-blue" title="Synced to Xero">
@@ -231,10 +248,10 @@
                             </span>
                             {% endif %}
                         </td>
-                        <td class="whitespace-nowrap {% if invoice.is_overdue and invoice.status != 'paid' %}text-error-red font-medium{% else %}text-sage{% endif %}">
+                        <td class="whitespace-nowrap split-optional {% if invoice.is_overdue and invoice.status != 'paid' %}text-error-red font-medium{% else %}text-sage{% endif %}">
                             {{ invoice.due_date|date:"j M Y" }}
                         </td>
-                        <td>
+                        <td class="split-optional">
                             <div class="flex items-center gap-1">
                                 <a href="{% url 'invoice_pdf' invoice.pk %}" class="btn-ghost btn-xs" hx-boost="false">
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -283,6 +300,12 @@
     {% endif %}
 
     </div><!-- /#list-results -->
+
+    </div><!-- /.split-view-main -->
+
+    {% include 'includes/_split_pane.html' with pane_id='invoice-preview' noun='invoice' %}
+
+    </div><!-- /.split-view -->
 
     {% if feature_access.invoices.full %}
     <!-- Sticky bulk action bar (mirrors health bulk_action_bar styling) -->

@@ -1,5 +1,7 @@
 /**
- * Horse list split view — the preview pane, and its sheet on a phone.
+ * List split view — the preview pane, and its sheet on a phone. The horse
+ * list was the first to use it; the owner and invoice lists use the same
+ * script.
  *
  * One selection model drives both shapes:
  *   - From `lg` up the pane is a column beside the list. Arrow keys (or
@@ -9,12 +11,34 @@
  *     nothing is trapped — and dragging the sheet up fills the screen.
  *     Dragging past the top opens the horse's own page.
  *
- * Rows stay ordinary links to the horse page, so the list works with no
- * JavaScript at all; the click handler here is what turns a link into a
- * selection. The preview itself is fetched with htmx into
- * #horse-preview-body, which is also what makes the pop-up sheet's
- * "refresh #main-content" behave: the selection is put back afterwards
- * from sessionStorage.
+ * Rows stay ordinary links to the record's page, so the list works with
+ * no JavaScript at all; the click handler here is what turns a link into
+ * a selection. The preview itself is fetched with htmx into the pane's
+ * body, which is also what makes the pop-up sheet's "refresh
+ * #main-content" behave: the selection is put back afterwards from
+ * sessionStorage.
+ *
+ * Markup (the horse list's older data-horse-* names still work):
+ *
+ *   <div data-split-view                      the list and the pane
+ *        data-split-pane="owner-preview"      the pane's id; default horse-preview
+ *        data-preview-url="/owners/0/preview/">
+ *     <tr data-split-row data-split-pk="7">   one row per record
+ *       <a data-split-link href="/owners/7/">  the record's own page
+ *     ...
+ *     <aside id="owner-preview" class="split-view-pane" hidden>
+ *       <div id="owner-preview-body"></div>   the server's partial goes here;
+ *     </aside>                                its root is #owner-preview-content
+ *   </div>
+ *
+ * The counter, the arrows and "Open full page" are found by id:
+ * <pane id>-counter, -prev, -next and -open-full.
+ *
+ * Tabs. A pane can hold more than one view of a record (the invoice pane:
+ * Invoice, Owner, PDF). The partial's root carries x-data="paneTabs('a')"
+ * and its buttons call pick('b'). The tab is remembered per page, so the
+ * arrows flick through the same view of each record. A link in a row with
+ * data-split-tab="b" opens the pane on that tab.
  */
 (function (root) {
     'use strict';
@@ -75,7 +99,32 @@
         return 0;
     }
 
-    var api = { stepIndex: stepIndex, snapFor: snapFor, translateYOf: translateYOf };
+    /**
+     * The ids of a pane's parts. Every part is named after the pane, so
+     * one page can hold any pane without the script knowing its name.
+     */
+    function paneIds(paneId) {
+        var id = paneId || 'horse-preview';
+        return {
+            pane: id,
+            body: id + '-body',
+            content: id + '-content',
+            counter: id + '-counter',
+            prev: id + '-prev',
+            next: id + '-next',
+            openFull: id + '-open-full'
+        };
+    }
+
+    /** The preview URL for one record: the route has a 0 where the key goes. */
+    function fillUrl(template, pk) {
+        return template ? template.replace('/0/', '/' + pk + '/') : '';
+    }
+
+    var api = {
+        stepIndex: stepIndex, snapFor: snapFor, translateYOf: translateYOf,
+        paneIds: paneIds, fillUrl: fillUrl
+    };
     root.YardwaySplitView = api;
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
@@ -89,14 +138,22 @@
 
     function el(id) { return document.getElementById(id); }
     function root_() { return document.querySelector('[data-split-view]'); }
-    function pane() { return el('horse-preview'); }
+    function ids() {
+        var container = root_();
+        return paneIds(container ? container.getAttribute('data-split-pane') : '');
+    }
+    function pane() { return el(ids().pane); }
+    function body_() { return el(ids().body); }
+
+    var ROW = '[data-split-row], [data-horse-row]';
+    var LINK = '[data-split-link], [data-horse-link]';
     function isDesktop() { return window.matchMedia(DESKTOP).matches; }
 
     function rows() {
         var container = root_();
         if (!container) { return []; }
         return Array.prototype.slice.call(
-            container.querySelectorAll('[data-horse-row]')
+            container.querySelectorAll(ROW)
         ).filter(function (row) {
             // A row inside a collapsed group card is not on screen, so it
             // is not somewhere the arrow keys should land.
@@ -104,17 +161,15 @@
         });
     }
 
-    // Every horse has two rows: a card for phones and a table row for
+    // A record can have two rows: a card for phones and a table row for
     // wide screens, one of which is always display:none. Take the one on
     // screen — the hidden twin has no offsetParent, and reading the wrong
     // one makes a perfectly good selection look like a stale one.
     function rowsFor(pk) {
         var container = root_();
-        return container
-            ? Array.prototype.slice.call(
-                container.querySelectorAll('[data-horse-row][data-horse-pk="' + pk + '"]')
-            )
-            : [];
+        if (!container || pk === null || pk === undefined) { return []; }
+        return Array.prototype.slice.call(container.querySelectorAll(ROW))
+            .filter(function (row) { return pkOf(row) === String(pk); });
     }
 
     function rowFor(pk) {
@@ -125,18 +180,20 @@
         return matches[0] || null;
     }
 
-    function pkOf(row) { return row ? row.getAttribute('data-horse-pk') : null; }
+    function pkOf(row) {
+        if (!row) { return null; }
+        return row.getAttribute('data-split-pk') || row.getAttribute('data-horse-pk');
+    }
 
     function previewUrl(pk) {
         var container = root_();
-        var template = container ? container.getAttribute('data-preview-url') : '';
         // Django reverses the route with a 0 in it; swap in the real key.
-        return template ? template.replace('/0/', '/' + pk + '/') : '';
+        return fillUrl(container ? container.getAttribute('data-preview-url') : '', pk);
     }
 
     function detailUrl(pk) {
         var row = rowFor(pk);
-        var link = row ? row.querySelector('[data-horse-link]') : null;
+        var link = row ? row.querySelector(LINK) : null;
         return link ? link.getAttribute('href') : '';
     }
 
@@ -155,6 +212,37 @@
         try { return sessionStorage.getItem(memoryKey()); } catch (err) { return null; }
     }
 
+    // ── Tabs ──
+
+    function tabKey() { return 'yardway:split-tab:' + window.location.pathname; }
+
+    function rememberedTab() {
+        try { return sessionStorage.getItem(tabKey()); } catch (err) { return null; }
+    }
+
+    function setTab(name) {
+        try { sessionStorage.setItem(tabKey(), name); } catch (err) { /* private mode */ }
+        // A pane that is already showing this record switches in place.
+        window.dispatchEvent(new CustomEvent('split-tab', { detail: name }));
+    }
+
+    document.addEventListener('alpine:init', function () {
+        window.Alpine.data('paneTabs', function (first, allowed) {
+            return {
+                tab: first,
+                init: function () {
+                    var kept = rememberedTab();
+                    if (kept && (!allowed || allowed.indexOf(kept) !== -1)) { this.tab = kept; }
+                },
+                pick: function (name) { this.tab = name; setTab(name); },
+                // From a row link: only a tab this pane has.
+                show: function (name) {
+                    if (!allowed || allowed.indexOf(name) !== -1) { this.tab = name; }
+                }
+            };
+        });
+    });
+
     var state = { pk: null, sheet: 'closed' };
 
     // Both twins are marked, not only the one on screen: a rotation
@@ -162,7 +250,7 @@
     function markRows() {
         var container = root_();
         if (!container) { return; }
-        var all = container.querySelectorAll('[data-horse-row]');
+        var all = container.querySelectorAll(ROW);
         Array.prototype.forEach.call(all, function (row) {
             var on = state.pk !== null && pkOf(row) === state.pk;
             row.classList.toggle('is-selected', on);
@@ -177,15 +265,16 @@
         for (var i = 0; i < list.length; i++) {
             if (pkOf(list[i]) === state.pk) { index = i; break; }
         }
-        var counter = el('horse-preview-counter');
+        var names = ids();
+        var counter = el(names.counter);
         if (counter) {
             counter.textContent = index < 0 ? '' : (index + 1) + ' of ' + list.length;
         }
-        var prev = el('horse-preview-prev');
-        var next = el('horse-preview-next');
+        var prev = el(names.prev);
+        var next = el(names.next);
         if (prev) { prev.disabled = index <= 0; }
         if (next) { next.disabled = index < 0 || index >= list.length - 1; }
-        var full = el('horse-preview-open-full');
+        var full = el(names.openFull);
         if (full) { full.setAttribute('href', detailUrl(state.pk) || '#'); }
     }
 
@@ -196,7 +285,7 @@
         panel.classList.remove('is-peek', 'is-full');
         if (mode === 'peek') { panel.classList.add('is-peek'); }
         if (mode === 'full') { panel.classList.add('is-full'); }
-        var body = el('horse-preview-body');
+        var body = body_();
         if (body) {
             // At peek height the body must not swallow the drag: the whole
             // gesture belongs to the sheet until it is open.
@@ -204,11 +293,21 @@
         }
     }
 
+    function load(panel) {
+        var names = ids();
+        window.htmx.ajax('GET', previewUrl(state.pk), {
+            source: panel,
+            target: '#' + names.body,
+            select: '#' + names.content,
+            swap: 'innerHTML'
+        });
+    }
+
     function open(pk, opts) {
         var container = root_();
         var panel = pane();
         if (!container || !panel || !pk) { return; }
-        var changed = state.pk !== pk;
+        var changed = state.pk !== String(pk);
         state.pk = String(pk);
         container.classList.add('is-open');
         if (panel.hidden) {
@@ -225,12 +324,7 @@
             // `select` is still passed by name: "unset" is an
             // attribute-only word that this API would read as a literal
             // selector, matching nothing and blanking the pane.
-            htmx.ajax('GET', previewUrl(state.pk), {
-                source: panel,
-                target: '#horse-preview-body',
-                select: '#horse-preview-content',
-                swap: 'innerHTML'
-            });
+            load(panel);
         }
         if (!isDesktop()) { setSheet('peek'); }
         markRows();
@@ -287,15 +381,17 @@
         if (!container || !container.contains(e.target)) { return; }
         // Modified clicks are the reader asking for a new tab; leave them.
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) { return; }
-        var row = e.target.closest ? e.target.closest('[data-horse-row]') : null;
+        var row = e.target.closest ? e.target.closest(ROW) : null;
         if (!row) { return; }
         // Anything with its own job — an owner link, an action button —
-        // keeps it.
-        var own = e.target.closest('a, button, input, label, select, [role="button"]');
-        if (own && !own.hasAttribute('data-horse-link')) { return; }
+        // keeps it. A link marked data-split-tab opens the pane on that
+        // tab instead of leaving the list.
+        var own = e.target.closest('a, button, input, label, select, summary, [role="button"]');
+        var tab = own ? own.getAttribute('data-split-tab') : null;
+        if (own && !tab && !own.matches(LINK)) { return; }
         // With Select on, the row's job is the tick box.
         if (container.classList.contains('is-selecting')) {
-            var box = row.querySelector('input[data-horse-checkbox]');
+            var box = row.querySelector('input[data-split-checkbox], input[data-horse-checkbox]');
             if (!box || e.target === box) { return; }
             e.preventDefault();
             e.stopPropagation();
@@ -304,6 +400,7 @@
         }
         e.preventDefault();
         e.stopPropagation();
+        if (tab) { setTab(tab); }
         open(pkOf(row));
     }, true);
 
@@ -381,7 +478,7 @@
     function dragStart(e) {
         var panel = pane();
         if (!panel || isDesktop() || state.sheet === 'closed') { return; }
-        var body = el('horse-preview-body');
+        var body = body_();
         var inBody = body && body.contains(e.target);
         // While the sheet is open, its body scrolls; only a pull from the
         // very top of that scroll is a drag rather than a scroll.
@@ -493,7 +590,7 @@
         var pk = remembered();
         state.pk = null;
         // Not just "is the row in the page" but "is it on screen": a
-        // remembered horse can come back inside a collapsed group card,
+        // remembered record can come back inside a collapsed group card,
         // and a pane whose counter and arrows have nothing to count is
         // worse than no pane.
         var back = rowFor(pk);
@@ -514,12 +611,7 @@
             // `select` is still passed by name: "unset" is an
             // attribute-only word that this API would read as a literal
             // selector, matching nothing and blanking the pane.
-            htmx.ajax('GET', previewUrl(state.pk), {
-                source: panel,
-                target: '#horse-preview-body',
-                select: '#horse-preview-content',
-                swap: 'innerHTML'
-            });
+            load(panel);
         }
         markRows();
         updateChrome();

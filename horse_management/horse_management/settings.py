@@ -914,7 +914,11 @@ CSP_POLICY = {
         # This is the directive that matters most against an injected
         # script: it decides where the page may send data.
         'connect-src': ["'self'"],
-        'frame-src': ["'none'"],
+        # 'self' for one frame: the invoice list's pane shows an invoice's
+        # PDF (invoicing.views.invoice_pdf with ?inline=1). No other site
+        # can be framed, and frame-ancestors below still stops any site
+        # framing this one; only that PDF response relaxes it to 'self'.
+        'frame-src': ["'self'"],
         'object-src': ["'none'"],
         'base-uri': ["'self'"],
         # Stops an injected <form> posting credentials to another host.
