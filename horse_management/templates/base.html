@@ -924,6 +924,28 @@ document.addEventListener('alpine:init', function() {
         };
     });
 
+    // ── Pane filter ──
+    // The search in a pane section's head (the owner pane's horses). Rows
+    // carry data-horse-name in lower case; match() hides the rest, and
+    // none() shows the "No horse matches" line.
+    Alpine.data('paneFilter', function () {
+        return {
+            q: '',
+            match: function (name) {
+                var q = this.q.trim().toLowerCase();
+                return !q || (name || '').indexOf(q) !== -1;
+            },
+            none: function () {
+                var self = this;
+                if (!this.q.trim()) return false;
+                return !Array.prototype.some.call(
+                    this.$root.querySelectorAll('[data-horse-name]'),
+                    function (row) { return self.match(row.dataset.horseName); }
+                );
+            }
+        };
+    });
+
     // ── Segmented control ──
     // Slides one filled thumb behind the selected option instead of
     // repainting two separate buttons. Options are links, so a click starts

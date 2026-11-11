@@ -168,6 +168,51 @@ class OwnerPaneContentTests(OwnerPaneFixture):
         self.assertNotIn('<img', self.pane())
 
 
+class OwnerPaneHorseRowsTests(OwnerPaneFixture):
+    """The horses section: one short row each (name, age, colour, sex,
+    location), and over 6 horses a scroll box with a search bar."""
+
+    def setUp(self):
+        self.client.force_login(make_admin())
+
+    def add_horses(self, count):
+        for i in range(count):
+            horse = Horse.objects.create(name=f'Extra {i}')
+            OwnershipShare.objects.create(horse=horse, owner=self.owner, share_percentage=Decimal('100'))
+
+    def test_a_row_has_the_columns(self):
+        self.horse.date_of_birth = self.today.replace(year=self.today.year - 8) - timedelta(days=1)
+        self.horse.save()
+        body = self.pane()
+        self.assertIn('data-horse-name="antoinette"', body)
+        row = body[body.index('data-horse-name="antoinette"'):][:2500]
+        for text in ('8yo', 'Bay', 'Mare', 'Grain store paddock'):
+            self.assertIn(text, row)
+
+    def test_every_section_is_boxed(self):
+        self.assertEqual(self.pane().count('pane-section is-boxed'), 5)
+
+    def test_six_horses_have_no_search_and_no_scroll_box(self):
+        self.add_horses(5)
+        body = self.pane()
+        self.assertNotIn('data-horse-search', body)
+        self.assertNotIn('pane-scroll', body)
+        self.assertNotIn('x-data="paneFilter"', body)
+
+    def test_seven_horses_get_the_search_and_the_scroll_box(self):
+        self.add_horses(6)
+        body = self.pane()
+        self.assertIn('data-horse-search', body)
+        self.assertIn('placeholder="Search 7 horses"', body)
+        self.assertIn('class="pane-scroll"', body)
+        self.assertIn('x-data="paneFilter"', body)
+        self.assertEqual(body.count('x-show="match($el.dataset.horseName)"'), 7)
+
+    def test_the_filter_is_registered_before_alpine_starts(self):
+        response = self.client.get(reverse('owner_list'))
+        self.assertContains(response, "Alpine.data('paneFilter'")
+
+
 class OwnerPaneMoneyTests(OwnerPaneFixture):
     """Money follows the role, here as on the owner's page."""
 
