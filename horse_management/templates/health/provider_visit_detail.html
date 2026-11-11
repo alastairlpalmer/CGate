@@ -53,5 +53,13 @@
     {% if not visit.checked_at and not visit.is_open %}
     <p class="text-sage text-sm">Until you mark it as checked, the farrier can change this visit on the day it was made.</p>
     {% endif %}
+    {% if notes %}
+    <div class="card px-5 py-4 space-y-2" data-visit-notes>
+        <h2 class="section-title">Notes from the farrier (no work or charge)</h2>
+        {% for note in notes %}
+        <p><a href="{% url 'horse_detail' note.horse.pk %}" class="link">{{ note.horse.name }}</a>: <span class="whitespace-pre-line">{{ note.text }}</span></p>
+        {% endfor %}
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

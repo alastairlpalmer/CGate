@@ -1097,7 +1097,7 @@ class HorseListView(FeatureAccessMixin, ListView):
 
 def build_horse_timeline(
     *, placements, vaccinations, farrier_visits, worming_treatments,
-    egg_counts, vet_visits, breeding_records=(),
+    egg_counts, vet_visits, breeding_records=(), farrier_notes=(),
 ):
     """One list of dated events, newest first.
 
@@ -1120,6 +1120,8 @@ def build_horse_timeline(
         timeline.append({'type': 'vet_visit', 'date': v.date, 'obj': v})
     for br in breeding_records:
         timeline.append({'type': 'breeding', 'date': br.date_covered, 'obj': br})
+    for note in farrier_notes:
+        timeline.append({'type': 'farrier_note', 'date': note.date, 'obj': note})
     timeline.sort(key=lambda e: e['date'], reverse=True)
     # Only the newest record of a kind can be overdue: an old booster's next
     # due date is in the past for ever once the horse has had the next one.
@@ -1217,6 +1219,7 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
             egg_counts=context['egg_counts'],
             vet_visits=context['vet_visits'],
             breeding_records=context.get('breeding_records', []) if horse.is_mare else [],
+            farrier_notes=list(horse.farrier_notes.select_related('provider')[:20]),
         )
 
         return context
@@ -1446,6 +1449,7 @@ def horse_preview(request, pk):
         egg_counts=egg_counts,
         vet_visits=vet_visits,
         breeding_records=breeding_records,
+        farrier_notes=list(horse.farrier_notes.select_related('provider')[:8]),
     )
 
     return render(request, 'horses/partials/preview.html', {

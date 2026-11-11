@@ -2,7 +2,7 @@
 
 **Goal:** Our farrier records each visit on a phone in under 2 minutes. Yardway bills each owner on the monthly invoice. The yard pays the farrier one amount each month. Nobody types the same data twice.
 **Scope:** One farrier, our own yard, our own horses. About 8 weeks of use after the build.
-**Status:** Steps 1 to 6 built. Step 7: the simulated phone check is done and its fixes are in (section 10a); the check on a real phone at the yard is next. Then step 8 (set-up with the farrier).
+**Status:** Steps 1 to 7 built and live (step 7: simulated phone check done). Added: the yard's list (section 14), sign-in from the QR code by picking a name (section 15) and farrier notes (section 16). Next: the real-phone check at the yard, then step 8 (set-up with the farrier).
 **Build estimate:** 7 to 9 working days, plus 1 day of set-up with the farrier.
 
 ---
@@ -260,3 +260,29 @@ Still open:
 - An invoice to the owner right after the visit, and a pay-now link (Stripe Connect, see `docs/payments/payments-plan.md`).
 - One farrier working at many yards (needs the multi-yard rebuild).
 - Vets, dentists and physios (same pattern, after this test).
+
+## 14. The yard's list for a farrier visit
+
+The yard manager makes a list for a visit date: the horses, the work wanted (or "farrier to decide") and a note.
+
+- **Where:** Health → Farrier → **Farrier's list**, or the **Farrier's list** button on Farrier Visits (`/health/farrier-visits/list/`). Health: view to see it, Health: full to change it.
+- **The farrier:** on that date, the horses on the list are at the top of **Due now**, tagged **On the list**, with the yard's request under the name. In the horse's panel, the price button for the work wanted is outlined.
+- **Done:** an item is done when the farrier records a line for that horse on that date. The list page shows each item as **To do**, **Done** (with the work and price) or **Not done** (after the date).
+- **Data:** `FarrierJob` (provider, date, horse, work wanted, note), one per horse per day.
+
+The farrier page shows **Due now** (the yard's list, then horses due within 14 days) and **All other horses**, open, below. Search finds any active horse.
+
+## 15. Sign-in from the QR code: pick your name, no password
+
+**Decision (the yard owner, November 2026):** the farrier scans the QR code, picks their name from a dropdown and is signed in. No password and no PIN.
+
+- **Who can be picked:** only an active farrier in Service Providers with a linked **farrier-only** login. A staff login is never offered, so the QR code cannot sign anyone in as staff.
+- **What such a session can do:** the farrier page only (the fence in section 4). If the login is later given a staff role, the session stops working (`core.auth_backends.FarrierQRBackend`).
+- **Audit:** each sign-in is in the audit log as "Signed in · QR code, name picked", with the address it came from.
+- **The risk the yard accepts:** anyone who has the QR code (a photo of the door is enough) can sign in as the farrier. They could then record work, which adds charges to owners' next invoices, and see horse names and fields. The yard checks every visit before it is paid ("Mark as checked"), and a wrong line can be removed. **To close this later:** add a 4-digit PIN per farrier (the screen already has room for it), or make the picker work only on a phone that has signed in once.
+
+## 16. Farrier notes on a horse
+
+- **With the work:** each line has "Notes for the yard": why the work was done, issues, suggested treatment (up to 1,000 characters). It is saved on the farrier record.
+- **On its own:** "Note only, no work or charge" saves a `FarrierNote` on the horse. It makes no charge and does not change the farrier due date. It joins the day's visit when the farrier taps Finish.
+- **Where the yard sees them:** on the horse's page (the timeline: "Farrier", and "Farrier note"), in the horse preview, and on the visit page under Farrier Visits.

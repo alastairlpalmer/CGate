@@ -124,18 +124,16 @@ class HorseListTests(TodayBase):
         response = self.client.get(reverse('farrier:today'), {'open': self.bramble.pk})
         self.assertContains(response, reverse('farrier:horse_add', args=[self.bramble.pk]))
 
-    def test_other_horses_are_folded_while_horses_are_due(self):
+    def test_all_other_horses_are_listed_open(self):
+        # Nothing is folded away: due horses, then every other horse.
         response = self.client.get(reverse('farrier:today'))
-        self.assertFalse(response.context['others_open'])
+        self.assertContains(response, 'All other horses (1)')
+        self.assertNotContains(response, '<details class="space-y-2"', html=False)
+        self.assertContains(response, 'Pickle')
 
-    def test_other_horses_open_when_nothing_is_due(self):
-        # A first visit: no farrier records, so no horse is due. The list
-        # must not look empty (step 7 phone check).
-        FarrierVisit.objects.all().delete()
-        response = self.client.get(reverse('farrier:today'))
-        self.assertEqual(response.context['due_horses'], [])
-        self.assertTrue(response.context['others_open'])
-        self.assertContains(response, '<details class="space-y-2" open>', html=False)
+    def test_search_finds_any_horse_not_only_due_ones(self):
+        response = self.client.get(reverse('farrier:today'), {'q': 'pick'})
+        self.assertEqual([h.name for h in response.context['other_horses']], ['Pickle'])
 
     def test_owner_names_never_shown(self):
         response = self.client.get(reverse('farrier:today'))

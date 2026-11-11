@@ -52,7 +52,11 @@ def audit_signed_in(sender, request, user, **kwargs):
     backend = session.get(BACKEND_SESSION_KEY, '') if session is not None else ''
     audit.record(
         AuditEvent.Action.SIGNED_IN, request=request, actor=user, target=user,
-        detail='Google' if backend.endswith('.GoogleBackend') else '',
+        detail=(
+            'Google' if backend.endswith('.GoogleBackend')
+            else 'QR code, name picked' if backend.endswith('.FarrierQRBackend')
+            else ''
+        ),
     )
 
 

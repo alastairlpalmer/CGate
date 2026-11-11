@@ -477,6 +477,73 @@ class FarrierVisit(models.Model):
         return timezone.localdate() > self.next_due_date
 
 
+class FarrierJob(models.Model):
+    """One item on the yard's list for a farrier visit: a horse, the work
+    the yard wants, and a note (docs/FARRIER_PAGE_PLAN.md, section 14).
+
+    The yard makes the list for a date. On that date the farrier sees each
+    horse at the top of Today's visit. An item is done when the farrier
+    records a line for that horse on that date; nothing is stored for it,
+    so a line removed again makes the item not done again.
+    """
+
+    provider = models.ForeignKey(
+        'billing.ServiceProvider', on_delete=models.CASCADE, related_name='farrier_jobs',
+    )
+    date = models.DateField()
+    horse = models.ForeignKey('core.Horse', on_delete=models.CASCADE, related_name='farrier_jobs')
+    work_needed = models.CharField(
+        max_length=20, choices=FarrierVisit.WorkType.choices, blank=True,
+        help_text='Leave empty to let the farrier decide.',
+    )
+    note = models.CharField(max_length=200, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['date', 'horse__name']
+        constraints = [
+            models.UniqueConstraint(fields=['provider', 'date', 'horse'], name='farrier_job_one_per_horse_day'),
+        ]
+        indexes = [models.Index(fields=['provider', 'date'], name='farrier_job_provider_date')]
+
+    def __str__(self):
+        return f"{self.horse.name} - {self.get_work_needed_display() or 'farrier to decide'} ({self.date})"
+
+
+class FarrierNote(models.Model):
+    """A note the farrier leaves on a horse without recording any work:
+    an issue they saw, a suggested treatment, advice for the yard.
+
+    Notes about work done go on the farrier record itself
+    (FarrierVisit.notes). A note never makes a charge and never changes
+    the horse's farrier due date.
+    """
+
+    horse = models.ForeignKey('core.Horse', on_delete=models.CASCADE, related_name='farrier_notes')
+    provider = models.ForeignKey(
+        'billing.ServiceProvider', on_delete=models.CASCADE, related_name='farrier_notes',
+    )
+    provider_visit = models.ForeignKey(
+        ProviderVisit, on_delete=models.SET_NULL, null=True, blank=True, related_name='notes',
+    )
+    date = models.DateField()
+    text = models.TextField(max_length=1000)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date', '-created_at']
+        indexes = [models.Index(fields=['horse', 'date'], name='farrier_note_horse_date')]
+
+    def __str__(self):
+        return f"{self.horse.name} - note ({self.date})"
+
+
 class WormingTreatment(models.Model):
     """Worming treatment record for a horse."""
 

@@ -12,6 +12,7 @@
         </div>
         <div class="flex items-center gap-3">
             <a href="{% url 'health_dashboard' %}?type=farrier" class="btn-secondary">Back to Health</a>
+            {% if feature_access.health.view %}<a href="{% url 'farrier_job_list' %}" class="btn-secondary" data-farrier-list-link>Farrier's list</a>{% endif %}
             {% if feature_access.settings.full %}<a href="{% url 'farrier_qr' %}" class="btn-secondary">Print QR code</a>{% endif %}
         </div>
     </div>

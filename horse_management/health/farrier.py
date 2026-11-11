@@ -23,9 +23,19 @@ from .models import ProviderVisit
 
 
 def provider_page(view_func):
-    """Gate a farrier page view; see the module docstring."""
+    """Gate a farrier page view; see the module docstring.
+
+    A signed-out visitor (someone who scanned the yard's QR code) goes to
+    "Who is on the yard today?" to pick their name.
+    """
 
     @wraps(view_func)
+    def _outer(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            from django.shortcuts import redirect
+            return redirect('farrier:who')
+        return _wrapped(request, *args, **kwargs)
+
     @feature_required('farrier_portal', LEVEL_FULL)
     def _wrapped(request, *args, **kwargs):
         provider = ServiceProvider.for_user(request.user)
@@ -39,7 +49,27 @@ def provider_page(view_func):
         request.provider = provider
         return view_func(request, *args, **kwargs)
 
-    return _wrapped
+    return _outer
+
+
+def qr_sign_in_farriers():
+    """Farriers who can be picked on "Who is on the yard today?".
+
+    Only an active farrier provider with a linked, active, farrier-only
+    login. A staff login is never offered, so the QR code can never sign
+    anyone in as staff.
+    """
+    from core.permissions import is_provider_only
+
+    providers = (
+        ServiceProvider.objects.filter(
+            provider_type=ServiceProvider.ProviderType.FARRIER, is_active=True,
+            user__isnull=False, user__is_active=True,
+        )
+        .select_related('user')
+        .order_by('name')
+    )
+    return [p for p in providers if is_provider_only(p.user)]
 
 
 # --- Queries, always scoped to one provider -------------------------------
@@ -125,6 +155,10 @@ def horse_rows(provider, *, search='', location_id=None, today=None):
     lines = {}
     if visit is not None:
         lines = {line.horse_id: line for line in visit.farrier_visits.all()}
+    jobs = {job.horse_id: job for job in todays_jobs(provider, today)}
+    notes = {}
+    for note in todays_notes(provider, today):
+        notes.setdefault(note.horse_id, []).append(note)
 
     work_labels = dict(FarrierVisit.WorkType.choices)
     horizon = today + timedelta(days=DUE_WITHIN_DAYS)
@@ -136,10 +170,52 @@ def horse_rows(provider, *, search='', location_id=None, today=None):
             horse.days_overdue = (today - horse.next_due).days
         else:
             horse.days_overdue = None
+        horse.job = jobs.get(horse.pk)
+        horse.today_notes = notes.get(horse.pk, [])
         is_due = horse.next_due is not None and horse.next_due <= horizon
-        (due if is_due else others).append(horse)
-    due.sort(key=lambda h: (h.next_due, h.name))
+        (due if is_due or horse.job else others).append(horse)
+    # The yard's list first (in name order), then the most overdue.
+    due.sort(key=lambda h: (h.job is None, h.next_due or today, h.name))
     return due, others
+
+
+def todays_notes(provider, today=None):
+    """Notes this provider left today (see FarrierNote), oldest first."""
+    from django.utils import timezone
+
+    from .models import FarrierNote
+
+    return FarrierNote.objects.filter(provider=provider, date=today or timezone.localdate()).order_by('created_at')
+
+
+def add_note(provider, user, horse, text):
+    """Leave a note on ``horse`` with no work and no charge.
+
+    It joins the open visit if there is one, so the yard sees it with
+    that visit; otherwise it stands alone on the horse's record.
+    """
+    from django.utils import timezone
+
+    from .models import FarrierNote
+
+    text = (text or '').strip()
+    if not text:
+        raise LineError("Write the note first.")
+    if len(text) > NOTE_MAX:
+        raise LineError(f"Keep the note under {NOTE_MAX} characters.")
+    return FarrierNote.objects.create(
+        horse=horse, provider=provider, provider_visit=open_visit(provider),
+        date=timezone.localdate(), text=text, created_by=user,
+    )
+
+
+def todays_jobs(provider, today=None):
+    """The yard's list for this provider on ``today`` (see FarrierJob)."""
+    from django.utils import timezone
+
+    from .models import FarrierJob
+
+    return FarrierJob.objects.filter(provider=provider, date=today or timezone.localdate())
 
 
 def visit_locations():
@@ -177,6 +253,7 @@ def _get_or_open_visit(provider, user):
 
 
 MAX_PRICE = '9999.99'
+NOTE_MAX = 1000
 
 
 def parse_price(value):
@@ -212,7 +289,7 @@ def _line_values(provider, *, item=None, work_done=None, price=None, note=''):
     if price in (None, ''):
         raise LineError("Enter a price, for example 95 or 95.00.")
     price = parse_price(price)
-    note = (note or '').strip()[:500]
+    note = (note or '').strip()[:NOTE_MAX]
     # The price's name goes in the notes only when its work type does not
     # already say it (a custom price with no farrier work type).
     label = item.name if item is not None and not item.farrier_work else ''
@@ -335,6 +412,12 @@ def finish_visit(provider, user):
         visit.status = ProviderVisit.Status.FINISHED
         visit.finished_at = timezone.now()
         visit.save(update_fields=['status', 'finished_at', 'updated_at'])
+        # Notes left today before the visit opened go with it, so the yard
+        # sees them on the visit page.
+        from .models import FarrierNote
+        FarrierNote.objects.filter(
+            provider=provider, date=visit.date, provider_visit__isnull=True,
+        ).update(provider_visit=visit)
         transaction.on_commit(lambda: send_visit_emails(visit.pk))
     return visit, lines
 
