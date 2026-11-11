@@ -121,10 +121,27 @@ class StaffAreNotFencedTests(TestCase):
         self.client.force_login(admin)
         self.assertFalse(is_provider_only(admin))
         self.assertEqual(self.client.get('/').status_code, 200)
-        # No provider linked to this login: a clear page, not an error.
+        # No provider linked to this login: a page that says how to test
+        # the farrier page, not an error or "ask the yard".
         response = self.client.get(TODAY_URL)
-        self.assertEqual(response.status_code, 403)
-        self.assertContains(response, 'not linked to a farrier', status_code=403)
+        self.assertContains(response, 'You are signed in as staff')
+        self.assertContains(response, reverse('provider_list'))
+        self.assertContains(response, reverse('provider_visit_list'))
+        self.assertNotContains(response, 'Ask the yard')
+
+    def test_superuser_without_a_role_gets_the_staff_page_too(self):
+        # Reported on the live site: a superuser opening the QR code
+        # address saw "Not linked yet" and read it as no permission.
+        superuser = User.objects.create_superuser('root', 'root@example.com', 'pw')
+        self.client.force_login(superuser)
+        for name in ('today', 'visit_list', 'price_list'):
+            with self.subTest(page=name):
+                response = self.client.get(reverse(f'farrier:{name}'))
+                self.assertContains(response, 'You are signed in as staff')
+        # A POST does nothing for a staff login with no farrier.
+        horse = Horse.objects.create(name='Bramble')
+        self.client.post(reverse('farrier:horse_add', args=[horse.pk]), {'price': '10'})
+        self.assertFalse(ProviderVisit.objects.exists())
 
     def test_staff_without_the_farrier_page_are_denied_it(self):
         user = make_user_with_access(username='groom', dashboard='full', horses='full')

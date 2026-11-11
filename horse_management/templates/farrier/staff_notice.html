@@ -1,0 +1,20 @@
+{% extends "farrier/base.html" %}
+{% block title %}The farrier's page{% endblock %}
+{% block heading %}The farrier's page{% endblock %}
+{% block content %}
+<div class="bg-white rounded-lg border border-light-sage p-4 space-y-3">
+    <p class="font-heading font-semibold">You are signed in as staff.</p>
+    <p>This page is for the farrier. It opens for a farrier login that is linked to a farrier in Service Providers.</p>
+    <p class="font-heading font-semibold">To test it:</p>
+    <ol class="list-decimal pl-5 space-y-1">
+        <li>Add a user with the role <strong>Farrier</strong> (Settings, Users).</li>
+        <li>Open the farrier in Service Providers and choose that user in <strong>Farrier page login</strong>.</li>
+        <li>Sign in as that user on a phone, in a private window.</li>
+    </ol>
+</div>
+<div class="space-y-2">
+    <a href="{% url 'user_create' %}" class="block text-center rounded-lg border border-forest text-forest font-heading font-semibold py-3">Add a user</a>
+    <a href="{% url 'provider_list' %}" class="block text-center rounded-lg bg-saddle text-white font-heading font-bold py-3">Service Providers</a>
+    <a href="{% url 'provider_visit_list' %}" class="block text-center rounded-lg border border-forest text-forest font-heading font-semibold py-3">Farrier visits (the yard's side)</a>
+</div>
+{% endblock %}
