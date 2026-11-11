@@ -1,0 +1,26 @@
+{% extends "notifications/email/_base.html" %}
+{% load ui_extras %}
+{% block extra_styles %}
+        .lines th, .lines td { padding: 6px 10px; text-align: left; }
+        .lines th { border-bottom: 1px solid #ccc; }
+        .lines .num { text-align: right; white-space: nowrap; }
+        .note { color: #56737A; font-size: 13px; }
+{% endblock %}
+{% block content %}
+    <p>Thank you. Your visit on {{ visit.date|date:"j M Y" }} is with the yard. You do not need to send a bill.</p>
+    <div class="invoice-details">
+        <table class="lines" width="100%">
+            <tr><th>Horse</th><th>Work</th><th class="num">Price</th><th>Next due</th></tr>
+            {% for line in lines %}
+            <tr>
+                <td>{{ line.horse.name }}{% if line.note %}<br><span class="note">{{ line.note }}</span>{% endif %}</td>
+                <td>{{ line.work }}</td>
+                <td class="num">{{ line.cost|gbp }}</td>
+                <td>{{ line.next_due|date:"j M" }}</td>
+            </tr>
+            {% endfor %}
+            <tr><td colspan="2"><strong>Total</strong></td><td class="num"><strong>{{ total|gbp }}</strong></td><td></td></tr>
+        </table>
+    </div>
+    <p>The yard pays you for this visit with the month's other visits.{% if visits_url %} You can see all your visits at <a href="{{ visits_url }}">{{ visits_url }}</a>.{% endif %}</p>
+{% endblock %}

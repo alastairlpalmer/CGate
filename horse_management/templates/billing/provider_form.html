@@ -70,6 +70,14 @@
                           <p id="{{ form.notes.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.notes.errors.0 }}</p>
                         {% endif %}
                     </div>
+                    <div class="sm:col-span-2">
+                        <label for="id_user" class="block text-sm font-medium text-charcoal">{{ form.user.label }}</label>
+                        {{ form.user }}
+                        <p class="mt-1 text-sm text-sage">{{ form.user.help_text }}</p>
+                        {% if form.user.errors %}
+                          <p id="{{ form.user.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.user.errors.0 }}</p>
+                        {% endif %}
+                    </div>
                     <div class="sm:col-span-2 flex items-center gap-2">
                         {{ form.is_active }}
                         <label for="id_is_active" class="text-sm font-medium text-charcoal">Active</label>

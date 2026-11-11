@@ -81,10 +81,32 @@ def has_feature_access(user, feature, level=LEVEL_VIEW):
     return actual >= required
 
 
+def is_provider_only(user):
+    """True for a visiting professional's login (the Farrier role).
+
+    Such a user may open the farrier page and nothing else of the app:
+    Full on ``farrier_portal`` and no dashboard. Staff roles that also
+    have the farrier page (an administrator testing it) keep their
+    dashboard, so this stays False for them. ``ProviderPortalMiddleware``
+    fences these users in; see docs/FARRIER_PAGE_PLAN.md, section 4.
+    """
+    if not getattr(user, 'is_authenticated', False):
+        return False
+    levels = access_map(user)
+    return (
+        levels.get('farrier_portal') == LEVEL_FULL
+        and levels.get('dashboard') == LEVEL_HIDDEN
+    )
+
+
 def deny(request):
     """The shared insufficient-access response for logged-in users."""
     if getattr(request, 'htmx', False) or request.method != 'GET':
         raise PermissionDenied
+    if is_provider_only(request.user):
+        # A farrier who follows an old link goes back to their page, with
+        # no error: the staff pages are not meant for them at all.
+        return redirect('farrier:today')
     messages.error(request, DENIED_MESSAGE)
     if has_feature_access(request.user, 'dashboard', LEVEL_VIEW):
         return redirect('dashboard')

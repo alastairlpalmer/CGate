@@ -6,6 +6,8 @@ from decimal import Decimal
 
 from django.core.validators import FileExtensionValidator, MinValueValidator
 
+from django.conf import settings
+
 from core.models import validate_file_size
 from core.uploads import validate_file_content
 from core.softdelete import SoftDeleteModel
@@ -36,6 +38,18 @@ class ServiceProvider(models.Model):
     address = models.TextField(blank=True)
     notes = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
+    # The login a visiting professional (a farrier) uses for their own
+    # page. Empty for providers who never sign in. Every record and charge
+    # made from that page gets this provider, and every query on it is
+    # scoped to this provider (docs/FARRIER_PAGE_PLAN.md, section 8).
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='service_provider',
+        help_text="The login this provider uses for their own visit page.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -44,6 +58,13 @@ class ServiceProvider(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_provider_type_display()})"
+
+    @classmethod
+    def for_user(cls, user):
+        """The active provider linked to ``user``, or None."""
+        if user is None or not getattr(user, 'is_authenticated', False):
+            return None
+        return cls.objects.filter(user=user, is_active=True).first()
 
 
 class ExtraCharge(SoftDeleteModel):
@@ -414,6 +435,16 @@ class FeedStock(models.Model):
         return f"{self.get_entry_type_display()}: {self.quantity} {self.get_unit_display()} {self.get_feed_type_display()} ({self.date})"
 
 
+class ServiceItemQuerySet(models.QuerySet):
+    def yard(self):
+        """The yard's own directory: items no provider owns."""
+        return self.filter(provider__isnull=True)
+
+    def for_provider(self, provider):
+        """One visiting professional's own price list."""
+        return self.filter(provider=provider)
+
+
 class ServiceItem(models.Model):
     """A priced entry in the services directory (Settings → Services & Prices).
 
@@ -477,8 +508,20 @@ class ServiceItem(models.Model):
     )
     sort_order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
+    # Empty: the yard's directory, offered on the staff forms. Set: that
+    # provider's own price list, offered only on their visit page.
+    provider = models.ForeignKey(
+        ServiceProvider,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='price_list',
+        help_text="Empty for the yard's own list. Set for a visiting professional's own prices.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    objects = ServiceItemQuerySet.as_manager()
 
     class Meta:
         constraints = [

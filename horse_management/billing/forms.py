@@ -80,7 +80,9 @@ class ServicePickerField(forms.ChoiceField):
         self.load_items(self.category)
 
     def load_items(self, category):
-        queryset = ServiceItem.objects.filter(is_active=True)
+        # Staff forms offer the yard's directory only, never a visiting
+        # professional's own price list.
+        queryset = ServiceItem.objects.yard().filter(is_active=True)
         if isinstance(category, str):
             queryset = queryset.filter(category=category)
         elif category:
@@ -455,9 +457,21 @@ class FeedStockForm(forms.ModelForm):
 
 
 class ServiceProviderForm(forms.ModelForm):
+    """A provider, and (for a farrier) the login that opens their own page.
+
+    The login list offers only Farrier-role logins (docs/FARRIER_PAGE_PLAN.md)
+    that no other provider has, so a staff account can never be linked by
+    mistake and two providers never share one login.
+    """
+
     class Meta:
         model = ServiceProvider
-        fields = ['name', 'provider_type', 'phone', 'email', 'address', 'notes', 'is_active']
+        fields = ['name', 'provider_type', 'phone', 'email', 'address', 'notes', 'is_active', 'user']
+        labels = {'user': 'Farrier page login'}
+        help_texts = {
+            'user': "The login this farrier uses for their phone page. Make the login under "
+                    "Settings, Users, with the Farrier role. The visit summary goes to the email above.",
+        }
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
             'provider_type': forms.Select(attrs={'class': 'form-select'}),
@@ -466,4 +480,25 @@ class ServiceProviderForm(forms.ModelForm):
             'address': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+            'user': forms.Select(attrs={'class': 'form-select'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from django.contrib.auth import get_user_model
+
+        from core.permissions import is_provider_only
+
+        taken = ServiceProvider.objects.exclude(user__isnull=True)
+        if self.instance.pk:
+            taken = taken.exclude(pk=self.instance.pk)
+        candidates = (
+            get_user_model().objects.filter(is_active=True)
+            .exclude(pk__in=taken.values('user_id'))
+            .select_related('role_assignment__role')
+            .order_by('username')
+        )
+        allowed = [u.pk for u in candidates if is_provider_only(u)]
+        self.fields['user'].queryset = get_user_model().objects.filter(pk__in=allowed).order_by('username')
+        self.fields['user'].required = False
+        self.fields['user'].empty_label = 'No login (the yard records this provider\'s work)'

@@ -6,8 +6,9 @@ import calendar
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import models
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Exists, OuterRef, Q, Sum
 from django.utils import timezone
 
 
@@ -283,6 +284,103 @@ class Vaccination(models.Model):
         return timezone.localdate() > self.next_due_date
 
 
+class ProviderVisit(models.Model):
+    """One day's work by a visiting professional, recorded on their own page.
+
+    Groups the farrier records made in one visit, so the yard can check
+    them together and the farrier can see a total. It also holds the times
+    the test measures (docs/FARRIER_PAGE_PLAN.md, section 11) and whether
+    the yard has paid the farrier for it.
+
+    A provider has at most one open visit at a time: the page adds lines
+    to it until the farrier taps Finish visit.
+    """
+
+    class Status(models.TextChoices):
+        OPEN = 'open', 'Open'
+        FINISHED = 'finished', 'Finished'
+
+    provider = models.ForeignKey(
+        'billing.ServiceProvider',
+        on_delete=models.PROTECT,
+        related_name='visits',
+    )
+    date = models.DateField(default=timezone.localdate)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
+    started_at = models.DateTimeField(default=timezone.now)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+    # The yard's check after the visit.
+    checked_at = models.DateTimeField(null=True, blank=True)
+    checked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+    # The yard's payment to the provider. One monthly payment (a YardCost)
+    # covers many visits.
+    paid_on = models.DateField(null=True, blank=True)
+    yard_cost = models.ForeignKey(
+        'billing.YardCost',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='provider_visits',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date', '-started_at']
+        indexes = [
+            models.Index(fields=['provider', 'date'], name='provvisit_provider_date'),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['provider'],
+                condition=Q(status='open'),
+                name='provvisit_one_open_per_provider',
+            ),
+            models.CheckConstraint(
+                condition=Q(status='open') | Q(finished_at__isnull=False),
+                name='provvisit_finished_has_time',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.provider.name} - {self.date} ({self.get_status_display()})"
+
+    @property
+    def is_open(self):
+        return self.status == self.Status.OPEN
+
+    @property
+    def is_paid(self):
+        return self.paid_on is not None
+
+    @property
+    def total(self):
+        """Sum of the costs on this visit's farrier records."""
+        return self.farrier_visits.aggregate(
+            total=Sum('cost'),
+        )['total'] or Decimal('0.00')
+
+    @property
+    def duration(self):
+        """Time from start to Finish visit, or None while open."""
+        if self.finished_at is None:
+            return None
+        return self.finished_at - self.started_at
+
+
 class FarrierVisit(models.Model):
     """Farrier visit record."""
 
@@ -326,6 +424,15 @@ class FarrierVisit(models.Model):
         related_name='farrier_visit'
     )
     reminder_sent = models.BooleanField(default=False)
+    # Set when the farrier recorded this on their own visit page. Empty
+    # for records staff make on the normal forms.
+    provider_visit = models.ForeignKey(
+        ProviderVisit,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='farrier_visits',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

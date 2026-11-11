@@ -133,6 +133,9 @@ MIDDLEWARE = [
     # has (core.mfa).
     'django_otp.middleware.OTPMiddleware',
     'core.middleware.MFAMiddleware',
+    # Keeps a farrier's login on the farrier page (core.permissions
+    # .is_provider_only). After MFAMiddleware: the code page comes first.
+    'core.middleware.ProviderPortalMiddleware',
     # Records the signed-in user on every history row (core/audit.py).
     'simple_history.middleware.HistoryRequestMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',

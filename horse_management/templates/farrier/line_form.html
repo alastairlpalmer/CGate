@@ -1,0 +1,44 @@
+{% extends "farrier/base.html" %}
+{% load ui_extras %}
+{% block title %}Change {{ line.horse.name }}{% endblock %}
+{% block heading %}Change {{ line.horse.name }}{% endblock %}
+{% block content %}
+<p class="text-sm text-sage">Now: {{ line.get_work_done_display }} · {{ line.cost|gbp }}. You can change this today, until the yard checks the visit.</p>
+{% if error %}<p class="rounded-lg px-4 py-3 bg-error-red-50 text-error-red" role="alert">{{ error }}</p>{% endif %}
+<form method="post" class="bg-white rounded-lg border border-light-sage p-4 space-y-3">
+    {% csrf_token %}
+    {% if prices %}
+    <div class="grid grid-cols-2 gap-2">
+        {% for item in prices %}
+        <button type="submit" name="item" value="{{ item.pk }}"
+                class="rounded-lg border bg-white px-2 py-3 text-sm font-semibold {% if line.work_done == item.farrier_work and line.cost == item.price %}border-meadow text-meadow{% else %}border-light-sage text-forest{% endif %}">
+            {{ item.name }} {{ item.price|gbp }}
+        </button>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <label class="block text-sm">
+        <span class="text-sage">Note (optional)</span>
+        <input type="text" name="note" maxlength="500" class="mt-1 w-full rounded-lg border border-light-sage px-3 py-2">
+    </label>
+    <label class="block text-sm">
+        <span class="text-sage">Different price (optional)</span>
+        <input type="text" name="price" inputmode="decimal" class="mt-1 w-full rounded-lg border border-light-sage px-3 py-2" placeholder="Leave empty to use the button's price">
+    </label>
+    <details class="text-sm">
+        <summary class="cursor-pointer text-forest font-semibold py-1">Other or remedial work</summary>
+        <div class="mt-2 grid grid-cols-2 gap-2">
+            <select name="work_done" class="rounded-lg border border-light-sage px-2 py-2 bg-white" aria-label="Work done">
+                <option value="">Work done…</option>
+                {% for value, label in work_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+            </select>
+            <button type="submit" name="item" value="" class="rounded-lg bg-saddle text-white font-semibold px-2 py-2">Save with the price above</button>
+        </div>
+    </details>
+</form>
+<form method="post" action="{% url 'farrier:line_remove' visit.pk line.pk %}">
+    {% csrf_token %}
+    <button type="submit" class="w-full text-error-red underline py-2">Remove {{ line.horse.name }} from this visit</button>
+</form>
+<a href="{% url 'farrier:visit_detail' visit.pk %}" class="block text-center text-forest underline">Back to the visit</a>
+{% endblock %}

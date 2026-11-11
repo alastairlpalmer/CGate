@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Farrier page QR code - Cgate{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Farrier page QR code</h1>
+            <p class="text-sage text-sm">Print this sheet (A5 or A4) and put it on the tack room door. Use your browser's Print command.</p>
+        </div>
+        <a href="{% url 'provider_visit_list' %}" class="btn-secondary">Back</a>
+    </div>
+    <div class="card px-6 py-8 max-w-md mx-auto text-center space-y-4">
+        <p class="font-heading font-bold text-2xl">{{ business.business_name|default:"Our yard" }}</p>
+        <p class="font-heading text-lg">Farrier: scan to record your visit</p>
+        <div class="mx-auto w-64 h-64 [&>svg]:w-full [&>svg]:h-full" aria-label="QR code for the farrier page">{{ qr_svg|safe }}</div>
+        <p class="text-sm text-sage break-all">{{ url }}</p>
+        <p class="text-sm">First time: sign in, then add the page to your home screen.</p>
+    </div>
+    <p class="text-sage text-sm">The code holds only the page address. Nobody can sign in with it alone.</p>
+</div>
+{% endblock %}

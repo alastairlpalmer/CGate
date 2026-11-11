@@ -82,6 +82,14 @@ FEATURES = [
         "description": "Feed stock levels and feeding-out records.",
     },
     {
+        "key": "farrier_portal",
+        "label": "Farrier visit page",
+        "group": "Manage",
+        "supports_view": False,
+        "description": "The farrier's own phone page: today's visit, their prices and their visits. "
+                       "Give it to the Farrier role only; staff do not need it.",
+    },
+    {
         "key": "finances",
         "label": "Finances overview",
         "group": "Finance",

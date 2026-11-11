@@ -1,0 +1,71 @@
+{% load ui_extras %}
+<div id="horse-{{ horse.pk }}" class="bg-white rounded-lg border {% if horse.line %}border-meadow{% else %}border-light-sage{% endif %}">
+    <a href="{% url 'farrier:horse_panel' horse.pk %}{% if open_pk == horse.pk %}?close=1{% endif %}"
+       hx-get="{% url 'farrier:horse_panel' horse.pk %}{% if open_pk == horse.pk %}?close=1{% endif %}"
+       hx-target="#horse-{{ horse.pk }}" hx-swap="outerHTML" hx-push-url="false" hx-select="unset"
+       class="flex items-center gap-3 px-3 py-2" aria-expanded="{% if open_pk == horse.pk %}true{% else %}false{% endif %}">
+        {% if horse.photo_thumb %}
+        <img src="{{ horse.photo_thumb.url }}" alt="" class="h-10 w-10 rounded object-cover shrink-0">
+        {% else %}
+        <span class="h-10 w-10 rounded bg-light-sage shrink-0" aria-hidden="true"></span>
+        {% endif %}
+        <span class="flex-1 min-w-0">
+            <span class="block font-heading font-semibold truncate">{{ horse.name }}</span>
+            <span class="block text-sm text-sage truncate">{% if horse.location_name %}{{ horse.location_name }}{% endif %}{% if horse.location_name and horse.last_date %} · {% endif %}{% if horse.last_date %}{{ horse.last_work_label }} {{ horse.last_date|date:"j M" }}{% elif not horse.location_name %}No farrier record yet{% endif %}</span>
+        </span>
+        {% if horse.line %}
+        <span class="text-sm font-semibold text-meadow whitespace-nowrap">&#10003; {{ horse.line.get_work_done_display }} {{ horse.line.cost|gbp }}</span>
+        {% elif horse.days_overdue is not None and horse.days_overdue > 0 %}
+        <span class="text-xs rounded-full bg-saddle-50 text-saddle px-2 py-0.5 whitespace-nowrap">Overdue {{ horse.days_overdue }}d</span>
+        {% elif horse.days_overdue is not None and horse.days_overdue > -15 %}
+        <span class="text-xs rounded-full bg-saddle-50 text-saddle px-2 py-0.5 whitespace-nowrap">Due {{ horse.next_due|date:"j M" }}</span>
+        {% endif %}
+    </a>
+    {% if open_pk == horse.pk %}
+    <div class="border-t border-light-sage px-3 py-3 space-y-3 bg-sage-50 rounded-b-lg">
+        {% if error %}<p class="text-error-red text-sm" role="alert">{{ error }}</p>{% endif %}
+        <form method="post" action="{% url 'farrier:horse_add' horse.pk %}"
+              hx-post="{% url 'farrier:horse_add' horse.pk %}" hx-target="#horse-{{ horse.pk }}" hx-swap="outerHTML" hx-push-url="false" hx-select="unset"
+              class="space-y-3">
+            {% csrf_token %}
+            {% if prices %}
+            <div class="grid grid-cols-2 gap-2">
+                {% for item in prices %}
+                <button type="submit" name="item" value="{{ item.pk }}"
+                        class="rounded-lg border bg-white px-2 py-3 text-sm font-semibold {% if horse.line and horse.line.work_done == item.farrier_work and horse.line.cost == item.price %}border-meadow text-meadow{% else %}border-light-sage text-forest{% endif %}">
+                    {{ item.name }} {{ item.price|gbp }}
+                </button>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-sage">You have no prices yet. Use Other below, or add prices under My prices.</p>
+            {% endif %}
+            <label class="block text-sm">
+                <span class="text-sage">Note (optional)</span>
+                <input type="text" name="note" maxlength="500" value="" class="mt-1 w-full rounded-lg border border-light-sage px-3 py-2" placeholder="For example: loose clench LF">
+            </label>
+            <label class="block text-sm">
+                <span class="text-sage">Different price for this horse (optional)</span>
+                <input type="text" name="price" inputmode="decimal" class="mt-1 w-full rounded-lg border border-light-sage px-3 py-2" placeholder="Leave empty to use your price">
+            </label>
+            <details class="text-sm">
+                <summary class="cursor-pointer text-forest font-semibold py-1">Other or remedial work</summary>
+                <div class="mt-2 grid grid-cols-2 gap-2">
+                    <select name="work_done" class="rounded-lg border border-light-sage px-2 py-2 bg-white" aria-label="Work done">
+                        <option value="">Work done…</option>
+                        {% for value, label in work_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                    </select>
+                    <button type="submit" name="item" value="" class="rounded-lg bg-saddle text-white font-semibold px-2 py-2">Add with the price above</button>
+                </div>
+            </details>
+        </form>
+        {% if horse.line %}
+        <form method="post" action="{% url 'farrier:horse_remove' horse.pk %}"
+              hx-post="{% url 'farrier:horse_remove' horse.pk %}" hx-target="#horse-{{ horse.pk }}" hx-swap="outerHTML" hx-push-url="false" hx-select="unset">
+            {% csrf_token %}
+            <button type="submit" class="text-sm text-error-red underline">Remove {{ horse.name }} from this visit</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>

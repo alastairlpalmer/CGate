@@ -49,6 +49,7 @@
             <div class="p-5 flex-1">
                 <div class="flex items-start justify-between gap-3 mb-3">
                     <h3 class="text-lg font-semibold text-charcoal">{{ provider.name }}</h3>
+                    {% if provider.user %}<p class="text-sm text-forest">Farrier page login: {{ provider.user.username }}</p>{% endif %}
                     <span class="badge-neutral shrink-0">
                         {{ provider.get_provider_type_display }}
                     </span>

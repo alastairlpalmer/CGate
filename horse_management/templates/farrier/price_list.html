@@ -1,0 +1,24 @@
+{% extends "farrier/base.html" %}
+{% load ui_extras %}
+{% block title %}My prices{% endblock %}
+{% block heading %}My prices{% endblock %}
+{% block content %}
+<p class="text-sm text-sage">These are the buttons you tap on a visit. Hidden prices stay on old visits but are not offered.</p>
+<div class="bg-white rounded-lg border border-light-sage divide-y divide-light-sage">
+    {% for item in prices %}
+    <div class="px-4 py-3 flex items-center justify-between gap-3 {% if not item.is_active %}text-sage{% endif %}">
+        <a href="{% url 'farrier:price_edit' item.pk %}" class="flex-1 min-w-0">
+            <span class="block font-semibold truncate">{{ item.name }}{% if not item.is_active %} (hidden){% endif %}</span>
+            <span class="block text-sm text-sage">{% if item.farrier_work %}{{ item.get_farrier_work_display }}{% else %}Other work{% endif %} · {{ item.price|gbp }}</span>
+        </a>
+        <form method="post" action="{% url 'farrier:price_toggle' item.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="text-sm text-forest underline">{% if item.is_active %}Hide{% else %}Show{% endif %}</button>
+        </form>
+    </div>
+    {% empty %}
+    <p class="px-4 py-3 text-sage">No prices yet. Add your first price, for example Trim £35.</p>
+    {% endfor %}
+</div>
+<a href="{% url 'farrier:price_add' %}" class="block text-center rounded-lg bg-saddle text-white font-heading font-bold py-3">Add a price</a>
+{% endblock %}

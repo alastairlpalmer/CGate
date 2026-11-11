@@ -183,7 +183,7 @@ def app_settings(request):
             # Grouped in the order the work happens (Category order), not
             # alphabetically by code.
             'service_items': sorted(
-                ServiceItem.objects.select_related('vaccination_type'),
+                ServiceItem.objects.yard().select_related('vaccination_type'),
                 key=lambda i: (ServiceItem.Category.values.index(i.category), i.sort_order, i.name),
             ),
             'vaccination_types': VaccinationType.objects.all(),

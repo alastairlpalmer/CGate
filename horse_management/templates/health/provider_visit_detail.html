@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% load ui_extras %}
+
+{% block title %}Farrier visit {{ visit.date|date:"j M Y" }} - Cgate{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{{ visit.provider.name }}, {{ visit.date|date:"j M Y" }}</h1>
+            <p class="text-sage text-sm">
+                {% if visit.is_open %}Open now: the farrier is still recording.
+                {% else %}Finished at {{ visit.finished_at|time:"H:i" }}{% if visit.duration %} ({{ visit.duration.seconds|floatformat:0 }} seconds on the page){% endif %}.
+                {% if visit.checked_at %} Checked by {{ visit.checked_by|default:"staff" }} on {{ visit.checked_at|date:"j M" }}.{% endif %}
+                {% if visit.is_paid %} Paid on {{ visit.paid_on|date:"j M Y" }}.{% endif %}{% endif %}
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'provider_visit_list' %}" class="btn-secondary">All visits</a>
+            {% if can_pay %}<a href="{% url 'provider_statement' visit.provider.pk visit.date.year visit.date.month %}" class="btn-secondary">Month statement</a>{% endif %}
+            {% if can_check and not visit.is_open and not visit.checked_at %}
+            <form method="post" action="{% url 'provider_visit_check' visit.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn-primary">Mark as checked</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="data-table data-table-cards">
+                <thead>
+                    <tr><th>Horse</th><th>Work</th><th class="text-right">Price</th><th>Billing</th>{% if can_edit_records %}<th>Actions</th>{% endif %}</tr>
+                </thead>
+                <tbody>
+                    {% for line in lines %}
+                    <tr>
+                        <td data-label="Horse"><a href="{% url 'horse_detail' line.record.horse.pk %}" class="link tap-pad">{{ line.record.horse.name }}</a>{% if line.record.notes %}<br><span class="text-sage text-sm">{{ line.record.notes }}</span>{% endif %}</td>
+                        <td data-label="Work">{{ line.record.get_work_done_display }}</td>
+                        <td class="text-right" data-label="Price">{{ line.record.cost|gbp }}</td>
+                        <td data-label="Billing" class="{% if line.status == 'no_owner' %}text-saddle font-semibold{% elif line.status == 'invoiced' %}text-forest{% endif %}">{{ line.label }}</td>
+                        {% if can_edit_records %}<td data-label="Actions">{% if line.status != 'invoiced' and not visit.is_open %}<a href="{% url 'farrier_update' line.record.pk %}" class="link tap-pad">Edit</a>{% endif %}</td>{% endif %}
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-sage">No horses on this visit.</td></tr>
+                    {% endfor %}
+                    <tr><td colspan="2" class="font-semibold">Total</td><td class="text-right font-semibold">{{ visit.total|gbp }}</td><td colspan="2"></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if not visit.checked_at and not visit.is_open %}
+    <p class="text-sage text-sm">Until you mark it as checked, the farrier can change this visit on the day it was made.</p>
+    {% endif %}
+</div>
+{% endblock %}
