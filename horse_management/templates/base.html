@@ -167,7 +167,7 @@
             </a>
             {% endif %}
 
-            {% if feature_access.horses.view or feature_access.locations.view or feature_access.health.view or feature_access.breeding.view or feature_access.feed.view %}
+            {% if feature_access.horses.view or feature_access.locations.view or feature_access.health.view or feature_access.charges.view or feature_access.breeding.view or feature_access.feed.view %}
             <div class="nav-group-label">Manage</div>
             {% endif %}
             {% if feature_access.horses.view %}
@@ -186,9 +186,16 @@
             {% endif %}
             {% if feature_access.health.view %}
             <a href="{% url 'health_dashboard' %}"
-               class="{% if '/health/' in request.path and '/health/breeding/' not in request.path %}nav-link-active{% else %}nav-link{% endif %}" title="Health">
+               class="{% if '/health/' in request.path and '/health/breeding/' not in request.path and '/health/farrier-visits/' not in request.path %}nav-link-active{% else %}nav-link{% endif %}" title="Health">
                 <svg class="w-5 h-5 shrink-0" aria-hidden="true"><use href="#i-stethoscope"/></svg>
                 <span class="sidebar-label">Health</span>
+            </a>
+            {% endif %}
+            {% if feature_access.charges.view %}
+            <a href="{% url 'provider_visit_list' %}" data-nav="farrier-visits"
+               class="{% if '/health/farrier-visits/' in request.path %}nav-link-active{% else %}nav-link{% endif %}" title="Farrier visits">
+                <svg class="w-5 h-5 shrink-0" aria-hidden="true"><use href="#i-horseshoe"/></svg>
+                <span class="sidebar-label">Farrier visits</span>
             </a>
             {% endif %}
             {% if feature_access.breeding.view %}
@@ -425,13 +432,19 @@
 
             <div class="px-4 pb-2">
                 <!-- Manage -->
-                {% if feature_access.health.view or feature_access.breeding.view or feature_access.feed.view %}
+                {% if feature_access.health.view or feature_access.charges.view or feature_access.breeding.view or feature_access.feed.view %}
                 <p class="text-xs font-semibold text-sage uppercase tracking-widest px-3 pt-3 pb-2">Manage</p>
                 {% endif %}
                 {% if feature_access.health.view %}
-                <a href="{% url 'health_dashboard' %}" class="sheet-nav-item {% if '/health/' in request.path and '/health/breeding/' not in request.path %}sheet-nav-item-active{% endif %}">
+                <a href="{% url 'health_dashboard' %}" class="sheet-nav-item {% if '/health/' in request.path and '/health/breeding/' not in request.path and '/health/farrier-visits/' not in request.path %}sheet-nav-item-active{% endif %}">
                     <svg class="w-5 h-5 shrink-0" aria-hidden="true"><use href="#i-stethoscope"/></svg>
                     Health
+                </a>
+                {% endif %}
+                {% if feature_access.charges.view %}
+                <a href="{% url 'provider_visit_list' %}" data-nav="farrier-visits" class="sheet-nav-item {% if '/health/farrier-visits/' in request.path %}sheet-nav-item-active{% endif %}">
+                    <svg class="w-5 h-5 shrink-0" aria-hidden="true"><use href="#i-horseshoe"/></svg>
+                    Farrier visits
                 </a>
                 {% endif %}
                 {% if feature_access.breeding.view %}

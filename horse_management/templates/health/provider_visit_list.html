@@ -11,7 +11,7 @@
             <p class="text-sage text-sm">Visits farriers recorded on their own page. Check each one; pay each farrier once a month.</p>
         </div>
         <div class="flex items-center gap-3">
-            <a href="{% url 'farrier_list' %}" class="btn-secondary">All farrier records</a>
+            <a href="{% url 'health_dashboard' %}?type=farrier" class="btn-secondary">Back to Health</a>
             {% if feature_access.settings.full %}<a href="{% url 'farrier_qr' %}" class="btn-secondary">Print QR code</a>{% endif %}
         </div>
     </div>
