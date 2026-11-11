@@ -23,6 +23,39 @@
         </div>
     </div>
 
+    <!-- ── Sign in with Google ── -->
+    {% if google_sign_in_enabled or google_identity %}
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">Sign In with Google</h3>
+        </div>
+        <div class="p-4 sm:p-5 space-y-4">
+            {% if google_identity %}
+            <p class="text-sm text-charcoal"><strong>Connected.</strong> You can sign in with the Google account {{ google_identity.email }}.</p>
+            <p class="text-sm text-sage">{% if google_identity.last_used_at %}Last used {{ google_identity.last_used_at|date:"j M Y" }}.{% else %}Not used yet.{% endif %}</p>
+            {% if has_password %}
+            <form method="post" action="{% url 'google_disconnect' %}"
+                  hx-confirm="Disconnect Google? You will sign in with your email and password.">
+                {% csrf_token %}
+                <button type="submit" class="btn-secondary btn-sm text-error-red border-error-red/30 hover:bg-error-red-50">Disconnect</button>
+            </form>
+            {% else %}
+            <p class="text-xs text-sage">You have no password, so Google is your only way to sign in and cannot be disconnected here.</p>
+            {% endif %}
+            {% else %}
+            <p class="text-sm text-charcoal"><strong>Not connected.</strong></p>
+            <p class="text-sm text-sage">Connect the Google account for {{ user.email }} to sign in without your password.</p>
+            {# hx-boost off: the answer is a redirect to Google, which a background request cannot follow. #}
+            <form method="post" action="{% url 'google_start' %}" hx-boost="false">
+                {% csrf_token %}
+                <input type="hidden" name="mode" value="connect">
+                <button type="submit" class="btn-primary btn-sm">Connect Google</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- ── Two-step sign-in ── -->
     <div class="card">
         <div class="section-header">

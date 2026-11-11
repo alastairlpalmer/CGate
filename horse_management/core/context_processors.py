@@ -1,4 +1,4 @@
-"""Template context for the location mapping feature."""
+"""Template context: feature switches that every template can read."""
 
 from django.conf import settings
 
@@ -14,3 +14,8 @@ def location_maps(request):
         'location_maps_enabled': settings.LOCATION_MAPS_ENABLED,
         'location_near_radius_m': settings.LOCATION_NEAR_RADIUS_M,
     }
+
+
+def google_sign_in(request):
+    """``google_sign_in_enabled``: whether to show the Google buttons."""
+    return {'google_sign_in_enabled': settings.GOOGLE_SIGN_IN_ENABLED}
