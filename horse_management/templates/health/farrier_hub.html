@@ -1,8 +1,22 @@
 {% extends 'base.html' %}
+{% load ui_extras %}
 {% block title %}Farrier - Cgate{% endblock %}
 {% block content %}
 <div class="space-y-6">
     {% include 'health/_farrier_header.html' %}
+    {% if farrier_due %}
+    <div class="card px-5 py-4" data-farrier-due>
+        <h2 class="section-title mb-3">Due <span class="badge-neutral ml-1">{{ farrier_due|length }}</span></h2>
+        <ul class="flex flex-wrap gap-2">
+            {% for item, url in farrier_due %}
+            <li><a href="{{ url }}{% if '?' in url %}&{% else %}?{% endif %}next={{ request.get_full_path|urlencode }}" class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm {% if item.is_overdue %}border-error-red text-error-red{% else %}border-light-sage text-charcoal{% endif %} hover:bg-light-sage">
+                <span class="font-medium">{{ item.horse.name }}</span>
+                <span class="text-xs {% if not item.is_overdue %}text-sage{% endif %}">{{ item.due_date|due_label }}</span>
+            </a></li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
     <div id="health-table-area" hx-boost="false">
         {% include 'health/partials/farrier_content.html' %}
     </div>

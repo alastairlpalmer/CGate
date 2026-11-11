@@ -225,8 +225,12 @@ def farrier_hub(request):
         if has_feature_access(request.user, 'charges', LEVEL_VIEW):
             return redirect('provider_visit_list')
         return deny(request)
-    context = farrier_records_context(request, timezone.localdate())
+    from core.dashboard.attention import farrier_due
+
+    today = timezone.localdate()
+    context = farrier_records_context(request, today)
     context.update({
+        'farrier_due': farrier_due(request.user, today=today),
         'hub_tab': 'records',
         'records_url': reverse('farrier_list'),
         'pagination_url': reverse('farrier_list'),

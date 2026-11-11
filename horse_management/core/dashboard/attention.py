@@ -1050,24 +1050,21 @@ def summary(inbox_rows, upcoming_items, today):
 def health_lists(user, *, today=None):
     """The Health overview's two lists, from the same collectors.
 
-    Vaccinations and vet follow-ups look 30 days ahead, farrier 14, as that
-    page always has. Returns ``(action_required, coming_up)`` in the dict
-    shape its template expects.
+    Vaccinations and vet follow-ups, 30 days ahead. Farrier work is not
+    here: it has its own page (``farrier_list``). Returns
+    ``(action_required, coming_up)`` in the dict shape its template expects.
     """
     today = today or timezone.localdate()
     items = collect(
-        user, today=today, horizon_days=30, kinds={'vaccination', 'farrier', 'vet'},
+        user, today=today, horizon_days=30, kinds={'vaccination', 'vet'},
     )
     action_labels = {
         'vaccination': 'Record vaccination',
-        'farrier': 'Record farrier visit',
         'vet': 'Record vet visit',
     }
-    type_labels = {'vaccination': 'Vaccination', 'farrier': 'Farrier', 'vet': 'Vet Follow-up'}
+    type_labels = {'vaccination': 'Vaccination', 'vet': 'Vet Follow-up'}
     action_required, coming_up = [], []
     for item in items:
-        if item.kind == 'farrier' and item.delta is not None and item.delta > 14:
-            continue
         detail = item.detail.split(' · ', 1)[1] if ' · ' in item.detail else '-'
         entry = {
             'horse': item.horse,
@@ -1081,3 +1078,15 @@ def health_lists(user, *, today=None):
     action_required.sort(key=lambda e: e['due_date'])
     coming_up.sort(key=lambda e: e['due_date'])
     return action_required, coming_up
+
+
+def farrier_due(user, *, today=None):
+    """The Farrier page's "Due" box: overdue and due in the next 14 days.
+
+    The same collector as the dashboard, so the two never disagree. Each
+    entry is ``(item, url)``: the "Record farrier visit" link for someone
+    with Health: full, else the horse's page.
+    """
+    today = today or timezone.localdate()
+    items = collect(user, today=today, horizon_days=14, kinds={'farrier'})
+    return [(item, item.actions[0].url if item.actions else item.url) for item in items]
