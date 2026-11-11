@@ -19,12 +19,12 @@ Needs ``hub_tab``: 'records', 'visits' or 'list'.
 </div>
 <nav class="border-b border-light-sage -mb-px flex gap-6 overflow-x-auto" aria-label="Farrier" data-farrier-tabs>
     {% if feature_access.health.view %}
-    <a href="{% url 'farrier_list' %}" class="{% if hub_tab == 'records' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}" data-farrier-tab="records"{% if hub_tab == 'records' %} aria-current="page"{% endif %}>Records</a>
+    <a href="{% url 'farrier_list' %}" class="{% if hub_tab == 'records' %}tab-underline-active{% else %}tab-underline-inactive{% endif %} min-w-[44px] justify-center px-1" data-farrier-tab="records"{% if hub_tab == 'records' %} aria-current="page"{% endif %}>Records</a>
     {% endif %}
     {% if feature_access.charges.view %}
-    <a href="{% url 'provider_visit_list' %}" class="{% if hub_tab == 'visits' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}" data-farrier-tab="visits"{% if hub_tab == 'visits' %} aria-current="page"{% endif %}>Visits from the farrier's phone</a>
+    <a href="{% url 'provider_visit_list' %}" class="{% if hub_tab == 'visits' %}tab-underline-active{% else %}tab-underline-inactive{% endif %} min-w-[44px] justify-center px-1" data-farrier-tab="visits"{% if hub_tab == 'visits' %} aria-current="page"{% endif %}><span class="sm:hidden">Visits</span><span class="hidden sm:inline">Visits from the farrier's phone</span></a>
     {% endif %}
     {% if feature_access.health.view %}
-    <a href="{% url 'farrier_job_list' %}" class="{% if hub_tab == 'list' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}" data-farrier-tab="list"{% if hub_tab == 'list' %} aria-current="page"{% endif %}>Farrier's list</a>
+    <a href="{% url 'farrier_job_list' %}" class="{% if hub_tab == 'list' %}tab-underline-active{% else %}tab-underline-inactive{% endif %} min-w-[44px] justify-center px-1" data-farrier-tab="list"{% if hub_tab == 'list' %} aria-current="page"{% endif %}><span class="sm:hidden">List</span><span class="hidden sm:inline">Farrier's list</span></a>
     {% endif %}
 </nav>

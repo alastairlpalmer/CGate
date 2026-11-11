@@ -37,7 +37,7 @@
         </form>
         {% if upcoming %}
         <p class="mt-3 text-sm text-sage">Lists coming up:
-            {% for u in upcoming %}<a href="?provider={{ provider.pk }}&date={{ u.date|date:'Y-m-d' }}" class="link">{{ u.date|date:"D j M" }} ({{ u.horses }})</a>{% if not forloop.last %}, {% endif %}{% endfor %}
+            {% for u in upcoming %}<a href="?provider={{ provider.pk }}&date={{ u.date|date:'Y-m-d' }}" class="link inline-block py-3 -my-3">{{ u.date|date:"D j M" }} ({{ u.horses }})</a>{% if not forloop.last %}, {% endif %}{% endfor %}
         </p>
         {% endif %}
     </div>
@@ -45,19 +45,19 @@
     <div class="card overflow-hidden">
         <div class="section-header">
             <h2 class="section-title">{{ provider.name }} · {{ day|date:"l j F Y" }}</h2>
-            <span class="text-sm text-sage">{{ rows|length }} horse{{ rows|length|pluralize }}</span>
+            <span class="text-sm text-sage whitespace-nowrap shrink-0">{{ rows|length }} horse{{ rows|length|pluralize }}</span>
         </div>
         {% if rows %}
         <div class="overflow-x-auto">
-        <table class="data-table">
+        <table class="data-table data-table-cards">
             <thead><tr><th>Horse</th><th>Work wanted</th><th>Note</th><th>Done</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
             <tbody>
             {% for row in rows %}
             <tr data-job-row>
-                <td class="font-medium">{{ row.job.horse.name }}</td>
-                <td>{{ row.job.get_work_needed_display|default:"Farrier to decide" }}</td>
-                <td>{{ row.job.note|default:"-" }}</td>
-                <td>
+                <td class="font-medium" data-label="Horse">{{ row.job.horse.name }}</td>
+                <td data-label="Work wanted">{{ row.job.get_work_needed_display|default:"Farrier to decide" }}</td>
+                <td data-label="Note">{{ row.job.note|default:"-" }}</td>
+                <td data-label="Done">
                     {% if row.status == 'done' %}<span class="badge-success">&#10003; {{ row.line.get_work_done_display }} {{ row.line.cost|gbp }}</span>
                     {% elif row.status == 'missed' %}<span class="badge-danger">Not done</span>
                     {% else %}<span class="badge-neutral">To do</span>{% endif %}
@@ -67,7 +67,7 @@
                     {% if row.status != 'done' %}
                     <form method="post" action="{% url 'farrier_job_remove' row.job.pk %}">
                         {% csrf_token %}
-                        <button type="submit" class="btn-ghost btn-xs">Remove</button>
+                        <button type="submit" class="btn-ghost btn-xs min-h-[44px]">Remove</button>
                     </form>
                     {% endif %}
                 </td>

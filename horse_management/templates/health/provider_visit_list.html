@@ -35,7 +35,7 @@
         <h2 class="font-heading font-semibold">Monthly statements</h2>
         <ul class="flex flex-wrap gap-3">
             {% for p in providers %}
-            <li><a href="{% url 'provider_statement' p.pk this_month.0 this_month.1 %}" class="link">{{ p.name }}: this month</a></li>
+            <li><a href="{% url 'provider_statement' p.pk this_month.0 this_month.1 %}" class="link inline-flex items-center min-h-[44px]">{{ p.name }}: this month</a></li>
             {% empty %}
             <li class="text-sage text-sm">No farriers yet. Add one under Settings, Service providers.</li>
             {% endfor %}
