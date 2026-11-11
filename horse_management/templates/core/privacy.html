@@ -1,0 +1,147 @@
+{% load static %}
+{% comment %}
+The public privacy policy (core.views.legal.privacy_policy). No sign-in.
+The yard's name, address and email come from Settings → Business.
+Keep it the same as docs/DATA_RETENTION.md. When the text changes, change
+PRIVACY_LAST_UPDATED in core/views/legal.py.
+{% endcomment %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy policy - Cgate</title>
+    <meta name="description" content="How Cgate and {{ business.business_name }} use personal data.">
+    {% include "registration/_auth_head.html" %}
+</head>
+<body class="font-body antialiased bg-parchment text-charcoal">
+<main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+    <p class="mb-6"><a href="{% url 'login' %}" class="text-sm font-medium text-forest hover:text-sage underline tap-pad">Back to sign in</a></p>
+
+    <h1 class="text-3xl font-bold font-heading mb-2">Privacy policy</h1>
+    <p class="text-sm text-sage mb-10">Last updated: {{ last_updated }}</p>
+
+    <div class="space-y-10 text-base leading-relaxed [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:font-heading [&_h2]:mb-3 [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-1 [&_ul]:mb-3 [&_a]:text-forest [&_a]:underline">
+
+        <section>
+            <h2>1. Who we are</h2>
+            <p>Cgate is the yard management app that {{ business.business_name }} uses to run its livery yard. It holds records about horses, their owners, the yard's staff and the people who work for the yard, such as farriers.</p>
+            <p>{{ business.business_name }} is the data controller for the personal data in Cgate. This means we decide how and why the data is used.</p>
+            {% if business.address %}<p>Address: {{ business.address|linebreaksbr }}</p>{% endif %}
+            {% if business.email %}<p>Email: <a href="mailto:{{ business.email }}">{{ business.email }}</a></p>{% endif %}
+            {% if business.phone %}<p>Telephone: {{ business.phone }}</p>{% endif %}
+        </section>
+
+        <section>
+            <h2>2. The personal data we hold</h2>
+            <p><strong>Horse owners (our clients)</strong></p>
+            <ul>
+                <li>Name, postal address, email address and telephone number.</li>
+                <li>The horses you own or share, their care and health records, and where they are kept.</li>
+                <li>Invoices, charges, payments and the amount you owe.</li>
+                <li>Documents you give us, such as horse passports and insurance documents.</li>
+                <li>Notes that staff write to help look after you and your horses.</li>
+                <li>Which emails we sent to you, and whether you unsubscribed from reminders.</li>
+            </ul>
+            <p><strong>Staff and other people who sign in</strong></p>
+            <ul>
+                <li>Name, email address and job role.</li>
+                <li>Your password, stored only as a secure one-way hash. We cannot read it.</li>
+                <li>Two-step sign-in settings, if you turn them on.</li>
+                <li>If you use "Sign in with Google": your Google account ID, Google email address, your organisation's domain and the date you last used it. We ask Google only for your basic profile and email address. We do not keep any Google access token, and we cannot see your Gmail, Drive or other Google data.</li>
+                <li>A record of sign-ins and important actions (such as changes to invoices), with the date, time and IP address. We use this for security.</li>
+                <li>How you use the app (see section 6).</li>
+            </ul>
+            <p><strong>Farriers and other service providers</strong></p>
+            <ul>
+                <li>Name and contact details, your sign-in, the visits you record, your prices and your notes about horses.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>3. Why we use your data, and our lawful basis</h2>
+            <ul>
+                <li><strong>To provide livery services and send invoices.</strong> This is needed for our contract with you.</li>
+                <li><strong>To keep financial records for 6 years.</strong> UK tax law (HMRC) requires this. This is a legal obligation.</li>
+                <li><strong>To send reminders</strong>, for example when a vaccination or farrier visit is due. This is in our legitimate interest, and yours, to keep your horse well cared for. You can unsubscribe with the link in each reminder email.</li>
+                <li><strong>To keep the app secure</strong>, stop misuse and find faults. This is in our legitimate interest.</li>
+                <li><strong>To make the app better</strong>, by measuring how staff use it. This is in our legitimate interest.</li>
+            </ul>
+            <p>We do not sell your data. We do not use it for advertising. We do not make automated decisions about you that have legal or similar effects.</p>
+        </section>
+
+        <section>
+            <h2>4. Who we share data with</h2>
+            <p>We use these service providers to run Cgate. They process data only on our instructions and must keep it secure.</p>
+            <ul>
+                <li><strong>Supabase</strong>: database hosting.</li>
+                <li><strong>Railway</strong>: application hosting.</li>
+                <li><strong>Cloudflare (R2)</strong>: storage of uploaded documents and photographs, and backups.</li>
+                <li><strong>Our email delivery provider (Postmark or Resend)</strong>: sends invoices, reminders and sign-in emails.</li>
+                <li><strong>Xero</strong>: our accounting system. Owner names, contact details and invoices go to Xero when we use it for accounts.</li>
+                <li><strong>Google</strong>: only if you choose "Sign in with Google".</li>
+                <li><strong>Sentry</strong>: error reports. It is set up not to send personal data.</li>
+                <li><strong>PostHog (EU servers)</strong>: usage measurement for signed-in staff only (see section 6).</li>
+            </ul>
+            <p><strong>Farriers</strong> who work for the yard can see horse names, photographs, field names, farrier due dates and their own visits and prices. They cannot see owners' names, contact details, invoices, or vet and health records.</p>
+            <p>We may also share data when the law requires it, for example with HMRC, or with professional advisers such as our accountant.</p>
+            <p>Some providers can store or process data outside the UK. When this happens, we use the safeguards that UK law requires, such as UK adequacy regulations or the International Data Transfer Agreement.</p>
+        </section>
+
+        <section>
+            <h2>5. How long we keep data</h2>
+            <ul>
+                <li><strong>Invoices, payments and charges:</strong> 6 years, as HMRC requires. After an owner leaves, their name and address stay on these records for 6 years after their last invoice. Then we replace the name with "Former owner" and remove the address automatically.</li>
+                <li><strong>Owner email, telephone, notes and documents:</strong> while you are a client. You can ask us to delete them sooner.</li>
+                <li><strong>Records we delete by mistake:</strong> kept for 30 days so we can restore them, then removed.</li>
+                <li><strong>Sign-in and security records:</strong> 2 years.</li>
+                <li><strong>Staff and farrier sign-ins:</strong> while you work with the yard.</li>
+                <li><strong>Backups:</strong> up to 12 months. Deleted data is gone from all backups within 12 months.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>6. Cookies and usage measurement</h2>
+            <p>Cgate uses cookies that are strictly necessary to sign you in and to protect forms from attack. The app does not work without them.</p>
+            <p>After staff sign in, we measure how the app is used with PostHog. This can include session recordings. These recordings hide all typed text and all text on the page, and web addresses are recorded without search terms. The sign-in page and this page do not load any tracking.</p>
+            <p>The app also stores some display settings in your browser, for example map preferences.</p>
+        </section>
+
+        <section>
+            <h2>7. How we keep data secure</h2>
+            <p>All connections use encryption (HTTPS). Passwords are hashed. Staff can use two-step sign-in. Each person sees only the parts of the app their role allows. Important actions are recorded in an audit log.</p>
+        </section>
+
+        <section>
+            <h2>8. Your rights</h2>
+            <p>Under UK data protection law (the UK GDPR and the Data Protection Act 2018), you have the right to:</p>
+            <ul>
+                <li>get a copy of the personal data we hold about you;</li>
+                <li>have incorrect data corrected;</li>
+                <li>have your data deleted, unless we must keep it by law (for example, invoices for HMRC);</li>
+                <li>object to, or ask us to restrict, how we use your data;</li>
+                <li>get your data in a portable format;</li>
+                <li>unsubscribe from reminder emails at any time.</li>
+            </ul>
+            <p>To use any of these rights, contact us{% if business.email %} at <a href="mailto:{{ business.email }}">{{ business.email }}</a>{% else %} with the details on your invoice{% endif %}. We will reply within one month.</p>
+            <p>If you are not happy with how we use your data, you can complain to the Information Commissioner's Office (ICO): <a href="https://ico.org.uk/make-a-complaint/" rel="noopener">ico.org.uk/make-a-complaint</a>, telephone 0303 123 1113.</p>
+        </section>
+
+        <section>
+            <h2>9. Google user data</h2>
+            <p>If you use "Sign in with Google", we use only your Google account ID, email address, name and organisation domain, and only to sign you in to Cgate. We do not share this data, sell it, or use it for advertising. Cgate's use of information received from Google APIs follows the <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements. You can disconnect your Google account at any time on the Account Security page.</p>
+        </section>
+
+        <section>
+            <h2>10. Children</h2>
+            <p>Cgate is for adults who run or use a livery yard. It is not for children.</p>
+        </section>
+
+        <section>
+            <h2>11. Changes to this policy</h2>
+            <p>We will update this page when we change how we use personal data. The date at the top shows the last change.</p>
+        </section>
+    </div>
+</main>
+</body>
+</html>

@@ -13,6 +13,7 @@ from core.views import google as google_views
 from core.views import database_check as database_check_views
 from core.views import background_tasks as background_tasks_views
 from core.views import well_known as well_known_views
+from core.views import legal as legal_views
 from core.views import recently_deleted as recently_deleted_views
 from notifications import views as notification_views
 from core.views import (
@@ -36,6 +37,7 @@ urlpatterns = [
     path('_health/', health_check, name='health_check'),
     path('_health/web/', web_health_check, name='web_health_check'),
     path('.well-known/security.txt', well_known_views.security_txt, name='security_txt'),
+    path('privacy/', legal_views.privacy_policy, name='privacy_policy'),
     # Same-origin PostHog proxy, so ad blockers cannot see the tracker.
     # Path must match POSTHOG_PROXY_PATH in settings.
     path('ingest/', posthog_proxy, name='posthog_proxy_root'),
