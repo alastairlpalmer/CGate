@@ -17,7 +17,7 @@ from functools import wraps
 from django.shortcuts import get_object_or_404, render
 
 from billing.models import ServiceItem, ServiceProvider
-from core.permissions import LEVEL_FULL, feature_required
+from core.permissions import LEVEL_FULL, feature_required, is_provider_only
 
 from .models import ProviderVisit
 
@@ -30,6 +30,11 @@ def provider_page(view_func):
     def _wrapped(request, *args, **kwargs):
         provider = ServiceProvider.for_user(request.user)
         if provider is None:
+            if not is_provider_only(request.user):
+                # Staff (an administrator, a superuser) opening the
+                # farrier's page, for example from the QR code: say what
+                # the page is and how to test it, not "ask the yard".
+                return render(request, 'farrier/staff_notice.html')
             return render(request, 'farrier/no_provider.html', status=403)
         request.provider = provider
         return view_func(request, *args, **kwargs)
