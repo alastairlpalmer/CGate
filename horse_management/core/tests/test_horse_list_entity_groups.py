@@ -13,6 +13,7 @@ from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.formats import date_format
 
 from core.models import Horse, Location, Owner, Placement, RateType
 from core.roles_testutils import make_admin, make_user_with_access
@@ -286,7 +287,7 @@ class EntityGroupSpineTests(TestCase):
         )
         for params, label in (
             ({'search': 'a'}, 'Departed'),
-            ({'status': 'departed'}, (today - timedelta(days=10)).strftime('%d %b %Y')),
+            ({'status': 'departed'}, date_format(today - timedelta(days=10), 'j M Y')),
         ):
             with self.subTest(**params):
                 response = self.client.get(reverse('horse_list'), params)
