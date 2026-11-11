@@ -112,9 +112,11 @@ class ListSearchTestCase(TestCase):
         self.assertNotContains(response, 'Star')
 
     def test_health_dashboard_tabs_render(self):
-        for tab in ('overview', 'vaccinations', 'farrier', 'worming', 'egg_counts', 'conditions', 'vet_visits'):
+        for tab in ('overview', 'vaccinations', 'worming', 'egg_counts', 'conditions', 'vet_visits'):
             response = self.client.get(reverse('health_dashboard'), {'type': tab})
             self.assertEqual(response.status_code, 200, tab)
+        # Farrier records are on the Farrier page now.
+        self.assertEqual(self.client.get(reverse('farrier_list')).status_code, 200)
 
     def test_breeding_list_renders(self):
         response = self.client.get(reverse('breeding_list'))

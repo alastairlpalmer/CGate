@@ -1,19 +1,12 @@
 {% extends 'base.html' %}
 {% load ui_extras %}
 
-{% block title %}Farrier's list - Cgate{% endblock %}
+{% block title %}Farrier: the farrier's list - Cgate{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
-    <div class="page-header">
-        <div>
-            <h1 class="page-title">Farrier's list</h1>
-            <p class="page-subtitle">The horses and work you want on a farrier visit. On that day the farrier sees them at the top of their page.</p>
-        </div>
-        <div class="flex items-center gap-3">
-            <a href="{% url 'provider_visit_list' %}" class="btn-secondary">Farrier Visits</a>
-        </div>
-    </div>
+    {% include 'health/_farrier_header.html' with hub_tab='list' %}
+    <p class="text-sage text-sm">The horses and work you want on a farrier visit. On that day the farrier sees them at the top of their page.</p>
 
     {% if not provider %}
     <div class="card px-5 py-4">

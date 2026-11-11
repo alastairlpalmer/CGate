@@ -204,13 +204,16 @@ class PopupGenericTriggerTests(PopupGenericFormTestCase):
 
     def test_health_dashboard_add_buttons_open_the_sheet(self):
         for tab, title in (
-            ('vaccinations', 'Add vaccination'), ('farrier', 'Add farrier visit'),
+            ('vaccinations', 'Add vaccination'),
             ('worming', 'Add worming'), ('egg_counts', 'Add egg count'),
             ('conditions', 'Add condition'), ('vet_visits', 'Add vet visit'),
         ):
             with self.subTest(tab=tab):
                 response = self.client.get(reverse('health_dashboard'), {'type': tab})
                 self.assertContains(response, f'data-popup-title="{title}"')
+        # Farrier records: Add a record on the Farrier page.
+        response = self.client.get(reverse('farrier_list'))
+        self.assertContains(response, 'data-popup-title="Add farrier visit"')
 
     def test_owner_and_location_edit_open_the_sheet(self):
         for name, args, title in (

@@ -15,7 +15,7 @@ from core.roles_testutils import make_admin
 
 HTMX_HEADERS = {'HTTP_HX_REQUEST': 'true', 'HTTP_HX_TARGET': 'health-table-area'}
 
-TABS = ['vaccinations', 'farrier', 'worming', 'egg_counts', 'conditions', 'vet_visits']
+TABS = ['vaccinations', 'worming', 'egg_counts', 'conditions', 'vet_visits']
 
 
 class HealthDashboardHtmxInheritanceTests(TestCase):
@@ -58,3 +58,14 @@ class HealthDashboardHtmxInheritanceTests(TestCase):
                     2,
                     f'{tab} partial is missing hx-select="unset" overrides',
                 )
+
+    def test_farrier_page_filters_disinherit_hx_select(self):
+        # Farrier records moved from a Health tab to the Farrier page;
+        # its filter form and Clear button swap the same table area.
+        response = self.client.get(
+            reverse('farrier_list'), {'status': 'due'},
+            HTTP_HX_REQUEST='true', HTTP_HX_TARGET='health-table-area',
+        )
+        content = response.content.decode()
+        self.assertNotIn('<html', content)
+        self.assertGreaterEqual(content.count('hx-target="#health-table-area" hx-select="unset"'), 2)

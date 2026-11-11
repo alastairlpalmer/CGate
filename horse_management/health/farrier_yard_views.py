@@ -202,3 +202,35 @@ def farrier_job_remove(request, pk):
     job.delete()
     messages.success(request, f"{name} is off the list.")
     return redirect(f"{reverse('farrier_job_list')}?provider={provider_pk}&date={day.isoformat()}")
+
+
+# --- The Farrier page: one place for all farrier work ----------------------------
+
+def farrier_hub(request):
+    """The Farrier page, Records tab: every farrier record, any farrier.
+
+    The page's other tabs are the visits from the farrier page and the
+    farrier's list (their own views, with the same header). Health: view
+    opens this tab; someone with only Charges: view lands on the visits.
+    """
+    from django.contrib.auth.views import redirect_to_login
+
+    from core.permissions import deny
+
+    from .views import farrier_records_context
+
+    if not request.user.is_authenticated:
+        return redirect_to_login(request.get_full_path())
+    if not has_feature_access(request.user, 'health', LEVEL_VIEW):
+        if has_feature_access(request.user, 'charges', LEVEL_VIEW):
+            return redirect('provider_visit_list')
+        return deny(request)
+    context = farrier_records_context(request, timezone.localdate())
+    context.update({
+        'hub_tab': 'records',
+        'records_url': reverse('farrier_list'),
+        'pagination_url': reverse('farrier_list'),
+    })
+    if getattr(request, 'htmx', False) and request.headers.get('HX-Target') == 'health-table-area':
+        return render(request, 'health/partials/farrier_content.html', context)
+    return render(request, 'health/farrier_hub.html', context)

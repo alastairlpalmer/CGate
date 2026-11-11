@@ -28,9 +28,11 @@ class BadQueryParamTests(TestCase):
             self._ok(reverse('location_list') + f'?tab=usage&range=year&year={year}')
 
     def test_health_dashboard_filters(self):
-        for tab in ('vaccinations', 'farrier', 'worming', 'egg_counts',
+        for tab in ('vaccinations', 'worming', 'egg_counts',
                     'conditions', 'vet_visits'):
             self._ok(reverse('health_dashboard') + f'?type={tab}&horse=abc')
+        # Farrier records moved to the Farrier page.
+        self._ok(reverse('farrier_list') + '?horse=abc&status=zzz&page=zz')
 
     def test_health_dashboard_unknown_tab_partial(self):
         # The tab name used to be interpolated into a template path.

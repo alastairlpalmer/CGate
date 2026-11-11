@@ -1,21 +1,11 @@
 {% extends 'base.html' %}
 {% load ui_extras %}
 
-{% block title %}Farrier Visits - Cgate{% endblock %}
+{% block title %}Farrier: visits from the farrier's phone - Cgate{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
-    <div class="page-header">
-        <div>
-            <h1 class="page-title">Farrier Visits</h1>
-            <p class="text-sage text-sm">Visits farriers recorded on their own page. Check each one; pay each farrier once a month.</p>
-        </div>
-        <div class="flex items-center gap-3">
-            <a href="{% url 'health_dashboard' %}?type=farrier" class="btn-secondary">Back to Health</a>
-            {% if feature_access.health.view %}<a href="{% url 'farrier_job_list' %}" class="btn-secondary" data-farrier-list-link>Farrier's list</a>{% endif %}
-            {% if feature_access.settings.full %}<a href="{% url 'farrier_qr' %}" class="btn-secondary">Print QR code</a>{% endif %}
-        </div>
-    </div>
+    {% include 'health/_farrier_header.html' with hub_tab='visits' %}
 
     <div class="card px-5 py-4">
         <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">

@@ -118,11 +118,11 @@ class YardListPageTests(Yard):
         self.add(gone)
         self.assertFalse(FarrierJob.objects.exists())
 
-    def test_list_is_linked_from_health_and_farrier_visits(self):
+    def test_list_is_a_tab_on_the_farrier_page(self):
         self.client.force_login(self.admin)
-        for url in (f"{reverse('health_dashboard')}?type=farrier", reverse('provider_visit_list')):
+        for url in (reverse('farrier_list'), reverse('provider_visit_list')):
             with self.subTest(url=url):
-                self.assertContains(self.client.get(url), 'data-farrier-list-link')
+                self.assertContains(self.client.get(url), 'data-farrier-tab="list"')
 
     def test_status_to_do_done_and_missed(self):
         FarrierJob.objects.create(provider=self.provider, date=self.today, horse=self.horses['Pickle'], work_needed='trim')
