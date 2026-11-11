@@ -208,7 +208,30 @@ class VaccinationForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFormMixi
         return super().save(commit=commit)
 
 
-class FarrierVisitForm(ServicePickerMixin, ActiveHorseFormMixin, forms.ModelForm):
+class FarrierProviderMixin:
+    """The Farrier box lists active farriers only, not every provider.
+
+    Before, it listed vets and physios too, so a vet could be saved as the
+    farrier by mistake. A record that already has another provider keeps
+    it in the list, so editing an old record does not lose it.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from django.db.models import Q
+
+        from billing.models import ServiceProvider
+        field = self.fields['service_provider']
+        keep = Q(provider_type=ServiceProvider.ProviderType.FARRIER, is_active=True)
+        current = getattr(self.instance, 'service_provider_id', None)
+        if current:
+            keep |= Q(pk=current)
+        field.queryset = ServiceProvider.objects.filter(keep).order_by('name')
+        field.label = 'Farrier'
+        field.empty_label = 'Select farrier...'
+
+
+class FarrierVisitForm(FarrierProviderMixin, ServicePickerMixin, ActiveHorseFormMixin, forms.ModelForm):
     service_category = 'farrier'
     service_fill = (('work_done', 'farrier_work'),)
 
@@ -404,7 +427,7 @@ class BulkVaccinationForm(ServicePickerMixin, OptionalCostMixin, forms.ModelForm
         self.fields['vet'].empty_label = "Select vet..."
 
 
-class BulkFarrierVisitForm(ServicePickerMixin, forms.ModelForm):
+class BulkFarrierVisitForm(FarrierProviderMixin, ServicePickerMixin, forms.ModelForm):
     service_category = 'farrier'
     service_fill = (('work_done', 'farrier_work'),)
 
