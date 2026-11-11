@@ -32,6 +32,12 @@
         <span>Total</span><span>{{ visit.total|gbp }}</span>
     </div>
 </div>
+{% if notes %}
+<div class="bg-white rounded-lg border border-light-sage px-4 py-3 space-y-2" data-visit-notes>
+    <p class="font-heading font-semibold">Notes (no charge)</p>
+    {% for note in notes %}<p class="text-sm"><span class="font-semibold">{{ note.horse.name }}:</span> <span class="whitespace-pre-line">{{ note.text }}</span></p>{% endfor %}
+</div>
+{% endif %}
 {% if visit.is_open %}
     {% if lines %}
     <form method="post" action="{% url 'farrier:visit_finish' %}">

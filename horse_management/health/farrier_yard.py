@@ -205,3 +205,66 @@ def qr_svg(url):
     buffer = io.BytesIO()
     image.save(buffer)
     return buffer.getvalue().decode('utf-8')
+
+
+# --- The yard's list for a farrier visit (plan section 14) ----------------------
+
+@dataclass
+class JobRow:
+    job: object
+    line: object = None   # the farrier's record for this horse on the date
+
+    @property
+    def status(self):
+        if self.line is not None:
+            return 'done'
+        return 'missed' if self.job.date < timezone.localdate() else 'to_do'
+
+
+def job_rows(provider, day):
+    """The list for ``provider`` on ``day``, each item with the farrier's
+    record for that horse on that date, if any."""
+    from .models import FarrierJob, FarrierVisit
+
+    jobs = list(FarrierJob.objects.filter(provider=provider, date=day).select_related('horse'))
+    lines = {}
+    if jobs:
+        records = (
+            FarrierVisit.objects.filter(date=day, horse_id__in=[j.horse_id for j in jobs])
+            .filter(Q(provider_visit__provider=provider) | Q(service_provider=provider))
+            .order_by('pk')
+        )
+        lines = {record.horse_id: record for record in records}
+    return [JobRow(job, lines.get(job.horse_id)) for job in jobs]
+
+
+class JobError(ValueError):
+    """A list item the yard cannot save; the message says why."""
+
+
+def add_job(provider, day, horse, *, work_needed='', note='', user=None):
+    """Put ``horse`` on the list for ``day``, or change its item if it is there."""
+    from .models import FarrierJob, FarrierVisit
+
+    if not horse.is_active:
+        raise JobError(f"{horse.name} is not at the yard.")
+    if work_needed and work_needed not in FarrierVisit.WorkType.values:
+        raise JobError("Choose the work from the list.")
+    job, _ = FarrierJob.objects.update_or_create(
+        provider=provider, date=day, horse=horse,
+        defaults={'work_needed': work_needed, 'note': (note or '').strip()[:200], 'created_by': user},
+    )
+    return job
+
+
+def upcoming_list_dates(provider, today=None):
+    """Dates from today on that have a list, with the number of horses."""
+    from django.db.models import Count
+
+    from .models import FarrierJob
+
+    today = today or timezone.localdate()
+    return list(
+        FarrierJob.objects.filter(provider=provider, date__gte=today)
+        .values('date').annotate(horses=Count('id')).order_by('date')[:10]
+    )

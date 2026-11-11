@@ -18,10 +18,12 @@ links to pages a farrier may not open (docs/FARRIER_PAGE_PLAN.md, section 4).
                 <p class="font-heading font-bold text-lg leading-tight">{% block heading %}Farrier visit{% endblock %}</p>
                 {% if provider %}<p class="text-sm text-white/80">{{ provider.name }}{% block header_extra %}{% endblock %}</p>{% endif %}
             </div>
+            {% if user.is_authenticated %}
             <form method="post" action="{% url 'logout' %}">
                 {% csrf_token %}
                 <button type="submit" class="text-sm text-white/80 underline min-h-[44px] px-2 -mr-2">Sign out</button>
             </form>
+            {% endif %}
         </div>
     </header>
     {% if provider %}

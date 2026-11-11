@@ -1,20 +1,18 @@
-<div id="horse-list" class="space-y-4">
+<div id="horse-list" class="space-y-5">
     <section class="space-y-2" aria-labelledby="due-heading">
-        <h2 id="due-heading" class="text-sm uppercase tracking-wide text-sage">Due now ({{ due_horses|length }})</h2>
+        <h2 id="due-heading" class="text-sm uppercase tracking-wide text-sage">Due now ({{ due_horses|length }}){% if list_count %} <span class="normal-case tracking-normal text-saddle">· {{ list_count }} on the yard's list</span>{% endif %}</h2>
         {% for horse in due_horses %}
         {% include "farrier/_horse_row.html" %}
         {% empty %}
         <p class="text-sage text-sm">No horses due{% if search or location_id %} in this search{% endif %}.</p>
         {% endfor %}
     </section>
-    <details class="space-y-2"{% if others_open or open_pk %} open{% endif %}>
-        <summary class="cursor-pointer text-sm uppercase tracking-wide text-sage py-3">Other horses ({{ other_horses|length }})</summary>
-        <div class="space-y-2 pt-2">
-            {% for horse in other_horses %}
-            {% include "farrier/_horse_row.html" %}
-            {% empty %}
-            <p class="text-sage text-sm">No other horses{% if search or location_id %} in this search{% endif %}.</p>
-            {% endfor %}
-        </div>
-    </details>
+    <section class="space-y-2" aria-labelledby="others-heading">
+        <h2 id="others-heading" class="text-sm uppercase tracking-wide text-sage">All other horses ({{ other_horses|length }})</h2>
+        {% for horse in other_horses %}
+        {% include "farrier/_horse_row.html" %}
+        {% empty %}
+        <p class="text-sage text-sm">No other horses{% if search or location_id %} in this search{% endif %}.</p>
+        {% endfor %}
+    </section>
 </div>

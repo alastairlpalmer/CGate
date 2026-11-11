@@ -40,9 +40,7 @@ def _list_context(request, provider, open_pk=None):
         'open_pk': open_pk,
         'prices': farrier.price_list(provider),
         'work_types': FarrierVisit.WorkType.choices,
-        # Others are folded unless the farrier is looking for a horse, or
-        # nothing is due (a first visit: no farrier records yet).
-        'others_open': bool(search or location_id or not due),
+        'list_count': sum(1 for horse in due if horse.job),
     }
 
 
@@ -186,6 +184,7 @@ def visit_detail(request, pk):
         'provider': provider,
         'visit': visit,
         'lines': visit.farrier_visits.select_related('horse').order_by('horse__name'),
+        'notes': visit.notes.select_related('horse').order_by('horse__name', 'created_at'),
         'done': request.GET.get('done') == '1' and not visit.is_open,
         'can_change': farrier.can_change_finished(visit),
         'email_to': farrier.farrier_email_address(provider),
@@ -302,3 +301,52 @@ def line_remove(request, visit_pk, pk):
     else:
         messages.success(request, f"Removed {name} from this visit. The yard's charge is removed.")
     return redirect('farrier:visit_detail', visit.pk)
+
+
+@provider_page
+@require_POST
+def horse_note(request, pk):
+    """Leave a note on this horse, with no work and no charge."""
+    provider = request.provider
+    horse = _active_horse(pk)
+    error = ''
+    try:
+        farrier.add_note(provider, request.user, horse, request.POST.get('text', ''))
+    except LineError as exc:
+        error = str(exc)
+    if getattr(request, 'htmx', False):
+        return _row_response(request, provider, horse.pk, open_panel=True, error=error)
+    if error:
+        messages.error(request, f"{horse.name}: {error}")
+    else:
+        messages.success(request, f"Note saved on {horse.name}.")
+    return redirect(f"{reverse('farrier:today')}?open={horse.pk}#horse-{horse.pk}")
+
+
+QR_BACKEND = 'core.auth_backends.FarrierQRBackend'
+
+
+def who(request):
+    """"Who is on the yard today?": the page the yard's QR code opens.
+
+    The farrier picks their name and is signed in with no password, by the
+    yard's choice (docs/FARRIER_PAGE_PLAN.md, section 15). Only farrier-only
+    logins are offered (farrier.qr_sign_in_farriers). Every sign-in is in
+    the audit log as "QR code, name picked", with the address it came from.
+    """
+    from django.contrib.auth import login
+
+    if request.user.is_authenticated:
+        # A farrier goes to Today's visit; staff get the page that
+        # explains the farrier page (farrier/staff_notice.html).
+        return redirect('farrier:today')
+    farriers = farrier.qr_sign_in_farriers()
+    error = ''
+    if request.method == 'POST':
+        chosen = next((p for p in farriers if str(p.pk) == request.POST.get('provider', '')), None)
+        if chosen is None:
+            error = 'Choose your name from the list.'
+        else:
+            login(request, chosen.user, backend=QR_BACKEND)
+            return redirect('farrier:today')
+    return render(request, 'farrier/who.html', {'farriers': farriers, 'error': error})

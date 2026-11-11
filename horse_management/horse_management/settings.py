@@ -706,6 +706,10 @@ AUTHENTICATION_BACKENDS = [
     # Checks nothing itself; it only names a session that signed in with
     # Google (core/views/google.py).
     'core.auth_backends.GoogleBackend',
+    # Checks nothing itself; it only names a session that signed in by
+    # picking a farrier's name after scanning the yard's QR code
+    # (health/farrier_views.who). It loads farrier-only logins only.
+    'core.auth_backends.FarrierQRBackend',
 ]
 
 # Sign in with Google (core/google_oidc.py, docs/GOOGLE_SIGN_IN_PLAN.md).

@@ -65,3 +65,31 @@ class GoogleBackend(BaseBackend):
     def get_user(self, user_id):
         user = get_user_model()._default_manager.filter(pk=user_id).first()
         return user if user is not None and user.is_active else None
+
+
+class FarrierQRBackend(BaseBackend):
+    """The backend named on a session that signed in from the yard's QR
+    code by picking a farrier's name (health/farrier_views.who).
+
+    That sign-in asks for no password, by the yard's choice
+    (docs/FARRIER_PAGE_PLAN.md, section 15). So, like GoogleBackend, it
+    checks nothing in ``authenticate``; the farrier page's view calls
+    ``login()`` with this name. On every later request it loads the user
+    only while they are still a farrier-only login with a linked, active
+    provider: such a session can never reach a staff page, even if the
+    user's role is changed afterwards.
+    """
+
+    def authenticate(self, request, **credentials):
+        return None
+
+    def get_user(self, user_id):
+        from billing.models import ServiceProvider
+        from core.permissions import is_provider_only
+
+        user = get_user_model()._default_manager.filter(pk=user_id, is_active=True).first()
+        if user is None or not is_provider_only(user):
+            return None
+        if not ServiceProvider.objects.filter(user=user, is_active=True).exists():
+            return None
+        return user

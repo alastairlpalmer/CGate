@@ -23,6 +23,7 @@ deployment can change them without a code change.
 | Staff accounts | While employed | Access | Deactivate on leaving; delete when no longer needed. |
 | Linked Google account (Google's account ID, Google email, Workspace domain, date last used) | While the link exists | Sign in with Google | The user disconnects it on Account Security, or an administrator does on Settings → Users. Deleted with the staff account. No Google token is kept. |
 | Farrier login (Farrier role) | While the farrier works for the yard | The farrier page | Remove the login from the provider (Settings → Service providers), then deactivate the user. The farrier's visits, prices and records stay, as the yard's farrier records. |
+| Farrier notes and the yard's list for the farrier | As the horse record | Advice on the horse; the list is the yard's request | Kept with the horse. Deleted with the horse. |
 | Farrier visits, lines and the farrier's prices | As invoices (6 years) | The lines are the source of owners' charges and of the yard's payment to the farrier | Kept. A line on a live invoice cannot be changed from the farrier page. |
 | Off-site backups | 7 daily, 4 weekly, 12 monthly | Disaster recovery | Age out under the backup retention (`core/backup/retention.py`). Erased data is gone from all backups within 12 months. |
 
@@ -57,7 +58,10 @@ A farrier login stays signed in for up to 30 days of no use
 (`PROVIDER_SESSION_IDLE_AGE`), so the farrier does not type a password at
 the yard. Every session still ends 30 days after sign-in
 (`SESSION_ABSOLUTE_AGE`). The QR code on the yard door holds only the page
-address, not a login.
+address. Scanning it, a farrier picks their name and is signed in with no
+password (docs/FARRIER_PAGE_PLAN.md, section 15): anyone with the code can do
+the same, so they could see horse names, photos and fields. Each such sign-in
+is in the audit log.
 
 Give the farrier a short written note before the first visit: what they
 can see, that they must not share it, and that the yard can end the access

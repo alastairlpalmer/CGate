@@ -63,6 +63,7 @@ def provider_visit_detail(request, pk):
     return render(request, 'health/provider_visit_detail.html', {
         'visit': visit,
         'lines': farrier_yard.yard_lines(visit),
+        'notes': visit.notes.select_related('horse').order_by('horse__name', 'created_at'),
         'can_check': has_feature_access(request.user, 'charges', LEVEL_FULL),
         'can_edit_records': has_feature_access(request.user, 'health', LEVEL_FULL),
         'can_pay': has_feature_access(request.user, 'costs', LEVEL_VIEW),
@@ -126,3 +127,78 @@ def farrier_qr(request):
         'qr_svg': farrier_yard.qr_svg(url),
         'business': BusinessSettings.get_settings(),
     })
+
+
+# --- The yard's list for a farrier visit (plan section 14) ----------------------
+
+def _list_day(value):
+    from datetime import date
+
+    try:
+        return date.fromisoformat(value)
+    except (TypeError, ValueError):
+        return timezone.localdate()
+
+
+@feature_required('health', LEVEL_VIEW)
+def farrier_job_list(request):
+    """The list of horses and work the yard wants on a farrier visit."""
+    from datetime import timedelta
+
+    from core.models import Horse
+
+    from .models import FarrierVisit
+
+    providers = list(_farrier_providers().filter(is_active=True))
+    provider_id = request.GET.get('provider') or request.POST.get('provider') or ''
+    provider = next((p for p in providers if str(p.pk) == provider_id), providers[0] if providers else None)
+    day = _list_day(request.GET.get('date') or request.POST.get('date'))
+    can_edit = has_feature_access(request.user, 'health', LEVEL_FULL)
+
+    if request.method == 'POST':
+        if not can_edit or provider is None:
+            messages.error(request, "You cannot change the farrier's list.")
+        else:
+            horse = Horse.objects.filter(pk=request.POST.get('horse') or 0).first()
+            if horse is None:
+                messages.error(request, 'Choose a horse.')
+            else:
+                try:
+                    farrier_yard.add_job(
+                        provider, day, horse,
+                        work_needed=request.POST.get('work_needed', ''),
+                        note=request.POST.get('note', ''), user=request.user,
+                    )
+                    messages.success(request, f"{horse.name} is on the list for {day:%-d %b}.")
+                except farrier_yard.JobError as exc:
+                    messages.error(request, str(exc))
+        url = reverse('farrier_job_list')
+        return redirect(f"{url}?provider={provider.pk if provider else ''}&date={day.isoformat()}")
+
+    rows = farrier_yard.job_rows(provider, day) if provider else []
+    listed = {row.job.horse_id for row in rows}
+    return render(request, 'health/farrier_job_list.html', {
+        'providers': providers,
+        'provider': provider,
+        'day': day,
+        'previous_day': day - timedelta(days=1),
+        'next_day': day + timedelta(days=1),
+        'today': timezone.localdate(),
+        'rows': rows,
+        'horses': Horse.objects.filter(is_active=True).exclude(pk__in=listed).only('pk', 'name').order_by('name'),
+        'work_types': FarrierVisit.WorkType.choices,
+        'can_edit': can_edit,
+        'upcoming': farrier_yard.upcoming_list_dates(provider) if provider else [],
+    })
+
+
+@feature_required('health', LEVEL_FULL)
+@require_POST
+def farrier_job_remove(request, pk):
+    from .models import FarrierJob
+
+    job = get_object_or_404(FarrierJob, pk=pk)
+    name, provider_pk, day = job.horse.name, job.provider_id, job.date
+    job.delete()
+    messages.success(request, f"{name} is off the list.")
+    return redirect(f"{reverse('farrier_job_list')}?provider={provider_pk}&date={day.isoformat()}")

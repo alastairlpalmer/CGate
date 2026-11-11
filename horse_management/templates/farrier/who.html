@@ -1,0 +1,26 @@
+{% extends "farrier/base.html" %}
+{% block title %}Who is on the yard today?{% endblock %}
+{% block heading %}Farrier visit{% endblock %}
+{% block content %}
+<form method="post" class="bg-white rounded-lg border border-light-sage p-4 space-y-4" data-who-form>
+    {% csrf_token %}
+    <div>
+        <h1 class="font-heading font-bold text-xl">Who is on the yard today?</h1>
+        <p class="text-sage">Choose your name. This phone remembers you next time.</p>
+    </div>
+    {% if error %}<p class="text-error-red text-sm" role="alert">{{ error }}</p>{% endif %}
+    {% if farriers %}
+    <label class="block">
+        <span class="sr-only">Your name</span>
+        <select name="provider" required class="w-full min-h-[48px] rounded-lg border border-light-sage px-3 py-2 bg-white text-base">
+            <option value="">Choose your name</option>
+            {% for p in farriers %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}
+        </select>
+    </label>
+    <button type="submit" class="w-full min-h-[48px] rounded-lg bg-saddle text-white font-heading font-bold">Continue</button>
+    {% else %}
+    <p>No farrier is set up yet. Ask the yard to add you in Service Providers.</p>
+    {% endif %}
+</form>
+<p class="text-center text-sm text-sage">No password to type at the yard.</p>
+{% endblock %}

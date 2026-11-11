@@ -243,8 +243,8 @@ does from the horse page, so nothing here has to know it is in a pane.
         {% if timeline_events %}
         <ul class="mt-3 space-y-3">
             {% for event in timeline_events %}
-            <li class="pane-event" x-show="filter === 'all' || filter === '{{ event.type }}'{% if event.type == 'egg_count' %} || filter === 'worming'{% endif %}">
-                <span class="pane-event-dot pane-dot-{{ event.type }}" aria-hidden="true"></span>
+            <li class="pane-event" x-show="filter === 'all' || filter === '{{ event.type }}'{% if event.type == 'egg_count' %} || filter === 'worming'{% endif %}{% if event.type == 'farrier_note' %} || filter === 'farrier'{% endif %}">
+                <span class="pane-event-dot pane-dot-{% if event.type == 'farrier_note' %}farrier{% else %}{{ event.type }}{% endif %}" aria-hidden="true"></span>
                 <span class="min-w-0 flex-1">
                     <span class="pane-event-title">
                         {% if event.type == 'placement' %}Moved to {{ event.obj.location.name }}
@@ -253,16 +253,18 @@ does from the horse page, so nothing here has to know it is in a pane.
                         {% elif event.type == 'worming' %}Worming dose
                         {% elif event.type == 'egg_count' %}Worm egg count
                         {% elif event.type == 'vet_visit' %}{{ event.obj.reason|default:"Vet visit" }}
+                        {% elif event.type == 'farrier_note' %}Farrier note
                         {% elif event.type == 'breeding' %}Covered by {{ event.obj.stallion_name|default:"stallion" }}
                         {% endif %}
                     </span>
                     <span class="pane-event-note">
                         {% if event.type == 'placement' %}{% if event.obj.rate_type %}{{ event.obj.rate_type.name }}{% if feature_access.charges.view %} · {{ event.obj.rate_type.daily_rate|gbp }}/day{% endif %}{% else %}No rate set{% endif %}
                         {% elif event.type == 'vaccination' %}{% if event.obj.vet %}Given by {{ event.obj.vet.name }}{% else %}Vaccination{% endif %}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"j M Y" }}{% endif %}
-                        {% elif event.type == 'farrier' %}{% if event.obj.service_provider %}{{ event.obj.service_provider.name }}{% else %}Farrier visit{% endif %}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"j M Y" }}{% endif %}
+                        {% elif event.type == 'farrier' %}{% if event.obj.service_provider %}{{ event.obj.service_provider.name }}{% else %}Farrier visit{% endif %}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"j M Y" }}{% endif %}{% if event.obj.notes %} · {{ event.obj.notes|truncatechars:80 }}{% endif %}
                         {% elif event.type == 'worming' %}{{ event.obj.product_name }}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}{% if event.obj.next_due_date %} · next due {{ event.obj.next_due_date|date:"j M Y" }}{% endif %}
                         {% elif event.type == 'egg_count' %}{{ event.obj.count }} eggs per gram{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}
                         {% elif event.type == 'vet_visit' %}{% if event.obj.vet %}{{ event.obj.vet.name }}{% else %}Vet visit{% endif %}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}
+                        {% elif event.type == 'farrier_note' %}{{ event.obj.text|truncatechars:120 }}
                         {% elif event.type == 'breeding' %}{{ event.obj.get_status_display }}
                         {% endif %}
                     </span>

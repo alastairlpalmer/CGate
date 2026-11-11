@@ -1,6 +1,7 @@
 {% load ui_extras %}
 <!-- Header + Add Button -->
 <div class="flex flex-wrap items-center justify-end gap-3 mb-4">
+    <a href="{% url 'farrier_job_list' %}" class="btn-secondary" data-farrier-list-link>Farrier's list</a>
     {% if feature_access.charges.view %}
     <a href="{% url 'provider_visit_list' %}" class="btn-secondary" data-farrier-visits-link>Farrier Visits</a>
     {% endif %}

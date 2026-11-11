@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% load ui_extras %}
+
+{% block title %}Farrier's list - Cgate{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Farrier's list</h1>
+            <p class="page-subtitle">The horses and work you want on a farrier visit. On that day the farrier sees them at the top of their page.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'provider_visit_list' %}" class="btn-secondary">Farrier Visits</a>
+        </div>
+    </div>
+
+    {% if not provider %}
+    <div class="card px-5 py-4">
+        <p>Add a farrier in <a href="{% url 'provider_list' %}" class="link">Service Providers</a> first.</p>
+    </div>
+    {% else %}
+    <div class="card px-5 py-4">
+        <form method="get" class="flex flex-wrap items-end gap-3">
+            {% if providers|length > 1 %}
+            <div>
+                <label for="list-provider" class="dt-label mb-1">Farrier</label>
+                <select id="list-provider" name="provider" class="form-select" onchange="this.form.submit()">
+                    {% for p in providers %}<option value="{{ p.pk }}"{% if p.pk == provider.pk %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
+                </select>
+            </div>
+            {% else %}
+            <input type="hidden" name="provider" value="{{ provider.pk }}">
+            {% endif %}
+            <div>
+                <label for="list-date" class="dt-label mb-1">Visit date</label>
+                <input id="list-date" type="date" name="date" value="{{ day|date:'Y-m-d' }}" class="form-input" onchange="this.form.submit()">
+            </div>
+            <div class="flex gap-2">
+                <a href="?provider={{ provider.pk }}&date={{ previous_day|date:'Y-m-d' }}" class="btn-secondary" aria-label="Day before">&larr;</a>
+                {% if day != today %}<a href="?provider={{ provider.pk }}&date={{ today|date:'Y-m-d' }}" class="btn-secondary">Today</a>{% endif %}
+                <a href="?provider={{ provider.pk }}&date={{ next_day|date:'Y-m-d' }}" class="btn-secondary" aria-label="Day after">&rarr;</a>
+            </div>
+        </form>
+        {% if upcoming %}
+        <p class="mt-3 text-sm text-sage">Lists coming up:
+            {% for u in upcoming %}<a href="?provider={{ provider.pk }}&date={{ u.date|date:'Y-m-d' }}" class="link">{{ u.date|date:"D j M" }} ({{ u.horses }})</a>{% if not forloop.last %}, {% endif %}{% endfor %}
+        </p>
+        {% endif %}
+    </div>
+
+    <div class="card overflow-hidden">
+        <div class="section-header">
+            <h2 class="section-title">{{ provider.name }} · {{ day|date:"l j F Y" }}</h2>
+            <span class="text-sm text-sage">{{ rows|length }} horse{{ rows|length|pluralize }}</span>
+        </div>
+        {% if rows %}
+        <div class="overflow-x-auto">
+        <table class="data-table">
+            <thead><tr><th>Horse</th><th>Work wanted</th><th>Note</th><th>Done</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
+            <tbody>
+            {% for row in rows %}
+            <tr data-job-row>
+                <td class="font-medium">{{ row.job.horse.name }}</td>
+                <td>{{ row.job.get_work_needed_display|default:"Farrier to decide" }}</td>
+                <td>{{ row.job.note|default:"-" }}</td>
+                <td>
+                    {% if row.status == 'done' %}<span class="badge-success">&#10003; {{ row.line.get_work_done_display }} {{ row.line.cost|gbp }}</span>
+                    {% elif row.status == 'missed' %}<span class="badge-danger">Not done</span>
+                    {% else %}<span class="badge-neutral">To do</span>{% endif %}
+                </td>
+                {% if can_edit %}
+                <td class="text-right">
+                    {% if row.status != 'done' %}
+                    <form method="post" action="{% url 'farrier_job_remove' row.job.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-ghost btn-xs">Remove</button>
+                    </form>
+                    {% endif %}
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p class="px-5 py-6 text-sage">No horses on the list for this day yet.</p>
+        {% endif %}
+
+        {% if can_edit %}
+        <form method="post" class="border-t border-light-sage px-5 py-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-end" data-job-add>
+            {% csrf_token %}
+            <input type="hidden" name="provider" value="{{ provider.pk }}">
+            <input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}">
+            <div>
+                <label for="job-horse" class="dt-label mb-1">Horse</label>
+                <select id="job-horse" name="horse" class="form-select" required>
+                    <option value="">Choose a horse…</option>
+                    {% for h in horses %}<option value="{{ h.pk }}">{{ h.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="job-work" class="dt-label mb-1">Work wanted</label>
+                <select id="job-work" name="work_needed" class="form-select">
+                    <option value="">Farrier to decide</option>
+                    {% for value, label in work_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="job-note" class="dt-label mb-1">Note (optional)</label>
+                <input id="job-note" type="text" name="note" maxlength="200" class="form-input" placeholder="For example: lost a shoe overnight">
+            </div>
+            <div><button type="submit" class="btn-primary w-full">Add to the list</button></div>
+        </form>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

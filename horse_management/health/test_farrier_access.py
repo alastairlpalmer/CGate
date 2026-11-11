@@ -149,10 +149,11 @@ class StaffAreNotFencedTests(TestCase):
         response = self.client.get(TODAY_URL)
         self.assertRedirects(response, reverse('dashboard'), fetch_redirect_response=False)
 
-    def test_anonymous_users_go_to_sign_in(self):
+    def test_anonymous_users_go_to_the_name_picker(self):
+        # The QR code opens /farrier/; signed out, that is "Who is on the
+        # yard today?" (plan section 15).
         response = self.client.get(TODAY_URL)
-        self.assertEqual(response.status_code, 302)
-        self.assertIn(reverse('login'), response['Location'])
+        self.assertRedirects(response, reverse('farrier:who'), fetch_redirect_response=False)
 
 
 class GateTests(TestCase):
@@ -285,4 +286,4 @@ class StaySignedInTests(TestCase):
         session.save()
         response = self.client.get(TODAY_URL)
         self.assertEqual(response.status_code, 302)
-        self.assertIn('login', response['Location'])
+        self.assertNotIn('_auth_user_id', self.client.session)
