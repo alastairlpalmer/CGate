@@ -4,7 +4,7 @@ URL configuration for health app.
 
 from django.urls import path
 
-from . import views
+from . import farrier_yard_views, views
 
 urlpatterns = [
     # Health Dashboard
@@ -26,6 +26,15 @@ urlpatterns = [
 
     # Farrier
     path('farrier/', views.FarrierListView.as_view(), name='farrier_list'),
+    # Visits recorded on the farrier's own page (docs/FARRIER_PAGE_PLAN.md, section 6).
+    path('farrier-visits/', farrier_yard_views.provider_visit_list, name='provider_visit_list'),
+    path('farrier-visits/qr/', farrier_yard_views.farrier_qr, name='farrier_qr'),
+    path('farrier-visits/<int:pk>/', farrier_yard_views.provider_visit_detail, name='provider_visit_detail'),
+    path('farrier-visits/<int:pk>/check/', farrier_yard_views.provider_visit_check, name='provider_visit_check'),
+    path('farrier-visits/statement/<int:provider_pk>/<int:year>/<int:month>/',
+         farrier_yard_views.provider_statement, name='provider_statement'),
+    path('farrier-visits/statement/<int:provider_pk>/<int:year>/<int:month>/pay/',
+         farrier_yard_views.provider_statement_pay, name='provider_statement_pay'),
     path('farrier/add/', views.FarrierCreateView.as_view(), name='farrier_create'),
     path('farrier/<int:pk>/edit/', views.FarrierUpdateView.as_view(), name='farrier_update'),
 

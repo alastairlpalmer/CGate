@@ -288,7 +288,7 @@ class ServiceProviderListView(FeatureAccessMixin, ListView):
     context_object_name = 'providers'
 
     def get_queryset(self):
-        queryset = ServiceProvider.objects.all()
+        queryset = ServiceProvider.objects.select_related('user')
 
         provider_type = self.request.GET.get('type')
         if provider_type:

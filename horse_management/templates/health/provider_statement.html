@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% load ui_extras %}
+
+{% block title %}{{ provider.name }} statement {{ statement.label }} - Cgate{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{{ provider.name }}: {{ statement.label }}</h1>
+            <p class="text-sage text-sm">Finished visits this month. One payment covers them all.</p>
+        </div>
+        <a href="{% url 'provider_visit_list' %}?provider={{ provider.pk }}" class="btn-secondary">All visits</a>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="card px-5 py-4"><p class="dt-label">Total</p><p class="text-2xl font-heading font-bold">{{ statement.total|gbp }}</p></div>
+        <div class="card px-5 py-4"><p class="dt-label">Paid</p><p class="text-2xl font-heading font-bold">{{ statement.paid_total|gbp }}</p></div>
+        <div class="card px-5 py-4"><p class="dt-label">To pay</p><p class="text-2xl font-heading font-bold {% if statement.unpaid_total %}text-saddle{% endif %}">{{ statement.unpaid_total|gbp }}</p></div>
+    </div>
+
+    <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="data-table data-table-cards">
+                <thead><tr><th>Date</th><th>Horses</th><th class="text-right">Total</th><th>Checked</th><th>Paid</th></tr></thead>
+                <tbody>
+                    {% for visit in statement.visits %}
+                    <tr>
+                        <td data-label="Date"><a href="{% url 'provider_visit_detail' visit.pk %}" class="link tap-pad">{{ visit.date|date:"j M" }}</a></td>
+                        <td data-label="Horses">{{ visit.line_count }}</td>
+                        <td class="text-right" data-label="Total">{{ visit.line_total|gbp }}</td>
+                        <td data-label="Checked">{% if visit.checked_at %}Yes{% else %}<span class="text-saddle">Not yet</span>{% endif %}</td>
+                        <td data-label="Paid">{% if visit.is_paid %}{{ visit.paid_on|date:"j M" }}{% else %}Not yet{% endif %}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-sage">No finished visits this month.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if statement.open_visits %}<p class="text-sage text-sm">{{ statement.open_visits|length }} visit{{ statement.open_visits|length|pluralize }} still open this month. Open visits are not paid until the farrier finishes them.</p>{% endif %}
+
+    {% if can_pay and statement.unpaid_visits %}
+    <form method="post" action="{% url 'provider_statement_pay' provider.pk statement.year statement.month %}" class="card px-5 py-4 space-y-2">
+        {% csrf_token %}
+        <p>Pay {{ provider.name }} {{ statement.unpaid_total|gbp }} for {{ statement.unpaid_visits|length }} visit{{ statement.unpaid_visits|length|pluralize }}, then record it here. It is saved as a yard cost (Professional Services, no VAT).</p>
+        <button type="submit" class="btn-primary">Record payment to farrier</button>
+    </form>
+    {% endif %}
+
+    {% if months %}
+    <div class="card px-5 py-4 space-y-2">
+        <h2 class="font-heading font-semibold">Other months</h2>
+        <ul class="flex flex-wrap gap-3">
+            {% for y, m in months %}<li><a href="{% url 'provider_statement' provider.pk y m %}" class="link">{{ m }}/{{ y }}</a></li>{% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

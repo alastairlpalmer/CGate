@@ -23,5 +23,5 @@
         </table>
     </div>
     {% if not_billed %}<p class="warn">{{ not_billed|length }} line{{ not_billed|length|pluralize }} could not be billed because the horse has no current owner. Add an owner, then open the farrier record and save it to bill it.</p>{% endif %}
-    <p>Check or change a line before it goes on an invoice{% if farrier_list_url %}: <a href="{{ farrier_list_url }}">{{ farrier_list_url }}</a>{% endif %}.</p>
+    <p>Check the visit, or change a line before it goes on an invoice{% if visit_url %}: <a href="{{ visit_url }}">{{ visit_url }}</a>{% endif %}. Until you mark it as checked, the farrier can change it today.</p>
 {% endblock %}

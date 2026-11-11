@@ -12,6 +12,7 @@
             <h1 class="page-title">Farrier Visits</h1>
         </div>
         <div class="flex items-center gap-3">
+            {% if feature_access.charges.view %}<a href="{% url 'provider_visit_list' %}" class="btn-secondary">From the farrier page</a>{% endif %}
             <a href="{% url 'vaccination_list' %}" class="btn-secondary">Vaccinations</a>
             <a href="{% url 'farrier_create' %}" class="btn-primary">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

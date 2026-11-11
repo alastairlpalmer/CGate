@@ -364,7 +364,7 @@ def send_yard_visit_summary(visit, lines):
         'lines': lines,
         'total': total,
         'not_billed': [line for line in lines if not line.billed and line.cost > 0],
-        'farrier_list_url': absolute_url(reverse('farrier_list')),
+        'visit_url': absolute_url(reverse('provider_visit_detail', args=[visit.pk])),
     })
     try:
         message(subject, html_content, [business.email]).send()
