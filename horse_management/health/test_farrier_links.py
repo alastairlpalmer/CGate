@@ -146,3 +146,28 @@ class VisitsPageTests(TestCase):
         self.assertNotContains(self.client.get(VISITS_URL), 'Print QR code')
         self.client.force_login(make_admin('boss'))
         self.assertContains(self.client.get(VISITS_URL), reverse('farrier_qr'))
+
+
+class PhoneLayoutTests(TestCase):
+    """The phone check (November 2026): the Farrier page fits a small phone."""
+
+    def setUp(self):
+        self.client.force_login(make_admin('boss'))
+
+    def test_tabs_have_short_names_on_a_phone(self):
+        body = self.client.get(HUB_URL).content.decode()
+        self.assertIn('<span class="sm:hidden">Visits</span>', body)
+        self.assertIn('<span class="sm:hidden">List</span>', body)
+
+    def test_the_list_is_cards_on_a_phone(self):
+        from django.utils import timezone
+
+        from core.models import Horse
+        from health.models import FarrierJob
+
+        provider = ServiceProvider.objects.create(name='Sam Shoe', provider_type='farrier')
+        FarrierJob.objects.create(provider=provider, date=timezone.localdate(), horse=Horse.objects.create(name='Bramble'))
+        body = self.client.get(LIST_URL).content.decode()
+        self.assertIn('class="data-table data-table-cards"', body)
+        for label in ('Horse', 'Work wanted', 'Note', 'Done'):
+            self.assertIn(f'data-label="{label}"', body)

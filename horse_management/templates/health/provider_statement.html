@@ -54,7 +54,7 @@
     <div class="card px-5 py-4 space-y-2">
         <h2 class="font-heading font-semibold">Other months</h2>
         <ul class="flex flex-wrap gap-3">
-            {% for y, m in months %}<li><a href="{% url 'provider_statement' provider.pk y m %}" class="link">{{ m }}/{{ y }}</a></li>{% endfor %}
+            {% for y, m in months %}<li><a href="{% url 'provider_statement' provider.pk y m %}" class="link inline-flex items-center min-h-[44px] px-1">{{ m }}/{{ y }}</a></li>{% endfor %}
         </ul>
     </div>
     {% endif %}

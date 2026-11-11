@@ -57,7 +57,7 @@
     <div class="card px-5 py-4 space-y-2" data-visit-notes>
         <h2 class="section-title">Notes from the farrier (no work or charge)</h2>
         {% for note in notes %}
-        <p><a href="{% url 'horse_detail' note.horse.pk %}" class="link">{{ note.horse.name }}</a>: <span class="whitespace-pre-line">{{ note.text }}</span></p>
+        <p><a href="{% url 'horse_detail' note.horse.pk %}" class="link inline-block py-3 -my-3">{{ note.horse.name }}</a>: <span class="whitespace-pre-line">{{ note.text }}</span></p>
         {% endfor %}
     </div>
     {% endif %}
