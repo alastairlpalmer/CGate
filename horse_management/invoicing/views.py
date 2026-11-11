@@ -158,23 +158,84 @@ class InvoiceDetailView(FeatureAccessMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        line_items = self.object.line_items.select_related(
-            'horse', 'placement', 'charge'
-        ).order_by('line_type', 'description')
-        context['line_items'] = line_items
-        context['horse_groups'] = group_line_items_by_horse(line_items)
-        context['payments'] = self.object.payments.all()
+        context.update(_invoice_parts(self.object))
         context['voided_payments'] = Payment.all_objects.filter(
             invoice=self.object, voided_at__isnull=False,
         ).select_related('voided_by')
-        context['amount_paid'] = self.object.amount_paid
-        context['balance_due'] = self.object.balance_due
         # Payments included, so a payment that was deleted still shows here.
         context['history_entries'] = audit.merge(
             audit.history_for(self.object),
             audit.history_of(Payment.history.filter(invoice_id=self.object.pk), 'Payment'),
         )
         return context
+
+
+def _invoice_parts(invoice):
+    """The lines, payments and balance of one invoice, for the invoice
+    page and for the invoice list's pane."""
+    line_items = invoice.line_items.select_related(
+        'horse', 'placement', 'charge'
+    ).order_by('line_type', 'description')
+    return {
+        'line_items': line_items,
+        'horse_groups': group_line_items_by_horse(line_items),
+        'payments': invoice.payments.all(),
+        'amount_paid': invoice.amount_paid,
+        'balance_due': invoice.balance_due,
+    }
+
+
+@feature_required('invoices', LEVEL_VIEW)
+def invoice_pane(request, pk):
+    """The invoice list's preview pane, and its sheet on a phone.
+
+    Three views of one invoice: the invoice itself, the owner it bills
+    (the same record the owner list's pane shows) and the PDF as the owner
+    gets it. A direct visit (or no JavaScript) goes to the invoice's page
+    instead, so every row on the list stays an ordinary link.
+    """
+    htmx = getattr(request, 'htmx', None)
+    if not htmx or htmx.target != 'invoice-preview-body':
+        return redirect('invoice_detail', pk=pk)
+
+    invoice = get_object_or_404(
+        Invoice.objects.select_related('owner', 'horse', 'xero_sync'), pk=pk,
+    )
+    context = {'invoice': invoice, 'list_url': _list_url(request)}
+    context.update(_invoice_parts(invoice))
+    # The Owner tab is the owner's record, so it follows access to Owners.
+    # Without it the tab still says who the invoice bills: that is on the
+    # invoice itself.
+    context['can_see_owner'] = has_feature_access(request.user, 'owners', LEVEL_VIEW)
+    if context['can_see_owner']:
+        from core.views.owners import owner_preview_context
+
+        owner_context = owner_preview_context(request.user, invoice.owner)
+        owner_context.pop('owner')
+        # The invoice's own keys win: `invoices` and `payments` here are
+        # the owner's recent invoices, under names of their own.
+        context['owner_invoices'] = owner_context.pop('invoices')
+        context.update(owner_context)
+    return render(request, 'invoicing/partials/pane.html', context)
+
+
+def _list_url(request):
+    """The list the pane was opened from, filters and page included, so an
+    action taken in the pane comes back to the same rows.
+
+    htmx sends the address bar's URL with every request. Only a URL on
+    this site is trusted; anything else falls back to the plain list.
+    """
+    from urllib.parse import urlsplit
+
+    current = request.headers.get('HX-Current-URL', '')
+    if current and url_has_allowed_host_and_scheme(
+        current, allowed_hosts={request.get_host()}, require_https=request.is_secure(),
+    ):
+        parts = urlsplit(current)
+        if parts.path == reverse('invoice_list'):
+            return parts.path + (f'?{parts.query}' if parts.query else '')
+    return reverse('invoice_list')
 
 
 class InvoiceUpdateView(FeatureAccessMixin, UpdateView):
@@ -401,13 +462,28 @@ def _suggested_period(owner, period_start, period_end):
 
 @feature_required('invoices', LEVEL_VIEW)
 def invoice_pdf(request, pk):
-    """Download invoice as PDF."""
+    """The invoice as a PDF: a download, or with ``?inline=1`` the same
+    file for the browser to show (the PDF tab of the invoice list's pane).
+    """
     invoice = get_object_or_404(Invoice, pk=pk)
     pdf_file = generate_invoice_pdf(invoice)
+    inline = request.GET.get('inline') == '1'
 
     response = HttpResponse(pdf_file.read(), content_type='application/pdf')
-    response['Content-Disposition'] = attachment_header(f'{invoice.invoice_number}.pdf')
-
+    response['Content-Disposition'] = attachment_header(
+        f'{invoice.invoice_number}.pdf', inline=inline,
+    )
+    if inline:
+        # The pane shows the PDF in a frame on this site. Everything else
+        # the app serves stays unframeable (X_FRAME_OPTIONS = 'DENY').
+        response['X-Frame-Options'] = 'SAMEORIGIN'
+        # The same allowance in the CSP header (django-csp reads these off
+        # the response): once for the enforced policy, once for report-only.
+        framed = {'frame-ancestors': ["'self'"]}
+        response._csp_replace = framed
+        response._csp_replace_ro = framed
+        # A draft changes; never show an old copy of one.
+        response['Cache-Control'] = 'private, no-store'
     return response
 
 
@@ -418,14 +494,19 @@ def invoice_send(request, pk):
         return redirect('invoice_detail', pk=pk)
 
     invoice = get_object_or_404(Invoice, pk=pk)
+    # The invoice list's pane passes next, so a send from the pane comes
+    # back to the list; anything else lands on the invoice's page.
+    from core.views._next import safe_next
+
+    back = safe_next(request, reverse('invoice_detail', kwargs={'pk': pk}))
 
     if invoice.status not in [Invoice.Status.DRAFT, Invoice.Status.SENT]:
         messages.error(request, "This invoice cannot be sent.")
-        return redirect('invoice_detail', pk=pk)
+        return redirect(back)
 
     if not invoice.owner.email:
         messages.error(request, "Owner doesn't have an email address.")
-        return redirect('invoice_detail', pk=pk)
+        return redirect(back)
 
     # Claim the invoice first, as the bulk send does: a double-click, or a
     # click while a bulk send of it is queued, used to email the owner twice.
@@ -436,7 +517,7 @@ def invoice_send(request, pk):
     if invoice.status == Invoice.Status.DRAFT:
         if not claim_invoice_for_sending(invoice.pk):
             messages.info(request, "This invoice is already being sent.")
-            return redirect('invoice_detail', pk=pk)
+            return redirect(back)
         outcome = send_invoice_email_task(invoice.pk)
         if outcome == 'sent':
             messages.success(request, f"Invoice sent to {invoice.owner.email}")
@@ -446,16 +527,16 @@ def invoice_send(request, pk):
                 request,
                 invoice.send_error or "Failed to send invoice. Check email configuration.",
             )
-        return redirect('invoice_detail', pk=pk)
+        return redirect(back)
 
     # A re-send of an invoice that was sent before. A second click just
     # after the first send finished is a double-click, not a re-send.
     if invoice.sent_at and timezone.now() - invoice.sent_at < RESEND_GAP:
         messages.info(request, "This invoice was emailed less than a minute ago.")
-        return redirect('invoice_detail', pk=pk)
+        return redirect(back)
     if not claim_invoice_for_sending(invoice.pk, statuses=[Invoice.Status.SENT]):
         messages.info(request, "This invoice is already being sent.")
-        return redirect('invoice_detail', pk=pk)
+        return redirect(back)
     try:
         success = send_invoice_email(invoice)
     finally:
@@ -467,7 +548,7 @@ def invoice_send(request, pk):
     else:
         messages.error(request, "Failed to send invoice. Check email configuration.")
 
-    return redirect('invoice_detail', pk=pk)
+    return redirect(back)
 
 
 # The shortest time between two emails of the same invoice from "Send".

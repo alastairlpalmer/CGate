@@ -1,7 +1,7 @@
 // Run with: node --test 'static/js/tests/*.test.js'   (from horse_management/)
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { stepIndex, snapFor, translateYOf } = require('../split_view.js');
+const { stepIndex, snapFor, translateYOf, paneIds, fillUrl } = require('../split_view.js');
 
 // ── stepIndex: arrow keys walking the list ──
 
@@ -140,4 +140,42 @@ test('snapFor: a slow release still lands by position', () => {
 
 test('snapFor: a pull past full still opens the page, flick or not', () => {
     assert.equal(snapFor(FULL + 100, PEEK, FULL, OVERSHOOT, -0.9, 'full'), 'page');
+});
+
+// ── paneIds: one script, any list ──
+
+test('paneIds: every part of a pane is named after the pane', () => {
+    assert.deepEqual(paneIds('owner-preview'), {
+        pane: 'owner-preview',
+        body: 'owner-preview-body',
+        content: 'owner-preview-content',
+        counter: 'owner-preview-counter',
+        prev: 'owner-preview-prev',
+        next: 'owner-preview-next',
+        openFull: 'owner-preview-open-full',
+    });
+});
+
+test('paneIds: a list that names no pane is the horse list', () => {
+    // horse_list.html was written before the pane had a name of its own,
+    // and the server checks for the target "horse-preview-body".
+    assert.equal(paneIds().body, 'horse-preview-body');
+    assert.equal(paneIds('').content, 'horse-preview-content');
+    assert.equal(paneIds(null).pane, 'horse-preview');
+});
+
+// ── fillUrl: the 0 in the route stands for the record ──
+
+test('fillUrl: puts the key where the route has a 0', () => {
+    assert.equal(fillUrl('/owners/0/preview/', '7'), '/owners/7/preview/');
+    assert.equal(fillUrl('/invoicing/0/pane/', 120), '/invoicing/120/pane/');
+});
+
+test('fillUrl: only the first 0 segment is the placeholder', () => {
+    assert.equal(fillUrl('/horses/0/preview/', '10'), '/horses/10/preview/');
+});
+
+test('fillUrl: no template, no request', () => {
+    assert.equal(fillUrl('', '7'), '');
+    assert.equal(fillUrl(null, '7'), '');
 });
