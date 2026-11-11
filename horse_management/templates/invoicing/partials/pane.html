@@ -1,0 +1,271 @@
+{% load ui_extras %}
+{% comment %}
+Invoice preview — the body of the invoice list's side pane, and of its
+sheet on a phone (invoicing.views.invoice_pane).
+
+Three views of one invoice, on a rail at the top of the pane:
+  Invoice — what the invoice page says, sized for a pane
+  Owner   — the owner it bills: the same record the owner list's pane shows
+  PDF     — the file itself, as the owner gets it
+
+The rail is the `paneTabs` component in static/js/split_view.js. The tab is
+remembered for the page, so the arrow keys flick through the same view of
+each invoice. A row's owner link opens the pane on the Owner tab (the
+`split-tab` event below).
+
+The pane's own chrome (previous/next, the counter, Open full page, close)
+is in invoice_list.html and stays put across swaps.
+
+No ids on the tabs or the views. After a swap htmx puts back the attributes
+of every element whose id was also in the old content, which undid the
+class and the display that Alpine had just set: the rail showed one tab
+and the pane another.
+{% endcomment %}
+<div id="invoice-preview-content" data-preview-for="{{ invoice.pk }}"
+     x-data="paneTabs('invoice', ['invoice', 'owner', 'pdf'])"
+     @split-tab.window="show($event.detail)">
+
+    <div class="pane-tabs" role="tablist" aria-label="Views of invoice {{ invoice.invoice_number }}">
+        <button type="button" role="tab" class="pane-tab" data-pane-tab="invoice"
+                :class="{ 'is-active': tab === 'invoice' }" :aria-selected="(tab === 'invoice').toString()"
+                @click="pick('invoice')">Invoice</button>
+        <button type="button" role="tab" class="pane-tab" data-pane-tab="owner"
+                :class="{ 'is-active': tab === 'owner' }" :aria-selected="(tab === 'owner').toString()"
+                @click="pick('owner')">Owner</button>
+        <button type="button" role="tab" class="pane-tab" data-pane-tab="pdf"
+                :class="{ 'is-active': tab === 'pdf' }" :aria-selected="(tab === 'pdf').toString()"
+                @click="pick('pdf')">PDF</button>
+    </div>
+
+    <!-- ══ Invoice ══ -->
+    <div class="pane-body" data-pane-view="invoice" role="tabpanel" aria-label="Invoice"
+         x-show="tab === 'invoice'">
+
+        <div class="min-w-0">
+            <h2 class="text-xl font-semibold font-heading text-charcoal leading-tight">Invoice {{ invoice.invoice_number }}</h2>
+            <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <span class="{{ invoice.status_badge_class }}">{{ invoice.status_label }}</span>
+                {% if invoice.is_send_queued %}
+                <span class="badge-info" title="Queued — the email is being sent">Sending…</span>
+                {% elif invoice.send_error and invoice.status == 'draft' %}
+                <span class="badge-danger" title="{{ invoice.send_error }}">Send failed</span>
+                {% endif %}
+                {% if invoice.xero_sync and invoice.xero_sync.sync_status == 'pushed' or invoice.xero_sync and invoice.xero_sync.sync_status == 'paid_in_xero' %}
+                <span class="badge-info">In Xero</span>
+                {% endif %}
+            </div>
+            {% if invoice.draft_due_passed %}
+            <p class="mt-1.5 text-xs font-medium text-saddle">Not sent · due date passed</p>
+            {% endif %}
+            {% if invoice.send_error and invoice.status == 'draft' and not invoice.is_send_queued %}
+            <p class="mt-1.5 text-xs text-error-red">{{ invoice.send_error }}</p>
+            {% endif %}
+            <p class="mt-2 text-sm text-sage">
+                <span class="text-charcoal-light font-medium">{{ invoice.owner.name }}</span>{% if invoice.horse %} · {{ invoice.horse.name }}{% endif %} · {% if invoice.period_start.year == invoice.period_end.year %}{{ invoice.period_start|date:"j M" }}{% else %}{{ invoice.period_start|date:"j M Y" }}{% endif %} – {{ invoice.period_end|date:"j M Y" }}
+            </p>
+        </div>
+
+        <!-- ── What is owed ── -->
+        <dl class="pane-stats">
+            <div class="pane-stat">
+                <dt class="pane-stat-label">Total</dt>
+                <dd class="pane-stat-value tabular-nums">{{ invoice.total|gbp }}</dd>
+            </div>
+            <div class="pane-stat">
+                <dt class="pane-stat-label">Paid</dt>
+                <dd class="pane-stat-value tabular-nums{% if amount_paid > 0 %} text-forest{% endif %}">{{ amount_paid|gbp }}</dd>
+            </div>
+            <div class="pane-stat">
+                <dt class="pane-stat-label">{% if amount_paid > 0 %}Balance due{% else %}Amount due{% endif %}</dt>
+                <dd class="pane-stat-value tabular-nums{% if balance_due > 0 and invoice.is_overdue and invoice.status != 'draft' %} text-error-red{% endif %}">
+                    {% if invoice.status == 'cancelled' %}<span class="text-sage">&mdash;</span>{% else %}{{ balance_due|gbp }}{% endif %}
+                </dd>
+            </div>
+        </dl>
+
+        <!-- ── Actions: one main button by status, as on the invoice page ── -->
+        {% with can_edit=feature_access.invoices.full %}
+        <div class="flex flex-wrap items-center gap-2">
+            {% if can_edit and invoice.status == 'draft' and not invoice.is_send_queued %}
+            <form method="post" action="{% url 'invoice_send' invoice.pk %}" class="inline"
+                  hx-confirm="Email invoice {{ invoice.invoice_number }} to {{ invoice.owner.name }}?">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ list_url }}">
+                <button type="submit" class="btn-primary">Send invoice</button>
+            </form>
+            {% elif can_edit and invoice.status != 'cancelled' and invoice.status != 'paid' and balance_due > 0 %}
+            <a href="{% url 'payment_create' invoice.pk %}" hx-get="{% url 'payment_create' invoice.pk %}"
+               hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Record payment for {{ invoice.invoice_number }}" class="btn-primary">Record payment</a>
+            {% endif %}
+            <a href="{% url 'invoice_pdf' invoice.pk %}" hx-boost="false" class="btn-secondary">Download PDF</a>
+            {% if can_edit and invoice.status != 'cancelled' and invoice.status != 'paid' %}
+            <a href="{% url 'invoice_update' invoice.pk %}" class="btn-secondary">Edit</a>
+            {% endif %}
+        </div>
+        {% endwith %}
+
+        <!-- ── Details ── -->
+        <section class="pane-section">
+            <h3 class="pane-section-title">Details</h3>
+            <dl class="pane-list">
+                <div class="pane-row">
+                    <dt class="pane-row-label">Due date</dt>
+                    <dd class="pane-row-value{% if invoice.is_overdue and invoice.status != 'paid' %} is-alert{% endif %}">{{ invoice.due_date|date:"j M Y" }}</dd>
+                </div>
+                <div class="pane-row">
+                    <dt class="pane-row-label">Created</dt>
+                    <dd class="pane-row-value">{{ invoice.created_at|date:"j M Y" }}</dd>
+                </div>
+                <div class="pane-row">
+                    <dt class="pane-row-label">Sent</dt>
+                    <dd class="pane-row-value{% if not invoice.sent_at %} is-muted{% endif %}">{% if invoice.sent_at %}{{ invoice.sent_at|date:"j M Y, H:i" }}{% else %}Not sent{% endif %}</dd>
+                </div>
+                {% if invoice.paid_at %}
+                <div class="pane-row">
+                    <dt class="pane-row-label">Paid</dt>
+                    <dd class="pane-row-value">{{ invoice.paid_at|date:"j M Y, H:i" }}</dd>
+                </div>
+                {% endif %}
+                {% if invoice.horse %}
+                <div class="pane-row">
+                    <dt class="pane-row-label">Horse</dt>
+                    <dd class="pane-row-value">{% if feature_access.horses.view %}<a href="{% url 'horse_detail' invoice.horse.pk %}" class="link">{{ invoice.horse.name }}</a>{% else %}{{ invoice.horse.name }}{% endif %}</dd>
+                </div>
+                {% endif %}
+                {% if invoice.customer_reference %}
+                <div class="pane-row">
+                    <dt class="pane-row-label">Their reference</dt>
+                    <dd class="pane-row-value">{{ invoice.customer_reference }}</dd>
+                </div>
+                {% endif %}
+                {% if invoice.overdue_reminder_count %}
+                <div class="pane-row">
+                    <dt class="pane-row-label">Reminders sent</dt>
+                    <dd class="pane-row-value">{{ invoice.overdue_reminder_count }}{% if invoice.last_overdue_reminder_at %}, last {{ invoice.last_overdue_reminder_at|date:"j M Y" }}{% endif %}</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </section>
+
+        <!-- ── Line items ── -->
+        <section class="pane-section">
+            <h3 class="pane-section-title">Line items</h3>
+            {% if horse_groups %}
+            <table class="pane-lines">
+                {% for group in horse_groups %}
+                <tbody>
+                    <tr>
+                        <th colspan="2" scope="rowgroup">{{ group.horse_name }}{% if group.share_label %} {{ group.share_label }}{% endif %}</th>
+                    </tr>
+                    {% for item in group.items %}
+                    <tr>
+                        <td>{% if item.line_type != 'livery' and item.charge %}{{ item.charge.date|date:"j M Y" }}: {% endif %}{{ item.description }}</td>
+                        <td>{{ item.line_total|gbp }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                {% endfor %}
+                <tfoot>
+                    <tr>
+                        <td>Net total</td>
+                        <td>{{ invoice.subtotal|gbp }}</td>
+                    </tr>
+                    <tr>
+                        <td>VAT{% if invoice.vat_rate > 0 %} ({{ invoice.vat_rate|floatformat:"-2" }}%){% endif %}</td>
+                        <td>{{ invoice.vat_amount|gbp }}</td>
+                    </tr>
+                    <tr class="is-total">
+                        <td>Invoice total</td>
+                        <td>{{ invoice.total|gbp }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+            {% else %}
+            <p class="text-sm text-sage py-2">No lines on this invoice.</p>
+            {% endif %}
+        </section>
+
+        <!-- ── Payments ── -->
+        <section class="pane-section">
+            <h3 class="pane-section-title">Payments</h3>
+            {% if payments %}
+            <ul class="pane-items">
+                {% for payment in payments %}
+                <li class="pane-item">
+                    <span class="min-w-0">
+                        <span class="pane-item-title">{{ payment.get_method_display }}{% if payment.credit_note_number %} {{ payment.credit_note_number }}{% endif %}</span>
+                        <span class="pane-item-note">{{ payment.date|date:"j M Y" }}{% if payment.reference %} · {{ payment.reference }}{% endif %}</span>
+                    </span>
+                    <span class="pane-item-end">{{ payment.amount|gbp }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-sm text-sage py-2">No payments recorded yet.</p>
+            {% endif %}
+        </section>
+
+        {% if invoice.notes %}
+        <section class="pane-section">
+            <h3 class="pane-section-title">Notes</h3>
+            <p class="mt-2 text-sm text-charcoal-light whitespace-pre-line">{{ invoice.notes }}</p>
+        </section>
+        {% endif %}
+    </div>
+
+    <!-- ══ Owner ══ -->
+    <div class="pane-body" data-pane-view="owner" role="tabpanel" aria-label="Owner"
+         x-show="tab === 'owner'" x-cloak>
+        {% if can_see_owner %}
+        {% include 'owners/partials/_preview_body.html' with owner=invoice.owner invoices=owner_invoices embedded=True %}
+        {% else %}
+        {# No access to Owners: what the invoice itself says about who it bills. #}
+        <div class="min-w-0">
+            <h2 class="text-xl font-semibold font-heading text-charcoal leading-tight break-words">{{ invoice.owner.name }}</h2>
+        </div>
+        <section class="pane-section">
+            <h3 class="pane-section-title">Bill to</h3>
+            <dl class="pane-list">
+                {% if invoice.owner.address %}
+                <div class="pane-row">
+                    <dt class="pane-row-label">Address</dt>
+                    <dd class="pane-row-value whitespace-pre-line">{{ invoice.owner.address }}</dd>
+                </div>
+                {% endif %}
+                {% if invoice.owner.email %}
+                <div class="pane-row">
+                    <dt class="pane-row-label">Email</dt>
+                    <dd class="pane-row-value">{{ invoice.owner.email }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+            {% if not invoice.owner.address and not invoice.owner.email %}
+            <p class="text-sm text-sage py-2">No address or email on the invoice.</p>
+            {% endif %}
+        </section>
+        {% endif %}
+    </div>
+
+    <!-- ══ PDF ══
+         The file itself, in the browser's own PDF viewer. The frame is made
+         only when the tab is opened: each one is a PDF built on the server,
+         and flicking through the Invoice tab should not build twenty. -->
+    <div class="pane-body" data-pane-view="pdf" role="tabpanel" aria-label="PDF"
+         x-show="tab === 'pdf'" x-cloak>
+        <div class="pane-pdf">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="text-sm text-sage">{{ invoice.invoice_number }}.pdf · as the owner gets it</p>
+                <div class="flex items-center gap-2">
+                    <a href="{% url 'invoice_pdf' invoice.pk %}?inline=1" target="_blank" rel="noopener" hx-boost="false" class="btn-secondary btn-xs">Open in a new tab</a>
+                    <a href="{% url 'invoice_pdf' invoice.pk %}" hx-boost="false" class="btn-secondary btn-xs">Download</a>
+                </div>
+            </div>
+            <template x-if="tab === 'pdf'">
+                <iframe class="pane-pdf-frame" src="{% url 'invoice_pdf' invoice.pk %}?inline=1#view=FitH&amp;toolbar=0"
+                        title="PDF of invoice {{ invoice.invoice_number }}" loading="lazy"></iframe>
+            </template>
+            <p class="pane-pdf-phone text-sm text-sage">A phone shows a PDF best on its own screen. Open it in a new tab, or download it.</p>
+        </div>
+    </div>
+</div>

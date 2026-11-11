@@ -53,6 +53,7 @@ from .owners import (  # noqa: F401
     OwnerUpdateView,
     owner_archive,
     owner_delete,
+    owner_preview,
     owner_restore,
 )
 from .placements import (  # noqa: F401

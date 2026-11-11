@@ -55,6 +55,12 @@ no cross-customer isolation boundary to get wrong.
   everywhere. From a shell: `python manage.py mfa_reset <email>`.
 - Password reset links expire after 1 hour and work once. Reset requests
   are limited per address and per IP address (`core/ratelimit.py`).
+- Sign in with Google is optional (`core/google_oidc.py`, off until
+  `GOOGLE_OAUTH_CLIENT_ID` is set). It never creates a user: the Google
+  account must be linked to a user already, and the link is by Google's
+  permanent account ID, not by email address. No Google token is stored.
+  Two-step sign-in rules apply after a Google sign-in as they do after a
+  password.
 - New users can be invited by email to choose their own password, so an
   administrator never needs to know it. Invitation links expire after
   3 days and work once.

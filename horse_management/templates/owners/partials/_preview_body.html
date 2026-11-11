@@ -1,0 +1,234 @@
+{% load ui_extras %}
+{% comment %}
+One owner's record, sized for a pane. Used by the owner list's pane
+(owners/partials/preview.html) and by the Owner tab of the invoice list's
+pane (invoicing/partials/pane.html), so the two always say the same thing.
+
+Context: core.views.owners.owner_preview_context, and
+  embedded (optional) — True inside the invoice pane, where the pane's own
+  "Open full page" link goes to the invoice: the owner's page gets a link
+  of its own here.
+
+Every action opens the shared pop-up sheet or its own page, exactly as it
+does from the owner page, so nothing here has to know it is in a pane.
+No photos or avatars: an owner's record is text.
+{% endcomment %}
+
+<!-- ── Who ── -->
+<div class="min-w-0">
+    <h2 class="text-xl font-semibold font-heading text-charcoal leading-tight break-words">{{ owner.name }}</h2>
+    <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+        {% if owner.is_archived %}
+        <span class="badge-neutral">Archived</span>
+        {% endif %}
+        {% if owner.email_bounced_at %}
+        <span class="badge-danger">Email not arriving</span>
+        {% endif %}
+        {% if money.overdue %}
+        <span class="badge-danger">Overdue</span>
+        {% endif %}
+        {% if embedded %}
+        <a href="{% url 'owner_detail' owner.pk %}" class="text-xs font-medium text-forest hover:text-forest-light">Open owner page</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ── What they owe and have ── -->
+<dl class="pane-stats is-auto">
+    {% if money.outstanding is not None %}
+    <div class="pane-stat">
+        <dt class="pane-stat-label">Outstanding</dt>
+        <dd class="pane-stat-value tabular-nums{% if money.overdue %} text-error-red{% endif %}">
+            {{ money.outstanding|gbp }}
+            <span class="pane-stat-note">{% if money.overdue %}Some is overdue{% elif money.outstanding %}Not yet due{% else %}Nothing owed{% endif %}</span>
+        </dd>
+    </div>
+    {% endif %}
+    {% if money.unbilled is not None %}
+    <div class="pane-stat">
+        <dt class="pane-stat-label">Unbilled</dt>
+        <dd class="pane-stat-value tabular-nums">
+            {{ money.unbilled|gbp }}
+            <span class="pane-stat-note">{{ extra_charge_count }} charge{{ extra_charge_count|pluralize }}</span>
+        </dd>
+    </div>
+    {% endif %}
+    <div class="pane-stat">
+        <dt class="pane-stat-label">Horses</dt>
+        <dd class="pane-stat-value tabular-nums">
+            {{ horses|length }}
+            <span class="pane-stat-note">On the yard{% if departed_horses %} · {{ departed_horses|length }} departed{% endif %}</span>
+        </dd>
+    </div>
+</dl>
+
+<!-- ── Actions ── -->
+<div class="flex flex-wrap items-center gap-2">
+    {% if feature_access.invoices.full and not owner.is_archived %}
+    <a href="{% url 'invoice_create' %}?owner={{ owner.pk }}" class="btn-primary">Create invoice</a>
+    {% endif %}
+    {% if feature_access.invoices.view %}
+    <a href="{% url 'owner_statement' owner.pk %}" class="btn-secondary">Statement</a>
+    {% endif %}
+    {% if feature_access.owners.full %}
+    <a href="{% url 'owner_update' owner.pk %}" hx-get="{% url 'owner_update' owner.pk %}"
+       hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+       data-popup-title="Edit {{ owner.name }}" class="btn-secondary">Edit</a>
+    {% endif %}
+</div>
+
+<!-- ── Contact ── -->
+<section class="pane-section">
+    <h3 class="pane-section-title">Contact</h3>
+    {% if owner.email or owner.phone or owner.address or owner.notes %}
+    <dl class="pane-list">
+        {% if owner.email %}
+        <div class="pane-row">
+            <dt class="pane-row-label">Email</dt>
+            <dd class="pane-row-value"><a href="mailto:{{ owner.email }}" class="link">{{ owner.email }}</a></dd>
+        </div>
+        {% endif %}
+        {% if owner.phone %}
+        <div class="pane-row">
+            <dt class="pane-row-label">Phone</dt>
+            <dd class="pane-row-value"><a href="tel:{{ owner.phone }}" class="link">{{ owner.phone }}</a></dd>
+        </div>
+        {% endif %}
+        {% if owner.address %}
+        <div class="pane-row">
+            <dt class="pane-row-label">Address</dt>
+            <dd class="pane-row-value whitespace-pre-line">{{ owner.address }}</dd>
+        </div>
+        {% endif %}
+        {% if owner.notes %}
+        <div class="pane-row">
+            <dt class="pane-row-label">Notes</dt>
+            <dd class="pane-row-value font-normal">{{ owner.notes }}</dd>
+        </div>
+        {% endif %}
+    </dl>
+    {% if owner.email_bounced_at %}
+    <p class="mt-2 text-xs text-error-red">Emails to this address are not arriving ({{ owner.email_bounce_reason|default:"bounced" }}, {{ owner.email_bounced_at|date:"j M Y" }}). Nothing more is sent until the address changes.</p>
+    {% endif %}
+    {% if owner.email and not owner.email_health_reminders %}
+    <p class="mt-2 text-xs text-sage">Health reminder emails are off.</p>
+    {% endif %}
+    {% else %}
+    <p class="text-sm text-sage py-2">No contact details recorded.</p>
+    {% endif %}
+</section>
+
+<!-- ── Horses ── -->
+<section class="pane-section">
+    <div class="pane-section-head">
+        <h3 class="pane-section-title">Horses on the yard</h3>
+        {% if feature_access.horses.view and horses %}
+        <a href="{% url 'horse_list' %}?owner={{ owner.pk }}" class="pane-section-action">See in the list</a>
+        {% endif %}
+    </div>
+    {% if horses %}
+    <ul class="pane-items">
+        {% for horse in horses %}
+        <li class="pane-item">
+            <span class="min-w-0">
+                {% if feature_access.horses.view %}
+                <a href="{% url 'horse_detail' horse.pk %}" class="pane-item-title">{{ horse.name }}</a>
+                {% else %}
+                <span class="pane-item-title">{{ horse.name }}</span>
+                {% endif %}
+                <span class="pane-item-note">{% if horse.age %}{{ horse.age }}yo{% endif %}{% if horse.age and horse.color %} · {% endif %}{{ horse.get_color_display }}{% if horse.sex %}{% if horse.age or horse.color %} · {% endif %}{{ horse.get_sex_display }}{% endif %}{% if horse.share_pct and horse.share_pct < 100 %} · {{ horse.share_pct|floatformat:"-2" }}% share{% endif %}</span>
+            </span>
+            <span class="shrink-0 text-xs text-sage text-right">{% with placement=horse.active_placements.0 %}{% if placement %}{{ placement.location.name }}{% else %}Not placed{% endif %}{% endwith %}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-sage py-2">No horses on the yard.</p>
+    {% endif %}
+    {% if departed_horses %}
+    <p class="text-xs text-sage pt-1">{{ departed_horses|length }} departed horse{{ departed_horses|length|pluralize }} on their page.</p>
+    {% endif %}
+</section>
+
+<!-- ── Unbilled charges: only for roles with charges access ── -->
+{% if money.unbilled is not None and extra_charges %}
+<section class="pane-section">
+    <div class="pane-section-head">
+        <h3 class="pane-section-title">Unbilled charges</h3>
+        <span class="text-xs text-sage tabular-nums">{{ money.unbilled|gbp }}</span>
+    </div>
+    <ul class="pane-items">
+        {% for charge in extra_charges %}
+        <li class="pane-item">
+            <span class="min-w-0">
+                <span class="pane-item-title">{{ charge.description|default:charge.get_charge_type_display }}</span>
+                <span class="pane-item-note">{{ charge.date|date:"j M Y" }} · {{ charge.horse.name }} · {{ charge.get_charge_type_display }}</span>
+            </span>
+            <span class="pane-item-end">{{ charge.amount|gbp }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% if extra_charge_more %}
+    <p class="text-xs text-sage pt-1">{{ extra_charge_more }} more on their page.</p>
+    {% endif %}
+</section>
+{% endif %}
+
+<!-- ── Recent invoices: only for roles with invoices access ── -->
+{% if feature_access.invoices.view %}
+<section class="pane-section">
+    <div class="pane-section-head">
+        <h3 class="pane-section-title">Recent invoices</h3>
+        {% if invoice_count > invoices|length %}
+        <a href="{% url 'invoice_list' %}?owner={{ owner.pk }}" class="pane-section-action">All {{ invoice_count }}</a>
+        {% endif %}
+    </div>
+    {% if invoices %}
+    <ul class="pane-items">
+        {% for invoice in invoices %}
+        <li class="pane-item">
+            <span class="min-w-0">
+                <a href="{% url 'invoice_detail' invoice.pk %}" class="pane-item-title">{{ invoice.invoice_number }}</a>
+                <span class="pane-item-note">{% if invoice.period_start.year == invoice.period_end.year %}{{ invoice.period_start|date:"j M" }}{% else %}{{ invoice.period_start|date:"j M Y" }}{% endif %} – {{ invoice.period_end|date:"j M Y" }} · due {{ invoice.due_date|date:"j M Y" }}</span>
+            </span>
+            <span class="shrink-0 flex flex-col items-end gap-1">
+                <span class="pane-item-end">{{ invoice.total|gbp }}</span>
+                <span class="{{ invoice.status_badge_class }} whitespace-nowrap">{{ invoice.status_label }}</span>
+            </span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-sage py-2">No invoices yet.</p>
+    {% endif %}
+</section>
+{% endif %}
+
+<!-- ── Documents ── -->
+<section class="pane-section">
+    <div class="pane-section-head">
+        <h3 class="pane-section-title">Documents</h3>
+        {% if feature_access.owners.full %}
+        <a href="{% url 'document_create' %}?owner={{ owner.pk }}" hx-get="{% url 'document_create' %}?owner={{ owner.pk }}"
+           hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Add a document for {{ owner.name }}" class="pane-section-action">+ Add</a>
+        {% endif %}
+    </div>
+    {% if documents %}
+    <ul class="divide-y divide-light-sage">
+        {% for document in documents %}
+        <li class="flex items-center gap-3 py-2">
+            <span class="pane-doc-icon" aria-hidden="true">DOC</span>
+            <span class="min-w-0 flex-1">
+                <a href="{{ document.file.url }}" target="_blank" rel="noopener" hx-boost="false" class="block text-sm font-medium text-charcoal hover:text-forest truncate">{{ document.title }}</a>
+                <span class="block text-xs text-sage truncate">
+                    {{ document.get_doc_type_display }} · Added {{ document.uploaded_at|date:"j M Y" }}{% if document.expiry_date %} · {% if document.is_expired %}<span class="text-error-red">Expired {{ document.expiry_date|date:"j M Y" }}</span>{% else %}Expires {{ document.expiry_date|date:"j M Y" }}{% endif %}{% endif %}
+                </span>
+            </span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-sage py-2">Nothing on file.</p>
+    {% endif %}
+</section>

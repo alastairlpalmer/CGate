@@ -1829,6 +1829,57 @@ class UserRole(models.Model):
         return f"{self.user} → {self.role}"
 
 
+class MFAExemption(models.Model):
+    """A user who may use the app without two-step sign-in, even when
+    their role needs it (``core.mfa.mfa_required``).
+
+    Only an Administrator can add or remove one, never for themselves, and
+    each change goes in the audit trail. The row existing is the exemption.
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='mfa_exemption',
+    )
+    granted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='+',
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"{self.user} (exempt from two-step sign-in)"
+
+
+class GoogleIdentity(models.Model):
+    """The Google account a user signs in with. One for each user.
+
+    Made when a signed-in user connects Google on their Account Security
+    page (``core/views/google.py``). Sign-in looks the row up by ``sub``,
+    Google's permanent ID for the account, never by email: Google says an
+    account's email address can change and the ``sub`` cannot.
+
+    No Google token is stored. Linking and unlinking go in the audit trail
+    as ``AuditEvent`` rows.
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='google_identity',
+    )
+    sub = models.CharField(max_length=255, unique=True)
+    # Copies from the ID token at the time of linking, for display only.
+    email = models.EmailField()
+    hosted_domain = models.CharField(max_length=255, blank=True)
+    linked_at = models.DateTimeField(default=timezone.now)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user} → Google {self.email}"
+
+
 class BackupRun(models.Model):
     """One attempt at an off-site backup, successful or not.
 
@@ -1980,6 +2031,11 @@ class AuditEvent(models.Model):
         MFA_RESET = 'mfa_reset', 'Two-step sign-in turned off for someone else'
         MFA_RECOVERY_CODE_USED = 'mfa_recovery_code_used', 'Recovery code used'
         MFA_RECOVERY_CODES_RENEWED = 'mfa_recovery_codes_renewed', 'New recovery codes made'
+        MFA_EXEMPTED = 'mfa_exempted', 'Excused from two-step sign-in'
+        MFA_EXEMPTION_REMOVED = 'mfa_exemption_removed', 'No longer excused from two-step sign-in'
+        GOOGLE_LINKED = 'google_linked', 'Google account connected'
+        GOOGLE_UNLINKED = 'google_unlinked', 'Google account disconnected'
+        GOOGLE_SIGN_IN_REFUSED = 'google_sign_in_refused', 'Google sign-in refused'
         OWNER_EXPORTED = 'owner_exported', "Owner's personal data exported"
         OWNER_ERASED = 'owner_erased', "Owner's contact details erased"
         OWNER_ANONYMISED = 'owner_anonymised', 'Owner anonymised'

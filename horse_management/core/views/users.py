@@ -86,6 +86,17 @@ def _is_manager(user):
     return has_feature_access(user, 'users', LEVEL_FULL)
 
 
+def _can_be_invited(user):
+    """True when an invitation is the way in for ``user``.
+
+    That is an active account with an email address and no password: a
+    new user who has not accepted yet, or whose link has expired. The
+    password reset email is no help to them, because Django sends none to
+    an account without a password.
+    """
+    return bool(user.is_active and user.email and not user.has_usable_password())
+
+
 @feature_required('users')
 def user_create(request):
     """Create a login account. The email address is the sign-in identifier."""
@@ -203,6 +214,36 @@ def user_update(request, pk):
                 messages.success(request, f"Password updated for {target.email or target.username}.")
                 return redirect('app_settings')
 
+        elif 'resend_invite' in request.POST:
+            if not _can_be_invited(target):
+                messages.error(request, "This user has a password already, or the account is not active. No invitation was sent.")
+            else:
+                from .account import send_invite
+
+                # A new unusable password changes the hash that every
+                # invitation token is made from, so links sent earlier
+                # stop working. Only the newest email opens the account.
+                target.set_unusable_password()
+                target.save(update_fields=['password'])
+                try:
+                    send_invite(request, target)
+                except Exception:
+                    logger.exception('Invitation email to user %s failed.', target.pk)
+                    messages.error(
+                        request,
+                        "The invitation email could not be sent. Check the email settings, then try again.",
+                    )
+                else:
+                    audit.record(
+                        AuditEvent.Action.USER_INVITED, request=request, target=target,
+                        detail='Invitation sent again',
+                    )
+                    messages.success(
+                        request,
+                        f"A new invitation is on its way to {target.email}. Links sent before no longer work.",
+                    )
+            return redirect('user_update', pk=target.pk)
+
         elif 'unlock' in request.POST:
             cleared = clear_lockout(target)
             if cleared:
@@ -243,6 +284,28 @@ def user_update(request, pk):
                 )
             return redirect('user_update', pk=target.pk)
 
+        elif 'mfa_exempt' in request.POST:
+            exempt = request.POST.get('mfa_exempt') == '1'
+            if is_self:
+                messages.error(request, "You can't change your own two-step sign-in exemption. Ask another Administrator.")
+            elif not mfa.is_administrator(request.user):
+                messages.error(request, "Only an Administrator can change who must use two-step sign-in.")
+            elif mfa.set_exempt(target, exempt, granted_by=request.user):
+                audit.record(
+                    AuditEvent.Action.MFA_EXEMPTED if exempt else AuditEvent.Action.MFA_EXEMPTION_REMOVED,
+                    request=request, target=target,
+                )
+                who = target.email or target.username
+                if exempt:
+                    messages.success(request, f"{who} no longer needs two-step sign-in.")
+                else:
+                    messages.success(
+                        request,
+                        f"{who} is no longer excused from two-step sign-in."
+                        + (" Their role needs it, so they must set it up when they next sign in." if mfa.mfa_required(target) else ""),
+                    )
+            return redirect('user_update', pk=target.pk)
+
         elif 'toggle_active' in request.POST:
             if is_self:
                 messages.error(request, "You can't deactivate your own account.")
@@ -267,6 +330,7 @@ def user_update(request, pk):
         'object': target,
         'is_self': is_self,
         'locked_out': is_locked_out(target),
+        'can_be_invited': _can_be_invited(target),
         'mfa': mfa.mfa_status(target),
         'can_reset_mfa': mfa.is_administrator(request.user) and not is_self,
         'history_entries': _user_history(target),

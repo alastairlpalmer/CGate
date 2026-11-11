@@ -10,6 +10,7 @@ is a no-op when ``POSTHOG_API_KEY`` is unset.
 
 from __future__ import annotations
 
+from django.contrib.auth import BACKEND_SESSION_KEY
 from django.contrib.auth.signals import (
     user_logged_in,
     user_logged_out,
@@ -46,7 +47,13 @@ def on_user_logged_in_set_up_session(sender, request, user, **kwargs):
 def audit_signed_in(sender, request, user, **kwargs):
     from core import audit
     from core.models import AuditEvent
-    audit.record(AuditEvent.Action.SIGNED_IN, request=request, actor=user, target=user)
+    # login() has put the backend's name in the session by now.
+    session = getattr(request, 'session', None)
+    backend = session.get(BACKEND_SESSION_KEY, '') if session is not None else ''
+    audit.record(
+        AuditEvent.Action.SIGNED_IN, request=request, actor=user, target=user,
+        detail='Google' if backend.endswith('.GoogleBackend') else '',
+    )
 
 
 @receiver(user_logged_out, dispatch_uid='core.audit.user_logged_out')

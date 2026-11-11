@@ -1,0 +1,60 @@
+{% comment %}
+The preview pane of a list split view: a column beside the list from `lg`,
+a bottom sheet below it (static/js/split_view.js, and the "List split
+view" block in static/css/input.css).
+
+Context:
+  pane_id — the pane's id, the same as data-split-pane on the split view.
+            The body, the counter, the arrows and "Open full page" are
+            named after it, which is how the script finds them.
+  noun    — what one row is ("owner", "invoice"), for the labels.
+
+The chrome stays put across swaps — only the body is replaced when another
+row is picked — so the counter and the arrows never flicker.
+
+hx-select and hx-push-url sit on the pane, not on a trigger: split_view.js
+names this element as the request's source, and htmx reads both off it.
+Without that the request inherits the boosted body's hx-push-url="true"
+and the address bar becomes the preview URL — which then breaks the Back
+button and the pop-up sheet's in-place refresh, since that refetches
+whatever the address bar says.
+{% endcomment %}
+<aside id="{{ pane_id }}" class="split-view-pane" hidden
+       hx-select="unset" hx-push-url="false" hx-swap="innerHTML"
+       aria-label="{{ noun|capfirst }} preview">
+    {% comment %}Desktop only: drag to give the list or the pane more room.
+    panel_resize.js remembers the width per page in localStorage.{% endcomment %}
+    <div class="resize-bar" data-resize-bar role="separator"
+         aria-orientation="vertical" aria-label="Resize the preview" aria-valuemin="336"
+         tabindex="0" title="Drag to resize · double-click to reset"></div>
+    <div class="split-view-handle" aria-hidden="true"><span></span></div>
+    <div class="split-view-chrome">
+        <button type="button" class="split-view-step" id="{{ pane_id }}-prev"
+                data-split-action="prev" aria-label="Previous {{ noun }}">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5"/>
+            </svg>
+        </button>
+        <button type="button" class="split-view-step" id="{{ pane_id }}-next"
+                data-split-action="next" aria-label="Next {{ noun }}">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+            </svg>
+        </button>
+        <span class="split-view-counter" id="{{ pane_id }}-counter" aria-live="polite"></span>
+        <a href="#" id="{{ pane_id }}-open-full" class="ml-auto text-xs font-medium text-forest hover:text-forest-light">Open full page</a>
+        <button type="button" class="split-view-step" data-split-action="close" aria-label="Close the preview">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
+    {% comment %}The body puts the page's own navigation settings back
+    for what is inside it. The pane above turns them off for its own
+    request, and a link in the record (an owner, a horse) inherited that:
+    the page it went to was put inside this page, and the address bar did
+    not change.{% endcomment %}
+    <div class="split-view-body" id="{{ pane_id }}-body"
+         hx-select="#main-content" hx-push-url="true" hx-swap="outerHTML show:window:top transition:true"></div>
+    <p class="split-view-hint">&uarr; &darr; or J K to flick through &middot; Esc to close</p>
+</aside>

@@ -266,6 +266,110 @@ class InviteTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(User.objects.filter(email='new@example.com').exists())
 
+    # ── Sending the invitation again (docs/GOOGLE_SIGN_IN_PLAN.md, phase 1) ──
+
+    def _resend(self, user):
+        return self.client.post(reverse('user_update', args=[user.pk]), {'resend_invite': '1'}, follow=True)
+
+    def test_invitation_email_does_not_point_at_password_reset(self):
+        # Django sends no reset email to an account without a password, so
+        # "use Forgot your password?" was a dead end for an invited user.
+        self._create()
+        body = mail.outbox[0].body
+        self.assertNotIn('Forgot your password', body)
+        self.assertIn('ask Ada to send a new invitation', body)
+
+    def test_password_reset_sends_nothing_to_an_invited_user(self):
+        # The reason the advice above was wrong. If Django ever changes
+        # this, the texts can offer the reset form again.
+        self._create()
+        mail.outbox.clear()
+        Client().post(reverse('password_reset'), {'email': 'new@example.com'})
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_expired_invitation_page_offers_sign_in_not_reset(self):
+        self._create()
+        user = User.objects.get(email='new@example.com')
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        response = Client().get(reverse('invite_confirm', args=[uid, 'bad-token']))
+        self.assertContains(response, 'expired or was already used')
+        self.assertContains(response, 'send a new invitation')
+        self.assertContains(response, reverse('login'))
+        self.assertNotContains(response, reverse('password_reset'))
+
+    def test_expired_reset_page_still_offers_a_new_reset_link(self):
+        user = make_user_with_access('resetter', horses='view')
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        response = Client().get(reverse('password_reset_confirm', args=[uid, 'bad-token']))
+        self.assertContains(response, reverse('password_reset'))
+
+    def test_user_page_offers_resend_only_without_a_password(self):
+        self._create()
+        invited = User.objects.get(email='new@example.com')
+        page = self.client.get(reverse('user_update', args=[invited.pk]))
+        self.assertContains(page, 'name="resend_invite"')
+        own_page = self.client.get(reverse('user_update', args=[self.admin.pk]))
+        self.assertNotContains(own_page, 'name="resend_invite"')
+
+    def test_resend_sends_a_new_link_and_ends_the_old_one(self):
+        self._create()
+        old_link = self._invite_link()
+        invited = User.objects.get(email='new@example.com')
+        mail.outbox.clear()
+
+        response = self._resend(invited)
+        self.assertContains(response, 'A new invitation is on its way')
+        new_link = self._invite_link()
+        self.assertNotEqual(new_link, old_link)
+
+        self.assertContains(Client().get(old_link), 'expired or was already used')
+        guest = Client()
+        first = guest.get(new_link)
+        self.assertEqual(first.status_code, 302)
+        new_pw = 'my-own-long-password'
+        guest.post(first.url, {'new_password1': new_pw, 'new_password2': new_pw})
+        self.assertTrue(User.objects.get(pk=invited.pk).check_password(new_pw))
+
+    def test_resend_is_recorded_in_the_audit_trail(self):
+        from core.models import AuditEvent
+
+        self._create()
+        invited = User.objects.get(email='new@example.com')
+        self._resend(invited)
+        events = AuditEvent.objects.filter(
+            action=AuditEvent.Action.USER_INVITED, target_user=invited,
+        )
+        self.assertEqual(events.count(), 2)
+        self.assertTrue(events.filter(detail='Invitation sent again').exists())
+
+    def test_resend_is_refused_when_the_user_has_a_password(self):
+        user = make_user_with_access('settled', password=PW, horses='view')
+        user.email = 'settled@example.com'
+        user.save(update_fields=['email'])
+        response = self._resend(user)
+        self.assertContains(response, 'No invitation was sent')
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertTrue(User.objects.get(pk=user.pk).check_password(PW))
+
+    def test_resend_is_refused_for_a_deactivated_user(self):
+        self._create()
+        invited = User.objects.get(email='new@example.com')
+        invited.is_active = False
+        invited.save(update_fields=['is_active'])
+        mail.outbox.clear()
+        self._resend(invited)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_resend_needs_user_management_access(self):
+        self._create()
+        invited = User.objects.get(email='new@example.com')
+        mail.outbox.clear()
+        groom = make_user_with_access('groom', horses='full')
+        other = Client()
+        other.force_login(groom)
+        other.post(reverse('user_update', args=[invited.pk]), {'resend_invite': '1'})
+        self.assertEqual(len(mail.outbox), 0)
+
 
 # ── Two-step sign-in ─────────────────────────────────────────────────────────
 
@@ -427,6 +531,47 @@ class MFARequiredForAdminsTests(TestCase):
         admin = make_admin('emergency')
         self.client.force_login(admin)
         self.assertEqual(self.client.get(reverse('dashboard')).status_code, 200)
+
+
+@override_settings(MFA_REQUIRED_FOR_ADMINS=True)
+class MFAExemptionTests(TestCase):
+    """An Administrator excuses one user from two-step sign-in."""
+
+    def setUp(self):
+        self.target = make_admin('noapp', email='noapp@example.com')
+        self.admin = make_admin('granter', email='granter@example.com')
+        device, _ = enrol(self.admin)
+        self.client.force_login(self.admin)
+        self.client.post(reverse('mfa_verify'), {'code': totp_code(device, 1)})
+
+    def test_exempt_administrator_is_not_sent_to_setup(self):
+        self.client.post(reverse('user_update', args=[self.target.pk]), {'mfa_exempt': '1'})
+        self.assertTrue(mfa.is_exempt(self.target))
+        self.assertFalse(mfa.mfa_required(self.target))
+        other = Client()
+        other.force_login(self.target)
+        self.assertEqual(other.get(reverse('dashboard')).status_code, 200)
+        from core.models import AuditEvent
+        self.assertTrue(AuditEvent.objects.filter(
+            action=AuditEvent.Action.MFA_EXEMPTED, target_user=self.target).exists())
+
+    def test_removing_the_exemption_requires_it_again(self):
+        mfa.set_exempt(self.target, True)
+        self.client.post(reverse('user_update', args=[self.target.pk]), {'mfa_exempt': '0'})
+        self.assertFalse(mfa.is_exempt(self.target))
+        self.assertTrue(mfa.mfa_required(self.target))
+
+    def test_cannot_exempt_yourself(self):
+        self.client.post(reverse('user_update', args=[self.admin.pk]), {'mfa_exempt': '1'})
+        self.assertFalse(mfa.is_exempt(self.admin))
+
+    def test_user_manager_who_is_not_an_administrator_cannot(self):
+        user = make_user_with_access('plain', dashboard='full')
+        manager = make_user_with_access('manager2', users='full', settings='full')
+        client = Client()
+        client.force_login(manager)
+        client.post(reverse('user_update', args=[user.pk]), {'mfa_exempt': '1'})
+        self.assertFalse(mfa.is_exempt(user))
 
 
 class AdminMFAResetTests(TestCase):

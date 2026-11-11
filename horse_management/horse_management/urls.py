@@ -9,6 +9,7 @@ from django.urls import include, path
 
 from core.views import account as account_views
 from core.views import audit_log as audit_log_views
+from core.views import google as google_views
 from core.views import database_check as database_check_views
 from core.views import background_tasks as background_tasks_views
 from core.views import well_known as well_known_views
@@ -73,6 +74,10 @@ urlpatterns = [
     path('accounts/two-step/setup/', account_views.mfa_setup, name='mfa_setup'),
     path('accounts/two-step/recovery-codes/', account_views.mfa_new_recovery_codes, name='mfa_new_recovery_codes'),
     path('accounts/two-step/off/', account_views.mfa_disable, name='mfa_disable'),
+    # Sign in with Google. 404 unless GOOGLE_OAUTH_CLIENT_ID is set.
+    path('accounts/google/start/', google_views.google_start, name='google_start'),
+    path('accounts/google/callback/', google_views.google_callback, name='google_callback'),
+    path('accounts/google/disconnect/', google_views.google_disconnect, name='google_disconnect'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('', include('core.urls')),
     path('invoicing/', include('invoicing.urls')),
