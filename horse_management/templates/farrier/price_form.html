@@ -8,11 +8,11 @@
     <label class="block">
         <span class="text-sm text-sage">Name on the button</span>
         <input type="text" name="name" value="{{ values.name }}" maxlength="120" required
-               class="mt-1 w-full rounded-lg border border-light-sage px-3 py-2" placeholder="For example: Full set">
+               class="mt-1 w-full min-h-[44px] rounded-lg border border-light-sage px-3 py-2" placeholder="For example: Full set">
     </label>
     <label class="block">
         <span class="text-sm text-sage">Work type (what the yard's records show)</span>
-        <select name="work_done" class="mt-1 w-full rounded-lg border border-light-sage px-3 py-2 bg-white">
+        <select name="work_done" class="mt-1 w-full min-h-[44px] rounded-lg border border-light-sage px-3 py-2 bg-white">
             <option value=""{% if not values.work_done %} selected{% endif %}>Other work</option>
             {% for value, label in work_types %}
             <option value="{{ value }}"{% if values.work_done == value %} selected{% endif %}>{{ label }}</option>
@@ -22,10 +22,10 @@
     <label class="block">
         <span class="text-sm text-sage">Price (£)</span>
         <input type="text" name="price" value="{{ values.price }}" inputmode="decimal" required
-               class="mt-1 w-full rounded-lg border border-light-sage px-3 py-2" placeholder="95.00">
+               class="mt-1 w-full min-h-[44px] rounded-lg border border-light-sage px-3 py-2" placeholder="95.00">
     </label>
     <p class="text-sm text-sage">A new price is used on visits from now on. Visits you already sent keep their price.</p>
     <button type="submit" class="w-full rounded-lg bg-saddle text-white font-heading font-bold py-3">Save price</button>
 </form>
-<a href="{% url 'farrier:price_list' %}" class="block text-center text-forest underline">Back to my prices</a>
+<a href="{% url 'farrier:price_list' %}" class="block text-center text-forest underline py-3">Back to my prices</a>
 {% endblock %}

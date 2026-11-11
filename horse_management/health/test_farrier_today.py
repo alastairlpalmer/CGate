@@ -124,6 +124,19 @@ class HorseListTests(TodayBase):
         response = self.client.get(reverse('farrier:today'), {'open': self.bramble.pk})
         self.assertContains(response, reverse('farrier:horse_add', args=[self.bramble.pk]))
 
+    def test_other_horses_are_folded_while_horses_are_due(self):
+        response = self.client.get(reverse('farrier:today'))
+        self.assertFalse(response.context['others_open'])
+
+    def test_other_horses_open_when_nothing_is_due(self):
+        # A first visit: no farrier records, so no horse is due. The list
+        # must not look empty (step 7 phone check).
+        FarrierVisit.objects.all().delete()
+        response = self.client.get(reverse('farrier:today'))
+        self.assertEqual(response.context['due_horses'], [])
+        self.assertTrue(response.context['others_open'])
+        self.assertContains(response, '<details class="space-y-2" open>', html=False)
+
     def test_owner_names_never_shown(self):
         response = self.client.get(reverse('farrier:today'))
         self.assertNotContains(response, 'Jo Bloggs')

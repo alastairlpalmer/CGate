@@ -165,6 +165,11 @@ class ProviderPortalMiddleware:
 
     Must come after MFAMiddleware, so a farrier who still owes a code is
     held at the code page first. See docs/FARRIER_PAGE_PLAN.md, section 4.
+
+    It also gives such a login a longer idle window
+    (``PROVIDER_SESSION_IDLE_AGE``), so the farrier does not type a
+    password in a field (section 9). The absolute cap from sign-in
+    (``SESSION_ABSOLUTE_AGE``) still applies.
     """
 
     PORTAL_PREFIX = '/farrier/'
@@ -177,19 +182,27 @@ class ProviderPortalMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if self._must_redirect(request):
-            return self._redirect(request)
+        from core.permissions import is_provider_only
+
+        user = getattr(request, 'user', None)
+        if user is not None and is_provider_only(user):
+            self._extend_session(request)
+            if self._must_redirect(request):
+                return self._redirect(request)
         return self.get_response(request)
+
+    @staticmethod
+    def _extend_session(request):
+        from django.conf import settings
+
+        age = settings.PROVIDER_SESSION_IDLE_AGE
+        if request.session.get_expiry_age() != age:
+            request.session.set_expiry(age)
 
     def _must_redirect(self, request):
         from django.conf import settings
         from django.urls import reverse
 
-        from core.permissions import is_provider_only
-
-        user = getattr(request, 'user', None)
-        if user is None or not is_provider_only(user):
-            return False
         path = request.path
         if path.startswith(self.PORTAL_PREFIX) or path.startswith(settings.STATIC_URL):
             return False

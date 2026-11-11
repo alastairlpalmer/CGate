@@ -2,7 +2,7 @@
 
 **Goal:** Our farrier records each visit on a phone in under 2 minutes. Yardway bills each owner on the monthly invoice. The yard pays the farrier one amount each month. Nobody types the same data twice.
 **Scope:** One farrier, our own yard, our own horses. About 8 weeks of use after the build.
-**Status:** Steps 1 to 6 built (farrier page complete; yard side: visit page, Mark as checked, monthly statement and payment, QR code sheet, login link on the provider form). Steps 7 (phone check at the yard) and 8 (set-up with the farrier) are next.
+**Status:** Steps 1 to 6 built. Step 7: the simulated phone check is done and its fixes are in (section 10a); the check on a real phone at the yard is next. Then step 8 (set-up with the farrier).
 **Build estimate:** 7 to 9 working days, plus 1 day of set-up with the farrier.
 
 ---
@@ -190,6 +190,33 @@ We do not change `ExtraCharge` or the invoice code. The farrier lines use the sa
 | 8 | Set-up with the farrier: put the QR code on the tack room door, first sign-in, add the page to the home screen, enter the price list, a 10-minute show-and-try at the yard. | 1 (with the farrier) |
 
 Before each push: `ruff check .`, `python manage.py makemigrations --check --dry-run`, and the test suite, as in the README.
+
+## 10a. Step 7: phone check results
+
+**Simulated phones** (`horse_management/tools/qa/farrier_phone_qa.js` on a `farrier_seed.py` yard): iPhone SE (320 px wide) and iPhone 13 (390 px). 12 screens each: sign-in, Today, search, horse panel, Today with lines, Review, Finished, My visits, a visit, Change a line, My prices, Add a price. Then a staff page, to check the fence.
+
+| Found | Fixed |
+|---|---|
+| A first visit (no farrier records yet) showed "No horses due" and every horse folded under "Other horses". The page looked empty. | "Other horses" opens when no horse is due. |
+| The location filter was cut to "All pla" on a small phone. | Search and the filter are now one full-width row each. |
+| Tap targets under 44 px: Sign out, Change, Hide/Show, Remove, Back links, the two fold-out headings, the note, price and work fields. | All at least 44 px high. |
+| The farrier was signed out after 7 days without use, so a password at most visits. | A farrier login now idles for 30 days (`PROVIDER_SESSION_IDLE_AGE`). The 30-day cap from sign-in stays. |
+
+After the fixes: no screen is wider than the phone, no tap target is under 44 px, no server errors, and a staff page sends the farrier back to `/farrier/`.
+
+`docs/DATA_RETENTION.md` now lists the farrier as a recipient of personal data and says what they see.
+
+**Still to do on a real phone at the yard** (the simulation cannot test these):
+
+1. Scan the printed QR code with the phone camera. It opens the sign-in page.
+2. Sign in, then add the page to the home screen (Safari: Share, Add to Home Screen; Chrome: menu, Add to Home screen). Open it from the icon.
+3. In the place with the weakest signal at the yard: tap a horse, tap a price. Note how long the tick takes to show.
+4. Do 5 horses. Time it from the first tap to Finish visit (target: under 2 minutes).
+5. Read the screen in bright daylight, and tap with gloves on, if the farrier wears them.
+6. Check the summary email arrives on the phone.
+7. Next day, open the icon again: it must not ask for the password.
+
+Write down anything slow or hard to read. Small fixes go in before step 8.
 
 ## 11. The test: how we measure it
 

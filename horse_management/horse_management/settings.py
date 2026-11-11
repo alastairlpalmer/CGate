@@ -775,6 +775,12 @@ PASSWORD_RESET_TIMEOUT = env.int('PASSWORD_RESET_TIMEOUT', default=60 * 60)
 # sign-in, however busy it is (core.middleware.AbsoluteSessionLifetimeMiddleware).
 SESSION_ABSOLUTE_AGE = env.int('SESSION_ABSOLUTE_AGE', default=30 * 24 * 60 * 60)
 
+# Idle window for a Farrier-role login (core.middleware.ProviderPortalMiddleware).
+# The farrier comes to the yard every few weeks and should not type a
+# password in a field (docs/FARRIER_PAGE_PLAN.md, section 9). The absolute
+# cap above still signs the session out 30 days after sign-in.
+PROVIDER_SESSION_IDLE_AGE = env.int('PROVIDER_SESSION_IDLE_AGE', default=30 * 24 * 60 * 60)
+
 # Password reset requests (core.views.account). The form is public, so
 # without a limit anyone can make it send mail to a staff address over and
 # over. Per address: a few requests an hour is plenty for a real person.

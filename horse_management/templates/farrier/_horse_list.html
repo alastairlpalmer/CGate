@@ -8,7 +8,7 @@
         {% endfor %}
     </section>
     <details class="space-y-2"{% if others_open or open_pk %} open{% endif %}>
-        <summary class="cursor-pointer text-sm uppercase tracking-wide text-sage py-1">Other horses ({{ other_horses|length }})</summary>
+        <summary class="cursor-pointer text-sm uppercase tracking-wide text-sage py-3">Other horses ({{ other_horses|length }})</summary>
         <div class="space-y-2 pt-2">
             {% for horse in other_horses %}
             {% include "farrier/_horse_row.html" %}

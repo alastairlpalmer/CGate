@@ -19,26 +19,26 @@
     {% endif %}
     <label class="block text-sm">
         <span class="text-sage">Note (optional)</span>
-        <input type="text" name="note" maxlength="500" class="mt-1 w-full rounded-lg border border-light-sage px-3 py-2">
+        <input type="text" name="note" maxlength="500" class="mt-1 w-full min-h-[44px] rounded-lg border border-light-sage px-3 py-2">
     </label>
     <label class="block text-sm">
         <span class="text-sage">Different price (optional)</span>
-        <input type="text" name="price" inputmode="decimal" class="mt-1 w-full rounded-lg border border-light-sage px-3 py-2" placeholder="Leave empty to use the button's price">
+        <input type="text" name="price" inputmode="decimal" class="mt-1 w-full min-h-[44px] rounded-lg border border-light-sage px-3 py-2" placeholder="Leave empty to use the button's price">
     </label>
     <details class="text-sm">
-        <summary class="cursor-pointer text-forest font-semibold py-1">Other or remedial work</summary>
+        <summary class="cursor-pointer text-forest font-semibold py-3">Other or remedial work</summary>
         <div class="mt-2 grid grid-cols-2 gap-2">
-            <select name="work_done" class="rounded-lg border border-light-sage px-2 py-2 bg-white" aria-label="Work done">
+            <select name="work_done" class="min-h-[44px] rounded-lg border border-light-sage px-2 py-2 bg-white" aria-label="Work done">
                 <option value="">Work done…</option>
                 {% for value, label in work_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
             </select>
-            <button type="submit" name="item" value="" class="rounded-lg bg-saddle text-white font-semibold px-2 py-2">Save with the price above</button>
+            <button type="submit" name="item" value="" class="min-h-[44px] rounded-lg bg-saddle text-white font-semibold px-2 py-2">Save with the price above</button>
         </div>
     </details>
 </form>
 <form method="post" action="{% url 'farrier:line_remove' visit.pk line.pk %}">
     {% csrf_token %}
-    <button type="submit" class="w-full text-error-red underline py-2">Remove {{ line.horse.name }} from this visit</button>
+    <button type="submit" class="w-full text-error-red underline py-3">Remove {{ line.horse.name }} from this visit</button>
 </form>
-<a href="{% url 'farrier:visit_detail' visit.pk %}" class="block text-center text-forest underline">Back to the visit</a>
+<a href="{% url 'farrier:visit_detail' visit.pk %}" class="block text-center text-forest underline py-3">Back to the visit</a>
 {% endblock %}
