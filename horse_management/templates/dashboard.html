@@ -17,7 +17,10 @@ it does not (partials/dashboard/site_tools.html).{% endcomment %}
      @near-you:visible="placeSiteTools($event.detail)">
 
     {# ── A. Headline: the greeting, with the yard's state as the subtext ── #}
-    <div class="page-header zone-enter" style="--i:0">
+    {# relative z-30: each zone's entrance animation makes it a layer of its #}
+    {# own, and later zones paint over earlier ones. Without this the site #}
+    {# menu, which opens downwards from this header, opened behind the cards. #}
+    <div class="page-header zone-enter relative z-30" style="--i:0">
         <div class="min-w-0">
             <h1 class="page-title">{{ greeting }}, {{ user.first_name|default:user.username }}</h1>
             <p class="page-subtitle">
