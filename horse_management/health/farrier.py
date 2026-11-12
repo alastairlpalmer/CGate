@@ -223,10 +223,18 @@ def horse_rows(provider, *, search='', location_id=None, today=None):
         .only('pk', 'name', 'photo_thumb', 'photo')
         .order_by('name')
     )
+    # The stable beside the barn's name: the farrier finds the horse by it.
+    from core.stables import annotate_stable
+    horses = annotate_stable(horses)
     if search:
         horses = horses.filter(name__icontains=search.strip())
     if location_id:
         horses = horses.filter(location_id=location_id)
+        # One barn on the screen: list it in the order you walk it, the
+        # horses with no stable last. (Nothing changes for a field, where
+        # no horse has a stable position.)
+        from django.db.models import F
+        horses = horses.order_by(F('stable_position').asc(nulls_last=True), 'name')
 
     lines = {}
     if visit is not None:

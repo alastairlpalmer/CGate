@@ -9,7 +9,13 @@ owner, rate and expected departure sit behind "More options".
 {% endcomment %}
 <form method="post" action="{% url 'horse_move' horse.pk %}"
       {% if in_popup %}hx-post="{% url 'horse_move' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"{% endif %}
-      x-data="{ pickDate: {% if form.move_date.value and form.move_date.value|stringformat:'s' != today|date:'Y-m-d' %}true{% else %}false{% endif %} }">
+      x-data="{ pickDate: {% if form.move_date.value and form.move_date.value|stringformat:'s' != today|date:'Y-m-d' %}true{% else %}false{% endif %}, rateHint: '', rateTouched: false }"
+      {% comment %}The location select asks the server about the rate when it changes
+      (core.views.stables.stable_options answers with an HX-Trigger). A move
+      into a barn on a grazing rate, or out of one on a stabling rate, opens "More options",
+      says so, and sets the obvious rate — unless the rate was already
+      chosen by hand, which is never overwritten.{% endcomment %}
+      @rate-hint="rateHint = $event.detail.text || ''; if (rateHint) { $refs.more.open = true } if (!rateTouched) { $refs.rate.value = $event.detail.rate || '' }">
     {% csrf_token %}
     {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
 
@@ -70,7 +76,7 @@ owner, rate and expected departure sit behind "More options".
             {% endif %}
         </div>
 
-        <details class="group"
+        <details class="group" x-ref="more"
                  {% if form.new_owner.value or form.new_rate_type.value or form.expected_departure.value or form.new_owner.errors or form.new_rate_type.errors or form.expected_departure.errors %}open{% endif %}>
             <summary class="inline-flex items-center gap-1.5 min-h-[44px] sm:min-h-0 text-sm font-medium text-forest cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
                 <svg class="w-4 h-4 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
@@ -91,6 +97,8 @@ owner, rate and expected departure sit behind "More options".
                 </div>
 
                 <div{% if form.new_rate_type.errors %} class="field-invalid"{% endif %}>
+                    <p x-show="rateHint" x-cloak x-text="rateHint" role="status" data-testid="rate-hint"
+                       class="mb-2 rounded-lg border border-saddle/30 bg-saddle-50 p-3 text-sm text-charcoal"></p>
                     <label for="id_new_rate_type" class="block text-sm font-medium text-charcoal">New rate</label>
                     {{ form.new_rate_type }}
                     {% if form.new_rate_type.errors %}

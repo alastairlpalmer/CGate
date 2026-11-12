@@ -683,7 +683,10 @@ class StablePickerMixin(forms.Form):
     )
     share_stable = forms.BooleanField(required=False, label='Share the stable')
 
-    def init_stable_picker(self):
+    def init_stable_picker(self, horse=None):
+        """``horse`` is the horse being moved, when there is one: the
+        location select then also asks whether the move wants a different
+        rate (core.views.stables.stable_options)."""
         if not settings.BARNS_ENABLED:
             del self.fields['stable']
             del self.fields['share_stable']
@@ -692,8 +695,11 @@ class StablePickerMixin(forms.Form):
             is_gap=False, in_use=True, location__is_archived=False,
             location__location_type=Location.LocationType.BARN,
         )
+        url = reverse('stable_options')
+        if horse is not None:
+            url += f'?horse={horse.pk}'
         self.fields[self.stable_location_field].widget.attrs.update({
-            'hx-get': reverse('stable_options'),
+            'hx-get': url,
             'hx-trigger': 'change',
             'hx-target': '#stable-picker',
             'hx-select': 'unset',
@@ -815,7 +821,7 @@ class MoveHorseForm(StablePickerMixin, forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'})
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, horse=None, **kwargs):
         super().__init__(*args, **kwargs)
         # Setting .choices only changes the rendering; ModelChoiceField
         # validates against .queryset, so an archived location's pk (stale
@@ -823,8 +829,16 @@ class MoveHorseForm(StablePickerMixin, forms.Form):
         self.fields['new_location'].queryset = Location.objects.active()
         self.fields['new_location'].choices = get_grouped_location_choices()
         self.fields['new_owner'].queryset = Owner.objects.active()
-        self.fields['new_rate_type'].queryset = RateType.objects.filter(is_active=True)
-        self.init_stable_picker()
+        rate = self.fields['new_rate_type']
+        rate.queryset = RateType.objects.filter(is_active=True)
+        if settings.BARNS_ENABLED:
+            # The move form's script sets this select when a move between
+            # a field and a barn has an obvious rate, and leaves it alone
+            # once the person has chosen for themselves
+            # (templates/horses/partials/move_form.html).
+            rate.empty_label = 'Keep the current rate'
+            rate.widget.attrs.update({'x-ref': 'rate', '@change': 'rateTouched = true'})
+        self.init_stable_picker(horse)
 
     new_owner = forms.ModelChoiceField(
         queryset=Owner.objects.active(),
@@ -1066,9 +1080,10 @@ OwnershipShareFormSet = forms.inlineformset_factory(
 class RateTypeForm(forms.ModelForm):
     class Meta:
         model = RateType
-        fields = ['name', 'daily_rate', 'description', 'is_active']
+        fields = ['name', 'daily_rate', 'applies_to', 'description', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
+            'applies_to': forms.Select(attrs={'class': 'form-select'}),
             'daily_rate': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'description': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
@@ -1079,6 +1094,9 @@ class RateTypeForm(forms.ModelForm):
         if self.instance.pk:
             # An existing rate's price changes from a date (RatePriceForm).
             del self.fields['daily_rate']
+        if not settings.BARNS_ENABLED:
+            # Only means anything once a yard can have barns.
+            del self.fields['applies_to']
 
 
 class RatePriceForm(forms.Form):

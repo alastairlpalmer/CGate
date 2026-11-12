@@ -1028,7 +1028,22 @@ class StableStay(models.Model):
 class RateType(models.Model):
     """Rate configuration for different livery types."""
 
+    class AppliesTo(models.TextChoices):
+        ANY = 'any', 'Fields and barns'
+        FIELD = 'field', 'Fields'
+        BARN = 'barn', 'Barns'
+
     name = models.CharField(max_length=100)
+    # Where this rate belongs, so a move between a field and a barn can
+    # suggest the right one and a horse left on the wrong one shows up
+    # (core/rates.py). "Fields and barns" — the default — never causes a
+    # suggestion or a warning: a yard that sets nothing sees nothing new.
+    applies_to = models.CharField(
+        max_length=10, choices=AppliesTo.choices, default=AppliesTo.ANY,
+        verbose_name='Used for',
+        help_text='"Fields" or "Barns" lets a move suggest this rate, and '
+                  'flags a horse left on it in the wrong place.',
+    )
     daily_rate = models.DecimalField(
         max_digits=8,
         decimal_places=2,

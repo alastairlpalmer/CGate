@@ -25,7 +25,7 @@ from django.views.decorators.http import require_POST
 
 from ..forms import HorseStableForm, SwapStableForm
 from ..models import Horse, Location, Placement, Stable, StableStay
-from ..permissions import LEVEL_VIEW, feature_required
+from ..permissions import LEVEL_FULL, LEVEL_VIEW, feature_required, has_feature_access
 from ..stables import StableOccupied, StableService, open_stay, picker_options
 from ._next import safe_next
 from ._popup import is_popup_request, popup_saved_response
@@ -98,9 +98,33 @@ def stable_options(request):
     location = (
         Location.objects.active().filter(pk=chosen).first() if chosen.isdigit() else None
     )
-    return render(request, 'locations/partials/stable_options.html', {
+    response = render(request, 'locations/partials/stable_options.html', {
         'picker': picker_options(location),
     })
+
+    # The move form names its horse. If this move crosses between a field
+    # and a barn on a rate that belongs to the other, say so: the form's
+    # script opens the rate, shows the sentence and sets the obvious rate.
+    # Always sent for a move, so picking a different location afterwards
+    # clears what the last one said.
+    horse_id = request.GET.get('horse', '')
+    if horse_id.isdigit() and has_feature_access(request.user, 'horses', LEVEL_FULL):
+        import json
+
+        from ..rates import suggest_rate
+
+        horse = Horse.objects.filter(pk=horse_id).first()
+        hint = {'rate': None, 'text': ''}
+        if horse is not None and location is not None:
+            placement = (
+                Placement.objects.filter(horse=horse, end_date__isnull=True)
+                .select_related('rate_type', 'location').first()
+            )
+            suggestion = suggest_rate(horse, placement, location)
+            if suggestion is not None:
+                hint = suggestion.as_event()
+        response['HX-Trigger'] = json.dumps({'rate-hint': hint})
+    return response
 
 
 @feature_required('locations', LEVEL_VIEW)

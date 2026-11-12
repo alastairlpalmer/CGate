@@ -12,7 +12,7 @@
             {% if horse.job and not horse.line and horse.job.work_needed or horse.job and not horse.line and horse.job.note %}
             <span class="block text-sm text-saddle truncate" data-yard-request-summary>Yard: {% if horse.job.work_needed %}{{ horse.job.get_work_needed_display }}{% endif %}{% if horse.job.work_needed and horse.job.note %} · {% endif %}{{ horse.job.note }}</span>
             {% endif %}
-            <span class="block text-sm text-sage truncate">{% if horse.location_name %}{{ horse.location_name }}{% endif %}{% if horse.location_name and horse.last_date %} · {% endif %}{% if horse.last_date %}Last: {{ horse.last_work_label }} {{ horse.last_date|date:"j M" }}{% endif %}</span>
+            <span class="block text-sm text-sage truncate">{% if horse.location_name %}{{ horse.location_name }}{% if horse.stable_label %} · {{ horse.stable_label }}{% endif %}{% endif %}{% if horse.location_name and horse.last_date %} · {% endif %}{% if horse.last_date %}Last: {{ horse.last_work_label }} {{ horse.last_date|date:"j M" }}{% endif %}</span>
         </span>
         {% if horse.line %}
         <span class="text-sm font-semibold text-meadow whitespace-nowrap">&#10003; {{ horse.line.get_work_done_display }} {{ horse.line.cost|gbp }}</span>

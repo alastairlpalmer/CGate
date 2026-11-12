@@ -619,6 +619,8 @@ def bulk_health_apply(request):
     # loop below reports them for every action type.
     action_errors = []
     restore_skipped = []
+    wrong_rate = []
+    from core.rates import rate_mismatch
 
     with transaction.atomic():
         # Placement actions go through PlacementService so per-horse
@@ -645,7 +647,7 @@ def bulk_health_apply(request):
         elif action_type == 'move':
             for horse in horses:
                 try:
-                    PlacementService.move_horse(
+                    moved = PlacementService.move_horse(
                         horse,
                         new_location=form.cleaned_data['new_location'],
                         move_date=form.cleaned_data['move_date'],
@@ -653,6 +655,11 @@ def bulk_health_apply(request):
                         notes=form.cleaned_data.get('notes', ''),
                     )
                     count += 1
+                    # One rate for the whole batch cannot suit a batch
+                    # that came off different rates: name the ones left
+                    # on a rate that belongs elsewhere (core/rates.py).
+                    if rate_mismatch(moved.rate_type, moved.location):
+                        wrong_rate.append((horse.name, moved.rate_type.name))
                 except ValidationError as e:
                     action_errors.append(
                         f"Not moved — {horse.name}: {'; '.join(e.messages)}"
@@ -753,6 +760,15 @@ def bulk_health_apply(request):
         messages.success(request, success_msg)
     for err in action_errors:
         messages.error(request, err)
+    if wrong_rate:
+        rates = sorted({rate for _name, rate in wrong_rate})
+        names = ', '.join(name for name, _rate in wrong_rate)
+        messages.warning(
+            request,
+            f"Check the rate: {names} "
+            f"{'is' if len(wrong_rate) == 1 else 'are'} still on {' / '.join(rates)}, "
+            f"which is not a rate for this type of location.",
+        )
     if restore_skipped:
         messages.warning(
             request,

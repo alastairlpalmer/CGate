@@ -38,7 +38,7 @@ SEVERITY_ORDER = {'overdue': 0, 'due': 1, 'info': 2}
 
 # Kinds that belong in the inbox whatever their date: they have no natural
 # "day" and would otherwise never surface.
-INBOX_ALWAYS = frozenset({'egg_count', 'document', 'departure', 'feed'})
+INBOX_ALWAYS = frozenset({'egg_count', 'document', 'departure', 'feed', 'rate'})
 
 # Kinds the health bulk form can record for several horses at once.
 BULK_ACTION_TYPES = {
@@ -79,6 +79,7 @@ KIND_LABELS = {
     'departure_expected': 'Expected departure',
     'invoice': 'Invoice',
     'feed': 'Feed stock',
+    'rate': 'Rate to check',
 }
 
 CATEGORY_OF_KIND = {
@@ -88,6 +89,7 @@ CATEGORY_OF_KIND = {
     'foal': 'yard', 'departure': 'yard', 'departure_expected': 'yard',
     'scan': 'health', 'foal_check': 'health', 'foal_passport': 'documents',
     'feed': 'yard',
+    'rate': 'money',
     'document': 'documents',
     'invoice': 'money',
 }
@@ -728,6 +730,51 @@ def _expected_departures(ctx):
     return items
 
 
+def _rates(ctx):
+    """Horses on a rate that belongs to the other type of location.
+
+    The safety net under the move form's rate suggestion. The form covers
+    one path; a bulk move, a foaling, an edited placement and the admin
+    all change where a horse is or what it is on without asking. Whatever
+    the path, a horse in a barn on a field rate (or the reverse) lands
+    here, before it lands on an invoice.
+
+    Only for someone who moves horses (``horses`` at full access). The
+    fix is to correct the rate on the stay itself — it was wrong from the
+    day the horse got there — which is the placement's own edit sheet, so
+    the button is offered to those who may open it. The line names the
+    rate and never its price. A yard with every rate type on "Fields and
+    barns" gets nothing.
+    """
+    if not ctx.can('horses', LEVEL_FULL):
+        return []
+    can_correct = ctx.can('locations', LEVEL_FULL)
+    from ..rates import mismatch_text, mismatched_placements
+
+    items = []
+    for placement in mismatched_placements().order_by('horse__name'):
+        horse = placement.horse
+        items.append(AttentionItem(
+            kind='rate',
+            severity='info',
+            title=horse.name,
+            detail=mismatch_text(placement.rate_type, placement.location),
+            url=reverse('horse_detail', args=[horse.pk]),
+            horse=horse,
+            horse_id=horse.pk,
+            location=placement.location.name,
+            site=placement.location.site,
+            actions=[Action(
+                label='Correct rate',
+                url=reverse('placement_update', args=[placement.pk]),
+                popup_title=f'Correct the rate for {horse.name}',
+                style='primary',
+            )] if can_correct else [],
+            key=f'rate-{placement.pk}',
+        ))
+    return items
+
+
 def _invoices(ctx):
     """Open invoices due within the horizon or already overdue, with the
     balance still owed (part-payments count)."""
@@ -838,6 +885,7 @@ COLLECTORS = (
     ('document', 'horses', _documents),
     ('departure', 'horses', _departures_to_confirm),
     ('departure_expected', 'horses', _expected_departures),
+    ('rate', 'horses', _rates),
     ('invoice', 'invoices', _invoices),
     ('feed', 'feed', _feed),
 )

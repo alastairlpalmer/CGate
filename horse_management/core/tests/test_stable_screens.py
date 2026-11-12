@@ -274,7 +274,7 @@ class StablePickerTests(ScreenTestCase):
         horse = self.horse_in(self.field)
         response = self.client.get(reverse('horse_move', args=[horse.pk]), **POPUP)
         self.assertContains(response, 'id="stable-picker"')
-        self.assertContains(response, f'hx-get="{reverse("stable_options")}"')
+        self.assertContains(response, f'hx-get="{reverse("stable_options")}?horse={horse.pk}"')
         self.assertContains(response, 'hx-push-url="false"')
 
     def test_move_into_a_stable(self):

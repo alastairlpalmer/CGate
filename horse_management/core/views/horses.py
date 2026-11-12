@@ -1601,6 +1601,18 @@ def _flash_superseded_trim(request, horse, placement):
         )
 
 
+def _warn_wrong_rate(request, horse, placement):
+    """Say so when a horse has just been left on a rate that belongs to
+    the other type of location (core/rates.py). Never blocks the save: the
+    person may mean it. The dashboard keeps showing it until it is right.
+    """
+    from ..rates import mismatch_text, rate_mismatch
+
+    if rate_mismatch(placement.rate_type, placement.location):
+        text = mismatch_text(placement.rate_type, placement.location)
+        messages.warning(request, f"{horse.name}: {text[0].lower()}{text[1:]}. Check the rate.")
+
+
 def _assign_chosen_stable(horse, form, day):
     """Put the horse in the stable picked on a move or arrival form.
 
@@ -1642,7 +1654,7 @@ def horse_move(request, pk):
     next_url = safe_next(request, '')
 
     if request.method == 'POST':
-        form = MoveHorseForm(request.POST)
+        form = MoveHorseForm(request.POST, horse=horse)
         if form.is_valid():
             try:
                 # One transaction: a stable that turns out to be taken
@@ -1668,13 +1680,18 @@ def horse_move(request, pk):
                     "the current placement before retrying.",
                 )
             else:
-                messages.success(request, f"{horse.name} moved successfully.{stable_note}")
+                rate_note = ''
+                if current_placement and new_placement.rate_type_id != current_placement.rate_type_id:
+                    rate_note = f" Rate changed to {new_placement.rate_type.name}."
+                messages.success(
+                    request, f"{horse.name} moved successfully.{stable_note}{rate_note}")
+                _warn_wrong_rate(request, horse, new_placement)
                 _flash_superseded_trim(request, horse, new_placement)
                 if in_popup:
                     return popup_saved_response()
                 return redirect(next_url or 'horse_list')
     else:
-        form = MoveHorseForm(initial={
+        form = MoveHorseForm(horse=horse, initial={
             'move_date': timezone.localdate()
         })
 
@@ -1732,6 +1749,7 @@ def new_arrival(request):
                     placement.location.name,
                     reverse('horse_photo_add', args=[horse.pk]),
                 ))
+                _warn_wrong_rate(request, horse, placement)
                 return redirect('horse_detail', pk=horse.pk)
     else:
         initial = {'arrival_date': timezone.localdate()}
@@ -1791,6 +1809,7 @@ def horse_arrive(request, pk):
                     placement.location.name,
                     reverse('horse_photo_add', args=[horse.pk]),
                 ))
+                _warn_wrong_rate(request, horse, placement)
                 _flash_superseded_trim(request, horse, placement)
                 if in_popup:
                     return popup_saved_response()
