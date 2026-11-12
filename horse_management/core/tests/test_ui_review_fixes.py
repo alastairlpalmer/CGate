@@ -168,3 +168,31 @@ class HorsePageRecordTests(TestCase):
         self.assertLess(body.index('id="quick-actions"'), body.index('Ownership Shares'))
         # The Timeline header no longer repeats four of them.
         self.assertNotIn('+ Vaccination', body)
+
+
+class PhoneSectionBarTests(TestCase):
+    """The phone's top bar names the section, since list pages hide their
+    title there. The script fills it for pages under More; the two tab
+    sections are set by the server so a full load does not flash the name."""
+
+    def setUp(self):
+        self.client.force_login(make_admin(username='bar-admin'))
+
+    def label(self, url):
+        body = self.client.get(url).content.decode()
+        start = body.index('data-brand-label')
+        return body[body.index('>', start) + 1:body.index('</span>', start)]
+
+    def test_the_bar_names_the_tab_sections(self):
+        horse = Horse.objects.create(name='Apollo')
+        self.assertEqual(self.label(reverse('horse_list')), 'Horses')
+        self.assertEqual(self.label(reverse('horse_detail', args=[horse.pk])), 'Horses')
+        self.assertEqual(self.label(reverse('location_list')), 'Locations')
+
+    def test_the_dashboard_keeps_the_name(self):
+        self.assertEqual(self.label(reverse('dashboard')), 'Cgate')
+
+    def test_the_script_reads_the_section_off_the_nav(self):
+        body = self.client.get(reverse('invoice_list')).content.decode()
+        self.assertIn('data-brand="Cgate"', body)
+        self.assertIn("document.querySelector('[data-brand-label]')", body)
