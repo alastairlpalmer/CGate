@@ -123,7 +123,7 @@ def ensure_farrier_login(provider):
 
     User = get_user_model()
     with transaction.atomic():
-        provider = ServiceProvider.objects.select_for_update().select_related('user').get(pk=provider.pk)
+        provider = ServiceProvider.objects.select_for_update().get(pk=provider.pk)
         if provider.user_id is not None:
             user = provider.user
             return user if user.is_active and is_provider_only(user) else None
