@@ -52,11 +52,11 @@
 
                         <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                             <div class="sm:col-span-4">
-                                <label class="block text-xs font-medium text-charcoal-light mb-1">Owner</label>
+                                <label for="{{ form.owner.id_for_label }}" class="block text-xs font-medium text-charcoal-light mb-1">Owner</label>
                                 {{ form.owner }}
                             </div>
                             <div class="sm:col-span-2">
-                                <label class="block text-xs font-medium text-charcoal-light mb-1">Share %</label>
+                                <label for="{{ form.share_percentage.id_for_label }}" class="block text-xs font-medium text-charcoal-light mb-1">Share %</label>
                                 {{ form.share_percentage }}
                             </div>
                             <label class="sm:col-span-2 flex items-center gap-2 pt-4 min-h-[44px] sm:min-h-0 cursor-pointer">
@@ -64,7 +64,7 @@
                                 <span class="text-xs text-charcoal-light">Primary</span>
                             </label>
                             <div class="sm:col-span-3">
-                                <label class="block text-xs font-medium text-charcoal-light mb-1">Notes</label>
+                                <label for="{{ form.notes.id_for_label }}" class="block text-xs font-medium text-charcoal-light mb-1">Notes</label>
                                 {{ form.notes }}
                             </div>
                             {% if form.instance.pk %}

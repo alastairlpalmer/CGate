@@ -9,7 +9,7 @@
         <h2 class="section-title mb-3">Due <span class="badge-neutral ml-1">{{ farrier_due|length }}</span></h2>
         <ul class="flex flex-wrap gap-2">
             {% for item, url in farrier_due %}
-            <li><a href="{{ url }}{% if '?' in url %}&{% else %}?{% endif %}next={{ request.get_full_path|urlencode }}" class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm {% if item.is_overdue %}border-error-red text-error-red{% else %}border-light-sage text-charcoal{% endif %} hover:bg-light-sage">
+            <li><a href="{{ url }}{% if '?' in url %}&{% else %}?{% endif %}next={{ request.get_full_path|urlencode }}" class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 min-h-[44px] sm:min-h-0 text-sm {% if item.is_overdue %}border-error-red text-error-red{% else %}border-light-sage text-charcoal{% endif %} hover:bg-light-sage">
                 <span class="font-medium">{{ item.horse.name }}</span>
                 <span class="text-xs {% if not item.is_overdue %}text-sage{% endif %}">{{ item.due_date|due_label }}</span>
             </a></li>

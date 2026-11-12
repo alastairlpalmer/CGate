@@ -340,7 +340,8 @@ def _find(queryset, query, fields, columns, key=None):
 
 @login_required
 def quick_find(request):
-    """HTMX partial: typo-tolerant search across horses, owners and locations.
+    """HTMX partial: typo-tolerant search across horses, owners and locations,
+    plus invoices by number and health records by what they are about.
 
     Runs on every keystroke from the app bar, so the database does the
     obvious matching first and difflib only picks up what it missed — see
@@ -386,10 +387,65 @@ def quick_find(request):
             ('pk', 'name', 'site'),
         )
 
+    has_digit = any(ch.isdigit() for ch in query)
+
+    # A horse by the number on its passport or microchip: the vet reads a
+    # chip and the yard needs to know whose it is. Four characters with a
+    # digit, so a name search does not pay for it.
+    if has_feature_access(request.user, 'horses') and has_digit and len(query) >= 4:
+        seen = {h['pk'] for h in horses}
+        compact = query.replace(' ', '')
+        by_number = Horse.objects.filter(
+            Q(microchip__icontains=compact) | Q(passport_number__icontains=compact)
+        ).order_by('-is_active', 'name').values('pk', 'name', 'is_active', 'microchip')
+        for row in by_number[:QUICK_FIND_PER_GROUP]:
+            if row['pk'] in seen or len(horses) >= QUICK_FIND_PER_GROUP:
+                continue
+            row['matched'] = 'Microchip' if compact.lower() in (row.pop('microchip') or '').lower() else 'Passport'
+            horses.append(row)
+
+    # An invoice by its number. Numbers only: an owner's name already
+    # finds the owner, whose page lists their invoices.
+    invoices = []
+    if has_digit and has_feature_access(request.user, 'invoices'):
+        from invoicing.models import Invoice
+        invoices = list(
+            Invoice.objects.filter(invoice_number__icontains=query.replace(' ', ''))
+            .order_by('-period_end', '-pk')
+            .values('pk', 'invoice_number', 'owner__name', 'status')[:QUICK_FIND_PER_GROUP]
+        )
+        labels = dict(Invoice._meta.get_field('status').choices)
+        for row in invoices:
+            row['status_label'] = labels.get(row['status'], row['status'])
+
+    # Health records by what they are about: a condition's name, or the
+    # reason for a vet visit. Each opens the horse it belongs to.
+    records = []
+    if len(query) >= 3 and has_feature_access(request.user, 'health'):
+        from health.models import MedicalCondition, VetVisit
+        for row in (
+            MedicalCondition.objects.filter(name__icontains=query, horse__is_active=True)
+            .order_by('status', 'horse__name')
+            .values('horse_id', 'horse__name', 'name')[:QUICK_FIND_PER_GROUP]
+        ):
+            records.append({'horse_pk': row['horse_id'], 'horse': row['horse__name'], 'what': row['name'], 'kind': 'Condition'})
+        if len(records) < QUICK_FIND_PER_GROUP:
+            for row in (
+                VetVisit.objects.filter(reason__icontains=query, horse__is_active=True)
+                .order_by('-date')
+                .values('horse_id', 'horse__name', 'reason', 'date')[:QUICK_FIND_PER_GROUP - len(records)]
+            ):
+                records.append({
+                    'horse_pk': row['horse_id'], 'horse': row['horse__name'], 'what': row['reason'],
+                    'kind': 'Vet visit', 'date': row['date'],
+                })
+
     return render(request, 'partials/dashboard/quick_find_results.html', {
         'query': query,
         'horses': horses,
         'owners': owners,
         'locations': locations,
-        'has_results': bool(horses or owners or locations),
+        'invoices': invoices,
+        'records': records,
+        'has_results': bool(horses or owners or locations or invoices or records),
     })

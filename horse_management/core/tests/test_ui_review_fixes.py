@@ -104,3 +104,67 @@ class HorsePageTests(TestCase):
         response = self.client.get(reverse('horse_detail', args=[self.apollo.pk]))
         self.assertContains(response, 'Kicks the farrier')
         self.assertContains(response, 'mt-5 pt-5 border-t border-light-sage')
+
+
+class SearchReachTests(TestCase):
+    """The app bar's search also finds invoices, health records and a
+    horse by the number on its microchip or passport."""
+
+    def setUp(self):
+        from datetime import date
+        from core.models import Owner
+        from health.models import VetVisit
+        from invoicing.models import Invoice
+
+        self.admin = make_admin(username='search-admin')
+        self.client.force_login(self.admin)
+        self.horse = Horse.objects.create(name='Apollo', microchip='981000012345678', passport_number='826ABC777')
+        self.owner = Owner.objects.create(name='Jo Bloggs')
+        self.invoice = Invoice.objects.create(
+            owner=self.owner, invoice_number='INV00042',
+            period_start=date(2026, 10, 1), period_end=date(2026, 10, 31),
+        )
+        MedicalCondition.objects.create(horse=self.horse, name='Laminitis', status='active')
+        VetVisit.objects.create(horse=self.horse, date=date(2026, 11, 1), reason='Colic check')
+
+    def find(self, q):
+        return self.client.get(reverse('quick_find'), {'q': q})
+
+    def test_invoice_by_number(self):
+        response = self.find('INV0004')
+        self.assertContains(response, reverse('invoice_detail', args=[self.invoice.pk]))
+        self.assertContains(response, 'Jo Bloggs')
+
+    def test_a_name_search_does_not_look_for_invoices(self):
+        self.assertNotContains(self.find('inv'), 'Invoices')
+
+    def test_condition_and_vet_visit_open_the_horse(self):
+        for q, kind in (('lamin', 'Condition'), ('colic', 'Vet visit')):
+            with self.subTest(q=q):
+                response = self.find(q)
+                self.assertContains(response, 'Health records')
+                self.assertContains(response, kind)
+                self.assertContains(response, reverse('horse_detail', args=[self.horse.pk]))
+
+    def test_horse_by_microchip_and_passport(self):
+        self.assertContains(self.find('98100001'), 'Microchip')
+        self.assertContains(self.find('826abc7'), 'Passport')
+        self.assertContains(self.find('9810 0001'), 'Apollo')
+
+    def test_groups_follow_the_role(self):
+        from core.roles_testutils import make_user_with_access
+        self.client.force_login(make_user_with_access('yard-only', horses='view'))
+        self.assertNotContains(self.find('INV0004'), 'INV00042')
+        self.assertNotContains(self.find('lamin'), 'Laminitis')
+        self.assertContains(self.find('98100001'), 'Apollo')
+
+
+class HorsePageRecordTests(TestCase):
+    def test_one_set_of_record_buttons_first_in_its_column(self):
+        self.client.force_login(make_admin(username='record-admin'))
+        horse = Horse.objects.create(name='Apollo')
+        body = self.client.get(reverse('horse_detail', args=[horse.pk])).content.decode()
+        self.assertEqual(body.count('id="quick-actions"'), 1)
+        self.assertLess(body.index('id="quick-actions"'), body.index('Ownership Shares'))
+        # The Timeline header no longer repeats four of them.
+        self.assertNotIn('+ Vaccination', body)
