@@ -17,6 +17,7 @@ from .models import (
     Owner,
     OwnershipShare,
     Placement,
+    Stable,
     RateType,
     ScheduledRun,
 )
@@ -118,12 +119,20 @@ class OwnerAdmin(admin.ModelAdmin):
     active_horse_count_display.short_description = 'Active Horses'
 
 
+class StableInline(admin.TabularInline):
+    model = Stable
+    extra = 0
+    fields = ['position', 'label', 'is_gap', 'in_use', 'note']
+    ordering = ['position', 'pk']
+
+
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
-    list_display = ['name', 'site', 'capacity', 'current_horse_count_display', 'availability_display']
-    list_filter = ['site']
+    list_display = ['name', 'site', 'location_type', 'capacity', 'current_horse_count_display', 'availability_display']
+    list_filter = ['site', 'location_type']
     search_fields = ['name', 'site']
     readonly_fields = ['created_at', 'updated_at']
+    inlines = [StableInline]
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)

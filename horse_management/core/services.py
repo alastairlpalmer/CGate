@@ -519,6 +519,10 @@ class LocationUsageService:
             # field as hay while horses were still on it, and blocked the
             # automatic rest when they left.
             raise ValidationError("A usage change can't be dated in the future.")
+        if location.is_barn:
+            # A barn is not ground: it is never rested, cut for hay or
+            # ploughed, so there is nothing to record a change of.
+            raise ValidationError("A barn has no usage to change.")
         current = location.usage_periods.filter(end_date__isnull=True).first()
 
         # No-op: already in this usage state.
@@ -568,7 +572,13 @@ class LocationUsageService:
         Never breaks the calling placement operation — if the change can't be
         recorded cleanly (e.g. backdated before the current period start), the
         history is simply skipped.
+
+        A barn is skipped outright. Every automatic transition (horses
+        arriving, the last one leaving) comes through here, so this is
+        what keeps an empty barn from being marked "rested".
         """
+        if location.is_barn:
+            return
         try:
             LocationUsageService.set_usage(
                 location,
@@ -601,6 +611,8 @@ class LocationUsageService:
         close half of a same-field move). Manual usage states are never
         touched.
         """
+        if location.is_barn:
+            return
         current = location.usage_periods.filter(end_date__isnull=True).first()
         if (
             current
@@ -619,6 +631,8 @@ class LocationUsageService:
         earlier than recorded. Only touches an open AUTO rest period, and
         only to backdate it; the preceding period's end moves with it.
         """
+        if location.is_barn:
+            return
         current = location.usage_periods.filter(end_date__isnull=True).first()
         if (
             not current
@@ -649,6 +663,8 @@ class LocationUsageService:
         No-op unless the current open period is an AUTO rest — manual usage
         changes are never touched.
         """
+        if location.is_barn:
+            return
         current = location.usage_periods.filter(end_date__isnull=True).first()
         if (
             not current
@@ -692,7 +708,7 @@ class LocationUsageService:
         history and a rest count back to 0. Otherwise rest the field from
         today as before.
         """
-        if not LocationUsageService._is_empty(location):
+        if location.is_barn or not LocationUsageService._is_empty(location):
             return
         current = location.usage_periods.filter(end_date__isnull=True).first()
         if not (

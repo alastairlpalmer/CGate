@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if object %}Edit {{ object.name }}{% else %}Add Location{% endif %} - Cgate{% endblock %}
+{% block title %}{% if object %}Edit {{ object.name }}{% elif adding_barn %}Add Barn{% else %}Add Location{% endif %} - Cgate{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
@@ -8,7 +8,7 @@
     <!-- Page Header -->
     <div class="page-header">
         <div>
-            <h1 class="page-title">{% if object %}Edit {{ object.name }}{% else %}Add Location{% endif %}</h1>
+            <h1 class="page-title">{% if object %}Edit {{ object.name }}{% elif adding_barn %}Add Barn{% else %}Add Location{% endif %}</h1>
         </div>
     </div>
 
@@ -20,11 +20,39 @@
 
             <!-- Location Details -->
             <fieldset class="px-4 sm:px-5 py-4 sm:py-5 space-y-4 sm:space-y-5">
-                <legend class="text-base font-semibold text-charcoal">Location Details</legend>
+                {% comment %}One page for two forms: LocationForm and BarnForm
+                (core/forms.py). A barn has a layout and stables where a
+                location has a land use, so each input is asked for only
+                when the form in hand has it.{% endcomment %}
+                <legend class="text-base font-semibold text-charcoal">{% if form.layout %}Barn Details{% else %}Location Details{% endif %}</legend>
+                {% if form.layout %}
+                {% include "includes/form_field.html" with field=form.name help='e.g., "Top Barn", "Main Yard"' %}
+                {% else %}
                 {% include "includes/form_field.html" with field=form.name help='e.g., "Front Field", "The Banks"' %}
+                {% endif %}
                 {% include "includes/form_field.html" with field=form.site %}
+                {% if form.usage %}
                 {% include "includes/form_field.html" with field=form.usage help="What is this location currently being used for?" %}
+                {% endif %}
+                {% if form.layout %}
+                {% include "includes/form_field.html" with field=form.layout %}
+                {% endif %}
+                {% if form.stable_count %}
+                {% include "includes/form_field.html" with field=form.stable_count %}
+                {% include "includes/form_field.html" with field=form.first_number %}
+                {% endif %}
+                {% if form.capacity %}
+                {% if form.layout %}
+                {% include "includes/form_field.html" with field=form.capacity %}
+                {% else %}
                 {% include "includes/form_field.html" with field=form.capacity help="Maximum number of horses (optional)" %}
+                {% endif %}
+                {% elif object %}
+                <p class="text-sm text-sage" data-testid="barn-capacity-note">
+                    Capacity: <span class="font-semibold text-charcoal">{{ object.capacity|default:0 }}</span>
+                    &middot; the number of stables in use. Change it on the barn's page.
+                </p>
+                {% endif %}
                 {% include "includes/form_field.html" with field=form.description %}
                 {% include 'locations/_location_where.html' %}
                 {% if form.pin_to_dashboard %}
@@ -36,11 +64,31 @@
             <div class="form-footer">
                 <a href="{% if object %}{% url 'location_detail' object.pk %}{% else %}{% url 'location_list' %}{% endif %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
-                    {% if object %}Save Changes{% else %}Add Location{% endif %}
+                    {% if object %}Save Changes{% elif adding_barn %}Add Barn{% else %}Add Location{% endif %}
                 </button>
             </div>
         </form>
     </div>
+
+    {% if object and barns_enabled and not object.is_barn and not object.is_archived and feature_access.locations.full %}
+    <!-- Convert to barn -->
+    <div class="card" data-testid="convert-to-barn">
+        <div class="section-header">
+            <h3 class="section-title">Is This a Barn?</h3>
+        </div>
+        <div class="p-4 sm:p-5 space-y-4">
+            <p class="text-sm text-sage">
+                A barn has a plan of its stables and no land use: it is never
+                rested, and it leaves the Usage tab. Its horses, its history and
+                its outline all stay. This cannot be turned back.
+            </p>
+            <div class="flex justify-end">
+                <a href="{% url 'location_convert_to_barn' object.pk %}" hx-get="{% url 'location_convert_to_barn' object.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                   data-popup-title="Convert {{ object.name }} to a barn" class="btn-secondary">Convert to Barn</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     {% if object %}
     <!-- Archive / Delete -->

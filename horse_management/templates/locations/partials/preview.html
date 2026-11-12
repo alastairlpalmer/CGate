@@ -43,8 +43,12 @@ to know which shell it is being shown in.
             {# One chip, not two: "Rested" beside "Rested 21 days" reads #}
             {# as a stutter rather than as two facts.                    #}
             <span class="loc-chip{% if rest_state == 'over' %} is-over{% endif %}">{{ rest_label }}{% if rest_days is not None %} {{ rest_days }} day{{ rest_days|pluralize }}{% endif %}</span>
-            {% if rest_days is None and count %}
+            {# A barn's own chip already says "In use" (board.rest_state). #}
+            {% if rest_days is None and count and not location.is_barn %}
             <span class="loc-chip">In use</span>
+            {% endif %}
+            {% if location.is_barn %}
+            <span class="loc-chip">Barn</span>
             {% endif %}
             {% if area_ha %}
             <span class="loc-chip">{{ area_ha }} ha</span>
@@ -91,7 +95,10 @@ to know which shell it is being shown in.
         writing straight away: the change is dated and can be backdated,
         and a mis-tap in a gateway must not invent a rest period.
         {% endcomment %}
-        {% if feature_access.locations.full %}
+        {% if location.is_barn %}
+        {# A barn is never rested; its third action is its plan. #}
+        <a href="{% url 'location_detail' location.pk %}" class="loc-action">Stables</a>
+        {% elif feature_access.locations.full %}
         <a href="{% url 'location_set_usage' location.pk %}"
            hx-get="{% url 'location_set_usage' location.pk %}" hx-target="#popup-body"
            hx-select="unset" hx-swap="innerHTML" hx-push-url="false"

@@ -29,22 +29,37 @@ from .horses import (  # noqa: F401
     new_arrival,
 )
 from .locations import (  # noqa: F401
+    BarnCreateView,
     LocationCreateView,
     LocationDetailView,
     LocationListView,
     location_preview,
     LocationUpdateView,
     location_archive,
+    location_convert_to_barn,
     location_delete,
     location_parse_link,
     location_restore,
     log_arrival,
     log_departure,
     set_location_usage,
+    stable_add_gap,
+    stable_delete,
+    stable_edit,
+    stables_add,
     site_archive,
     site_delete,
     site_restore,
     site_settings_edit,
+)
+from .stables import (  # noqa: F401
+    horse_stable,
+    horse_stable_swap,
+    horse_stable_vacate,
+    stable_assign,
+    stable_options,
+    stable_panel,
+    stable_stay_undo,
 )
 from .owners import (  # noqa: F401
     OwnerCreateView,

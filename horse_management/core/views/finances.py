@@ -163,7 +163,7 @@ def _finances_inner(request):
     # then sum per site in Python. Annotating Sum(capacity) and the
     # placement Count together would inflate capacity across joined rows.
     location_rows = Location.objects.active().filter(
-        usage__in=[Location.Usage.HORSES, Location.Usage.MIXED],
+        usage__in=Location.RESIDENT_USAGES,
     ).annotate(
         horse_count=Count(
             'placements__horse',

@@ -1,0 +1,13 @@
+{% comment %}
+The stable picker beside a form's location select (core.forms.StablePickerMixin).
+
+`#stable-picker` is the target the location select swaps into when it
+changes; what goes in it is stable_options.html. Drawn here too, so a form
+that comes back with errors — or opens with its location already chosen —
+shows the stables of that location at once.
+
+Params: picker (form.stable_picker), errors (form.stable.errors).
+{% endcomment %}
+<div id="stable-picker" data-testid="stable-picker">
+    {% include 'locations/partials/stable_options.html' with picker=picker errors=errors %}
+</div>

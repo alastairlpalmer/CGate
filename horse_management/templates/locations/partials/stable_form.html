@@ -1,0 +1,16 @@
+{% comment %}
+The stable's edit sheet: the generic pop-up form, then the one thing the
+generic form has no place for — taking the cell out of the barn.
+
+Its own form, posting into the sheet like the one above it, so a removal
+answers the same way a save does: the sheet closes and the barn redraws.
+{% endcomment %}
+{% include 'includes/popup_form.html' %}
+<form method="post" action="{% url 'stable_delete' stable.location_id stable.pk %}"
+      hx-post="{% url 'stable_delete' stable.location_id stable.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+      hx-confirm="Remove {% if stable.is_gap %}{{ stable.label }}{% else %}stable {{ stable.label }}{% endif %} from {{ stable.location.name }}? The cells after it each move one place back."
+      class="px-4 sm:px-5 pb-4 sm:pb-5 -mt-1 flex items-center justify-between gap-3 border-t border-light-sage pt-4">
+    {% csrf_token %}
+    <p class="text-xs text-sage">{% if stable.is_gap %}Not needed on the plan?{% else %}Added by mistake? To keep the stable but stop using it, untick In use.{% endif %}</p>
+    <button type="submit" class="btn-secondary btn-xs text-error-red border-error-red/30 hover:bg-error-red-50 shrink-0">Remove</button>
+</form>

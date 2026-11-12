@@ -2174,6 +2174,73 @@ a.pane-item-title:hover { @apply text-forest; }
    selection, so a fast drag does not highlight half the page. */
 .is-resizing-panel, .is-resizing-panel * { cursor: col-resize !important; user-select: none !important; }
 
+/* ══════════════════════════════════════════════════════════════════════
+   Barn plan (templates/locations/_barn_plan.html)
+
+   A barn's stables drawn from its layout. The grid's columns and each
+   cell's row and column come from core.stables.plan_cells as inline
+   styles; everything about how a cell looks is here.
+
+   State is never colour alone: empty has a dashed edge and says "Empty",
+   out of use has a hatch and says "Out of use", a gap has no edge at all.
+   Red stays the capacity ring's — no cell is ever red.
+   ══════════════════════════════════════════════════════════════════════ */
+.barn-plan-scroll { @apply overflow-x-auto px-5 lg:px-6 py-5; }
+.barn-plan { display: grid; gap: 6px; grid-auto-rows: 56px; }
+.barn-cell {
+    @apply flex flex-col justify-center gap-0.5 min-w-0 px-2 py-1 rounded-sm text-left
+           border-[1.5px] border-charcoal-light bg-white text-charcoal
+           transition-colors duration-100;
+    min-height: 44px;
+}
+a.barn-cell:hover { @apply bg-parchment; }
+a.barn-cell:focus-visible { @apply outline-2 outline-offset-2 outline-forest; }
+.barn-cell-label { @apply text-[13px] font-bold tabular-nums leading-none truncate; }
+.barn-cell-state { @apply text-[11px] leading-tight text-sage truncate; }
+/* A horse's stable beside its name, in the horse list's barn groups. */
+.stable-chip { @apply inline-flex items-center ml-1.5 px-1.5 py-px rounded-sm bg-light-sage text-forest text-[11px] font-bold tabular-nums align-middle; }
+.barn-cell-horse { @apply text-[12px] font-medium leading-tight text-charcoal truncate; }
+.barn-cell-more { @apply font-normal text-sage; }
+.barn-cell.is-occupied { @apply bg-light-sage border-forest; }
+a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
+.barn-cell.is-highlight, .barn-list-row.is-highlight { @apply ring-2 ring-saddle ring-offset-1; }
+.barn-cell.is-empty { @apply border-dashed border-sage-300; }
+.barn-cell.is-off {
+    @apply border-sage-200;
+    background: repeating-linear-gradient(135deg, #DBE4E6 0 5px, transparent 5px 10px);
+}
+.barn-cell.is-gap { @apply border-transparent bg-transparent items-center text-center; }
+.barn-cell.is-gap .barn-cell-label { @apply text-[10px] font-semibold uppercase tracking-wider text-sage whitespace-normal; }
+.barn-feature {
+    @apply flex items-center justify-center rounded-sm border-[1.5px] border-dashed border-sage-200
+           text-[10px] font-semibold uppercase tracking-wider text-sage;
+}
+
+/* Below `lg` the same cells as rows, in order. */
+.barn-list-row { @apply flex items-center gap-3 px-5 py-2.5 min-h-[52px] transition-colors duration-100 active:bg-parchment; }
+.barn-list-label { @apply w-12 shrink-0 text-base font-bold tabular-nums text-charcoal truncate; }
+.barn-list-gap { @apply px-5 py-1.5 bg-sand-50 text-[10px] font-semibold uppercase tracking-wider text-sage; }
+
+.barn-legend { @apply flex flex-wrap gap-x-4 gap-y-1 px-5 lg:px-6 pb-4 text-xs text-sage; }
+.barn-legend-swatch { @apply inline-block w-3.5 h-3.5 mr-1.5 align-[-2px] rounded-sm border-[1.5px] border-charcoal-light; }
+.barn-legend-swatch.is-occupied { @apply bg-light-sage border-forest; }
+.barn-legend-swatch.is-empty { @apply border-dashed border-sage-300; }
+.barn-legend-swatch.is-off {
+    @apply border-sage-200;
+    background: repeating-linear-gradient(135deg, #DBE4E6 0 3px, transparent 3px 6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .barn-cell { transition: none; }
+}
+
+/* Printing a barn gives the list: one line a stable, no buttons, no plan. */
+@media print {
+    .barn-plan-scroll, .barn-legend, .barn-actions { display: none !important; }
+    .barn-list { display: block !important; }
+    .barn-list-row { min-height: 0; padding-top: 4px; padding-bottom: 4px; }
+}
+
 /* A 20px checkbox is a hard target for a thumb. On a touch screen an
    invisible overlay grows the tap box to 40px; the box you see stays the
    same size. (These checkboxes are appearance: none, so ::after draws.) */

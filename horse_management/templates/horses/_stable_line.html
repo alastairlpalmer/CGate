@@ -1,0 +1,12 @@
+{% comment %}
+A horse's stable, after its location (core.templatetags.ui_extras.stable_line).
+
+"· Stable 7" links to the barn with that stable lit. "Change stable" /
+"Choose a stable" opens the sheet, for someone who may move horses. Says
+nothing for a horse that is not in a barn, or is in a barn with no
+stables set up. `compact` drops the action (the preview pane, quick view).
+{% endcomment %}
+{% if stay %}<span data-testid="stable-line"> &middot; {% if feature_access.locations.view %}<a href="{% url 'location_detail' barn.pk %}?stable={{ stay.stable_id }}" class="link tap-pad">Stable {{ stay.stable.label }}</a>{% else %}Stable {{ stay.stable.label }}{% endif %}</span>{% elif has_stables %}<span class="text-sage" data-testid="stable-line"> &middot; no stable</span>{% endif %}{% if has_stables and not compact and feature_access.horses.full and feature_access.locations.view %}
+<a href="{% url 'horse_stable' horse.pk %}?next={{ request.path|urlencode }}" hx-get="{% url 'horse_stable' horse.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+   data-popup-title="{% if stay %}Change stable for {{ horse.name }}{% else %}Choose a stable for {{ horse.name }}{% endif %}"
+   class="btn-ghost btn-xs ml-1">{% if stay %}Change stable{% else %}Choose a stable{% endif %}</a>{% endif %}

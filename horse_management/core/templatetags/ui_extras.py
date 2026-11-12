@@ -202,3 +202,40 @@ def undo_url(message):
     """The restore URL on a message made with core.views._undo.undo_tag."""
     from core.views._undo import undo_url_from_tags
     return undo_url_from_tags(getattr(message, 'extra_tags', ''))
+
+
+@register.inclusion_tag('horses/_stable_line.html', takes_context=True)
+def stable_line(context, horse, compact=False):
+    """``· Stable 7`` after a horse's location, with a way to change it.
+
+    One query for the horse's open stay. For a page about one horse (its
+    profile, the preview pane, the quick view); a list uses
+    ``core.stables.annotate_stable`` instead.
+    """
+    from django.conf import settings
+
+    stay = barn = None
+    if settings.BARNS_ENABLED and horse is not None:
+        from core.models import Placement
+        from core.stables import open_stay
+
+        stay = open_stay(horse)
+        if stay is None:
+            placement = (
+                Placement.objects.filter(horse=horse, end_date__isnull=True)
+                .select_related('location').first()
+            )
+            if placement is not None and placement.location.is_barn:
+                barn = placement.location
+        else:
+            barn = stay.stable.location
+    return {
+        'horse': horse,
+        'stay': stay,
+        'barn': barn,
+        'has_stables': bool(barn and (stay or barn.stables.filter(is_gap=False, in_use=True).exists())),
+        'compact': compact,
+        'feature_access': context.get('feature_access'),
+        'request': context.get('request'),
+    }
+

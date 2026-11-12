@@ -6,6 +6,7 @@ import re
 from datetime import date, timedelta
 from pathlib import PurePosixPath
 
+from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
@@ -336,12 +337,21 @@ def _usage_strip(totals):
     return segments
 
 
-def _location_group(location, horses):
+def _location_group(location, horses, by_stable=False):
     """A group card for one location, carrying its capacity and land use.
 
     Capacity and usage hang off the location, not off anything standing
     in it — which is why an empty or rested field can still be a card.
+
+    ``by_stable`` puts a barn's horses in stable order, the ones with no
+    stable last: it is the order you meet them in walking the barn. Only
+    asked for when the reader has not chosen a sort of their own.
     """
+    if by_stable and location.is_barn:
+        horses = sorted(horses, key=lambda horse: (
+            getattr(horse, 'stable_position', None) is None,
+            getattr(horse, 'stable_position', None) or 0,
+        ))
     count = len(horses)
     return {
         'kind': 'location',
@@ -358,6 +368,8 @@ def _location_group(location, horses):
         ),
         'usage': location.usage,
         'usage_display': location.get_usage_display(),
+        # A barn has no land use, so its card has no land-use strip.
+        'is_barn': location.is_barn,
     }
 
 
@@ -669,6 +681,10 @@ class HorseListView(FeatureAccessMixin, ListView):
 
         if self.status == 'departed' and not self.is_searching:
             return self._order_departed(queryset)
+        if settings.BARNS_ENABLED:
+            # Each row can print its stable; subqueries, so no query a row.
+            from ..stables import annotate_stable
+            queryset = annotate_stable(queryset)
         return queryset.order_by('name')
 
     def _order_departed(self, queryset):
@@ -1001,9 +1017,11 @@ class HorseListView(FeatureAccessMixin, ListView):
         if location_filter.isdigit():
             spine = spine.filter(pk=location_filter)
 
+        # Stable order inside a barn, unless a sort was asked for.
+        by_stable = 'sort' not in self.request.GET
         for location in spine:
             groups.append(
-                _location_group(location, by_location.pop(location.pk, []))
+                _location_group(location, by_location.pop(location.pk, []), by_stable)
             )
 
         # A horse on an archived field still has to appear somewhere.
@@ -1011,7 +1029,7 @@ class HorseListView(FeatureAccessMixin, ListView):
         if use_filter:
             leftover = leftover.filter(usage__in=use_filter)
         for location in leftover:
-            groups.append(_location_group(location, by_location[location.pk]))
+            groups.append(_location_group(location, by_location[location.pk], by_stable))
         groups.sort(key=lambda g: ((g['site'] or '').lower(),
                                    g['name'].lower()))
 
@@ -1583,6 +1601,26 @@ def _flash_superseded_trim(request, horse, placement):
         )
 
 
+def _assign_chosen_stable(horse, form, day):
+    """Put the horse in the stable picked on a move or arrival form.
+
+    Called inside the transaction that wrote the placement. Returns a
+    sentence for the success message ("" when no stable was picked).
+    Raises ValidationError — a taken stable, a date that cannot be — for
+    the caller to show on the form.
+    """
+    stable = form.cleaned_data.get('stable')
+    if stable is None:
+        return ''
+    from ..stables import StableService
+
+    StableService.assign(
+        Horse.objects.get(pk=horse.pk), stable, day,
+        share=bool(form.cleaned_data.get('share_stable')),
+    )
+    return f" It is in stable {stable.label}."
+
+
 @feature_required('horses')
 def horse_move(request, pk):
     """Move a horse to a new location.
@@ -1607,15 +1645,19 @@ def horse_move(request, pk):
         form = MoveHorseForm(request.POST)
         if form.is_valid():
             try:
-                new_placement = PlacementService.move_horse(
-                    horse,
-                    new_location=form.cleaned_data['new_location'],
-                    move_date=form.cleaned_data['move_date'],
-                    new_owner=form.cleaned_data['new_owner'],
-                    new_rate_type=form.cleaned_data['new_rate_type'],
-                    expected_departure=form.cleaned_data.get('expected_departure'),
-                    notes=form.cleaned_data['notes'],
-                )
+                # One transaction: a stable that turns out to be taken
+                # undoes the move rather than leaving it half done.
+                with transaction.atomic():
+                    new_placement = PlacementService.move_horse(
+                        horse,
+                        new_location=form.cleaned_data['new_location'],
+                        move_date=form.cleaned_data['move_date'],
+                        new_owner=form.cleaned_data['new_owner'],
+                        new_rate_type=form.cleaned_data['new_rate_type'],
+                        expected_departure=form.cleaned_data.get('expected_departure'),
+                        notes=form.cleaned_data['notes'],
+                    )
+                    stable_note = _assign_chosen_stable(horse, form, form.cleaned_data['move_date'])
             except ValidationError as e:
                 form.add_error(None, e)
             except IntegrityError:
@@ -1626,7 +1668,7 @@ def horse_move(request, pk):
                     "the current placement before retrying.",
                 )
             else:
-                messages.success(request, f"{horse.name} moved successfully.")
+                messages.success(request, f"{horse.name} moved successfully.{stable_note}")
                 _flash_superseded_trim(request, horse, new_placement)
                 if in_popup:
                     return popup_saved_response()
@@ -1656,33 +1698,50 @@ def new_arrival(request):
     if request.method == 'POST':
         form = NewArrivalForm(request.POST)
         if form.is_valid():
-            horse, placement = PlacementService.create_new_arrival(
-                name=form.cleaned_data['name'],
-                sex=form.cleaned_data.get('sex') or '',
-                color=form.cleaned_data.get('color') or '',
-                date_of_birth=form.cleaned_data.get('date_of_birth'),
-                sire_name=form.cleaned_data.get('sire_name') or '',
-                passport_number=form.cleaned_data.get('passport_number') or '',
-                has_passport=form.cleaned_data.get('has_passport', False),
-                owner=form.cleaned_data['owner'],
-                location=form.cleaned_data['location'],
-                rate_type=form.cleaned_data['rate_type'],
-                arrival_date=form.cleaned_data['arrival_date'],
-                expected_departure=form.cleaned_data.get('expected_departure'),
-                notes=form.cleaned_data.get('notes', ''),
-            )
-            messages.success(request, format_html(
-                '{} created and arrived at {}. <a href="{}?category=arrival" class="underline font-semibold">Add photos</a>',
-                horse.name,
-                placement.location.name,
-                reverse('horse_photo_add', args=[horse.pk]),
-            ))
-            return redirect('horse_detail', pk=horse.pk)
+            chose_stable = form.cleaned_data.get('stable') is not None
+            try:
+                # One transaction when a stable was picked: if it turns
+                # out to be taken, the horse is not left created with no
+                # explanation of where its stable went.
+                with transaction.atomic():
+                    horse, placement = PlacementService.create_new_arrival(
+                        name=form.cleaned_data['name'],
+                        sex=form.cleaned_data.get('sex') or '',
+                        color=form.cleaned_data.get('color') or '',
+                        date_of_birth=form.cleaned_data.get('date_of_birth'),
+                        sire_name=form.cleaned_data.get('sire_name') or '',
+                        passport_number=form.cleaned_data.get('passport_number') or '',
+                        has_passport=form.cleaned_data.get('has_passport', False),
+                        owner=form.cleaned_data['owner'],
+                        location=form.cleaned_data['location'],
+                        rate_type=form.cleaned_data['rate_type'],
+                        arrival_date=form.cleaned_data['arrival_date'],
+                        expected_departure=form.cleaned_data.get('expected_departure'),
+                        notes=form.cleaned_data.get('notes', ''),
+                    )
+                    _assign_chosen_stable(horse, form, form.cleaned_data['arrival_date'])
+            except ValidationError as e:
+                if not chose_stable:
+                    # As before this form had a stable on it.
+                    raise
+                form.add_error(None, e)
+            else:
+                messages.success(request, format_html(
+                    '{} created and arrived at {}. <a href="{}?category=arrival" class="underline font-semibold">Add photos</a>',
+                    horse.name,
+                    placement.location.name,
+                    reverse('horse_photo_add', args=[horse.pk]),
+                ))
+                return redirect('horse_detail', pk=horse.pk)
     else:
         initial = {'arrival_date': timezone.localdate()}
         location_id = request.GET.get('location')
         if location_id:
             initial['location'] = location_id
+        # "Arrive a horse here" on an empty stable fills both in.
+        stable_id = request.GET.get('stable')
+        if stable_id and stable_id.isdigit():
+            initial['stable'] = stable_id
         form = NewArrivalForm(initial=initial)
 
     return render(request, 'horses/horse_new_arrival.html', {'form': form})
@@ -1705,15 +1764,17 @@ def horse_arrive(request, pk):
         form = SingleArrivalForm(request.POST)
         if form.is_valid():
             try:
-                placement = PlacementService.arrive_horse(
-                    horse,
-                    owner=form.cleaned_data['owner'],
-                    location=form.cleaned_data['location'],
-                    rate_type=form.cleaned_data['rate_type'],
-                    arrival_date=form.cleaned_data['arrival_date'],
-                    expected_departure=form.cleaned_data.get('expected_departure'),
-                    notes=form.cleaned_data['notes'],
-                )
+                with transaction.atomic():
+                    placement = PlacementService.arrive_horse(
+                        horse,
+                        owner=form.cleaned_data['owner'],
+                        location=form.cleaned_data['location'],
+                        rate_type=form.cleaned_data['rate_type'],
+                        arrival_date=form.cleaned_data['arrival_date'],
+                        expected_departure=form.cleaned_data.get('expected_departure'),
+                        notes=form.cleaned_data['notes'],
+                    )
+                    _assign_chosen_stable(horse, form, form.cleaned_data['arrival_date'])
             except ValidationError as e:
                 form.add_error(None, e)
             except IntegrityError:

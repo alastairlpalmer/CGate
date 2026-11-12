@@ -5,6 +5,8 @@ Forms for core app.
 from decimal import Decimal
 
 from django import forms
+from django.conf import settings
+from django.urls import reverse
 from django.utils import timezone
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import FileExtensionValidator
@@ -15,7 +17,7 @@ from .images import heic_to_jpeg
 from .widgets import MoneyInput
 from .models import (
     BusinessSettings, Document, Horse, HorsePhoto, Location, Owner,
-    OwnershipShare, Placement, RateType, SiteSettings, validate_coordinate_pair,
+    OwnershipShare, Placement, RateType, SiteSettings, Stable, validate_coordinate_pair,
 )
 
 
@@ -289,6 +291,222 @@ class LocationForm(CoordinateFieldsMixin, forms.ModelForm):
             pref.save(update_fields=['pinned_location', 'updated_at'])
 
 
+class BarnForm(LocationForm):
+    """Add or edit a barn: a location with a layout and, optionally, stables.
+
+    A form of its own rather than extra fields on ``LocationForm``. The
+    pop-up sheet lays out every visible field of whatever form it is
+    given, so one form for both would show a layout to somebody adding a
+    paddock and a land use to somebody adding a barn.
+
+    The stables are made here, with the barn, in one go. After that they
+    are managed from the barn's own page.
+    """
+
+    stable_count = forms.IntegerField(
+        label='Number of stables', required=False, min_value=0, initial=20,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
+        help_text='Leave at 0 to add the stables later.',
+    )
+    first_number = forms.IntegerField(
+        label='First stable number', required=False, min_value=0, initial=1,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
+    )
+
+    field_order = [
+        'name', 'site', 'layout', 'stable_count', 'first_number', 'capacity',
+        'description',
+    ]
+
+    class Meta(LocationForm.Meta):
+        fields = ['name', 'site', 'layout', 'description', 'capacity', 'latitude', 'longitude']
+        widgets = {
+            **LocationForm.Meta.widgets,
+            'layout': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .stables import MAX_STABLES
+
+        # Set here, not in save(): the model's own clean() runs while the
+        # form validates, and it refuses a layout on anything but a barn.
+        self.instance.location_type = Location.LocationType.BARN
+        self.instance.usage = Location.Usage.HORSES
+
+        layout = self.fields['layout']
+        layout.required = True
+        layout.choices = [('', '---------')] + list(Location.Layout.choices)
+        layout.help_text = (
+            'Courtyard: stables round three sides of a yard. Centre aisle: '
+            'two lines that face each other. Row: one line.'
+        )
+        self.fields['stable_count'].max_value = MAX_STABLES
+        self.fields['stable_count'].widget.attrs['max'] = MAX_STABLES
+
+        capacity = self.fields['capacity']
+        editing = bool(self.instance and self.instance.pk)
+        if editing:
+            # Stables are added and removed on the barn's page from here on.
+            del self.fields['stable_count']
+            del self.fields['first_number']
+            if self.instance.stables.filter(is_gap=False).exists():
+                # The number of stables in use, written by
+                # core.stables.sync_barn_capacity — never typed.
+                del self.fields['capacity']
+            else:
+                capacity.help_text = 'How many horses the barn holds. Set by its stables once it has some.'
+        else:
+            capacity.help_text = 'Only for a barn with no stables. Otherwise the stables set it.'
+
+    def clean_stable_count(self):
+        from .stables import MAX_STABLES
+        count = self.cleaned_data.get('stable_count') or 0
+        if count > MAX_STABLES:
+            raise forms.ValidationError(f'A barn can have up to {MAX_STABLES} stables.')
+        return count
+
+    def save(self, commit=True):
+        from django.db import transaction
+
+        from .stables import add_stables
+
+        creating = not (self.instance and self.instance.pk)
+        with transaction.atomic():
+            barn = super().save(commit=commit)
+            count = self.cleaned_data.get('stable_count') or 0
+            if commit and creating and count:
+                first = self.cleaned_data.get('first_number')
+                add_stables(barn, count, 1 if first is None else first)
+        return barn
+
+
+class StableForm(forms.ModelForm):
+    """Rename a stable, leave a note on it, or take it out of use."""
+
+    class Meta:
+        model = Stable
+        fields = ['label', 'in_use', 'note']
+        labels = {'label': 'Name or number', 'in_use': 'In use'}
+        widgets = {
+            'label': forms.TextInput(attrs={'class': 'form-input'}),
+            'in_use': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+            'note': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Door repair'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.is_gap:
+            # A gap is not a stable, so it is never "out of use".
+            del self.fields['in_use']
+
+    def clean_label(self):
+        label = (self.cleaned_data.get('label') or '').strip()
+        clash = Stable.objects.filter(
+            location=self.instance.location, label__iexact=label,
+        ).exclude(pk=self.instance.pk)
+        if clash.exists():
+            raise forms.ValidationError(f'This barn already has a "{label}".')
+        return label
+
+    def clean_in_use(self):
+        in_use = self.cleaned_data.get('in_use')
+        if not in_use:
+            from .stables import _join_names, occupants_of
+            horses = occupants_of(self.instance)
+            if horses:
+                names = _join_names([horse.name for horse in horses])
+                raise forms.ValidationError(
+                    f'{names} {"is" if len(horses) == 1 else "are"} in this stable. '
+                    f'Move {"it" if len(horses) == 1 else "them"} out first.'
+                )
+        return in_use
+
+
+class AddStablesForm(forms.Form):
+    """Add more stables to the end of a barn."""
+
+    count = forms.IntegerField(
+        label='How many stables to add', min_value=1, initial=1,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
+        help_text='They are numbered on from the highest number in the barn.',
+    )
+
+    def __init__(self, *args, barn, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.barn = barn
+
+    def clean_count(self):
+        from .stables import MAX_STABLES
+        count = self.cleaned_data['count']
+        have = self.barn.stables.count()
+        if have + count > MAX_STABLES:
+            room = max(MAX_STABLES - have, 0)
+            raise forms.ValidationError(
+                f'A barn can have up to {MAX_STABLES} stables. This one has room for {room} more.'
+            )
+        return count
+
+
+class StableGapForm(forms.Form):
+    """Put something that is not a stable into the barn's order."""
+
+    label = forms.CharField(
+        label='What is it', max_length=20,
+        widget=forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Tack room'}),
+    )
+    after = forms.ModelChoiceField(
+        label='Where', queryset=Stable.objects.none(), required=False,
+        empty_label='At the start',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text='The stables after it each move one place on.',
+    )
+
+    def __init__(self, *args, barn, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.barn = barn
+        after = self.fields['after']
+        after.queryset = barn.stables.order_by('position', 'pk')
+        after.label_from_instance = lambda stable: f'After {stable.label}'
+        if not self.is_bound:
+            after.initial = after.queryset.last()
+
+    def clean_label(self):
+        label = self.cleaned_data['label'].strip()
+        if self.barn.stables.filter(label__iexact=label).exists():
+            raise forms.ValidationError(f'This barn already has a "{label}".')
+        return label
+
+
+class ConvertToBarnForm(forms.Form):
+    """Turn a location that was added as ground into a barn."""
+
+    layout = forms.ChoiceField(
+        choices=Location.Layout.choices,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text=(
+            'Courtyard: stables round three sides of a yard. Centre aisle: '
+            'two lines that face each other. Row: one line.'
+        ),
+    )
+    stable_count = forms.IntegerField(
+        label='Number of stables', min_value=0, initial=0, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
+        help_text='Leave at 0 to add the stables later.',
+    )
+    first_number = forms.IntegerField(
+        label='First stable number', min_value=0, initial=1, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
+    )
+
+    def clean_stable_count(self):
+        from .stables import MAX_STABLES
+        count = self.cleaned_data.get('stable_count') or 0
+        if count > MAX_STABLES:
+            raise forms.ValidationError(f'A barn can have up to {MAX_STABLES} stables.')
+        return count
+
+
 class SiteSettingsForm(CoordinateFieldsMixin, forms.ModelForm):
     """The site centre and its "on this site" radius (Edit site)."""
 
@@ -441,8 +659,157 @@ class PlacementForm(forms.ModelForm):
     # here instead turned any overlapping dates into a 500.
 
 
-class MoveHorseForm(forms.Form):
+class StablePickerMixin(forms.Form):
+    """An optional stable beside a form's location select.
+
+    The picker is not a field of every location: it appears when the
+    chosen location is a barn with stables, fetched by the location select
+    itself (``hx-get`` to ``stable_options``) and drawn by
+    locations/partials/stable_picker.html. With JavaScript off there is no
+    picker and the horse simply goes into the barn with no stable, which
+    is allowed.
+
+    The view does the work: after the placement is written it calls
+    ``StableService.assign`` with ``stable`` and ``share_stable``, inside
+    the same transaction, so a stable that turns out to be taken undoes
+    the move rather than half-saving it.
+    """
+
+    # The name of the form's location field.
+    stable_location_field = 'location'
+
+    stable = forms.ModelChoiceField(
+        queryset=Stable.objects.none(), required=False, label='Stable',
+    )
+    share_stable = forms.BooleanField(required=False, label='Share the stable')
+
+    def init_stable_picker(self):
+        if not settings.BARNS_ENABLED:
+            del self.fields['stable']
+            del self.fields['share_stable']
+            return
+        self.fields['stable'].queryset = Stable.objects.filter(
+            is_gap=False, in_use=True, location__is_archived=False,
+            location__location_type=Location.LocationType.BARN,
+        )
+        self.fields[self.stable_location_field].widget.attrs.update({
+            'hx-get': reverse('stable_options'),
+            'hx-trigger': 'change',
+            'hx-target': '#stable-picker',
+            'hx-select': 'unset',
+            'hx-swap': 'innerHTML',
+            'hx-push-url': 'false',
+        })
+
+    def clean(self):
+        cleaned = super().clean()
+        stable = cleaned.get('stable')
+        location = cleaned.get(self.stable_location_field)
+        if stable is not None and location is not None and stable.location_id != location.pk:
+            self.add_error('stable', f'Stable {stable.label} is not in {location.name}.')
+        return cleaned
+
+    @property
+    def stable_picker(self):
+        """What the picker shows when the form is first drawn or drawn
+        again with errors: the stables of whichever location is chosen."""
+        if 'stable' not in self.fields:
+            return None
+        from .stables import picker_options
+
+        name = self.stable_location_field
+        if self.is_bound:
+            chosen = self.data.get(self.add_prefix(name))
+            selected = self.data.get(self.add_prefix('stable'))
+        else:
+            chosen = self.initial.get(name)
+            selected = self.initial.get('stable')
+        chosen = getattr(chosen, 'pk', chosen)
+        if not chosen or not str(chosen).isdigit():
+            return None
+        location = Location.objects.active().filter(pk=chosen).first()
+        picker = picker_options(location, selected=getattr(selected, 'pk', selected))
+        if picker is not None:
+            picker['share'] = bool(self.is_bound and self.data.get(self.add_prefix('share_stable')))
+        return picker
+
+
+class HorseStableForm(forms.Form):
+    """Put a horse that is already in a barn into one of its stables."""
+
+    stable = forms.ModelChoiceField(
+        queryset=Stable.objects.none(), label='Stable',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    day = forms.DateField(
+        label='From', input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+    )
+    share_stable = forms.BooleanField(
+        required=False, label='Share the stable',
+        widget=forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+        help_text='Tick to put this horse in with the one already there.',
+    )
+
+    def __init__(self, *args, horse, barn, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .stables import picker_options
+
+        self.horse = horse
+        field = self.fields['stable']
+        field.queryset = barn.stables.filter(is_gap=False, in_use=True).order_by('position', 'pk')
+        picker = picker_options(barn, exclude_horse=horse)
+        who = {option['stable'].pk: option['names'] for option in (picker or {'options': []})['options']}
+        field.label_from_instance = lambda stable: (
+            f"{stable.label} — {who[stable.pk]}" if who.get(stable.pk) else f"{stable.label} — empty"
+        )
+        field.empty_label = 'Choose a stable'
+        if not (picker and picker['any_occupied']):
+            del self.fields['share_stable']
+
+    def clean_day(self):
+        day = self.cleaned_data['day']
+        if day > timezone.localdate():
+            raise forms.ValidationError("A stable change can't be dated in the future.")
+        return day
+
+
+class SwapStableForm(forms.Form):
+    """Swap one horse's stable with another's in the same barn."""
+
+    other = forms.ModelChoiceField(
+        queryset=Horse.objects.none(), label='Swap with',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    day = forms.DateField(
+        label='From', input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+    )
+
+    def __init__(self, *args, horse, stay, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .models import StableStay
+
+        others = StableStay.objects.filter(
+            stable__location_id=stay.stable.location_id, end_date__isnull=True,
+        ).exclude(stable_id=stay.stable_id).select_related('stable')
+        where = {other.horse_id: other.stable.label for other in others}
+        field = self.fields['other']
+        field.queryset = Horse.objects.filter(pk__in=where).order_by('name')
+        field.label_from_instance = lambda other: f"{other.name} — stable {where[other.pk]}"
+        field.empty_label = 'Choose a horse'
+
+    def clean_day(self):
+        day = self.cleaned_data['day']
+        if day > timezone.localdate():
+            raise forms.ValidationError("A stable change can't be dated in the future.")
+        return day
+
+
+class MoveHorseForm(StablePickerMixin, forms.Form):
     """Form for moving a horse to a new location."""
+    stable_location_field = 'new_location'
+
     new_location = forms.ModelChoiceField(
         queryset=Location.objects.all(),
         widget=forms.Select(attrs={'class': 'form-select'})
@@ -457,6 +824,7 @@ class MoveHorseForm(forms.Form):
         self.fields['new_location'].choices = get_grouped_location_choices()
         self.fields['new_owner'].queryset = Owner.objects.active()
         self.fields['new_rate_type'].queryset = RateType.objects.filter(is_active=True)
+        self.init_stable_picker()
 
     new_owner = forms.ModelChoiceField(
         queryset=Owner.objects.active(),
@@ -518,7 +886,7 @@ class ArrivalForm(forms.Form):
         self.fields['rate_type'].queryset = RateType.objects.filter(is_active=True)
 
 
-class SingleArrivalForm(forms.Form):
+class SingleArrivalForm(StablePickerMixin, forms.Form):
     """Form for logging a single horse arrival (from Horse Detail page)."""
     location = forms.ModelChoiceField(
         queryset=Location.objects.all(),
@@ -532,6 +900,7 @@ class SingleArrivalForm(forms.Form):
         self.fields['location'].choices = get_grouped_location_choices()
         self.fields['owner'].queryset = Owner.objects.active()
         self.fields['rate_type'].queryset = RateType.objects.filter(is_active=True)
+        self.init_stable_picker()
 
     owner = forms.ModelChoiceField(
         queryset=Owner.objects.active(),
@@ -555,7 +924,7 @@ class SingleArrivalForm(forms.Form):
     )
 
 
-class NewArrivalForm(forms.Form):
+class NewArrivalForm(StablePickerMixin, forms.Form):
     """Combined form: create a new horse and place it in one step."""
     # Horse fields
     name = forms.CharField(
@@ -625,6 +994,7 @@ class NewArrivalForm(forms.Form):
         # See MoveHorseForm: .queryset is what validates, .choices only renders.
         self.fields['location'].queryset = Location.objects.active()
         self.fields['location'].choices = get_grouped_location_choices()
+        self.init_stable_picker()
         self.fields['rate_type'].queryset = RateType.objects.filter(is_active=True)
 
 

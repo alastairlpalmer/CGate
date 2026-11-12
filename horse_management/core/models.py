@@ -230,6 +230,14 @@ class LocationQuerySet(models.QuerySet):
         """Locations taken out of use but kept for history and reports."""
         return self.filter(is_archived=True)
 
+    def fields(self):
+        """Ground: every location that is not a barn."""
+        return self.filter(location_type='field')
+
+    def barns(self):
+        """Buildings with stables in them."""
+        return self.filter(location_type='barn')
+
 
 class BoundarySource(models.TextChoices):
     LANDAPP = 'landapp', 'Land App import'
@@ -293,6 +301,20 @@ class Location(models.Model):
         ARABLE = 'arable', 'Arable'
         OTHER = 'other', 'Other'
 
+    class LocationType(models.TextChoices):
+        FIELD = 'field', 'Field'
+        BARN = 'barn', 'Barn'
+
+    class Layout(models.TextChoices):
+        COURTYARD = 'courtyard', 'Courtyard'
+        AISLE = 'aisle', 'Centre aisle'
+        ROW = 'row', 'Row'
+
+    # The usages under which a location carries horses that live on it.
+    # Read by the board, the location preview and the finance capacity
+    # chart, which used to spell the pair out each.
+    RESIDENT_USAGES = (Usage.HORSES, Usage.MIXED)
+
     name = models.CharField(max_length=200)
     site = models.CharField(
         max_length=100,
@@ -301,7 +323,22 @@ class Location(models.Model):
     usage = models.CharField(
         max_length=20, choices=Usage.choices, default=Usage.HORSES,
     )
+    # A barn is a location like any other — placements, moves, pickers and
+    # invoices never ask which — but the land rules (rest, hay, feed out)
+    # do not apply to it, and it can carry a plan of its stables.
+    # Not "kind": the map payload and the horse list groups use that word.
+    location_type = models.CharField(
+        max_length=10, choices=LocationType.choices,
+        default=LocationType.FIELD, db_index=True,
+    )
+    # How a barn's stables are drawn (core.stables.plan_cells). Blank on
+    # everything that is not a barn.
+    layout = models.CharField(
+        max_length=10, choices=Layout.choices, blank=True, default='',
+    )
     description = models.TextField(blank=True)
+    # For a barn with stables this is the number of stables in use,
+    # written by core.stables.sync_barn_capacity and never typed.
     capacity = models.PositiveIntegerField(null=True, blank=True)
     is_archived = models.BooleanField(
         default=False,
@@ -334,16 +371,27 @@ class Location(models.Model):
 
     class Meta:
         ordering = ['site', 'name']
-        constraints = coordinate_constraints('location')
+        constraints = coordinate_constraints('location') + [
+            models.CheckConstraint(
+                condition=Q(location_type='barn') | Q(layout=''),
+                name='location_layout_only_on_barn',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.site} — {self.name}"
+
+    @property
+    def is_barn(self):
+        return self.location_type == self.LocationType.BARN
 
     def clean(self):
         super().clean()
         validate_coordinate_pair(self.latitude, self.longitude)
         if self.boundary is not None and not isinstance(self.boundary, dict):
             raise DjangoValidationError({'boundary': 'Boundary must be a GeoJSON geometry object.'})
+        if self.layout and not self.is_barn:
+            raise DjangoValidationError({'layout': 'Only a barn has a layout.'})
 
     @property
     def has_coordinates(self):
@@ -387,6 +435,12 @@ class Location(models.Model):
                 f"{placements} placement record"
                 f"{'s point' if placements != 1 else ' points'} at this location."
             )
+        stays = StableStay.objects.filter(stable__location=self).count()
+        if stays:
+            blockers.append(
+                f"{stays} stable record"
+                f"{'s point' if stays != 1 else ' points'} at this barn."
+            )
         feed_outs = self.feed_outs.count()
         if feed_outs:
             blockers.append(
@@ -413,6 +467,61 @@ class Location(models.Model):
         if self.capacity is not None:
             return self.capacity - self.current_horse_count
         return None
+
+
+class Stable(models.Model):
+    """One cell in a barn: a stable, or a gap such as a tack room.
+
+    The plan is drawn, not stored: a cell knows only its order in the barn
+    (``position``), and core.stables.plan_cells turns the barn's layout and
+    that order into rows and columns. A gap takes a place in the order
+    without being a stable, so the drawing can match a real building — a
+    tack room in the corner pushes the stables after it one cell on.
+    """
+
+    location = models.ForeignKey(
+        Location, on_delete=models.CASCADE, related_name='stables',
+    )
+    label = models.CharField(max_length=20)
+    # No unique rule on position: adding or removing a cell renumbers the
+    # ones after it, and PostgreSQL checks a plain unique constraint row
+    # by row, so the renumber would fail part way. Order is (position, pk).
+    position = models.PositiveSmallIntegerField()
+    is_gap = models.BooleanField(
+        default=False,
+        help_text="Not a stable: a tack room, feed room or doorway.",
+    )
+    in_use = models.BooleanField(
+        default=True,
+        help_text="Untick to take this stable out of use.",
+    )
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['location', 'position', 'pk']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['location', 'label'], name='stable_label_unique_in_barn',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.location.name} · {self.label}"
+
+    def clean(self):
+        super().clean()
+        if self.location_id and not self.location.is_barn:
+            raise DjangoValidationError('Only a barn has stables.')
+        if self.is_gap and not self.in_use:
+            raise DjangoValidationError(
+                {'in_use': 'A gap is not a stable, so it cannot be out of use.'}
+            )
+
+    @property
+    def counts_towards_capacity(self):
+        return self.in_use and not self.is_gap
 
 
 class SiteSettings(models.Model):
@@ -853,6 +962,69 @@ def prime_current_owners(horses):
     for horse in horses:
         horse.__dict__['current_owner'] = share_owner.get(horse.pk) or placement_owner.get(horse.pk)
 
+class StableStay(models.Model):
+    """A horse in a stable for a span of days. Mirrors Placement.
+
+    Beside the placement, never instead of it: the placement says which
+    barn the horse lives in and what its owner pays; this says which
+    stable. So a horse that moves from one stable to another keeps its
+    placement, and nothing in billing ever reads this table.
+
+    Dates follow the placement convention. A stay that gives way to
+    another ends the day before the new one starts.
+
+    There is deliberately no "one open stay per stable" rule: a mare and
+    her foal share a stable. Putting a second horse in one is a choice the
+    operator confirms (core.stables.StableService.assign).
+    """
+
+    horse = models.ForeignKey(
+        'Horse', on_delete=models.CASCADE, related_name='stable_stays',
+    )
+    stable = models.ForeignKey(
+        Stable, on_delete=models.PROTECT, related_name='stays',
+    )
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    # True when the stay ended because the placement did, not because
+    # somebody took the horse out of the stable. A rate change is saved as
+    # a move to the same barn — the old placement closes, a new one opens
+    # the next day — and the horse must keep its stable through it. Only a
+    # stay closed this way is picked back up when the placement resumes.
+    closed_with_placement = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-start_date', '-pk']
+        indexes = [
+            models.Index(fields=['stable', 'end_date'], name='stablestay_stable_enddate'),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['horse'],
+                condition=models.Q(end_date__isnull=True),
+                name='stablestay_one_open_per_horse',
+            ),
+            models.CheckConstraint(
+                condition=Q(end_date__isnull=True) | Q(end_date__gte=F('start_date')),
+                name='stablestay_ends_after_start',
+            ),
+        ]
+
+    def __str__(self):
+        status = "current" if self.end_date is None else f"ended {self.end_date}"
+        return f"{self.horse.name} in {self.stable} ({status})"
+
+    def clean(self):
+        super().clean()
+        if self.stable_id and self.stable.is_gap:
+            raise DjangoValidationError('A gap is not a stable: no horse can be put in it.')
+
+    @property
+    def is_current(self):
+        return self.end_date is None
+
+
 class RateType(models.Model):
     """Rate configuration for different livery types."""
 
@@ -1071,6 +1243,7 @@ class Placement(models.Model):
         # "departed but placed" in production. Detect the transition here.
         was_open = None
         old_location_id = None
+        old_end = None
         creating = self.pk is None
         if not creating:
             old_end, old_location_id = Placement.objects.filter(
@@ -1133,6 +1306,14 @@ class Placement(models.Model):
             # Closed: rest the field if this was its last occupant.
             LocationUsageService.rest_if_empty(self.location, self.end_date)
 
+        # The same choke point for the horse's stable: it must follow the
+        # placement whichever path wrote it (core.stables.StableService).
+        from .stables import StableService
+        StableService.placement_saved(
+            self, creating=creating, was_open=was_open, old_end=old_end,
+            old_location_id=old_location_id,
+        )
+
     def delete(self, *args, **kwargs):
         # Same choke point for deletion: removing a field's last open
         # placement must still rest the field. (Queryset bulk deletes bypass
@@ -1140,10 +1321,13 @@ class Placement(models.Model):
         was_open = self.end_date is None
         location = self.location
         start_date = self.start_date
+        horse_id = self.horse_id
         super().delete(*args, **kwargs)
         if was_open:
             from .services import LocationUsageService
+            from .stables import StableService
             LocationUsageService.undo_arrival(location, start_date)
+            StableService.placement_deleted(horse_id, location.pk, start_date)
 
     @property
     def is_current(self):

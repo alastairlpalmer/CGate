@@ -35,7 +35,7 @@ so it needs no breakpoint of its own.
         <a href="{% url 'horse_detail' horse.pk %}" data-horse-link class="flex items-center gap-3 group/name">
             {% include 'horses/_horse_avatar.html' with horse=horse size='sm' %}
             <div class="min-w-0">
-                <div class="font-medium text-charcoal group-hover/name:text-forest transition-colors">{{ horse.name }}{% if horse.health_flag %} <span class="health-dot is-{{ horse.health_flag.severity }}" title="{{ horse.health_flag.text }}" aria-hidden="true"></span><span class="sr-only">({{ horse.health_flag.text }})</span>{% endif %}</div>
+                <div class="font-medium text-charcoal group-hover/name:text-forest transition-colors">{{ horse.name }}{% if horse.health_flag %} <span class="health-dot is-{{ horse.health_flag.severity }}" title="{{ horse.health_flag.text }}" aria-hidden="true"></span><span class="sr-only">({{ horse.health_flag.text }})</span>{% endif %}{% if group_kind == 'location' and horse.stable_label %} <span class="stable-chip" title="Stable {{ horse.stable_label }}"><span class="sr-only">Stable </span>{{ horse.stable_label }}</span>{% endif %}</div>
                 <div class="text-xs text-sage">
                     {% if horse.calculated_age %}{{ horse.calculated_age }}yo · {% endif %}{{ horse.get_color_display }} · {{ horse.get_sex_display }}
                     {% if group_kind == 'owner' and not horse.has_passport %} · <span class="text-error-red font-medium">No passport</span>{% endif %}
@@ -82,7 +82,7 @@ so it needs no breakpoint of its own.
         an owner to separate from, and measured ~95ms of style recalc on the
         location axis (4x throttled) for one dot.{% endcomment %}
         {% if group_kind != 'owner' and horse.resolved_owner and p and p.location %}<span class="md:hidden text-sage/70 ml-1.5" aria-hidden="true">·</span>{% endif %}
-        {% if p and p.location %}<a href="{% url 'location_detail' p.location.pk %}" class="link tap-pad">{{ p.location.name }}</a>{% else %}<span class="text-sage/70">—</span>{% endif %}
+        {% if p and p.location %}<a href="{% url 'location_detail' p.location.pk %}" class="link tap-pad">{{ p.location.name }}{% if horse.stable_label %} &middot; {{ horse.stable_label }}{% endif %}</a>{% else %}<span class="text-sage/70">—</span>{% endif %}
         {% endwith %}
     </td>
     {% endif %}

@@ -18,6 +18,7 @@
 |---|---|
 | [`CODEBASE_REVIEW.md`](CODEBASE_REVIEW.md) | Full review of the codebase, numbered by part. Several tests cite it. |
 | [`LOCATION_MAPPING_PLAN.md`](LOCATION_MAPPING_PLAN.md) | Design for coordinates, field boundaries and the map tab. |
+| [`BARNS_AND_STABLES_PLAN.md`](BARNS_AND_STABLES_PLAN.md) | Phased plan for barns, numbered stables and day turnout. |
 | [`GOOGLE_SIGN_IN_PLAN.md`](GOOGLE_SIGN_IN_PLAN.md) | Review of the sign-in and invitation code, and a phased plan for sign-in with Google. |
 | [`DASHBOARD_REDESIGN_PLAN.md`](DASHBOARD_REDESIGN_PLAN.md) | Dashboard redesign. |
 | [`POPUP_EDIT_PLAN.md`](POPUP_EDIT_PLAN.md) | Popup editing. |

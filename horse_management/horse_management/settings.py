@@ -164,6 +164,7 @@ TEMPLATES = [
                 'core.permissions.feature_access_context',
                 'core.analytics.template_context',
                 'core.context_processors.location_maps',
+                'core.context_processors.barns',
                 'core.context_processors.google_sign_in',
             ],
             'loaders': [
@@ -532,6 +533,12 @@ LOCATION_MAPS_ENABLED = env.bool('LOCATION_MAPS_ENABLED', default=False)
 # Inside this distance of a location's point the nearest-location chip
 # names it. Tune per yard once real readings are in.
 LOCATION_NEAR_RADIUS_M = env.int('LOCATION_NEAR_RADIUS_M', default=150)
+
+# Barns and stables (docs/BARNS_AND_STABLES_PLAN.md). Off until phase 2b
+# is merged: a barn plan with no horses on it is no use to a yard. With it
+# off nothing offers a barn; a location that is already a barn keeps
+# working as one. Temporary — to be removed once the feature is in use.
+BARNS_ENABLED = env.bool('BARNS_ENABLED', default=False)
 
 # Celery Configuration
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379/0')
