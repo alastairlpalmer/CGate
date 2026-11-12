@@ -255,6 +255,73 @@ def horse_rows(provider, *, search='', location_id=None, today=None):
     return due, others
 
 
+SEARCH_LIMIT = 25
+
+
+def today_rows(provider, *, search='', extra_pk=None, today=None):
+    """Today's visit screen, kept short: ``(on_list, results)``.
+
+    ``on_list`` is only the yard's list for today plus the horses this
+    farrier has already added (to do first, then done, each by name).
+    Every other horse is hidden until the farrier searches: ``results``
+    holds the search hits that are not on the list. ``extra_pk`` adds one
+    more horse to the results (a panel opened without script).
+    """
+    due, others = horse_rows(provider, today=today)
+    rows = due + others
+    on_list = sorted(
+        (h for h in rows if h.job or h.line),
+        key=lambda h: (h.line is not None, h.name.lower()),
+    )
+    shown = {h.pk for h in on_list}
+    results = []
+    search = (search or '').strip().lower()
+    if search:
+        results = [h for h in rows if h.pk not in shown and search in h.name.lower()][:SEARCH_LIMIT]
+    if extra_pk and extra_pk not in shown and extra_pk not in {h.pk for h in results}:
+        results += [h for h in rows if h.pk == extra_pk]
+    return on_list, results
+
+
+def work_choices(prices, horse):
+    """The "Work done" tiles for one horse: ``(choices, cost)``.
+
+    One tile per price on the farrier's list, then one per work type that
+    no price covers, so every kind of work can always be picked. The tile
+    that matches the horse's line (or the yard's request) is selected, and
+    ``cost`` is the price to show in the Cost box.
+    """
+    from .models import FarrierVisit
+
+    choices = [
+        {'value': f'item:{i.pk}', 'label': i.name, 'price': i.price, 'work': i.farrier_work}
+        for i in prices
+    ]
+    covered = {i.farrier_work for i in prices if i.farrier_work}
+    choices += [
+        {'value': f'work:{value}', 'label': label, 'price': None, 'work': value}
+        for value, label in FarrierVisit.WorkType.choices if value not in covered
+    ]
+    line, job = getattr(horse, 'line', None), getattr(horse, 'job', None)
+    selected = None
+    if line is not None:
+        selected = (
+            next((c for c in choices if c['work'] == line.work_done and c['price'] == line.cost), None)
+            or next((c for c in choices if c['work'] == line.work_done), None)
+        )
+    elif job is not None and job.work_needed:
+        selected = next((c for c in choices if c['work'] == job.work_needed), None)
+    for choice in choices:
+        choice['selected'] = choice is selected
+    if line is not None:
+        cost = line.cost
+    elif selected is not None and selected['price'] is not None:
+        cost = selected['price']
+    else:
+        cost = ''
+    return choices, cost
+
+
 def todays_notes(provider, today=None):
     """Notes this provider left today (see FarrierNote), oldest first."""
     from django.utils import timezone
@@ -292,19 +359,6 @@ def todays_jobs(provider, today=None):
     from .models import FarrierJob
 
     return FarrierJob.objects.filter(provider=provider, date=today or timezone.localdate())
-
-
-def visit_locations():
-    """Locations that hold an active horse now, for the location filter."""
-    from core.models import Location
-
-    return (
-        Location.objects.filter(
-            placements__end_date__isnull=True, placements__horse__is_active=True,
-        )
-        .distinct()
-        .order_by('site', 'name')
-    )
 
 
 # --- Recording a line ------------------------------------------------------
@@ -369,6 +423,8 @@ def _line_values(provider, *, item=None, work_done=None, price=None, note=''):
     # The price's name goes in the notes only when its work type does not
     # already say it (a custom price with no farrier work type).
     label = item.name if item is not None and not item.farrier_work else ''
+    if label and (note == label or note.startswith(f'{label} · ')):
+        label = ''  # The note was filled in from this line and already says it.
     notes = ' · '.join(part for part in (label, note) if part)
     return work_done, price, notes
 

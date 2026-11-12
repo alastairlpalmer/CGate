@@ -6,6 +6,7 @@
     <title>{% block title %}Farrier visit{% endblock %} - Cgate</title>
     {% include "registration/_auth_head.html" %}
     <script src="{% static_v 'js/htmx.min.js' %}"></script>
+    <script src="{% static_v 'js/farrier_work.js' %}" defer></script>
 </head>
 {% comment %}
 The farrier page has its own frame, not base.html: the staff navigation

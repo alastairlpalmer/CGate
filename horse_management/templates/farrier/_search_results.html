@@ -1,0 +1,7 @@
+<div id="search-results" class="space-y-2" aria-live="polite">
+    {% for horse in results %}
+    {% include "farrier/_horse_row.html" %}
+    {% empty %}
+    {% if search %}<p class="text-sage text-sm">No other horse called “{{ search }}”.</p>{% endif %}
+    {% endfor %}
+</div>

@@ -86,27 +86,25 @@ The page is built for a phone first: big buttons and one column. It uses the exi
 
 ### Screen 1: Today's visit (the main screen)
 
-- Header: "Farrier visit · 10 Nov 2026" and a counter "3 horses · £255".
-- Search box: type part of a horse's name.
-- Location filter (field or stable), because the farrier works at one place at a time.
-- **Due now** (at the top): horses that are overdue or due within 14 days. Each row shows:
-  - photo (thumbnail), name, location
-  - last work and date, for example "Full set · 29 Sep"
-  - a due label: "Due" or "Overdue 5 days".
-- **Other horses** (folded): every other active horse.
+**Simplified (November 2026, the yard owner's request):** keep the screen as short as possible.
 
-Tap a horse. A small panel opens with the farrier's price buttons:
+- Header: "Farrier visit · 10 Nov" and a counter "3 horses · £255".
+- **Today's horses**: only the horses on the yard's list for today (section 14) and the horses the farrier has already added. Each row shows the name, location, last work and date, and what the yard asked for (if anything). There is no due list and no location filter.
+- **Find another horse**: a search box. Other horses show only when the farrier types a name.
+
+Tap a horse. One form opens, with three steps and one button:
 
 ```
- [ Trim £35 ]  [ Front shoes £75 ]  [ Full set £95 ]
- [ Remedial … ]  [ Remove shoes £20 ]  [ Other … ]
- Note (optional): ____________________
+ 1. Work done   [ Full set £95 ] [ Trim £35 ] [ Remedial ] ...
+ 2. Cost (£)    [ 95.00 ]
+ 3. Notes       [ ____________________ ]
+                [        Save Bramble        ]
 ```
 
-- One tap adds the line to today's visit. The row shows a tick and the work.
-- "Other" or "Remedial" opens a price box and a short description.
-- The farrier can change the price for one horse (for example, an extra charge for a hard-to-shoe horse).
-- Tap the row again to change or remove the line.
+- The tiles are the farrier's own prices, then each work type that no price covers. Tapping a priced tile puts its price in Cost; the farrier can change it for this horse.
+- The tile the yard asked for is selected before the farrier taps.
+- With no work chosen and no cost, Save keeps the note only, with no charge.
+- Tap the row again to change the line, or to remove the horse from the visit.
 
 ### Screen 2: Finish visit
 

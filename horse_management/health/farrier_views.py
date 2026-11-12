@@ -20,27 +20,25 @@ from .farrier import LineError, provider_page
 from .models import FarrierVisit
 
 
-def _location_id(request):
-    value = request.GET.get('location', '')
-    return int(value) if value.isdigit() else None
+def _open_panel(horse, prices):
+    """Give the open horse its "Work done" tiles and its Cost value."""
+    horse.choices, horse.cost_value = farrier.work_choices(prices, horse)
 
 
 def _list_context(request, provider, open_pk=None):
     search = request.GET.get('q', '').strip()[:100]
-    location_id = _location_id(request)
-    due, others = farrier.horse_rows(provider, search=search, location_id=location_id)
+    on_list, results = farrier.today_rows(provider, search=search, extra_pk=open_pk)
+    prices = list(farrier.price_list(provider))
+    for horse in on_list + results:
+        if horse.pk == open_pk:
+            _open_panel(horse, prices)
     return {
         'provider': provider,
         'visit': farrier.open_visit(provider),
-        'due_horses': due,
-        'other_horses': others,
+        'list_horses': on_list,
+        'results': results,
         'search': search,
-        'location_id': location_id,
-        'locations': farrier.visit_locations(),
         'open_pk': open_pk,
-        'prices': farrier.price_list(provider),
-        'work_types': FarrierVisit.WorkType.choices,
-        'list_count': sum(1 for horse in due if horse.job),
     }
 
 
@@ -48,15 +46,17 @@ def _list_context(request, provider, open_pk=None):
 def today(request):
     """Today's visit: the farrier's main screen.
 
-    An HTMX request (search or location filter) gets only the horse list.
-    ``?open=<horse id>`` opens that horse's price panel without script.
+    Only the yard's list for today and the horses already added are
+    shown. Every other horse is found with the search box; an HTMX
+    search gets only the results. ``?open=<horse id>`` opens that horse's
+    panel without script.
     """
     provider = request.provider
     open_pk = request.GET.get('open')
     open_pk = int(open_pk) if open_pk and open_pk.isdigit() else None
     context = _list_context(request, provider, open_pk=open_pk)
     if getattr(request, 'htmx', False):
-        return render(request, 'farrier/_horse_list.html', context)
+        return render(request, 'farrier/_search_results.html', context)
     return render(request, 'farrier/today.html', context)
 
 
@@ -64,26 +64,27 @@ def _active_horse(pk):
     return get_object_or_404(Horse, pk=pk, is_active=True)
 
 
-def _row_response(request, provider, horse_pk, *, open_panel=False, error=''):
+def _row_response(request, provider, horse_pk, *, open_panel=False, error='', saved=''):
     """One horse row, plus the visit counter swapped out of band."""
     due, others = farrier.horse_rows(provider)
     horse = next((h for h in due + others if h.pk == horse_pk), None)
     if horse is None:
         return redirect('farrier:today')
+    if open_panel:
+        _open_panel(horse, list(farrier.price_list(provider)))
     return render(request, 'farrier/_horse_row_response.html', {
         'provider': provider,
         'horse': horse,
         'open_pk': horse.pk if open_panel else None,
         'error': error,
-        'prices': farrier.price_list(provider),
-        'work_types': FarrierVisit.WorkType.choices,
+        'saved': saved,
         'visit': farrier.open_visit(provider),
     })
 
 
 @provider_page
 def horse_panel(request, pk):
-    """Open (or, with ?close=1, close) one horse's price panel."""
+    """Open (or, with ?close=1, close) one horse's panel."""
     provider = request.provider
     horse = _active_horse(pk)
     open_panel = request.GET.get('close') != '1'
@@ -93,30 +94,57 @@ def horse_panel(request, pk):
     return _row_response(request, provider, horse.pk, open_panel=open_panel)
 
 
+def _chosen_work(request, provider):
+    """``(item, work_done)`` from the "Work done" tiles.
+
+    A tile posts ``choice`` as ``item:<price id>`` or ``work:<work type>``.
+    The older ``item`` and ``work_done`` fields still work.
+    """
+    choice = request.POST.get('choice', '')
+    item_pk = request.POST.get('item', '')
+    work_done = request.POST.get('work_done') or None
+    if choice.startswith('item:'):
+        item_pk = choice[5:]
+    elif choice.startswith('work:'):
+        work_done = choice[5:] or None
+    item = farrier.get_price(provider, int(item_pk)) if item_pk.isdigit() else None
+    return item, work_done
+
+
 @provider_page
 @require_POST
 def horse_add(request, pk):
-    """Add or change this horse's line on today's visit."""
+    """Save this horse: work done, cost and notes, in one form.
+
+    With no work chosen and no cost, a note is saved on its own, with no
+    work and no charge (as ``horse_note``).
+    """
     provider = request.provider
     horse = _active_horse(pk)
-    item_pk = request.POST.get('item', '')
-    item = farrier.get_price(provider, int(item_pk)) if item_pk.isdigit() else None
-    error = ''
+    item, work_done = _chosen_work(request, provider)
+    price = request.POST.get('price', '').strip() or None
+    note = request.POST.get('note', '')
+    error = saved = ''
     try:
-        farrier.record_line(
-            provider, request.user, horse,
-            item=item,
-            work_done=request.POST.get('work_done') or None,
-            price=request.POST.get('price') or None,
-            note=request.POST.get('note', ''),
-        )
+        if item is None and work_done is None and price is None:
+            if not note.strip():
+                raise LineError("Choose the work done, or write a note.")
+            farrier.add_note(provider, request.user, horse, note)
+            saved = 'Note saved. No charge.'
+        else:
+            farrier.record_line(
+                provider, request.user, horse,
+                item=item, work_done=work_done, price=price, note=note,
+            )
     except LineError as exc:
         error = str(exc)
     if getattr(request, 'htmx', False):
-        return _row_response(request, provider, horse.pk, open_panel=bool(error), error=error)
+        return _row_response(request, provider, horse.pk, open_panel=bool(error or saved), error=error, saved=saved)
     if error:
         messages.error(request, f"{horse.name}: {error}")
         return redirect(f"{reverse('farrier:today')}?open={horse.pk}#horse-{horse.pk}")
+    if saved:
+        messages.success(request, f"{horse.name}: {saved}")
     return redirect(f"{reverse('farrier:today')}#horse-{horse.pk}")
 
 

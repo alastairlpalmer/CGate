@@ -1,18 +1,8 @@
-<div id="horse-list" class="space-y-5">
-    <section class="space-y-2" aria-labelledby="due-heading">
-        <h2 id="due-heading" class="text-sm uppercase tracking-wide text-sage">Due now ({{ due_horses|length }}){% if list_count %} <span class="normal-case tracking-normal text-saddle">· {{ list_count }} on the yard's list</span>{% endif %}</h2>
-        {% for horse in due_horses %}
-        {% include "farrier/_horse_row.html" %}
-        {% empty %}
-        <p class="text-sage text-sm">No horses due{% if search or location_id %} in this search{% endif %}.</p>
-        {% endfor %}
-    </section>
-    <section class="space-y-2" aria-labelledby="others-heading">
-        <h2 id="others-heading" class="text-sm uppercase tracking-wide text-sage">All other horses ({{ other_horses|length }})</h2>
-        {% for horse in other_horses %}
-        {% include "farrier/_horse_row.html" %}
-        {% empty %}
-        <p class="text-sage text-sm">No other horses{% if search or location_id %} in this search{% endif %}.</p>
-        {% endfor %}
-    </section>
-</div>
+<section id="horse-list" class="space-y-2" aria-labelledby="list-heading">
+    <h2 id="list-heading" class="text-sm uppercase tracking-wide text-sage">Today's horses ({{ list_horses|length }})</h2>
+    {% for horse in list_horses %}
+    {% include "farrier/_horse_row.html" %}
+    {% empty %}
+    <p class="rounded-lg bg-white border border-light-sage px-4 py-3 text-sm">The yard has no horses on your list today. Find a horse below to add your work.</p>
+    {% endfor %}
+</section>

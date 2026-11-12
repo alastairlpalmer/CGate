@@ -3,18 +3,16 @@
 {% block heading %}Farrier visit · {% now "j M" %}{% endblock %}
 {% block header_extra %} · {% include "farrier/_counter.html" %}{% endblock %}
 {% block content %}
-<form method="get" action="{% url 'farrier:today' %}" class="space-y-2"
-      hx-get="{% url 'farrier:today' %}" hx-target="#horse-list" hx-swap="outerHTML" hx-push-url="false" hx-select="unset"
-      hx-trigger="input changed delay:300ms from:input[name=q], change from:select[name=location], submit">
-    <input type="search" name="q" value="{{ search }}" placeholder="Search horse…" aria-label="Search horse"
-           class="w-full min-h-[44px] rounded-lg border border-light-sage px-3 py-2 bg-white">
-    <select name="location" aria-label="Location" class="w-full min-h-[44px] rounded-lg border border-light-sage px-3 py-2 bg-white">
-        <option value="">All places</option>
-        {% for location in locations %}
-        <option value="{{ location.pk }}"{% if location.pk == location_id %} selected{% endif %}>{{ location.name }}</option>
-        {% endfor %}
-    </select>
-</form>
 {% include "farrier/_horse_list.html" %}
+<section class="space-y-2" aria-labelledby="find-heading">
+    <h2 id="find-heading" class="text-sm uppercase tracking-wide text-sage">Find another horse</h2>
+    <form method="get" action="{% url 'farrier:today' %}" role="search"
+          hx-get="{% url 'farrier:today' %}" hx-target="#search-results" hx-swap="outerHTML" hx-push-url="false" hx-select="unset"
+          hx-trigger="input changed delay:300ms from:input[name=q], submit">
+        <input type="search" name="q" value="{{ search }}" placeholder="Type a horse's name…" aria-label="Find a horse by name"
+               autocomplete="off" class="w-full min-h-[48px] rounded-lg border border-light-sage px-3 py-2 bg-white text-base">
+    </form>
+    {% include "farrier/_search_results.html" %}
+</section>
 {% include "farrier/_review_bar.html" %}
 {% endblock %}
