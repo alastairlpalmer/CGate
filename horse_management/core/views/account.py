@@ -196,7 +196,7 @@ def mfa_verify(request):
 
     from .. import mfa
 
-    if request.user.is_verified():
+    if request.user.is_verified() or mfa.passed_by_google(request):
         return redirect(_safe_next(request))
     if not mfa.remember_enrolment(request):
         # Turned off since this session signed in (for example by the user

@@ -517,19 +517,61 @@ class CallbackRefusalTests(GoogleFlowMixin, TestCase):
 class OtherControlsTests(GoogleFlowMixin, TestCase):
     """Lockout and two-step sign-in around a Google sign-in."""
 
-    def test_a_user_with_two_step_sign_in_still_gives_a_code(self):
+    def test_a_google_sign_in_is_not_asked_for_a_code(self):
         from core.tests.test_account_security import enrol
 
         self.link()
         enrol(self.user)
         self.sign_in()
         self.assertEqual(int(self.signed_in_as()), self.user.pk)
+        self.assertEqual(self.client.get(reverse('account_security')).status_code, 200)
+        # The code page has nothing to ask, so it sends the person on.
+        response = self.client.get(reverse('mfa_verify'))
+        self.assertRedirects(response, reverse('dashboard'), fetch_redirect_response=False)
+
+    def test_a_password_sign_in_by_the_same_user_still_gives_a_code(self):
+        from core.tests.test_account_security import enrol
+
+        self.link()
+        enrol(self.user)
+        self.client.post(reverse('login'), {'username': 'jo@example.com', 'password': PW})
+        self.assertEqual(int(self.signed_in_as()), self.user.pk)
+        response = self.client.get(reverse('dashboard'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('mfa_verify'), response.url)
+
+    @override_settings(GOOGLE_SIGN_IN_SKIPS_TWO_STEP=False)
+    def test_the_code_can_be_asked_for_again_with_the_setting(self):
+        from core.tests.test_account_security import enrol
+
+        self.link()
+        enrol(self.user)
+        self.sign_in()
         response = self.client.get(reverse('dashboard'))
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse('mfa_verify'), response.url)
 
     @override_settings(MFA_REQUIRED_FOR_ADMINS=True)
-    def test_an_administrator_without_two_step_is_sent_to_set_up(self):
+    def test_an_administrator_signing_in_with_google_need_not_set_up_two_step(self):
+        admin = make_admin('boss', email='boss@example.com')
+        self.link(user=admin, sub='admin-sub', email='boss@example.com')
+        self.sign_in(claims={'sub': 'admin-sub', 'email': 'boss@example.com'})
+        self.assertEqual(self.client.get(reverse('dashboard')).status_code, 200)
+
+    @override_settings(MFA_REQUIRED_FOR_ADMINS=True)
+    def test_an_administrator_signing_in_with_a_password_is_still_sent_to_set_up(self):
+        admin = make_admin('boss', email='boss@example.com')
+        admin.set_password(PW)
+        admin.save(update_fields=['password'])
+        self.link(user=admin, sub='admin-sub', email='boss@example.com')
+        self.client.post(reverse('login'), {'username': 'boss@example.com', 'password': PW})
+        self.assertEqual(int(self.signed_in_as()), admin.pk)
+        response = self.client.get(reverse('dashboard'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('mfa_setup'), response.url)
+
+    @override_settings(MFA_REQUIRED_FOR_ADMINS=True, GOOGLE_SIGN_IN_SKIPS_TWO_STEP=False)
+    def test_with_the_setting_off_an_administrator_is_sent_to_set_up(self):
         admin = make_admin('boss', email='boss@example.com')
         self.link(user=admin, sub='admin-sub', email='boss@example.com')
         self.sign_in(claims={'sub': 'admin-sub', 'email': 'boss@example.com'})
@@ -838,7 +880,18 @@ class InviteTests(GoogleFlowMixin, TestCase):
         self.assertTrue(self.invited.check_password(new_pw))
 
     @override_settings(MFA_REQUIRED_FOR_ADMINS=True)
-    def test_an_administrator_must_still_set_up_two_step_sign_in(self):
+    def test_an_administrator_who_accepts_with_google_goes_straight_in(self):
+        from core.models import UserRole
+        from core.roles_testutils import administrator_role
+
+        UserRole.objects.filter(user=self.invited).update(role=administrator_role())
+        response = self.accept(claims=self.google())
+        self.assertEqual(int(self.signed_in_as()), self.invited.pk)
+        follow = self.client.get(response.url)
+        self.assertNotIn(reverse('mfa_setup'), follow.get('Location', ''))
+
+    @override_settings(MFA_REQUIRED_FOR_ADMINS=True, GOOGLE_SIGN_IN_SKIPS_TWO_STEP=False)
+    def test_with_the_setting_off_an_administrator_must_set_up_two_step_sign_in(self):
         from core.models import UserRole
         from core.roles_testutils import administrator_role
 

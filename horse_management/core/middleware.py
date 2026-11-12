@@ -77,6 +77,9 @@ class MFAMiddleware:
     Every other path, the Django admin and uploaded files included, is
     redirected. Must come after django_otp's OTPMiddleware, which works
     out whether this session has passed a code.
+
+    A session that signed in with Google is not held: Google's check
+    stands in for the code (``core.mfa.passed_by_google``).
     """
 
     def __init__(self, get_response):
@@ -99,6 +102,9 @@ class MFAMiddleware:
             return None
         path = request.path
         if path.startswith(settings.STATIC_URL) or path == reverse('logout'):
+            return None
+
+        if mfa.passed_by_google(request):
             return None
 
         verify_url = reverse('mfa_verify')

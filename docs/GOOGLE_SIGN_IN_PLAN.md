@@ -172,7 +172,9 @@ next year. One custom flow is small. Three custom flows are a library.
 4. **Keep no Google tokens.** The app reads the ID token one time and
    discards it. It asks for no API access. There is nothing to encrypt or
    leak.
-5. **Two-step sign-in rules do not change.** See decision D2.
+5. **A Google sign-in counts as the second step.** The app does not also
+   ask for an authenticator code. A password sign-in is not affected. See
+   decision D2 (changed in November 2026).
 
 ### 5.2 Data model
 
@@ -296,7 +298,8 @@ start a sign-in for the person.
    `INVITE_ACCEPTED`, and calls `login()`.
 10. `login()` updates `last_login`. This makes the invitation token invalid.
     The link cannot be used again.
-11. `MFAMiddleware` then applies the usual two-step rules.
+11. `MFAMiddleware` does not hold the session: it signed in with Google
+    (`core.mfa.passed_by_google`, decision D2).
 
 **ID token signature.** The plan does not check the signature. OpenID
 Connect Core (section 3.1.3.7) permits this when the app receives the token
@@ -522,7 +525,7 @@ section 5:
 | # | Decision | Recommendation |
 |---|---|---|
 | D1 | Custom flow or django-allauth? | Custom flow (section 4). Select allauth only if more providers are planned. |
-| D2 | Must an Administrator who signs in with Google also give a TOTP code? | Yes, no change in phase 2. The app cannot see if the Google account has 2-Step Verification. You can excuse one user with the existing "Excuse from two-step sign-in" control. |
+| D2 | Must an Administrator who signs in with Google also give a TOTP code? | No (changed in November 2026; phase 2 said yes). A session that signed in with Google is not asked for a code, and an Administrator who only signs in with Google need not set one up. A password sign-in by the same user still needs the code. The app cannot see if the Google account has 2-Step Verification, so this trusts each person to protect their Google account. Set `GOOGLE_SIGN_IN_SKIPS_TWO_STEP=False` to ask for the code again. |
 | D3 | Can a person link Google without the invitation link, on email match only? | No, at the start. It is safer. If people often ignore the email and go directly to the sign-in page, relax it later for `gmail.com` and Google Workspace addresses only. |
 | D4 | Add a "Google only" option for a user (no password permitted)? | Not now. Add it later if you want to stop passwords for some staff. |
 | D5 | Limit sign-in to one Google Workspace domain? | No. Yard staff have personal Gmail accounts. The invitation controls who gets in. |

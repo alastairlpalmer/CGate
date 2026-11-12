@@ -732,6 +732,12 @@ GOOGLE_SIGN_IN_ENABLED = bool(GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SEC
 # public, like password reset; a yard office shares one address.
 GOOGLE_SIGN_IN_LIMIT_PER_IP = env.int('GOOGLE_SIGN_IN_LIMIT_PER_IP', default=30)
 GOOGLE_SIGN_IN_LIMIT_WINDOW = 60 * 60
+# A Google sign-in counts as the second step: the app does not also ask
+# for an authenticator code, and an Administrator who only signs in with
+# Google need not set one up (core.mfa.passed_by_google). A password
+# sign-in is not affected. The app cannot see whether a Google account
+# has 2-Step Verification; set to False to ask for the code again.
+GOOGLE_SIGN_IN_SKIPS_TWO_STEP = env.bool('GOOGLE_SIGN_IN_SKIPS_TWO_STEP', default=True)
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 LOGIN_URL = '/accounts/login/'
