@@ -165,6 +165,13 @@ def kind_icon(kind):
 
 
 @register.filter
+def dismiss_token(item):
+    """What the Dismiss button posts for a Needs action item."""
+    from core.dashboard.dismissals import token
+    return token(item)
+
+
+@register.filter
 def gbp(value):
     """``value|gbp`` → ``£1,234.50``. None and blanks render as £0.00.
 

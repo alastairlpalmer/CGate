@@ -121,8 +121,11 @@
                 },
 
                 // ── The base map ──
+                // On unless this person switched it off: the shapes read
+                // better with the ground under them, on the dashboard card
+                // and the phone map as much as on the full map.
                 tilesWanted: function () {
-                    var fallback = this.variant === 'full';
+                    var fallback = true;
                     try {
                         var saved = localStorage.getItem(TILE_KEY + this.variant);
                         if (saved === '1') return true;

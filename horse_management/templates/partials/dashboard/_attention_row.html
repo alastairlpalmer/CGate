@@ -32,8 +32,8 @@ be among the first four that do, unless the list is expanded.
                 <span class="{% if item.is_overdue %}badge-danger{% elif item.delta == 0 %}badge-warning{% else %}badge-neutral{% endif %}">{{ item.due_date|due_label }}</span>
                 <span class="attn-date">{{ item.due_date|date:"j M" }}</span>
             </div>
-            {% if row.action %}
-            <div class="attn-actions">{% include 'partials/dashboard/_action.html' with action=row.action %}</div>
+            {% if row.action or can_dismiss %}
+            <div class="attn-actions">{% if row.action %}{% include 'partials/dashboard/_action.html' with action=row.action %}{% endif %}{% if can_dismiss %}{% include 'partials/dashboard/_dismiss.html' with items=row.items %}{% endif %}</div>
             {% endif %}
         </div>
     </div>
@@ -62,8 +62,8 @@ be among the first four that do, unless the list is expanded.
                 <span class="attn-date">{{ item.due_date|date:"j M" }}</span>
                 {% endif %}
             </div>
-            {% if item.actions %}
-            <div class="attn-actions">{% for action in item.actions %}{% include 'partials/dashboard/_action.html' %}{% endfor %}</div>
+            {% if item.actions or can_dismiss and row.key != 'invoices-more' %}
+            <div class="attn-actions">{% for action in item.actions %}{% include 'partials/dashboard/_action.html' %}{% endfor %}{% if can_dismiss and row.key != 'invoices-more' %}{% include 'partials/dashboard/_dismiss.html' with one=item %}{% endif %}</div>
             {% endif %}
         </div>
     </div>

@@ -10,15 +10,18 @@ through their own endpoints so the page paints fast. The data comes from
 import logging
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from ..dashboard import activity as activity_data
-from ..dashboard import attention, board, breeding
+from ..dashboard import attention, board, breeding, dismissals
 from ..dashboard import money as money_data
 from ..dashboard import upcoming as upcoming_data
 from ..models import DashboardPreference, Horse, Location, Owner, SiteSettings
@@ -117,7 +120,8 @@ def near_you_card(request, pref, sites, payload):
     The card is one slot filled by two independent ladders (plan 6.7)
     that the browser runs, because the first rung of each is GPS. The
     server settles what it can: the dashboard's chosen site as the
-    default, the only site when there is one, the pinned location, and
+    default (failing that the yard's ``DEFAULT_MAP_SITE``, for someone
+    GPS does not place on a site), the only site when there is one, the pinned location, and
     a map payload per site (``map_locations`` — the same shaping as the
     Map tab). With no site to fall back on and no GPS the card hides.
     """
@@ -125,7 +129,7 @@ def near_you_card(request, pref, sites, payload):
         return None
     if not sites:
         return None
-    default_site = pref.site if pref.site in sites else ''
+    default_site = pref.site if pref.site in sites else board.default_map_site(sites)
     pinned = pref.pinned_location
     if pinned is not None and (pinned.is_archived or pinned.site not in sites):
         pinned = None
@@ -191,6 +195,8 @@ def _dashboard_inner(request):
     items = []
     if visible & {'attention', 'upcoming', 'yard_board'}:
         items = attention.collect(request.user, site=site, today=today)
+    # What an Administrator dismissed leaves the dashboard, for everyone.
+    items, dismissed_count = dismissals.without_dismissed(items)
     inbox_items, upcoming_items = attention.split(items, today)
 
     rows = attention.rows(inbox_items, request.user) if 'attention' in visible else []
@@ -238,6 +244,8 @@ def _dashboard_inner(request):
         'sites': sites,
         'visible': visible,
         'rows': rows,
+        'can_dismiss': dismissals.can_dismiss(request.user),
+        'dismissed_count': dismissed_count,
         'summary': summary,
         'upcoming': upcoming,
         'sites_overview': sites_overview,
@@ -249,6 +257,34 @@ def _dashboard_inner(request):
         'near_you_maps': near_you_maps,
     }
     return render(request, 'dashboard.html', context)
+
+
+@login_required
+@require_POST
+def attention_dismiss(request):
+    """Dismiss Needs action items from the dashboard. Administrators only."""
+    if not dismissals.can_dismiss(request.user):
+        raise PermissionDenied
+    made = dismissals.dismiss(request.POST.getlist('item'), request.user)
+    if made:
+        messages.success(
+            request,
+            "Dismissed. It no longer shows on the dashboard for anyone."
+            if made == 1 else
+            f"Dismissed {made} items. They no longer show on the dashboard for anyone.",
+        )
+    return redirect('dashboard')
+
+
+@login_required
+@require_POST
+def attention_restore(request):
+    """Bring every dismissed item back. Administrators only."""
+    if not dismissals.can_dismiss(request.user):
+        raise PermissionDenied
+    if dismissals.restore_all():
+        messages.success(request, "Dismissed items are back on the dashboard.")
+    return redirect('dashboard')
 
 
 @feature_required('dashboard')

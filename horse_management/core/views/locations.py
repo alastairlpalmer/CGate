@@ -299,7 +299,8 @@ class LocationListView(FeatureAccessMixin, ListView):
     def _chosen_site(self, names, mapped_names):
         """The site the phone map opens on.
 
-        The URL wins, then the dashboard preference. Failing both, a site
+        The URL wins, then the dashboard preference, then the yard's
+        default map site (``DEFAULT_MAP_SITE``). Failing all three, a site
         that actually has boundaries drawn: landing on the map page and
         being told there is no map is a poor first answer when the yard
         next door is mapped.
@@ -311,6 +312,10 @@ class LocationListView(FeatureAccessMixin, ListView):
         pref = DashboardPreference.objects.filter(user=self.request.user).first()
         if pref and pref.site in names:
             return pref.site
+        from ..dashboard import board
+        default = board.default_map_site(names, self.request)
+        if default:
+            return default
         if mapped_names:
             return mapped_names[0]
         return names[0] if names else ''
@@ -442,7 +447,8 @@ class LocationListView(FeatureAccessMixin, ListView):
             chosen = (self.request.GET.get('site') or '').strip()
             if chosen not in names:
                 pref = DashboardPreference.objects.filter(user=self.request.user).first()
-                chosen = pref.site if pref and pref.site in names else (names[0] if names else '')
+                chosen = pref.site if pref and pref.site in names else (
+                    board.default_map_site(names, self.request) or (names[0] if names else ''))
             context['map_site'] = chosen
             context['map_sites'] = names
             context['map_payload'] = board.map_locations(chosen) if chosen else None

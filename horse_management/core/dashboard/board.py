@@ -284,6 +284,35 @@ def _shape_band(band):
     }
 
 
+def on_a_phone(request):
+    """True for a phone's browser. Browsers on phones put ``Mobi`` in the
+    User-Agent header; tablets and computers do not."""
+    return 'Mobi' in (request.headers.get('User-Agent') or '')
+
+
+def default_map_site(names, request=None):
+    """The yard's default map site (``DEFAULT_MAP_SITE``) when it is one of
+    ``names``, else ''. Matched without regard to capitals, and returned as
+    the site is spelt in ``names``. Callers ask only when the person has
+    not chosen a site themselves.
+
+    With ``request``, for a computer only: a page the server lays out
+    cannot know where a phone is, and someone on a phone is usually
+    standing on the yard, so the phone keeps the first mapped site as
+    before. Without it (the Near you card), for any device: the browser
+    tries GPS first, so the default is only reached by someone who is not
+    on or near a site, miles away included.
+    """
+    from django.conf import settings
+    wanted = (getattr(settings, 'DEFAULT_MAP_SITE', '') or '').strip().lower()
+    if not wanted or (request is not None and on_a_phone(request)):
+        return ''
+    for name in names:
+        if name.lower() == wanted:
+            return name
+    return ''
+
+
 def site_names():
     """Distinct site names with an active location, for the site switch."""
     from ..models import Location

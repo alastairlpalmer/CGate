@@ -1,0 +1,13 @@
+{% load ui_extras %}
+{% comment %}
+The Dismiss button on a Needs action row, for Administrators only
+(core/dashboard/dismissals.py). Context: `one`, a single item, or `items`,
+every item of a shared visit row. It takes the item off the dashboard for
+the whole yard; the page behind it (Health, Invoices) is not changed.
+{% endcomment %}
+<form method="post" action="{% url 'attention_dismiss' %}" class="inline">
+    {% csrf_token %}
+    {% if one %}<input type="hidden" name="item" value="{{ one|dismiss_token }}">{% endif %}
+    {% for each in items %}<input type="hidden" name="item" value="{{ each|dismiss_token }}">{% endfor %}
+    <button type="submit" class="btn-ghost btn-xs" title="Take this off the dashboard for everyone. It stays on its own page.">Dismiss</button>
+</form>
