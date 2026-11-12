@@ -28,6 +28,14 @@
                     {% if form.daily_rate.errors %}<p id="{{ form.daily_rate.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.daily_rate.errors.0 }}</p>{% endif %}
                 </div>
                 {% endif %}
+                {% if form.applies_to %}
+                <div>
+                    <label for="{{ form.applies_to.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.applies_to.label }}</label>
+                    {{ form.applies_to }}
+                    <p class="mt-1 text-xs text-sage">Choose Fields or Barns and a move between the two suggests this rate. A horse left on it in the wrong place shows on the dashboard.</p>
+                    {% if form.applies_to.errors %}<p class="mt-1 text-sm text-error-red" role="alert">{{ form.applies_to.errors.0 }}</p>{% endif %}
+                </div>
+                {% endif %}
                 <div>
                     <label for="{{ form.description.id_for_label }}" class="text-sm font-medium text-charcoal">Description</label>
                     {{ form.description }}

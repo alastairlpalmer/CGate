@@ -22,6 +22,9 @@ from this document and why.
 **Revision 5.** 2026-11-12. Phase 2a is built. Section 15 records where the build departed
 from this document and why.
 
+**Revision 6.** 2026-11-12. Phase 2b is built. Section 16 records where the build departed
+from this document and why.
+
 ---
 
 ## 0. How to use this document
@@ -921,4 +924,30 @@ Still to do before the feature goes on:
 
 - The two-operator test (6.9) is not written. The lock is in the code (`select_for_update` on the stable row), but SQLite ignores it. Test it one time on PostgreSQL.
 - Items 5, 7 and 8 above. They can go with phase 2b or phase 4.
+
+---
+
+## 16. What changed in the build of phase 2b
+
+Where the code differs from sections 7.1 to 7.7. The code is correct. Each item has a reason.
+
+| # | Plan | Build | Reason |
+|---|---|---|---|
+| 1 | The rate hint comes back in the same HTMX response as the stable picker (7.2). | It comes back as an `HX-Trigger` event, `rate-hint`, on that response. A few lines of Alpine on the move form open "More options", show the sentence and set the select. | The rate select is inside a closed `<details>` block. A swapped fragment cannot open its parent. An event can. |
+| 2 | "Changed to Box care." (7.2) | "Suggested rate: Box care." | The form does not set the rate when the operator has already chosen one. The sentence must be true in the two cases. |
+| 3 | The attention item links to the move form (7.4). | It links to the placement's edit sheet, "Correct rate", for a role with `locations` at full. Other roles see the item with no button. | The rate was wrong from the day the horse got there. The correction is to that stay. A move to the same location on the same day is refused by the service. |
+| 4 | Order the rate select on the arrival forms by the chosen location's type (7.3). | Not built. A wrong rate gives a warning message after the save, and the attention item. | The arrival forms do not reload when the location changes. The warning and the dashboard item cover the risk. |
+| 5 | The bulk move form shows a notice before the save (7.3). | The notice comes after the save. It names each horse left on a wrong rate. | The bulk form is shared by eight actions and builds no per-horse view before the save. |
+| 6 | Add the mismatch to `core/data_quality.py` as a count (7.4). | Not built. | A horse on a field rate in a barn can be a real, intended arrangement. It is a thing to check, not broken data. The attention list is the correct place. |
+| 7 | The farrier page, filtered to a barn, lists horses in stable order (7.5). | `horse_rows()` does this when it is given a location. The farrier page has no location filter today, so the order shows nowhere yet. Each row does print `Top Barn · 7`. | The farrier page was simplified to a search box while this plan was written. |
+
+Found during the build, not changed:
+
+- The rate select on the move form prints each rate with its price (`RateType.__str__`). It did so before this work. A role that cannot see charges can read prices there. This is a separate, small fix.
+
+Before the feature goes on in production:
+
+1. Set "Used for" on each rate type (Settings, Rate types). Until then there is no suggestion and no dashboard item.
+2. Convert one real barn and check the plan against the building.
+3. Run the two PostgreSQL checks from section 15.
 

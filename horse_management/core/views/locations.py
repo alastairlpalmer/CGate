@@ -1064,6 +1064,14 @@ def log_arrival(request, pk):
                     request,
                     f"{created} horse{'s' if created != 1 else ''} arrived at {location.name}."
                 )
+                from ..rates import KIND_WORDS, rate_mismatch
+                rate = form.cleaned_data['rate_type']
+                if rate_mismatch(rate, location):
+                    messages.warning(
+                        request,
+                        f"{rate.name} is not a rate for {KIND_WORDS[location.location_type]}. "
+                        f"Check the rate for {'these horses' if created != 1 else 'this horse'}.",
+                    )
             for err in errors:
                 messages.error(request, err)
             return redirect('location_detail', pk=location.pk)

@@ -104,11 +104,11 @@ def _placement_events(limit, site=''):
     placements = Placement.objects.all()
     if site:
         placements = placements.filter(location__site=site)
-    starts = list(placements.select_related('horse', 'location').order_by(
+    starts = list(placements.select_related('horse', 'location', 'rate_type').order_by(
         '-start_date', '-pk',
     )[:limit])
     ends = list(placements.filter(end_date__isnull=False).select_related(
-        'horse', 'location',
+        'horse', 'location', 'rate_type',
     ).order_by('-end_date', '-pk')[:limit])
 
     starts_by_horse_day = {(p.horse_id, p.start_date): p for p in starts}
@@ -116,7 +116,20 @@ def _placement_events(limit, site=''):
     events = []
     for placement in ends:
         follow_on = starts_by_horse_day.get((placement.horse_id, placement.end_date + timedelta(days=1)))
-        if follow_on is not None:
+        if follow_on is not None and follow_on.location_id == placement.location_id:
+            # Not a move at all. A change of rate or owner is saved as a
+            # new placement in the same place; "Moved from Top Barn to
+            # Top Barn" is noise. Say what changed, if it was the rate,
+            # and nothing if it was only the owner.
+            merged_starts.add(follow_on.pk)
+            if follow_on.rate_type_id != placement.rate_type_id:
+                events.append(Event(
+                    date=follow_on.start_date, kind='move',
+                    what=f'Rate changed to {follow_on.rate_type.name}',
+                    names=[_horse(placement.horse)],
+                    site=follow_on.location.site, sort_ts=_ts(follow_on.created_at),
+                ))
+        elif follow_on is not None:
             merged_starts.add(follow_on.pk)
             events.append(Event(
                 date=follow_on.start_date, kind='move',
@@ -145,6 +158,47 @@ def _placement_events(limit, site=''):
 
 def _cost(record):
     return record.cost if record.cost and record.cost > 0 else None
+
+
+def _stable_events(limit, site=''):
+    """Horses going into stables (core.models.StableStay).
+
+    One wording for every horse put into a barn's stables that day, so a
+    morning spent stabling ten arrivals folds into one row the way ten
+    arrivals do. A horse that came from another stable says which it went
+    to instead: that one is news about the horse, not about the barn.
+    """
+    from django.conf import settings
+
+    if not settings.BARNS_ENABLED:
+        return []
+    from ..models import StableStay
+
+    stays = StableStay.objects.select_related('horse', 'stable', 'stable__location')
+    if site:
+        stays = stays.filter(stable__location__site=site)
+    stays = list(stays.order_by('-start_date', '-pk')[:limit])
+    # Did the horse leave another stable the day before? Then it moved.
+    moved = set(
+        StableStay.objects.filter(
+            horse_id__in=[stay.horse_id for stay in stays], end_date__isnull=False,
+            closed_with_placement=False,
+        ).values_list('horse_id', 'end_date')
+    )
+    events = []
+    for stay in stays:
+        barn = stay.stable.location
+        if (stay.horse_id, stay.start_date - timedelta(days=1)) in moved:
+            what = f'Moved to stable {stay.stable.label} in {barn.name}'
+        else:
+            what = f'Given a stable in {barn.name}'
+        events.append(Event(
+            date=stay.start_date, kind='move', what=what,
+            names=[_horse(stay.horse)],
+            url=reverse('location_detail', args=[barn.pk]) + f'?stable={stay.stable_id}',
+            site=barn.site, sort_ts=_ts(stay.created_at),
+        ))
+    return events
 
 
 def recent(user, *, site='', today=None, limit=DEFAULT_LIMIT, max_rows=MAX_ROWS):
@@ -178,6 +232,7 @@ def recent(user, *, site='', today=None, limit=DEFAULT_LIMIT, max_rows=MAX_ROWS)
 
     if can('horses'):
         events.extend(_placement_events(limit, site))
+        events.extend(_stable_events(limit, site))
 
         from ..models import Document
         for doc in on_site(Document.objects).select_related('horse', 'owner').order_by('-uploaded_at')[:limit]:

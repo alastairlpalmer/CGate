@@ -149,6 +149,7 @@ KIND_ICONS = {
     'departure_expected': 'gate',
     'invoice': 'pound',
     'feed': 'hay',
+    'rate': 'pound',
     # activity log kinds
     'arrival': 'gate',
     'move': 'gate',
