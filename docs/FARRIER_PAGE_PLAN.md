@@ -276,7 +276,8 @@ The farrier page shows **Due now** (the yard's list, then horses due within 14 d
 
 **Decision (the yard owner, November 2026):** the farrier scans the QR code, picks their name from a dropdown and is signed in. No password and no PIN.
 
-- **Who can be picked:** only an active farrier in Service Providers with a linked **farrier-only** login. A staff login is never offered, so the QR code cannot sign anyone in as staff.
+- **Who can be picked:** an active farrier in Service Providers with a linked **farrier-only** login, or with **no login yet**. A staff login is never offered, so the QR code cannot sign anyone in as staff.
+- **First pick makes the login (November 2026):** when a farrier with no login picks their name, the app makes a login for them with the Farrier role and no password, and links it (`health.farrier.ensure_farrier_login`). The yard does not have to make one under Settings, Users. If the yard has changed the "Farrier" role so it reaches more than the farrier page, no login is made and the page says so.
 - **What such a session can do:** the farrier page only (the fence in section 4). If the login is later given a staff role, the session stops working (`core.auth_backends.FarrierQRBackend`).
 - **Audit:** each sign-in is in the audit log as "Signed in · QR code, name picked", with the address it came from.
 - **The risk the yard accepts:** anyone who has the QR code (a photo of the door is enough) can sign in as the farrier. They could then record work, which adds charges to owners' next invoices, and see horse names and fields. The yard checks every visit before it is paid ("Mark as checked"), and a wrong line can be removed. **To close this later:** add a 4-digit PIN per farrier (the screen already has room for it), or make the picker work only on a phone that has signed in once.
