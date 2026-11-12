@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("core", "0055_merge_0053_seed_farrier_role_0054_google_identity"),
+        ("core", "0056_reminder_switches"),
     ]
 
     operations = [

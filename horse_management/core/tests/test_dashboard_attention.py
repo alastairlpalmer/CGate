@@ -13,6 +13,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from core import reminders
 from core.dashboard import activity, attention, board, breeding, money, upcoming
 from core.models import (
     Document, Horse, Location, LocationUsagePeriod, Owner, Placement, RateType,
@@ -27,6 +28,8 @@ from invoicing.models import Invoice, Payment
 
 class DashboardDataTestCase(TestCase):
     def setUp(self):
+        # These tests use the farrier, which a new yard has switched off.
+        reminders.set_reminder('farrier', True)
         self.today = timezone.localdate()
         self.admin = make_admin(username='data-admin')
         self.owner = Owner.objects.create(name='Jo Bloggs', email='jo@example.com')

@@ -227,9 +227,9 @@
             {% endif %}
             {% if feature_access.finances.view %}
             <a href="{% url 'finances' %}"
-               class="{% if request.resolver_match.url_name == 'finances' %}nav-link-active{% else %}nav-link{% endif %}" title="Overview">
+               class="{% if request.resolver_match.url_name == 'finances' %}nav-link-active{% else %}nav-link{% endif %}" title="Finances">
                 <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
-                <span class="sidebar-label">Overview</span>
+                <span class="sidebar-label">Finances</span>
             </a>
             {% endif %}
             {% if feature_access.invoices.view %}
@@ -289,7 +289,15 @@
     <!-- ── Main Wrapper ── -->
     <div class="app-shell lg:pl-64 min-h-[100dvh] flex flex-col">
 
-        <!-- Top bar (mobile — slim brand bar) -->
+        <!-- Top bar (mobile — slim bar that names the section you are in) -->
+        {% comment %}List pages hide their <h1> on a phone to save a row, which
+        left the small tab label as the only sign of where you are. This bar
+        was spending 44px on the product's name, so it now says the section:
+        "Horses" on the horse list and on a horse's page, "Invoices" under
+        More. The dashboard, and a page in no section, keep the name.
+        syncMoreTab() fills it from the same active nav item the More tab
+        reads; the two tab sections are also set here so a full load does
+        not show the name first.{% endcomment %}
         {# data-mobile-brand: the phone Locations page hides this row — the #}
         {# site selector on it already names the yard (static/css/input.css). #}
         <header data-mobile-brand class="sticky top-0 z-30 bg-parchment/80 backdrop-blur border-b border-light-sage lg:hidden">
@@ -301,7 +309,7 @@
                         <line x1="15" y1="16" x2="21" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         <line x1="15" y1="20" x2="21" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
-                    <span class="text-sm font-bold text-charcoal font-heading truncate">Cgate</span>
+                    <span class="text-base font-semibold text-charcoal font-heading truncate" data-brand-label data-brand="Cgate">{% if '/horses/' in request.path %}Horses{% elif '/locations/' in request.path or '/placements/' in request.path %}Locations{% else %}Cgate{% endif %}</span>
                 </div>
             </div>
         </header>
@@ -644,6 +652,18 @@
         } else {
             if (label) label.textContent = 'More';
             tab.classList.remove('active');
+        }
+        // The phone's top bar names the section too (see the bar's comment):
+        // the current More item, or else the current tab. The dashboard is
+        // home, so it keeps the product's name, as does a page in no section.
+        var brand = document.querySelector('[data-brand-label]');
+        if (brand) {
+            var section = active ? active.textContent.trim() : '';
+            if (!section) {
+                var current = document.querySelector('#mobile-tab-bar a.tab-bar-item.active .tab-bar-label');
+                section = current ? current.textContent.trim() : '';
+            }
+            brand.textContent = (section && section !== 'Dashboard') ? section : brand.getAttribute('data-brand');
         }
     };
 

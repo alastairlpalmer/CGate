@@ -22,7 +22,7 @@
             <fieldset class="px-4 sm:px-5 py-4 sm:py-5 space-y-4 sm:space-y-5">
                 {% comment %}One page for two forms: LocationForm and BarnForm
                 (core/forms.py). A barn has a layout and stables where a
-                location has a land use, so each field is asked for only
+                location has a land use, so each input is asked for only
                 when the form in hand has it.{% endcomment %}
                 <legend class="text-base font-semibold text-charcoal">{% if form.layout %}Barn Details{% else %}Location Details{% endif %}</legend>
                 {% if form.layout %}

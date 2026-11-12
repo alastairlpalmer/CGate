@@ -4,10 +4,23 @@
 {% block title %}Dashboard - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6" x-data="{ filter: 'all' }">
+{% comment %}placeSiteTools: the location chip and site choice live in the
+Near you card's header while that card shows, and in the page header when
+it does not (partials/dashboard/site_tools.html).{% endcomment %}
+<div class="space-y-6"
+     x-data="{ filter: 'all',
+               placeSiteTools(inCard) {
+                   var tools = this.$root.querySelector('[data-site-tools]');
+                   var dest = this.$root.querySelector(inCard ? '[data-site-tools-slot]' : '[data-site-tools-home]');
+                   if (tools && dest && tools.parentNode !== dest) dest.appendChild(tools);
+               } }"
+     @near-you:visible="placeSiteTools($event.detail)">
 
     {# ── A. Headline: the greeting, with the yard's state as the subtext ── #}
-    <div class="page-header zone-enter" style="--i:0">
+    {# relative z-30: each zone's entrance animation makes it a layer of its #}
+    {# own, and later zones paint over earlier ones. Without this the site #}
+    {# menu, which opens downwards from this header, opened behind the cards. #}
+    <div class="page-header zone-enter relative z-30" style="--i:0">
         <div class="min-w-0">
             <h1 class="page-title">{{ greeting }}, {{ user.first_name|default:user.username }}</h1>
             <p class="page-subtitle">
@@ -42,17 +55,11 @@
             </div>
             {% endif %}
         </div>
-        <div class="flex flex-wrap items-center gap-2 shrink-0">
-            {% if near_you %}
-            {% include 'partials/dashboard/near_you_chip.html' %}
-            {% endif %}
-            {% if sites|length > 1 %}
-            <nav class="site-switch" aria-label="Site">
-                <a href="{% url 'dashboard' %}?site=" class="site-switch-item{% if not site %} is-active{% endif %}" {% if not site %}aria-current="true"{% endif %}>All sites</a>
-                {% for name in sites %}
-                <a href="{% url 'dashboard' %}?site={{ name|urlencode }}" class="site-switch-item{% if site == name %} is-active{% endif %}" {% if site == name %}aria-current="true"{% endif %}>{{ name }}</a>
-                {% endfor %}
-            </nav>
+        {% comment %}Empty while the Near you card holds the tools: an empty
+        flex item takes no room, so the header stays one line.{% endcomment %}
+        <div class="shrink-0" data-site-tools-home>
+            {% if not near_you_card.shows_without_gps %}
+            {% include 'partials/dashboard/site_tools.html' %}
             {% endif %}
         </div>
     </div>
@@ -79,7 +86,7 @@
         {% include 'partials/dashboard/near_you.html' %}
         {% endif %}
         {% if 'attention' in visible or 'upcoming' in visible %}
-        <div class="grid grid-cols-1 gap-6 lg:self-start" :class="hasMap ? 'lg:col-span-6 min-[1728px]:col-span-5' : 'lg:col-span-12 lg:grid-cols-2'">
+        <div class="grid grid-cols-1 gap-6 lg:self-start" :class="hasMap ? 'lg:col-span-6 min-[1728px]:col-span-5' : 'lg:col-span-12 lg:grid-cols-2 lg:items-start'">
             {% if 'attention' in visible %}
             <section class="zone-enter" style="--i:2" aria-labelledby="needs-action-title">
                 {% include 'partials/dashboard/attention.html' %}

@@ -1142,6 +1142,26 @@ def build_horse_timeline(
     return timeline
 
 
+def horse_neighbours(horse):
+    """``(previous, next)`` in the horse list's default order, name A to Z.
+
+    A yard works through its horses one after another: this lets the horse
+    page step to the next one without a trip back to the list. Horses on
+    the yard step through horses on the yard, departed through departed.
+    Either end is None.
+    """
+    from django.db.models import Q as _Q
+
+    same = Horse.objects.filter(is_active=horse.is_active).only('pk', 'name')
+    previous = same.filter(
+        _Q(name__lt=horse.name) | _Q(name=horse.name, pk__lt=horse.pk)
+    ).order_by('-name', '-pk').first()
+    following = same.filter(
+        _Q(name__gt=horse.name) | _Q(name=horse.name, pk__gt=horse.pk)
+    ).order_by('name', 'pk').first()
+    return previous, following
+
+
 class HorseDetailView(FeatureAccessMixin, DetailView):
     feature = 'horses'
     access_level = LEVEL_VIEW
@@ -1152,6 +1172,7 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         horse = self.object
+        context['previous_horse'], context['next_horse'] = horse_neighbours(horse)
         # Prefetch current placement once to avoid repeated DB hits in template
         context['current_placement'] = horse.placements.filter(
             end_date__isnull=True
@@ -1940,8 +1961,11 @@ def _health_flags(user, horses=()):
             loc = open_stays[0].location
             placements[h.pk] = (loc.name, loc.site)
     flags = {}
+    # A kind the yard switched off in Settings puts no dot on a horse.
+    from ..reminders import muted_collectors
     for item in attention.collect(
-        user, kinds=HEALTH_FLAG_KINDS, horizon_days=HEALTH_FLAG_DAYS,
+        user, kinds=set(HEALTH_FLAG_KINDS) - muted_collectors(),
+        horizon_days=HEALTH_FLAG_DAYS,
         placements=placements,
     ):
         if item.horse_id is None:

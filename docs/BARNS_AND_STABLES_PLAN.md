@@ -51,7 +51,7 @@ If this document conflicts with the existing codebase, follow the codebase and r
 - The template vocabulary lint (`core/tests/test_vocabulary_and_nav.py`) fails on phrases such as "this field" or "the field" in a template. "Location" is the word for the record. `Fields` as a group heading passes. `Turnout location` is the label for a turnout field.
 - Tailwind's default colours are off. Use the brand tokens in `tailwind.config.js`. A class that is built at runtime must be listed in `static/css/input.css`.
 - A day rate is money. It shows only to roles that can see charges (`core/tests/test_day_rate_visibility.py`). A rate **name** shows to everyone.
-- Do not write a migration that edits an older migration. The next number is `0056`.
+- Do not write a migration that edits an older migration. Phase 1 is `0057`.
 
 ---
 
@@ -205,7 +205,7 @@ With the flag off: the location form has no "Barn" option, no barn page renders 
 
 ### 5.1 Schema
 
-Migration `0056`. All changes are additive.
+Migration `0057` (main took `0056` while phase 1 was in review). All changes are additive.
 
 ```python
 class Location(models.Model):

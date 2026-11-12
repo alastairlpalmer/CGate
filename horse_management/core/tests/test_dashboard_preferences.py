@@ -353,6 +353,9 @@ class DashboardPageTests(TestCase):
     """The page's first response: state headline, inbox, strip."""
 
     def setUp(self):
+        from core import reminders
+        # These tests use the farrier, which a new yard has switched off.
+        reminders.set_reminder('farrier', True)
         self.today = timezone.localdate()
         self.owner = Owner.objects.create(name='Jo Bloggs')
         self.rate = RateType.objects.create(name='Grass', daily_rate=5)
@@ -460,7 +463,7 @@ class DashboardPageTests(TestCase):
             with self.subTest(page=name):
                 body = self.client.get(reverse(name)).content.decode()
                 self.assertIn('id="app-search-results"', body)
-                self.assertIn('Find a horse, owner or location', body)
+                self.assertIn('Find a horse, owner, location or invoice', body)
         # ...and not twice on the page it came from.
         body = self.client.get(reverse('dashboard')).content.decode()
         self.assertEqual(body.count('id="app-search-results"'), 1)

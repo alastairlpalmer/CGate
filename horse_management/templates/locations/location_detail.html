@@ -424,15 +424,15 @@
             <form method="post" action="{% url 'location_set_usage' location.pk %}" class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
                 {% csrf_token %}
                 <div>
-                    <label class="block text-xs font-medium text-sage mb-1">Usage</label>
+                    <label for="{{ usage_form.usage.id_for_label }}" class="block text-xs font-medium text-sage mb-1">Usage</label>
                     {{ usage_form.usage }}
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-sage mb-1">Effective date</label>
+                    <label for="{{ usage_form.change_date.id_for_label }}" class="block text-xs font-medium text-sage mb-1">Effective date</label>
                     {{ usage_form.change_date }}
                 </div>
                 <div class="sm:col-span-1">
-                    <label class="block text-xs font-medium text-sage mb-1">Notes (optional)</label>
+                    <label for="{{ usage_form.notes.id_for_label }}" class="block text-xs font-medium text-sage mb-1">Notes (optional)</label>
                     {{ usage_form.notes }}
                 </div>
                 <div>
