@@ -70,6 +70,32 @@ def remember_enrolment(request, user=None) -> bool:
     return enrolled
 
 
+GOOGLE_BACKEND = 'core.auth_backends.GoogleBackend'
+
+
+def passed_by_google(request) -> bool:
+    """True when this session signed in with Google and that is enough.
+
+    Google has checked the person, so the app does not ask for its own
+    code as well (docs/GOOGLE_SIGN_IN_PLAN.md, decision D2). The app cannot
+    see whether the Google account has 2-Step Verification, so this trusts
+    each person to protect their Google account;
+    ``GOOGLE_SIGN_IN_SKIPS_TWO_STEP=False`` restores the code.
+
+    Read from the session, which only ``login()`` writes: a password
+    sign-in by the same user still gives a code. Connecting a Google
+    account from Account Security does not sign in again, so it does not
+    count either.
+    """
+    if not getattr(settings, 'GOOGLE_SIGN_IN_SKIPS_TWO_STEP', True):
+        return False
+    from django.contrib.auth import BACKEND_SESSION_KEY
+
+    session = getattr(request, 'session', None)
+    backend = session.get(BACKEND_SESSION_KEY, '') if session is not None else ''
+    return backend == GOOGLE_BACKEND
+
+
 def is_administrator(user) -> bool:
     """A superuser, or a user with the seeded Administrator role."""
     if user.is_superuser:
