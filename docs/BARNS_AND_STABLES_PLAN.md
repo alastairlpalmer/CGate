@@ -25,6 +25,9 @@ from this document and why.
 **Revision 6.** 2026-11-12. Phase 2b is built. Section 16 records where the build departed
 from this document and why.
 
+**Revision 7.** 2026-11-12. Phase 3 is built. Section 17 records where the build departed
+from this document and why.
+
 ---
 
 ## 0. How to use this document
@@ -950,4 +953,25 @@ Before the feature goes on in production:
 1. Set "Used for" on each rate type (Settings, Rate types). Until then there is no suggestion and no dashboard item.
 2. Convert one real barn and check the plan against the building.
 3. Run the two PostgreSQL checks from section 15.
+
+---
+
+## 17. What changed in the build of phase 3
+
+Where the code differs from sections 8.1 to 8.7. The code is correct. Each item has a reason.
+
+| # | Plan | Build | Reason |
+|---|---|---|---|
+| 1 | `Turnout` has four fields (8.1). | A fifth field, `closed_with_placement`, as on `StableStay`. | A rate change or a move from one barn to another closes and re-opens the placement. The horse must keep its turnout through that, and must not get back a turnout that staff stopped. |
+| 2 | Three actions on the horse page: set, change, stop (8.5). | One sheet does all three. Its select has a "No turnout" row. | One form to learn. The same sheet serves the barn. |
+| 3 | "Select several horses on the plan or the list, then Set turnout" (8.5). | A "Turnout" button on the barn page opens the sheet with a tick list of every horse in the barn, all ticked. | No selection state on the plan. A yard changes turnout for a whole barn when a paddock is rested, so "all ticked" is the usual case. |
+| 4 | — | The sheet opens on a blank "Choose…" row that will not save. | With every horse ticked, a sheet that opened on "No turnout" would stop a whole barn's turnout on one stray press of Save. |
+| 5 | `with_occupancy()` is used in `core/views/settings.py` too (8.4). | Not changed there. | That page decides only what can be archived or deleted. `Location.archive_blockers()` already refuses ground with turnout horses. |
+| 6 | — | Ground used only for turnout adds no capacity to its site on the Yard board, as on the finance chart. | The two pages must give the same site capacity. |
+| 7 | — | `Location.availability` subtracts turnout horses. | The "Available" number on a field's page must agree with its ring. |
+
+Known limits:
+
+- A field's land-use label for turnout is drawn with the generic "other" icon. The six older land uses each have their own.
+- When the last resident's placement is *deleted* (not ended) on a field that turnout horses still use, the field keeps "Horses" until the next change. `undo_arrival` returns early because the field is not empty. The usage is still a horse usage, so no ring or count is wrong.
 

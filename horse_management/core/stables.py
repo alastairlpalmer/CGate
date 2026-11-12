@@ -270,6 +270,22 @@ def barn_plan(barn):
     }
 
 
+def mark_turnout(plan):
+    """Give each cell of a barn plan ``out_by_day``: the name of the
+    ground its horse (or one of them) goes out on, or ''. One query."""
+    from .models import Turnout
+
+    wanted = plan['stabled_horse_ids']
+    names = dict(
+        Turnout.objects.filter(horse_id__in=wanted, end_date__isnull=True)
+        .values_list('horse_id', 'location__name')
+    ) if wanted else {}
+    for cell in plan['cells']:
+        cell['out_by_day'] = next(
+            (names[horse.pk] for horse in cell['horses'] if horse.pk in names), '')
+    return plan
+
+
 def picker_options(location, *, selected=None, exclude_horse=None):
     """The stables a horse could go into at ``location``, for a form.
 

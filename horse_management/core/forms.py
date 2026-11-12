@@ -812,6 +812,63 @@ class SwapStableForm(forms.Form):
         return day
 
 
+class TurnoutForm(forms.Form):
+    """Set, change or stop the turnout of one or more stabled horses.
+
+    One form for all three, for one horse or a barn-full: the location
+    select has a "No turnout" row, and the horses are a tick list (hidden
+    when the form is for a single horse). A yard changes its turnout a
+    barn at a time when a paddock is rested, so the tick list starts with
+    everything ticked.
+
+    The select starts on a blank row that will not save. With every horse
+    ticked, a form that opened on "No turnout" would stop a whole barn's
+    turnout on one stray press of Save.
+    """
+
+    STOP = 'none'
+    horses = forms.ModelMultipleChoiceField(
+        queryset=Horse.objects.none(), label='Horses',
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-checkbox'}),
+    )
+    location = forms.ChoiceField(
+        label='Goes out in',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text='The ground these horses go out on by day. They still live in the barn.',
+    )
+    day = forms.DateField(
+        label='From', input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+    )
+
+    def __init__(self, *args, barn, horses, single=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .turnout import turnout_choices
+
+        self.fields['horses'].queryset = horses
+        if single:
+            self.fields['horses'].widget = forms.MultipleHiddenInput()
+        self.fields['location'].choices = (
+            [('', 'Choose…'), (self.STOP, 'No turnout')] + turnout_choices(barn)
+        )
+
+    def clean_day(self):
+        day = self.cleaned_data['day']
+        if day > timezone.localdate():
+            raise forms.ValidationError("A turnout change can't be dated in the future.")
+        return day
+
+    def clean_location(self):
+        """The ground chosen, or None for "No turnout"."""
+        value = self.cleaned_data.get('location')
+        if value == self.STOP:
+            return None
+        location = Location.objects.active().fields().filter(pk=value).first()
+        if location is None:
+            raise forms.ValidationError('Choose ground that is in use.')
+        return location
+
+
 class MoveHorseForm(StablePickerMixin, forms.Form):
     """Form for moving a horse to a new location."""
     stable_location_field = 'new_location'

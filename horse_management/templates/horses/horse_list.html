@@ -355,7 +355,8 @@
                     {% endif %}
                 </div>
                 {% if group.kind == 'location' and group.capacity %}
-                {% include 'horses/_capacity_ring.html' with count=group.count capacity=group.capacity availability=group.availability %}
+                {% if group.turnout_count %}<span class="text-xs font-medium text-meadow shrink-0" data-testid="group-turnout">+{{ group.turnout_count }} out by day</span>{% endif %}
+                {% include 'horses/_capacity_ring.html' with count=group.ring_count|default:group.count capacity=group.capacity availability=group.availability %}
                 {% else %}
                 {# The flat list's count says what it is counting; a group's #}
                 {# heading already does, so there the bare number is enough. #}

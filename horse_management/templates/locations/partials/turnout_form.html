@@ -1,0 +1,61 @@
+{% comment %}
+The turnout sheet (core.views.turnout). One form for one horse or a
+barn-full: where they go out by day, from when, and — for a barn — which
+of them. "No turnout" in the select stops it.
+
+Its own template because the generic pop-up form lays a tick list out as
+if it were one checkbox.
+{% endcomment %}
+<form method="post" action="{{ request.get_full_path }}"
+      hx-post="{{ request.get_full_path }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+      x-data="{ all: true }">
+    {% csrf_token %}
+    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+
+    <div class="p-4 sm:p-5 space-y-4 sm:space-y-5">
+        {% if form.non_field_errors %}
+        <div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3" role="alert">
+            <p class="text-sm font-medium text-error-red">This wasn't saved:</p>
+            {% for error in form.non_field_errors %}
+            <p class="text-sm text-error-red mt-1">{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% include "includes/form_field.html" with field=form.location %}
+        {% include "includes/form_field.html" with field=form.day %}
+
+        {% if not single %}
+        <fieldset{% if form.horses.errors %} class="field-invalid"{% endif %} data-testid="turnout-horses">
+            <div class="flex items-baseline justify-between gap-3">
+                <legend class="block text-sm font-medium text-charcoal">Horses *</legend>
+                <button type="button" class="link text-xs tap-pad"
+                        @click="all = !all; $root.querySelectorAll('input[name=horses]').forEach(box => box.checked = all)"
+                        x-text="all ? 'Untick all' : 'Tick all'">Untick all</button>
+            </div>
+            {% if form.horses.field.queryset %}
+            <ul class="mt-1 max-h-64 overflow-y-auto divide-y divide-light-sage border border-light-sage rounded-lg">
+                {% for box in form.horses %}
+                <li>
+                    <label class="flex items-center gap-3 px-3 py-2 min-h-[44px] cursor-pointer text-sm text-charcoal">
+                        {{ box.tag }}
+                        <span class="truncate">{{ box.choice_label }}</span>
+                    </label>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="mt-1 text-sm text-sage">No horses live in this barn.</p>
+            {% endif %}
+            {% if form.horses.errors %}
+            <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.horses.errors.0 }}</p>
+            {% endif %}
+        </fieldset>
+        {% endif %}
+    </div>
+
+    <div class="popup-footer">
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        <button type="submit" class="btn-primary">Save turnout</button>
+    </div>
+</form>

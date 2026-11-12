@@ -29,7 +29,7 @@ tint and the hatch say it only to the eye.
    style="grid-row: {{ cell.row }}; grid-column: {{ cell.col }};"
    title="{% if cell.horses %}{% for horse in cell.horses %}{{ horse.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% elif stable.note %}{{ stable.note }}{% else %}Stable {{ stable.label }}{% endif %}"
    aria-label="Stable {{ stable.label }}, {% if cell.horses %}{% for horse in cell.horses %}{{ horse.name }}{% if not forloop.last %} and {% endif %}{% endfor %}{% elif cell.state == 'off' %}out of use{% else %}empty{% endif %}">
-    <span class="barn-cell-label">{{ stable.label }}</span>
+    <span class="barn-cell-label">{{ stable.label }}{% if cell.out_by_day %}<span class="barn-cell-out" title="Out by day in {{ cell.out_by_day }}"><span class="sr-only">, out by day in {{ cell.out_by_day }}</span></span>{% endif %}</span>
     {% if cell.horses %}
     <span class="barn-cell-horse">{{ cell.horses.0.name }}{% if cell.more %} <span class="barn-cell-more">+{{ cell.more }}</span>{% endif %}</span>
     {% elif cell.state == 'off' %}

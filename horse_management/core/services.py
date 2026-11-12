@@ -558,12 +558,40 @@ class LocationUsageService:
         return new_period
 
     @staticmethod
-    def _is_empty(location, exclude_horse_ids=None):
-        """True if the location has no active (open) placements."""
+    def _has_residents(location, exclude_horse_ids=None):
+        """True if a horse lives here: an open placement."""
         qs = Placement.objects.filter(location=location, end_date__isnull=True)
         if exclude_horse_ids:
             qs = qs.exclude(horse_id__in=exclude_horse_ids)
-        return not qs.exists()
+        return qs.exists()
+
+    @staticmethod
+    def _has_turnouts(location, exclude_horse_ids=None):
+        """True if a stabled horse goes out here by day: an open turnout."""
+        from .models import Turnout
+        qs = Turnout.objects.filter(location=location, end_date__isnull=True)
+        if exclude_horse_ids:
+            qs = qs.exclude(horse_id__in=exclude_horse_ids)
+        return qs.exists()
+
+    @staticmethod
+    def _is_empty(location, exclude_horse_ids=None):
+        """True if no horse uses the location: nobody lives on it and
+        nobody is turned out on it. Ground that stabled horses graze by
+        day is not resting."""
+        return not (
+            LocationUsageService._has_residents(location, exclude_horse_ids)
+            or LocationUsageService._has_turnouts(location, exclude_horse_ids)
+        )
+
+    @staticmethod
+    def _open_auto(location, usage):
+        """True if the location's open usage period is an automatic ``usage``."""
+        current = location.usage_periods.filter(end_date__isnull=True).first()
+        return bool(
+            current and current.usage == usage
+            and current.source == LocationUsagePeriod.Source.AUTO
+        )
 
     @staticmethod
     def _set_usage_auto(location, usage, change_date):
@@ -594,9 +622,12 @@ class LocationUsageService:
         """Auto-mark a field as holding horses when horses arrive onto it.
 
         Only fires when the field was previously empty, so manual states such
-        as 'mixed' or 'hay' on an occupied field are preserved.
+        as 'mixed' or 'hay' on an occupied field are preserved — or when it
+        was carrying only day turnout: once a horse lives on it, it is
+        "horses" again. (Only an automatic "turnout" gives way; one set by
+        hand stays.)
         """
-        if was_empty:
+        if was_empty or LocationUsageService._open_auto(location, Location.Usage.TURNOUT):
             LocationUsageService._set_usage_auto(
                 location, Location.Usage.HORSES, arrival_date
             )
@@ -742,9 +773,21 @@ class LocationUsageService:
 
         The field is empty from the day after the final occupied day, so the
         rest period starts then.
+
+        If the last *resident* has left but stabled horses still go out on
+        it by day, it is not resting: an automatic "horses" becomes
+        "turnout" instead. A usage set by hand is left alone.
         """
         if LocationUsageService._is_empty(location):
             LocationUsageService._set_usage_auto(
                 location, Location.Usage.RESTED,
+                last_occupied_date + timedelta(days=1),
+            )
+        elif (
+            not LocationUsageService._has_residents(location)
+            and LocationUsageService._open_auto(location, Location.Usage.HORSES)
+        ):
+            LocationUsageService._set_usage_auto(
+                location, Location.Usage.TURNOUT,
                 last_occupied_date + timedelta(days=1),
             )

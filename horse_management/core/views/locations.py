@@ -37,6 +37,7 @@ USAGE_COLORS = {
     Location.Usage.RESTED: '#6A8990',   # sage (brim tint)
     Location.Usage.HAY: '#2E86AB',      # info-blue
     Location.Usage.ARABLE: '#92400E',   # amber-800
+    Location.Usage.TURNOUT: '#3F7A4F',  # meadow
     Location.Usage.OTHER: '#BCCCD0',    # sage-200
 }
 
@@ -286,16 +287,7 @@ class LocationListView(FeatureAccessMixin, ListView):
         return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = Location.objects.active().annotate(
-            horse_count=Count(
-                'placements__horse',
-                filter=Q(
-                    placements__end_date__isnull=True,
-                    placements__horse__is_active=True,
-                ),
-                distinct=True,
-            )
-        )
+        queryset = Location.objects.active().with_occupancy()
         if self.request.GET.get('tab', 'locations') != 'history':
             search = self.request.GET.get('search', '').strip()
             if search:
@@ -414,8 +406,12 @@ class LocationListView(FeatureAccessMixin, ListView):
                 # the annotation doesn't).
                 for loc in site_locs:
                     loc.__dict__['current_horse_count'] = loc.horse_count
+                    # The ring counts everything standing on the ground:
+                    # the horses that live there and the stabled horses
+                    # turned out on it by day.
+                    loc.using = loc.horse_count + loc.turnout_count
                     loc.__dict__['availability'] = (
-                        loc.capacity - loc.horse_count
+                        loc.capacity - loc.using
                         if loc.capacity is not None else None
                     )
             _attach_horse_names(context['locations'])
@@ -530,8 +526,8 @@ class LocationDetailView(FeatureAccessMixin, DetailView):
             self.object.is_barn and settings.BARNS_ENABLED
             and context['current_tab'] == 'current'
         ):
-            from ..stables import barn_plan
-            plan = context['barn_plan'] = barn_plan(self.object)
+            from ..stables import barn_plan, mark_turnout
+            plan = context['barn_plan'] = mark_turnout(barn_plan(self.object))
             # A link from a horse's page lands on its stable.
             wanted = self.request.GET.get('stable', '')
             context['highlight_stable'] = int(wanted) if wanted.isdigit() else None
@@ -552,6 +548,10 @@ class LocationDetailView(FeatureAccessMixin, DetailView):
         # The rows of the table on the default tab. Everyone here, except
         # in a barn with stables, where it is only those with no stable.
         context['table_horses'] = context['horses']
+        if settings.BARNS_ENABLED and not self.object.is_barn and context['current_tab'] == 'current':
+            # The stabled horses that go out on this ground by day.
+            from ..turnout import turnout_horses
+            context['out_here'] = turnout_horses(self.object)
         if context.get('barn_tray'):
             # The table under the plan is the tray: the horses that are
             # in the barn and in no stable.
@@ -975,8 +975,13 @@ def location_preview(request, pk):
             end_date__isnull=True, horse__is_active=True,
         ).select_related('horse', 'owner').order_by('start_date', 'horse__name')
     )
-    count = len(placements)
-    holds_horses = location.usage in Location.RESIDENT_USAGES
+    # Stabled horses that go out here by day count against the ground
+    # as the ones that live on it do.
+    from ..turnout import turnout_horses
+    out_here = [] if location.is_barn else turnout_horses(location)
+    residents = len(placements)
+    count = residents + len(out_here)
+    holds_horses = location.usage in Location.HORSE_USAGES
     capacity = location.capacity if holds_horses else None
     period = location.usage_periods.filter(end_date__isnull=True).first()
     rest_days = None
@@ -1012,7 +1017,12 @@ def location_preview(request, pk):
         'capacity': capacity,
         'availability': capacity - count if capacity is not None else None,
         'rest_state': state,
-        'rest_label': label or location.get_usage_display(),
+        'rest_label': (
+            'Turnout' if state == 'grazing' and location.usage == Location.Usage.TURNOUT
+            else label or location.get_usage_display()
+        ),
+        'out_here': out_here,
+        'residents': residents,
         'rest_colour': colour,
         'rest_days': rest_days,
         'rest_since': period.start_date if rest_days is not None else None,

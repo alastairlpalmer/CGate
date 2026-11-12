@@ -173,7 +173,9 @@ class HorseListUseCaseTests(TestCase):
         options = self._get(group_by='location').context['use_filter_options']
         self.assertEqual(
             [o['key'] for o in options],
-            ['horses', 'mixed', 'rested', 'hay', 'arable', 'other'],
+            # 'turnout' joined the land uses with day turnout (docs/
+            # BARNS_AND_STABLES_PLAN.md, phase 3): a new use is a new tick.
+            ['horses', 'mixed', 'rested', 'hay', 'arable', 'turnout', 'other'],
         )
         self.assertEqual(options[1]['label'], 'Mixed Grazing')
         self.assertFalse(any(o['active'] for o in options))
