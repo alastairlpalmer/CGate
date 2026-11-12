@@ -353,6 +353,9 @@ class DashboardPageTests(TestCase):
     """The page's first response: state headline, inbox, strip."""
 
     def setUp(self):
+        from core import reminders
+        # These tests use the farrier, which a new yard has switched off.
+        reminders.set_reminder('farrier', True)
         self.today = timezone.localdate()
         self.owner = Owner.objects.create(name='Jo Bloggs')
         self.rate = RateType.objects.create(name='Grass', daily_rate=5)

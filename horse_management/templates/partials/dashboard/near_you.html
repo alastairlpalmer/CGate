@@ -28,12 +28,24 @@ header, footer and the Full map button open the Map tab.
          style="--i:1" aria-labelledby="near-you-title" data-testid="near-you-zone">
     <div class="card overflow-hidden cursor-pointer h-full flex flex-col" data-testid="near-you-card"
          @click="open($event)" @keydown.enter="open()" tabindex="0" role="link" :aria-label="'Open the map of ' + site">
-        <div class="section-header">
+        {% comment %}The header holds the location chip and the site choice
+        (partials/dashboard/site_tools.html; dashboard.html moves them in
+        and out), so the map and the site it draws are chosen in one
+        place. A GPS match is named by that chip, so the card's own label
+        only shows for a pinned or last-opened location. The plain site
+        name shows when it is not the chosen site (GPS found another, or
+        there is one site and no choice to show).{% endcomment %}
+        <div class="section-header flex-wrap gap-x-3 gap-y-2">
             <div class="flex items-center gap-2.5 min-w-0">
-                <h2 class="section-title" id="near-you-title">Near you</h2>
-                <span class="pointer-events-none truncate" x-show="kind" :class="kind === 'gps' ? 'near-chip' : 'near-chip-quiet'" x-text="label"></span>
+                <h2 class="section-title shrink-0" id="near-you-title">Near you</h2>
+                <span class="near-chip-quiet pointer-events-none truncate" x-show="kind && kind !== 'gps'" x-text="label"></span>
+                <span class="text-xs text-sage truncate" x-show="site !== $el.dataset.chosen" data-chosen="{{ site }}" x-text="site"></span>
             </div>
-            <span class="text-xs text-sage" x-text="site"></span>
+            <div class="flex items-center justify-end gap-2 ml-auto" data-site-tools-slot>
+                {% if near_you_card.shows_without_gps %}
+                {% include 'partials/dashboard/site_tools.html' %}
+                {% endif %}
+            </div>
         </div>
         <div class="p-2 flex-1 flex flex-col min-h-0">
             {% for name, payload in near_you_maps.items %}

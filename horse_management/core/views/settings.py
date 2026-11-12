@@ -176,7 +176,9 @@ def app_settings(request):
         else:
             biz_form = BusinessSettingsForm(instance=business)
 
+        from ..reminders import reminder_rows
         ctx.update({
+            'reminder_rows': reminder_rows(request.user, business),
             'providers': ServiceProvider.objects.filter(is_active=True).order_by('name'),
             'biz_form': biz_form,
             'rate_types': RateType.objects.all(),
@@ -385,4 +387,20 @@ def dashboard_toggle(request):
     layout[key]['visible'] = visible
     pref.layout = layout
     pref.save(update_fields=['layout', 'updated_at'])
+    return HttpResponse(status=204)
+
+
+@feature_required('settings')
+@require_POST
+def reminder_toggle(request):
+    """Switch one kind of dashboard reminder on or off for the whole yard."""
+    from ..reminders import REMINDER_KEYS, set_reminder
+
+    key = request.POST.get('key', '').strip()
+    on_raw = request.POST.get('on', '').strip().lower()
+    if key not in REMINDER_KEYS:
+        return HttpResponseBadRequest("unknown reminder")
+    if on_raw not in ('true', 'false', '1', '0', 'on', 'off'):
+        return HttpResponseBadRequest("invalid 'on' value")
+    set_reminder(key, on_raw in ('true', '1', 'on'))
     return HttpResponse(status=204)

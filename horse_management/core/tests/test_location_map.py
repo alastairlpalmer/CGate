@@ -265,7 +265,7 @@ class NearYouCardTests(TestCase):
         # shows and opens out to two lists side by side when it does not.
         self.assertLess(response.content.index(b'near-you-title'), response.content.index(b'needs-action-title'))
         self.assertLess(response.content.index(b'needs-action-title'), response.content.index(b'upcoming-title'))
-        self.assertContains(response, "hasMap ? 'lg:col-span-6 min-[1728px]:col-span-5' : 'lg:col-span-12 lg:grid-cols-2'")
+        self.assertContains(response, "hasMap ? 'lg:col-span-6 min-[1728px]:col-span-5' : 'lg:col-span-12 lg:grid-cols-2 lg:items-start'")
         # The card comes before the Yard board in the page
         self.assertLess(response.content.index(b'near-you-title'), response.content.index(b'yard-board-title'))
         # Both maps carry the Map button that shows the base map under the shapes.

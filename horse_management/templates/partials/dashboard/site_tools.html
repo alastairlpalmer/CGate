@@ -1,0 +1,13 @@
+{% comment %}
+Where am I looking: the "Use my location" chip and the site choice, as
+one group. It renders once and dashboard.html moves it: into the Near
+you card's header while that card shows, back to the page header when
+it does not (placeSiteTools). One copy, so the chip's state and the
+open menu survive the move.
+{% endcomment %}
+<div class="flex flex-wrap items-center justify-end gap-2" data-site-tools @click.stop @keydown.enter.stop>
+    {% if near_you %}
+    {% include 'partials/dashboard/near_you_chip.html' %}
+    {% endif %}
+    {% include 'partials/dashboard/site_picker.html' %}
+</div>

@@ -65,6 +65,7 @@ from .placements import (  # noqa: F401
 from .settings import (  # noqa: F401
     app_settings,
     dashboard_toggle,
+    reminder_toggle,
     health_check,
     web_health_check,
     rate_type_create,

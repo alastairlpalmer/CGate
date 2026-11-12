@@ -415,8 +415,9 @@ class AxisQueryCountTests(TestCase):
     def test_every_axis_stays_within_the_cap(self):
         # Measured at 11-12 with 25 locations and 25 owners, then 19 once the
         # list flagged every health kind (a fixed handful of queries, not one
-        # per horse); the cap leaves headroom for middleware without hiding
-        # a per-group query.
+        # per horse), then one more to read which reminders the yard has
+        # switched off; the cap leaves headroom for middleware without
+        # hiding a per-group query.
         for params in (
             {},
             {'group_by': 'location', 'layout': 'site'},
@@ -427,7 +428,7 @@ class AxisQueryCountTests(TestCase):
             {'group_by': 'owner', 'show_empty': '1'},
         ):
             with self.subTest(**params):
-                self.assertLessEqual(self._count(**params), 20)
+                self.assertLessEqual(self._count(**params), 21)
 
     def test_showing_empty_groups_adds_no_queries_per_group(self):
         """25 locations, not 25 queries."""
