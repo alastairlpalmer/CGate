@@ -31,7 +31,8 @@ so the two never disagree at a glance.
                         <span class="board-tile-name">{{ tile.location.name }}</span>
                         <span class="board-tile-meta{% if tile.usage == 'rested' %} text-sage{% elif tile.usage == 'hay' %} text-info-blue{% elif tile.usage == 'arable' or tile.usage == 'mixed' %} text-saddle{% endif %}">
                             {% if tile.usage == 'rested' %}Rested{% if tile.rest_days is not None %} &middot; {{ tile.rest_days }} day{{ tile.rest_days|pluralize }}{% endif %}
-                            {% elif tile.holds_horses %}{{ tile.count }} horse{{ tile.count|pluralize }}{% if tile.usage == 'mixed' %} &middot; mixed grazing{% endif %}
+                            {% elif tile.is_barn and tile.in_stables %}{{ tile.in_stables }} in stables{% if tile.no_stable %} &middot; {{ tile.no_stable }} no stable{% endif %}
+                            {% elif tile.holds_horses %}{{ tile.count }} horse{{ tile.count|pluralize }}{% if tile.usage == 'mixed' %} &middot; mixed grazing{% endif %}{% if tile.turnout %} &middot; {{ tile.turnout }} out by day{% endif %}
                             {% else %}{{ tile.usage_label }}{% endif %}
                         </span>
                     </span>

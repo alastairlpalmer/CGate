@@ -2201,6 +2201,10 @@ a.barn-cell:focus-visible { @apply outline-2 outline-offset-2 outline-forest; }
 .stable-chip { @apply inline-flex items-center ml-1.5 px-1.5 py-px rounded-sm bg-light-sage text-forest text-[11px] font-bold tabular-nums align-middle; }
 .barn-cell-horse { @apply text-[12px] font-medium leading-tight text-charcoal truncate; }
 .barn-cell-more { @apply font-normal text-sage; }
+/* The app's one "needs attention" mark, the rust dot the Yard board puts
+   on a tile, on the stable of a horse the dashboard is asking about. */
+.barn-cell.needs-attention { @apply relative; }
+.barn-cell-flag { @apply absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-saddle ring-2 ring-white; }
 /* A horse that goes out by day: a meadow-green dot beside its stable's
    number. The words are in the cell's title and for a screen reader. */
 .barn-cell-out { @apply inline-block w-1.5 h-1.5 ml-1 rounded-full bg-meadow align-middle; }

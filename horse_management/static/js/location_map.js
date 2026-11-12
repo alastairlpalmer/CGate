@@ -353,6 +353,14 @@
                         var layer = null;
                         if (loc.boundary) {
                             layer = L.geoJSON(loc.boundary, { style: style, interactive: interactive });
+                        } else if (loc.lat != null && loc.lng != null && loc.is_barn) {
+                            // A barn is a building: a square, so the eye
+                            // tells it from ground at a glance. Same point,
+                            // same size as the circle it would have been.
+                            layer = L.rectangle(
+                                L.latLng(loc.lat, loc.lng).toBounds((loc.radius_m || 15) * 2),
+                                Object.assign({ interactive: interactive }, style)
+                            );
                         } else if (loc.lat != null && loc.lng != null) {
                             layer = L.circle([loc.lat, loc.lng], Object.assign({ radius: loc.radius_m || 25, interactive: interactive }, style));
                         }

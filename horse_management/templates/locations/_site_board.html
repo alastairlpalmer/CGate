@@ -152,7 +152,7 @@ buttons are the ones it has always had.
                             <span class="loc-card-name">{{ loc.name }}</span>
                             <span class="loc-card-sub">
                                 <span style="color: {{ loc.rest_colour }}" class="font-semibold">{{ loc.rest_label }}</span>
-                                {% if loc.rest_days is not None %}<span class="text-sage/50">&middot;</span> rested {{ loc.rest_days }} day{{ loc.rest_days|pluralize }}{% elif loc.count %}<span class="text-sage/50">&middot;</span> in use{% endif %}
+                                {% if loc.rest_days is not None %}<span class="text-sage/50">&middot;</span> rested {{ loc.rest_days }} day{{ loc.rest_days|pluralize }}{% elif loc.count and not loc.is_barn %}<span class="text-sage/50">&middot;</span> in use{% endif %}
                                 {% if loc.area_ha %}<span class="text-sage/50">&middot;</span> {{ loc.area_ha }} ha{% endif %}
                             </span>
                             {% if loc.capacity %}

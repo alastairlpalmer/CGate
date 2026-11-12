@@ -25,10 +25,11 @@ tint and the hatch say it only to the eye.
 {% else %}
 <a href="{% url 'stable_panel' location.pk stable.pk %}" hx-get="{% url 'stable_panel' location.pk stable.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
    data-popup-title="Stable {{ stable.label }}"
-   class="barn-cell is-{{ cell.state }}{% if highlight_stable == stable.pk %} is-highlight{% endif %}" data-stable="{{ stable.pk }}"
+   class="barn-cell is-{{ cell.state }}{% if highlight_stable == stable.pk %} is-highlight{% endif %}{% if cell.attention %} needs-attention{% endif %}" data-stable="{{ stable.pk }}"
    style="grid-row: {{ cell.row }}; grid-column: {{ cell.col }};"
    title="{% if cell.horses %}{% for horse in cell.horses %}{{ horse.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% elif stable.note %}{{ stable.note }}{% else %}Stable {{ stable.label }}{% endif %}"
-   aria-label="Stable {{ stable.label }}, {% if cell.horses %}{% for horse in cell.horses %}{{ horse.name }}{% if not forloop.last %} and {% endif %}{% endfor %}{% elif cell.state == 'off' %}out of use{% else %}empty{% endif %}">
+   aria-label="Stable {{ stable.label }}, {% if cell.horses %}{% for horse in cell.horses %}{{ horse.name }}{% if not forloop.last %} and {% endif %}{% endfor %}{% elif cell.state == 'off' %}out of use{% else %}empty{% endif %}{% if cell.attention %}. Needs attention: {{ cell.attention|join:", " }}{% endif %}">
+    {% if cell.attention %}<span class="barn-cell-flag" title="Needs attention: {{ cell.attention|join:", " }}" aria-hidden="true"></span>{% endif %}
     <span class="barn-cell-label">{{ stable.label }}{% if cell.out_by_day %}<span class="barn-cell-out" title="Out by day in {{ cell.out_by_day }}"><span class="sr-only">, out by day in {{ cell.out_by_day }}</span></span>{% endif %}</span>
     {% if cell.horses %}
     <span class="barn-cell-horse">{{ cell.horses.0.name }}{% if cell.more %} <span class="barn-cell-more">+{{ cell.more }}</span>{% endif %}</span>

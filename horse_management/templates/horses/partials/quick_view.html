@@ -44,7 +44,7 @@ sheet closes itself once the new page has landed.
             <dt class="quick-view-label">Location</dt>
             <dd class="mt-0.5 font-medium text-charcoal">
                 {% if current_placement %}
-                {% if feature_access.locations.view %}<a href="{% url 'location_detail' current_placement.location.pk %}" class="link">{{ current_placement.location.name }}</a>{% else %}{{ current_placement.location.name }}{% endif %}{% stable_line horse compact=True %}
+                {% if feature_access.locations.view %}<a href="{% url 'location_detail' current_placement.location.pk %}" class="link">{{ current_placement.location.name }}</a>{% else %}{{ current_placement.location.name }}{% endif %}{% stable_line horse compact=True placement=current_placement %}
                 <span class="text-sage font-normal">&middot; {{ current_placement.location.site }} &middot; since {{ current_placement.start_date|date:"j M Y" }}</span>
                 {% else %}
                 <span class="text-sage font-normal">Not on the yard</span>

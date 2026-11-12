@@ -91,6 +91,9 @@ class BarnPageTests(ScreenTestCase):
 
         for index in range(3):
             StableService.assign(self.horse_in(self.barn, f'Horse {index}'), self.stable(index + 1))
+        # Once to warm up: the first page a yard ever loads creates its
+        # settings row, which the attention marks read.
+        queries()
         few = queries()
         add_stables(self.barn, 30)
         for index in range(3, 20):

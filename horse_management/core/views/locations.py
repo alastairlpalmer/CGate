@@ -526,8 +526,11 @@ class LocationDetailView(FeatureAccessMixin, DetailView):
             self.object.is_barn and settings.BARNS_ENABLED
             and context['current_tab'] == 'current'
         ):
-            from ..stables import barn_plan, mark_turnout
-            plan = context['barn_plan'] = mark_turnout(barn_plan(self.object))
+            from ..stables import barn_plan, mark_attention, mark_turnout
+            plan = context['barn_plan'] = mark_attention(
+                mark_turnout(barn_plan(self.object)),
+                self.request.user, site=self.object.site,
+            )
             # A link from a horse's page lands on its stable.
             wanted = self.request.GET.get('stable', '')
             context['highlight_stable'] = int(wanted) if wanted.isdigit() else None

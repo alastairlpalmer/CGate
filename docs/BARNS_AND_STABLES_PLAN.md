@@ -28,6 +28,9 @@ from this document and why.
 **Revision 7.** 2026-11-12. Phase 3 is built. Section 17 records where the build departed
 from this document and why.
 
+**Revision 8.** 2026-11-12. Phase 4 is built. Section 18 records what it covers. The plan is
+complete.
+
 ---
 
 ## 0. How to use this document
@@ -974,4 +977,33 @@ Known limits:
 
 - A field's land-use label for turnout is drawn with the generic "other" icon. The six older land uses each have their own.
 - When the last resident's placement is *deleted* (not ended) on a field that turnout horses still use, the field keeps "Horses" until the next change. `undo_arrival` returns early because the field is not empty. The usage is still a horse usage, so no ring or count is wrong.
+
+---
+
+## 18. What phase 4 built
+
+Section 9, and the items that sections 15 and 16 left open.
+
+| Item | Built | Notes |
+|---|---|---|
+| Yard board | Yes | A barn tile reads `17 in stables · 3 no stable`. A field tile adds `· 3 out by day`. One query for all barns. |
+| Map | Yes | A barn with a point and no outline draws as a square, 15 m to a side from its centre. The rule "outline first, point second" is the same. |
+| Search | Yes | Quick find: `top barn 7` finds the horse in that stable. The last word is the stable, the words before it the barn. The word "stable" is ignored. |
+| CSV export | Yes | Two columns at the end of the horse export: `Stable`, `Turnout location`. With `BARNS_ENABLED` off the file is as it was. |
+| Django admin | Yes | `StableStay` and `Turnout` are registered. |
+| Horse timeline (from 15, item 5) | Yes | Each stable stay is its own row on the horse page and in the preview pane. The rows show under the Moves filter. |
+| Attention dot (from 15, item 8) | Yes | A stable is marked when the dashboard is asking about its horse now (overdue, or due today). It follows the yard's reminder switches and the reader's access. |
+| Product analytics | No | Not built. It needs a decision on which events are wanted. |
+| Stable in quick find rows found by name (from 15, item 7) | No | A horse found by its name still shows no location in the quick find list. The quick view that opens from it shows the stable. |
+
+Also in this phase:
+
+- The horse page tags for the stable and the turnout now take the placement the page has loaded. A horse that lives in a field costs no extra query. The preview pane's query cap (`test_horse_preview`) found this.
+- The map's list no longer prints "In use · in use" for a barn.
+
+Still open, for the owner:
+
+1. The rate select on the move form prints prices to every role (section 16).
+2. The two PostgreSQL checks (section 15).
+3. Removal of the `BARNS_ENABLED` flag, when the feature is in use (section 4.1).
 

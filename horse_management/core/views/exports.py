@@ -9,6 +9,8 @@ from django.views.decorators.http import require_POST
 
 from .. import audit, gdpr
 from ..csv_export import csv_response
+from django.conf import settings
+
 from ..downloads import attachment_header
 from ..models import AuditEvent, Horse, Owner, OwnershipShare
 from ..permissions import LEVEL_VIEW, feature_required, has_feature_access
@@ -34,12 +36,23 @@ def horses_csv(request):
     for s in OwnershipShare.objects.select_related('owner'):
         shares.setdefault(s.horse_id, []).append(f'{s.owner.name} ({s.share_percentage:g}%)')
     horses = Horse.objects.order_by('-is_active', 'name')
-    return csv_response(
-        f'horses-{_stamp()}',
-        ['Name', 'Active', 'Date of birth', 'Sex', 'Colour', 'Owners'],
-        ([h.name, h.is_active, h.date_of_birth, h.get_sex_display() if h.sex else '', h.get_color_display() if h.color else '',
-          '; '.join(shares.get(h.pk, []))] for h in horses),
+    header = ['Name', 'Active', 'Date of birth', 'Sex', 'Colour', 'Owners']
+    rows = (
+        [h.name, h.is_active, h.date_of_birth, h.get_sex_display() if h.sex else '', h.get_color_display() if h.color else '',
+         '; '.join(shares.get(h.pk, []))] for h in horses
     )
+    if settings.BARNS_ENABLED:
+        # Where each horse is housed, at the end so the columns a
+        # spreadsheet already reads keep their places.
+        from ..stables import annotate_stable
+        from ..turnout import annotate_turnout
+        horses = annotate_turnout(annotate_stable(horses))
+        header += ['Stable', 'Turnout location']
+        rows = (
+            [h.name, h.is_active, h.date_of_birth, h.get_sex_display() if h.sex else '', h.get_color_display() if h.color else '',
+             '; '.join(shares.get(h.pk, [])), h.stable_label or '', h.turnout_name or ''] for h in horses
+        )
+    return csv_response(f'horses-{_stamp()}', header, rows)
 
 
 @feature_required('charges', LEVEL_VIEW)

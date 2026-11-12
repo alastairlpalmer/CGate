@@ -100,7 +100,7 @@ does from the horse page, so nothing here has to know it is in a pane.
             <dt class="pane-stat-label">Location</dt>
             <dd class="pane-stat-value">
                 {% if current_placement %}
-                {% if feature_access.locations.view %}<a href="{% url 'location_detail' current_placement.location.pk %}" class="link">{{ current_placement.location.name }}</a>{% else %}{{ current_placement.location.name }}{% endif %}{% stable_line horse compact=True %}{% turnout_line horse compact=True %}
+                {% if feature_access.locations.view %}<a href="{% url 'location_detail' current_placement.location.pk %}" class="link">{{ current_placement.location.name }}</a>{% else %}{{ current_placement.location.name }}{% endif %}{% stable_line horse compact=True placement=current_placement %}{% turnout_line horse compact=True placement=current_placement %}
                 {% elif last_placement %}
                 <span class="text-sage">Left {{ last_placement.location.name }}</span>
                 {% else %}
@@ -243,11 +243,12 @@ does from the horse page, so nothing here has to know it is in a pane.
         {% if timeline_events %}
         <ul class="mt-3 space-y-3">
             {% for event in timeline_events %}
-            <li class="pane-event" x-show="filter === 'all' || filter === '{{ event.type }}'{% if event.type == 'egg_count' %} || filter === 'worming'{% endif %}{% if event.type == 'farrier_note' %} || filter === 'farrier'{% endif %}">
-                <span class="pane-event-dot pane-dot-{% if event.type == 'farrier_note' %}farrier{% else %}{{ event.type }}{% endif %}" aria-hidden="true"></span>
+            <li class="pane-event" x-show="filter === 'all' || filter === '{{ event.type }}'{% if event.type == 'stable' %} || filter === 'placement'{% endif %}{% if event.type == 'egg_count' %} || filter === 'worming'{% endif %}{% if event.type == 'farrier_note' %} || filter === 'farrier'{% endif %}">
+                <span class="pane-event-dot pane-dot-{% if event.type == 'farrier_note' %}farrier{% elif event.type == 'stable' %}placement{% else %}{{ event.type }}{% endif %}" aria-hidden="true"></span>
                 <span class="min-w-0 flex-1">
                     <span class="pane-event-title">
                         {% if event.type == 'placement' %}Moved to {{ event.obj.location.name }}
+                        {% elif event.type == 'stable' %}Into stable {{ event.obj.stable.label }}
                         {% elif event.type == 'vaccination' %}{{ event.obj.vaccination_type.name }}
                         {% elif event.type == 'farrier' %}{{ event.obj.get_work_done_display }}
                         {% elif event.type == 'worming' %}Worming dose
@@ -265,6 +266,7 @@ does from the horse page, so nothing here has to know it is in a pane.
                         {% elif event.type == 'egg_count' %}{{ event.obj.count }} eggs per gram{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}
                         {% elif event.type == 'vet_visit' %}{% if event.obj.vet %}{{ event.obj.vet.name }}{% else %}Vet visit{% endif %}{% if event.obj.cost and feature_access.charges.view %} · {{ event.obj.cost|gbp }}{% endif %}
                         {% elif event.type == 'farrier_note' %}{{ event.obj.text|truncatechars:120 }}
+                        {% elif event.type == 'stable' %}{{ event.obj.stable.location.name }}
                         {% elif event.type == 'breeding' %}{{ event.obj.get_status_display }}
                         {% endif %}
                     </span>
