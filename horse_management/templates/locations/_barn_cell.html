@@ -1,0 +1,23 @@
+{% comment %}
+One cell of the barn plan. Params: cell (row, col, state), stable.
+
+A link to the stable's edit sheet for someone who may set the barn up;
+plain, unpressable markup for anyone else. The name read out says the
+state in words, because the dashed edge and the hatch say it only to the
+eye.
+{% endcomment %}
+{% if feature_access.locations.full and not location.is_archived %}
+<a href="{% url 'stable_edit' location.pk stable.pk %}" hx-get="{% url 'stable_edit' location.pk stable.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+   data-popup-title="{% if cell.state == 'gap' %}{{ stable.label }}{% else %}Stable {{ stable.label }}{% endif %}"
+   class="barn-cell is-{{ cell.state }}" data-stable="{{ stable.pk }}"
+   style="grid-row: {{ cell.row }}; grid-column: {{ cell.col }};"
+   title="{% if stable.note %}{{ stable.note }}{% else %}{{ stable.label }}{% endif %}"
+   aria-label="{% if cell.state == 'gap' %}{{ stable.label }}, not a stable{% elif cell.state == 'off' %}Stable {{ stable.label }}, out of use{% else %}Stable {{ stable.label }}, empty{% endif %}. Edit.">
+{% else %}
+<div class="barn-cell is-{{ cell.state }}" data-stable="{{ stable.pk }}"
+     style="grid-row: {{ cell.row }}; grid-column: {{ cell.col }};"
+     title="{% if stable.note %}{{ stable.note }}{% else %}{{ stable.label }}{% endif %}">
+{% endif %}
+    <span class="barn-cell-label">{{ stable.label }}</span>
+    {% if cell.state == 'off' %}<span class="barn-cell-state">Out of use</span>{% elif cell.state == 'empty' %}<span class="barn-cell-state">Empty</span>{% endif %}
+{% if feature_access.locations.full and not location.is_archived %}</a>{% else %}</div>{% endif %}

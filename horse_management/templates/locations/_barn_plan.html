@@ -1,0 +1,96 @@
+{% comment %}
+A barn's stables (docs/BARNS_AND_STABLES_PLAN.md, phase 1).
+
+One card, two shapes of the same cells: the plan from `lg`, where there
+is room to draw the building, and a list in stable order below it. Both
+read `barn_plan` (core.stables.barn_plan), so they cannot disagree.
+
+A cell opens the stable's edit sheet for someone who may set the barn up.
+For everyone else it is not a control at all — a view-only role sees the
+plan and nothing to press.
+
+No horse has a stable yet: who is in which arrives with phase 2. Until
+then every horse in the barn is in the table below this card.
+{% endcomment %}
+<div class="card overflow-hidden" data-testid="barn-plan">
+    <div class="section-header flex-wrap gap-2">
+        <div class="min-w-0">
+            <h2 class="section-title">Stables</h2>
+            {% if barn_plan.has_cells %}
+            <p class="text-xs text-sage mt-0.5" data-testid="barn-summary">
+                {{ barn_plan.stable_count }} stable{{ barn_plan.stable_count|pluralize }}{% if barn_plan.out_of_use_count %} &middot; {{ barn_plan.out_of_use_count }} out of use{% endif %}
+                &middot; {{ location.get_layout_display|default:"Row" }}
+            </p>
+            {% endif %}
+        </div>
+        {% if feature_access.locations.full and not location.is_archived and barn_plan.has_cells %}
+        <div class="barn-actions flex items-center gap-2">
+            <a href="{% url 'stable_add_gap' location.pk %}" hx-get="{% url 'stable_add_gap' location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Add a tack room or other gap" class="btn-ghost btn-xs">Add a gap</a>
+            <a href="{% url 'stables_add' location.pk %}" hx-get="{% url 'stables_add' location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Add stables to {{ location.name }}" class="btn-secondary btn-xs">Add stables</a>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if not barn_plan.has_cells %}
+    <div class="px-5 py-10 text-center" data-testid="barn-empty">
+        <p class="text-sm font-medium text-charcoal">This barn has no stables yet.</p>
+        <p class="mt-1 text-sm text-sage">Horses can go into the barn without them. Add stables to see who is where.</p>
+        {% if feature_access.locations.full and not location.is_archived %}
+        <a href="{% url 'stables_add' location.pk %}" hx-get="{% url 'stables_add' location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Add stables to {{ location.name }}" class="btn-primary mt-4 barn-actions">Add stables</a>
+        {% endif %}
+    </div>
+    {% else %}
+
+    {# ── The plan, from `lg` ── #}
+    <div class="barn-plan-scroll hidden lg:block">
+        <div class="barn-plan" data-testid="barn-plan-grid"
+             style="grid-template-columns: repeat({{ barn_plan.cols }}, minmax(64px, 1fr)); min-width: {{ barn_plan.min_width }}px;">
+            {% for feature in barn_plan.features %}
+            <div class="barn-feature" aria-hidden="true"
+                 style="grid-row: {{ feature.row }} / span {{ feature.row_span }}; grid-column: {{ feature.col }} / span {{ feature.col_span }};">
+                {% if feature.kind == 'yard' %}Yard{% elif feature.kind == 'aisle' %}Centre aisle{% else %}Walkway{% endif %}
+            </div>
+            {% endfor %}
+            {% for cell in barn_plan.cells %}
+            {% include 'locations/_barn_cell.html' with cell=cell stable=cell.stable %}
+            {% endfor %}
+        </div>
+    </div>
+
+    {# ── The same cells as a list, below `lg` (and on paper) ── #}
+    <div class="barn-list lg:hidden divide-y divide-light-sage" data-testid="barn-list">
+        {% for cell in barn_plan.cells %}
+        {% with stable=cell.stable %}
+        {% if cell.state == 'gap' %}
+        <div class="barn-list-gap flex items-center justify-between gap-2">
+            <span>{{ stable.label }}</span>
+            {% if feature_access.locations.full and not location.is_archived %}
+            <a href="{% url 'stable_edit' location.pk stable.pk %}" hx-get="{% url 'stable_edit' location.pk stable.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="{{ stable.label }}" class="link normal-case tracking-normal text-xs tap-pad barn-actions">Edit</a>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="barn-list-row">
+            <span class="barn-list-label">{{ stable.label }}</span>
+            <span class="min-w-0 flex-1 text-sm {% if cell.state == 'off' %}text-sage{% else %}text-sage/80{% endif %}">
+                {% if cell.state == 'off' %}Out of use{% else %}Empty{% endif %}{% if stable.note %} <span class="text-sage">&middot; {{ stable.note }}</span>{% endif %}
+            </span>
+            {% if feature_access.locations.full and not location.is_archived %}
+            <a href="{% url 'stable_edit' location.pk stable.pk %}" hx-get="{% url 'stable_edit' location.pk stable.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Stable {{ stable.label }}" class="link text-sm tap-pad barn-actions" aria-label="Edit stable {{ stable.label }}">Edit</a>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% endwith %}
+        {% endfor %}
+    </div>
+
+    <div class="barn-legend hidden lg:flex" aria-hidden="true">
+        <span><span class="barn-legend-swatch is-empty"></span>Empty</span>
+        <span><span class="barn-legend-swatch is-off"></span>Out of use</span>
+    </div>
+    {% endif %}
+</div>

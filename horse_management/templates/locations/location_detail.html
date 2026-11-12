@@ -21,6 +21,13 @@
             </a>
             <h1 class="page-title">
                 {{ location.name }}
+                {% if location.is_barn %}
+                {# A barn has no land use to show; it says what it is instead. #}
+                <span class="inline-flex items-center gap-1 text-sm font-medium ml-2 align-middle text-forest" data-testid="barn-badge">
+                    <svg class="w-4 h-4" aria-hidden="true"><use href="#i-barn"/></svg>
+                    Barn
+                </span>
+                {% else %}
                 <span class="inline-flex items-center gap-1 text-sm font-medium ml-2 align-middle
                     {% if location.usage == 'horses' %}text-forest
                     {% elif location.usage == 'mixed' %}text-saddle
@@ -43,6 +50,7 @@
                     {% endif %}
                     {{ location.get_usage_display }}
                 </span>
+                {% endif %}
                 {% if location.is_archived %}
                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-sage-50 text-sage border border-sage/20 ml-2 align-middle">
                     Archived
@@ -136,7 +144,7 @@
         <nav class="flex gap-6 overflow-x-auto tab-strip-fade">
             <a href="{% url 'location_detail' location.pk %}"
                class="{% if current_tab == 'current' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}"{% if current_tab == 'current' %} aria-current="page"{% endif %}>
-                Current Horses
+                {% if barn_plan %}Stables{% else %}Current Horses{% endif %}
             </a>
             <a href="{% url 'location_detail' location.pk %}?tab=feed"
                class="{% if current_tab == 'feed' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}"{% if current_tab == 'feed' %} aria-current="page"{% endif %}>
@@ -146,10 +154,12 @@
                class="{% if current_tab == 'history' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}"{% if current_tab == 'history' %} aria-current="page"{% endif %}>
                 History
             </a>
+            {% if not location.is_barn %}
             <a href="{% url 'location_detail' location.pk %}?tab=usage"
                class="{% if current_tab == 'usage' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}"{% if current_tab == 'usage' %} aria-current="page"{% endif %}>
                 Usage
             </a>
+            {% endif %}
         </nav>
     </div>
 
@@ -588,7 +598,17 @@
     {% else %}
     <!-- ═══ Current Horses Tab (default) ═══ -->
 
+    {% if barn_plan %}
+    {% include 'locations/_barn_plan.html' %}
+    {% endif %}
+
     <div class="card overflow-hidden">
+        {% if barn_plan and barn_plan.has_cells %}
+        {# Nobody has a stable until phase 2, so this is every horse in the barn. #}
+        <div class="section-header">
+            <h2 class="section-title">In this barn, no stable <span class="font-normal text-sage">&middot; {{ horses|length }}</span></h2>
+        </div>
+        {% endif %}
         <div class="overflow-x-auto">
             <table class="data-table data-table-cards">
                 <thead>

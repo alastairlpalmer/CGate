@@ -363,7 +363,7 @@
                 {% endif %}
             </div>
             <div x-show="!collapsed" x-collapse>
-                {% if shows_usage %}
+                {% if shows_usage and not group.is_barn %}
                 {% include 'horses/_usage_strip.html' with segments=group.usage_strip days=group.usage_days label=usage_period_label group=group %}
                 {% endif %}
                 {% if not group.horses %}

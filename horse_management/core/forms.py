@@ -15,7 +15,7 @@ from .images import heic_to_jpeg
 from .widgets import MoneyInput
 from .models import (
     BusinessSettings, Document, Horse, HorsePhoto, Location, Owner,
-    OwnershipShare, Placement, RateType, SiteSettings, validate_coordinate_pair,
+    OwnershipShare, Placement, RateType, SiteSettings, Stable, validate_coordinate_pair,
 )
 
 
@@ -287,6 +287,209 @@ class LocationForm(CoordinateFieldsMixin, forms.ModelForm):
         elif not pinned and pref.pinned_location_id == location.pk:
             pref.pinned_location = None
             pref.save(update_fields=['pinned_location', 'updated_at'])
+
+
+class BarnForm(LocationForm):
+    """Add or edit a barn: a location with a layout and, optionally, stables.
+
+    A form of its own rather than extra fields on ``LocationForm``. The
+    pop-up sheet lays out every visible field of whatever form it is
+    given, so one form for both would show a layout to somebody adding a
+    paddock and a land use to somebody adding a barn.
+
+    The stables are made here, with the barn, in one go. After that they
+    are managed from the barn's own page.
+    """
+
+    stable_count = forms.IntegerField(
+        label='Number of stables', required=False, min_value=0, initial=20,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
+        help_text='Leave at 0 to add the stables later.',
+    )
+    first_number = forms.IntegerField(
+        label='First stable number', required=False, min_value=0, initial=1,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
+    )
+
+    field_order = [
+        'name', 'site', 'layout', 'stable_count', 'first_number', 'capacity',
+        'description',
+    ]
+
+    class Meta(LocationForm.Meta):
+        fields = ['name', 'site', 'layout', 'description', 'capacity', 'latitude', 'longitude']
+        widgets = {
+            **LocationForm.Meta.widgets,
+            'layout': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .stables import MAX_STABLES
+
+        # Set here, not in save(): the model's own clean() runs while the
+        # form validates, and it refuses a layout on anything but a barn.
+        self.instance.location_type = Location.LocationType.BARN
+        self.instance.usage = Location.Usage.HORSES
+
+        layout = self.fields['layout']
+        layout.required = True
+        layout.choices = [('', '---------')] + list(Location.Layout.choices)
+        layout.help_text = (
+            'Courtyard: stables round three sides of a yard. Centre aisle: '
+            'two lines that face each other. Row: one line.'
+        )
+        self.fields['stable_count'].max_value = MAX_STABLES
+        self.fields['stable_count'].widget.attrs['max'] = MAX_STABLES
+
+        capacity = self.fields['capacity']
+        editing = bool(self.instance and self.instance.pk)
+        if editing:
+            # Stables are added and removed on the barn's page from here on.
+            del self.fields['stable_count']
+            del self.fields['first_number']
+            if self.instance.stables.filter(is_gap=False).exists():
+                # The number of stables in use, written by
+                # core.stables.sync_barn_capacity — never typed.
+                del self.fields['capacity']
+            else:
+                capacity.help_text = 'How many horses the barn holds. Set by its stables once it has some.'
+        else:
+            capacity.help_text = 'Only for a barn with no stables. Otherwise the stables set it.'
+
+    def clean_stable_count(self):
+        from .stables import MAX_STABLES
+        count = self.cleaned_data.get('stable_count') or 0
+        if count > MAX_STABLES:
+            raise forms.ValidationError(f'A barn can have up to {MAX_STABLES} stables.')
+        return count
+
+    def save(self, commit=True):
+        from django.db import transaction
+
+        from .stables import add_stables
+
+        creating = not (self.instance and self.instance.pk)
+        with transaction.atomic():
+            barn = super().save(commit=commit)
+            count = self.cleaned_data.get('stable_count') or 0
+            if commit and creating and count:
+                first = self.cleaned_data.get('first_number')
+                add_stables(barn, count, 1 if first is None else first)
+        return barn
+
+
+class StableForm(forms.ModelForm):
+    """Rename a stable, leave a note on it, or take it out of use."""
+
+    class Meta:
+        model = Stable
+        fields = ['label', 'in_use', 'note']
+        labels = {'label': 'Name or number', 'in_use': 'In use'}
+        widgets = {
+            'label': forms.TextInput(attrs={'class': 'form-input'}),
+            'in_use': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+            'note': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Door repair'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.is_gap:
+            # A gap is not a stable, so it is never "out of use".
+            del self.fields['in_use']
+
+    def clean_label(self):
+        label = (self.cleaned_data.get('label') or '').strip()
+        clash = Stable.objects.filter(
+            location=self.instance.location, label__iexact=label,
+        ).exclude(pk=self.instance.pk)
+        if clash.exists():
+            raise forms.ValidationError(f'This barn already has a "{label}".')
+        return label
+
+
+class AddStablesForm(forms.Form):
+    """Add more stables to the end of a barn."""
+
+    count = forms.IntegerField(
+        label='How many stables to add', min_value=1, initial=1,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
+        help_text='They are numbered on from the highest number in the barn.',
+    )
+
+    def __init__(self, *args, barn, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.barn = barn
+
+    def clean_count(self):
+        from .stables import MAX_STABLES
+        count = self.cleaned_data['count']
+        have = self.barn.stables.count()
+        if have + count > MAX_STABLES:
+            room = max(MAX_STABLES - have, 0)
+            raise forms.ValidationError(
+                f'A barn can have up to {MAX_STABLES} stables. This one has room for {room} more.'
+            )
+        return count
+
+
+class StableGapForm(forms.Form):
+    """Put something that is not a stable into the barn's order."""
+
+    label = forms.CharField(
+        label='What is it', max_length=20,
+        widget=forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Tack room'}),
+    )
+    after = forms.ModelChoiceField(
+        label='Where', queryset=Stable.objects.none(), required=False,
+        empty_label='At the start',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text='The stables after it each move one place on.',
+    )
+
+    def __init__(self, *args, barn, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.barn = barn
+        after = self.fields['after']
+        after.queryset = barn.stables.order_by('position', 'pk')
+        after.label_from_instance = lambda stable: f'After {stable.label}'
+        if not self.is_bound:
+            after.initial = after.queryset.last()
+
+    def clean_label(self):
+        label = self.cleaned_data['label'].strip()
+        if self.barn.stables.filter(label__iexact=label).exists():
+            raise forms.ValidationError(f'This barn already has a "{label}".')
+        return label
+
+
+class ConvertToBarnForm(forms.Form):
+    """Turn a location that was added as ground into a barn."""
+
+    layout = forms.ChoiceField(
+        choices=Location.Layout.choices,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text=(
+            'Courtyard: stables round three sides of a yard. Centre aisle: '
+            'two lines that face each other. Row: one line.'
+        ),
+    )
+    stable_count = forms.IntegerField(
+        label='Number of stables', min_value=0, initial=0, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
+        help_text='Leave at 0 to add the stables later.',
+    )
+    first_number = forms.IntegerField(
+        label='First stable number', min_value=0, initial=1, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
+    )
+
+    def clean_stable_count(self):
+        from .stables import MAX_STABLES
+        count = self.cleaned_data.get('stable_count') or 0
+        if count > MAX_STABLES:
+            raise forms.ValidationError(f'A barn can have up to {MAX_STABLES} stables.')
+        return count
 
 
 class SiteSettingsForm(CoordinateFieldsMixin, forms.ModelForm):

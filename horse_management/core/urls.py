@@ -58,6 +58,12 @@ urlpatterns = [
     # Locations
     path('locations/', views.LocationListView.as_view(), name='location_list'),
     path('locations/add/', views.LocationCreateView.as_view(), name='location_create'),
+    path('locations/add-barn/', views.BarnCreateView.as_view(), name='barn_create'),
+    path('locations/<int:pk>/convert-to-barn/', views.location_convert_to_barn, name='location_convert_to_barn'),
+    path('locations/<int:pk>/stables/add/', views.stables_add, name='stables_add'),
+    path('locations/<int:pk>/stables/add-gap/', views.stable_add_gap, name='stable_add_gap'),
+    path('locations/<int:pk>/stables/<int:stable_pk>/edit/', views.stable_edit, name='stable_edit'),
+    path('locations/<int:pk>/stables/<int:stable_pk>/delete/', views.stable_delete, name='stable_delete'),
     path('locations/<int:pk>/', views.LocationDetailView.as_view(), name='location_detail'),
     path('locations/<int:pk>/edit/', views.LocationUpdateView.as_view(), name='location_update'),
     path('locations/<int:pk>/preview/', views.location_preview, name='location_preview'),

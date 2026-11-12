@@ -219,7 +219,11 @@ one click away on the Map/Cards switch.
             <!-- Location Cards for this Site -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for location in site_locations %}
-                <div class="card-raised flex flex-col overflow-hidden">
+                {% if location.type_heading %}
+                {# A site with barns and fields gets one heading for each (core.views.locations._group_barns_first). #}
+                <h3 class="col-span-full text-xs font-semibold uppercase tracking-wider text-sage{% if not forloop.first %} mt-2{% endif %}" data-testid="location-type-heading">{{ location.type_heading }}</h3>
+                {% endif %}
+                <div class="card-raised flex flex-col overflow-hidden"{% if location.is_barn %} data-testid="barn-card"{% endif %}>
                     <div class="p-5 flex-1">
                         <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
@@ -234,6 +238,17 @@ one click away on the Map/Cards switch.
                                 <p class="mt-1 text-sm text-charcoal-light line-clamp-2">
                                     {% if location.horse_names %}{{ location.horse_names|join:", " }}{% if location.more_horses %} <span class="text-sage">+{{ location.more_horses }} more</span>{% endif %}{% elif location.horse_count %}{{ location.horse_count }} horse{{ location.horse_count|pluralize }}{% else %}<span class="text-sage">No horses</span>{% endif %}
                                 </p>
+                                {% if location.stable_summary %}
+                                <p class="mt-1 text-xs font-medium text-forest inline-flex items-center gap-1" data-testid="barn-card-stables">
+                                    <svg class="w-3.5 h-3.5" aria-hidden="true"><use href="#i-barn"/></svg>
+                                    {{ location.stable_summary.0 }} stable{{ location.stable_summary.0|pluralize }}{% if location.stable_summary.1 %} &middot; {{ location.stable_summary.1 }} out of use{% endif %}
+                                </p>
+                                {% elif location.is_barn %}
+                                <p class="mt-1 text-xs font-medium text-forest inline-flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" aria-hidden="true"><use href="#i-barn"/></svg>
+                                    Barn
+                                </p>
+                                {% endif %}
                                 {% if location.usage != 'horses' %}
                                 <div class="mt-1">
                                     <span class="inline-flex items-center gap-1 text-xs font-medium

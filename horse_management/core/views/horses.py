@@ -358,6 +358,8 @@ def _location_group(location, horses):
         ),
         'usage': location.usage,
         'usage_display': location.get_usage_display(),
+        # A barn has no land use, so its card has no land-use strip.
+        'is_barn': location.is_barn,
     }
 
 

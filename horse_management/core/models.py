@@ -230,6 +230,14 @@ class LocationQuerySet(models.QuerySet):
         """Locations taken out of use but kept for history and reports."""
         return self.filter(is_archived=True)
 
+    def fields(self):
+        """Ground: every location that is not a barn."""
+        return self.filter(location_type='field')
+
+    def barns(self):
+        """Buildings with stables in them."""
+        return self.filter(location_type='barn')
+
 
 class BoundarySource(models.TextChoices):
     LANDAPP = 'landapp', 'Land App import'
@@ -293,6 +301,20 @@ class Location(models.Model):
         ARABLE = 'arable', 'Arable'
         OTHER = 'other', 'Other'
 
+    class LocationType(models.TextChoices):
+        FIELD = 'field', 'Field'
+        BARN = 'barn', 'Barn'
+
+    class Layout(models.TextChoices):
+        COURTYARD = 'courtyard', 'Courtyard'
+        AISLE = 'aisle', 'Centre aisle'
+        ROW = 'row', 'Row'
+
+    # The usages under which a location carries horses that live on it.
+    # Read by the board, the location preview and the finance capacity
+    # chart, which used to spell the pair out each.
+    RESIDENT_USAGES = (Usage.HORSES, Usage.MIXED)
+
     name = models.CharField(max_length=200)
     site = models.CharField(
         max_length=100,
@@ -301,7 +323,22 @@ class Location(models.Model):
     usage = models.CharField(
         max_length=20, choices=Usage.choices, default=Usage.HORSES,
     )
+    # A barn is a location like any other — placements, moves, pickers and
+    # invoices never ask which — but the land rules (rest, hay, feed out)
+    # do not apply to it, and it can carry a plan of its stables.
+    # Not "kind": the map payload and the horse list groups use that word.
+    location_type = models.CharField(
+        max_length=10, choices=LocationType.choices,
+        default=LocationType.FIELD, db_index=True,
+    )
+    # How a barn's stables are drawn (core.stables.plan_cells). Blank on
+    # everything that is not a barn.
+    layout = models.CharField(
+        max_length=10, choices=Layout.choices, blank=True, default='',
+    )
     description = models.TextField(blank=True)
+    # For a barn with stables this is the number of stables in use,
+    # written by core.stables.sync_barn_capacity and never typed.
     capacity = models.PositiveIntegerField(null=True, blank=True)
     is_archived = models.BooleanField(
         default=False,
@@ -334,16 +371,27 @@ class Location(models.Model):
 
     class Meta:
         ordering = ['site', 'name']
-        constraints = coordinate_constraints('location')
+        constraints = coordinate_constraints('location') + [
+            models.CheckConstraint(
+                condition=Q(location_type='barn') | Q(layout=''),
+                name='location_layout_only_on_barn',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.site} — {self.name}"
+
+    @property
+    def is_barn(self):
+        return self.location_type == self.LocationType.BARN
 
     def clean(self):
         super().clean()
         validate_coordinate_pair(self.latitude, self.longitude)
         if self.boundary is not None and not isinstance(self.boundary, dict):
             raise DjangoValidationError({'boundary': 'Boundary must be a GeoJSON geometry object.'})
+        if self.layout and not self.is_barn:
+            raise DjangoValidationError({'layout': 'Only a barn has a layout.'})
 
     @property
     def has_coordinates(self):
@@ -413,6 +461,61 @@ class Location(models.Model):
         if self.capacity is not None:
             return self.capacity - self.current_horse_count
         return None
+
+
+class Stable(models.Model):
+    """One cell in a barn: a stable, or a gap such as a tack room.
+
+    The plan is drawn, not stored: a cell knows only its order in the barn
+    (``position``), and core.stables.plan_cells turns the barn's layout and
+    that order into rows and columns. A gap takes a place in the order
+    without being a stable, so the drawing can match a real building — a
+    tack room in the corner pushes the stables after it one cell on.
+    """
+
+    location = models.ForeignKey(
+        Location, on_delete=models.CASCADE, related_name='stables',
+    )
+    label = models.CharField(max_length=20)
+    # No unique rule on position: adding or removing a cell renumbers the
+    # ones after it, and PostgreSQL checks a plain unique constraint row
+    # by row, so the renumber would fail part way. Order is (position, pk).
+    position = models.PositiveSmallIntegerField()
+    is_gap = models.BooleanField(
+        default=False,
+        help_text="Not a stable: a tack room, feed room or doorway.",
+    )
+    in_use = models.BooleanField(
+        default=True,
+        help_text="Untick to take this stable out of use.",
+    )
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['location', 'position', 'pk']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['location', 'label'], name='stable_label_unique_in_barn',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.location.name} · {self.label}"
+
+    def clean(self):
+        super().clean()
+        if self.location_id and not self.location.is_barn:
+            raise DjangoValidationError('Only a barn has stables.')
+        if self.is_gap and not self.in_use:
+            raise DjangoValidationError(
+                {'in_use': 'A gap is not a stable, so it cannot be out of use.'}
+            )
+
+    @property
+    def counts_towards_capacity(self):
+        return self.in_use and not self.is_gap
 
 
 class SiteSettings(models.Model):

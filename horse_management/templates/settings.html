@@ -321,7 +321,7 @@
                         <div class="min-w-0">
                             <p class="settings-row-title">{{ loc.name }}</p>
                             <p class="settings-row-meta">
-                                {{ loc.get_usage_display }}
+                                {% if loc.is_barn %}Barn{% else %}{{ loc.get_usage_display }}{% endif %}
                                 &middot; {% if loc.capacity %}Capacity: {{ loc.capacity }}{% else %}No capacity set{% endif %}
                                 {% if loc.description %}&middot; {{ loc.description|truncatewords:8 }}{% endif %}
                             </p>

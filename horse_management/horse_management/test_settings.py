@@ -58,3 +58,6 @@ INVOICE_SEND_ASYNC = True
 # and has no authenticator app. The requirement itself is covered in
 # core/tests/test_account_security.py, which turns it back on.
 MFA_REQUIRED_FOR_ADMINS = False
+
+# Barns and stables are built and tested ahead of being switched on.
+BARNS_ENABLED = True

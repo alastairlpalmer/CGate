@@ -58,7 +58,7 @@ FEATURES = [
         "label": "Locations",
         "group": "Manage",
         "supports_view": True,
-        "description": "Fields and stables, placements, moves and usage changes.",
+        "description": "Fields, barns and stables, placements, moves and usage changes.",
     },
     {
         "key": "health",

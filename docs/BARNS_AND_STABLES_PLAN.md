@@ -16,6 +16,9 @@ review found seven errors, nine screens the plan missed, and one billing risk. A
 corrected in place and listed in section 13. The owner made four more decisions (section 2,
 rows 12 to 15).
 
+**Revision 4.** 2026-11-12. Phase 1 is built. Section 14 records where the build departed
+from this document and why.
+
 ---
 
 ## 0. How to use this document
@@ -869,3 +872,26 @@ The rate suggestion covered one form, and the rate field on that form is hidden 
 **Additions**
 
 Gap cells and wrapped rows (5.1, 5.5). UI rules (5.6). Undo, deep links and the selection bar (6.6). A second source for the rate suggestion (7.2). The Turnout land use (8.3). Data checks moved into the phase that makes the data (6.8, 8.6). The flag goes on after phase 2b and is temporary (4.1, 12).
+
+---
+
+## 14. What changed in the build of phase 1
+
+Where the code differs from sections 5.1 to 5.11. The code is correct. Each item has a reason.
+
+| # | Plan | Build | Reason |
+|---|---|---|---|
+| 1 | Hide Feed Out and the Feed tab on a barn (5.3). | A barn keeps Feed Out and its Feed History tab. | Horses in a barn eat hay. Feed Out recharges feed to owners, and that must work for a barn. A converted location would also lose sight of its past feed records. Only the land-use rules are off. |
+| 2 | `LocationForm` gets `location_type`, `layout`, `stable_count` and `first_number` (5.7). | A separate `BarnForm`, a separate URL (`locations/add-barn/`) and an "Add barn" entry in the app bar's add menu. | The pop-up sheet draws every visible field of the form it is given. One form for the two cases would show a layout to a person who adds a paddock. |
+| 3 | The layout is three radio cards with a drawing (5.7). | A select with one line of help text. | The generic pop-up form has no radio-card field. The plan redraws at once, so a wrong choice is cheap to correct. |
+| 4 | A tray, "In this barn, no stable" (5.5). | The existing horses table of the location page, with that heading. | In phase 1 every horse in the barn is in the tray. The table already has Move and the bulk actions. Phase 2a makes it a true tray. |
+| 5 | "Convert to barn" is on the edit form (5.9). | It is a card on the full edit page, below the form. It opens its own sheet. | It is a one-way action. It must not sit among fields that save with one button. |
+| 6 | Remove a cell at `.../delete/` (5.8). | The same URL. The button is in the stable's edit sheet. | The plan cell has room for one action. |
+| 7 | — | With `BARNS_ENABLED` off, a location that is already a barn is still free of the land-use rules. | The flag hides the feature. It must not hand a barn back to "Rested" in the middle of its use. |
+
+Not built in phase 1, and still to do:
+
+- The print stylesheet is in place, but it is not checked on paper.
+- The removal of a cell is tested on SQLite only. Check it one time on PostgreSQL before the flag goes on (5.11).
+- The Yard board tile and the map marker for a barn are phase 4. In phase 1 a barn with a point draws as a 15 m circle.
+

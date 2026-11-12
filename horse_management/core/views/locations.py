@@ -11,7 +11,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, Exists, Min, OuterRef, Prefetch, Q
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -19,13 +19,16 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
-from ..forms import ArrivalForm, LocationForm, LocationUsageForm, SiteSettingsForm
+from ..forms import (
+    AddStablesForm, ArrivalForm, BarnForm, ConvertToBarnForm, LocationForm,
+    LocationUsageForm, SiteSettingsForm, StableForm, StableGapForm,
+)
 from ..boundary_import import area_hectares
 from ..geo import coords_from_link, site_distance_warning
 from ._next import safe_next
 from ._popup import PopupFormMixin, is_popup_request, popup_saved_response
 from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
-from ..models import Horse, Location, LocationUsagePeriod, Placement, SiteSettings
+from ..models import Horse, Location, LocationUsagePeriod, Placement, SiteSettings, Stable
 
 # Chart/legend colour per usage type — reuses the established design palette.
 USAGE_COLORS = {
@@ -196,6 +199,37 @@ def sort_grouped_locations(grouped):
     return result
 
 
+def _group_barns_first(grouped):
+    """Split each site's cards into its barns and its other locations.
+
+    A site with both gets two headings, ``Barns`` then ``Fields``; the
+    first card of each carries it as ``type_heading``. A site with only
+    one of the two is left exactly as it was, with no heading, so a yard
+    that has no barns sees no change. The order inside each half is the
+    order the page already chose.
+
+    Barn cards also get ``stable_summary`` — (stables, out of use) — from
+    one query for the whole page.
+    """
+    from ..stables import barn_summaries
+
+    barns = [loc for _site, locs, _n in grouped for loc in locs if loc.is_barn]
+    summaries = barn_summaries(barns) if barns else {}
+    result = []
+    for site, locs, site_horse_count in grouped:
+        for loc in locs:
+            loc.type_heading = ''
+            loc.stable_summary = summaries.get(loc.pk) if loc.is_barn else None
+        site_barns = [loc for loc in locs if loc.is_barn]
+        others = [loc for loc in locs if not loc.is_barn]
+        if site_barns and others:
+            site_barns[0].type_heading = 'Barns'
+            others[0].type_heading = 'Fields'
+            locs = site_barns + others
+        result.append((site, locs, site_horse_count))
+    return result
+
+
 CARD_HORSE_NAMES = 3
 
 
@@ -335,8 +369,9 @@ class LocationListView(FeatureAccessMixin, ListView):
             'board_pinned': pinned,
             'board_mapped': mapped,
             'board_unmapped': unmapped,
+            # A barn is not in the rotation, so it has no bar on the strip.
             'board_rest_order': sorted(
-                payload['locations'],
+                [loc for loc in payload['locations'] if not loc['is_barn']],
                 key=lambda loc: (-(loc['rest_days'] or 0), loc['name']),
             ),
             'rest_key': {
@@ -389,6 +424,8 @@ class LocationListView(FeatureAccessMixin, ListView):
                 sort = LOCATION_SORT_FULLEST
             if sort == LOCATION_SORT_FULLEST:
                 grouped = sort_grouped_locations(grouped)
+            if settings.BARNS_ENABLED:
+                grouped = _group_barns_first(grouped)
             context['location_sort'] = sort
             context['grouped_locations'] = grouped
 
@@ -427,13 +464,15 @@ class LocationListView(FeatureAccessMixin, ListView):
                 for v, label in Location.Usage.choices
             ]
             label_for = {v: label for v, label in Location.Usage.choices}
+            # A barn has no land use, so it has no row here.
+            ground = [loc for loc in context['locations'] if not loc.is_barn]
             # One query for every location on the page, not one each.
             usage_by_location = usage_days_for_locations(
-                [loc.pk for loc in context['locations']],
+                [loc.pk for loc in ground],
                 window['start'], window['end'],
             )
             overview = []
-            for site, locs in groupby(context['locations'], key=lambda l: l.site):
+            for site, locs in groupby(ground, key=lambda l: l.site):
                 rows = []
                 for loc in locs:
                     totals, _ = usage_by_location[loc.pk]
@@ -483,6 +522,16 @@ class LocationDetailView(FeatureAccessMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context['current_tab'] = self.request.GET.get('tab', 'current')
         context['today'] = timezone.localdate()
+        if self.object.is_barn and context['current_tab'] == 'usage':
+            # A barn has no land use. An old link to the tab lands on the
+            # barn itself rather than on a chart with nothing in it.
+            context['current_tab'] = 'current'
+        if (
+            self.object.is_barn and settings.BARNS_ENABLED
+            and context['current_tab'] == 'current'
+        ):
+            from ..stables import barn_plan
+            context['barn_plan'] = barn_plan(self.object)
 
         # Current horses (always needed for the info card counts)
         active_placements = Prefetch(
@@ -672,11 +721,46 @@ class LocationCreateView(LocationFormViewMixin, FeatureAccessMixin, CreateView):
         return response
 
 
+class BarnCreateView(LocationCreateView):
+    """Add a barn: the same page and pop-up as a location, with BarnForm."""
+
+    form_class = BarnForm
+    # "Save & add another" suits a run of paddocks, not a building.
+    popup_add_another = False
+
+    def dispatch(self, request, *args, **kwargs):
+        if not settings.BARNS_ENABLED:
+            raise Http404
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['adding_barn'] = True
+        return context
+
+    def get_success_url(self):
+        return reverse('location_detail', kwargs={'pk': self.object.pk})
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        count = self.object.stables.count()
+        messages.success(
+            self.request,
+            f"{self.object.name} added"
+            + (f" with {count} stable{'' if count == 1 else 's'}." if count else "."),
+        )
+        return response
+
+
 class LocationUpdateView(LocationFormViewMixin, FeatureAccessMixin, UpdateView):
     feature = 'locations'
     model = Location
     form_class = LocationForm
     template_name = 'locations/location_form.html'
+
+    def get_form_class(self):
+        # A barn is edited as a barn whether or not new ones are on offer.
+        return BarnForm if self.object.is_barn else LocationForm
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -696,7 +780,8 @@ class LocationUpdateView(LocationFormViewMixin, FeatureAccessMixin, UpdateView):
         old_usage = Location.objects.filter(pk=self.object.pk).values_list(
             'usage', flat=True
         ).first()
-        new_usage = form.cleaned_data.get('usage')
+        # A barn's form has no land use on it: nothing to change.
+        new_usage = form.cleaned_data.get('usage') or old_usage
 
         # Let the form persist the other fields, but keep the existing usage
         # so the service stays the single writer of usage + history.
@@ -833,6 +918,9 @@ def _ready_neighbours(location):
     from ..dashboard import board
     from ..geo import haversine_m
 
+    if location.is_barn:
+        # "Where can these horses graze next" is not a barn's question.
+        return []
     here = board.map_locations(location.site)
     anchor = None
     candidates = []
@@ -876,7 +964,7 @@ def location_preview(request, pk):
         ).select_related('horse', 'owner').order_by('start_date', 'horse__name')
     )
     count = len(placements)
-    holds_horses = location.usage in (Location.Usage.HORSES, Location.Usage.MIXED)
+    holds_horses = location.usage in Location.RESIDENT_USAGES
     capacity = location.capacity if holds_horses else None
     period = location.usage_periods.filter(end_date__isnull=True).first()
     rest_days = None
@@ -886,6 +974,7 @@ def location_preview(request, pk):
     state = board.rest_state(
         count=count, capacity=capacity,
         holds_horses=holds_horses, rest_days=rest_days,
+        is_barn=location.is_barn,
     )
     label, colour = board.REST_STATES[state]
 
@@ -900,7 +989,9 @@ def location_preview(request, pk):
     return render(request, 'locations/partials/preview.html', {
         'location': location,
         'in_rail': htmx.target == 'loc-rail-detail',
-        'area_ha': area_hectares(
+        # The size of a paddock is worth a chip; the footprint of a
+        # building is not.
+        'area_ha': None if location.is_barn else area_hectares(
             location.boundary, key=(location.pk, location.boundary_updated_at),
         ),
         'neighbours': _ready_neighbours(location),
@@ -1036,6 +1127,8 @@ def set_location_usage(request, pk):
     change answers 204 + ``popup:saved``.
     """
     location = get_object_or_404(Location, pk=pk)
+    if location.is_barn:
+        raise Http404("A barn has no usage to change.")
     in_popup = is_popup_request(request)
     full_page = redirect(
         f"{reverse('location_detail', kwargs={'pk': location.pk})}?tab=usage"
@@ -1097,6 +1190,148 @@ def set_location_usage(request, pk):
             f"from {period.start_date:%-d %b %Y}."
         )
     return popup_saved_response() if in_popup else full_page
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Barns and stables (docs/BARNS_AND_STABLES_PLAN.md, phase 1)
+#
+# Setting a barn up: its stables, the gaps between them, and turning a
+# location that was added as ground into a barn. All of it is the
+# ``locations`` feature at full access — who is *in* a stable is a horse
+# move and arrives with phase 2.
+#
+# Every form here lives in the pop-up sheet. Opened any other way, a GET
+# goes to the barn's page, where the buttons that open the sheet are.
+# ──────────────────────────────────────────────────────────────────────────
+
+def _barn_or_404(pk):
+    """An unarchived barn, while barns are switched on."""
+    if not settings.BARNS_ENABLED:
+        raise Http404
+    return get_object_or_404(
+        Location.objects.active(), pk=pk, location_type=Location.LocationType.BARN,
+    )
+
+
+def _sheet_form(request, form, *, back, submit_label,
+                template='includes/popup_form.html', **extra):
+    """Render ``form`` in the pop-up sheet, or go ``back`` outside it."""
+    if not is_popup_request(request):
+        for errors in form.errors.values():
+            for err in errors:
+                messages.error(request, err)
+        return redirect(back)
+    return render(request, template, {
+        'form': form,
+        'in_popup': True,
+        'popup_submit_label': submit_label,
+        **extra,
+    })
+
+
+def _sheet_saved(request, back):
+    return popup_saved_response() if is_popup_request(request) else redirect(back)
+
+
+@feature_required('locations')
+def stables_add(request, pk):
+    """Add stables to the end of a barn."""
+    from ..stables import add_stables
+
+    barn = _barn_or_404(pk)
+    back = reverse('location_detail', kwargs={'pk': barn.pk})
+    form = AddStablesForm(request.POST or None, barn=barn)
+    if request.method == 'POST' and form.is_valid():
+        added = add_stables(barn, form.cleaned_data['count'])
+        if len(added) == 1:
+            messages.success(request, f"Stable {added[0].label} added to {barn.name}.")
+        else:
+            messages.success(
+                request,
+                f"Stables {added[0].label} to {added[-1].label} added to {barn.name}.",
+            )
+        return _sheet_saved(request, back)
+    return _sheet_form(request, form, back=back, submit_label='Add stables')
+
+
+@feature_required('locations')
+def stable_add_gap(request, pk):
+    """Put a tack room, feed room or doorway into a barn's order."""
+    from ..stables import add_gap
+
+    barn = _barn_or_404(pk)
+    back = reverse('location_detail', kwargs={'pk': barn.pk})
+    form = StableGapForm(request.POST or None, barn=barn)
+    if request.method == 'POST' and form.is_valid():
+        gap = add_gap(barn, form.cleaned_data['label'], after=form.cleaned_data['after'])
+        messages.success(request, f"{gap.label} added to {barn.name}.")
+        return _sheet_saved(request, back)
+    return _sheet_form(request, form, back=back, submit_label='Add to plan')
+
+
+@feature_required('locations')
+def stable_edit(request, pk, stable_pk):
+    """Rename a stable, leave a note on it, or take it out of use."""
+    from ..stables import sync_barn_capacity
+
+    barn = _barn_or_404(pk)
+    stable = get_object_or_404(Stable, pk=stable_pk, location=barn)
+    back = reverse('location_detail', kwargs={'pk': barn.pk})
+    form = StableForm(request.POST or None, instance=stable)
+    if request.method == 'POST' and form.is_valid():
+        with transaction.atomic():
+            stable = form.save()
+            sync_barn_capacity(barn)
+        what = stable.label if stable.is_gap else f"Stable {stable.label}"
+        messages.success(request, f"{what} saved.")
+        return _sheet_saved(request, back)
+    return _sheet_form(
+        request, form, back=back, submit_label='Save Changes',
+        template='locations/partials/stable_form.html', stable=stable,
+    )
+
+
+@feature_required('locations')
+@require_POST
+def stable_delete(request, pk, stable_pk):
+    """Remove a stable or a gap from a barn."""
+    from ..stables import remove_stable
+
+    barn = _barn_or_404(pk)
+    stable = get_object_or_404(Stable, pk=stable_pk, location=barn)
+    what = stable.label if stable.is_gap else f"Stable {stable.label}"
+    remove_stable(stable)
+    messages.success(request, f"{what} removed from {barn.name}.")
+    return _sheet_saved(request, reverse('location_detail', kwargs={'pk': barn.pk}))
+
+
+@feature_required('locations')
+def location_convert_to_barn(request, pk):
+    """Turn a location that was added as ground into a barn.
+
+    One way only: there is no turning a barn back. The page that offers
+    this says so before the form opens.
+    """
+    from ..stables import convert_to_barn
+
+    if not settings.BARNS_ENABLED:
+        raise Http404
+    location = get_object_or_404(
+        Location.objects.active(), pk=pk, location_type=Location.LocationType.FIELD,
+    )
+    back = reverse('location_detail', kwargs={'pk': location.pk})
+    form = ConvertToBarnForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        first = form.cleaned_data.get('first_number')
+        convert_to_barn(
+            location,
+            layout=form.cleaned_data['layout'],
+            stable_count=form.cleaned_data.get('stable_count') or 0,
+            first_number=1 if first is None else first,
+        )
+        messages.success(request, f"{location.name} is now a barn.")
+        return _sheet_saved(request, back)
+    return _sheet_form(request, form, back=back, submit_label='Convert to barn')
 
 
 # ──────────────────────────────────────────────────────────────────────────

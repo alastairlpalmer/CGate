@@ -16,6 +16,11 @@ def location_maps(request):
     }
 
 
+def barns(request):
+    """``barns_enabled``: whether to offer barns and stables."""
+    return {'barns_enabled': settings.BARNS_ENABLED}
+
+
 def google_sign_in(request):
     """``google_sign_in_enabled``: whether to show the Google buttons."""
     return {'google_sign_in_enabled': settings.GOOGLE_SIGN_IN_ENABLED}

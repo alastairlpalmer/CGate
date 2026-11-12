@@ -47,7 +47,7 @@ def sites_overview(*, site='', today=None, flagged=frozenset()):
         rest_days = None
         if loc.usage == Location.Usage.RESTED and period is not None:
             rest_days = max(0, (today - period.start_date).days)
-        holds_horses = loc.usage in (Location.Usage.HORSES, Location.Usage.MIXED)
+        holds_horses = loc.usage in Location.RESIDENT_USAGES
         capacity = loc.capacity if holds_horses else None
         availability = (capacity - loc.horse_count) if capacity is not None else None
         pct = 0
@@ -62,6 +62,7 @@ def sites_overview(*, site='', today=None, flagged=frozenset()):
             'usage': loc.usage,
             'usage_label': loc.get_usage_display(),
             'holds_horses': holds_horses,
+            'is_barn': loc.is_barn,
             'rest_days': rest_days,
             'rest_since': period.start_date if rest_days is not None else None,
             'flagged': (loc.site, loc.name) in flagged,
@@ -103,6 +104,8 @@ MAP_COLOURS = {
 # capacity, clamped so a two-horse pen stays tappable and a forty-horse
 # field does not swamp the view. Metres, so it scales with the map.
 CIRCLE_MIN_M, CIRCLE_MAX_M, CIRCLE_PER_HORSE_M, CIRCLE_DEFAULT_M = 18, 70, 2.5, 25
+# A barn is a building, not ground: twenty stables are not a 68 m circle.
+BARN_CIRCLE_M = 15
 
 
 def capacity_state(capacity, availability):
@@ -130,18 +133,27 @@ REST_STATES = {
     'recovering': ('Recovering', '#A08343'),
     'empty': ('Empty', '#9CB2B8'),
     'other': ('', '#6A8990'),
+    # A barn with horses in it. The colour of ``grazing`` — it is the same
+    # fact, somewhere carrying horses — but never the word: nothing grazes
+    # in a stable.
+    'housed': ('In use', '#4F6F64'),
 }
 
 
-def rest_state(*, count, capacity, holds_horses, rest_days):
+def rest_state(*, count, capacity, holds_horses, rest_days, is_barn=False):
     """Where one location sits in the rotation.
 
     ``other`` is ground that is not grazing at all — hay, arable — and it
     carries no label of its own here: the tile prints the land use, which
     says more than a second word for "not horses" would.
+
+    A barn is outside the rotation altogether: it is over, in use or
+    empty, and never rested or recovering.
     """
     if capacity and count > capacity:
         return 'over'
+    if is_barn:
+        return 'housed' if count > 0 else 'empty'
     if count > 0:
         return 'grazing'
     if rest_days is not None:
@@ -149,7 +161,9 @@ def rest_state(*, count, capacity, holds_horses, rest_days):
     return 'empty' if holds_horses else 'other'
 
 
-def circle_radius_m(capacity):
+def circle_radius_m(capacity, is_barn=False):
+    if is_barn:
+        return BARN_CIRCLE_M
     if not capacity:
         return CIRCLE_DEFAULT_M
     return int(max(CIRCLE_MIN_M, min(CIRCLE_MAX_M, CIRCLE_MIN_M + capacity * CIRCLE_PER_HORSE_M)))
@@ -199,6 +213,7 @@ def _shape_band(band):
         rest = rest_state(
             count=tile['count'], capacity=tile['capacity'],
             holds_horses=tile['holds_horses'], rest_days=tile['rest_days'],
+            is_barn=tile['is_barn'],
         )
         locations.append({
             'pk': loc.pk,
@@ -210,6 +225,8 @@ def _shape_band(band):
             'usage': tile['usage'],
             'usage_label': tile['usage_label'],
             'holds_horses': tile['holds_horses'],
+            # Not "kind": that key is how the shape is drawn (below).
+            'is_barn': tile['is_barn'],
             'rest_days': tile['rest_days'],
             'lat': float(loc.latitude) if loc.latitude is not None else None,
             'lng': float(loc.longitude) if loc.longitude is not None else None,
@@ -228,7 +245,7 @@ def _shape_band(band):
             'rest_state': rest,
             'rest_label': REST_STATES[rest][0] or tile['usage_label'],
             'rest_colour': REST_STATES[rest][1],
-            'radius_m': circle_radius_m(tile['capacity']) if kind == 'circle' else None,
+            'radius_m': circle_radius_m(tile['capacity'], tile['is_barn']) if kind == 'circle' else None,
             'urls': {
                 'detail': reverse('location_detail', kwargs={'pk': loc.pk}),
             },
