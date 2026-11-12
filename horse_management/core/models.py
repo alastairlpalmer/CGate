@@ -1380,6 +1380,12 @@ class OwnershipShare(models.Model):
         super().save(*args, **kwargs)
 
 
+def default_muted_reminders():
+    """Reminder kinds a new yard starts with switched off (core/reminders.py)."""
+    from .reminders import default_muted
+    return default_muted()
+
+
 class BusinessSettings(models.Model):
     """Singleton model for business configuration."""
 
@@ -1430,6 +1436,9 @@ class BusinessSettings(models.Model):
             "on the 1st (drafts still need reviewing and sending)"
         ),
     )
+    # Kinds of reminder the yard has switched off on its dashboard
+    # (core/reminders.py). A list of keys; the farrier is off to start.
+    muted_reminders = models.JSONField(default=default_muted_reminders, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

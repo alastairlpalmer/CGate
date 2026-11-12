@@ -23,7 +23,7 @@ list that needs doing stands out from the rest of the page.
             <button type="submit" class="btn-secondary btn-xs" title="Confirm every departure listed below">Confirm all {{ departure_ids|length }} departures</button>
         </form>
         {% else %}
-        <span class="text-xs text-sage">Overdue first, then today</span>
+        <span class="text-xs text-sage">Overdue first, then today{% if feature_access.settings.full %} &middot; <a href="{% url 'app_settings' %}#reminders" class="link tap-pad" title="Choose what the dashboard reminds you about">Choose reminders</a>{% endif %}</span>
         {% endif %}
     </div>
 

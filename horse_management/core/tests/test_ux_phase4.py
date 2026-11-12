@@ -63,6 +63,9 @@ class HealthListBase(TestCase):
     """Three horses: farrier 3 days overdue, farrier due in 5 days, fine."""
 
     def setUp(self):
+        from core import reminders
+        # These tests use the farrier, which a new yard has switched off.
+        reminders.set_reminder('farrier', True)
         self.today = timezone.localdate()
         owner = Owner.objects.create(name='Roz Tobin')
         self.field = Location.objects.create(site='Colgate', name='Top', capacity=8)

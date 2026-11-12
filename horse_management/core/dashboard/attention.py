@@ -846,7 +846,7 @@ COLLECTORS = (
 # ── Public API ───────────────────────────────────────────────────────────────
 
 def collect(user, *, site='', today=None, horizon_days=HORIZON_DAYS, kinds=None,
-            placements=None):
+            placements=None, include_muted=False):
     """Every attention item the user may see, most urgent first.
 
     ``site`` keeps items standing on that site plus items with no site
@@ -854,14 +854,26 @@ def collect(user, *, site='', today=None, horizon_days=HORIZON_DAYS, kinds=None,
     collectors that run, for callers that only want the health kinds.
     ``placements`` (``{horse_id: (location name, site)}``) saves the
     placements query for a caller that has them loaded already.
+
+    Kinds the yard switched off in Settings (core/reminders.py) are left
+    out, so the dashboard and the horse list stay quiet about them. A
+    caller that names its ``kinds`` is a page about those kinds (Health,
+    Farrier) and gets them whatever the switch says; ``include_muted``
+    does the same for a caller that wants everything.
     """
     today = today or timezone.localdate()
     ctx = _Context(user, today, horizon_days)
     if placements is not None:
         ctx._placements = placements
+    muted = frozenset()
+    if kinds is None and not include_muted:
+        from ..reminders import muted_collectors
+        muted = muted_collectors()
     items = []
     for kind, feature, collector in COLLECTORS:
         if kinds is not None and kind not in kinds:
+            continue
+        if kind in muted:
             continue
         if not ctx.can(feature):
             continue

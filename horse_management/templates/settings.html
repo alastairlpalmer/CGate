@@ -421,6 +421,41 @@
             {% endif %}
         </div>
 
+        <!-- ── Reminders ── -->
+        {% comment %}Which kinds of reminder the dashboard shows, for the
+        whole yard (core/reminders.py). A yard sees its horses' feet every
+        day, so the farrier starts switched off.{% endcomment %}
+        <div id="reminders" class="card overflow-hidden scroll-mt-24">
+            <div class="section-header">
+                <h3 class="section-title">Reminders</h3>
+            </div>
+            <p class="settings-note">Choose what the dashboard reminds the yard about. A reminder you switch off leaves Needs action, Next 14 days and the dots on the horse list. The records stay on their own pages. Changes save automatically.</p>
+            <div class="settings-rows">
+                {% for item in reminder_rows %}
+                <div class="settings-row" data-reminder-key="{{ item.key }}" x-data="{ on: {{ item.on|yesno:'true,false' }}, saved: false }">
+                    <div class="min-w-0 flex-1">
+                        <p class="settings-row-title">{{ item.name }}</p>
+                        <p class="settings-row-meta">{{ item.help }}</p>
+                    </div>
+                    <span class="text-xs text-forest" x-show="saved" x-cloak x-transition.opacity role="status">Saved</span>
+                    <button type="button" role="switch"
+                            :aria-checked="on ? 'true' : 'false'"
+                            aria-checked="{{ item.on|yesno:'true,false' }}"
+                            @click="on = !on;
+                                    htmx.ajax('POST', '{% url 'reminder_toggle' %}', {
+                                      values: { key: '{{ item.key }}', on: on ? 'true' : 'false' },
+                                      swap: 'none',
+                                      headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                                    }).then(() => { saved = true; setTimeout(() => saved = false, 1500); });"
+                            class="form-toggle shrink-0"
+                            aria-label="Remind about {{ item.name|lower }}">
+                        <span class="form-toggle-thumb"></span>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
         <!-- ── Vaccination Types ── -->
         <div class="card overflow-hidden">
             <div class="section-header">
