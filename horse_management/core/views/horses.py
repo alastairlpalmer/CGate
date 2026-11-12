@@ -1136,9 +1136,20 @@ class HorseListView(FeatureAccessMixin, ListView):
         return _sort_groups(groups, self.group_sort)
 
 
+def _stable_stays(horse, limit):
+    """The horse's recent stable stays for its timeline; none with barns off."""
+    if not settings.BARNS_ENABLED:
+        return []
+    return list(
+        horse.stable_stays.select_related('stable', 'stable__location')
+        .order_by('-start_date', '-pk')[:limit]
+    )
+
+
 def build_horse_timeline(
     *, placements, vaccinations, farrier_visits, worming_treatments,
     egg_counts, vet_visits, breeding_records=(), farrier_notes=(),
+    stable_stays=(),
 ):
     """One list of dated events, newest first.
 
@@ -1163,6 +1174,10 @@ def build_horse_timeline(
         timeline.append({'type': 'breeding', 'date': br.date_covered, 'obj': br})
     for note in farrier_notes:
         timeline.append({'type': 'farrier_note', 'date': note.date, 'obj': note})
+    # A horse going into a stable is its own row, never folded into the
+    # placement's: it changes on its own, with no move and no new rate.
+    for stay in stable_stays:
+        timeline.append({'type': 'stable', 'date': stay.start_date, 'obj': stay})
     timeline.sort(key=lambda e: e['date'], reverse=True)
     # Only the newest record of a kind can be overdue: an old booster's next
     # due date is in the past for ever once the horse has had the next one.
@@ -1282,6 +1297,7 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
             vet_visits=context['vet_visits'],
             breeding_records=context.get('breeding_records', []) if horse.is_mare else [],
             farrier_notes=list(horse.farrier_notes.select_related('provider')[:20]),
+            stable_stays=_stable_stays(horse, 20),
         )
 
         return context
@@ -1512,6 +1528,7 @@ def horse_preview(request, pk):
         vet_visits=vet_visits,
         breeding_records=breeding_records,
         farrier_notes=list(horse.farrier_notes.select_related('provider')[:8]),
+        stable_stays=_stable_stays(horse, 8),
     )
 
     return render(request, 'horses/partials/preview.html', {

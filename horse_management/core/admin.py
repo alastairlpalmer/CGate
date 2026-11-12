@@ -18,6 +18,8 @@ from .models import (
     OwnershipShare,
     Placement,
     Stable,
+    StableStay,
+    Turnout,
     RateType,
     ScheduledRun,
 )
@@ -293,3 +295,26 @@ class InvoiceLineItemAdmin(admin.ModelAdmin):
 # OwnershipShare exclusively. It is deliberately NOT registered in the admin —
 # data entered there silently did nothing, which is a trap for admin users.
 # The model remains only so historical rows stay readable via the ORM.
+
+
+@admin.register(StableStay)
+class StableStayAdmin(admin.ModelAdmin):
+    """For looking, and for the rare repair. Day-to-day changes go through
+    core.stables.StableService, which keeps a stay in its horse's barn."""
+    list_display = ['horse', 'stable', 'start_date', 'end_date', 'closed_with_placement']
+    list_filter = ['stable__location']
+    search_fields = ['horse__name', 'stable__label']
+    autocomplete_fields = ['horse']
+    readonly_fields = ['created_at']
+
+
+@admin.register(Turnout)
+class TurnoutAdmin(admin.ModelAdmin):
+    """For looking, and for the rare repair. Day-to-day changes go through
+    core.turnout.TurnoutService, which also keeps the land-use history."""
+    list_display = ['horse', 'location', 'start_date', 'end_date', 'closed_with_placement']
+    list_filter = ['location']
+    search_fields = ['horse__name', 'location__name']
+    autocomplete_fields = ['horse']
+    readonly_fields = ['created_at']
+

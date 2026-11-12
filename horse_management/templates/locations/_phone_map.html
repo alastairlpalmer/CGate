@@ -135,7 +135,7 @@ nothing.
                         {# "Rested 26 days", not "Rested · rested 26 days": #}
                         {# the state already carries the word.                #}
                         <span class="loc-row-sub">
-                            {{ loc.rest_label }}{% if loc.rest_days is not None %} {{ loc.rest_days }} day{{ loc.rest_days|pluralize }}{% elif loc.count %} &middot; in use{% endif %}
+                            {{ loc.rest_label }}{% if loc.rest_days is not None %} {{ loc.rest_days }} day{{ loc.rest_days|pluralize }}{% elif loc.count and not loc.is_barn %} &middot; in use{% endif %}
                         </span>
                     </span>
                     <span class="shrink-0 text-right">

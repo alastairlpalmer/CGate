@@ -205,31 +205,37 @@ def undo_url(message):
     return undo_url_from_tags(getattr(message, 'extra_tags', ''))
 
 
+def _home_barn(horse, placement):
+    """The barn a horse lives in, or None. ``placement`` is its open
+    placement when the page has already loaded it — then this costs no
+    query, which is what keeps a horse in a field free of charge here."""
+    if placement is None:
+        from core.models import Placement
+        placement = (
+            Placement.objects.filter(horse=horse, end_date__isnull=True)
+            .select_related('location').first()
+        )
+    if placement is None or not placement.location.is_barn:
+        return None
+    return placement.location
+
+
 @register.inclusion_tag('horses/_stable_line.html', takes_context=True)
-def stable_line(context, horse, compact=False):
+def stable_line(context, horse, compact=False, placement=None):
     """``· Stable 7`` after a horse's location, with a way to change it.
 
-    One query for the horse's open stay. For a page about one horse (its
-    profile, the preview pane, the quick view); a list uses
-    ``core.stables.annotate_stable`` instead.
+    For a page about one horse (its profile, the preview pane, the quick
+    view); a list uses ``core.stables.annotate_stable`` instead. Nothing
+    is looked up for a horse that does not live in a barn.
     """
     from django.conf import settings
 
     stay = barn = None
     if settings.BARNS_ENABLED and horse is not None:
-        from core.models import Placement
-        from core.stables import open_stay
-
-        stay = open_stay(horse)
-        if stay is None:
-            placement = (
-                Placement.objects.filter(horse=horse, end_date__isnull=True)
-                .select_related('location').first()
-            )
-            if placement is not None and placement.location.is_barn:
-                barn = placement.location
-        else:
-            barn = stay.stable.location
+        barn = _home_barn(horse, placement)
+        if barn is not None:
+            from core.stables import open_stay
+            stay = open_stay(horse)
     return {
         'horse': horse,
         'stay': stay,
@@ -242,20 +248,19 @@ def stable_line(context, horse, compact=False):
 
 
 @register.inclusion_tag('horses/_turnout_line.html', takes_context=True)
-def turnout_line(context, horse, compact=False):
+def turnout_line(context, horse, compact=False, placement=None):
     """Where a stabled horse goes out by day, with a way to change it.
 
-    Says nothing for a horse that does not live in a barn. One or two
-    queries, so it is for a page about one horse.
+    Says nothing, and looks nothing up, for a horse that does not live in
+    a barn. For a page about one horse.
     """
     from django.conf import settings
 
     turnout = barn = None
     if settings.BARNS_ENABLED and horse is not None:
-        from core.turnout import lives_in_a_barn, open_turnout
-
-        barn = lives_in_a_barn(horse)
+        barn = _home_barn(horse, placement)
         if barn is not None:
+            from core.turnout import open_turnout
             turnout = open_turnout(horse)
     return {
         'horse': horse,

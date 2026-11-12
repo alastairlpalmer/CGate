@@ -404,6 +404,34 @@ def quick_find(request):
             row['matched'] = 'Microchip' if compact.lower() in (row.pop('microchip') or '').lower() else 'Passport'
             horses.append(row)
 
+    # A horse by where it is stabled: "top barn 7" is how a yard says it.
+    # The last word is the stable, the words before it the barn.
+    if (
+        settings.BARNS_ENABLED and ' ' in query
+        and has_feature_access(request.user, 'horses')
+        and has_feature_access(request.user, 'locations')
+    ):
+        from ..models import StableStay
+        barn_words, _space, label = query.rpartition(' ')
+        barn_words = barn_words.strip()
+        if barn_words.lower().endswith(' stable'):
+            barn_words = barn_words[:-len(' stable')].strip()
+        if len(barn_words) >= 2 and label:
+            seen = {h['pk'] for h in horses}
+            stays = StableStay.objects.filter(
+                end_date__isnull=True, horse__is_active=True,
+                stable__label__iexact=label,
+                stable__location__name__icontains=barn_words,
+                stable__location__is_archived=False,
+            ).select_related('horse', 'stable__location').order_by('horse__name')
+            for stay in stays[:QUICK_FIND_PER_GROUP]:
+                if stay.horse_id in seen or len(horses) >= QUICK_FIND_PER_GROUP:
+                    continue
+                horses.append({
+                    'pk': stay.horse_id, 'name': stay.horse.name, 'is_active': True,
+                    'matched': f'{stay.stable.location.name} · {stay.stable.label}',
+                })
+
     # An invoice by its number. Numbers only: an owner's name already
     # finds the owner, whose page lists their invoices.
     invoices = []

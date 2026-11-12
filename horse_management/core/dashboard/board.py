@@ -32,6 +32,19 @@ def sites_overview(*, site='', today=None, flagged=frozenset()):
         )
     }
 
+    # How many of each barn's horses have a stable, for its tile.
+    from django.conf import settings
+    in_stables = {}
+    if settings.BARNS_ENABLED and any(loc.is_barn for loc in locations):
+        from ..models import StableStay
+        in_stables = dict(
+            StableStay.objects.filter(
+                end_date__isnull=True, horse__is_active=True,
+                stable__location_id__in=[loc.pk for loc in locations if loc.is_barn],
+            ).values('stable__location_id').annotate(n=Count('horse', distinct=True))
+            .values_list('stable__location_id', 'n')
+        )
+
     sites = {}
     for loc in locations:
         period = open_periods.get(loc.pk)
@@ -61,6 +74,9 @@ def sites_overview(*, site='', today=None, flagged=frozenset()):
             'usage_label': loc.get_usage_display(),
             'holds_horses': holds_horses,
             'is_barn': loc.is_barn,
+            # A barn's tile says how its horses are housed.
+            'in_stables': in_stables.get(loc.pk, 0),
+            'no_stable': max(loc.horse_count - in_stables.get(loc.pk, 0), 0),
             'rest_days': rest_days,
             'rest_since': period.start_date if rest_days is not None else None,
             'flagged': (loc.site, loc.name) in flagged,

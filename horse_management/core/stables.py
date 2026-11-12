@@ -693,3 +693,35 @@ def stray_stays():
         .annotate(at_home=Exists(at_home)).filter(at_home=False)
     )
 
+
+def mark_attention(plan, user, site=''):
+    """Give each cell of a barn plan ``attention``: the reasons its horse
+    needs something done now ("Vaccination", "Farrier"), or [].
+
+    The dashboard's own list (core.dashboard.attention), narrowed to what
+    is in its inbox — overdue or due today — so a stable is only marked
+    for what the dashboard is already asking for, and only for what this
+    user may see. Its cost does not grow with the number of stables.
+    """
+    from django.utils import timezone as tz
+
+    from .dashboard import attention
+
+    wanted = plan['stabled_horse_ids']
+    reasons = {}
+    if wanted:
+        today = tz.localdate()
+        for item in attention.collect(user, site=site, today=today):
+            if item.horse_id in wanted and attention.is_inbox(item, today):
+                reasons.setdefault(item.horse_id, [])
+                if item.label not in reasons[item.horse_id]:
+                    reasons[item.horse_id].append(item.label)
+    for cell in plan['cells']:
+        found = []
+        for horse in cell['horses']:
+            for label in reasons.get(horse.pk, []):
+                if label not in found:
+                    found.append(label)
+        cell['attention'] = found
+    return plan
+
