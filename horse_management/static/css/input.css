@@ -1849,7 +1849,9 @@ a.pane-item-title:hover { @apply text-forest; }
    over the chrome and the sheet as well. */
 .loc-phone-map { position: absolute; inset: 0; z-index: 0; isolation: isolate; }
 .loc-phone-map .location-map { position: absolute; inset: 0; height: 100%; border: 0; border-radius: 0; }
-.loc-phone-nomap { @apply absolute inset-x-0 top-0 px-5 pt-28 pb-6; }
+/* pt-5, not the old pt-28: the site selector moved up into the app bar,
+   so nothing floats over this notice any more. */
+.loc-phone-nomap { @apply absolute inset-x-0 top-0 px-5 pt-5 pb-6; }
 
 /* Chrome: one row, on a fade so the map reads under it. */
 .loc-site-pill {
@@ -2171,6 +2173,14 @@ a.pane-item-title:hover { @apply text-forest; }
 /* While dragging: keep the resize cursor everywhere and stop text
    selection, so a fast drag does not highlight half the page. */
 .is-resizing-panel, .is-resizing-panel * { cursor: col-resize !important; user-select: none !important; }
+
+/* A 20px checkbox is a hard target for a thumb. On a touch screen an
+   invisible overlay grows the tap box to 40px; the box you see stays the
+   same size. (These checkboxes are appearance: none, so ::after draws.) */
+@media (pointer: coarse) {
+    input[type="checkbox"]:not(.switch-input) { position: relative; }
+    input[type="checkbox"]:not(.switch-input)::after { content: ''; position: absolute; inset: -10px; }
+}
 
 /* List pages hide their <h1> on a phone (the tab bar names the page). The
    hidden title still counts as a sibling, so space-y would leave a blank

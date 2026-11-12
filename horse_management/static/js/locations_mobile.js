@@ -443,12 +443,16 @@
 
     function setUp() {
         if (!page()) { return; }
-        state.snap = 'peek';
+        // Peek leaves the screen to the map. A site with no boundaries
+        // has no map to leave it to, so its list opens at half height
+        // instead of under an empty screen.
+        var start = page().querySelector('.loc-phone-nomap') ? 'half' : 'peek';
+        state.snap = start;
         state.pk = null;
         state.filter = 'all';
         state.sort = 'horses';
         bindDrag();
-        setSnap('peek');
+        setSnap(start);
         applyList();
     }
 

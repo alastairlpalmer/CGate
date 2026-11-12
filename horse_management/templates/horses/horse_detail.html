@@ -569,15 +569,7 @@
             }">
                 <div class="section-header">
                     <h3 class="section-title">Timeline</h3>
-                    <!-- Hidden on phones: they cram at 390px and the Quick Actions grid below covers them -->
-                    {% if feature_access.health.full %}
-                    <div class="hidden sm:flex items-center gap-2">
-                        <a href="{% url 'vaccination_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vaccination_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Vaccination for {{ horse.name }}" class="btn-ghost btn-xs">+ Vaccination</a>
-                        <a href="{% url 'farrier_create' %}?horse={{ horse.pk }}" hx-get="{% url 'farrier_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Farrier visit for {{ horse.name }}" class="btn-ghost btn-xs">+ Farrier</a>
-                        <a href="{% url 'worming_create' %}?horse={{ horse.pk }}" hx-get="{% url 'worming_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Worming for {{ horse.name }}" class="btn-ghost btn-xs">+ Worming</a>
-                        <a href="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vet_visit_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Vet visit for {{ horse.name }}" class="btn-ghost btn-xs">+ Vet Visit</a>
-                    </div>
-                    {% endif %}
+                    {# Recording is the Record card's job (right column, first): one set of buttons, not two. #}
                 </div>
 
                 <!-- Filter Pills -->
@@ -782,6 +774,19 @@
         <!-- Right Column (Sidebar) -->
         <div class="space-y-6">
 
+            {# First in the column: recording is what the page is opened for most. #}
+            <!-- Record shortcuts -->
+            {% if feature_access.health.full or feature_access.horses.full or feature_access.charges.full %}
+            <div class="card" id="quick-actions">
+                <div class="section-header">
+                    <h3 class="section-title">Record</h3>
+                </div>
+                <div class="p-3 grid grid-cols-2 gap-2">
+                    {% include 'horses/_quick_actions.html' %}
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Ownership Shares -->
             <div class="card">
                 <div class="section-header">
@@ -817,18 +822,6 @@
 
             <!-- Photos -->
             {% include 'horses/_photo_grid_card.html' with photos=photos photo_count=photo_count horse=horse %}
-
-            <!-- Quick Actions -->
-            {% if feature_access.health.full or feature_access.horses.full or feature_access.charges.full %}
-            <div class="card" id="quick-actions">
-                <div class="section-header">
-                    <h3 class="section-title">Record</h3>
-                </div>
-                <div class="p-3 grid grid-cols-2 gap-2">
-                    {% include 'horses/_quick_actions.html' %}
-                </div>
-            </div>
-            {% endif %}
 
         </div>
     </div>

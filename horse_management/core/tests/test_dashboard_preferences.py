@@ -463,7 +463,7 @@ class DashboardPageTests(TestCase):
             with self.subTest(page=name):
                 body = self.client.get(reverse(name)).content.decode()
                 self.assertIn('id="app-search-results"', body)
-                self.assertIn('Find a horse, owner or location', body)
+                self.assertIn('Find a horse, owner, location or invoice', body)
         # ...and not twice on the page it came from.
         body = self.client.get(reverse('dashboard')).content.decode()
         self.assertEqual(body.count('id="app-search-results"'), 1)
