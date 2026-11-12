@@ -5,12 +5,9 @@ One card, two shapes of the same cells: the plan from `lg`, where there
 is room to draw the building, and a list in stable order below it. Both
 read `barn_plan` (core.stables.barn_plan), so they cannot disagree.
 
-A cell opens the stable's edit sheet for someone who may set the barn up.
-For everyone else it is not a control at all — a view-only role sees the
-plan and nothing to press.
-
-No horse has a stable yet: who is in which arrives with phase 2. Until
-then every horse in the barn is in the table below this card.
+A stable opens its panel: who is in it, and what the reader may do
+about it (locations/partials/stable_panel.html). A horse with no stable
+is in the table below this card.
 {% endcomment %}
 <div class="card overflow-hidden" data-testid="barn-plan">
     <div class="section-header flex-wrap gap-2">
@@ -18,7 +15,7 @@ then every horse in the barn is in the table below this card.
             <h2 class="section-title">Stables</h2>
             {% if barn_plan.has_cells %}
             <p class="text-xs text-sage mt-0.5" data-testid="barn-summary">
-                {{ barn_plan.stable_count }} stable{{ barn_plan.stable_count|pluralize }}{% if barn_plan.out_of_use_count %} &middot; {{ barn_plan.out_of_use_count }} out of use{% endif %}
+                {{ barn_plan.occupied_count }} of {{ barn_plan.in_use_count }} stable{{ barn_plan.in_use_count|pluralize }} occupied{% if barn_plan.out_of_use_count %} &middot; {{ barn_plan.out_of_use_count }} out of use{% endif %}
                 &middot; {{ location.get_layout_display|default:"Row" }}
             </p>
             {% endif %}
@@ -73,22 +70,26 @@ then every horse in the barn is in the table below this card.
             {% endif %}
         </div>
         {% else %}
-        <div class="barn-list-row">
+        <a href="{% url 'stable_panel' location.pk stable.pk %}" hx-get="{% url 'stable_panel' location.pk stable.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Stable {{ stable.label }}" class="barn-list-row{% if highlight_stable == stable.pk %} is-highlight{% endif %}"
+           aria-label="Stable {{ stable.label }}, {% if cell.horses %}{% for horse in cell.horses %}{{ horse.name }}{% if not forloop.last %} and {% endif %}{% endfor %}{% elif cell.state == 'off' %}out of use{% else %}empty{% endif %}">
             <span class="barn-list-label">{{ stable.label }}</span>
-            <span class="min-w-0 flex-1 text-sm {% if cell.state == 'off' %}text-sage{% else %}text-sage/80{% endif %}">
-                {% if cell.state == 'off' %}Out of use{% else %}Empty{% endif %}{% if stable.note %} <span class="text-sage">&middot; {{ stable.note }}</span>{% endif %}
+            {% if cell.horses %}
+            <span class="min-w-0 flex-1 text-base font-medium text-charcoal truncate">{% for horse in cell.horses %}{{ horse.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+            {% else %}
+            <span class="min-w-0 flex-1 text-sm text-sage">
+                {% if cell.state == 'off' %}Out of use{% else %}Empty{% endif %}{% if stable.note %} &middot; {{ stable.note }}{% endif %}
             </span>
-            {% if feature_access.locations.full and not location.is_archived %}
-            <a href="{% url 'stable_edit' location.pk stable.pk %}" hx-get="{% url 'stable_edit' location.pk stable.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-               data-popup-title="Stable {{ stable.label }}" class="link text-sm tap-pad barn-actions" aria-label="Edit stable {{ stable.label }}">Edit</a>
             {% endif %}
-        </div>
+            <svg class="w-4 h-4 text-sage/60 shrink-0 barn-actions" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+        </a>
         {% endif %}
         {% endwith %}
         {% endfor %}
     </div>
 
     <div class="barn-legend hidden lg:flex" aria-hidden="true">
+        <span><span class="barn-legend-swatch is-occupied"></span>Horse in stable</span>
         <span><span class="barn-legend-swatch is-empty"></span>Empty</span>
         <span><span class="barn-legend-swatch is-off"></span>Out of use</span>
     </div>

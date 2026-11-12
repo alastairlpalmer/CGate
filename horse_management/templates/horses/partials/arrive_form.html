@@ -20,6 +20,8 @@ partial: location and date lead (Today / Pick a date), the rest follows.
             {% endif %}
         </div>
 
+        {% if form.stable %}{% include 'locations/partials/stable_picker.html' with picker=form.stable_picker errors=form.stable.errors %}{% endif %}
+
         <div{% if form.arrival_date.errors %} class="field-invalid"{% endif %}>
             <span class="block text-sm font-medium text-charcoal" id="arrival-date-label">Arrival date *</span>
             <div class="mt-1 flex flex-wrap items-center gap-2" role="group" aria-labelledby="arrival-date-label">

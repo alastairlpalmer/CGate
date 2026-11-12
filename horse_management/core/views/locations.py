@@ -531,7 +531,11 @@ class LocationDetailView(FeatureAccessMixin, DetailView):
             and context['current_tab'] == 'current'
         ):
             from ..stables import barn_plan
-            context['barn_plan'] = barn_plan(self.object)
+            plan = context['barn_plan'] = barn_plan(self.object)
+            # A link from a horse's page lands on its stable.
+            wanted = self.request.GET.get('stable', '')
+            context['highlight_stable'] = int(wanted) if wanted.isdigit() else None
+            context['barn_tray'] = plan['has_cells']
 
         # Current horses (always needed for the info card counts)
         active_placements = Prefetch(
@@ -545,6 +549,14 @@ class LocationDetailView(FeatureAccessMixin, DetailView):
             placements__location=self.object,
             placements__end_date__isnull=True
         ).distinct().prefetch_related(active_placements)
+        # The rows of the table on the default tab. Everyone here, except
+        # in a barn with stables, where it is only those with no stable.
+        context['table_horses'] = context['horses']
+        if context.get('barn_tray'):
+            # The table under the plan is the tray: the horses that are
+            # in the barn and in no stable.
+            context['table_horses'] = context['horses'].exclude(
+                pk__in=context['barn_plan']['stabled_horse_ids'])
 
         # History tab data
         if context['current_tab'] == 'history':

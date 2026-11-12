@@ -2197,6 +2197,13 @@ a.barn-cell:hover { @apply bg-parchment; }
 a.barn-cell:focus-visible { @apply outline-2 outline-offset-2 outline-forest; }
 .barn-cell-label { @apply text-[13px] font-bold tabular-nums leading-none truncate; }
 .barn-cell-state { @apply text-[11px] leading-tight text-sage truncate; }
+/* A horse's stable beside its name, in the horse list's barn groups. */
+.stable-chip { @apply inline-flex items-center ml-1.5 px-1.5 py-px rounded-sm bg-light-sage text-forest text-[11px] font-bold tabular-nums align-middle; }
+.barn-cell-horse { @apply text-[12px] font-medium leading-tight text-charcoal truncate; }
+.barn-cell-more { @apply font-normal text-sage; }
+.barn-cell.is-occupied { @apply bg-light-sage border-forest; }
+a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
+.barn-cell.is-highlight, .barn-list-row.is-highlight { @apply ring-2 ring-saddle ring-offset-1; }
 .barn-cell.is-empty { @apply border-dashed border-sage-300; }
 .barn-cell.is-off {
     @apply border-sage-200;
@@ -2210,12 +2217,13 @@ a.barn-cell:focus-visible { @apply outline-2 outline-offset-2 outline-forest; }
 }
 
 /* Below `lg` the same cells as rows, in order. */
-.barn-list-row { @apply flex items-center gap-3 px-5 py-2.5 min-h-[52px]; }
+.barn-list-row { @apply flex items-center gap-3 px-5 py-2.5 min-h-[52px] transition-colors duration-100 active:bg-parchment; }
 .barn-list-label { @apply w-12 shrink-0 text-base font-bold tabular-nums text-charcoal truncate; }
 .barn-list-gap { @apply px-5 py-1.5 bg-sand-50 text-[10px] font-semibold uppercase tracking-wider text-sage; }
 
 .barn-legend { @apply flex flex-wrap gap-x-4 gap-y-1 px-5 lg:px-6 pb-4 text-xs text-sage; }
 .barn-legend-swatch { @apply inline-block w-3.5 h-3.5 mr-1.5 align-[-2px] rounded-sm border-[1.5px] border-charcoal-light; }
+.barn-legend-swatch.is-occupied { @apply bg-light-sage border-forest; }
 .barn-legend-swatch.is-empty { @apply border-dashed border-sage-300; }
 .barn-legend-swatch.is-off {
     @apply border-sage-200;

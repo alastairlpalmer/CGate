@@ -100,7 +100,7 @@ does from the horse page, so nothing here has to know it is in a pane.
             <dt class="pane-stat-label">Location</dt>
             <dd class="pane-stat-value">
                 {% if current_placement %}
-                {% if feature_access.locations.view %}<a href="{% url 'location_detail' current_placement.location.pk %}" class="link">{{ current_placement.location.name }}</a>{% else %}{{ current_placement.location.name }}{% endif %}
+                {% if feature_access.locations.view %}<a href="{% url 'location_detail' current_placement.location.pk %}" class="link">{{ current_placement.location.name }}</a>{% else %}{{ current_placement.location.name }}{% endif %}{% stable_line horse compact=True %}
                 {% elif last_placement %}
                 <span class="text-sage">Left {{ last_placement.location.name }}</span>
                 {% else %}

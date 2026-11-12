@@ -603,10 +603,10 @@
     {% endif %}
 
     <div class="card overflow-hidden">
-        {% if barn_plan and barn_plan.has_cells %}
-        {# Nobody has a stable until phase 2, so this is every horse in the barn. #}
-        <div class="section-header">
-            <h2 class="section-title">In this barn, no stable <span class="font-normal text-sage">&middot; {{ horses|length }}</span></h2>
+        {% if barn_tray %}
+        {# The tray: in the barn, in no stable. #}
+        <div class="section-header" data-testid="barn-tray">
+            <h2 class="section-title">In this barn, no stable <span class="font-normal text-sage">&middot; {{ table_horses|length }}</span></h2>
         </div>
         {% endif %}
         <div class="overflow-x-auto">
@@ -623,7 +623,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for horse in horses %}
+                    {% for horse in table_horses %}
                     <tr>
                         <td>
                             <input type="checkbox"
@@ -654,6 +654,11 @@
                         </td>
                         <td>
                             <div class="flex items-center gap-1">
+                                {% if barn_tray and feature_access.horses.full %}
+                                <a href="{% url 'horse_stable' horse.pk %}?next={{ request.path|urlencode }}" hx-get="{% url 'horse_stable' horse.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                                   data-popup-title="Choose a stable for {{ horse.name }}"
+                                   class="btn-secondary btn-xs">Choose a stable</a>
+                                {% endif %}
                                 <a href="{% url 'horse_move' horse.pk %}" hx-get="{% url 'horse_move' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
                                    data-popup-title="Move {{ horse.name }}"
                                    class="btn-ghost btn-xs">
@@ -673,7 +678,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center text-sage py-8">No horses at this location</td>
+                        <td colspan="5" class="text-center text-sage py-8">{% if barn_tray %}Every horse in this barn has a stable{% else %}No horses at this location{% endif %}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

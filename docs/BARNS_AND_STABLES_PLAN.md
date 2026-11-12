@@ -19,6 +19,9 @@ rows 12 to 15).
 **Revision 4.** 2026-11-12. Phase 1 is built. Section 14 records where the build departed
 from this document and why.
 
+**Revision 5.** 2026-11-12. Phase 2a is built. Section 15 records where the build departed
+from this document and why.
+
 ---
 
 ## 0. How to use this document
@@ -894,4 +897,28 @@ Not built in phase 1, and still to do:
 - The print stylesheet is in place, but it is not checked on paper.
 - The removal of a cell is tested on SQLite only. Check it one time on PostgreSQL before the flag goes on (5.11).
 - The Yard board tile and the map marker for a barn are phase 4. In phase 1 a barn with a point draws as a 15 m circle.
+
+---
+
+## 15. What changed in the build of phase 2a
+
+Where the code differs from sections 6.1 to 6.9. The code is correct. Each item has a reason.
+
+| # | Plan | Build | Reason |
+|---|---|---|---|
+| 1 | `StableStay` has four fields (6.1). | A fifth field, `closed_with_placement`. | It marks a stay that ended because the placement ended. Only such a stay is picked up again when a placement re-opens or continues in the same barn. Without it, a horse that staff took out of its stable would get the stable back on the next rate change. |
+| 2 | One `reconcile(horse)` function (6.3). | Two entry points: `StableService.placement_saved` and `placement_deleted`. | The correct result depends on what changed (closed, opened, re-opened, corrected). `Placement.save()` knows that. A function that reads only the final state cannot tell a departure that was undone from a horse that staff took out of its stable. |
+| 3 | Tap a horse in the tray, then tap an empty stable, with a selection bar (6.6). | Tap the stable first. Its panel lists the horses with no stable, each with a "Put here" button. Each tray horse also has "Choose a stable". | Two taps in each direction, with no selection state to keep in JavaScript. It works with a keyboard and a screen reader as it is. |
+| 4 | The stable panel is an HTMX partial, and only the plan redraws after a change (6.6). | The panel opens in the shared pop-up sheet. After a change the sheet closes and the page beneath refreshes. | This is how every other form in the app works. The barn page is light, and the refresh carries the message and its Undo. |
+| 5 | Stable stays are rows in the horse page timeline (6.7). | Not built. The stable panel shows the last five horses in that stable. | The timeline is drawn by two long templates with a branch for each record type. A new type there is a separate, careful change. |
+| 6 | A Stable column in the horse list (6.7). | A small chip with the stable label beside the horse's name, in barn groups. Other rows print `Top Barn · 7`. | A column for some groups and not others breaks the table. The chip gives the same fact. |
+| 7 | Quick find shows `Top Barn · 7` (6.7). | Not built. | Quick find shows no location for a horse today. The quick view that opens from it shows the stable. |
+| 8 | The attention dot on a plan cell (6.6). | Not built. | The Yard board flags a location, not a horse. A flag for each horse is a separate data path. |
+| 9 | Undo on each stable change (6.6). | Undo on "put in a stable" and "move to another stable". Not on "take out" or "swap". | A swap is undone by a second swap. A horse taken out is put back with two taps. |
+| 10 | The picker field on the move form is `new_stable` (6.5). | It is `stable` on all three forms. | One mixin and one template serve the move form and the two arrival forms. |
+
+Still to do before the feature goes on:
+
+- The two-operator test (6.9) is not written. The lock is in the code (`select_for_update` on the stable row), but SQLite ignores it. Test it one time on PostgreSQL.
+- Items 5, 7 and 8 above. They can go with phase 2b or phase 4.
 

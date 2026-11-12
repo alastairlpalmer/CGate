@@ -51,7 +51,7 @@ as it was on the card list this replaced.
     <td data-col="location" class="text-sm split-optional{% if departed %} text-sage{% endif %}">
         {% if horse.is_active and not departed %}{% with p=horse.active_placements.0 %}
         {% if horse.resolved_owner and p and p.location %}<span class="md:hidden text-sage/70 ml-1.5" aria-hidden="true">·</span>{% endif %}
-        {% if p and p.location %}<a href="{% url 'location_detail' p.location.pk %}" class="link tap-pad">{{ p.location.name }}</a>{% else %}<span class="hidden md:inline text-sage/70">—</span>{% endif %}
+        {% if p and p.location %}<a href="{% url 'location_detail' p.location.pk %}" class="link tap-pad">{{ p.location.name }}{% if horse.stable_label %} &middot; {{ horse.stable_label }}{% endif %}</a>{% else %}<span class="hidden md:inline text-sage/70">—</span>{% endif %}
         {% endwith %}{% else %}{% with p=horse.last_placements.0 %}
         {% if horse.resolved_owner and p and p.location %}<span class="md:hidden text-sage/70 ml-1.5" aria-hidden="true">·</span>{% endif %}
         {% if p and p.location %}{% if departed %}{{ p.location.name }}{% else %}<span class="text-sage">{{ p.location.name }}</span>{% endif %}{% else %}<span class="hidden md:inline text-sage/70">—</span>{% endif %}

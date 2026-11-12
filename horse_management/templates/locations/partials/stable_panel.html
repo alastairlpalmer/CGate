@@ -1,0 +1,102 @@
+{% comment %}
+One stable, in the pop-up sheet (core.views.stables.stable_panel).
+
+Who is in it, then what the reader may do. Moving a horse is the
+`horses` feature; setting the barn up is `locations`. So a yard hand sees
+"Move to another stable" and no "Edit stable", and a view-only role sees
+who is where and nothing to press.
+
+Every action posts or opens into the sheet and answers 204 + popup:saved,
+so the sheet closes and the barn redraws under it.
+{% endcomment %}
+<div class="p-4 sm:p-5 space-y-5" data-testid="stable-panel">
+
+    {% if not stable.in_use %}
+    <p class="alert-warning">Out of use{% if stable.note %} &middot; {{ stable.note }}{% endif %}</p>
+    {% elif stable.note %}
+    <p class="text-sm text-sage">{{ stable.note }}</p>
+    {% endif %}
+
+    {% if stays %}
+    <ul class="divide-y divide-light-sage" data-testid="stable-occupants">
+        {% for stay in stays %}
+        <li class="py-3 first:pt-0 space-y-2.5">
+            <div class="flex items-baseline justify-between gap-3">
+                <a href="{% url 'horse_detail' stay.horse.pk %}" hx-boost="false" class="link text-base font-semibold tap-pad">{{ stay.horse.name }}</a>
+                <span class="text-xs text-sage tabular-nums shrink-0">
+                    since {{ stay.start_date|date:"j M Y" }} &middot; {{ stay.days }} day{{ stay.days|pluralize }}
+                </span>
+            </div>
+            {% if feature_access.horses.full %}
+            <div class="flex flex-wrap gap-2">
+                <a href="{% url 'horse_stable' stay.horse.pk %}?next={% url 'location_detail' location.pk %}" hx-get="{% url 'horse_stable' stay.horse.pk %}?next={% url 'location_detail' location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                   data-popup-title="Move {{ stay.horse.name }} to another stable" class="btn-secondary btn-xs">Move to another stable</a>
+                {% if can_swap %}
+                <a href="{% url 'horse_stable_swap' stay.horse.pk %}?next={% url 'location_detail' location.pk %}" hx-get="{% url 'horse_stable_swap' stay.horse.pk %}?next={% url 'location_detail' location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                   data-popup-title="Swap {{ stay.horse.name }}'s stable" class="btn-secondary btn-xs">Swap with another horse</a>
+                {% endif %}
+                <form method="post" action="{% url 'horse_stable_vacate' stay.horse.pk %}?next={% url 'location_detail' location.pk %}"
+                      hx-post="{% url 'horse_stable_vacate' stay.horse.pk %}?next={% url 'location_detail' location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" class="inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-ghost btn-xs">Take out of the stable</button>
+                </form>
+            </div>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% elif stable.in_use %}
+    <p class="text-sm text-sage" data-testid="stable-empty">Nobody is in this stable.</p>
+    {% endif %}
+
+    {% if feature_access.horses.full and stable.in_use %}
+    <div data-testid="stable-put">
+        <p class="dt-label">{% if stays %}Put another horse in with {{ stays|length|pluralize:"it,them" }}{% else %}Put a horse here{% endif %}</p>
+        {% if waiting %}
+        <ul class="mt-2 divide-y divide-light-sage border border-light-sage rounded-lg">
+            {% for horse in waiting %}
+            <li class="flex items-center justify-between gap-3 px-3 py-2 min-h-[48px]">
+                <span class="text-sm font-medium text-charcoal truncate">{{ horse.name }}</span>
+                <form method="post" action="{% url 'stable_assign' location.pk stable.pk %}"
+                      hx-post="{% url 'stable_assign' location.pk stable.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                      {% if stays %}hx-confirm="Stable {{ stable.label }} has {% for stay in stays %}{{ stay.horse.name }}{% if not forloop.last %}, {% endif %}{% endfor %} in it. Put {{ horse.name }} in as well?"{% endif %}>
+                    {% csrf_token %}
+                    <input type="hidden" name="horse" value="{{ horse.pk }}">
+                    {% if stays %}<input type="hidden" name="share" value="1">{% endif %}
+                    <button type="submit" class="btn-primary btn-xs" aria-label="Put {{ horse.name }} in stable {{ stable.label }}">Put here</button>
+                </form>
+            </li>
+            {% endfor %}
+        </ul>
+        <p class="mt-1.5 text-xs text-sage">Horses in {{ location.name }} with no stable. From today.</p>
+        {% else %}
+        <p class="mt-1 text-sm text-sage">Every horse in {{ location.name }} has a stable.</p>
+        {% endif %}
+        {% if not stays %}
+        <a href="{% url 'horse_new_arrival' %}?location={{ location.pk }}&amp;stable={{ stable.pk }}" hx-boost="false" class="link text-sm tap-pad inline-block mt-2">Arrive a new horse here &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if history %}
+    <div data-testid="stable-history">
+        <p class="dt-label">Before</p>
+        <ul class="mt-1 text-sm text-charcoal-light space-y-0.5">
+            {% for past in history %}
+            <li class="flex justify-between gap-3">
+                <span class="truncate">{{ past.horse.name }}</span>
+                <span class="text-sage tabular-nums shrink-0">{{ past.start_date|date:"j M" }} &ndash; {{ past.end_date|date:"j M Y" }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+
+<div class="popup-footer">
+    {% if feature_access.locations.full and not location.is_archived %}
+    <a href="{% url 'stable_edit' location.pk stable.pk %}" hx-get="{% url 'stable_edit' location.pk stable.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+       data-popup-title="Stable {{ stable.label }}" class="btn-ghost btn-xs mr-auto">Edit stable</a>
+    {% endif %}
+    <button type="button" class="btn-secondary" @click="$store.popup.close()">Close</button>
+</div>

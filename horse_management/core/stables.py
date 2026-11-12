@@ -208,23 +208,49 @@ def convert_to_barn(location, *, layout, stable_count=0, first_number=1, today=N
     return location
 
 
+def stays_by_stable(barn):
+    """``{stable pk: [open stays]}`` for a barn, each with its horse.
+
+    One query. Stays in a stable are in name order, so a shared stable
+    reads the same way every time it is drawn.
+    """
+    stays = (
+        StableStay.objects.filter(stable__location=barn, end_date__isnull=True)
+        .select_related('horse').order_by('horse__name')
+    )
+    found = {}
+    for stay in stays:
+        found.setdefault(stay.stable_id, []).append(stay)
+    return found
+
+
 def barn_plan(barn):
     """Everything the plan and the list need to draw one barn.
 
-    One query for the cells. Each comes back with its place on the grid
-    and a ``state`` — ``gap``, ``off`` (out of use) or ``empty``.
+    Two queries: the cells, and who is in them. Each cell comes back with
+    its place on the grid, a ``state`` — ``gap``, ``off`` (out of use),
+    ``occupied`` or ``empty`` — and its ``stays``.
     """
     stables = list(barn.stables.order_by('position', 'pk'))
     layout = plan_cells(barn.layout or Location.Layout.ROW, len(stables))
+    occupied = stays_by_stable(barn) if stables else {}
     cells = []
     for stable, (row, col) in zip(stables, layout['cells']):
+        stays = occupied.get(stable.pk, [])
         if stable.is_gap:
             state = 'gap'
+        elif stays:
+            state = 'occupied'
         elif not stable.in_use:
             state = 'off'
         else:
             state = 'empty'
-        cells.append({'stable': stable, 'row': row, 'col': col, 'state': state})
+        cells.append({
+            'stable': stable, 'row': row, 'col': col, 'state': state,
+            'stays': stays,
+            'horses': [stay.horse for stay in stays],
+            'more': max(len(stays) - 1, 0),
+        })
     real = [s for s in stables if not s.is_gap]
     cols = layout['cols']
     return {
@@ -236,7 +262,45 @@ def barn_plan(barn):
         'stable_count': len(real),
         'in_use_count': sum(1 for s in real if s.in_use),
         'out_of_use_count': sum(1 for s in real if not s.in_use),
+        'occupied_count': sum(1 for cell in cells if cell['state'] == 'occupied'),
+        'stabled_horse_ids': {
+            stay.horse_id for stays in occupied.values() for stay in stays
+        },
         'has_cells': bool(stables),
+    }
+
+
+def picker_options(location, *, selected=None, exclude_horse=None):
+    """The stables a horse could go into at ``location``, for a form.
+
+    None when the location has no stables to offer — it is not a barn, or
+    it is a barn with none yet — so the form shows no picker at all.
+    Each option says who is in it, because "is 7 free?" is the question
+    the person choosing is asking.
+    """
+    if location is None or not location.is_barn:
+        return None
+    stables = list(
+        location.stables.filter(is_gap=False, in_use=True).order_by('position', 'pk')
+    )
+    if not stables:
+        return None
+    occupied = stays_by_stable(location)
+    options = []
+    for stable in stables:
+        names = [
+            stay.horse.name for stay in occupied.get(stable.pk, [])
+            if exclude_horse is None or stay.horse_id != exclude_horse.pk
+        ]
+        options.append({
+            'stable': stable,
+            'names': _join_names(names),
+            'selected': str(stable.pk) == str(selected or ''),
+        })
+    return {
+        'location': location,
+        'options': options,
+        'any_occupied': any(option['names'] for option in options),
     }
 
 
@@ -595,3 +659,21 @@ def annotate_stable(horses):
         stable_position=Subquery(stay.values('stable__position')[:1]),
         stable_pk=Subquery(stay.values('stable_id')[:1]),
     )
+
+
+def stray_stays():
+    """Open stays that break the rule: the horse's open placement is not
+    in the stable's barn (or it has none). Always empty when
+    ``StableService`` is the only writer — this is the check that it is.
+    """
+    from django.db.models import Exists, OuterRef
+
+    at_home = Placement.objects.filter(
+        horse=OuterRef('horse'), end_date__isnull=True,
+        location=OuterRef('stable__location'),
+    )
+    return (
+        StableStay.objects.filter(end_date__isnull=True)
+        .annotate(at_home=Exists(at_home)).filter(at_home=False)
+    )
+

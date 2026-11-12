@@ -5,6 +5,8 @@ Forms for core app.
 from decimal import Decimal
 
 from django import forms
+from django.conf import settings
+from django.urls import reverse
 from django.utils import timezone
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import FileExtensionValidator
@@ -657,8 +659,157 @@ class PlacementForm(forms.ModelForm):
     # here instead turned any overlapping dates into a 500.
 
 
-class MoveHorseForm(forms.Form):
+class StablePickerMixin(forms.Form):
+    """An optional stable beside a form's location select.
+
+    The picker is not a field of every location: it appears when the
+    chosen location is a barn with stables, fetched by the location select
+    itself (``hx-get`` to ``stable_options``) and drawn by
+    locations/partials/stable_picker.html. With JavaScript off there is no
+    picker and the horse simply goes into the barn with no stable, which
+    is allowed.
+
+    The view does the work: after the placement is written it calls
+    ``StableService.assign`` with ``stable`` and ``share_stable``, inside
+    the same transaction, so a stable that turns out to be taken undoes
+    the move rather than half-saving it.
+    """
+
+    # The name of the form's location field.
+    stable_location_field = 'location'
+
+    stable = forms.ModelChoiceField(
+        queryset=Stable.objects.none(), required=False, label='Stable',
+    )
+    share_stable = forms.BooleanField(required=False, label='Share the stable')
+
+    def init_stable_picker(self):
+        if not settings.BARNS_ENABLED:
+            del self.fields['stable']
+            del self.fields['share_stable']
+            return
+        self.fields['stable'].queryset = Stable.objects.filter(
+            is_gap=False, in_use=True, location__is_archived=False,
+            location__location_type=Location.LocationType.BARN,
+        )
+        self.fields[self.stable_location_field].widget.attrs.update({
+            'hx-get': reverse('stable_options'),
+            'hx-trigger': 'change',
+            'hx-target': '#stable-picker',
+            'hx-select': 'unset',
+            'hx-swap': 'innerHTML',
+            'hx-push-url': 'false',
+        })
+
+    def clean(self):
+        cleaned = super().clean()
+        stable = cleaned.get('stable')
+        location = cleaned.get(self.stable_location_field)
+        if stable is not None and location is not None and stable.location_id != location.pk:
+            self.add_error('stable', f'Stable {stable.label} is not in {location.name}.')
+        return cleaned
+
+    @property
+    def stable_picker(self):
+        """What the picker shows when the form is first drawn or drawn
+        again with errors: the stables of whichever location is chosen."""
+        if 'stable' not in self.fields:
+            return None
+        from .stables import picker_options
+
+        name = self.stable_location_field
+        if self.is_bound:
+            chosen = self.data.get(self.add_prefix(name))
+            selected = self.data.get(self.add_prefix('stable'))
+        else:
+            chosen = self.initial.get(name)
+            selected = self.initial.get('stable')
+        chosen = getattr(chosen, 'pk', chosen)
+        if not chosen or not str(chosen).isdigit():
+            return None
+        location = Location.objects.active().filter(pk=chosen).first()
+        picker = picker_options(location, selected=getattr(selected, 'pk', selected))
+        if picker is not None:
+            picker['share'] = bool(self.is_bound and self.data.get(self.add_prefix('share_stable')))
+        return picker
+
+
+class HorseStableForm(forms.Form):
+    """Put a horse that is already in a barn into one of its stables."""
+
+    stable = forms.ModelChoiceField(
+        queryset=Stable.objects.none(), label='Stable',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    day = forms.DateField(
+        label='From', input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+    )
+    share_stable = forms.BooleanField(
+        required=False, label='Share the stable',
+        widget=forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+        help_text='Tick to put this horse in with the one already there.',
+    )
+
+    def __init__(self, *args, horse, barn, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .stables import picker_options
+
+        self.horse = horse
+        field = self.fields['stable']
+        field.queryset = barn.stables.filter(is_gap=False, in_use=True).order_by('position', 'pk')
+        picker = picker_options(barn, exclude_horse=horse)
+        who = {option['stable'].pk: option['names'] for option in (picker or {'options': []})['options']}
+        field.label_from_instance = lambda stable: (
+            f"{stable.label} — {who[stable.pk]}" if who.get(stable.pk) else f"{stable.label} — empty"
+        )
+        field.empty_label = 'Choose a stable'
+        if not (picker and picker['any_occupied']):
+            del self.fields['share_stable']
+
+    def clean_day(self):
+        day = self.cleaned_data['day']
+        if day > timezone.localdate():
+            raise forms.ValidationError("A stable change can't be dated in the future.")
+        return day
+
+
+class SwapStableForm(forms.Form):
+    """Swap one horse's stable with another's in the same barn."""
+
+    other = forms.ModelChoiceField(
+        queryset=Horse.objects.none(), label='Swap with',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    day = forms.DateField(
+        label='From', input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+    )
+
+    def __init__(self, *args, horse, stay, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .models import StableStay
+
+        others = StableStay.objects.filter(
+            stable__location_id=stay.stable.location_id, end_date__isnull=True,
+        ).exclude(stable_id=stay.stable_id).select_related('stable')
+        where = {other.horse_id: other.stable.label for other in others}
+        field = self.fields['other']
+        field.queryset = Horse.objects.filter(pk__in=where).order_by('name')
+        field.label_from_instance = lambda other: f"{other.name} — stable {where[other.pk]}"
+        field.empty_label = 'Choose a horse'
+
+    def clean_day(self):
+        day = self.cleaned_data['day']
+        if day > timezone.localdate():
+            raise forms.ValidationError("A stable change can't be dated in the future.")
+        return day
+
+
+class MoveHorseForm(StablePickerMixin, forms.Form):
     """Form for moving a horse to a new location."""
+    stable_location_field = 'new_location'
+
     new_location = forms.ModelChoiceField(
         queryset=Location.objects.all(),
         widget=forms.Select(attrs={'class': 'form-select'})
@@ -673,6 +824,7 @@ class MoveHorseForm(forms.Form):
         self.fields['new_location'].choices = get_grouped_location_choices()
         self.fields['new_owner'].queryset = Owner.objects.active()
         self.fields['new_rate_type'].queryset = RateType.objects.filter(is_active=True)
+        self.init_stable_picker()
 
     new_owner = forms.ModelChoiceField(
         queryset=Owner.objects.active(),
@@ -734,7 +886,7 @@ class ArrivalForm(forms.Form):
         self.fields['rate_type'].queryset = RateType.objects.filter(is_active=True)
 
 
-class SingleArrivalForm(forms.Form):
+class SingleArrivalForm(StablePickerMixin, forms.Form):
     """Form for logging a single horse arrival (from Horse Detail page)."""
     location = forms.ModelChoiceField(
         queryset=Location.objects.all(),
@@ -748,6 +900,7 @@ class SingleArrivalForm(forms.Form):
         self.fields['location'].choices = get_grouped_location_choices()
         self.fields['owner'].queryset = Owner.objects.active()
         self.fields['rate_type'].queryset = RateType.objects.filter(is_active=True)
+        self.init_stable_picker()
 
     owner = forms.ModelChoiceField(
         queryset=Owner.objects.active(),
@@ -771,7 +924,7 @@ class SingleArrivalForm(forms.Form):
     )
 
 
-class NewArrivalForm(forms.Form):
+class NewArrivalForm(StablePickerMixin, forms.Form):
     """Combined form: create a new horse and place it in one step."""
     # Horse fields
     name = forms.CharField(
@@ -841,6 +994,7 @@ class NewArrivalForm(forms.Form):
         # See MoveHorseForm: .queryset is what validates, .choices only renders.
         self.fields['location'].queryset = Location.objects.active()
         self.fields['location'].choices = get_grouped_location_choices()
+        self.init_stable_picker()
         self.fields['rate_type'].queryset = RateType.objects.filter(is_active=True)
 
 

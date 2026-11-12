@@ -1,0 +1,28 @@
+{% comment %}
+The inside of the stable picker: the stables of one barn, each saying who
+is in it. Nothing at all for a location with no stables to offer.
+
+Served on its own by core.views.stables.stable_options, and included by
+stable_picker.html. Params: picker (core.stables.picker_options), errors.
+{% endcomment %}
+{% if picker %}
+<div{% if errors %} class="field-invalid"{% endif %}>
+    <label for="id_stable" class="block text-sm font-medium text-charcoal">Stable</label>
+    <select name="stable" id="id_stable" class="form-select">
+        <option value="">No stable yet</option>
+        {% for option in picker.options %}
+        <option value="{{ option.stable.pk }}"{% if option.selected %} selected{% endif %}>{{ option.stable.label }}{% if option.names %} — {{ option.names }}{% else %} — empty{% endif %}</option>
+        {% endfor %}
+    </select>
+    {% if errors %}
+    <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ errors.0 }}</p>
+    {% endif %}
+    <p class="mt-1 text-xs text-sage">Optional. A horse can be in {{ picker.location.name }} with no stable.</p>
+    {% if picker.any_occupied %}
+    <label class="mt-2 flex items-center gap-2 min-h-[44px] sm:min-h-0 text-sm text-charcoal">
+        <input type="checkbox" name="share_stable" id="id_share_stable" class="form-checkbox"{% if picker.share %} checked{% endif %}>
+        Share the stable with the horse already in it
+    </label>
+    {% endif %}
+</div>
+{% endif %}

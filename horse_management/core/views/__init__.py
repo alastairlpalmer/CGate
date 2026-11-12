@@ -52,6 +52,15 @@ from .locations import (  # noqa: F401
     site_restore,
     site_settings_edit,
 )
+from .stables import (  # noqa: F401
+    horse_stable,
+    horse_stable_swap,
+    horse_stable_vacate,
+    stable_assign,
+    stable_options,
+    stable_panel,
+    stable_stay_undo,
+)
 from .owners import (  # noqa: F401
     OwnerCreateView,
     OwnerDetailView,
