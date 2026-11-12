@@ -686,6 +686,23 @@
         </div>
     </div>
 
+    {% if out_here %}
+    {# Stabled horses turned out on this ground by day. They live in a barn. #}
+    <div class="card overflow-hidden" data-testid="turnout-here">
+        <div class="section-header">
+            <h2 class="section-title">Out here by day <span class="font-normal text-sage">&middot; {{ out_here|length }}</span></h2>
+        </div>
+        <ul class="divide-y divide-light-sage">
+            {% for horse in out_here %}
+            <li class="flex items-center justify-between gap-3 px-5 py-3">
+                <a href="{% url 'horse_detail' horse.pk %}" class="link font-medium tap-pad truncate">{{ horse.name }}</a>
+                <span class="text-sm text-sage shrink-0">{% if horse.home_name %}Lives in {{ horse.home_name }} &middot; {% endif %}since {{ horse.turnout_since|date:"j M Y" }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
     {% comment %}Same bulk bar as the Horses list: tick horses, pick any
     action (move, departure dates, health records) and apply it in the
     pop-up sheet. Departures go through the same bulk_health_apply path as

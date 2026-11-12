@@ -23,6 +23,13 @@ class Command(BaseCommand):
                 'core.StableStay (open stay outside the horse\'s barn): '
                 f'ids {", ".join(map(str, strays))}'
             )
+        from core.turnout import stray_turnouts
+        loose = list(stray_turnouts().order_by('pk').values_list('pk', flat=True)[:10])
+        if loose:
+            problems.append(
+                'core.Turnout (open turnout for a horse that does not live in a barn): '
+                f'ids {", ".join(map(str, loose))}'
+            )
         if problems:
             for line in problems:
                 self.stdout.write(self.style.ERROR(line))

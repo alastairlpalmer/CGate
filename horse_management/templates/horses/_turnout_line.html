@@ -1,0 +1,21 @@
+{% comment %}
+A stabled horse's turnout (core.templatetags.ui_extras.turnout_line).
+
+"Out by day in Back Paddock", linked to the paddock, and the sheet that
+sets, changes or stops it for someone who may move horses. Nothing at all
+for a horse that lives out. `compact` drops the action.
+{% endcomment %}
+{% if barn %}
+<div class="mt-1 text-sm" data-testid="turnout-line">
+    {% if turnout %}
+    <span class="text-charcoal-light">Out by day in {% if feature_access.locations.view %}<a href="{% url 'location_detail' turnout.location_id %}" class="link tap-pad">{{ turnout.location.name }}</a>{% else %}{{ turnout.location.name }}{% endif %}</span>
+    {% elif not compact %}
+    <span class="text-sage">No turnout set</span>
+    {% endif %}
+    {% if not compact and feature_access.horses.full and feature_access.locations.view %}
+    <a href="{% url 'horse_turnout' horse.pk %}?next={{ request.path|urlencode }}" hx-get="{% url 'horse_turnout' horse.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+       data-popup-title="Turnout for {{ horse.name }}"
+       class="btn-ghost btn-xs ml-1">{% if turnout %}Change turnout{% else %}Set turnout{% endif %}</a>
+    {% endif %}
+</div>
+{% endif %}

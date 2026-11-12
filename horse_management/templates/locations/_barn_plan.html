@@ -20,12 +20,18 @@ is in the table below this card.
             </p>
             {% endif %}
         </div>
-        {% if feature_access.locations.full and not location.is_archived and barn_plan.has_cells %}
+        {% if not location.is_archived %}
         <div class="barn-actions flex items-center gap-2">
+            {% if feature_access.horses.full %}
+            <a href="{% url 'barn_turnout' location.pk %}" hx-get="{% url 'barn_turnout' location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Turnout for {{ location.name }}" class="btn-ghost btn-xs" data-testid="barn-turnout">Turnout</a>
+            {% endif %}
+            {% if feature_access.locations.full and barn_plan.has_cells %}
             <a href="{% url 'stable_add_gap' location.pk %}" hx-get="{% url 'stable_add_gap' location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
                data-popup-title="Add a tack room or other gap" class="btn-ghost btn-xs">Add a gap</a>
             <a href="{% url 'stables_add' location.pk %}" hx-get="{% url 'stables_add' location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
                data-popup-title="Add stables to {{ location.name }}" class="btn-secondary btn-xs">Add stables</a>
+            {% endif %}
         </div>
         {% endif %}
     </div>

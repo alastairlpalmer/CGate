@@ -159,8 +159,29 @@ to know which shell it is being shown in.
         </ul>
         {% elif rest_days is not None %}
         <p class="text-sm text-sage">Empty &mdash; resting since {{ rest_since|date:"j M Y" }}.</p>
+        {% elif out_here %}
+        <p class="text-sm text-sage">Nobody lives here.</p>
         {% else %}
         <p class="text-sm text-sage">No horses here.</p>
+        {% endif %}
+
+        {% if out_here %}
+        {# Stabled horses turned out on this ground. They live in a barn. #}
+        <p class="loc-sheet-label mt-4" data-testid="preview-turnout">Out here by day</p>
+        <ul class="divide-y divide-light-sage">
+            {% for horse in out_here %}
+            <li>
+                <a href="{% url 'horse_detail' horse.pk %}" class="loc-horse-row">
+                    {% include 'horses/_horse_avatar.html' with horse=horse size='sm' %}
+                    <span class="min-w-0 flex-1">
+                        <span class="loc-horse-name">{{ horse.name }}</span>
+                        {% if horse.home_name %}<span class="loc-horse-owner">Lives in {{ horse.home_name }}</span>{% endif %}
+                    </span>
+                    <span class="loc-horse-since">{{ horse.turnout_since|date:"j M" }}</span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
         {% endif %}
 
         <a href="{% url 'location_detail' location.pk %}" class="loc-sheet-more">Open the location page &rarr;</a>

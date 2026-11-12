@@ -240,3 +240,29 @@ def stable_line(context, horse, compact=False):
         'request': context.get('request'),
     }
 
+
+@register.inclusion_tag('horses/_turnout_line.html', takes_context=True)
+def turnout_line(context, horse, compact=False):
+    """Where a stabled horse goes out by day, with a way to change it.
+
+    Says nothing for a horse that does not live in a barn. One or two
+    queries, so it is for a page about one horse.
+    """
+    from django.conf import settings
+
+    turnout = barn = None
+    if settings.BARNS_ENABLED and horse is not None:
+        from core.turnout import lives_in_a_barn, open_turnout
+
+        barn = lives_in_a_barn(horse)
+        if barn is not None:
+            turnout = open_turnout(horse)
+    return {
+        'horse': horse,
+        'turnout': turnout,
+        'barn': barn,
+        'compact': compact,
+        'feature_access': context.get('feature_access'),
+        'request': context.get('request'),
+    }
+

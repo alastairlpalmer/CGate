@@ -232,6 +232,7 @@
                             </dt>
                             <dd class="mt-1 text-sm text-charcoal">
                                 <a href="{% url 'location_detail' current_placement.location.pk %}" class="link tap-pad">{{ current_placement.location.name }}</a>{% stable_line horse %}
+                                {% turnout_line horse %}
                             </dd>
                         </div>
                         {% comment %}

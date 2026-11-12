@@ -238,6 +238,11 @@ one click away on the Map/Cards switch.
                                 <p class="mt-1 text-sm text-charcoal-light line-clamp-2">
                                     {% if location.horse_names %}{{ location.horse_names|join:", " }}{% if location.more_horses %} <span class="text-sage">+{{ location.more_horses }} more</span>{% endif %}{% elif location.horse_count %}{{ location.horse_count }} horse{{ location.horse_count|pluralize }}{% else %}<span class="text-sage">No horses</span>{% endif %}
                                 </p>
+                                {% if location.turnout_count %}
+                                <p class="mt-1 text-xs font-medium text-meadow" data-testid="card-turnout">
+                                    +{{ location.turnout_count }} out by day
+                                </p>
+                                {% endif %}
                                 {% if location.stable_summary %}
                                 <p class="mt-1 text-xs font-medium text-forest inline-flex items-center gap-1" data-testid="barn-card-stables">
                                     <svg class="w-3.5 h-3.5" aria-hidden="true"><use href="#i-barn"/></svg>
@@ -281,7 +286,7 @@ one click away on the Map/Cards switch.
                             </div>
 
                             <!-- Capacity ring: the shared partial, at touch size -->
-                            {% include 'horses/_capacity_ring.html' with count=location.horse_count capacity=location.capacity availability=location.availability size=44 %}
+                            {% include 'horses/_capacity_ring.html' with count=location.using capacity=location.capacity availability=location.availability size=44 %}
                         </div>
                     </div>
                     <div class="border-t border-light-sage px-5 py-3 flex justify-between items-center">

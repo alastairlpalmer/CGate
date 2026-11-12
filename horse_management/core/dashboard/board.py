@@ -19,16 +19,7 @@ def sites_overview(*, site='', today=None, flagged=frozenset()):
 
     today = today or timezone.localdate()
 
-    locations = Location.objects.active().annotate(
-        horse_count=Count(
-            'placements__horse',
-            filter=Q(
-                placements__end_date__isnull=True,
-                placements__horse__is_active=True,
-            ),
-            distinct=True,
-        ),
-    ).order_by('site', 'name')
+    locations = Location.objects.active().with_occupancy().order_by('site', 'name')
     if site:
         locations = locations.filter(site=site)
     locations = list(locations)
@@ -47,15 +38,22 @@ def sites_overview(*, site='', today=None, flagged=frozenset()):
         rest_days = None
         if loc.usage == Location.Usage.RESTED and period is not None:
             rest_days = max(0, (today - period.start_date).days)
-        holds_horses = loc.usage in Location.RESIDENT_USAGES
+        holds_horses = loc.usage in Location.HORSE_USAGES
         capacity = loc.capacity if holds_horses else None
-        availability = (capacity - loc.horse_count) if capacity is not None else None
+        # What stands on it: the horses that live here, and the stabled
+        # horses that go out here by day. The tile and its ring show both;
+        # the site's total (below) counts residents only, because a
+        # turnout horse is already counted in its barn.
+        using = loc.horse_count + loc.turnout_count
+        availability = (capacity - using) if capacity is not None else None
         pct = 0
         if capacity:
-            pct = min(100, round(loc.horse_count * 100 / capacity))
+            pct = min(100, round(using * 100 / capacity))
         tile = {
             'location': loc,
-            'count': loc.horse_count,
+            'count': using,
+            'residents': loc.horse_count,
+            'turnout': loc.turnout_count,
             'capacity': capacity,
             'availability': availability,
             'pct': pct,
@@ -79,7 +77,9 @@ def sites_overview(*, site='', today=None, flagged=frozenset()):
         })
         band['tiles'].append(tile)
         band['horses'] += loc.horse_count
-        if capacity is not None:
+        # Ground used only for day turnout adds no capacity to the site:
+        # the horses on it have their place in the barn.
+        if capacity is not None and loc.usage in Location.RESIDENT_USAGES:
             band['capacity'] += capacity
             band['has_capacity'] = True
         if loc.usage == Location.Usage.RESTED:
@@ -243,7 +243,14 @@ def _shape_band(band):
             'state': state,
             'colour': MAP_COLOURS[state],
             'rest_state': rest,
-            'rest_label': REST_STATES[rest][0] or tile['usage_label'],
+            # Ground carrying only day turnout is in use, but nothing
+            # lives on it: say which.
+            'rest_label': (
+                'Turnout' if rest == 'grazing' and tile['usage'] == 'turnout'
+                else REST_STATES[rest][0] or tile['usage_label']
+            ),
+            'residents': tile['residents'],
+            'turnout': tile['turnout'],
             'rest_colour': REST_STATES[rest][1],
             'radius_m': circle_radius_m(tile['capacity'], tile['is_barn']) if kind == 'circle' else None,
             'urls': {

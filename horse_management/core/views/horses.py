@@ -370,6 +370,10 @@ def _location_group(location, horses, by_stable=False):
         'usage_display': location.get_usage_display(),
         # A barn has no land use, so its card has no land-use strip.
         'is_barn': location.is_barn,
+        # What the ring shows. More than ``count`` when stabled horses go
+        # out here by day (set by the caller, which knows).
+        'ring_count': count,
+        'turnout_count': 0,
     }
 
 
@@ -684,7 +688,8 @@ class HorseListView(FeatureAccessMixin, ListView):
         if settings.BARNS_ENABLED:
             # Each row can print its stable; subqueries, so no query a row.
             from ..stables import annotate_stable
-            queryset = annotate_stable(queryset)
+            from ..turnout import annotate_turnout
+            queryset = annotate_turnout(annotate_stable(queryset))
         return queryset.order_by('name')
 
     def _order_departed(self, queryset):
@@ -1019,10 +1024,28 @@ class HorseListView(FeatureAccessMixin, ListView):
 
         # Stable order inside a barn, unless a sort was asked for.
         by_stable = 'sort' not in self.request.GET
+        # Stabled horses that go out on a location by day are listed under
+        # their barn; the location's own card says how many, so its ring
+        # (which counts them) and the rows beneath it agree.
+        out_by_day = {}
+        if settings.BARNS_ENABLED:
+            from ..turnout import turnout_counts
+            out_by_day = turnout_counts()
+
+        def with_turnout(group, location):
+            out = out_by_day.get(location.pk, 0)
+            if out:
+                group['turnout_count'] = out
+                group['ring_count'] = group['count'] + out
+                if group['capacity'] is not None:
+                    group['availability'] = group['capacity'] - group['ring_count']
+            return group
+
         for location in spine:
-            groups.append(
-                _location_group(location, by_location.pop(location.pk, []), by_stable)
-            )
+            groups.append(with_turnout(
+                _location_group(location, by_location.pop(location.pk, []), by_stable),
+                location,
+            ))
 
         # A horse on an archived field still has to appear somewhere.
         leftover = Location.objects.filter(pk__in=by_location)

@@ -61,6 +61,7 @@ from .stables import (  # noqa: F401
     stable_panel,
     stable_stay_undo,
 )
+from .turnout import barn_turnout, horse_turnout  # noqa: F401
 from .owners import (  # noqa: F401
     OwnerCreateView,
     OwnerDetailView,

@@ -13,7 +13,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.conf import settings
 from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
 from django.db import models, transaction
-from django.db.models import F, Q
+from django.db.models import Count, F, Q
 from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
@@ -238,6 +238,32 @@ class LocationQuerySet(models.QuerySet):
         """Buildings with stables in them."""
         return self.filter(location_type='barn')
 
+    def with_occupancy(self):
+        """Annotate ``horse_count`` and ``turnout_count``.
+
+        ``horse_count`` is the horses that live here (open placements of
+        active horses) — the number every page already showed.
+        ``turnout_count`` is the stabled horses that go out here by day.
+        A field's ring shows the two together; a site's total counts
+        residents only, because a turnout horse is already counted in its
+        barn.
+        """
+        return self.annotate(
+            horse_count=Count(
+                'placements__horse',
+                filter=Q(
+                    placements__end_date__isnull=True,
+                    placements__horse__is_active=True,
+                ),
+                distinct=True,
+            ),
+            turnout_count=Count(
+                'turnouts',
+                filter=Q(turnouts__end_date__isnull=True),
+                distinct=True,
+            ),
+        )
+
 
 class BoundarySource(models.TextChoices):
     LANDAPP = 'landapp', 'Land App import'
@@ -299,6 +325,10 @@ class Location(models.Model):
         RESTED = 'rested', 'Rested'
         HAY = 'hay', 'Hay'
         ARABLE = 'arable', 'Arable'
+        # Ground that only stabled horses go out on by day: nobody lives
+        # on it. Kept apart from "Horses" so the finance chart does not
+        # count its capacity on top of the barn the same horses live in.
+        TURNOUT = 'turnout', 'Turnout'
         OTHER = 'other', 'Other'
 
     class LocationType(models.TextChoices):
@@ -314,6 +344,9 @@ class Location(models.Model):
     # Read by the board, the location preview and the finance capacity
     # chart, which used to spell the pair out each.
     RESIDENT_USAGES = (Usage.HORSES, Usage.MIXED)
+    # ...and those under which it carries horses at all, residents or
+    # day turnout. The board and the preview show a ring for these.
+    HORSE_USAGES = (Usage.HORSES, Usage.MIXED, Usage.TURNOUT)
 
     name = models.CharField(max_length=200)
     site = models.CharField(
@@ -419,6 +452,12 @@ class Location(models.Model):
                 f"{horses} horse{'s are' if horses != 1 else ' is'} still on "
                 f"this location. Move {'them' if horses != 1 else 'it'} first."
             )
+        out_here = self.turnouts.filter(end_date__isnull=True).count()
+        if out_here:
+            blockers.append(
+                f"{out_here} stabled horse{'s go' if out_here != 1 else ' goes'} out "
+                f"here by day. Change or stop {'their' if out_here != 1 else 'its'} turnout first."
+            )
         return blockers
 
     def delete_blockers(self):
@@ -434,6 +473,12 @@ class Location(models.Model):
             blockers.append(
                 f"{placements} placement record"
                 f"{'s point' if placements != 1 else ' points'} at this location."
+            )
+        turnouts = self.turnouts.count()
+        if turnouts:
+            blockers.append(
+                f"{turnouts} turnout record"
+                f"{'s point' if turnouts != 1 else ' points'} at this location."
             )
         stays = StableStay.objects.filter(stable__location=self).count()
         if stays:
@@ -463,9 +508,14 @@ class Location(models.Model):
 
     @cached_property
     def availability(self):
-        """Return available spaces if capacity is set."""
+        """Return available spaces if capacity is set.
+
+        Stabled horses turned out here by day take up the ground as the
+        ones that live on it do.
+        """
         if self.capacity is not None:
-            return self.capacity - self.current_horse_count
+            out_here = self.turnouts.filter(end_date__isnull=True).count()
+            return self.capacity - self.current_horse_count - out_here
         return None
 
 
@@ -1025,6 +1075,60 @@ class StableStay(models.Model):
         return self.end_date is None
 
 
+class Turnout(models.Model):
+    """A standing arrangement: this stabled horse goes out in this location.
+
+    Set once and left until it changes — "Marram goes out in Back
+    Paddock". It is not a log of each day: there is no out, no in and no
+    time of day, and there must not be. The horse still lives in its barn
+    (the placement), which is what its owner pays for; this only says
+    where it grazes, so the field can show who uses it and is not marked
+    rested while they do.
+
+    Only a horse that lives in a barn has one. Dates as for Placement.
+    ``closed_with_placement`` as for StableStay: a rate change or a move
+    from one barn to another closes and re-opens the placement, and the
+    horse goes on using the same paddock.
+    """
+
+    horse = models.ForeignKey(
+        'Horse', on_delete=models.CASCADE, related_name='turnouts',
+    )
+    location = models.ForeignKey(
+        Location, on_delete=models.PROTECT, related_name='turnouts',
+    )
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    closed_with_placement = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-start_date', '-pk']
+        indexes = [
+            models.Index(fields=['location', 'end_date'], name='turnout_loc_enddate'),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['horse'],
+                condition=models.Q(end_date__isnull=True),
+                name='turnout_one_open_per_horse',
+            ),
+            models.CheckConstraint(
+                condition=Q(end_date__isnull=True) | Q(end_date__gte=F('start_date')),
+                name='turnout_ends_after_start',
+            ),
+        ]
+
+    def __str__(self):
+        status = "current" if self.end_date is None else f"ended {self.end_date}"
+        return f"{self.horse.name} out in {self.location.name} ({status})"
+
+    def clean(self):
+        super().clean()
+        if self.location_id and self.location.is_barn:
+            raise DjangoValidationError('A horse is turned out on ground, not in a barn.')
+
+
 class RateType(models.Model):
     """Rate configuration for different livery types."""
 
@@ -1324,9 +1428,13 @@ class Placement(models.Model):
         # The same choke point for the horse's stable: it must follow the
         # placement whichever path wrote it (core.stables.StableService).
         from .stables import StableService
+        from .turnout import TurnoutService
         StableService.placement_saved(
             self, creating=creating, was_open=was_open, old_end=old_end,
             old_location_id=old_location_id,
+        )
+        TurnoutService.placement_saved(
+            self, creating=creating, was_open=was_open, old_end=old_end,
         )
 
     def delete(self, *args, **kwargs):
@@ -1341,8 +1449,10 @@ class Placement(models.Model):
         if was_open:
             from .services import LocationUsageService
             from .stables import StableService
+            from .turnout import TurnoutService
             LocationUsageService.undo_arrival(location, start_date)
             StableService.placement_deleted(horse_id, location.pk, start_date)
+            TurnoutService.placement_deleted(horse_id, start_date)
 
     @property
     def is_current(self):
