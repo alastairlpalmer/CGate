@@ -820,9 +820,9 @@ redis==7.4.1 \
     --hash=sha256:1a1df5067062cf7cbe677994e391f8ee0840f499d370f1a71266e0dd3aa9308e \
     --hash=sha256:1fa4647af1c5e93a2c685aa248ee44cce092691146d41390518dabe9a99839b0
     # via -r requirements.in
-reportlab==4.4.10 \
-    --hash=sha256:5abc815746ae2bc44e7ff25db96814f921349ca814c992c7eac3c26029bf7c24 \
-    --hash=sha256:5cbbb34ac3546039d0086deb2938cdec06b12da3cdb836e813258eb33cd28487
+reportlab==5.1.0 \
+    --hash=sha256:59fdbaec5efe437095ad1d7292ec9a271c8ca2d3ec75e889c6e61400929b90df \
+    --hash=sha256:6878200464527e87672d19e9f7cfc6bb890e3a6931e74ac6a1a8d1754aa55671
     # via -r requirements.in
 requests==2.33.1 \
     --hash=sha256:18817f8c57c6263968bc123d237e3b8b08ac046f5456bd1e307ee8f4250d3517 \
