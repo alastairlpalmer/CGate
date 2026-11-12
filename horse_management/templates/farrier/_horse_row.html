@@ -3,18 +3,16 @@
     <a href="{% url 'farrier:horse_panel' horse.pk %}{% if open_pk == horse.pk %}?close=1{% endif %}"
        hx-get="{% url 'farrier:horse_panel' horse.pk %}{% if open_pk == horse.pk %}?close=1{% endif %}"
        hx-target="#horse-{{ horse.pk }}" hx-swap="outerHTML" hx-push-url="false" hx-select="unset"
-       class="flex items-center gap-3 px-3 py-2" aria-expanded="{% if open_pk == horse.pk %}true{% else %}false{% endif %}">
+       class="flex items-center gap-3 px-3 py-3 min-h-[56px]" aria-expanded="{% if open_pk == horse.pk %}true{% else %}false{% endif %}">
         {% if horse.photo_thumb %}
         <img src="{{ horse.photo_thumb.url }}" alt="" class="h-10 w-10 rounded object-cover shrink-0">
-        {% else %}
-        <span class="h-10 w-10 rounded bg-light-sage shrink-0" aria-hidden="true"></span>
         {% endif %}
         <span class="flex-1 min-w-0">
             <span class="block font-heading font-semibold truncate">{{ horse.name }}</span>
-            {% if horse.job and not horse.line %}
-            <span class="block text-sm text-saddle font-semibold truncate">Yard's list: {{ horse.job.get_work_needed_display|default:"farrier to decide" }}{% if horse.job.note %} · {{ horse.job.note }}{% endif %}</span>
+            {% if horse.job and not horse.line and horse.job.work_needed or horse.job and not horse.line and horse.job.note %}
+            <span class="block text-sm text-saddle truncate" data-yard-request-summary>Yard: {% if horse.job.work_needed %}{{ horse.job.get_work_needed_display }}{% endif %}{% if horse.job.work_needed and horse.job.note %} · {% endif %}{{ horse.job.note }}</span>
             {% endif %}
-            <span class="block text-sm text-sage truncate">{% if horse.location_name %}{{ horse.location_name }}{% endif %}{% if horse.location_name and horse.last_date %} · {% endif %}{% if horse.last_date %}{{ horse.last_work_label }} {{ horse.last_date|date:"j M" }}{% elif not horse.location_name %}No farrier record yet{% endif %}</span>
+            <span class="block text-sm text-sage truncate">{% if horse.location_name %}{{ horse.location_name }}{% endif %}{% if horse.location_name and horse.last_date %} · {% endif %}{% if horse.last_date %}Last: {{ horse.last_work_label }} {{ horse.last_date|date:"j M" }}{% endif %}</span>
         </span>
         {% if horse.line %}
         <span class="text-sm font-semibold text-meadow whitespace-nowrap">&#10003; {{ horse.line.get_work_done_display }} {{ horse.line.cost|gbp }}</span>
@@ -22,73 +20,52 @@
         <span class="text-xs rounded-full bg-forest text-white px-2 py-0.5 whitespace-nowrap">On the list</span>
         {% elif horse.days_overdue is not None and horse.days_overdue > 0 %}
         <span class="text-xs rounded-full bg-saddle-50 text-saddle px-2 py-0.5 whitespace-nowrap">Overdue {{ horse.days_overdue }}d</span>
-        {% elif horse.days_overdue is not None and horse.days_overdue > -15 %}
-        <span class="text-xs rounded-full bg-saddle-50 text-saddle px-2 py-0.5 whitespace-nowrap">Due {{ horse.next_due|date:"j M" }}</span>
         {% endif %}
     </a>
     {% if open_pk == horse.pk %}
-    <div class="border-t border-light-sage px-3 py-3 space-y-3 bg-sage-50 rounded-b-lg">
-        {% if error %}<p class="text-error-red text-sm" role="alert">{{ error }}</p>{% endif %}
-        {% if horse.job %}
-        <p class="rounded-lg bg-white border border-saddle/40 px-3 py-2 text-sm" data-yard-request>
-            <span class="font-semibold text-saddle">The yard asked for:</span> {{ horse.job.get_work_needed_display|default:"you to decide" }}{% if horse.job.note %}<span class="block text-charcoal">{{ horse.job.note }}</span>{% endif %}
-        </p>
-        {% endif %}
-        <form method="post" action="{% url 'farrier:horse_add' horse.pk %}"
-              hx-post="{% url 'farrier:horse_add' horse.pk %}" hx-target="#horse-{{ horse.pk }}" hx-swap="outerHTML" hx-push-url="false" hx-select="unset"
-              class="space-y-3">
-            {% csrf_token %}
-            {% if prices %}
+    <form method="post" action="{% url 'farrier:horse_add' horse.pk %}"
+          hx-post="{% url 'farrier:horse_add' horse.pk %}" hx-target="#horse-{{ horse.pk }}" hx-swap="outerHTML" hx-push-url="false" hx-select="unset"
+          class="border-t border-light-sage px-3 py-4 space-y-4 bg-sage-50 rounded-b-lg" data-work-form>
+        {% csrf_token %}
+        {% if error %}<p class="rounded-lg bg-error-red-50 text-error-red text-sm px-3 py-2" role="alert">{{ error }}</p>{% endif %}
+        {% if saved %}<p class="rounded-lg bg-white text-meadow text-sm font-semibold px-3 py-2" role="status">{{ saved }}</p>{% endif %}
+        {% if horse.job.note %}<p class="text-sm" data-yard-request><span class="font-semibold text-saddle">Yard's note:</span> {{ horse.job.note }}</p>{% endif %}
+
+        <fieldset>
+            <legend class="font-heading font-semibold mb-2">1. Work done</legend>
             <div class="grid grid-cols-2 gap-2">
-                {% for item in prices %}
-                <button type="submit" name="item" value="{{ item.pk }}"
-                        class="rounded-lg border bg-white px-2 py-3 text-sm font-semibold {% if horse.line and horse.line.work_done == item.farrier_work and horse.line.cost == item.price %}border-meadow text-meadow{% elif not horse.line and horse.job.work_needed and horse.job.work_needed == item.farrier_work %}border-saddle border-2 text-saddle{% else %}border-light-sage text-forest{% endif %}">
-                    {{ item.name }} {{ item.price|gbp }}
-                </button>
+                {% for choice in horse.choices %}
+                <label class="flex flex-col justify-center min-h-[56px] rounded-lg border-2 border-light-sage bg-white px-3 py-2 cursor-pointer has-checked:border-saddle has-checked:bg-saddle-50 has-focus-visible:ring-2 has-focus-visible:ring-forest">
+                    <input type="radio" name="choice" value="{{ choice.value }}" class="sr-only"{% if choice.selected %} checked{% endif %}{% if choice.price is not None %} data-price="{{ choice.price }}"{% endif %}>
+                    <span class="font-semibold leading-tight">{{ choice.label }}</span>
+                    {% if choice.price is not None %}<span class="text-sm text-sage">{{ choice.price|gbp }}</span>{% endif %}
+                </label>
                 {% endfor %}
             </div>
-            {% else %}
-            <p class="text-sm text-sage">You have no prices yet. Use Other below, or add prices under My prices.</p>
-            {% endif %}
-            <label class="block text-sm">
-                <span class="text-sage">Notes for the yard (optional): why the work was done, issues, suggested treatment</span>
-                <textarea name="note" maxlength="1000" rows="2" class="mt-1 w-full min-h-[44px] rounded-lg border border-light-sage px-3 py-2" placeholder="For example: loose clench LF, pads on fronts for the hard ground"></textarea>
-            </label>
-            <label class="block text-sm">
-                <span class="text-sage">Different price for this horse (optional)</span>
-                <input type="text" name="price" inputmode="decimal" class="mt-1 w-full min-h-[44px] rounded-lg border border-light-sage px-3 py-2" placeholder="Leave empty to use your price">
-            </label>
-            <details class="text-sm">
-                <summary class="cursor-pointer text-forest font-semibold py-3">Other or remedial work</summary>
-                <div class="mt-2 grid grid-cols-2 gap-2">
-                    <select name="work_done" class="min-h-[44px] rounded-lg border border-light-sage px-2 py-2 bg-white" aria-label="Work done">
-                        <option value="">Work done…</option>
-                        {% for value, label in work_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-                    </select>
-                    <button type="submit" name="item" value="" class="min-h-[44px] rounded-lg bg-saddle text-white font-semibold px-2 py-2">Add with the price above</button>
-                </div>
-            </details>
-        </form>
-        <details class="text-sm rounded-lg bg-white border border-light-sage px-3"{% if horse.today_notes %} open{% endif %}>
-            <summary class="cursor-pointer text-forest font-semibold py-3">Note only, no work or charge{% if horse.today_notes %} ({{ horse.today_notes|length }}){% endif %}</summary>
-            {% for note in horse.today_notes %}
-            <p class="mb-2 rounded bg-sage-50 px-2 py-1 whitespace-pre-line" data-farrier-note>{{ note.text }}</p>
-            {% endfor %}
-            <form method="post" action="{% url 'farrier:horse_note' horse.pk %}"
-                  hx-post="{% url 'farrier:horse_note' horse.pk %}" hx-target="#horse-{{ horse.pk }}" hx-swap="outerHTML" hx-push-url="false" hx-select="unset"
-                  class="space-y-2 pb-3">
-                {% csrf_token %}
-                <textarea name="text" maxlength="1000" rows="2" required aria-label="Note for {{ horse.name }}" class="w-full min-h-[44px] rounded-lg border border-light-sage px-3 py-2" placeholder="For example: heat in near fore, suggest the vet looks at it"></textarea>
-                <button type="submit" class="w-full min-h-[44px] rounded-lg border border-forest text-forest font-semibold">Save note on {{ horse.name }}</button>
-            </form>
-        </details>
+        </fieldset>
+
+        <label class="block">
+            <span class="font-heading font-semibold">2. Cost (£)</span>
+            <input type="text" name="price" inputmode="decimal" value="{{ horse.cost_value }}" autocomplete="off"
+                   class="mt-2 w-full min-h-[48px] rounded-lg border border-light-sage px-3 py-2 bg-white text-lg" placeholder="For example 95">
+        </label>
+
+        <label class="block">
+            <span class="font-heading font-semibold">3. Notes <span class="font-body font-normal text-sage">(optional)</span></span>
+            <textarea name="note" maxlength="1000" rows="2" class="mt-2 w-full min-h-[48px] rounded-lg border border-light-sage px-3 py-2 bg-white"
+                      placeholder="For example: loose clench LF, heat in near fore">{% if horse.line %}{{ horse.line.notes }}{% endif %}</textarea>
+        </label>
+        {% for note in horse.today_notes %}
+        <p class="rounded bg-white px-3 py-2 text-sm whitespace-pre-line" data-farrier-note><span class="text-sage">Note saved:</span> {{ note.text }}</p>
+        {% endfor %}
+
+        <button type="submit" class="w-full min-h-[52px] rounded-lg bg-saddle text-white font-heading font-bold text-lg">Save {{ horse.name }}</button>
+        <p class="text-xs text-sage text-center">No work chosen? Save keeps the note only, with no charge.</p>
         {% if horse.line %}
-        <form method="post" action="{% url 'farrier:horse_remove' horse.pk %}"
-              hx-post="{% url 'farrier:horse_remove' horse.pk %}" hx-target="#horse-{{ horse.pk }}" hx-swap="outerHTML" hx-push-url="false" hx-select="unset">
-            {% csrf_token %}
-            <button type="submit" class="min-h-[44px] text-sm text-error-red underline">Remove {{ horse.name }} from this visit</button>
-        </form>
+        <button type="submit" formaction="{% url 'farrier:horse_remove' horse.pk %}"
+                hx-post="{% url 'farrier:horse_remove' horse.pk %}" hx-target="#horse-{{ horse.pk }}" hx-swap="outerHTML" hx-push-url="false" hx-select="unset"
+                class="w-full min-h-[44px] text-sm text-error-red underline">Remove {{ horse.name }} from this visit</button>
         {% endif %}
-    </div>
+    </form>
     {% endif %}
 </div>

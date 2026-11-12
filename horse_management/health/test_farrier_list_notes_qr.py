@@ -1,7 +1,7 @@
 """Farrier page: the yard's list, farrier notes, and the QR sign-in.
 
 docs/FARRIER_PAGE_PLAN.md, sections 14 to 16.
-- The yard makes a list for a visit date; the farrier sees it in Due now.
+- The yard makes a list for a visit date; the farrier sees it in "Today's horses".
 - The farrier can leave a note on a horse with no work and no charge.
 - Scanning the QR code, a farrier picks their name; no password.
 """
@@ -150,19 +150,21 @@ class FarrierSeesTheListTests(Yard):
                                   work_needed='full_set', note='Pads on fronts')
         self.client.force_login(self.user)
 
-    def test_list_horses_are_in_due_now_and_first(self):
+    def test_only_list_horses_are_shown(self):
         response = self.client.get(TODAY_URL)
-        self.assertEqual([h.name for h in response.context['due_horses']], ['Pickle', 'Bramble'])
-        self.assertEqual([h.name for h in response.context['other_horses']], ['Clover'])
+        self.assertEqual([h.name for h in response.context['list_horses']], ['Pickle'])
+        self.assertEqual(response.context['results'], [])
         self.assertContains(response, 'On the list')
-        self.assertContains(response, "1 on the yard")
+        self.assertContains(response, "Today's horses (1)")
         self.assertContains(response, 'Pads on fronts')
+        self.assertNotContains(response, 'Bramble')
 
-    def test_panel_shows_what_the_yard_asked_for(self):
+    def test_panel_preselects_what_the_yard_asked_for(self):
         response = self.client.get(reverse('farrier:horse_panel', args=[self.horses['Pickle'].pk]), HTTP_HX_REQUEST='true')
         self.assertContains(response, 'data-yard-request')
-        self.assertContains(response, 'Full Set')
-        self.assertContains(response, 'border-saddle border-2')
+        self.assertContains(response, f'value="item:{self.full_set.pk}" class="sr-only" checked')
+        self.assertContains(response, 'value="95.00"')
+        self.assertNotContains(response, 'you to decide')
 
     def test_another_farrier_and_another_day_do_not_see_it(self):
         FarrierJob.objects.create(provider=self.provider, date=self.today + timedelta(days=1), horse=self.horses['Clover'])
@@ -172,7 +174,7 @@ class FarrierSeesTheListTests(Yard):
         self.assertNotContains(response, 'On the list')
         self.client.force_login(self.user)
         response = self.client.get(TODAY_URL)
-        self.assertNotIn('Clover', [h.name for h in response.context['due_horses']])
+        self.assertNotIn('Clover', [h.name for h in response.context['list_horses']])
 
 
 class FarrierNoteTests(Yard):

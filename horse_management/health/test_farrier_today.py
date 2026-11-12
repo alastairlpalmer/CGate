@@ -18,7 +18,7 @@ from django.utils import timezone
 from billing.models import ExtraCharge, ServiceItem, ServiceProvider
 from core.models import Horse, Location, Owner, OwnershipShare, Placement, RateType, Role
 from core.roles_testutils import assign_role
-from health.models import FarrierVisit, ProviderVisit
+from health.models import FarrierNote, FarrierVisit, ProviderVisit
 
 User = get_user_model()
 seed_migration = importlib.import_module('core.migrations.0053_seed_farrier_role')
@@ -81,31 +81,45 @@ class TodayBase(TestCase):
 
 
 class HorseListTests(TodayBase):
-    def test_due_horses_come_first_most_overdue_first(self):
-        response = self.client.get(reverse('farrier:today'))
-        self.assertEqual([h.name for h in response.context['due_horses']], ['Bramble', 'Juno'])
-        self.assertEqual([h.name for h in response.context['other_horses']], ['Pickle'])
-        self.assertContains(response, 'Overdue 14d')
+    """Today's visit shows only the yard's list and added horses; search finds the rest."""
 
-    def test_departed_horses_are_not_listed(self):
+    def names(self, response, key):
+        return [h.name for h in response.context[key]]
+
+    def test_with_no_list_no_horses_are_shown_until_a_search(self):
+        response = self.client.get(reverse('farrier:today'))
+        self.assertEqual(self.names(response, 'list_horses'), [])
+        self.assertEqual(self.names(response, 'results'), [])
+        self.assertContains(response, 'no horses on your list today')
+        self.assertContains(response, 'Find another horse')
+        for name in ('Bramble', 'Juno', 'Pickle'):
+            self.assertNotContains(response, name)
+
+    def test_no_location_filter_or_due_list(self):
+        response = self.client.get(reverse('farrier:today'))
+        self.assertNotContains(response, 'All places')
+        self.assertNotContains(response, 'All other horses')
+        self.assertNotContains(response, 'Due now')
+
+    def test_departed_horses_are_not_found(self):
         self.pickle.is_active = False
         self.pickle.save()
-        response = self.client.get(reverse('farrier:today'))
-        self.assertNotIn('Pickle', [h.name for h in response.context['other_horses']])
+        response = self.client.get(reverse('farrier:today'), {'q': 'pick'})
+        self.assertEqual(self.names(response, 'results'), [])
 
-    def test_search_by_name(self):
+    def test_search_by_name_finds_any_horse(self):
         response = self.client.get(reverse('farrier:today'), {'q': 'jun'})
-        names = [h.name for h in response.context['due_horses'] + response.context['other_horses']]
-        self.assertEqual(names, ['Juno'])
+        self.assertEqual(self.names(response, 'results'), ['Juno'])
+        response = self.client.get(reverse('farrier:today'), {'q': 'PICK'})
+        self.assertEqual(self.names(response, 'results'), ['Pickle'])
 
-    def test_location_filter(self):
-        response = self.client.get(reverse('farrier:today'), {'location': self.top.pk})
-        names = [h.name for h in response.context['due_horses'] + response.context['other_horses']]
-        self.assertEqual(sorted(names), ['Bramble', 'Pickle'])
+    def test_search_with_no_hit_says_so(self):
+        response = self.client.get(reverse('farrier:today'), {'q': 'zzz'}, HTTP_HX_REQUEST='true')
+        self.assertContains(response, 'No other horse called')
 
-    def test_htmx_search_returns_only_the_list(self):
+    def test_htmx_search_returns_only_the_results(self):
         response = self.client.get(reverse('farrier:today'), {'q': 'bram'}, HTTP_HX_REQUEST='true')
-        self.assertTemplateUsed(response, 'farrier/_horse_list.html')
+        self.assertTemplateUsed(response, 'farrier/_search_results.html')
         self.assertTemplateNotUsed(response, 'farrier/today.html')
         self.assertContains(response, 'Bramble')
         self.assertNotContains(response, 'Juno')
@@ -117,23 +131,24 @@ class HorseListTests(TodayBase):
         self.assertContains(response, 'Trim')
         self.assertNotContains(response, 'Yard shoes')
 
+    def test_panel_has_work_cost_and_notes_in_one_form(self):
+        response = self.client.get(reverse('farrier:horse_panel', args=[self.bramble.pk]), HTTP_HX_REQUEST='true')
+        self.assertContains(response, '1. Work done')
+        self.assertContains(response, '2. Cost')
+        self.assertContains(response, '3. Notes')
+        self.assertContains(response, f'value="item:{self.full_set.pk}"')
+        # Work types with no price of their own are still offered.
+        self.assertContains(response, 'value="work:remedial"')
+        self.assertNotContains(response, 'value="work:full_set"')
+        self.assertNotContains(response, 'Other or remedial work')
+        self.assertNotContains(response, 'Note only')
+
     def test_panel_without_script_opens_on_the_full_page(self):
         response = self.client.get(reverse('farrier:horse_panel', args=[self.bramble.pk]))
         self.assertRedirects(response, f"{reverse('farrier:today')}?open={self.bramble.pk}#horse-{self.bramble.pk}",
                              fetch_redirect_response=False)
         response = self.client.get(reverse('farrier:today'), {'open': self.bramble.pk})
         self.assertContains(response, reverse('farrier:horse_add', args=[self.bramble.pk]))
-
-    def test_all_other_horses_are_listed_open(self):
-        # Nothing is folded away: due horses, then every other horse.
-        response = self.client.get(reverse('farrier:today'))
-        self.assertContains(response, 'All other horses (1)')
-        self.assertNotContains(response, '<details class="space-y-2"', html=False)
-        self.assertContains(response, 'Pickle')
-
-    def test_search_finds_any_horse_not_only_due_ones(self):
-        response = self.client.get(reverse('farrier:today'), {'q': 'pick'})
-        self.assertEqual([h.name for h in response.context['other_horses']], ['Pickle'])
 
     def test_owner_names_never_shown(self):
         response = self.client.get(reverse('farrier:today'))
@@ -253,12 +268,15 @@ class RecordLineTests(TodayBase):
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse('farrier:today'), response['Location'])
 
-    def test_tapped_horse_stays_in_due_now_with_a_tick(self):
-        self.add(self.bramble, item=self.full_set.pk)
+    def test_an_added_horse_joins_todays_horses_with_a_tick(self):
+        self.add(self.pickle, item=self.full_set.pk)
         response = self.client.get(reverse('farrier:today'))
-        due = response.context['due_horses']
-        self.assertEqual([h.name for h in due], ['Bramble', 'Juno'])
-        self.assertIsNotNone(due[0].line)
+        horses = response.context['list_horses']
+        self.assertEqual([h.name for h in horses], ['Pickle'])
+        self.assertIsNotNone(horses[0].line)
+        # It is not found again by a search: it is already on the screen.
+        response = self.client.get(reverse('farrier:today'), {'q': 'pick'})
+        self.assertEqual(response.context['results'], [])
 
     def test_a_finished_visit_is_not_changed(self):
         self.add(self.bramble, item=self.full_set.pk)
@@ -280,8 +298,62 @@ class RecordLineTests(TodayBase):
         self.add(self.bramble, item=rival_trim.pk)
         self.assertEqual(ProviderVisit.objects.filter(status='open').count(), 2)
         response = self.client.get(reverse('farrier:today'))
-        bramble = response.context['due_horses'][0]
+        bramble = response.context['list_horses'][0]
         self.assertEqual(bramble.line.cost, Decimal('30.00'))
+
+
+class OneFormTests(TodayBase):
+    """Work done, cost and notes are saved from one form."""
+
+    def test_a_price_tile_uses_its_price_when_cost_is_empty(self):
+        self.add(self.bramble, choice=f'item:{self.full_set.pk}', price='')
+        line = self.line(self.bramble)
+        self.assertEqual((line.work_done, line.cost), ('full_set', Decimal('95.00')))
+
+    def test_a_price_tile_with_a_typed_cost(self):
+        self.add(self.bramble, choice=f'item:{self.full_set.pk}', price='110', note='Pads on fronts')
+        line = self.line(self.bramble)
+        self.assertEqual((line.cost, line.notes), (Decimal('110.00'), 'Pads on fronts'))
+
+    def test_a_work_tile_needs_a_cost(self):
+        response = self.add(self.bramble, choice='work:remedial', price='')
+        self.assertContains(response, 'Enter a price')
+        self.add(self.bramble, choice='work:remedial', price='60')
+        line = self.line(self.bramble)
+        self.assertEqual((line.work_done, line.cost), ('remedial', Decimal('60.00')))
+
+    def test_a_cost_with_no_work_is_refused(self):
+        response = self.add(self.bramble, price='60')
+        self.assertContains(response, 'Choose the work done')
+        self.assertFalse(ProviderVisit.objects.exists())
+
+    def test_no_work_and_no_cost_saves_a_note_only(self):
+        response = self.add(self.bramble, note='Heat in near fore')
+        self.assertContains(response, 'Note saved. No charge.')
+        self.assertContains(response, 'Heat in near fore')
+        note = FarrierNote.objects.get()
+        self.assertEqual((note.horse, note.provider), (self.bramble, self.provider))
+        self.assertFalse(FarrierVisit.objects.filter(horse=self.bramble, date=self.today).exists())
+
+    def test_an_empty_form_is_refused(self):
+        response = self.add(self.bramble)
+        self.assertContains(response, 'Choose the work done, or write a note')
+        self.assertFalse(FarrierNote.objects.exists())
+
+    def test_reopening_a_saved_horse_shows_its_work_cost_and_note(self):
+        self.add(self.bramble, choice=f'item:{self.trim.pk}', price='40', note='Short toes')
+        response = self.client.get(reverse('farrier:horse_panel', args=[self.bramble.pk]), HTTP_HX_REQUEST='true')
+        self.assertContains(response, f'value="item:{self.trim.pk}" class="sr-only" checked')
+        self.assertContains(response, 'value="40.00"')
+        self.assertContains(response, 'Short toes</textarea>')
+
+    def test_a_custom_price_name_is_not_repeated_on_a_second_save(self):
+        custom = ServiceItem.objects.create(name='Stud holes', category='farrier', price=Decimal('20.00'),
+                                            provider=self.provider)
+        self.add(self.bramble, choice=f'item:{custom.pk}')
+        self.assertEqual(self.line(self.bramble).notes, 'Stud holes')
+        self.add(self.bramble, choice=f'item:{custom.pk}', note=self.line(self.bramble).notes)
+        self.assertEqual(self.line(self.bramble).notes, 'Stud holes')
 
 
 class RemoveLineTests(TodayBase):
