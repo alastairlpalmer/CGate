@@ -107,6 +107,15 @@ def record_foaling(record, *, foal_dob, foal_sex, foal_colour='', foal_name='',
                     rate_type=foal_rate_type, arrival_date=foal_dob,
                     notes=f"Foaled at foot of {mare.name}",
                 )
+                # A foal at foot is in the mare's stable. No question to
+                # ask: sharing is the whole point of the pair.
+                from core.stables import StableService, open_stay
+                mare_stay = open_stay(mare)
+                if mare_stay is not None:
+                    StableService.assign(
+                        foal, mare_stay.stable,
+                        max(foal_dob, mare_stay.start_date), share=True,
+                    )
     return foal
 
 

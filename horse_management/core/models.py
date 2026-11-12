@@ -435,6 +435,12 @@ class Location(models.Model):
                 f"{placements} placement record"
                 f"{'s point' if placements != 1 else ' points'} at this location."
             )
+        stays = StableStay.objects.filter(stable__location=self).count()
+        if stays:
+            blockers.append(
+                f"{stays} stable record"
+                f"{'s point' if stays != 1 else ' points'} at this barn."
+            )
         feed_outs = self.feed_outs.count()
         if feed_outs:
             blockers.append(
@@ -956,6 +962,69 @@ def prime_current_owners(horses):
     for horse in horses:
         horse.__dict__['current_owner'] = share_owner.get(horse.pk) or placement_owner.get(horse.pk)
 
+class StableStay(models.Model):
+    """A horse in a stable for a span of days. Mirrors Placement.
+
+    Beside the placement, never instead of it: the placement says which
+    barn the horse lives in and what its owner pays; this says which
+    stable. So a horse that moves from one stable to another keeps its
+    placement, and nothing in billing ever reads this table.
+
+    Dates follow the placement convention. A stay that gives way to
+    another ends the day before the new one starts.
+
+    There is deliberately no "one open stay per stable" rule: a mare and
+    her foal share a stable. Putting a second horse in one is a choice the
+    operator confirms (core.stables.StableService.assign).
+    """
+
+    horse = models.ForeignKey(
+        'Horse', on_delete=models.CASCADE, related_name='stable_stays',
+    )
+    stable = models.ForeignKey(
+        Stable, on_delete=models.PROTECT, related_name='stays',
+    )
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    # True when the stay ended because the placement did, not because
+    # somebody took the horse out of the stable. A rate change is saved as
+    # a move to the same barn — the old placement closes, a new one opens
+    # the next day — and the horse must keep its stable through it. Only a
+    # stay closed this way is picked back up when the placement resumes.
+    closed_with_placement = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-start_date', '-pk']
+        indexes = [
+            models.Index(fields=['stable', 'end_date'], name='stablestay_stable_enddate'),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['horse'],
+                condition=models.Q(end_date__isnull=True),
+                name='stablestay_one_open_per_horse',
+            ),
+            models.CheckConstraint(
+                condition=Q(end_date__isnull=True) | Q(end_date__gte=F('start_date')),
+                name='stablestay_ends_after_start',
+            ),
+        ]
+
+    def __str__(self):
+        status = "current" if self.end_date is None else f"ended {self.end_date}"
+        return f"{self.horse.name} in {self.stable} ({status})"
+
+    def clean(self):
+        super().clean()
+        if self.stable_id and self.stable.is_gap:
+            raise DjangoValidationError('A gap is not a stable: no horse can be put in it.')
+
+    @property
+    def is_current(self):
+        return self.end_date is None
+
+
 class RateType(models.Model):
     """Rate configuration for different livery types."""
 
@@ -1174,6 +1243,7 @@ class Placement(models.Model):
         # "departed but placed" in production. Detect the transition here.
         was_open = None
         old_location_id = None
+        old_end = None
         creating = self.pk is None
         if not creating:
             old_end, old_location_id = Placement.objects.filter(
@@ -1236,6 +1306,14 @@ class Placement(models.Model):
             # Closed: rest the field if this was its last occupant.
             LocationUsageService.rest_if_empty(self.location, self.end_date)
 
+        # The same choke point for the horse's stable: it must follow the
+        # placement whichever path wrote it (core.stables.StableService).
+        from .stables import StableService
+        StableService.placement_saved(
+            self, creating=creating, was_open=was_open, old_end=old_end,
+            old_location_id=old_location_id,
+        )
+
     def delete(self, *args, **kwargs):
         # Same choke point for deletion: removing a field's last open
         # placement must still rest the field. (Queryset bulk deletes bypass
@@ -1243,10 +1321,13 @@ class Placement(models.Model):
         was_open = self.end_date is None
         location = self.location
         start_date = self.start_date
+        horse_id = self.horse_id
         super().delete(*args, **kwargs)
         if was_open:
             from .services import LocationUsageService
+            from .stables import StableService
             LocationUsageService.undo_arrival(location, start_date)
+            StableService.placement_deleted(horse_id, location.pk, start_date)
 
     @property
     def is_current(self):

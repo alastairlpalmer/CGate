@@ -407,6 +407,19 @@ class StableForm(forms.ModelForm):
             raise forms.ValidationError(f'This barn already has a "{label}".')
         return label
 
+    def clean_in_use(self):
+        in_use = self.cleaned_data.get('in_use')
+        if not in_use:
+            from .stables import _join_names, occupants_of
+            horses = occupants_of(self.instance)
+            if horses:
+                names = _join_names([horse.name for horse in horses])
+                raise forms.ValidationError(
+                    f'{names} {"is" if len(horses) == 1 else "are"} in this stable. '
+                    f'Move {"it" if len(horses) == 1 else "them"} out first.'
+                )
+        return in_use
+
 
 class AddStablesForm(forms.Form):
     """Add more stables to the end of a barn."""

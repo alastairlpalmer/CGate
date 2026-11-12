@@ -1300,8 +1300,12 @@ def stable_delete(request, pk, stable_pk):
     barn = _barn_or_404(pk)
     stable = get_object_or_404(Stable, pk=stable_pk, location=barn)
     what = stable.label if stable.is_gap else f"Stable {stable.label}"
-    remove_stable(stable)
-    messages.success(request, f"{what} removed from {barn.name}.")
+    try:
+        remove_stable(stable)
+    except ValidationError as e:
+        messages.error(request, '; '.join(e.messages))
+    else:
+        messages.success(request, f"{what} removed from {barn.name}.")
     return _sheet_saved(request, reverse('location_detail', kwargs={'pk': barn.pk}))
 
 
