@@ -2170,6 +2170,34 @@ class MFAExemption(models.Model):
         return f"{self.user} (exempt from two-step sign-in)"
 
 
+class AttentionDismissal(models.Model):
+    """A Needs action item an Administrator dismissed from the dashboard.
+
+    For the whole yard, not one user: the item is dealt with or not worth
+    chasing. ``key`` is the item's own key (``vaccination-12``); ``due`` is
+    its due date when it was dismissed, so the same record with a new date
+    is a new reminder and shows again. Items with no date stay dismissed
+    until an Administrator restores them. The page behind the item (Health,
+    Invoices) is not changed (core/dashboard/dismissals.py).
+    """
+
+    key = models.CharField(max_length=120)
+    due = models.CharField(max_length=10, blank=True, default='')
+    dismissed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='+',
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['key', 'due'], name='attention_dismissal_once'),
+        ]
+
+    def __str__(self):
+        return f"{self.key} ({self.due or 'no date'})"
+
+
 class GoogleIdentity(models.Model):
     """The Google account a user signs in with. One for each user.
 

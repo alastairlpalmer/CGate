@@ -47,4 +47,11 @@ list that needs doing stands out from the rest of the page.
         <p class="mt-1 text-xs text-sage">Anything overdue, and anything due today, shows here the moment it comes up.</p>
     </div>
     {% endif %}
+    {% if can_dismiss and dismissed_count %}
+    <form method="post" action="{% url 'attention_restore' %}" class="border-t border-light-sage px-4 py-2 lg:px-5 text-xs text-sage">
+        {% csrf_token %}
+        {{ dismissed_count }} dismissed &middot;
+        <button type="submit" class="link tap-pad" title="Show every dismissed item on the dashboard again">Restore</button>
+    </form>
+    {% endif %}
 </div>

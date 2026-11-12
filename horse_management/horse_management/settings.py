@@ -530,6 +530,12 @@ INVOICE_SEND_ASYNC = env.bool(
 # the edit form's coordinate picker and the backfill command work
 # regardless, so coordinates can be entered before anything is shown.
 LOCATION_MAPS_ENABLED = env.bool('LOCATION_MAPS_ENABLED', default=False)
+# The site a map opens on for someone who has not chosen one. The
+# Locations map uses it on a computer only. The dashboard's Near you card
+# uses it on any device when GPS does not place the person on a site (no
+# GPS, or miles away). Empty, or a name no site has, means the first site
+# with boundaries drawn (core.dashboard.board.default_map_site).
+DEFAULT_MAP_SITE = env('DEFAULT_MAP_SITE', default='').strip()
 # Inside this distance of a location's point the nearest-location chip
 # names it. Tune per yard once real readings are in.
 LOCATION_NEAR_RADIUS_M = env.int('LOCATION_NEAR_RADIUS_M', default=150)
