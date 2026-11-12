@@ -1020,7 +1020,8 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
        the whole picture. Badges are real buttons layered above the map, at
        least 44px on every device. */
     .coord-picker-map { @apply h-56 sm:h-64 w-full rounded-lg border border-light-sage bg-light-sage/60 overflow-hidden; }
-    .location-map { @apply relative w-full rounded-lg overflow-hidden bg-white border border-light-sage; }
+    /* isolation: Leaflet panes (z 400+) and our badges (z 500) must stay inside the map, never above pop-up sheets (z 60). */
+    .location-map { @apply relative w-full rounded-lg overflow-hidden bg-white border border-light-sage; isolation: isolate; }
     .location-map.is-full { height: min(70vh, 640px); min-height: 20rem; }
     /* The dashboard card's map. In one column (phones, portrait tablets) it
        is square, capped so it never outgrows the screen. From lg it sits
@@ -2081,7 +2082,7 @@ a.pane-item-title:hover { @apply text-forest; }
 .loc-card-unit { @apply block text-[11px] text-sage/80; }
 
 /* The map half. */
-.loc-board-map { @apply relative min-h-0 rounded-card border border-light-sage overflow-hidden bg-parchment; }
+.loc-board-map { @apply relative min-h-0 rounded-card border border-light-sage overflow-hidden bg-parchment; isolation: isolate; }
 .loc-board-map .location-map { position: absolute; inset: 0; height: 100%; border: 0; border-radius: 0; }
 .loc-board-nomap { @apply absolute inset-0 grid place-items-center p-6 bg-parchment; }
 

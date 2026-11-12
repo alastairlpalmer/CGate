@@ -26,7 +26,7 @@
                 {% include "includes/form_field.html" with field=form.usage help="What is this location currently being used for?" %}
                 {% include "includes/form_field.html" with field=form.capacity help="Maximum number of horses (optional)" %}
                 {% include "includes/form_field.html" with field=form.description %}
-                {% include 'locations/_coord_picker.html' %}
+                {% include 'locations/_location_where.html' %}
                 {% if form.pin_to_dashboard %}
                 {% include "includes/form_field.html" with field=form.pin_to_dashboard %}
                 {% endif %}
