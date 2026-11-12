@@ -638,7 +638,7 @@ class LocationFormViewMixin(PopupFormMixin):
     """Shared by the create and edit views: the form's user, the picker's
     centre and the after-save distance warning."""
 
-    popup_extra_template = 'locations/_coord_picker.html'
+    popup_extra_template = 'locations/_location_where.html'
     popup_deferred_fields = LocationForm.COORDINATE_FIELD_NAMES
 
     def get_form_kwargs(self):

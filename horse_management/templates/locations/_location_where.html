@@ -1,0 +1,14 @@
+{% comment %}
+Location form "where" block: the coordinate picker, plus a pointer to the
+GeoJSON boundary import (a pin is a point; an outline comes from there).
+Used by locations/location_form.html and, as popup_extra_template, the
+Add/Edit location pop-up.
+{% endcomment %}
+{% include 'locations/_coord_picker.html' %}
+{% if feature_access.locations.full %}
+<p class="sm:col-span-2 mt-3 text-xs text-sage" data-testid="boundary-import-hint">
+    Have the outline of this location as a GeoJSON file?
+    <a href="{% url 'boundary_import_upload' %}{% if object.site %}?site={{ object.site|urlencode }}{% endif %}" hx-boost="false" class="link font-medium">Import field map</a>
+    (save this location first, then match it to a shape).
+</p>
+{% endif %}

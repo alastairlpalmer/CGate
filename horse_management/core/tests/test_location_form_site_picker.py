@@ -150,3 +150,25 @@ class SitePickerViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         created = Location.objects.get(name='Long Acre')
         self.assertEqual((created.site, created.usage), ('California Farm', 'arable'))
+
+
+class BoundaryImportHintTests(TestCase):
+    """The location form points to the GeoJSON boundary import, in the
+    pop-up and on the full page, and keeps the coordinate picker."""
+
+    def setUp(self):
+        self.client.force_login(make_admin())
+
+    def test_hint_in_popup_and_full_page(self):
+        url = reverse('location_create')
+        for headers in (POPUP, {}):
+            with self.subTest(popup=bool(headers)):
+                response = self.client.get(url, **headers)
+                self.assertContains(response, 'data-testid="boundary-import-hint"')
+                self.assertContains(response, reverse('boundary_import_upload'))
+                self.assertContains(response, 'data-testid="coord-picker"')
+
+    def test_edit_link_carries_the_site(self):
+        location = Location.objects.create(name='Front field', site='Colgate')
+        response = self.client.get(reverse('location_update', args=[location.pk]), **POPUP)
+        self.assertContains(response, reverse('boundary_import_upload') + '?site=Colgate')
