@@ -196,3 +196,14 @@ class PhoneSectionBarTests(TestCase):
         body = self.client.get(reverse('invoice_list')).content.decode()
         self.assertIn('data-brand="Cgate"', body)
         self.assertIn("document.querySelector('[data-brand-label]')", body)
+
+
+class SiteMenuLayerTests(TestCase):
+    def test_the_header_that_holds_the_menu_sits_above_the_zones_below(self):
+        # Each zone animates in, which makes it a layer; the menu opens
+        # downwards from the header and was hidden behind the cards.
+        self.client.force_login(make_admin(username='layer-admin'))
+        for name in ('Home', 'Hill', 'River'):
+            Location.objects.create(name=f'{name} field', site=name)
+        response = self.client.get(reverse('dashboard'))
+        self.assertContains(response, 'class="page-header zone-enter relative z-30"')
