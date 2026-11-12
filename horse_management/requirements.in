@@ -13,7 +13,7 @@
 # To update one package: add --upgrade-package <name> to that command.
 
 # Django core
-Django~=5.2.12
+Django~=5.2.19
 django-environ~=0.14.0
 whitenoise~=6.12.0
 
