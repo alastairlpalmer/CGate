@@ -19,7 +19,7 @@ whitenoise~=6.12.0
 
 # Monitoring
 # Error reporting. Inert unless SENTRY_DSN is set (see core/monitoring.py).
-sentry-sdk[django]~=2.69
+sentry-sdk[django]~=2.74
 
 # Off-site backups: upload to any S3-compatible store (core/backup/).
 boto3~=1.43
@@ -55,7 +55,7 @@ psycopg2-binary~=2.9.11
 reportlab~=5.1.0
 
 # Task queue
-celery~=5.6.3
+celery~=5.7.0
 redis~=8.1.0
 django-celery-beat~=2.9.0
 django-celery-results~=2.6.0
@@ -65,7 +65,7 @@ django-celery-results~=2.6.0
 # CVE here is reachable by anyone who can add a horse photo. 12.1.1
 # carried 27 of them.
 Pillow~=13.0
-pillow-heif~=1.4.0  # decode iPhone HEIC uploads (converted to JPEG on save)
+pillow-heif~=1.8.1  # decode iPhone HEIC uploads (converted to JPEG on save)
 
 # Development
 django-debug-toolbar~=6.2.0
@@ -78,14 +78,14 @@ django-debug-toolbar~=6.2.0
 # and audit noise for no benefit.
 
 # HTMX support
-django-htmx~=1.27.0
+django-htmx~=1.29.0
 
 # Forms
 django-crispy-forms~=2.6
 crispy-tailwind~=1.0.3
 
 # Xero API integration
-requests~=2.33.0
+requests~=2.34.2
 
 # Field boundaries (location mapping): polygon validation, winding order,
 # simplification, point-in-polygon and badge anchors, all server-side.
@@ -93,4 +93,4 @@ shapely~=2.1
 
 # Product analytics (server-side sign in / sign out events).
 # The browser half loads posthog-js from the PostHog CDN.
-posthog~=7.47
+posthog~=7.86
