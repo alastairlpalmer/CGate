@@ -331,7 +331,9 @@ def who(request):
 
     The farrier picks their name and is signed in with no password, by the
     yard's choice (docs/FARRIER_PAGE_PLAN.md, section 15). Only farrier-only
-    logins are offered (farrier.qr_sign_in_farriers). Every sign-in is in
+    logins are offered (farrier.qr_sign_in_farriers); a farrier with no
+    login yet gets one on their first pick (farrier.ensure_farrier_login).
+    Every sign-in is in
     the audit log as "QR code, name picked", with the address it came from.
     """
     from django.contrib.auth import login
@@ -347,6 +349,10 @@ def who(request):
         if chosen is None:
             error = 'Choose your name from the list.'
         else:
-            login(request, chosen.user, backend=QR_BACKEND)
-            return redirect('farrier:today')
+            user = farrier.ensure_farrier_login(chosen)
+            if user is None:
+                error = 'This name cannot sign in from the QR code. Ask the yard to check you in Service Providers.'
+            else:
+                login(request, user, backend=QR_BACKEND)
+                return redirect('farrier:today')
     return render(request, 'farrier/who.html', {'farriers': farriers, 'error': error})

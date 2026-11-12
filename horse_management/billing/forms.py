@@ -469,8 +469,9 @@ class ServiceProviderForm(forms.ModelForm):
         fields = ['name', 'provider_type', 'phone', 'email', 'address', 'notes', 'is_active', 'user']
         labels = {'user': 'Farrier page login'}
         help_texts = {
-            'user': "The login this farrier uses for their phone page. Make the login under "
-                    "Settings, Users, with the Farrier role. The visit summary goes to the email above.",
+            'user': "The login this farrier uses for their phone page. Leave it empty: the login is "
+                    "made the first time the farrier picks their name from the yard QR code. "
+                    "The visit summary goes to the email above.",
         }
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),

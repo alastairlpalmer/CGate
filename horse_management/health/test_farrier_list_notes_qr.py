@@ -258,15 +258,53 @@ class QRSignInTests(TestCase):
         self.client.post(reverse('farrier:who'), {'provider': staff_provider.pk})
         self.assertNotIn('_auth_user_id', self.client.session)
 
-    def test_inactive_unlinked_and_non_farrier_providers_are_not_offered(self):
+    def test_inactive_and_non_farrier_providers_are_not_offered(self):
         make_farrier(username='old', name='Retired Forge', active=False)
-        make_farrier(username='nolink', name='No Login Forge', linked=False)
         vet_user = User.objects.create_user('vet', password='pw')
         assign_role(vet_user, Role.objects.get(name='Farrier'))
         ServiceProvider.objects.create(name='Downland Vets', provider_type='vet', user=vet_user)
+        off_user, _ = make_farrier(username='off', name='Switched Off Forge')
+        off_user.is_active = False
+        off_user.save()
         page = self.client.get(reverse('farrier:who'))
-        for name in ('Retired Forge', 'No Login Forge', 'Downland Vets'):
+        for name in ('Retired Forge', 'Downland Vets', 'Switched Off Forge'):
             self.assertNotContains(page, name)
+
+    def test_a_farrier_with_no_login_is_offered(self):
+        ServiceProvider.objects.create(name='New Forge', provider_type='farrier', email='new@example.com')
+        page = self.client.get(reverse('farrier:who'))
+        self.assertContains(page, 'New Forge')
+        self.assertNotContains(page, 'No farrier is set up yet')
+
+    def test_picking_a_farrier_with_no_login_makes_a_farrier_only_login(self):
+        provider = ServiceProvider.objects.create(name='New Forge', provider_type='farrier', email='new@example.com')
+        response = self.client.post(reverse('farrier:who'), {'provider': provider.pk})
+        self.assertRedirects(response, TODAY_URL, fetch_redirect_response=False)
+        provider.refresh_from_db()
+        user = provider.user
+        self.assertIsNotNone(user)
+        self.assertFalse(user.has_usable_password())
+        self.assertEqual(user.email, 'new@example.com')
+        self.assertEqual(user.role_assignment.role.name, 'Farrier')
+        self.assertEqual(int(self.client.session['_auth_user_id']), user.pk)
+        self.assertEqual(self.client.get(TODAY_URL).status_code, 200)
+        self.assertRedirects(self.client.get('/owners/'), TODAY_URL, fetch_redirect_response=False)
+        # The next pick uses the same login, not a new one.
+        self.client.logout()
+        self.client.post(reverse('farrier:who'), {'provider': provider.pk})
+        self.assertEqual(int(self.client.session['_auth_user_id']), user.pk)
+        self.assertEqual(User.objects.filter(username__startswith='farrier-new-forge').count(), 1)
+
+    def test_no_login_is_made_if_the_farrier_role_reaches_staff_pages(self):
+        role = Role.objects.get(name='Farrier')
+        role.access = {**role.access, 'owners': 'full'}
+        role.save()
+        provider = ServiceProvider.objects.create(name='New Forge', provider_type='farrier')
+        response = self.client.post(reverse('farrier:who'), {'provider': provider.pk})
+        self.assertContains(response, 'cannot sign in from the QR code')
+        self.assertNotIn('_auth_user_id', self.client.session)
+        provider.refresh_from_db()
+        self.assertIsNone(provider.user)
 
     def test_an_unknown_choice_is_refused(self):
         response = self.client.post(reverse('farrier:who'), {'provider': '99999'})

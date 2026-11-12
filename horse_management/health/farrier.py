@@ -55,21 +55,97 @@ def provider_page(view_func):
 def qr_sign_in_farriers():
     """Farriers who can be picked on "Who is on the yard today?".
 
-    Only an active farrier provider with a linked, active, farrier-only
-    login. A staff login is never offered, so the QR code can never sign
-    anyone in as staff.
-    """
-    from core.permissions import is_provider_only
+    An active farrier provider with either:
 
+    * a linked, active, farrier-only login, or
+    * no login at all. The first pick makes their farrier-only login
+      (``ensure_farrier_login``), so the yard does not have to make one
+      by hand under Settings, Users before the QR code works.
+
+    A provider linked to a staff login (or to a switched-off login) is
+    never offered, so the QR code can never sign anyone in as staff.
+    """
     providers = (
         ServiceProvider.objects.filter(
             provider_type=ServiceProvider.ProviderType.FARRIER, is_active=True,
-            user__isnull=False, user__is_active=True,
         )
         .select_related('user')
         .order_by('name')
     )
-    return [p for p in providers if is_provider_only(p.user)]
+    return [
+        p for p in providers
+        if p.user_id is None or (p.user.is_active and is_provider_only(p.user))
+    ]
+
+
+def _farrier_role():
+    """The role a QR-made farrier login gets: farrier page only.
+
+    The seeded "Farrier" role (migration 0053), made again with the same
+    access if the yard deleted it. Returns None if the yard has changed
+    the "Farrier" role so that it reaches more than the farrier page:
+    such a role is never given out by the QR code.
+    """
+    import importlib
+
+    from core.models import Role
+    from core.permissions import LEVEL_HIDDEN
+
+    seed = importlib.import_module('core.migrations.0053_seed_farrier_role')
+    role, _ = Role.objects.get_or_create(
+        name='Farrier',
+        defaults={
+            'description': 'A visiting farrier: their own visit page only.',
+            'access': dict(seed.FARRIER_ACCESS),
+        },
+    )
+    access = role.resolved_access()
+    farrier_only = (
+        access.get('farrier_portal') == LEVEL_FULL
+        and all(level == LEVEL_HIDDEN for key, level in access.items() if key != 'farrier_portal')
+    )
+    return role if farrier_only and not role.is_system else None
+
+
+def ensure_farrier_login(provider):
+    """The provider's farrier-only login, made now if they have none.
+
+    The login has no password (it is used only from the QR code) and the
+    Farrier role. Returns the user, or None if no safe login can be given
+    (a staff login is linked, or the "Farrier" role reaches more than the
+    farrier page).
+    """
+    from django.contrib.auth import get_user_model
+    from django.db import transaction
+    from django.utils.text import slugify
+
+    from core.models import UserRole
+
+    User = get_user_model()
+    with transaction.atomic():
+        provider = ServiceProvider.objects.select_for_update().select_related('user').get(pk=provider.pk)
+        if provider.user_id is not None:
+            user = provider.user
+            return user if user.is_active and is_provider_only(user) else None
+        role = _farrier_role()
+        if role is None:
+            return None
+        base = f"farrier-{slugify(provider.name)[:100] or provider.pk}"
+        username, n = base, 1
+        while User.objects.filter(username=username).exists():
+            n += 1
+            username = f"{base}-{n}"
+        first, _, last = provider.name.partition(' ')
+        user = User(
+            username=username, email=provider.email or '',
+            first_name=first[:150], last_name=last[:150],
+        )
+        user.set_unusable_password()
+        user.save()
+        UserRole.objects.create(user=user, role=role)
+        provider.user = user
+        provider.save(update_fields=['user', 'updated_at'])
+    return user
 
 
 # --- Queries, always scoped to one provider -------------------------------
