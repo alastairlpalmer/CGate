@@ -8,6 +8,9 @@ Written for an AI coding agent. Read all of it before you write any code.
 the owner's decisions. Section 4 holds the recon answers, checked against the codebase on the
 same date.
 
+**Revision 2.** 2026-11-12. The owner confirmed the four points in section 12. More than one
+horse can share a stable, with no fixed limit (6.4).
+
 ---
 
 ## 0. How to use this document
@@ -362,13 +365,15 @@ Rule: **a horse's open stay must be in the location of its open placement.**
 
 A stable with an open stay cannot be set out of use. The form error says which horse to move first.
 
-### 6.4 Two horses in one stable
+### 6.4 More than one horse in one stable
 
 The plan and the list show a stable with an open stay as occupied. When an operator puts a second horse in it, the form shows:
 
 > Stable 7 has Marram in it. Put the two horses in this stable?
 
-with a checkbox that posts `share=1`. The cell then shows the two names. This is the only way to make a shared stable.
+with a checkbox that posts `share=1`. The cell then shows each name. This is the only way to make a shared stable.
+
+There is no limit on the number of horses in one stable. For a stable that already has two or more horses, the text names each of them.
 
 ### 6.5 Screens
 
@@ -580,11 +585,11 @@ Add to `core/tests/test_feature_enforcement.py` and `test_url_gating.py` for eve
 
 ---
 
-## 12. Points for the owner
+## 12. Points the owner confirmed
 
-Choices made in this document that the owner did not decide. Each one is easy to change before its phase starts.
+Choices this document made first. The owner confirmed all four on 2026-11-12. Do not reopen them.
 
-1. **Two horses can share a stable** after a confirmation (6.4). Reason: a mare and her foal. The alternative is a hard rule of one horse for each stable.
+1. **More than one horse can share a stable** after a confirmation (6.4). Reason: a mare and her foal. There is no fixed limit.
 2. **A location's kind is fixed**, with one conversion: field to barn (5.7). Reason: live data probably has barns saved as ordinary locations.
 3. **Several horses that arrive together go to the tray** and get stables on the plan afterwards (6.5). Reason: a stable picker for each horse makes the arrival form long.
 4. **A rate type with no "applies to" setting never causes a suggestion** (6.7). Reason: existing yards see no new prompt until they set it.
