@@ -64,6 +64,9 @@ def access_map(user):
             result, role_name = dict(DEFAULT_LEVELS), "No role"
         else:
             result, role_name = assignment.role.resolved_access(), assignment.role.name
+            # Keep the row on the user, so ``user.role_assignment`` (read by
+            # ``mfa.is_administrator``) does not fetch it and its role again.
+            UserRole._meta.get_field('user').remote_field.set_cached_value(user, assignment)
 
     user._feature_access = result
     user._role_name = role_name
