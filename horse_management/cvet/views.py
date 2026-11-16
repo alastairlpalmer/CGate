@@ -916,6 +916,8 @@ def _visit_payload(visit, notes=None, bill_when=None):
         # The client's name, as it was on the day.
         'yard': visit.yard_name,
         'author': visit.author_name,
+        # The phone joins its own open visit of today, and no other vet's.
+        'author_id': visit.author_id,
         'bill_to': visit.bill_to,
         # 'month': no bill now; this visit goes on the monthly bill.
         'bill_when': bill_when or _bill_when(visit.practice),

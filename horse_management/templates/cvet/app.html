@@ -79,7 +79,12 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
             <h2 id="client-name"></h2>
             <button id="client-edit" type="button" class="button slim">Edit</button>
         </div>
-        <p id="client-line" class="muted"></p>
+        {# What the client is, and what the vet does most: both in reach above a long list. #}
+        <div class="meta">
+            <p id="client-line" class="muted"></p>
+            <button id="horse-add" type="button" class="link calm">Add horse</button>
+            <button id="client-history" type="button" class="link calm">Visit history</button>
+        </div>
         <p id="client-contact" class="muted"></p>
         <button id="client-visit" type="button" class="banner" hidden></button>
         <div class="row">
@@ -88,10 +93,6 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
         </div>
         <ul id="horses" class="list card"></ul>
         <p id="no-horses" class="muted" hidden></p>
-        <div class="row">
-            <button id="horse-add" type="button" class="button">Add horse</button>
-            <button id="client-history" type="button" class="button">Visit history</button>
-        </div>
         <details id="archived-horses-box" class="fold plain" hidden>
             <summary><span class="text">Archived horses</span></summary>
             <ul id="archived-horses" class="list card"></ul>

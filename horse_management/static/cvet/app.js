@@ -1163,7 +1163,17 @@
     // the first note of the day, and goes with every note after it. A
     // note after Finish visit starts a new one.
     function currentVisit(clientId, now) {
-        return core.visitForDay(visits()[clientId], core.localDay(now), newId);
+        var day = core.localDay(now);
+        var mine = visits()[clientId];
+        if (mine && mine.id && mine.day === day && !mine.finished) return mine;
+        // The same vet on a phone and on a computer: a visit that is
+        // open for this client today in the practice's records is the
+        // visit. A second one would be a second bill.
+        var open = (state.meta.visitList || []).filter(function (visit) {
+            return visit.client_id === clientId && visit.date === day && visit.status === 'open' &&
+                !closed()[visit.id] && visit.author_id === state.meta.userId;
+        })[0];
+        return open ? { id: open.id, day: day, finished: false } : core.visitForDay(mine, day, newId);
     }
 
     function newEntry(horse, visit, now, parts) {
@@ -1989,6 +1999,9 @@
                 return rememberSession(data);
             }).then(function () {
                 if (!quiet) say('Clients and horses downloaded.');
+                // And the practice's visits: a visit that is open for a
+                // client today is joined, not made again (currentVisit).
+                loadVisitList(true);
             });
         }).catch(function (error) {
             say('The phone could not store the download: ' + error.message, true);
@@ -2430,6 +2443,7 @@
             if (window.performance && performance.now) state.openMs = Math.round(performance.now());
             refreshStorage();
             sync(false);
+            if (navigator.onLine) loadVisitList(true);
             // Fresh due dates and prices for today's visit, if the list
             // is from another day. Behind the screen: nothing waits for it.
             var age = state.meta.downloadedAt ? Date.now() - new Date(state.meta.downloadedAt).getTime() : 0;

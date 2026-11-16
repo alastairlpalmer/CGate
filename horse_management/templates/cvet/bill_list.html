@@ -5,38 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bills · {{ practice.name }}</title>
     <style>
-        body { font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1f2d32; max-width: 46em; margin: 0 auto; padding: 12px; }
-        h1 { font-size: 20px; margin: 8px 0; }
-        a { color: #3D5A63; font-weight: 600; }
+        :root { --ink: #17252a; --muted: #5b6a70; --brand: #2f5560; --paper: #f3f1ea; --line: #e1ddd2; }
+        body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .page { max-width: 46em; margin: 0 auto; padding: 4px 16px 32px; }
+        h1 { font-size: 22px; margin: 4px 0 12px; letter-spacing: -.01em; }
+        a { color: var(--brand); font-weight: 600; }
         .nav a, td a { display: inline-block; padding: 12px 8px 12px 0; }
         .nowrap { white-space: nowrap; }
-        .bar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin: 8px 0 12px; }
+        .bar { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+        /* A wide table moves sideways inside its box, never the page. */
+        .box { overflow-x: auto; margin: 12px 0; border-radius: 12px; background: #fff; box-shadow: 0 1px 2px rgba(23, 37, 42, .06), 0 1px 6px rgba(23, 37, 42, .05); }
+        .box.pad { padding: 12px 14px; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 4px 6px 4px 0; text-align: left; border-bottom: 1px solid #d9d4c7; }
-        th { padding: 10px 6px 10px 0; }
-        .num { text-align: right; white-space: nowrap; }
-        .muted { color: #5d6b70; font-size: 14px; }
-        .box { border: 1px solid #d9d4c7; border-radius: 10px; padding: 10px 12px; margin: 12px 0; }
+        th, td { padding: 2px 6px; text-align: left; border-top: 1px solid var(--line); }
+        th:first-child, td:first-child { padding-left: 14px; }
+        th:last-child, td:last-child { padding-right: 14px; }
+        th { padding-top: 10px; padding-bottom: 10px; border-top: 0; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+        .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        td.num { font-weight: 600; }
+        .muted { color: var(--muted); font-size: 14px; }
         fieldset { border: 0; padding: 0; margin: 0; }
         legend { font-weight: 600; padding: 0; margin-bottom: 4px; }
         label { display: flex; align-items: center; gap: 10px; min-height: 44px; }
-        input[type=radio] { width: 22px; height: 22px; flex: 0 0 auto; margin: 0; }
-        button { min-height: 44px; padding: 0 16px; border: 1px solid #3D5A63; border-radius: 8px; background: #3D5A63; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
-        .tag { padding: 1px 6px; border-radius: 4px; background: #ffe2b8; color: #5c3600; font-size: 13px; font-weight: 600; }
+        input[type=radio] { width: 22px; height: 22px; flex: 0 0 auto; margin: 0; accent-color: var(--brand); }
+        button { min-height: 44px; margin-top: 4px; padding: 0 16px; border: 1px solid var(--brand); border-radius: 10px; background: var(--brand); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+        .tag { padding: 2px 6px; border-radius: 4px; background: #ffe2b8; color: #5c3600; font-size: 12px; font-weight: 700; text-transform: uppercase; vertical-align: 3px; }
     </style>
 </head>
 <body>
+<div class="page">
     <div class="bar nav">
         <a href="{% url 'cvet:app' %}">‹ C-vet</a>
         <a href="{% url 'cvet:bill_export' %}">Download all as a CSV file</a>
     </div>
     <h1>Bills · {{ practice.name }} {% if test_mode %}<span class="tag">test bills</span>{% endif %}</h1>
     {% if link %}
-    <div class="box">
+    <div class="box pad">
         <form method="post" action="{% url 'cvet:bill_settings' %}">
             {% csrf_token %}
             <fieldset>
-                <legend>When to bill the yard</legend>
+                <legend>When to make the bills, for every client</legend>
                 <label><input type="radio" name="bill_when" value="visit"{% if link.bill_when == 'visit' %} checked{% endif %}> After each visit, when the vet taps Finish visit</label>
                 <label><input type="radio" name="bill_when" value="month"{% if link.bill_when == 'month' %} checked{% endif %}> Once a month, on the 1st, for the month before</label>
                 <button type="submit">Save</button>
@@ -54,6 +62,7 @@
     </div>
     {% endif %}
     {% if bills %}
+    <div class="box">
     <table>
         <tr><th>Bill</th><th>Date</th><th>To</th><th class="num">Total</th></tr>
         {% for bill in bills %}
@@ -65,8 +74,10 @@
         </tr>
         {% endfor %}
     </table>
+    </div>
     {% else %}
     <p class="muted">No bills yet. A bill is made when a visit is finished and all of its notes are sent, or once a month.</p>
     {% endif %}
+</div>
 </body>
 </html>
