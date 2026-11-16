@@ -3,15 +3,13 @@
 {% block title %}C-vet set-up - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-lg mx-auto space-y-6">
+<div class="max-w-lg mx-auto space-y-4 settings-page">
+    {% include 'includes/settings_back.html' with group='set-cvet' %}
 
     <div class="page-header">
         <div>
             <h1 class="page-title">C-vet set-up</h1>
             <p class="page-subtitle">The vet practice, its logins, and what it can see.</p>
-        </div>
-        <div class="flex items-center gap-3">
-            <a href="{% url 'app_settings' %}#people" class="btn-secondary">Back to settings</a>
         </div>
     </div>
 

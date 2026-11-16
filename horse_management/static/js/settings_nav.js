@@ -12,11 +12,16 @@
  *      back to the settings page (edit a rate, add a user) returns you to
  *      where you were;
  *   3. else the first.
+ *
+ * Groups of rows that fold (a site and its locations) stay open in this
+ * browser tab: Archive and Delete reload the page, and the site the reader
+ * was working in must not close under them.
  */
 (function () {
     'use strict';
 
     var STORE_KEY = 'cgate:settings-section';
+    var FOLDS_KEY = 'cgate:settings-folds';
 
     // `ids`: the groups on the page, in order. `hashOwner`: the group that
     // holds the element the hash names (or ''). `stored`: the last group
@@ -38,7 +43,45 @@
         try { window.sessionStorage.setItem(STORE_KEY, id); } catch (err) { /* private mode */ }
     }
 
+    // The open folds, as a list of keys. `raw` is what the store holds.
+    function parseFolds(raw) {
+        try {
+            var list = JSON.parse(raw || '[]');
+            return Array.isArray(list) ? list.filter(function (key) { return typeof key === 'string'; }) : [];
+        } catch (err) { return []; }
+    }
+
+    // The list after one fold opens or closes. No key is held twice.
+    function withFold(list, key, open) {
+        var rest = list.filter(function (item) { return item !== key; });
+        return open ? rest.concat([key]) : rest;
+    }
+
+    function readFolds() {
+        try { return parseFolds(window.sessionStorage.getItem(FOLDS_KEY)); } catch (err) { return []; }
+    }
+
+    function writeFolds(list) {
+        try { window.sessionStorage.setItem(FOLDS_KEY, JSON.stringify(list)); } catch (err) { /* private mode */ }
+    }
+
     function register(Alpine) {
+        // On a <details data-fold-key="...">. The page decides if a fold
+        // starts open; one the reader opened in this tab opens again.
+        Alpine.data('settingsFold', function () {
+            return {
+                init: function () {
+                    var el = this.$el;
+                    var key = el.dataset.foldKey;
+                    if (!key) return;
+                    if (readFolds().indexOf(key) !== -1) el.open = true;
+                    el.addEventListener('toggle', function () {
+                        writeFolds(withFold(readFolds(), key, el.open));
+                    });
+                }
+            };
+        });
+
         Alpine.data('settingsSections', function () {
             return {
                 current: '',
@@ -83,7 +126,7 @@
     }
 
     if (typeof module !== 'undefined' && module.exports) {
-        module.exports = { pickSection: pickSection };
+        module.exports = { pickSection: pickSection, parseFolds: parseFolds, withFold: withFold };
     }
     if (typeof document !== 'undefined') {
         document.addEventListener('alpine:init', function () { register(window.Alpine); });

@@ -1,0 +1,14 @@
+{% comment %}
+The way back to Settings from a page opened from it.
+
+  {% include "includes/settings_back.html" with group="people" %}
+
+group - the Settings group to open: business, people, yard, billing, you
+        or data. Without it, Settings opens the group last used.
+{% endcomment %}
+<a href="{% url 'app_settings' %}{% if group %}#{{ group }}{% endif %}" class="settings-back tap-pad group">
+    <svg class="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+    </svg>
+    Settings
+</a>

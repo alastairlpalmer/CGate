@@ -133,6 +133,8 @@
     .btn-success { @apply bg-forest text-white hover:bg-forest-light focus:ring-sage shadow-xs; }
     .btn-record { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-btn bg-meadow text-white hover:bg-meadow-dark focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-meadow shadow-xs cursor-pointer active:scale-[0.97] touch-manipulation min-h-[44px] sm:min-h-0 transition-all duration-150; }
     .btn-ghost { @apply text-sage hover:text-charcoal hover:bg-light-sage focus:ring-sage; }
+    /* A button inside a card header or a row. */
+    .btn-sm { @apply px-2.5 py-1 text-xs gap-1 min-h-[36px] sm:min-h-0; }
     .btn-xs { @apply px-2 py-1 text-xs rounded-sm; }
     /* Icon-only action button — 44px touch target on mobile, compact on desktop */
     .btn-icon, .btn-icon-danger { @apply inline-flex items-center justify-center w-11 h-11 sm:w-8 sm:h-8 shrink-0 rounded-btn text-sage hover:text-charcoal hover:bg-light-sage active:bg-light-sage/70 transition-colors duration-100 touch-manipulation; }
@@ -440,54 +442,82 @@
     .list-card-actions { @apply relative z-10 flex items-center gap-0.5 shrink-0 -my-1.5 -mr-1.5; }
 
     /* ── Settings page ──────────────────────────────────────────────────
-       Settings is one long column of many unrelated sections. Four devices
-       keep it readable: band labels split the page into named groups, a
-       chip row jumps to each group, every card lists its items as divided
-       zebra rows instead of loose text, and a tinted sub-head marks a list
-       inside a list (the sites that hold locations). */
+       Settings is many unrelated lists. It is kept dense, like a table of
+       contents and its tables: a menu picks one group, each card is a
+       thin header over one-line rows, and row actions are plain words.
+       No avatars, stripes or tinted strips: each added shape made the page
+       longer and said nothing. `.settings-page` is on the page and on the
+       pages opened from it, so their headings match. */
 
-    /* Band label above each group of cards */
-    .settings-band { @apply flex items-center gap-3 pt-2; }
-    .settings-band-title { @apply text-[11px] font-semibold uppercase tracking-widest text-sage shrink-0; }
-    .settings-band-rule { @apply h-px flex-1 bg-light-sage; }
+    .settings-page .page-title { @apply text-xl lg:text-xl; }
+    .settings-page .page-subtitle { @apply mt-0.5 text-xs; }
+    .settings-page .section-header { @apply px-4 lg:px-4 py-2 min-h-[44px] gap-3; }
+    .settings-page .section-title { @apply text-sm; }
 
-    /* Jump-to chips under the page header */
-    .settings-jump { @apply flex flex-wrap gap-2; }
-    /* Settings in groups (static/js/settings_nav.js): a menu on the left
-       from lg, a row of chips above the group on a phone. */
-    .settings-layout { @apply flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8; }
-    .settings-nav { @apply flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 lg:sticky lg:top-24 lg:mx-0 lg:px-0 lg:w-52 lg:shrink-0 lg:flex-col lg:gap-0.5 lg:overflow-visible; scrollbar-width: none; }
+    /* The way back to Settings from a page opened from it. */
+    .settings-back { @apply inline-flex items-center gap-1 text-sm text-sage no-underline hover:text-forest transition-colors duration-100; }
+
+    /* Groups (static/js/settings_nav.js): a menu on the left from lg, a
+       row of chips above the group on a phone. Under the open group the
+       menu lists its cards, so a card far down the page is one click away. */
+    .settings-layout { @apply flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-6; }
+    .settings-nav { @apply flex gap-1.5 overflow-x-auto -mx-4 px-4 pb-1 lg:sticky lg:top-24 lg:mx-0 lg:px-0 lg:w-44 lg:shrink-0 lg:flex-col lg:gap-px lg:overflow-visible; scrollbar-width: none; }
     .settings-nav::-webkit-scrollbar { display: none; }
-    .settings-nav-link { @apply inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-sage/30 bg-white px-3 py-1.5 text-sm font-medium text-charcoal-light no-underline min-h-[40px] hover:bg-light-sage lg:rounded-btn lg:border-transparent lg:bg-transparent lg:px-3 lg:py-2; }
+    .settings-nav-link { @apply inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-sage/30 bg-white px-3 text-[13px] font-medium text-charcoal-light no-underline min-h-[36px] hover:bg-light-sage lg:rounded-btn lg:border-transparent lg:bg-transparent lg:px-2.5 lg:min-h-[30px]; }
     .settings-nav-link.is-active { @apply border-forest bg-forest/[0.06] text-forest lg:border-transparent lg:bg-forest/[0.08]; }
-    .settings-panels { @apply min-w-0 flex-1 space-y-8; }
-    .settings-save-bar { @apply flex items-center gap-3 px-5 py-4 border-t border-light-sage bg-white; }
+    .settings-nav-sub { @apply hidden lg:flex lg:flex-col lg:mb-1.5 lg:ml-2.5 lg:border-l lg:border-light-sage; }
+    .settings-nav-sublink { @apply block px-2.5 py-1 text-xs text-sage no-underline hover:text-forest; }
+    /* gap, not space-y: a hidden group before the open one must add no
+       space, so the first card lines up with the menu. */
+    .settings-panels { @apply min-w-0 flex-1 flex flex-col gap-6; }
+    /* The margin leaves the page heading (and the chips on a phone) in
+       view when an address opens a group. */
+    .settings-group { @apply flex flex-col gap-3 scroll-mt-48 lg:scroll-mt-40; }
+    .settings-group > .card { @apply scroll-mt-24; }
+
+    .settings-save-bar { @apply flex items-center gap-3 px-4 py-2.5 border-t border-light-sage bg-white rounded-b-card; }
     .settings-save-bar.is-dirty { @apply sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] lg:bottom-0 z-20 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]; }
-    .settings-jump-link { @apply inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium text-forest bg-white border border-sage/30 no-underline hover:bg-light-sage hover:border-sage/50 transition-colors duration-100; }
+    .settings-fields { @apply px-4 py-3 grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2; }
+    .settings-label { @apply text-xs font-medium text-charcoal-light; }
 
-    /* Rows inside a settings card. The list sits flush to the card edges and
-       stripes on even rows, so a card of 12 locations still scans. */
+    /* Rows inside a card. From sm the name and its detail share one line,
+       so a list of 20 locations is 20 lines, not 40. */
     .settings-rows { @apply divide-y divide-light-sage; }
-    .settings-row { @apply flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-5 py-3 transition-colors duration-100; }
-    .settings-row:nth-child(even) { @apply bg-parchment/60; }
+    .settings-row { @apply flex flex-wrap sm:flex-nowrap items-center justify-between gap-x-3 gap-y-0.5 px-4 py-1.5 min-h-[40px]; }
+    .settings-row-main { @apply min-w-0 flex flex-col sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-3; flex: 1 1 8rem; }
+    .settings-row-main > * { @apply min-w-0; }
     .settings-row-title { @apply text-sm font-medium text-charcoal; }
-    .settings-row-meta { @apply text-xs text-sage mt-0.5; }
+    .settings-row-meta { @apply text-xs text-sage; }
     /* Warm flag on a row that needs the reader to do something first */
-    .settings-row-flag { @apply text-xs text-saddle mt-0.5; }
+    .settings-row-flag { @apply text-xs text-saddle sm:basis-full; }
 
-    /* Sub-head band inside a card — a site heading over its locations */
-    .settings-subhead { @apply flex items-center justify-between gap-3 px-5 py-2.5 bg-light-sage/60 border-y border-light-sage; }
-    .settings-subhead-title { @apply flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-forest; }
+    /* A heading inside a card: a group of rows (a service category). */
+    .settings-subhead { @apply flex items-center justify-between gap-3 px-4 py-1.5 bg-parchment/60 border-y border-light-sage first:border-t-0; }
+    .settings-subhead-title { @apply flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-sage; }
 
-    /* Explanatory text that belongs to a whole card, on its own tinted strip */
-    .settings-note { @apply px-5 py-3 text-xs text-sage bg-parchment/50 border-b border-light-sage; }
-    .settings-empty { @apply px-5 py-8 text-center text-sm text-sage; }
+    /* A group of rows that opens and closes: a site and its locations.
+       static/js/settings_nav.js keeps the open ones open in this tab. */
+    .settings-fold { @apply border-b border-light-sage last:border-b-0; }
+    .settings-fold > summary { @apply flex items-center gap-2 px-4 py-1.5 min-h-[40px] cursor-pointer list-none select-none hover:bg-parchment/60; }
+    .settings-fold > summary::-webkit-details-marker { display: none; }
+    .settings-fold > summary:focus-visible { @apply outline-2 -outline-offset-2 outline-forest; }
+    .settings-fold[open] > summary { @apply bg-parchment/60 border-b border-light-sage; }
+    .settings-fold-chevron { @apply w-3.5 h-3.5 shrink-0 text-sage transition-transform duration-100; }
+    .settings-fold[open] > summary .settings-fold-chevron { @apply rotate-90; }
+    .settings-fold-title { @apply text-sm font-semibold text-charcoal truncate; }
+    .settings-fold-count { @apply text-xs text-sage shrink-0; }
+    .settings-fold .settings-row { @apply pl-9; }
 
-    /* Row actions — small outlined buttons, not bare text links, so the
-       target is obvious and large enough to tap */
-    .settings-action, .settings-action-danger { @apply inline-flex items-center justify-center gap-1 min-h-[38px] sm:min-h-[32px] px-2.5 rounded-btn border border-sage/30 bg-white text-xs font-medium text-forest no-underline hover:bg-light-sage hover:border-sage/50 active:scale-[0.97] focus:outline-hidden focus:ring-2 focus:ring-sage focus:ring-offset-1 transition-all duration-100 cursor-pointer touch-manipulation; }
-    .settings-action-danger { @apply text-error-red border-error-red/25 hover:bg-error-red-50 hover:border-error-red/40 focus:ring-error-red; }
-    .settings-actions { @apply flex flex-wrap items-center justify-end gap-2 shrink-0; }
+    /* One line of help for a whole card. */
+    .settings-note { @apply px-4 py-1.5 text-xs text-sage border-b border-light-sage; }
+    .settings-empty { @apply px-4 py-4 text-sm text-sage; }
+
+    /* Row actions: plain words with a hover ground. Tall enough to tap on
+       a phone, the height of the text line on a desktop. */
+    .settings-action, .settings-action-danger { @apply inline-flex items-center justify-center min-h-[36px] sm:min-h-[26px] px-2 rounded-btn text-xs font-medium text-forest no-underline bg-transparent hover:bg-light-sage focus:outline-hidden focus-visible:ring-2 focus-visible:ring-sage transition-colors duration-100 cursor-pointer touch-manipulation; }
+    .settings-action-danger { @apply text-error-red hover:bg-error-red-50 focus-visible:ring-error-red; }
+    .settings-actions { @apply flex items-center justify-end gap-0.5 shrink-0 -mr-2; }
+    .settings-row-state { @apply text-xs text-sage whitespace-nowrap; }
 
     /* Checkbox rendered as a switch. The real input stays in the DOM so the
        form posts unchanged; the track that follows it draws the control.

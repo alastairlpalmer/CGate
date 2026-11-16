@@ -3,7 +3,8 @@
 {% block title %}{% if object %}Edit Service{% else %}Add Service{% endif %} - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-lg mx-auto space-y-6">
+<div class="max-w-lg mx-auto space-y-4 settings-page">
+    {% include 'includes/settings_back.html' with group='services' %}
 
     <div class="page-header">
         <div>

@@ -27,7 +27,7 @@ from ..boundary_import import area_hectares
 from ..geo import coords_from_link, site_distance_warning
 from ._next import safe_next
 from ._popup import PopupFormMixin, is_popup_request, popup_saved_response
-from ..permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
+from ..permissions import LEVEL_VIEW, FeatureAccessMixin, SettingsReturnMixin, feature_required
 from ..models import Horse, Location, LocationUsagePeriod, Placement, SiteSettings, Stable
 
 # Chart/legend colour per usage type — reuses the established design palette.
@@ -773,8 +773,9 @@ class BarnCreateView(LocationCreateView):
         return response
 
 
-class LocationUpdateView(LocationFormViewMixin, FeatureAccessMixin, UpdateView):
+class LocationUpdateView(SettingsReturnMixin, LocationFormViewMixin, FeatureAccessMixin, UpdateView):
     feature = 'locations'
+    settings_group = 'set-locations'
     model = Location
     form_class = LocationForm
     template_name = 'locations/location_form.html'
@@ -792,6 +793,8 @@ class LocationUpdateView(LocationFormViewMixin, FeatureAccessMixin, UpdateView):
         return context
 
     def get_success_url(self):
+        if self.opened_from_settings():
+            return self.settings_url()
         return reverse_lazy('location_detail', kwargs={'pk': self.object.pk})
 
     def form_valid(self, form):

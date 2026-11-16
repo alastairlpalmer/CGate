@@ -3,7 +3,8 @@
 {% block title %}{% if object %}Edit {{ object.name }}{% elif adding_barn %}Add Barn{% else %}Add Location{% endif %} - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6">
+<div class="max-w-2xl mx-auto space-y-6{% if from_settings %} settings-page{% endif %}">
+    {% if from_settings %}{% include 'includes/settings_back.html' with group=settings_group %}{% endif %}
 
     <!-- Page Header -->
     <div class="page-header">
@@ -62,7 +63,7 @@
 
             <!-- Footer -->
             <div class="form-footer">
-                <a href="{% if object %}{% url 'location_detail' object.pk %}{% else %}{% url 'location_list' %}{% endif %}" class="btn-secondary">Cancel</a>
+                <a href="{% if from_settings %}{% url 'app_settings' %}#{{ settings_group }}{% elif object %}{% url 'location_detail' object.pk %}{% else %}{% url 'location_list' %}{% endif %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% elif adding_barn %}Add Barn{% else %}Add Location{% endif %}
                 </button>

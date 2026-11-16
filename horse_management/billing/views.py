@@ -10,7 +10,7 @@ from operator import attrgetter
 from django.contrib import messages
 
 from core.permissions import (
-    LEVEL_VIEW, FeatureAccessMixin, deny, feature_required, has_feature_access,
+    LEVEL_VIEW, FeatureAccessMixin, SettingsReturnMixin, deny, feature_required, has_feature_access,
 )
 from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_response
 from django.core.paginator import Paginator
@@ -377,16 +377,18 @@ class ServiceProviderListView(FeatureAccessMixin, ListView):
         return context
 
 
-class ServiceProviderCreateView(FeatureAccessMixin, CreateView):
+class ServiceProviderCreateView(SettingsReturnMixin, FeatureAccessMixin, CreateView):
     feature = 'settings'
+    settings_group = 'set-providers'
     model = ServiceProvider
     form_class = ServiceProviderForm
     template_name = 'billing/provider_form.html'
     success_url = reverse_lazy('provider_list')
 
 
-class ServiceProviderUpdateView(FeatureAccessMixin, UpdateView):
+class ServiceProviderUpdateView(SettingsReturnMixin, FeatureAccessMixin, UpdateView):
     feature = 'settings'
+    settings_group = 'set-providers'
     model = ServiceProvider
     form_class = ServiceProviderForm
     template_name = 'billing/provider_form.html'
