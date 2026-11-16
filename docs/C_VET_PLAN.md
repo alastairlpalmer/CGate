@@ -105,7 +105,7 @@ What is reused from the farrier page (`FARRIER_PAGE_PLAN.md`), as a pattern and 
 
 The horse list is the list of one yard, and its first line is the yard's name and its number of horses, for example "Palmer Farm · 24 horses". The visit and its bill belong to that yard.
 
-Today C-gate holds one yard, so C-vet opens on that yard's horses. When a practice has more than one yard in C-vet, the app opens on the list of yards, and a tap on a yard opens its horses. That needs C-gate to hold more than one yard, or C-vet to hold a yard of its own that is not in C-gate (section 6, Later).
+C-vet opens on the list of the practice's clients. A tap on a client opens its horses. The C-gate yard is one client. C-vet holds the other clients and their horses itself; C-gate does not see them (section 7g).
 
 ### What works with no signal
 
@@ -135,7 +135,7 @@ C-vet is used with one hand, outdoors, between horses. Every screen in every pha
 | Rule | Limit |
 |---|---|
 | Open the app, from the tap on the icon to the horse list | Under 1 second, with or without a signal |
-| Page files (script, styles) | Under 40 KB as the phone downloads them (compressed), and under 150 KB as written (decision 27). No web fonts, no framework. Now 27 KB and 102 KB. |
+| Page files (script, styles) | Under 40 KB as the phone downloads them (compressed), and under 150 KB as written (decision 27). No web fonts, no framework. Now 38 KB and 150 KB: at the limit after section 7g. The next change to the app must make the files smaller, or decision 27 must change. |
 | Horses on the first screen of a phone | 8 or more |
 | Tap targets | 44 px or more |
 | A tap shows its result | At once. No screen waits for the network. The app reads and writes the phone's storage, and the sync runs behind it. |
@@ -483,6 +483,55 @@ Left as they are, on purpose:
 - **Questions use the phone's own Yes/No box** ("Finish this visit?"). It is plain, and it works with no signal.
 
 Not reviewed here: the screens on a real iPhone in sunlight, with gloves or with wet hands. That is the phone test.
+
+## 7g. Clients first, the item list, and the record of a visit
+
+Asked for after the first use of the practice: start from the client, make the visit summary short, read a visit back after it is sent, and choose items from a list with a search.
+
+### The screens
+
+| Screen | What the vet does |
+|---|---|
+| **Clients** | The first screen. Each client: name, type (livery yard, stud, racing yard, competition yard, private owner, other), number of horses, and "Visit open" or the number of horses with something due. **Add client**. The search finds clients and horses. |
+| **A client** | Its horses, as on the old Horses screen: due first, search, **Select** for one item on many horses. A line for the open visit. **Add horse** and **Edit** for a client of the practice's own. **Visit history** shows this client's visits. |
+| **A horse** | As before. **Add item** opens the item list. The history shows each note with its words, and a button to play its recording or show its photo. The practice's record of the horse loads by itself when there is a signal. |
+| **The item list** | A search, the categories, and the prices under their categories. In a note, the list stays open and counts what was added. **Other item** for a line that is not on the price list. |
+| **Visits** | One open visit for each client, then the finished visits. Each visit is one line: client, date, horses, total, bill number. A tap unfolds it: each horse is one line, and a tap unfolds its items, notes, photo and recording. **Finish visit** is in the open visit. |
+| **Prices** | As before, under categories. A price has a **Category**. |
+| **More** | Sync, download, bills, the details of this phone, sign out, clear. |
+
+### The records
+
+| Record | What it holds |
+|---|---|
+| `Client` | One client of a practice. The practice's own list. One client has `yard_link`: the C-gate yard. It is made by itself, and C-vet does not change it. |
+| `ClientHorse` | A horse of a client that C-gate does not hold: name, owner (a name only), microchip, passport. |
+| `Visit.practice_client`, `Bill.practice_client` | The client of the visit and of the bill. Empty on a record from before this change: that was the C-gate yard. |
+| `ClinicalNote.client_horse` | The horse, when it is a `ClientHorse`. |
+| `PriceItem.category` | The heading of the price in the item list. |
+
+| Address | What it does |
+|---|---|
+| `GET /c-vet/api/yard/` | Now also: the clients, and the horses of each one. It works with no link to the yard: the practice can have clients of its own only. |
+| `POST /c-vet/api/clients/`, `POST /c-vet/api/horses/` | Save one client, or one horse of a client of the practice's own. Stored once for each id from the phone. |
+| `GET /c-vet/api/visits/`, `GET /c-vet/api/visits/<id>/` | The practice's visits, and one visit with its notes and files. |
+| `GET /c-vet/api/notes/?client_horse=<id>` | The notes of one horse of a client of the practice's own. |
+
+### Rules that tests hold (`cvet/tests_clients.py`)
+
+- **A visit for a client of the practice's own writes nothing at the yard.** No vet record, no charge, no cost, no email. The bill goes to the client.
+- **Each client has its own visit and its own bill.**
+- **A client and a horse can be made with no signal.** The phone keeps them and sends them before the notes. If the note arrives first, the server makes the client and the horse from the note.
+- **The yard client and its horses are not changed from the phone.**
+- **Another practice reads none of it:** clients, horses, visits.
+- **The client list is the practice's.** It is not in the Django admin, and no code outside `cvet/` names it.
+
+### What this change does not do
+
+- **A bill is not sent by email to a client of the practice's own.** The practice prints it or saves it from the Bills page.
+- **One setting for when bills are made** (each visit, or monthly) for all clients, on the Bills page.
+- **A second yard that uses C-gate.** C-gate holds one yard.
+- **Old notes with no signal.** A sent visit needs a signal to show its photos and recordings. The phone gives its copy back when the server has the file (sync rule 3).
 
 ## 8. The test on Tim's phone
 

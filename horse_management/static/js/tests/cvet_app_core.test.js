@@ -308,3 +308,87 @@ test('sortHorses: due horses first, most overdue at the top, then by name', () =
 test('outcome: a visit the server does not know is dropped from the queue, not retried for ever', () => {
     assert.equal(core.outcome(404), 'failed');
 });
+
+// ── Clients, the item list and the record of a visit (plan, section 7g) ──
+
+test('unsentText: a client or a horse that waits on the phone is said too', () => {
+    assert.equal(core.unsentText(0, 0, 2), 'Changes not sent');
+    assert.equal(core.unsentText(0, 1, 2), 'Finish not sent');
+    assert.equal(core.unsentText(2, 0, 2), '2 notes not sent');
+    assert.equal(core.unsentText(0, 0, 0), 'All sent');
+});
+
+test('matchesClient: every typed word is in the name, the contact or the kind', () => {
+    const client = { name: 'Marsh Stud', contact_name: 'Sam Marsh', kind: 'stud' };
+    assert.ok(core.matchesClient(client, ''));
+    assert.ok(core.matchesClient(client, 'sam stud'));
+    assert.ok(!core.matchesClient(client, 'racing'));
+    assert.equal(core.kindLabel('racing'), 'Racing yard');
+    assert.equal(core.kindLabel('nothing'), 'Client');
+});
+
+test('groupPrices: active prices under their categories, Other last, with a search', () => {
+    const prices = [
+        { id: 'a', name: 'Sedation', category: '', isActive: true },
+        { id: 'b', name: 'Flu/Tet booster', category: 'Vaccination', isActive: true },
+        { id: 'c', name: 'Tetanus', category: 'Vaccination', isActive: true },
+        { id: 'd', name: 'Old item', category: 'Vaccination', isActive: false },
+        { id: 'e', name: 'Rasp', category: 'Dental', isActive: true },
+    ];
+    const shape = (groups) => groups.map((group) => group.category + ': ' + group.items.map((item) => item.name).join(', '));
+    assert.deepEqual(shape(core.groupPrices(prices)), ['Dental: Rasp', 'Vaccination: Flu/Tet booster, Tetanus', 'Other: Sedation']);
+    assert.deepEqual(shape(core.groupPrices(prices, 'tet')), ['Vaccination: Flu/Tet booster, Tetanus']);
+    assert.deepEqual(shape(core.groupPrices(prices, 'vacc flu')), ['Vaccination: Flu/Tet booster']);
+    assert.deepEqual(shape(core.groupPrices(prices, '', 'Other')), ['Other: Sedation']);
+    assert.deepEqual(core.priceCategories(prices), ['Dental', 'Vaccination', 'Other']);
+});
+
+test('a note reads the same from the phone and from the practice record', () => {
+    const entry = {
+        clientId: 'n1', visitId: 'v1', horseId: 7, horseName: 'Willow', note: 'Mild heat.', followUp: '2026-11-30',
+        lines: [{ description: 'Sedation', qty: 2, unitPence: 2750, vatRate: '20.00' }],
+        photo: null, photoId: 'p1', photoBytes: 900, audio: { id: 'a1', buffer: 1, type: 'audio/mp4' }, audioBytes: 5000,
+        createdAt: '2026-11-16T10:00:00.000Z', status: 'pending', attempts: 1,
+    };
+    const local = core.noteFromEntry(entry, '/c-vet/api/files/');
+    assert.deepEqual(local.lines, [{ description: 'Sedation', qty: 2, pence: 5500, vatRate: '20.00' }]);
+    // The photo was sent: it is read from the server. The recording waits on the phone.
+    assert.deepEqual(local.files.map((file) => [file.kind, file.url, !!file.local]),
+        [['photo', '/c-vet/api/files/p1/', false], ['audio', '', true]]);
+    const record = core.noteFromServer({
+        id: 'n1', horse_id: 7, client_horse_id: null, horse_name: 'Willow', seen_on: '2026-11-16',
+        written_at: '2026-11-16T10:00:00+00:00', author: 'Tim Hill', findings: 'Mild heat.', follow_up_date: '2026-11-30',
+        lines: [{ description: 'Sedation', quantity: '2', total: '55.00', vat_rate: '20.00' }],
+        files: [{ kind: 'audio', bytes: 5000, url: '/c-vet/api/files/a1/' }],
+    });
+    assert.equal(record.horseKey, local.horseKey);
+    assert.deepEqual(record.lines, local.lines);
+    assert.equal(record.status, 'sent');
+    assert.equal(record.files[0].url, '/c-vet/api/files/a1/');
+});
+
+test('groupNotes and horseLine: one folded line for each horse of a visit', () => {
+    const note = (horse, when, extra) => Object.assign({
+        horseKey: horse, horseName: horse, when, lines: [], text: '', files: [], followUp: '', status: 'sent',
+    }, extra);
+    const rows = core.groupNotes([
+        note('Clover', '2026-11-16T11:00:00Z', { lines: [{ pence: 6500 }], status: 'pending' }),
+        note('Willow', '2026-11-16T10:00:00Z', { lines: [{ pence: 6000 }, { pence: 2750 }], text: 'Heat.', files: [{ kind: 'audio' }] }),
+        note('Willow', '2026-11-16T12:00:00Z', { files: [{ kind: 'photo' }], followUp: '2026-11-30' }),
+    ]);
+    assert.deepEqual(rows.map((row) => [row.horseName, row.total, row.notes.length]), [['Willow', 8750, 2], ['Clover', 6500, 1]]);
+    assert.equal(core.horseLine(rows[0]), '2 items \u00b7 note \u00b7 photo \u00b7 voice');
+    assert.equal(core.horseLine(rows[1]), '1 item \u00b7 not sent yet');
+    assert.equal(rows[0].followUp, '2026-11-30');
+});
+
+test('localVisits: the visits on the phone, from its notes, newest first', () => {
+    const visits = core.localVisits([
+        { visitId: 'v1', ownerId: 'c1', ownerName: 'Palmer Farm', createdAt: '2026-11-15T10:00:00' },
+        { visitId: 'v2', ownerId: 'c2', ownerName: 'Marsh Stud', createdAt: '2026-11-16T10:00:00' },
+        { visitId: 'v1', ownerId: 'c1', ownerName: 'Palmer Farm', createdAt: '2026-11-15T11:00:00' },
+        { visitId: '', createdAt: '2026-11-16T10:00:00' },
+    ]);
+    assert.deepEqual(visits.map((visit) => [visit.id, visit.clientName, visit.day, visit.entries.length]),
+        [['v2', 'Marsh Stud', '2026-11-16', 1], ['v1', 'Palmer Farm', '2026-11-15', 2]]);
+});

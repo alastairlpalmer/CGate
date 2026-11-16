@@ -96,7 +96,9 @@ class BillToTheYardTests(BillingCase):
         )
         data = self.finish(visit_id)
         bill = Bill.objects.get()
-        self.assertEqual(data['bills'], [{'number': 'CV-0001', 'to': 'Palmer Farm', 'total': '120.00'}])
+        self.assertEqual(data['bills'], [{
+            'number': 'CV-0001', 'to': 'Palmer Farm', 'total': '120.00', 'url': f'/c-vet/bills/{bill.pk}/',
+        }])
         self.assertEqual((bill.number, bill.bill_to, bill.to_name), ('CV-0001', 'yard', 'Palmer Farm'))
         self.assertEqual((bill.total_inc_vat, bill.total_vat, bill.total_ex_vat),
                          (Decimal('120.00'), Decimal('20.00'), Decimal('100.00')))

@@ -8,7 +8,12 @@ One page, one service worker and a small JSON API:
 * ``api_session`` says who is signed in and gives a CSRF token. The page
   cannot read the token from the cookie (``CSRF_COOKIE_HTTPONLY``), and a
   token printed in a stored page would go stale.
-* ``api_yard`` is the horse list the phone stores before a visit.
+* ``api_yard`` is what the phone stores before a visit: the practice's
+  clients, their horses and the price list.
+* ``api_clients`` and ``api_horses`` save one client, or one horse of a
+  client that C-gate does not hold.
+* ``api_visits`` lists the practice's visits; ``api_visit`` gives one,
+  with its notes.
 * ``api_notes`` takes one clinical note, with its photo and recording,
   and stores it once however many times it is sent. A GET lists the
   practice's notes for one horse.
@@ -57,7 +62,7 @@ from core.templatetags.cache_bust import _VERSION, static_v
 
 from . import access, billing, yard
 from .access import cvet_enabled, practice_api, practice_page
-from .models import ClinicalFile, ClinicalNote, NoteLine, PriceItem, SyncReceipt, Visit
+from .models import ClinicalFile, ClinicalNote, Client, ClientHorse, NoteLine, PriceItem, SyncReceipt, Visit
 
 NOTE_MAX_CHARS = 5000
 PHOTO_MAX_BYTES = 8 * 1024 * 1024
@@ -67,6 +72,7 @@ CLIENT_INFO_MAX_CHARS = 4000
 # only stops a faulty phone that sends in a loop.
 NOTES_PER_HOUR = 300
 NOTES_LISTED = 50
+VISITS_LISTED = 100
 LINES_PER_NOTE = 50
 PRICE_MAX = Decimal('99999.99')
 QUANTITY_MAX = Decimal('999')
@@ -127,8 +133,12 @@ def app(request):
             'yard_url': reverse('cvet:api_yard'),
             'notes_url': reverse('cvet:api_notes'),
             'prices_url': reverse('cvet:api_prices'),
-            # The phone adds "<visit id>/finish/".
-            'visits_url': f"{reverse('cvet:app')}api/visits/",
+            'clients_url': reverse('cvet:api_clients'),
+            'horses_url': reverse('cvet:api_horses'),
+            # The phone adds "<visit id>/" or "<visit id>/finish/".
+            'visits_url': reverse('cvet:api_visits'),
+            # The phone adds "<file id>/".
+            'files_url': f"{reverse('cvet:app')}api/files/",
             'bills_url': reverse('cvet:bill_list'),
             'login_url': f"{reverse('login')}?next={reverse('cvet:app')}",
             'logout_url': reverse('logout'),
@@ -177,28 +187,28 @@ def api_session(request):
 @practice_api
 @require_GET
 def api_yard(request):
-    """The yard's horses, with what the vet needs to pick the right one.
+    """The practice's clients and their horses, with what the vet needs to pick the right one.
 
-    Identity, owner and field name are shared data (section 3 of the
-    plan), but only while the practice's link to the yard is open.
+    The C-gate yard is one client. Its horses (identity, owner and field
+    name) are shared data (section 3 of the plan), sent only while the
+    practice's link to the yard is open. Every other client and its
+    horses are the practice's own records.
     """
-    if access.open_link(request.practice) is None:
-        return JsonResponse({'error': 'no_yard_link'}, status=403)
-    horses = list(access.horses_for(request.practice).order_by('name'))
-    prime_current_owners(horses)
-    locations = yard.locations_by_horse(horses)
-    payers = yard.payers_by_horse(horses)
-    due = yard.due_by_horse(request.practice, horses)
-    link = access.open_link(request.practice)
-    return JsonResponse(dict(
-        _session_payload(request),
-        generated_at=timezone.now().isoformat(),
-        # The practice's client: the yard the vet is at, and who the
-        # bill for a visit goes to.
-        yard={'name': yard.yard_name(), 'bill_to': link.bill_to},
-        horses=[
+    practice = request.practice
+    link = access.open_link(practice)
+    horses = []
+    yard_client = None
+    if link is not None:
+        yard_client = yard.client_for(practice, link)
+        yard_horses = list(access.horses_for(practice).order_by('name'))
+        prime_current_owners(yard_horses)
+        locations = yard.locations_by_horse(yard_horses)
+        payers = yard.payers_by_horse(yard_horses)
+        due = yard.due_by_horse(practice, yard_horses)
+        horses = [
             {
                 'id': horse.pk,
+                'client_id': str(yard_client.client_id),
                 'name': horse.name,
                 'microchip': horse.microchip,
                 'passport': horse.passport_number,
@@ -212,13 +222,164 @@ def api_yard(request):
                 ],
                 'due': due.get(horse.pk, []),
             }
-            for horse in horses
-        ],
-        prices=[_price_payload(item) for item in access.prices_for(request.practice)],
+            for horse in yard_horses
+        ]
+    # The yard client of a link that has ended is not sent: the practice
+    # has no horses of it to show.
+    clients = [
+        client for client in access.clients_for(practice)
+        if not client.is_yard or client == yard_client
+    ]
+    own_horses = list(
+        access.client_horses_for(practice).filter(practice_client__in=[c for c in clients if not c.is_yard])
+        .select_related('practice_client').order_by('name')
+    )
+    own_due = yard.recheck_due_by_client_horse(practice, own_horses)
+    horses += [_client_horse_payload(horse, own_due.get(horse.pk, [])) for horse in own_horses]
+    return JsonResponse(dict(
+        _session_payload(request),
+        generated_at=timezone.now().isoformat(),
+        # The C-gate yard, and who the bill for a visit there goes to.
+        # None when the practice has no open link to it.
+        yard={'name': yard_client.name, 'bill_to': link.bill_to} if link is not None else None,
+        clients=[_client_payload(client, link) for client in clients],
+        horses=horses,
+        prices=[_price_payload(item) for item in access.prices_for(practice)],
         # The yard's own list of vaccinations. A price can be marked as
         # one of them; giving it then records the dose at the yard.
-        vaccination_types=yard.vaccination_types() if link.sends_vaccination_dates else [],
+        vaccination_types=yard.vaccination_types() if link is not None and link.sends_vaccination_dates else [],
     ))
+
+
+# ── Clients, and the horses C-gate does not hold ─────────────────────────
+
+def _client_payload(client, link=None):
+    return {
+        'id': str(client.client_id),
+        'name': client.name,
+        'kind': client.kind,
+        'contact_name': client.contact_name,
+        'email': client.email,
+        'phone': client.phone,
+        'address': client.address,
+        # The C-gate yard: its horses and its name come from C-gate, so
+        # the phone offers no change to them.
+        'is_yard': client.is_yard,
+        'bill_to': link.bill_to if client.is_yard and link is not None else 'yard',
+        'is_active': client.is_active,
+    }
+
+
+def _client_horse_payload(horse, due=()):
+    return {
+        'id': str(horse.client_id),
+        'client_id': str(horse.practice_client.client_id),
+        'name': horse.name,
+        'microchip': horse.microchip,
+        'passport': horse.passport,
+        'location': '',
+        'owner': horse.owner_name,
+        'payers': [],
+        'due': list(due),
+        # The practice's own record: the phone may change it.
+        'own': True,
+        'is_active': horse.is_active,
+    }
+
+
+def _text(request, name, maximum):
+    """A text field of a form, trimmed. None when it is too long."""
+    value = request.POST.get(name, '').strip()
+    return value if len(value) <= maximum else None
+
+
+@practice_api
+@require_POST
+def api_clients(request):
+    """Save one client: a new one, or a change to one of the practice's own.
+
+    The phone makes the id, so a save that is sent twice is one client.
+    """
+    client_id = _uuid(request.POST.get('id'))
+    if client_id is None:
+        return JsonResponse({'error': 'id_invalid'}, status=400)
+    fields = {
+        'name': _text(request, 'name', 200),
+        'contact_name': _text(request, 'contact_name', 200),
+        'email': _text(request, 'email', 254),
+        'phone': _text(request, 'phone', 50),
+        'address': _text(request, 'address', 1000),
+    }
+    if not fields['name'] or None in fields.values():
+        return JsonResponse({'error': 'name_invalid' if not fields['name'] else 'text_too_long'}, status=400)
+    kind = request.POST.get('kind', Client.Kind.YARD)
+    if kind not in Client.Kind.values:
+        return JsonResponse({'error': 'kind_invalid'}, status=400)
+    fields['kind'] = kind
+    fields['is_active'] = request.POST.get('is_active', 'true') != 'false'
+
+    existing = Client.objects.filter(client_id=client_id).first()
+    if existing is not None and existing.practice_id != request.practice.pk:
+        return JsonResponse({'error': 'id_in_use'}, status=409)
+    if existing is not None and existing.is_yard:
+        # The yard's name and details are C-gate's. C-vet does not change them.
+        return JsonResponse({'error': 'yard_client'}, status=409)
+    if existing is None:
+        try:
+            with transaction.atomic():
+                client = Client.objects.create(practice=request.practice, client_id=client_id, **fields)
+        except IntegrityError:
+            return JsonResponse({'error': 'id_in_use'}, status=409)
+        return JsonResponse(_client_payload(client), status=201)
+    for field, value in fields.items():
+        setattr(existing, field, value)
+    existing.save()
+    return JsonResponse(_client_payload(existing))
+
+
+@practice_api
+@require_POST
+def api_horses(request):
+    """Save one horse of a client that C-gate does not hold.
+
+    The horses of the C-gate yard are the yard's records: this endpoint
+    adds none and changes none (sync rule 1).
+    """
+    horse_id = _uuid(request.POST.get('id'))
+    if horse_id is None:
+        return JsonResponse({'error': 'id_invalid'}, status=400)
+    fields = {
+        'name': _text(request, 'name', 200),
+        'microchip': _text(request, 'microchip', 50),
+        'passport': _text(request, 'passport', 100),
+        'owner_name': _text(request, 'owner_name', 200),
+    }
+    if not fields['name'] or None in fields.values():
+        return JsonResponse({'error': 'name_invalid' if not fields['name'] else 'text_too_long'}, status=400)
+    fields['is_active'] = request.POST.get('is_active', 'true') != 'false'
+    client = access.clients_for(request.practice).filter(
+        client_id=_uuid(request.POST.get('client_id')), yard_link__isnull=True,
+    ).first()
+    if client is None:
+        return JsonResponse({'error': 'client_invalid'}, status=400)
+
+    existing = ClientHorse.objects.select_related('practice_client').filter(client_id=horse_id).first()
+    if existing is not None and existing.practice_id != request.practice.pk:
+        return JsonResponse({'error': 'id_in_use'}, status=409)
+    if existing is None:
+        try:
+            with transaction.atomic():
+                horse = ClientHorse.objects.create(
+                    practice=request.practice, practice_client=client, client_id=horse_id, **fields,
+                )
+        except IntegrityError:
+            return JsonResponse({'error': 'id_in_use'}, status=409)
+        return JsonResponse(_client_horse_payload(horse), status=201)
+    existing.practice_client = client
+    for field, value in fields.items():
+        setattr(existing, field, value)
+    existing.save()
+    return JsonResponse(_client_horse_payload(existing))
 
 
 # ── The price list ───────────────────────────────────────────────────────
@@ -227,6 +388,7 @@ def _price_payload(item):
     return {
         'id': str(item.client_id),
         'name': item.name,
+        'category': item.category,
         'price': f'{item.price_inc_vat:.2f}',
         'vat_rate': f'{item.vat_rate:.2f}',
         'is_active': item.is_active,
@@ -260,6 +422,9 @@ def api_prices(request):
     name = request.POST.get('name', '').strip()
     if not name or len(name) > 100:
         return JsonResponse({'error': 'name_invalid'}, status=400)
+    category = request.POST.get('category', '').strip()
+    if len(category) > 50:
+        return JsonResponse({'error': 'category_invalid'}, status=400)
     price = _decimal(request.POST.get('price', ''), PRICE_MAX)
     if price is None:
         return JsonResponse({'error': 'price_invalid'}, status=400)
@@ -279,7 +444,7 @@ def api_prices(request):
     if existing is not None and existing.practice_id != request.practice.pk:
         return JsonResponse({'error': 'id_in_use'}, status=409)
     fields = {
-        'name': name, 'price_inc_vat': price, 'vat_rate': vat_rate, 'is_active': is_active,
+        'name': name, 'category': category, 'price_inc_vat': price, 'vat_rate': vat_rate, 'is_active': is_active,
         'vaccination_type_id': vaccination_type_id,
     }
     if existing is None:
@@ -368,6 +533,7 @@ def _note_payload(note):
     return {
         'id': str(note.client_id),
         'horse_id': note.horse_id,
+        'client_horse_id': str(note.client_horse.client_id) if note.client_horse_id else None,
         'horse_name': note.horse_name,
         'seen_on': note.seen_on.isoformat(),
         'written_at': note.written_at.isoformat(),
@@ -411,13 +577,25 @@ def api_notes(request):
 
 
 def _list_notes(request):
-    """The practice's notes, newest first. ``?horse=<id>`` for one horse."""
-    notes = access.current_notes_for(request.practice).prefetch_related('files', 'lines')
+    """The practice's notes, newest first.
+
+    ``?horse=<id>`` for one horse of the C-gate yard; ``?client_horse=<id>``
+    for one horse of another client.
+    """
+    notes = (
+        access.current_notes_for(request.practice)
+        .select_related('client_horse').prefetch_related('files', 'lines')
+    )
     horse_id = request.GET.get('horse', '')
     if horse_id:
         if not horse_id.isdigit():
             return JsonResponse({'error': 'horse_invalid'}, status=400)
         notes = notes.filter(horse_id=int(horse_id))
+    if request.GET.get('client_horse'):
+        own_id = _uuid(request.GET['client_horse'])
+        if own_id is None:
+            return JsonResponse({'error': 'horse_invalid'}, status=400)
+        notes = notes.filter(client_horse__client_id=own_id)
     return JsonResponse({'notes': [_note_payload(note) for note in notes[:NOTES_LISTED]]})
 
 
@@ -443,23 +621,50 @@ def _duplicate_response(request, client_id):
     return JsonResponse(_receipt_payload(existing, 'duplicate'))
 
 
-def _visit_for(request, visit_id, seen_on):
+def _client_for(request, own_horse):
+    """(client, ok) for the note being stored.
+
+    The client the phone named, made here if the phone made it with no
+    signal and its own save has not arrived. With no client named (a
+    note from before C-vet had a client list): the C-gate yard, while
+    the link is open. ``ok`` is False for another practice's client id.
+    """
+    client_id = _uuid(request.POST.get('visit_client_id'))
+    if client_id is None:
+        if own_horse is not None:
+            return own_horse.practice_client, True
+        link = access.open_link(request.practice)
+        return (yard.client_for(request.practice, link) if link else None), True
+    client = Client.objects.filter(client_id=client_id).first()
+    if client is not None:
+        return (client, True) if client.practice_id == request.practice.pk else (None, False)
+    name = request.POST.get('client_name', '').strip()[:200] or 'Client'
+    try:
+        with transaction.atomic():
+            return Client.objects.create(practice=request.practice, client_id=client_id, name=name), True
+    except IntegrityError:
+        return access.clients_for(request.practice).filter(client_id=client_id).first(), True
+
+
+def _visit_for(request, visit_id, seen_on, client):
     """The visit this note belongs to, made on its first note."""
     if visit_id is None:
         return None
-    visit = Visit.objects.filter(client_id=visit_id).first()
+    visit = Visit.objects.select_related('practice_client').filter(client_id=visit_id).first()
     if visit is not None:
         # Another practice's visit id: store the note without a visit
         # rather than refuse it or join it to their visit.
         return visit if visit.practice_id == request.practice.pk else None
     link = access.open_link(request.practice)
+    at_yard = client is None or client.is_yard
     try:
         with transaction.atomic():
             return Visit.objects.create(
                 practice=request.practice, client_id=visit_id, author=request.user,
-                author_name=_user_name(request.user), date=seen_on,
-                yard_name=yard.yard_name() if link else '',
-                bill_to=link.bill_to if link else Visit._meta.get_field('bill_to').default,
+                author_name=_user_name(request.user), date=seen_on, practice_client=client,
+                yard_name=client.name if client else (yard.yard_name() if link else ''),
+                # Only the C-gate yard can be set to "bill each owner".
+                bill_to=link.bill_to if link and at_yard else Visit._meta.get_field('bill_to').default,
                 is_test=settings.CVET_TEST_MODE,
             )
     except IntegrityError:
@@ -551,7 +756,16 @@ def _store_note(request):
     horse_id = request.POST.get('horse_id', '')
     if horse_id.isdigit():
         horse = access.horses_for(request.practice).filter(pk=int(horse_id)).first()
-    horse_name = (horse.name if horse else request.POST.get('horse_name', ''))[:200]
+    # Or a horse of a client that C-gate does not hold: the practice's own record.
+    own_horse = None
+    own_horse_id = _uuid(request.POST.get('client_horse_id'))
+    if horse is None and own_horse_id is not None:
+        own_horse = (
+            access.client_horses_for(request.practice).select_related('practice_client')
+            .filter(client_id=own_horse_id).first()
+        )
+    known = horse or own_horse
+    horse_name = (known.name if known else request.POST.get('horse_name', ''))[:200]
     if not horse_name:
         return JsonResponse({'error': 'horse_missing'}, status=400)
     # Who pays, decided here and now from the yard's records, not from
@@ -586,16 +800,30 @@ def _store_note(request):
     if not findings.strip() and not files and not lines:
         return JsonResponse({'error': 'note_empty'}, status=400)
 
-    visit = _visit_for(request, _uuid(request.POST.get('visit_id')), seen_on)
+    client, client_ok = _client_for(request, own_horse)
+    if client is not None and not client.is_yard and horse is not None:
+        # A visit for another client never links to a horse of the C-gate yard.
+        horse, known = None, own_horse
+    if own_horse is None and own_horse_id is not None and client is not None and not client.is_yard:
+        # The phone made this horse with no signal and its own save has
+        # not arrived. Make it now, so the note keeps its horse.
+        try:
+            with transaction.atomic():
+                own_horse = ClientHorse.objects.create(
+                    practice=request.practice, practice_client=client, client_id=own_horse_id, name=horse_name,
+                )
+        except IntegrityError:
+            own_horse = None
+    visit = _visit_for(request, _uuid(request.POST.get('visit_id')), seen_on, client) if client_ok else None
     is_test = settings.CVET_TEST_MODE
     stored = []
     try:
         with transaction.atomic():
             note = ClinicalNote.objects.create(
                 practice=request.practice, visit=visit, client_id=client_id,
-                horse=horse, horse_name=horse_name,
-                horse_microchip=horse.microchip if horse else '',
-                horse_passport=horse.passport_number if horse else '',
+                horse=horse, client_horse=own_horse, horse_name=horse_name,
+                horse_microchip=known.microchip if known else '',
+                horse_passport=(horse.passport_number if horse else own_horse.passport) if known else '',
                 author=request.user, author_name=_user_name(request.user),
                 seen_on=seen_on, written_at=written_at, findings=findings,
                 follow_up_date=follow_up_date, payers=payers, is_test=is_test,
@@ -662,26 +890,79 @@ def api_file(request, client_id):
 
 # ── Visits ───────────────────────────────────────────────────────────────
 
-def _visit_payload(visit):
-    lines = access.lines_for(visit.practice).filter(note__visit=visit)
-    total = sum((line.total_inc_vat for line in lines), Decimal('0.00'))
+def _bill_when(practice):
+    """'visit' or 'month': when the practice makes its bills."""
+    return getattr(access.open_link(practice), 'bill_when', 'visit')
+
+
+def _visit_payload(visit, notes=None, bill_when=None):
+    """One visit, for the phone. ``notes``: its notes, when they are loaded already."""
+    if notes is None:
+        notes = list(visit.notes.prefetch_related('lines'))
+    total = sum((line.total_inc_vat for note in notes for line in note.lines.all()), Decimal('0.00'))
+    client = visit.practice_client
     return {
         'status': visit.status,
         'id': str(visit.client_id),
         'date': visit.date.isoformat(),
+        'client_id': str(client.client_id) if client else None,
+        # The client's name, as it was on the day.
         'yard': visit.yard_name,
+        'author': visit.author_name,
         'bill_to': visit.bill_to,
         # 'month': no bill now; this visit goes on the monthly bill.
-        'bill_when': getattr(access.open_link(visit.practice), 'bill_when', 'visit'),
+        'bill_when': bill_when or _bill_when(visit.practice),
         'finished_at': visit.finished_at.isoformat() if visit.finished_at else None,
-        'notes': visit.notes.count(),
-        'horses': visit.notes.values('horse_name').distinct().count(),
+        'notes': len(notes),
+        'horses': len({note.horse_name for note in notes}),
         'total': f'{total:.2f}',
         'bills': [
-            {'number': bill.number, 'to': bill.to_name, 'total': f'{bill.total_inc_vat:.2f}'}
-            for bill in visit.bills.order_by('pk')
+            {
+                'number': bill.number, 'to': bill.to_name, 'total': f'{bill.total_inc_vat:.2f}',
+                'url': reverse('cvet:bill_detail', args=[bill.pk]),
+            }
+            for bill in sorted(visit.bills.all(), key=lambda bill: bill.pk)
         ],
     }
+
+
+@practice_api
+@require_GET
+def api_visits(request):
+    """The practice's visits, newest first. ``?client=<id>`` for one client.
+
+    The record of work done: the vet reads it back on the Visits screen.
+    """
+    visits = (
+        access.visits_for(request.practice).filter(is_test=settings.CVET_TEST_MODE)
+        .select_related('practice_client', 'practice').prefetch_related('notes__lines', 'bills')
+    )
+    if request.GET.get('client'):
+        client_id = _uuid(request.GET['client'])
+        if client_id is None:
+            return JsonResponse({'error': 'client_invalid'}, status=400)
+        visits = visits.filter(practice_client__client_id=client_id)
+    bill_when = _bill_when(request.practice)
+    return JsonResponse({'visits': [
+        _visit_payload(visit, list(visit.notes.all()), bill_when) for visit in visits[:VISITS_LISTED]
+    ]})
+
+
+@practice_api
+@require_GET
+def api_visit(request, client_id):
+    """One visit with its notes: items, text, recheck dates, photos and recordings."""
+    visit = (
+        access.visits_for(request.practice).select_related('practice_client', 'practice')
+        .filter(client_id=client_id).first()
+    )
+    if visit is None:
+        raise Http404
+    notes = list(
+        visit.notes.select_related('client_horse').prefetch_related('files', 'lines')
+        .order_by('horse_name', 'written_at')
+    )
+    return JsonResponse(dict(_visit_payload(visit, notes), note_list=[_note_payload(note) for note in notes]))
 
 
 @practice_api
@@ -693,7 +974,10 @@ def api_visit_finish(request, client_id):
     note that arrives later still joins the visit: nothing is refused
     because the vet tapped Finish first.
     """
-    visit = access.visits_for(request.practice).filter(client_id=client_id).first()
+    visit = (
+        access.visits_for(request.practice).select_related('practice_client', 'practice')
+        .filter(client_id=client_id).first()
+    )
     if visit is None:
         raise Http404
     if visit.status != Visit.Status.FINISHED:

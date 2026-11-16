@@ -51,9 +51,12 @@ python manage.py runserver 127.0.0.1:8765
 node tools/qa/cvet_offline_qa.js http://127.0.0.1:8765 /tmp/cvet-qa
 ```
 
-It runs a whole visit with no network: it treats one horse (items, a
-changed price, a note, a recheck, a photo, a voice recording), adds one
-item to three horses at once, reads the summary and finishes the visit.
+It runs a day of visits with no network: it opens the client, treats one
+horse (items from the item list, a changed price, a note, a recheck, a
+photo, a voice recording), adds one item to three horses at once, makes a
+new client and its horse, reads both visits folded and unfolded, and
+finishes them. With the network back, it reads a sent visit: the words
+of its note, its recording and its photo.
 Then it brings the network back, loses the reply to one upload on
 purpose, reads the records back, adds a price and signs out. It prints
 what the server must then hold. It is Chromium, not an iPhone: the test

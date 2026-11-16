@@ -53,7 +53,7 @@ class PriceListTests(YardCase):
         self.assertEqual(item.price_inc_vat, Decimal('65.00'))
         self.assertEqual(item.vat_rate, Decimal('20.00'))
         self.assertEqual(self.client.get(YARD).json()['prices'], [{
-            'id': str(item.client_id), 'name': 'Flu/Tet booster',
+            'id': str(item.client_id), 'name': 'Flu/Tet booster', 'category': '',
             'price': '65.00', 'vat_rate': '20.00', 'is_active': True, 'vaccination_type_id': None,
         }])
 
@@ -290,6 +290,7 @@ class DueTests(YardCase):
             with CaptureQueriesContext(connection) as queries:
                 self.client.get(YARD)
             return len(queries)
+        count()  # The first download makes the yard the practice's first client.
         one = count()
         for number in range(19):
             Horse.objects.create(name=f'Horse {number}')

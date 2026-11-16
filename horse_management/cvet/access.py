@@ -30,7 +30,9 @@ from django.views.decorators.cache import never_cache
 
 from core.permissions import LEVEL_FULL, LEVEL_HIDDEN, access_map, feature_required, has_feature_access
 
-from .models import Bill, ClinicalFile, ClinicalNote, NoteLine, Practice, PracticeMember, PriceItem, Visit
+from .models import (
+    Bill, ClinicalFile, ClinicalNote, Client, ClientHorse, NoteLine, Practice, PracticeMember, PriceItem, Visit,
+)
 
 FEATURE = 'cvet'
 
@@ -137,6 +139,16 @@ def open_link(practice):
     """The practice's open link to the yard, or None."""
     link = getattr(practice, 'yard_link', None) if practice is not None else None
     return link if link is not None and link.is_open else None
+
+
+def clients_for(practice):
+    """The practice's clients. Its own list: no yard screen reads it."""
+    return Client.objects.for_practice(practice)
+
+
+def client_horses_for(practice):
+    """The horses of the practice's clients that C-gate does not hold."""
+    return ClientHorse.objects.for_practice(practice)
 
 
 def notes_for(practice):

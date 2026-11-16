@@ -276,8 +276,9 @@
     }
 
     // `finishes`: visits the vet finished that the server has not heard of.
-    function unsentText(count, finishes) {
-        if (count === 0) return finishes ? 'Finish not sent' : 'All sent';
+    // `changes`: clients and horses made on the phone and not sent yet.
+    function unsentText(count, finishes, changes) {
+        if (count === 0) return finishes ? 'Finish not sent' : changes ? 'Changes not sent' : 'All sent';
         return count === 1 ? '1 note not sent' : count + ' notes not sent';
     }
 
@@ -324,7 +325,176 @@
         return words.every(function (word) { return text.indexOf(word) !== -1; });
     }
 
+    // ── Clients ─────────────────────────────────────────────────────────
+
+    var KINDS = [
+        ['yard', 'Livery yard'], ['stud', 'Stud'], ['racing', 'Racing yard'],
+        ['competition', 'Competition yard'], ['private', 'Private owner'], ['other', 'Other']
+    ];
+
+    function kindLabel(kind) {
+        for (var i = 0; i < KINDS.length; i++) if (KINDS[i][0] === kind) return KINDS[i][1];
+        return 'Client';
+    }
+
+    // A client matches when every typed word is in its name, its contact
+    // or its kind.
+    function matchesClient(client, query) {
+        var words = String(query || '').toLowerCase().split(/\s+/).filter(Boolean);
+        var text = [client.name, client.contact_name, kindLabel(client.kind)].join(' ').toLowerCase();
+        return words.every(function (word) { return text.indexOf(word) !== -1; });
+    }
+
+    // ── The item list: prices under their categories ────────────────────
+
+    // [{ category, items }] of the active prices that match the search,
+    // categories by name with "Other" (no category) last. `category`
+    // keeps one group only; empty or undefined keeps them all.
+    function groupPrices(prices, query, category) {
+        var words = String(query || '').toLowerCase().split(/\s+/).filter(Boolean);
+        var groups = {};
+        var names = [];
+        (prices || []).forEach(function (price) {
+            if (!price.isActive) return;
+            var name = price.category || 'Other';
+            if (category && name !== category) return;
+            var text = (price.name + ' ' + name).toLowerCase();
+            if (!words.every(function (word) { return text.indexOf(word) !== -1; })) return;
+            if (!groups[name]) { groups[name] = []; names.push(name); }
+            groups[name].push(price);
+        });
+        names.sort(function (a, b) {
+            if ((a === 'Other') !== (b === 'Other')) return a === 'Other' ? 1 : -1;
+            return a.localeCompare(b);
+        });
+        return names.map(function (name) {
+            return { category: name, items: groups[name].sort(function (a, b) { return a.name.localeCompare(b.name); }) };
+        });
+    }
+
+    // The category names of the active prices, in the order of the list.
+    function priceCategories(prices) {
+        return groupPrices(prices).map(function (group) { return group.category; });
+    }
+
+    // ── A note, as the screen shows it ──────────────────────────────────
+    //
+    // One shape for a note that is on the phone and for a note from the
+    // practice's records, so one piece of the screen shows both.
+
+    // `filesUrl`: where the server serves a file, by its id.
+    function noteFromEntry(entry, filesUrl) {
+        var files = [];
+        [['photo', entry.photo, entry.photoId, entry.photoBytes],
+            ['audio', entry.audio, entry.audioId, entry.audioBytes]].forEach(function (item) {
+            if (!item[3]) return;
+            var id = item[1] ? item[1].id : item[2];
+            files.push({
+                kind: item[0], bytes: item[3], local: item[1] || null,
+                // A sent file is in the practice's records, not on the phone.
+                url: !item[1] && id && filesUrl ? filesUrl + id + '/' : ''
+            });
+        });
+        return {
+            id: entry.clientId, visitId: entry.visitId || '', horseKey: String(entry.horseId),
+            horseName: entry.horseName, when: entry.createdAt, day: localDay(new Date(entry.createdAt)),
+            author: '', text: entry.note || '', followUp: entry.followUp || '',
+            lines: (entry.lines || []).map(function (line) {
+                return { description: line.description, qty: line.qty, pence: lineTotal(line), vatRate: line.vatRate };
+            }),
+            files: files, status: entry.status, error: entry.lastError || '', attempts: entry.attempts || 0,
+            entry: entry
+        };
+    }
+
+    function noteFromServer(note) {
+        return {
+            id: note.id, visitId: '', horseKey: String(note.client_horse_id || note.horse_id || note.horse_name),
+            horseName: note.horse_name, when: note.written_at, day: note.seen_on,
+            author: note.author || '', text: note.findings || '', followUp: note.follow_up_date || '',
+            lines: (note.lines || []).map(function (line) {
+                return {
+                    description: line.description, qty: Number(line.quantity),
+                    pence: toPence(line.total) || 0, vatRate: line.vat_rate
+                };
+            }),
+            files: (note.files || []).map(function (file) {
+                return { kind: file.kind, bytes: file.bytes, local: null, url: file.url };
+            }),
+            status: 'sent', error: '', attempts: 0, entry: null
+        };
+    }
+
+    // The notes of one visit, one row for each horse, in the order the
+    // horses were seen: what a folded visit shows.
+    function groupNotes(notes) {
+        var byHorse = {};
+        var rows = [];
+        notes.slice().sort(function (a, b) {
+            return a.when < b.when ? -1 : a.when > b.when ? 1 : 0;
+        }).forEach(function (note) {
+            var row = byHorse[note.horseKey];
+            if (!row) {
+                row = byHorse[note.horseKey] = {
+                    horseKey: note.horseKey, horseName: note.horseName, notes: [], items: 0, total: 0,
+                    texts: 0, photos: 0, recordings: 0, followUp: '', unsent: 0
+                };
+                rows.push(row);
+            }
+            row.notes.push(note);
+            note.lines.forEach(function (line) { row.items += 1; row.total += line.pence; });
+            if (note.text) row.texts += 1;
+            note.files.forEach(function (file) {
+                if (file.kind === 'photo') row.photos += 1; else row.recordings += 1;
+            });
+            if (note.followUp) row.followUp = note.followUp;
+            if (note.status !== 'sent') row.unsent += 1;
+        });
+        return rows;
+    }
+
+    // "2 items · note · voice": the one line of a folded horse.
+    function horseLine(row) {
+        var parts = [];
+        if (row.items) parts.push(row.items === 1 ? '1 item' : row.items + ' items');
+        if (row.texts) parts.push(row.texts === 1 ? 'note' : row.texts + ' notes');
+        if (row.photos) parts.push(row.photos === 1 ? 'photo' : row.photos + ' photos');
+        if (row.recordings) parts.push('voice');
+        if (row.unsent) parts.push('not sent yet');
+        return parts.join(' \u00b7 ');
+    }
+
+    // The visits on the phone, from its notes: [{ id, clientId,
+    // clientName, day, entries }], the newest day first.
+    function localVisits(entries) {
+        var byId = {};
+        var list = [];
+        entries.forEach(function (entry) {
+            if (!entry.visitId) return;
+            var visit = byId[entry.visitId];
+            if (!visit) {
+                visit = byId[entry.visitId] = {
+                    id: entry.visitId, clientId: entry.ownerId || '', clientName: entry.ownerName || '',
+                    day: localDay(new Date(entry.createdAt)), entries: []
+                };
+                list.push(visit);
+            }
+            visit.entries.push(entry);
+        });
+        return list.sort(function (a, b) { return a.day < b.day ? 1 : a.day > b.day ? -1 : 0; });
+    }
+
     var api = {
+        KINDS: KINDS,
+        kindLabel: kindLabel,
+        matchesClient: matchesClient,
+        groupPrices: groupPrices,
+        priceCategories: priceCategories,
+        noteFromEntry: noteFromEntry,
+        noteFromServer: noteFromServer,
+        groupNotes: groupNotes,
+        horseLine: horseLine,
+        localVisits: localVisits,
         newId: newId,
         localDay: localDay,
         visitForDay: visitForDay,

@@ -8,9 +8,12 @@ When the vet taps Finish visit, ``close_out`` does two things:
    record carries its cost, and C-gate's own code makes the charge that
    the yard's next invoices bill to each owner. The yard manager can
    change that charge in C-gate, to add the yard's margin.
-2. **Makes the bill**, if the practice bills this yard after each visit:
-   one bill to the yard (the practice's client), or, for a yard set to
-   "bill each owner", one bill for each owner.
+2. **Makes the bill**, if the practice bills after each visit: one bill
+   to the client, or, for a C-gate yard set to "bill each owner", one
+   bill for each owner.
+
+A visit for a client that is not the C-gate yard does step 2 only:
+nothing of it is written to the yard's records (``Visit.at_cgate_yard``).
 
 A practice that bills once a month gets its bill from ``bill_month_end``
 (a scheduled task, on the 1st) or from ``bill_now`` (the button on the
@@ -121,14 +124,14 @@ def unbilled_lines(practice, *, visit=None, before=None):
         lines = lines.filter(note__visit=visit)
     if before is not None:
         lines = lines.filter(note__visit__date__lt=before)
-    return lines.select_related('note__visit').order_by('note__visit__date', 'note__horse_name', 'note_id', 'pk')
+    return lines.select_related('note__visit__practice_client').order_by('note__visit__date', 'note__horse_name', 'note_id', 'pk')
 
 
 def _parts_by_addressee(lines):
     """Who each line is billed to.
 
-    ``{(is test, bill to, owner id or None, name): [(line, share %, amount)]}``.
-    One entry is one bill.
+    ``{(is test, bill to, owner id or None, name, client pk or None): [(line, share %, amount)]}``.
+    One entry is one bill: each client has its own.
     """
     by_addressee = defaultdict(list)
     for line in lines:
@@ -138,13 +141,13 @@ def _parts_by_addressee(lines):
         if not parts:
             # The yard is billed; or owners are, and this horse has none
             # on record. The yard asked for the visit, so the yard gets it.
-            key = (visit.is_test, YARD, None, visit.yard_name or 'The yard')
+            key = (visit.is_test, YARD, None, visit.yard_name or 'The yard', visit.practice_client_id)
             by_addressee[key].append((line, Decimal('100.00'), line.total_inc_vat))
             continue
         share_sum = sum((Decimal(str(payer['share'])) for payer, _ in parts), Decimal('0'))
         for payer, amount in parts:
             share = (Decimal(str(payer['share'])) * 100 / share_sum).quantize(PENNY, ROUND_HALF_UP)
-            key = (visit.is_test, OWNERS, payer.get('owner_id'), payer['name'])
+            key = (visit.is_test, OWNERS, payer.get('owner_id'), payer['name'], visit.practice_client_id)
             by_addressee[key].append((line, share, amount))
     return by_addressee
 
@@ -169,7 +172,7 @@ def make_bills(practice, *, visit=None, before=None):
             return []
         today = timezone.localdate()
         bills = []
-        for (is_test, bill_to, owner_id, name), parts in _parts_by_addressee(lines).items():
+        for (is_test, bill_to, owner_id, name, client_pk), parts in _parts_by_addressee(lines).items():
             total = sum((amount for _, _, amount in parts), Decimal('0'))
             # VAT is worked out on the total at each rate, once, so the
             # bill, its printed page and its CSV all show the same figure.
@@ -182,7 +185,7 @@ def make_bills(practice, *, visit=None, before=None):
                 practice=practice, number=_next_number(practice, is_test),
                 visit=visit, date=visit.date if visit else today,
                 period_start=None if visit else min(dates), period_end=None if visit else max(dates),
-                bill_to=bill_to, to_name=name,
+                bill_to=bill_to, to_name=name, practice_client_id=client_pk,
                 to_owner=Owner.objects.filter(pk=owner_id).first() if owner_id else None,
                 total_inc_vat=total, total_vat=vat, is_test=is_test,
             )
@@ -304,6 +307,10 @@ def _tell_yard(bills, link, problems=()):
     for bill in bills:
         if bill.is_test or bill.bill_to != YARD:
             continue
+        if bill.practice_client is not None and not bill.practice_client.is_yard:
+            # A client of the practice that is not the C-gate yard:
+            # nothing of its bill enters the yard's books or its inbox.
+            continue
         _record_yard_cost(bill, link)
         # After the transaction, so a failed email undoes nothing.
         transaction.on_commit(lambda pk=bill.pk, found=tuple(problems): email_bill_to_yard(pk, found))
@@ -322,7 +329,8 @@ def close_out(visit):
     link = access.open_link(visit.practice)
 
     problems = []
-    if link is not None and not visit.is_test:
+    # Only a visit at the C-gate yard writes to the yard's records.
+    if link is not None and not visit.is_test and visit.at_cgate_yard:
         for note in visit.notes.filter(yard_sent_at__isnull=True, is_test=False):
             problems += send_note_to_yard(note, link)
     # If the link to the yard has ended, nothing more goes into the
