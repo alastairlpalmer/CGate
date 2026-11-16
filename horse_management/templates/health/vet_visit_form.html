@@ -3,7 +3,7 @@
 {% block title %}{% if object %}Edit Vet Visit{% else %}Add Vet Visit{% endif %} - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6">
+<div class="max-w-2xl mx-auto space-y-4">
 
     <!-- Page Header -->
     <div class="page-header">
@@ -26,10 +26,10 @@
               </div>
             {% endif %}
 
-            <fieldset class="p-4 sm:p-5 space-y-4 sm:space-y-5">
+            <fieldset class="px-4 py-3 space-y-3">
                 <legend class="section-title">Visit Details</legend>
 
-                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
                     <div class="sm:col-span-2{% if form.service_item.errors %} field-invalid{% endif %}">
                         <label for="{{ form.service_item.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.service_item.label }}</label>
                         {{ form.service_item }}

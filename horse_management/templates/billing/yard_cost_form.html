@@ -3,7 +3,7 @@
 {% block title %}{% if object %}Edit Yard Cost{% else %}Add Yard Cost{% endif %} - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6">
+<div class="max-w-2xl mx-auto space-y-4">
 
     <!-- Page Header -->
     <div class="page-header">
@@ -25,9 +25,9 @@
             {% endif %}
 
             <!-- Cost Details -->
-            <fieldset class="p-4 sm:p-5 space-y-4">
+            <fieldset class="px-4 py-3 space-y-3">
                 <legend class="section-title">Cost Details</legend>
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
+                <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 mt-3">
                     <div>
                         <label for="id_category" class="block text-sm font-medium text-charcoal">Category *</label>
                         {{ form.category }}
@@ -68,9 +68,9 @@
             </fieldset>
 
             <!-- Description & Notes -->
-            <fieldset class="p-4 sm:p-5 space-y-4">
+            <fieldset class="px-4 py-3 space-y-3">
                 <legend class="section-title">Details</legend>
-                <div class="grid grid-cols-1 gap-4 mt-3">
+                <div class="grid grid-cols-1 gap-x-4 gap-y-3 mt-3">
                     <div>
                         <label for="id_description" class="block text-sm font-medium text-charcoal">Description *</label>
                         {{ form.description }}
@@ -89,9 +89,9 @@
             </fieldset>
 
             <!-- Recurring & Receipt -->
-            <fieldset class="p-4 sm:p-5 space-y-4">
+            <fieldset class="px-4 py-3 space-y-3">
                 <legend class="section-title">Options</legend>
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
+                <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 mt-3">
                     <div class="sm:col-span-2 flex items-center gap-3">
                         <div @click="isRecurring = !isRecurring">
                             {{ form.is_recurring }}

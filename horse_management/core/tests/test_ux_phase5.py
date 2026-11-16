@@ -182,19 +182,20 @@ class SettingsCompactTests(TestCase):
                 self.assertIn(f'.{name}', css)
 
     def test_the_forms_opened_from_settings_are_compact(self):
-        # The compact form rules hang on .settings-page (static/css/input.css,
-        # "Compact forms on the Settings pages"). A provider and a
-        # vaccination type are Settings records, so their forms always carry
-        # it. A location has a page of its own: its form is compact only
-        # when it is opened from Settings.
+        # .settings-page gives a page the small Settings heading and compact
+        # cards (static/css/input.css). A provider and a vaccination type
+        # are Settings records, so their forms always carry it. A location
+        # has a page of its own: its form carries it only when it is opened
+        # from Settings. The fields themselves are compact in every form
+        # (CompactFormTests).
         from pathlib import Path
 
         from django.conf import settings
 
         from core.models import Location
         css = (Path(settings.BASE_DIR) / 'static' / 'css' / 'styles.css').read_text()
-        self.assertIn('.settings-page fieldset', css)
-        self.assertIn('.settings-page label[for]', css)
+        # One rule serves the Settings pages and every form with a footer.
+        self.assertIn(':is(.settings-page,form:has(.form-footer,.popup-footer)) label[for]', css)
         field = Location.objects.create(name='Top Field', site='Home')
         always = [reverse('user_create'), reverse('role_create'), reverse('rate_type_create'),
                   reverse('service_item_create'), reverse('provider_create'),
@@ -205,5 +206,56 @@ class SettingsCompactTests(TestCase):
         edit = reverse('location_update', args=[field.pk])
         self.assertContains(self.client.get(edit + '?from=settings'), 'settings-page"')
         self.assertNotContains(self.client.get(edit), 'settings-page')
-        # A page that is not a Settings page keeps the app's standard form.
+        # A page that is not a Settings page keeps its own heading.
         self.assertNotContains(self.client.get(reverse('horse_create')), 'settings-page')
+
+
+class CompactFormTests(TestCase):
+    """Every form with a footer is compact (static/css/input.css, "Compact
+    forms"): the stylesheet sets the field and the label, the template sets
+    the spacing."""
+
+    LOOSE = ('sm:p-5', 'sm:px-5', 'sm:py-5', 'space-y-5', 'gap-5')
+
+    def form_templates(self):
+        from pathlib import Path
+
+        from django.conf import settings
+        base = Path(settings.BASE_DIR) / 'templates'
+        for path in sorted(base.rglob('*.html')):
+            text = path.read_text()
+            if 'form-footer' in text or 'popup-footer' in text or 'includes/form_footer.html' in text:
+                yield path.relative_to(base), text
+
+    def test_the_built_stylesheet_has_the_rules(self):
+        from pathlib import Path
+
+        from django.conf import settings
+        css = (Path(settings.BASE_DIR) / 'static' / 'css' / 'styles.css').read_text()
+        self.assertIn('form:has(.form-footer,.popup-footer)', css)
+        self.assertIn('label[for]', css)
+
+    def test_no_form_keeps_the_loose_spacing(self):
+        # A new form is most often a copy of an old one. This fails if the
+        # copy brings back 20px padding or 20px gaps: use px-4 py-3,
+        # space-y-3 and gap-x-4 gap-y-3.
+        found = 0
+        for name, text in self.form_templates():
+            found += 1
+            for number, line in enumerate(text.splitlines(), 1):
+                for loose in self.LOOSE:
+                    with self.subTest(template=str(name), line=number):
+                        self.assertNotIn(loose, line)
+        self.assertGreater(found, 40)
+
+    def test_forms_in_each_area_have_a_footer(self):
+        # The rules hang on the footer. A form page that loses its footer
+        # class loses the compact fields with it.
+        self.client.force_login(make_admin())
+        for name in ('horse_create', 'owner_create', 'charge_create', 'yard_cost_create',
+                     'vaccination_create', 'vet_visit_create', 'farrier_create',
+                     'placement_create', 'location_create', 'invoice_generate'):
+            with self.subTest(page=name):
+                response = self.client.get(reverse(name))
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, 'form-footer')
