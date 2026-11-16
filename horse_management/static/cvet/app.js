@@ -407,7 +407,25 @@
     // horse, is on the right (static/cvet/app.css, "A wide screen").
     var wideScreen = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 1000px)') : null;
     function isWide() { return !!(wideScreen && wideScreen.matches); }
-    function besideClients(view) { return isWide() && (view === 'client' || view === 'horse'); }
+    function besideClients(view) { return isWide() && view === 'client'; }
+
+    // What only a wide screen needs is in files of its own (desk.css,
+    // desk.js): the layout, the keyboard, the price table, the client's
+    // page and print. Loaded once, the first time the screen is wide.
+    var deskLoaded = false;
+    function loadDesk() {
+        if (deskLoaded || !isWide()) return;
+        deskLoaded = true;
+        var css = el('link');
+        css.rel = 'stylesheet';
+        css.href = config.deskCss;
+        document.head.appendChild(css);
+        var script = el('script');
+        script.src = config.deskJs;
+        document.head.appendChild(script);
+    }
+    // Tell desk.js that a part of the screen was drawn. Nothing on a phone.
+    function desk(what, a, b) { if (window.CvetDesk) window.CvetDesk(what, a, b); }
 
     function show(view) {
         if (isWide() && view === 'clients') {
@@ -454,6 +472,7 @@
         else if (state.view === 'visits') renderVisits();
         else if (state.view === 'prices') renderPrices();
         else if (state.view === 'phone') renderPhone();
+        desk('view');
     }
 
     // ── Clients ──────────────────────────────────────────────────────────
@@ -947,6 +966,7 @@
         fill($('history'), notes.length ? [box] : []);
         $('no-history').hidden = notes.length > 0;
         $('load-history').hidden = !!state.olderNotes;
+        desk('history', horse, notes.length ? box : null);
     }
 
     // One note, read back: when, by whom, the items, the words, the
@@ -1263,7 +1283,9 @@
         return node;
     }
 
-    function visitRows() {
+    // `only`: the visits of one client. Left out: as the Visits screen is set.
+    function visitRows(only) {
+        if (only === undefined) only = state.visitFilter;
         var byId = {};
         var rows = [];
         var done = closed();
@@ -1307,7 +1329,7 @@
             row.waiting = queue.some(function (item) { return item.id === row.id; });
         });
         return rows.filter(function (row) {
-            return !state.visitFilter || row.clientId === state.visitFilter;
+            return !only || row.clientId === only;
         }).sort(function (a, b) { return a.day < b.day ? 1 : a.day > b.day ? -1 : 0; });
     }
 
@@ -1436,6 +1458,7 @@
             link.href = bill.url;
             box.appendChild(link);
         });
+        desk('visit', row, box);
         if (row.open) {
             var finish = button('button primary wide', 'Finish visit', function () { finishVisit(row); });
             finish.dataset.finish = row.id;
@@ -1486,6 +1509,7 @@
                 return setMeta('visitList', result.data.visits).then(function () {
                     $('visits-message').textContent = '';
                     if (state.view === 'visits') renderVisits();
+                    else desk('view');
                 });
             }
             $('visits-message').textContent = message;
@@ -1532,6 +1556,7 @@
         $('price-form-title').textContent = editing ? 'Change a price' : 'Add a price';
         $('price-hide').hidden = !editing;
         $('price-hide').textContent = editing && !editing.isActive ? 'Show' : 'Hide';
+        desk('prices');
     }
 
     // Open the form at the top of the screen: for a new price (null), or
@@ -2359,8 +2384,18 @@
 
         // The window is made wide or narrow: the same screen, laid out again.
         if (wideScreen && wideScreen.addEventListener) {
-            wideScreen.addEventListener('change', function () { show(state.view === 'client' && !isWide() ? 'client' : state.view); });
+            wideScreen.addEventListener('change', function () {
+                loadDesk();
+                show(state.view === 'client' && !isWide() ? 'client' : state.view);
+            });
         }
+        // What desk.js works with.
+        window.CvetApp = {
+            state: state, core: core, $: $, el: el, button: button, fill: fill, isWide: isWide,
+            visitRows: visitRows, visitFold: visitFold, editPrice: editPrice, renderPrices: renderPrices,
+            loadVisitList: loadVisitList, clientById: clientById
+        };
+        loadDesk();
 
         registerWorker();
 

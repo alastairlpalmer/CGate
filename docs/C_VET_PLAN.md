@@ -562,15 +562,25 @@ On a screen 1000 px wide or more (a computer, a tablet on its side):
 
 The window can be made narrow and wide again: the same screen is laid out again and nothing is lost. `tools/qa/cvet_desktop_qa.js` checks this.
 
-### Step 2: work at a desk (next)
+### Step 2: work at a desk (built)
 
 | Item | What it gives |
 |---|---|
-| Keyboard | `/` goes to the search. Up, down and Enter in a list. Ctrl+Enter saves a note. |
-| The horse screen in two columns | The note on the left, the horse's history on the right, so the last visit is in view while the vet writes. |
-| Prices as a table | Every price and category in view, and a change in the row. |
-| A client's page | Contact details, horses, visits and bills in one place. |
-| Print | One visit, or one horse's record, on paper or as a PDF. |
+| Keyboard | `/` goes to the search of the screen. Up and down go from the search into the list and from row to row; Enter opens the row. Ctrl+Enter (Cmd+Enter on a Mac) saves a note. Escape closes a box. |
+| The horse screen in two columns | The note on the left, the horse's history on the right, in view while the vet writes. The client list is not shown on this screen: the note has the room. |
+| Prices as a table | Name, category, the vaccination it records, VAT and price, with a search. A click on a row opens it to change. |
+| A client's page | Under the client's horses: its contact details (phone and email are links) and its visits, each one folded as on Visits. |
+| Print | **Print this visit** in a visit, **Print this record** under a horse's history. Only that part is on the paper, with every fold open, under a line with the practice, the date and whose record it is. Save as PDF is the browser's own. |
+
+**The files of the wide screen are apart** (`static/cvet/desk.css`, `static/cvet/desk.js`). The app asks for them only when the screen is wide, and the service worker stores them then. A phone does not download them: the check script proves it. This also took the layout of step 1 out of the phone's files. The phone's files are now 39 KB compressed and 153 KB as written.
+
+`desk.js` holds no data and no rule. It reads the app's state and calls the app's functions (`window.CvetApp`); the app tells it when a part of the screen was drawn (`window.CvetDesk`).
+
+Not in step 2:
+
+- **A change to a price in its row.** A click opens the form, as on the phone.
+- **A computer that opens the app for the first time with no signal** gets the phone layout. With a signal once, it keeps the wide files.
+- **A print layout made for paper** (letterhead, page numbers). The print is the screen's own text.
 
 ### Step 3: the practice office (later, needs decisions)
 

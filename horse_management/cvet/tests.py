@@ -73,6 +73,27 @@ class TurnedOffTests(TestCase):
 
 
 @override_settings(CVET_ENABLED=True)
+class WideScreenFilesTests(TestCase):
+    """The files of the wide screen (plan, section 7h) are not part of the phone's download."""
+
+    def test_the_worker_stores_them_only_when_a_page_asks(self):
+        script = self.client.get(WORKER).content.decode()
+        assets = script.split('const ASSETS = ')[1].split(';')[0]
+        wide = script.split('const WIDE = ')[1].split(';')[0]
+        self.assertNotIn('desk.', assets)
+        self.assertIn('/static/cvet/desk.css', wide)
+        self.assertIn('/static/cvet/desk.js', wide)
+
+    def test_the_page_names_them_and_does_not_load_them(self):
+        self.client.force_login(make_vet())
+        page = self.client.get(APP).content.decode()
+        self.assertIn('data-desk-js="/static/cvet/desk.js', page)
+        self.assertIn('data-desk-css="/static/cvet/desk.css', page)
+        self.assertNotIn('src="/static/cvet/desk.js', page)
+        self.assertNotIn('href="/static/cvet/desk.css', page)
+
+
+@override_settings(CVET_ENABLED=True)
 class GateTests(TestCase):
     def test_the_page_sends_a_signed_out_person_to_sign_in(self):
         response = self.client.get(APP)

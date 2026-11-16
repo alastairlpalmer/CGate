@@ -4,12 +4,14 @@
 // opens with no signal. It never stores data: the horse list and the
 // notes are in IndexedDB (static/cvet/app.js). It never touches the API.
 //
-// Django writes the three values below (cvet.views.service_worker). The
+// Django writes the four values below (cvet.views.service_worker). The
 // version changes with each deploy, which makes the browser install this
 // file again and store fresh copies.
 const VERSION = {{ version }};
 const SHELL = {{ shell_url }};
 const ASSETS = {{ asset_urls }};
+// For a wide screen only. Stored when a page first asks for them.
+const WIDE = {{ wide_urls }};
 
 const PREFIX = 'cvet-';
 const CACHE = PREFIX + VERSION;
@@ -55,7 +57,8 @@ self.addEventListener('fetch', (event) => {
 
     const isShell = request.mode === 'navigate' && url.pathname === SHELL;
     const isAsset = ASSETS.includes(url.pathname + url.search);
-    if (!isShell && !isAsset) return;  // the API and every other page: the network, as normal
+    const isWide = WIDE.includes(url.pathname + url.search);
+    if (!isShell && !isAsset && !isWide) return;  // the API and every other page: the network, as normal
 
     event.respondWith((async () => {
         const cache = await caches.open(CACHE);
@@ -63,7 +66,10 @@ self.addEventListener('fetch', (event) => {
         // must not leave the vet looking at a blank page.
         const stored = await cache.match(isShell ? SHELL : request);
         if (stored) return stored;
-        return fetch(request);
+        const response = await fetch(request);
+        // Kept from now on, so a computer opens the app with no signal too.
+        if (isWide && response.ok) await cache.put(request, response.clone());
+        return response;
     })());
 });
 {% endautoescape %}
