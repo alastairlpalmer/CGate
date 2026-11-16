@@ -23,8 +23,13 @@
     </div>
 
     <!-- Filter Bar -->
-    <div class="card px-4 py-3">
-        <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="card px-4 py-2" x-data="{ open: false }" x-init="open = Array.from($el.querySelectorAll('select, input:not([type=hidden])')).some(function (field) { return field.value })">
+        {# On a phone the filters fold away: the list is what the page is for. A filter that is set opens them. #}
+        <button type="button" class="filter-toggle" @click="open = !open" aria-expanded="false" :aria-expanded="open ? 'true' : 'false'">
+            <svg class="w-3.5 h-3.5 shrink-0 text-sage transition-transform duration-100" :class="open && 'rotate-90'" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+            Filters
+        </button>
+        <form method="get" class="filter-bar" :class="{ 'is-open': open }">
             <div>
                 <label for="filter-horse" class="dt-label mb-1">Horse</label>
                 <select id="filter-horse" name="horse" class="form-select">

@@ -341,6 +341,54 @@ class LocationSiteFoldTests(TestCase):
         self.assertIn('0 horses &middot; 3 locations', body)
 
 
+class YardBoardFoldTests(LocationSiteFoldTests):
+    """On the dashboard an empty site is one line; a site with horses shows its tiles."""
+
+    def board(self):
+        return self.client.get(reverse('dashboard')).content.decode()
+
+    def test_an_empty_site_is_one_line_that_opens(self):
+        body = self.board()
+        self.assertIn('<details class="board-fold" x-data="settingsFold" data-fold-key="board:Away">', body)
+        self.assertIn('0 horses &middot; 2 locations', body)
+        # Its fields are in the page, for the reader who opens it.
+        self.assertIn('Far Field', body)
+        # The site with a horse is not folded.
+        self.assertNotIn('data-fold-key="board:Home"', body)
+        self.assertEqual(body.count('<div class="board-site">'), 1)
+
+    def test_one_site_is_never_folded(self):
+        from core.models import Location, Placement
+        Location.objects.filter(site='Home').update(site='Away')
+        Placement.objects.all().delete()
+        body = self.board()
+        self.assertNotIn('board-fold', body)
+        self.assertEqual(body.count('<div class="board-site">'), 1)
+
+
+class ListRowTests(LocationSiteFoldTests):
+    """Horse rows are one line, and the filters above a list fold on a phone."""
+
+    def test_a_horse_with_no_age_colour_or_sex_has_no_stray_dots(self):
+        from core.models import Horse
+        Horse.objects.filter(name='Bramble').update(color='', sex='')
+        body = self.client.get(reverse('horse_list')).content.decode()
+        detail = body.split('<div class="horse-name-detail">')[1].split('</div>')[0]
+        self.assertNotIn('·', detail)
+
+    def test_the_details_follow_the_name(self):
+        body = self.client.get(reverse('horse_list')).content.decode()
+        self.assertIn('<div class="horse-name">', body)
+        self.assertIn('md:w-6 md:h-6', body)
+
+    def test_a_list_has_filters_that_fold(self):
+        for name in ('vaccination_list', 'worming_list', 'vet_visit_list', 'egg_count_list', 'condition_list'):
+            with self.subTest(page=name):
+                response = self.client.get(reverse(name))
+                self.assertContains(response, 'class="filter-toggle"')
+                self.assertContains(response, 'class="filter-bar"')
+
+
 class DensityTests(SimpleTestCase):
     """The shared parts are the compact size (static/css/input.css)."""
 
