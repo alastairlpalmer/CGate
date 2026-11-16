@@ -21,7 +21,7 @@ A web application for managing horse livery operations including tracking horses
 - **Placement Tracking**: Record where each horse is located and at what rate
 - **Invoicing**: Generate monthly invoices with PDF export
 - **Health Tracking**: Vaccination schedules and farrier visit records
-- **Extra Charges**: Bill for vet visits, farrier, feed, and other services
+- **Extra Charges**: Bill for vet visits, farrier, feed, and other services. **Add margin** puts the yard's margin on many unbilled charges in one step
 - **Email Notifications**: Automated reminders for vaccinations, farrier, and overdue invoices
 
 ## Technology Stack

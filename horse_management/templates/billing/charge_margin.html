@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% load ui_extras %}
+
+{% block title %}Add margin - Cgate{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Add margin</h1>
+            <p class="page-subtitle">Put the yard's margin on charges before they go on an invoice.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'charge_list' %}" class="btn-secondary">Back to charges</a>
+        </div>
+    </div>
+
+    {# 1. Which charges, and what margin. A plain GET form: the page shows the result. #}
+    <form method="get" class="card px-4 py-3 sm:px-5 sm:py-4 space-y-3">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div>
+                <label for="margin-type" class="dt-label mb-1">Type</label>
+                <select id="margin-type" name="type" class="form-select">
+                    <option value="">All types</option>
+                    <option value="vet_all" {% if filters.type == 'vet_all' %}selected{% endif %}>Vet and vaccination</option>
+                    {% for value, label in charge_types %}
+                    <option value="{{ value }}" {% if filters.type == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="margin-provider" class="dt-label mb-1">Provider</label>
+                <select id="margin-provider" name="provider" class="form-select">
+                    <option value="">All providers</option>
+                    {% for provider in providers %}
+                    <option value="{{ provider.pk }}" {% if filters.provider == provider.pk|stringformat:"s" %}selected{% endif %}>{{ provider.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="margin-from" class="dt-label mb-1">From</label>
+                <input id="margin-from" type="date" name="from" value="{{ filters.from }}" class="form-input">
+            </div>
+            <div>
+                <label for="margin-to" class="dt-label mb-1">To</label>
+                <input id="margin-to" type="date" name="to" value="{{ filters.to }}" class="form-input">
+            </div>
+            <div>
+                <label for="margin-percent" class="dt-label mb-1">Margin (%)</label>
+                <input id="margin-percent" type="text" inputmode="decimal" name="percent" value="{{ percent_raw }}"
+                       placeholder="10" autocomplete="off" class="form-input"
+                       {% if percent_error %}aria-invalid="true" aria-describedby="margin-percent-error"{% endif %}>
+            </div>
+        </div>
+        {% if percent_error %}
+        <p id="margin-percent-error" class="text-sm text-error-red">Type the margin as a number from 0 to 500, for example 10 or 12.5.</p>
+        {% endif %}
+        <div class="flex items-center gap-3">
+            <button type="submit" class="btn-primary">Show</button>
+            <a href="{% url 'charge_margin' %}" class="btn-ghost text-xs">Clear</a>
+        </div>
+        <p class="text-sm text-sage">
+            The margin is worked out from what the yard paid, each time. 10% set twice is still 10%. 0 takes the margin off.
+            Charges that are on an invoice are not in this list and do not change.
+        </p>
+    </form>
+
+    {# 2. The charges, with what each becomes. A POST form: the button changes them. #}
+    {% if rows %}
+    <form method="post" class="space-y-4" x-data="{ all: true }">
+        {% csrf_token %}
+        <input type="hidden" name="type" value="{{ filters.type }}">
+        <input type="hidden" name="provider" value="{{ filters.provider }}">
+        <input type="hidden" name="from" value="{{ filters.from }}">
+        <input type="hidden" name="to" value="{{ filters.to }}">
+        <input type="hidden" name="search" value="{{ filters.search }}">
+        <input type="hidden" name="percent" value="{{ percent_text }}">
+
+        <label class="flex items-center gap-3 text-sm text-charcoal">
+            <input type="checkbox" class="form-checkbox" x-model="all"
+                   @change="$root.querySelectorAll('input[name=charge]').forEach((box) => { box.checked = all })">
+            Tick or untick every charge
+        </label>
+
+        {% comment %}One list for every screen size, so each charge has one tick
+        box. Two layouts (cards and a table) would each carry a box, and a box
+        unticked in one would still be ticked, and sent, in the other.{% endcomment %}
+        <div class="card overflow-hidden">
+            <ul class="divide-y divide-light-sage">
+                {% for row in rows %}
+                <li class="list-card">
+                    <label class="flex items-start gap-3 flex-1 min-w-0">
+                        <input type="checkbox" name="charge" value="{{ row.charge.pk }}" class="form-checkbox mt-1" checked>
+                        <span class="flex-1 min-w-0">
+                            <span class="list-card-title line-clamp-2">{{ row.charge.description }}</span>
+                            <span class="list-card-meta">{{ row.charge.date|date:"j M Y" }} &middot; {{ row.charge.horse.name }} &middot; {{ row.charge.owner.name }} &middot; cost {{ row.cost|gbp }} &middot; now {{ row.charge.amount|gbp }}</span>
+                        </span>
+                    </label>
+                    <span class="font-semibold text-charcoal tabular-nums shrink-0">{{ row.new|gbp }}</span>
+                </li>
+                {% endfor %}
+                <li class="list-card">
+                    <span class="flex-1 min-w-0 font-medium text-charcoal">{{ rows|length }} charge{{ rows|length|pluralize }} &middot; cost {{ cost_total|gbp }} &middot; now {{ now_total|gbp }}</span>
+                    <span class="font-semibold text-charcoal tabular-nums shrink-0">{{ new_total|gbp }}</span>
+                </li>
+            </ul>
+        </div>
+
+        {% if hidden %}
+        <p class="text-sm text-sage">{{ hidden }} more charge{{ hidden|pluralize }} match. Use the filters to work on fewer at a time.</p>
+        {% endif %}
+
+        <div class="card px-4 py-3 sm:px-5 sm:py-4 space-y-3">
+            {% if percent is not None %}
+            <p class="text-charcoal">
+                Cost {{ cost_total|gbp }}. With a margin of {{ percent_text }}%: <strong>{{ new_total|gbp }}</strong>
+                (margin {{ margin_total|gbp }}).
+            </p>
+            <button type="submit" class="btn-primary">
+                {% if percent %}Set a margin of {{ percent_text }}% on the ticked charges{% else %}Take the margin off the ticked charges{% endif %}
+            </button>
+            {% else %}
+            <p class="text-charcoal">Type a margin above and press Show to see the new amounts.</p>
+            {% endif %}
+        </div>
+    </form>
+    {% else %}
+    {% url 'charge_margin' as margin_url %}
+    {% include 'includes/empty_state.html' with variant='filtered' title='No unbilled charges match' body='Charges that are on an invoice are not shown here.' clear_url=margin_url %}
+    {% endif %}
+
+</div>
+{% endblock %}
