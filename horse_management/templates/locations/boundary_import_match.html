@@ -48,7 +48,7 @@
         {% endif %}
 
         {% for row in rows %}
-        <div class="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6 items-start" id="shape-{{ row.shape.index }}" data-testid="shape-row">
+        <div class="px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6 items-start" id="shape-{{ row.shape.index }}" data-testid="shape-row">
             <!-- Left: the shape -->
             <div class="flex items-start gap-3 min-w-0">
                 <span class="board-count shrink-0">{{ row.shape.index }}</span>
@@ -89,7 +89,7 @@
         </div>
         {% endfor %}
 
-        <div class="p-4 sm:p-5 space-y-3">
+        <div class="px-4 py-3 space-y-3">
             <label class="inline-flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" name="confirm_overwrite" value="1" class="form-checkbox">
                 <span class="text-sm text-charcoal">Replace existing boundaries on the locations I chose (the old ones are kept in the history)</span>

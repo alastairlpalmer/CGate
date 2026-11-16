@@ -21,7 +21,7 @@ refreshes #main-content in place.
     <input type="hidden" name="action_type" value="{{ action_type }}">
     {% for id in horse_ids %}<input type="hidden" name="horse_ids" value="{{ id }}">{% endfor %}
 
-    <fieldset class="p-4 sm:p-5 space-y-4">
+    <fieldset class="px-4 py-3 space-y-3">
         <legend class="text-sm font-medium text-charcoal mb-2">{{ action_label }} details</legend>
 
         <p class="text-sm text-charcoal -mt-1">
@@ -53,7 +53,7 @@ refreshes #main-content in place.
         </div>
         {% endif %}
 
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
             {% for field in form %}
             <div class="{% if field.name == 'notes' or field.name == 'diagnosis' or field.name == 'treatment' %}sm:col-span-2{% endif %}{% if field.errors %} field-invalid{% endif %}">
                 <label for="{{ field.id_for_label }}" class="dt-label mb-1">
