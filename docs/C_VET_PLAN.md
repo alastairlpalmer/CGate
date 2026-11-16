@@ -43,6 +43,7 @@ Names. **C-gate** is the yard product. Older documents call it Yardway. **C-vet*
 | 26 | **The yard's margin is the yard manager's matter, in C-gate. It is not in C-vet.** C-vet passes the vet's amount into C-gate as it is. The yard manager adds the margin in C-gate: **Charges → Add margin** puts a percentage on many unbilled charges in one step, and one charge can still be changed by hand. | The margin varies from charge to charge, and it is the yard's price to its own client. The vet does not set it and does not see it. |
 | 27 | The limit on the size of the app's files is on what the phone downloads: under 40 KB compressed, and under 150 KB as written. Before, it was 100 KB as written. | The written size grows with the comments in the code, which cost the phone nothing. The phone downloads the compressed files once and then opens the app from its own store. Now: 27 KB compressed, 102 KB as written. **Changed with section 7h:** under 40 KB compressed, as before, and under 200 KB as written. The clients, the visit record and the wide screen took the written size to 155 KB; the download, which is what the phone waits for, is 39 KB. |
 | 28 | A login with the Vet role joins the practice by itself, the first time it opens C-vet, when the database has one practice. The administrator makes the practice, and takes a login out of it, on one page in C-gate: **Settings → Users & Roles → C-vet → Set up**. | Before, the role was set in C-gate and the place in the practice was set in the Django admin, and no page said so. An administrator gave the role, and the vet saw "not set up for C-vet" on every address. An administrator's login is never put in the practice by this rule, and a login that was taken out stays out. With two practices, a person must choose. |
+| 29 | All of the set-up is on the C-vet set-up page in C-gate: who is billed, what the yard takes from the practice, the practice in the yard's list of providers, and what is printed on the practice's bills (address, VAT number, the letters of a bill number, how to pay). | An administrator who must open the Django admin before the vet's first visit will miss a step, as the first set-up showed. Two things stay in the Django admin: the delete of the test notes, and the sync receipts. When the practice bills (each visit or monthly) stays the practice's choice, on its Bills page. |
 
 ## 2. What each product is for
 
@@ -215,7 +216,7 @@ The ownership seam. It has no new screen. It is the set of rules that every late
 | The gate and the scope | `cvet/access.py` | The only way to read a clinical note: `notes_for(practice)`. The practice comes from the signed-in login, never from an address or a form. |
 | The Vet role | `cvet/migrations/0002_seed_vet_role.py`, feature `cvet` | Opens C-vet and nothing else. |
 | The fence | `cvet/middleware.py` | Sends a Vet login back to C-vet from every yard page, the Django admin and uploaded files. |
-| Set-up screen | C-gate: Settings → Users & Roles → C-vet → Set up (`cvet/setup.py`, decision 28) | The practice's name, its logins and its link to the yard. It shows who can read the notes. It does not show the notes. The other details of the practice are in the Django admin → C-vet → Practices. |
+| Set-up screen | C-gate: Settings → Users & Roles → C-vet → Set up (`cvet/setup.py`, decision 28) | The practice's name, its logins and its link to the yard. It shows who can read the notes. It does not show the notes. The same page holds the agreement with the yard and the details on the practice's bills (decision 29). |
 
 ### Who can read what
 
@@ -372,7 +373,7 @@ The parts of a note are already apart, so nothing has to sort the text: the item
 
 | Part | File | What it does |
 |---|---|---|
-| Who the bill goes to | `PracticeYardLink.bill_to` | **The yard** (the default) or **each horse owner**. Set in the Django admin, C-vet → Practices, in the link to the yard. |
+| Who the bill goes to | `PracticeYardLink.bill_to` | **The yard** (the default) or **each horse owner**. Set on the C-vet set-up page: **The practice bills**. |
 | The yard's name | `cvet/yard.py` | Read from C-gate's business settings. |
 | On each visit | `Visit.yard_name`, `Visit.bill_to` | Copies, made when the visit starts. A bill for work done does not change when the yard is renamed or the arrangement changes. |
 | On the phone | `static/cvet/app.js` | The horse list is headed "Palmer Farm · 24 horses". The summary says "Bill to Palmer Farm" and names each horse's owners, for the yard's own invoices. |
@@ -427,7 +428,7 @@ Then the app shows the bill on the Visit screen: "All sent to the practice. Bill
 | When to bill the yard: after each visit, or once a month | **Bills**, at the top. |
 | What is finished and not on a bill yet, and **Bill it now** | **Bills**, at the top. |
 | All bill lines as a CSV file, for the practice's accounts | **Bills → Download all as a CSV file**. One row for each line: bill, date, bill to, horse, item, quantity, price, VAT rate, net, VAT, total. |
-| The practice's letters for bill numbers, its address, VAT number and how to pay | Django admin → C-vet → Practices. |
+| The practice's letters for bill numbers, its address, VAT number and how to pay | C-gate: Settings → Users & Roles → C-vet → Set up, the part **On the practice's bills**. |
 | Which price is a vaccination | In the app: **Prices**, "Records a vaccination at the yard". The list is the yard's own vaccination types. |
 
 ### A yard set to "bill each owner"
@@ -436,7 +437,7 @@ One bill for each owner, for that owner's part (decision 18). The yard still get
 
 ### Set-up before the first real visit
 
-1. Django admin → C-vet → Practices: the practice's address, VAT number, letters for bill numbers, and how to pay.
+1. C-gate → Settings → Users & Roles → C-vet → **Set up**: the practice's address, VAT number, letters for bill numbers, and how to pay. On the same page: who the practice bills, what the yard takes from the practice, and the practice in the yard's list of service providers.
 2. C-gate → Settings: the yard's email address, and its VAT rate (0 if the yard is not VAT-registered).
 3. In the app, **Prices**: mark each vaccination price with its vaccination type.
 4. In the app, **Phone → Bills**: choose when to bill the yard.
