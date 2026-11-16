@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}C-vet set-up - Cgate{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto space-y-6">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">C-vet set-up</h1>
+            <p class="page-subtitle">The vet practice, its logins, and what it can see.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'app_settings' %}#people" class="btn-secondary">Back to settings</a>
+        </div>
+    </div>
+
+    {% if many %}
+    <div class="card px-4 py-3 sm:px-5 sm:py-4 space-y-2">
+        <p class="text-charcoal">There is more than one practice. This page works with one practice.</p>
+        <p class="text-sm text-sage">Put each login in its practice in the Django admin: C-vet, then Practices.</p>
+    </div>
+    {% else %}
+
+    <form method="post" class="card">
+        {% csrf_token %}
+        <div class="section-header">
+            <h3 class="section-title">Practice</h3>
+        </div>
+        <div class="px-4 py-3 sm:px-5 sm:py-4 space-y-5">
+            {% if form.non_field_errors %}<p class="text-sm text-error-red" role="alert">{{ form.non_field_errors.0 }}</p>{% endif %}
+
+            <div>
+                <label for="{{ form.name.id_for_label }}" class="text-sm font-medium text-charcoal">Practice name</label>
+                {{ form.name }}
+                {% if form.name.errors %}<p class="mt-1 text-sm text-error-red" role="alert">{{ form.name.errors.0 }}</p>{% endif %}
+                <p class="text-xs text-sage mt-0.5">The name the vet sees, and the name on the practice's bills.</p>
+            </div>
+
+            <div>
+                <label class="flex items-start gap-3 text-sm text-charcoal">
+                    {{ form.link_open }}
+                    <span>The practice can see this yard's horses</span>
+                </label>
+                <p class="text-xs text-sage mt-1">Name, owner, who pays and field. Untick to stop it: the vet then sees no horses.</p>
+            </div>
+
+            <div>
+                <p class="text-sm font-medium text-charcoal">Logins in the practice</p>
+                {% if has_logins %}
+                <div class="mt-2 space-y-2">
+                    {% for box in form.logins %}
+                    <label class="flex items-start gap-3 text-sm text-charcoal">
+                        {{ box.tag }}
+                        <span class="min-w-0 break-words">{{ box.choice_label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <p class="text-xs text-sage mt-2">Every login with the Vet role is here. A ticked login can read and write the practice's records. Untick a login to stop it at once.</p>
+                {% else %}
+                <p class="text-sm text-sage mt-1">No login has the Vet role. <a href="{% url 'user_create' %}" class="underline">Add a user</a> and give it the Vet role.</p>
+                {% endif %}
+                {% if form.logins.errors %}<p class="mt-1 text-sm text-error-red" role="alert">{{ form.logins.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button type="submit" class="btn-primary">{% if practice %}Save{% else %}Make the practice{% endif %}</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="card px-4 py-3 sm:px-5 sm:py-4 space-y-2">
+        <p class="text-sm font-medium text-charcoal">How the vet opens C-vet</p>
+        <p class="text-sm text-charcoal">On the phone, open <strong class="break-words">{{ address }}</strong> and sign in with the Vet login.</p>
+        <p class="text-sm text-sage">A Vet login opens C-vet only. It cannot open the yard's pages.</p>
+        {% if test_mode %}
+        <p class="text-sm text-sage">Test mode is on. Notes and bills are marked as tests, and nothing is written to the yard's records.</p>
+        {% else %}
+        <p class="text-sm text-sage">Test mode is off. Notes and bills are real.</p>
+        {% endif %}
+        {% if practice and request.user.is_staff %}
+        <p class="text-sm text-sage">The bill prefix, the bank details and what the practice sends to the yard are in the <a href="{% url 'admin:cvet_practice_change' practice.pk %}" class="underline">Django admin</a>.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

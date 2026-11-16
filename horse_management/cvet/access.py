@@ -14,6 +14,11 @@ cannot get them wrong:
 
 A yard login, an administrator included, is not a member of a practice.
 It passes none of these, by any route.
+
+A Vet login needs no second step when the database has one practice: it
+joins that practice the first time it opens C-vet (``join_the_only_practice``).
+The yard's administrator makes the practice, and takes a login out of
+it, on the set-up page (``cvet.setup``).
 """
 
 from functools import wraps
@@ -25,7 +30,7 @@ from django.views.decorators.cache import never_cache
 
 from core.permissions import LEVEL_FULL, LEVEL_HIDDEN, access_map, feature_required, has_feature_access
 
-from .models import Bill, ClinicalFile, ClinicalNote, NoteLine, PracticeMember, PriceItem, Visit
+from .models import Bill, ClinicalFile, ClinicalNote, NoteLine, Practice, PracticeMember, PriceItem, Visit
 
 FEATURE = 'cvet'
 
@@ -66,8 +71,66 @@ def is_vet_only(user):
     """
     if not getattr(user, 'is_authenticated', False):
         return False
-    levels = access_map(user)
+    return _is_vet_only_map(access_map(user))
+
+
+def _is_vet_only_map(levels):
     return levels.get(FEATURE) == LEVEL_FULL and levels.get('dashboard') == LEVEL_HIDDEN
+
+
+def vet_logins():
+    """The active logins that ``is_vet_only`` is true for, by name.
+
+    The same rule, asked of the roles table: a superuser has every
+    feature, the dashboard included, so it is never one of these.
+    """
+    from django.contrib.auth import get_user_model
+
+    from core.models import Role
+
+    roles = [role.pk for role in Role.objects.all() if _is_vet_only_map(role.resolved_access())]
+    return (
+        get_user_model().objects
+        .filter(is_active=True, is_superuser=False, role_assignment__role_id__in=roles)
+        .order_by('first_name', 'last_name', 'email', 'username')
+    )
+
+
+def only_practice():
+    """The practice, when the database has exactly one active practice."""
+    practices = list(Practice.objects.filter(is_active=True)[:2])
+    return practices[0] if len(practices) == 1 else None
+
+
+def join_the_only_practice(user):
+    """Put a Vet login in the practice, when there is no doubt which one.
+
+    The administrator who gives a login the Vet role means "this person
+    works for the practice". With one practice in the database, the role
+    names it, so a second step in a second place adds nothing: it was
+    only a way to leave a new vet on a page that says "not set up".
+
+    Three limits keep the rule safe:
+
+    * Only a Vet login (``is_vet_only``). An administrator has C-vet in
+      its role too, and is never put in a practice by this.
+    * Only a login that has no membership row. A login that was taken
+      out of the practice (an inactive row) stays out.
+    * Only when there is exactly one active practice. With two, a person
+      must choose.
+
+    Returns the practice the login may now read, or None.
+    """
+    if not is_vet_only(user):
+        return None
+    if PracticeMember.objects.filter(user=user).exists():
+        return None
+    practice = only_practice()
+    if practice is None:
+        return None
+    # get_or_create: two first requests at the same time make one row.
+    PracticeMember.objects.get_or_create(user=user, defaults={'practice': practice})
+    return practice_for(user)
 
 
 def open_link(practice):
@@ -141,9 +204,11 @@ def practice_page(view_func):
     @cvet_enabled
     @feature_required(FEATURE, LEVEL_FULL)
     def _wrapped(request, *args, **kwargs):
-        practice = practice_for(request.user)
+        practice = practice_for(request.user) or join_the_only_practice(request.user)
         if practice is None:
-            return render(request, 'cvet/no_practice.html', status=403)
+            return render(request, 'cvet/no_practice.html', {
+                'can_set_up': has_feature_access(request.user, 'users', LEVEL_FULL),
+            }, status=403)
         request.practice = practice
         return view_func(request, *args, **kwargs)
     return _wrapped
@@ -162,7 +227,7 @@ def practice_api(view_func):
     def _wrapped(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'signed_out'}, status=401)
-        practice = practice_for(request.user)
+        practice = practice_for(request.user) or join_the_only_practice(request.user)
         if practice is None:
             return JsonResponse({'error': 'no_access'}, status=403)
         request.practice = practice
