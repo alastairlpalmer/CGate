@@ -33,7 +33,7 @@ test('unsent: drops sent notes and puts the oldest first', () => {
 });
 
 test('unsentText: the counter the vet reads', () => {
-    assert.equal(core.unsentText(0), 'Everything is sent');
+    assert.equal(core.unsentText(0), 'All sent');
     assert.equal(core.unsentText(1), '1 note not sent');
     assert.equal(core.unsentText(3), '3 notes not sent');
 });
@@ -103,7 +103,7 @@ test('visitForDay: a note after Finish visit starts a new visit the same day', (
 test('unsentText: a finished visit that is not sent is not "everything"', () => {
     assert.equal(core.unsentText(0, 1), 'Finish not sent');
     assert.equal(core.unsentText(2, 1), '2 notes not sent');
-    assert.equal(core.unsentText(0, 0), 'Everything is sent');
+    assert.equal(core.unsentText(0, 0), 'All sent');
 });
 
 test('toPence: prices as people type them', () => {

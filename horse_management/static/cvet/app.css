@@ -39,9 +39,9 @@ button { font: inherit; color: inherit; }
     background: var(--brand);
     color: #fff;
 }
-.bar h1 { margin: 0 auto 0 0; font-size: 17px; }
+.bar h1 { margin: 0 auto 0 0; font-size: 17px; white-space: nowrap; }
 .tag { font-size: 12px; }
-#test-mode { padding: 1px 6px; border-radius: 4px; background: #ffe2b8; color: #5c3600; font-weight: 600; }
+#test-mode { padding: 1px 6px; border-radius: 4px; background: #ffe2b8; color: #5c3600; font-weight: 600; text-transform: uppercase; }
 .chip {
     flex: 0 0 auto;
     padding: 3px 9px;
@@ -53,7 +53,10 @@ button { font: inherit; color: inherit; }
     font-weight: 600;
     white-space: nowrap;
 }
-button.chip { min-height: 28px; cursor: pointer; }
+/* The counter is also the Sync button. It looks small and takes a
+   finger: the area round it, 44 px high, is part of it. */
+button.chip { position: relative; min-height: 28px; cursor: pointer; }
+button.chip::after { content: ""; position: absolute; left: -6px; right: -6px; top: 50%; height: 44px; transform: translateY(-50%); }
 .chip.off, .chip.pending { background: #ffe2b8; color: #5c3600; }
 .chip.clear { background: #d9f0e0; color: #1d4a2e; }
 
@@ -73,12 +76,12 @@ p { margin: 4px 0; }
 .strong { font-weight: 600; }
 .yard { margin: 0 0 4px; font-weight: 600; }
 .yard:empty { display: none; }
-#recheck-suggestion { display: block; width: 100%; margin: 4px 0; }
 .total { font-weight: 700; font-size: 17px; text-align: right; }
 .card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 8px 0; }
 
-.row { display: flex; gap: 8px; margin: 6px 0; align-items: flex-end; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; align-items: flex-end; }
 .row > div { flex: 1 1 0; min-width: 0; }
+.row > input { flex: 1 1 0; min-width: 0; width: auto; }
 .button {
     display: inline-flex;
     align-items: center;
@@ -93,7 +96,10 @@ p { margin: 4px 0; }
     font-weight: 600;
     text-decoration: none;
     cursor: pointer;
-    flex: 1 1 0;
+    /* Side by side when there is room; one under the other on a narrow
+       phone, and the words never break onto a second line. */
+    flex: 1 1 auto;
+    white-space: nowrap;
 }
 .button.primary { background: var(--brand); color: #fff; }
 .button.slim { flex: 0 0 auto; }
@@ -143,6 +149,8 @@ label.button { margin: 0; font-size: inherit; }
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+/* A horse is known by its name: a long one takes a second line. */
+.horse .strong { white-space: normal; overflow-wrap: anywhere; }
 small { color: var(--muted); font-size: 13px; }
 .horse small.wrap { white-space: normal; }
 /* Money is never cut short. */
@@ -168,6 +176,16 @@ small { color: var(--muted); font-size: 13px; }
 }
 .tile small { display: block; font-weight: 400; }
 .tile.on { background: var(--brand); color: #fff; }
+/* An offer, not a choice that is made: it does not look selected. */
+.suggest { display: block; width: 100%; min-height: 44px; margin: 4px 0; padding: 6px 10px; border: 1px dashed var(--brand); border-radius: 8px; background: var(--paper); color: var(--brand); font-weight: 600; text-align: left; cursor: pointer; }
+.problem { margin: 0 0 6px; color: var(--bad); font-weight: 600; font-size: 14px; }
+.problem:empty { display: none; }
+.link { min-height: 44px; min-width: 44px; padding: 0 8px; border: 0; background: none; color: var(--bad); font-weight: 600; font-size: 13px; cursor: pointer; }
+/* Save stays at the foot of the screen while the vet works above it. */
+.savebar { position: sticky; bottom: calc(var(--tabs) + env(safe-area-inset-bottom)); z-index: 1; margin: 8px -12px 0; padding: 8px 12px; background: #fff; border-top: 1px solid var(--line); }
+.savebar .button { width: 100%; }
+/* While horses are selected, room for the bar under the list. */
+.selecting { padding-bottom: 64px; }
 .tile.on small { color: #d5e0e3; }
 
 /* One item on the bill: name, then quantity, price and total on a row. */
@@ -184,7 +202,6 @@ small { color: var(--muted); font-size: 13px; }
 .entry small.pending { color: var(--warn); }
 .entry small.failed { color: var(--bad); white-space: normal; }
 .entry small.wrap { white-space: normal; }
-.entry .link { min-height: 32px; padding: 0; border: 0; background: none; color: var(--bad); font-weight: 600; font-size: 13px; cursor: pointer; }
 .pay { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; }
 .price { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 44px; padding: 4px 0; border: 0; background: none; text-align: left; cursor: pointer; }
 .price.hidden-price .strong { color: var(--muted); text-decoration: line-through; }
@@ -238,4 +255,11 @@ dd { margin: 0; word-break: break-word; }
     overflow: hidden;
     clip: rect(0 0 0 0);
     white-space: nowrap;
+}
+
+/* A small phone (320 px): the top bar stays on one line. */
+@media (max-width: 359px) {
+    .bar { gap: 6px; padding-left: 10px; padding-right: 10px; }
+    .chip { padding: 3px 7px; font-size: 12px; }
+    .due { font-size: 11px; padding: 2px 5px; }
 }

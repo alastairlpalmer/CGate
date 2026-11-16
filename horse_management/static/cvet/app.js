@@ -160,6 +160,7 @@
             return { kind: 'offline', status: 0 };
         }).then(function (result) {
             if (timer) clearTimeout(timer);
+            state.netDown = result.kind === 'offline';
             return result;
         });
     }
@@ -294,9 +295,11 @@
     // ── The bar at the top, and the tabs ─────────────────────────────────
 
     function renderBar() {
+        // The chip shows only when there is no signal: that is the thing
+        // to know. navigator.onLine can say "online" on a network with no
+        // way out, so a request that got no answer counts too.
         var chip = $('signal');
-        chip.textContent = navigator.onLine ? 'Signal' : 'No signal';
-        chip.className = navigator.onLine ? 'chip' : 'chip off';
+        chip.hidden = navigator.onLine && !state.netDown;
 
         var count = unsentEntries().length;
         var finishes = finishQueue().length;
@@ -395,6 +398,8 @@
         toggle.className = 'button slim' + (state.selecting ? ' on' : '');
         var picked = Object.keys(state.selected).length;
         $('select-bar').hidden = !state.selecting;
+        // Room under the list for the bar, so it hides no horse.
+        $('view-horses').classList.toggle('selecting', state.selecting);
         $('select-count').textContent = picked === 1 ? '1 horse selected' : picked + ' horses selected';
         $('select-add').disabled = picked === 0;
     }
@@ -418,7 +423,11 @@
             return priceTile(price, function () { addToSelected(price); });
         }));
         $('picker-empty').hidden = active.length > 0;
+        var picked = Object.keys(state.selected).length;
+        $('picker-title').textContent = 'Add item to ' + (picked === 1 ? '1 horse' : picked + ' horses');
         $('picker').hidden = false;
+        var first = $('picker-tiles').querySelector('button') || $('picker-cancel');
+        first.focus();
     }
 
     function addToSelected(price) {
@@ -460,18 +469,62 @@
         };
     }
 
-    function openHorse(horse) {
+    // `saved`: a note that was being written when the app was closed or
+    // reloaded (an iPhone can reload the app after the camera is used).
+    function openHorse(horse, saved) {
         stopRecording();
-        state.draft = { horse: horse, lines: [], followUp: '', photo: null, audio: null };
-        $('note').value = '';
+        saved = saved || {};
+        state.draft = {
+            horse: horse, lines: saved.lines || [], followUp: saved.followUp || '',
+            photo: saved.photo || null, audio: saved.audio || null
+        };
+        $('note').value = saved.note || '';
         $('photo').value = '';
-        $('photo-state').textContent = '';
-        $('audio-state').textContent = '';
         $('entry-message').textContent = '';
         $('history-message').textContent = '';
         state.olderNotes = null;
-        setPreview(null);
+        showAttachments();
         show('horse');
+    }
+
+    // The photo and the recording of the note being written: what is
+    // there, and a way to take each one off again.
+    function showAttachments() {
+        var draft = state.draft;
+        function line(node, stored, text, kind) {
+            node.textContent = '';
+            if (!stored) return;
+            node.appendChild(document.createTextNode(text + ' '));
+            node.appendChild(button('link', 'Remove', function () {
+                draft[kind] = null;
+                if (kind === 'photo') $('photo').value = '';
+                showAttachments();
+                persistDraft();
+            }));
+        }
+        line($('photo-state'), draft && draft.photo, draft && draft.photo ? 'Photo ready (' + core.formatBytes(draft.photo.bytes) + ').' : '', 'photo');
+        line($('audio-state'), draft && draft.audio, draft && draft.audio ? 'Voice recorded (' + core.formatBytes(draft.audio.bytes) + ').' : '', 'audio');
+        setPreview(draft ? draft.audio : null);
+    }
+
+    // Keep the note being written on the phone as it is typed, so that
+    // closing the app, or the phone reloading it, loses nothing.
+    var draftTimer = null;
+    function persistDraft() {
+        if (draftTimer) clearTimeout(draftTimer);
+        draftTimer = setTimeout(function () {
+            var draft = state.draft;
+            var saved = draft && !draftIsEmpty() ? {
+                horseId: draft.horse.id, note: $('note').value, lines: draft.lines,
+                followUp: draft.followUp, photo: draft.photo, audio: draft.audio
+            } : null;
+            setMeta('draft', saved).catch(function () { /* the note is still on the screen */ });
+        }, 300);
+    }
+
+    function forgetDraft() {
+        if (draftTimer) clearTimeout(draftTimer);
+        return setMeta('draft', null);
     }
 
     function draftIsEmpty() {
@@ -484,6 +537,7 @@
         stopRecording();
         state.draft = null;
         setPreview(null);
+        forgetDraft();
         return true;
     }
 
@@ -527,6 +581,7 @@
         if (same) same.qty += 1;       // a second tap on a tile: two of them
         else state.draft.lines.push(line);
         renderLines();
+        persistDraft();
     }
 
     function renderLines() {
@@ -540,7 +595,7 @@
                 name.placeholder = 'What was done';
                 name.value = line.description;
                 name.setAttribute('aria-label', 'Item');
-                name.addEventListener('input', function () { line.description = name.value; });
+                name.addEventListener('input', function () { line.description = name.value; persistDraft(); });
                 item.appendChild(name);
             } else {
                 item.appendChild(el('span', 'strong', line.description));
@@ -551,13 +606,17 @@
                 if (line.qty > 1) line.qty -= 1;
                 else draft.lines.splice(draft.lines.indexOf(line), 1);
                 renderLines();
+                persistDraft();
             }));
             controls.appendChild(el('span', 'qty', String(line.qty)));
-            controls.appendChild(button('step', '+', function () { line.qty += 1; renderLines(); }));
+            controls.appendChild(button('step', '+', function () { line.qty += 1; renderLines(); persistDraft(); }));
             var price = el('input');
             price.type = 'text';
             price.inputMode = 'decimal';
-            price.value = core.decimal(line.unitPence);
+            // A price that is not a number stays in the box as typed,
+            // marked, until it is put right.
+            price.value = line.badPrice ? line.typed : core.decimal(line.unitPence);
+            if (line.badPrice) price.className = 'bad';
             price.setAttribute('aria-label', 'Price for ' + (line.description || 'item'));
             // The price can be changed for this horse. The total follows
             // as the vet types; a price that is not a number is marked
@@ -565,10 +624,12 @@
             price.addEventListener('input', function () {
                 var pence = core.toPence(price.value);
                 line.badPrice = pence === null;
+                line.typed = price.value;
                 price.className = line.badPrice ? 'bad' : '';
                 if (!line.badPrice) line.unitPence = pence;
                 total.textContent = core.money(core.lineTotal(line));
                 renderLinesTotal();
+                persistDraft();
             });
             controls.appendChild(price);
             controls.appendChild(total);
@@ -595,6 +656,7 @@
         node.onclick = function () {
             draft.followUp = found.date;
             renderFollowUps();
+            persistDraft();
         };
     }
 
@@ -606,7 +668,9 @@
             var tile = button('tile' + (draft.followUp === date ? ' on' : ''), choice[0], function () {
                 draft.followUp = date;
                 renderFollowUps();
+                persistDraft();
             });
+            tile.setAttribute('aria-pressed', draft.followUp === date ? 'true' : 'false');
             return tile;
         }));
         $('follow-up').value = draft.followUp;
@@ -633,7 +697,7 @@
     // One note that is on this phone.
     function entryRow(entry, canRemove) {
         var item = el('li', 'entry');
-        var label = entry.status === 'sent' ? 'Sent ' + timeText(entry.sentAt)
+        var label = entry.status === 'sent' ? 'Sent'
             : entry.status === 'failed' ? 'Not sent: ' + (entry.lastError || 'the server refused it')
             : 'Not sent yet';
         item.appendChild(el('small', 'state ' + entry.status, timeText(entry.createdAt) + ' · ' + label));
@@ -722,7 +786,8 @@
         shrinkPhoto(file).then(toStored).then(function (stored) {
             if (state.draft !== draft) return;
             draft.photo = stored;
-            $('photo-state').textContent = 'Photo ready (' + core.formatBytes(stored.bytes) + ').';
+            showAttachments();
+            persistDraft();
         }).catch(function (error) {
             $('photo-state').textContent = 'The photo could not be read: ' + error.message;
         });
@@ -742,11 +807,16 @@
             var chunks = [];
             var started = Date.now();
             var timer = setTimeout(stopRecording, MAX_RECORDING_MS);
+            // The seconds, so the vet sees that it is recording.
+            var clock = setInterval(function () {
+                $('audio-state').textContent = 'Recording: ' + Math.round((Date.now() - started) / 1000) + ' s of 60.';
+            }, 1000);
             recorder.ondataavailable = function (event) {
                 if (event.data && event.data.size) chunks.push(event.data);
             };
             recorder.onstop = function () {
                 clearTimeout(timer);
+                clearInterval(clock);
                 stream.getTracks().forEach(function (track) { track.stop(); });
                 state.recorder = null;
                 $('record').textContent = 'Record voice';
@@ -756,20 +826,18 @@
                     $('audio-state').textContent = 'Nothing was recorded. Try again.';
                     return;
                 }
-                var seconds = Math.max(1, Math.round((Date.now() - started) / 1000));
                 toStored(blob).then(function (stored) {
                     if (state.draft !== draft) return;
                     draft.audio = stored;
-                    $('audio-state').textContent = 'Voice recorded: ' + seconds + ' s (' +
-                        core.formatBytes(stored.bytes) + ').';
-                    setPreview(stored);
+                    showAttachments();
+                    persistDraft();
                 });
             };
             state.recorder = recorder;
             recorder.start();
             $('record').textContent = 'Stop recording';
             $('record').classList.add('recording');
-            $('audio-state').textContent = 'Recording… 60 seconds at most.';
+            $('audio-state').textContent = 'Recording: 0 s of 60.';
         }).catch(function (error) {
             $('audio-state').textContent = 'The microphone is not available: ' + error.message;
         });
@@ -820,12 +888,20 @@
         var message = $('entry-message');
         if (state.recorder) { message.textContent = 'Stop the recording first.'; return; }
         var note = $('note').value.trim();
+        // A refusal says why, next to Save, and takes the vet to the box.
+        function goTo(selector) {
+            var box = $('lines').querySelector(selector);
+            if (box) { box.scrollIntoView({ block: 'center' }); box.focus({ preventScroll: true }); }
+        }
         if (draft.lines.some(function (line) { return line.badPrice; })) {
-            message.textContent = 'A price is not a number. Check the box marked in red.';
+            message.textContent = 'A price is not a number. It is marked in red.';
+            goTo('input.bad');
             return;
         }
-        if (draft.lines.some(function (line) { return !line.description.trim(); })) {
+        var unnamed = draft.lines.filter(function (line) { return !line.description.trim(); })[0];
+        if (unnamed) {
             message.textContent = 'Type what the other item is.';
+            goTo('li:nth-child(' + (draft.lines.indexOf(unnamed) + 1) + ') input');
             return;
         }
         if (!note && !draft.lines.length && !draft.photo && !draft.audio) {
@@ -845,6 +921,7 @@
             state.entries.push(entry);
             state.draft = null;
             setPreview(null);
+            forgetDraft();
             say(draft.horse.name + ' saved.');
             show('horses');
             refreshStorage();
@@ -921,11 +998,13 @@
             : 'Visit finished ' + timeText(visit.finishedAt) + '. ' +
               (waiting || summary.horses.some(function (row) { return row.unsent; })
                   ? 'Not all sent yet: keep the app open when you have a signal.'
-                  : 'All sent to the practice.' + billsText(visit));
+                  : 'All sent to the practice.' + billsText(visit)) +
+              ' A new note starts a new visit.';
     }
 
     // " Bill HV-0001 to Palmer Farm, £282.50." once the server has made it.
     function billsText(visit) {
+        if (visit.billWhen === 'month') return ' It goes on the monthly bill.';
         return (visit.bills || []).map(function (bill) {
             return ' Bill ' + bill.number + ' to ' + bill.to + ', £' + bill.total + '.';
         }).join('');
@@ -966,22 +1045,32 @@
             return item;
         }));
         var editing = state.editingPrice;
-        if (!$('price-vaccination').options.length) renderVaccinationTypes(null);
+        $('price-form').hidden = !state.priceFormOpen;
+        $('price-add').hidden = !!state.priceFormOpen;
         $('price-form-title').textContent = editing ? 'Change a price' : 'Add a price';
         $('price-hide').hidden = !editing;
         $('price-hide').textContent = editing && !editing.isActive ? 'Show' : 'Hide';
-        $('price-cancel').hidden = !editing;
     }
 
+    // Open the form at the top of the screen: for a new price (null), or
+    // for one of the list.
     function editPrice(price) {
         state.editingPrice = price;
+        state.priceFormOpen = true;
         $('price-name').value = price ? price.name : '';
         $('price-amount').value = price ? core.decimal(price.pence) : '';
         $('price-vat').value = price ? String(Number(price.vatRate)) : '20';
         renderVaccinationTypes(price ? price.vaccinationTypeId : null);
         $('price-message').textContent = '';
         renderPrices();
-        if (price) $('price-name').focus();
+        window.scrollTo(0, 0);
+        $('price-name').focus({ preventScroll: true });
+    }
+
+    function closePriceForm() {
+        state.editingPrice = null;
+        state.priceFormOpen = false;
+        renderPrices();
     }
 
     function fromServerPrice(item) {
@@ -1027,12 +1116,15 @@
         var active = editing ? editing.isActive : true;
         if (flipActive) active = !active;
         form.append('is_active', active ? 'true' : 'false');
-        message.textContent = 'Saving…';
+        message.textContent = '';
+        say('Saving…');
         getSession().then(function (result) {
+            if (result.kind !== 'ok') say('');
             if (result.kind === 'offline') { message.textContent = 'No signal. A price change needs a signal.'; return; }
             if (result.kind !== 'ok') { message.textContent = result.kind === 'denied' ? DENIED_TEXT : 'Sign in again to change a price.'; return; }
             return post(config.pricesUrl, form, result.session.csrf).then(function (reply) {
                 if (reply.kind !== 'ok' || (reply.status !== 200 && reply.status !== 201)) {
+                    say('');
                     message.textContent = reply.kind === 'offline' ? 'No signal. The price was not saved.' : 'The price was not saved.';
                     return;
                 }
@@ -1040,8 +1132,8 @@
                 state.prices = state.prices.filter(function (price) { return price.id !== saved.id; }).concat([saved])
                     .sort(function (a, b) { return a.name.localeCompare(b.name); });
                 return put('prices', saved).then(function () {
-                    editPrice(null);
-                    $('price-message').textContent = saved.name + ' saved.';
+                    closePriceForm();
+                    say(saved.name + ' saved.');
                 });
             });
         });
@@ -1279,7 +1371,9 @@
                 if (what !== 'sent' && what !== 'failed') return what;
                 var visit = state.meta.visit;
                 var keep = what === 'sent' && visit && visit.id === item.id
-                    ? setMeta('visit', Object.assign({}, visit, { bills: result.data.bills || [] }))
+                    ? setMeta('visit', Object.assign({}, visit, {
+                        bills: result.data.bills || [], billWhen: result.data.bill_when || 'visit'
+                    }))
                     : Promise.resolve();
                 return keep.then(function () {
                     return setMeta('finishQueue', finishQueue().filter(function (left) {
@@ -1508,8 +1602,9 @@
             if (!state.draft) return;
             state.draft.followUp = $('follow-up').value;
             renderFollowUps();
+            persistDraft();
         });
-        $('note').addEventListener('input', renderSuggestion);
+        $('note').addEventListener('input', function () { renderSuggestion(); persistDraft(); });
         $('photo').addEventListener('change', onPhotoChosen);
         $('record').addEventListener('click', toggleRecording);
         $('save').addEventListener('click', saveDraft);
@@ -1517,7 +1612,12 @@
         $('finish').addEventListener('click', finishVisit);
         $('price-form').addEventListener('submit', function (event) { savePrice(event, false); });
         $('price-hide').addEventListener('click', function () { savePrice(null, true); });
-        $('price-cancel').addEventListener('click', function () { editPrice(null); });
+        $('price-cancel').addEventListener('click', closePriceForm);
+        $('price-add').addEventListener('click', function () { editPrice(null); });
+        // A tap on the dark area round the item list closes it.
+        $('picker').addEventListener('click', function (event) {
+            if (event.target === $('picker')) $('picker').hidden = true;
+        });
         $('clear').addEventListener('click', clearPhone);
         $('sign-out').addEventListener('click', signOut);
 
@@ -1537,7 +1637,14 @@
             setHorses(stored[1]);
             state.prices = stored[2].sort(function (a, b) { return a.name.localeCompare(b.name); });
             state.entries = stored[3];
-            show('horses');
+            var saved = state.meta.draft;
+            var horse = saved && state.horsesById[saved.horseId];
+            if (horse) {
+                openHorse(horse, saved);
+                say('Your note for ' + horse.name + ' is back. It was not saved yet.', true);
+            } else {
+                show('horses');
+            }
             // The speed measure: time since the page started to load.
             // The plan's limit is 1 second (docs/C_VET_PLAN.md, section 5).
             if (window.performance && performance.now) state.openMs = Math.round(performance.now());

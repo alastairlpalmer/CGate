@@ -44,7 +44,7 @@ from django.core.files.base import ContentFile
 from django.db import IntegrityError, transaction
 from django.http import FileResponse, Http404, JsonResponse
 from django.middleware.csrf import get_token
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
@@ -671,6 +671,8 @@ def _visit_payload(visit):
         'date': visit.date.isoformat(),
         'yard': visit.yard_name,
         'bill_to': visit.bill_to,
+        # 'month': no bill now; this visit goes on the monthly bill.
+        'bill_when': getattr(access.open_link(visit.practice), 'bill_when', 'visit'),
         'finished_at': visit.finished_at.isoformat() if visit.finished_at else None,
         'notes': visit.notes.count(),
         'horses': visit.notes.values('horse_name').distinct().count(),
@@ -712,12 +714,37 @@ def api_visit_finish(request, client_id):
 @practice_page
 @require_GET
 def bill_list(request):
-    bills = access.bills_for(request.practice).filter(is_test=settings.CVET_TEST_MODE)
+    is_test = settings.CVET_TEST_MODE
+    bills = access.bills_for(request.practice).filter(is_test=is_test)
+    visits, total = billing.unbilled_summary(request.practice, is_test)
     return render(request, 'cvet/bill_list.html', {
         'practice': request.practice,
         'bills': bills.select_related('visit')[:200],
-        'test_mode': settings.CVET_TEST_MODE,
+        'test_mode': is_test,
+        'link': access.open_link(request.practice),
+        'unbilled_visits': visits,
+        'unbilled_total': total,
     })
+
+
+@practice_page
+@require_POST
+def bill_settings(request):
+    """The practice chooses when it bills this yard: each visit, or monthly."""
+    link = access.open_link(request.practice)
+    choice = request.POST.get('bill_when', '')
+    if link is not None and choice in billing.PracticeYardLink.BillWhen.values:
+        link.bill_when = choice
+        link.save(update_fields=['bill_when'])
+    return redirect('cvet:bill_list')
+
+
+@practice_page
+@require_POST
+def bill_now(request):
+    """Bill everything that is finished and not on a bill yet."""
+    billing.bill_now(request.practice)
+    return redirect('cvet:bill_list')
 
 
 def _bill_or_404(request, pk):
@@ -747,13 +774,13 @@ def bill_export(request):
     for line in lines:
         vat = billing.vat_in(line.amount_inc_vat, line.vat_rate)
         rows.append([
-            line.bill.number, line.bill.date, line.bill.to_name, line.horse_name, line.description,
+            line.bill.number, line.bill.date, line.bill.to_name, line.date, line.horse_name, line.description,
             line.quantity, line.unit_price_inc_vat, line.vat_rate, line.share,
             line.amount_inc_vat - vat, vat, line.amount_inc_vat,
         ])
     return csv_response(
         'c-vet-bills',
-        ['Bill', 'Date', 'Bill to', 'Horse', 'Item', 'Quantity', 'Unit price inc VAT',
+        ['Bill', 'Bill date', 'Bill to', 'Visit date', 'Horse', 'Item', 'Quantity', 'Unit price inc VAT',
          'VAT rate %', 'Share %', 'Net', 'VAT', 'Total inc VAT'],
         rows,
     )

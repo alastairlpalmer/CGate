@@ -1,17 +1,24 @@
 """The practice's bills, and what goes back to the yard (docs/C_VET_PLAN.md, section 7e).
 
-When the vet taps Finish visit, ``close_out`` does three things:
+When the vet taps Finish visit, ``close_out`` does two things:
 
-1. **Makes the bill.** One bill to the yard (the practice's client), or,
-   for a yard set to "bill each owner", one bill for each owner. A bill
-   is a copy and never changes. Work that arrives after it goes on a
-   further bill for the same visit.
-2. **Writes the yard's records**, as the yard's staff would by hand: a
+1. **Writes the yard's records**, as the yard's staff would by hand: a
    vaccination record for each vaccination, a vet visit record with the
    other items and the recheck date. When the yard is billed, each
-   record carries its cost, and C-gate's own code makes the charge that
-   the yard's next invoices bill to each owner.
-3. **Tells the yard:** the bill as a cost in the yard's books, and by email.
+   record carries its cost (with the yard's margin, if it has one), and
+   C-gate's own code makes the charge that the yard's next invoices bill
+   to each owner.
+2. **Makes the bill**, if the practice bills this yard after each visit:
+   one bill to the yard (the practice's client), or, for a yard set to
+   "bill each owner", one bill for each owner.
+
+A practice that bills once a month gets its bill from ``bill_month_end``
+(a scheduled task, on the 1st) or from ``bill_now`` (the button on the
+Bills page). Either way a bill is a copy and never changes: work that
+arrives after it goes on a further bill.
+
+Each new bill to the yard is also recorded as a cost in the yard's books
+and sent to the yard by email.
 
 This module is the one place where C-vet writes to the yard's records.
 It writes nothing clinical: item names, amounts and dates only.
@@ -34,6 +41,8 @@ from .models import Bill, BillLine, ClinicalNote, NoteLine, Practice, PracticeYa
 logger = logging.getLogger(__name__)
 
 PENNY = Decimal('0.01')
+YARD = PracticeYardLink.BillTo.YARD
+OWNERS = PracticeYardLink.BillTo.OWNERS
 
 
 # ── Money ────────────────────────────────────────────────────────────────
@@ -72,7 +81,21 @@ def split_amount(total, payers):
     return [(payer, amount) for payer, amount, _ in parts]
 
 
-# ── 1. The bill ──────────────────────────────────────────────────────────
+def yard_amount(gross, rate, yard_charges_vat, margin_percent=0):
+    """What the yard puts on an owner's invoice for an item of the vet's bill.
+
+    A yard that is not VAT-registered passes on what it pays: the whole
+    amount. A VAT-registered yard takes the VAT back from HMRC and its
+    own invoices add VAT again, so it passes on the amount without VAT
+    (decision 23). Then the yard's margin, if it has one (decision 26).
+    """
+    gross = Decimal(gross)
+    amount = gross - vat_in(gross, rate) if yard_charges_vat else gross
+    margin = Decimal(margin_percent or 0)
+    return (amount * (Decimal('100') + margin) / Decimal('100')).quantize(PENNY, ROUND_HALF_UP)
+
+
+# ── The bill ─────────────────────────────────────────────────────────────
 
 def _next_number(practice, is_test):
     """The next bill number of the practice. Call with the practice locked."""
@@ -84,48 +107,67 @@ def _next_number(practice, is_test):
     return f'{"TEST-" if is_test else ""}{prefix}-{number:04d}'
 
 
-def _unbilled_lines(visit):
-    return list(
-        NoteLine.objects.filter(note__visit=visit, bill_lines__isnull=True)
-        .select_related('note').order_by('note__horse_name', 'note_id', 'pk')
+def unbilled_lines(practice, *, visit=None, before=None):
+    """The items of the practice's finished visits that are on no bill yet.
+
+    ``visit``: of that visit only. ``before``: of visits before that day.
+    """
+    lines = NoteLine.objects.filter(
+        practice=practice, bill_lines__isnull=True, note__visit__status=Visit.Status.FINISHED,
     )
+    if visit is not None:
+        lines = lines.filter(note__visit=visit)
+    if before is not None:
+        lines = lines.filter(note__visit__date__lt=before)
+    return lines.select_related('note__visit').order_by('note__visit__date', 'note__horse_name', 'note_id', 'pk')
 
 
-def _parts_by_addressee(visit, lines):
-    """{(owner id or None, name): [(line, share %, amount)]}: who each line is billed to."""
+def _parts_by_addressee(lines):
+    """Who each line is billed to.
+
+    ``{(is test, bill to, owner id or None, name): [(line, share %, amount)]}``.
+    One entry is one bill.
+    """
     by_addressee = defaultdict(list)
-    yard_key = (None, visit.yard_name or 'The yard')
     for line in lines:
-        payers = line.note.payers if visit.bill_to == PracticeYardLink.BillTo.OWNERS else []
+        visit = line.note.visit
+        payers = line.note.payers if visit.bill_to == OWNERS else []
         parts = split_amount(line.total_inc_vat, payers)
         if not parts:
             # The yard is billed; or owners are, and this horse has none
             # on record. The yard asked for the visit, so the yard gets it.
-            by_addressee[yard_key].append((line, Decimal('100.00'), line.total_inc_vat))
+            key = (visit.is_test, YARD, None, visit.yard_name or 'The yard')
+            by_addressee[key].append((line, Decimal('100.00'), line.total_inc_vat))
             continue
         share_sum = sum((Decimal(str(payer['share'])) for payer, _ in parts), Decimal('0'))
         for payer, amount in parts:
             share = (Decimal(str(payer['share'])) * 100 / share_sum).quantize(PENNY, ROUND_HALF_UP)
-            by_addressee[(payer.get('owner_id'), payer['name'])].append((line, share, amount))
+            key = (visit.is_test, OWNERS, payer.get('owner_id'), payer['name'])
+            by_addressee[key].append((line, share, amount))
     return by_addressee
 
 
-def bill_visit(visit):
-    """Make the bill, or bills, for the visit's items that are on no bill yet.
+def make_bills(practice, *, visit=None, before=None):
+    """Bill the practice's unbilled items. Returns the new bills.
+
+    With ``visit``: that visit's items, on a bill for the visit. Without:
+    the items of every finished visit (before ``before``, if given), on a
+    bill for the period they cover.
 
     Safe to call again: the second call finds nothing unbilled and makes
-    nothing. Returns the new bills.
+    nothing.
     """
     from core.models import Owner
 
     with transaction.atomic():
         # One at a time for a practice: its bill numbers have no gaps.
-        practice = Practice.objects.select_for_update().get(pk=visit.practice_id)
-        lines = _unbilled_lines(visit)
+        practice = Practice.objects.select_for_update().get(pk=practice.pk)
+        lines = list(unbilled_lines(practice, visit=visit, before=before))
         if not lines:
             return []
+        today = timezone.localdate()
         bills = []
-        for (owner_id, name), parts in _parts_by_addressee(visit, lines).items():
+        for (is_test, bill_to, owner_id, name), parts in _parts_by_addressee(lines).items():
             total = sum((amount for _, _, amount in parts), Decimal('0'))
             # VAT is worked out on the total at each rate, once, so the
             # bill, its printed page and its CSV all show the same figure.
@@ -133,19 +175,21 @@ def bill_visit(visit):
             for line, _, amount in parts:
                 bands[line.vat_rate] += amount
             vat = sum((vat_in(gross, rate) for rate, gross in bands.items()), Decimal('0'))
+            dates = [line.note.visit.date for line, _, _ in parts]
             bill = Bill.objects.create(
-                practice=practice, visit=visit, number=_next_number(practice, visit.is_test),
-                bill_to=PracticeYardLink.BillTo.OWNERS if owner_id else PracticeYardLink.BillTo.YARD,
-                to_name=name,
+                practice=practice, number=_next_number(practice, is_test),
+                visit=visit, date=visit.date if visit else today,
+                period_start=None if visit else min(dates), period_end=None if visit else max(dates),
+                bill_to=bill_to, to_name=name,
                 to_owner=Owner.objects.filter(pk=owner_id).first() if owner_id else None,
-                date=visit.date, total_inc_vat=total, total_vat=vat, is_test=visit.is_test,
+                total_inc_vat=total, total_vat=vat, is_test=is_test,
             )
             BillLine.objects.bulk_create([
                 BillLine(
-                    bill=bill, note_line=line, horse_name=line.note.horse_name,
-                    description=line.description, quantity=line.quantity,
-                    unit_price_inc_vat=line.unit_price_inc_vat, vat_rate=line.vat_rate,
-                    share=share, amount_inc_vat=amount,
+                    bill=bill, note_line=line, date=line.note.visit.date,
+                    horse_name=line.note.horse_name, description=line.description,
+                    quantity=line.quantity, unit_price_inc_vat=line.unit_price_inc_vat,
+                    vat_rate=line.vat_rate, share=share, amount_inc_vat=amount,
                 )
                 for line, share, amount in parts
             ])
@@ -153,20 +197,9 @@ def bill_visit(visit):
         return bills
 
 
-# ── 2. The yard's records ────────────────────────────────────────────────
+# ── The yard's records ───────────────────────────────────────────────────
 
-def _yard_amount(gross, rate, yard_charges_vat):
-    """What the yard puts on an owner's invoice for an item of the vet's bill.
-
-    A yard that is not VAT-registered passes on what it pays: the whole
-    amount. A VAT-registered yard takes the VAT back from HMRC and its
-    own invoices add VAT again, so it passes on the amount without VAT.
-    """
-    gross = Decimal(gross)
-    return gross - vat_in(gross, rate) if yard_charges_vat else gross
-
-
-def send_note_to_yard(note, link, bill_numbers=''):
+def send_note_to_yard(note, link):
     """Write one note's dates and costs into the yard's records, once.
 
     Returns the problems the yard must know about, as a list of strings.
@@ -177,7 +210,10 @@ def send_note_to_yard(note, link, bill_numbers=''):
 
     problems = []
     with transaction.atomic():
-        note = ClinicalNote.objects.select_for_update().select_related('horse', 'visit').get(pk=note.pk)
+        note = (
+            ClinicalNote.objects.select_for_update()
+            .select_related('horse', 'visit', 'practice').get(pk=note.pk)
+        )
         if note.yard_sent_at is not None or note.is_test:
             return problems
         lines = list(note.lines.select_related('price_item__vaccination_type'))
@@ -190,18 +226,18 @@ def send_note_to_yard(note, link, bill_numbers=''):
                     f'C-gate now. Nothing was added to an owner\'s charges.'
                 )
         else:
-            with_charges = note.visit.bill_to == PracticeYardLink.BillTo.YARD and link.sends_charges
+            with_charges = note.visit.bill_to == YARD and link.sends_charges
             business = BusinessSettings.objects.only('vat_rate').first()
             yard_charges_vat = bool(business and business.vat_rate > 0)
-            source = f'From C-vet: {note.practice.name}' + (f', bill {bill_numbers}' if bill_numbers else '')
+            source = f'From C-vet: {note.practice.name}'
 
             def cost_of(line_set):
                 if not with_charges:
                     return Decimal('0.00')
-                return sum(
-                    (_yard_amount(line.total_inc_vat, line.vat_rate, yard_charges_vat) for line in line_set),
-                    Decimal('0.00'),
-                )
+                return sum((
+                    yard_amount(line.total_inc_vat, line.vat_rate, yard_charges_vat, link.yard_margin_percent)
+                    for line in line_set
+                ), Decimal('0.00'))
 
             records = []
             other = []
@@ -240,10 +276,8 @@ def send_note_to_yard(note, link, bill_numbers=''):
                         f'owner in C-gate, so no charge was made. Give the horse an owner and save '
                         f'the record again.'
                     )
-        note.yard_sent_at = timezone.now()
-        note.yard_records = made
         # No history row: nothing of the clinical record changed.
-        ClinicalNote.objects.filter(pk=note.pk).update(yard_sent_at=note.yard_sent_at, yard_records=made)
+        ClinicalNote.objects.filter(pk=note.pk).update(yard_sent_at=timezone.now(), yard_records=made)
     return problems
 
 
@@ -251,7 +285,7 @@ def _record_yard_cost(bill, link):
     """The bill as a cost in the yard's books: what the yard owes the practice."""
     from billing.models import YardCost
 
-    if bill.yard_cost_id or bill.bill_to != PracticeYardLink.BillTo.YARD or not link.sends_charges:
+    if bill.yard_cost_id or bill.bill_to != YARD or not link.sends_charges:
         return
     horses = bill.lines.values('horse_name').distinct().count()
     cost = YardCost.objects.create(
@@ -264,37 +298,77 @@ def _record_yard_cost(bill, link):
     bill.save(update_fields=['yard_cost'])
 
 
-# ── All of it, when a visit is finished ──────────────────────────────────
+def _tell_yard(bills, link, problems=()):
+    """Each new real bill to the yard: a cost in its books, and an email."""
+    for bill in bills:
+        if bill.is_test or bill.bill_to != YARD:
+            continue
+        _record_yard_cost(bill, link)
+        # After the transaction, so a failed email undoes nothing.
+        transaction.on_commit(lambda pk=bill.pk, found=tuple(problems): email_bill_to_yard(pk, found))
+
+
+# ── When each thing happens ──────────────────────────────────────────────
 
 def close_out(visit):
-    """Bill a finished visit and send the yard what it needs. Safe to call again.
+    """A finished visit: the yard's records, and the bill if it is due now.
 
     Called when the vet finishes the visit, and again for each note that
-    arrives after that. Returns the new bills.
+    arrives after that. Safe to call again. Returns the new bills.
     """
     if visit.status != Visit.Status.FINISHED:
         return []
-    bills = bill_visit(visit)
-    if visit.is_test:
-        return bills
-
     link = access.open_link(visit.practice)
-    if link is None:
-        # The link to the yard ended. The bill stands; nothing more goes
-        # into the yard's records.
-        return bills
 
-    numbers = ', '.join(bill.number for bill in visit.bills.order_by('pk'))
     problems = []
-    for note in visit.notes.filter(yard_sent_at__isnull=True, is_test=False):
-        problems += send_note_to_yard(note, link, numbers)
-    for bill in bills:
-        _record_yard_cost(bill, link)
-        if bill.bill_to == PracticeYardLink.BillTo.YARD:
-            # After the transaction, so a failed email undoes nothing.
-            transaction.on_commit(lambda pk=bill.pk, found=tuple(problems): email_bill_to_yard(pk, found))
+    if link is not None and not visit.is_test:
+        for note in visit.notes.filter(yard_sent_at__isnull=True, is_test=False):
+            problems += send_note_to_yard(note, link)
+    # If the link to the yard has ended, nothing more goes into the
+    # yard's records; the work is still billed.
+
+    bill_now_ = link is None or link.bill_when == PracticeYardLink.BillWhen.VISIT
+    bills = make_bills(visit.practice, visit=visit) if bill_now_ else []
+    if link is not None:
+        _tell_yard(bills, link, problems)
     return bills
 
+
+def bill_now(practice, *, before=None):
+    """Bill everything of the practice that is finished and not billed yet.
+
+    The button on the Bills page, and the monthly run. Returns the new bills.
+    """
+    bills = make_bills(practice, before=before)
+    link = access.open_link(practice)
+    if link is not None:
+        _tell_yard(bills, link)
+    return bills
+
+
+def bill_month_end(today=None):
+    """The monthly run: bill each practice that bills once a month.
+
+    Covers every finished visit before the first day of this month. Run
+    on the 1st; safe on any later day, and safe to run twice.
+    """
+    first_of_month = (today or timezone.localdate()).replace(day=1)
+    bills = []
+    for link in PracticeYardLink.objects.filter(
+        bill_when=PracticeYardLink.BillWhen.MONTH, practice__is_active=True,
+    ).select_related('practice'):
+        bills += bill_now(link.practice, before=first_of_month)
+    return bills
+
+
+def unbilled_summary(practice, is_test):
+    """(number of visits, total) of finished work that is on no bill yet."""
+    lines = [line for line in unbilled_lines(practice) if line.note.visit.is_test == is_test]
+    visits = {line.note.visit_id for line in lines}
+    return len(visits), sum((line.total_inc_vat for line in lines), Decimal('0.00'))
+
+
+# ── Telling the yard ─────────────────────────────────────────────────────
 
 def email_bill_to_yard(bill_pk, problems=()):
     """Send the yard its bill. True if it went."""
@@ -337,5 +411,7 @@ def bill_context(bill):
             for rate, gross in sorted(bands.items())
         ],
         'test_mode': bill.is_test,
-        'to_owners': bill.bill_to == PracticeYardLink.BillTo.OWNERS,
+        'to_owners': bill.bill_to == OWNERS,
+        # A monthly bill: each line shows the day of its visit.
+        'monthly': bill.visit_id is None,
     }

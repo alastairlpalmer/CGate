@@ -277,7 +277,7 @@
 
     // `finishes`: visits the vet finished that the server has not heard of.
     function unsentText(count, finishes) {
-        if (count === 0) return finishes ? 'Finish not sent' : 'Everything is sent';
+        if (count === 0) return finishes ? 'Finish not sent' : 'All sent';
         return count === 1 ? '1 note not sent' : count + ' notes not sent';
     }
 

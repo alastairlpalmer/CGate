@@ -163,7 +163,7 @@ class YardRecordsTests(BillingCase):
         self.assertEqual(charge.description, 'Vet - 2 x Sedation; Visit fee')
         self.assertFalse(charge.invoiced)
         self.assertTrue(charge.split_by_ownership)
-        self.assertIn('From C-vet: Hill Vets, bill CV-0001', record.notes)
+        self.assertIn('From C-vet: Hill Vets', record.notes)
 
     def test_nothing_clinical_goes_to_the_yard(self):
         self.finish(self.visit((self.horse, [line()], {'follow_up_date': timezone.localdate().isoformat()})))
@@ -281,6 +281,125 @@ class YardRecordsTests(BillingCase):
         self.assertEqual(mail.outbox, [])
 
 
+class MonthlyBillTests(BillingCase):
+    """A practice that bills the yard once a month."""
+
+    def setUp(self):
+        super().setUp()
+        PracticeYardLink.objects.update(bill_when='month')
+
+    def _visit_on(self, day, *notes):
+        visit_id = self.visit(*notes)
+        self.finish(visit_id)
+        Visit.objects.filter(client_id=visit_id).update(date=day)
+        return visit_id
+
+    def test_finish_makes_no_bill_but_the_yard_gets_its_records_at_once(self):
+        visit_id = self.visit((self.horse, [line()], {}))
+        data = self.finish(visit_id)
+        self.assertEqual((data['bills'], data['bill_when']), ([], 'month'))
+        self.assertFalse(Bill.objects.exists())
+        # The owner's charge does not wait for the month's bill.
+        self.assertEqual(ExtraCharge.objects.get().amount, Decimal('65.00'))
+        self.assertFalse(YardCost.objects.exists())
+        self.assertEqual(mail.outbox, [])
+
+    def test_the_monthly_run_makes_one_bill_for_the_month_before(self):
+        today = timezone.localdate()
+        first = today.replace(day=1)
+        second = Horse.objects.create(name='Clover')
+        self._visit_on(first - timedelta(days=20), (self.horse, [line()], {}))
+        self._visit_on(first - timedelta(days=3), (second, [line(description='Sedation', unit_price='27.50')], {}))
+        # A visit of this month waits for next month's bill.
+        self._visit_on(first, (self.horse, [line(description='Visit fee', unit_price='40.00')], {}))
+
+        with self.captureOnCommitCallbacks(execute=True):
+            bills = billing.bill_month_end(today)
+        bill = Bill.objects.get()
+        self.assertEqual(bills, [bill])
+        self.assertIsNone(bill.visit)
+        self.assertEqual((bill.period_start, bill.period_end), (first - timedelta(days=20), first - timedelta(days=3)))
+        self.assertEqual((bill.total_inc_vat, bill.to_name), (Decimal('92.50'), 'Palmer Farm'))
+        self.assertEqual(
+            list(bill.lines.values_list('date', 'horse_name', 'description')),
+            [(first - timedelta(days=20), 'Bramble', 'Flu/Tet booster'), (first - timedelta(days=3), 'Clover', 'Sedation')],
+        )
+        # One cost and one email for the month, not one for each visit.
+        self.assertEqual(YardCost.objects.get().total_with_vat, Decimal('92.50'))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('visits from', mail.outbox[0].alternatives[0][0])
+
+    def test_the_monthly_run_twice_bills_nothing_twice(self):
+        self._visit_on(timezone.localdate().replace(day=1) - timedelta(days=5), (self.horse, [line()], {}))
+        billing.bill_month_end()
+        self.assertEqual(billing.bill_month_end(), [])
+        from .tasks import bill_monthly
+        self.assertEqual(bill_monthly(), '0 monthly bill(s) made')
+        self.assertEqual(Bill.objects.count(), 1)
+
+    def test_the_monthly_run_leaves_a_practice_that_bills_each_visit_alone(self):
+        PracticeYardLink.objects.update(bill_when='visit')
+        self.visit((self.horse, [line()], {}))   # not finished: nothing to bill
+        self.assertEqual(billing.bill_month_end(), [])
+
+    def test_an_open_visit_is_not_billed(self):
+        self.visit((self.horse, [line()], {}))
+        Visit.objects.update(date=timezone.localdate() - timedelta(days=60))
+        self.assertEqual(billing.bill_month_end(), [])
+
+    def test_the_office_can_bill_now_from_the_bills_page(self):
+        self.finish(self.visit((self.horse, [line()], {})))
+        page = self.client.get('/c-vet/bills/')
+        self.assertContains(page, 'Not on a bill yet: £65.00')
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertRedirects(self.client.post('/c-vet/bills/now/'), '/c-vet/bills/')
+        self.assertEqual(Bill.objects.get().total_inc_vat, Decimal('65.00'))
+        self.assertContains(self.client.get('/c-vet/bills/'), 'All finished work is on a bill')
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_the_practice_chooses_when_it_bills(self):
+        self.assertContains(self.client.get('/c-vet/bills/'), 'value="month" checked')
+        self.client.post('/c-vet/bills/settings/', {'bill_when': 'visit'})
+        self.assertEqual(PracticeYardLink.objects.get().bill_when, 'visit')
+        self.client.post('/c-vet/bills/settings/', {'bill_when': 'whenever'})
+        self.assertEqual(PracticeYardLink.objects.get().bill_when, 'visit')
+
+    def test_only_the_practice_can_choose_or_bill(self):
+        self.finish(self.visit((self.horse, [line()], {})))
+        self.client.force_login(make_admin())
+        self.assertEqual(self.client.post('/c-vet/bills/settings/', {'bill_when': 'visit'}).status_code, 403)
+        self.assertEqual(self.client.post('/c-vet/bills/now/').status_code, 403)
+        self.assertEqual(PracticeYardLink.objects.get().bill_when, 'month')
+        self.assertFalse(Bill.objects.exists())
+
+
+class YardMarginTests(BillingCase):
+    """The yard adds its margin when a vet item becomes an owner's charge."""
+
+    def test_the_margin_is_on_the_owners_charge_and_not_on_the_vets_bill(self):
+        PracticeYardLink.objects.update(yard_margin_percent=Decimal('10.00'))
+        self.finish(self.visit((self.horse, [line()], {})))
+        self.assertEqual(ExtraCharge.objects.get().amount, Decimal('71.50'))
+        self.assertEqual(Bill.objects.get().total_inc_vat, Decimal('65.00'))
+        self.assertEqual(YardCost.objects.get().total_with_vat, Decimal('65.00'))
+
+    def test_no_margin_passes_the_amount_on(self):
+        self.finish(self.visit((self.horse, [line()], {})))
+        self.assertEqual(ExtraCharge.objects.get().amount, Decimal('65.00'))
+
+    def test_a_yard_that_charges_vat_adds_its_margin_to_the_amount_without_vat(self):
+        BusinessSettings.objects.update(vat_rate=Decimal('20.00'))
+        PracticeYardLink.objects.update(yard_margin_percent=Decimal('10.00'))
+        self.finish(self.visit((self.horse, [line()], {})))
+        # 65.00 with VAT is 54.17 without. Plus 10% is 59.59.
+        self.assertEqual(ExtraCharge.objects.get().amount, Decimal('59.59'))
+
+    def test_the_margin_is_worked_out_item_by_item(self):
+        self.assertEqual(billing.yard_amount('65.00', '20.00', False, '12.5'), Decimal('73.13'))
+        self.assertEqual(billing.yard_amount('0.00', '20.00', False, '10'), Decimal('0.00'))
+        self.assertEqual(billing.yard_amount('65.00', '20.00', False, None), Decimal('65.00'))
+
+
 class TestModeTests(YardCase):
     """In test mode a bill is made, and nothing goes to the yard."""
 
@@ -369,9 +488,8 @@ class BillPagesTests(BillingCase):
         self.assertEqual(response['Content-Type'], 'text/csv; charset=utf-8')
         rows = response.content.decode('utf-8-sig').strip().splitlines()
         self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[1].split(',')[:5], [
-            'CV-0001', timezone.localdate().isoformat(), 'Palmer Farm', 'Bramble', 'Flu/Tet booster',
-        ])
+        today = timezone.localdate().isoformat()
+        self.assertEqual(rows[1].split(',')[:6], ['CV-0001', today, 'Palmer Farm', today, 'Bramble', 'Flu/Tet booster'])
         self.assertTrue(rows[1].endswith('54.17,10.83,65.00'))
 
     def test_nobody_else_sees_them(self):

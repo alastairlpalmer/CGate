@@ -675,6 +675,13 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'invoicing.tasks.generate_monthly_draft_invoices',
         'schedule': crontab(day_of_month='1', hour=MONTHLY_INVOICE_HOUR, minute=30),
     },
+    # C-vet: the vet practice's monthly bill to the yard, for a practice
+    # that bills once a month (docs/C_VET_PLAN.md, section 7e). Before the yard's own
+    # invoices above are sent, so the yard has the vet's bill first.
+    'cvet-monthly-bills': {
+        'task': 'cvet.tasks.bill_monthly',
+        'schedule': crontab(day_of_month='1', hour=MONTHLY_INVOICE_HOUR, minute=0),
+    },
     # Promote SENT invoices past their due date to OVERDUE. Runs every day
     # (including weekends) before the reminder window.
     'check-invoice-status': {

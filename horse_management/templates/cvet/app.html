@@ -35,9 +35,9 @@ section 7c): Horses, a horse, Visit, Prices, Phone. One is shown at a time.
       data-logout-url="{{ config.logout_url }}">
 
 <header class="bar">
-    <h1>C-vet <span id="test-mode" class="tag" hidden>test notes</span></h1>
-    <button id="unsent" type="button" class="chip count" aria-live="polite" title="Sync now">…</button>
-    <span id="signal" class="chip">…</span>
+    <h1>C-vet <span id="test-mode" class="tag" title="Notes are test notes, not clinical records" hidden>test</span></h1>
+    <button id="unsent" type="button" class="chip count" aria-live="polite" aria-label="Sync now" title="Sync now">…</button>
+    <span id="signal" class="chip off" hidden>No signal</span>
 </header>
 <p id="sync-message" class="status" aria-live="polite"></p>
 <p id="sign-in" class="status" hidden><a id="sign-in-link" class="button" href="#">Sign in again</a></p>
@@ -81,7 +81,7 @@ section 7c): Horses, a horse, Visit, Prices, Phone. One is shown at a time.
 
         <h3>Recheck</h3>
         <div id="followups" class="tiles"></div>
-        <button id="recheck-suggestion" type="button" class="tile on" hidden></button>
+        <button id="recheck-suggestion" type="button" class="suggest" hidden></button>
         <input id="follow-up" type="date" aria-label="Recheck date">
 
         <div class="row">
@@ -93,10 +93,11 @@ section 7c): Horses, a horse, Visit, Prices, Phone. One is shown at a time.
         <p id="audio-state" class="muted"></p>
         <audio id="audio-preview" controls hidden></audio>
 
-        <div class="row">
+        {# Stays in reach at the foot of the screen, with the reason when a save is refused. #}
+        <div class="savebar">
+            <p id="entry-message" class="problem" aria-live="assertive"></p>
             <button id="save" type="button" class="button primary">Save</button>
         </div>
-        <p id="entry-message" class="muted" aria-live="polite"></p>
 
         <h3>History</h3>
         <ul id="history" class="list"></ul>
@@ -125,8 +126,8 @@ section 7c): Horses, a horse, Visit, Prices, Phone. One is shown at a time.
     <section id="view-prices" class="view" aria-label="Prices" hidden>
         <h2>Prices</h2>
         <p class="muted">Prices include VAT. A change needs a signal.</p>
-        <ul id="prices" class="list"></ul>
-        <form id="price-form" class="card" novalidate>
+        <div class="row"><button id="price-add" type="button" class="button">Add a price</button></div>
+        <form id="price-form" class="card" novalidate hidden>
             <h3 id="price-form-title">Add a price</h3>
             <label for="price-name">Name</label>
             <input id="price-name" type="text" maxlength="100" autocomplete="off" placeholder="Flu/Tet booster">
@@ -145,12 +146,13 @@ section 7c): Horses, a horse, Visit, Prices, Phone. One is shown at a time.
                 <select id="price-vaccination"></select>
             </div>
             <div class="row">
-                <button id="price-save" type="submit" class="button primary">Save price</button>
+                <button id="price-save" type="submit" class="button primary">Save</button>
                 <button id="price-hide" type="button" class="button" hidden>Hide</button>
-                <button id="price-cancel" type="button" class="button" hidden>Cancel</button>
+                <button id="price-cancel" type="button" class="button">Cancel</button>
             </div>
-            <p id="price-message" class="muted" aria-live="polite"></p>
+            <p id="price-message" class="problem" aria-live="assertive"></p>
         </form>
+        <ul id="prices" class="list"></ul>
     </section>
 
     {# ── This phone ── #}
@@ -172,7 +174,7 @@ section 7c): Horses, a horse, Visit, Prices, Phone. One is shown at a time.
 </main>
 
 {# The item list for several horses at once. #}
-<div id="picker" class="sheet" role="dialog" aria-labelledby="picker-title" hidden>
+<div id="picker" class="sheet" role="dialog" aria-modal="true" aria-labelledby="picker-title" hidden>
     <div class="sheet-body">
         <h2 id="picker-title">Add item</h2>
         <div id="picker-tiles" class="tiles"></div>

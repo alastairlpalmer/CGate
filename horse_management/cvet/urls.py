@@ -24,5 +24,7 @@ urlpatterns = [
     path('api/visits/<uuid:client_id>/finish/', views.api_visit_finish, name='api_visit_finish'),
     path('bills/', views.bill_list, name='bill_list'),
     path('bills/export.csv', views.bill_export, name='bill_export'),
+    path('bills/settings/', views.bill_settings, name='bill_settings'),
+    path('bills/now/', views.bill_now, name='bill_now'),
     path('bills/<int:pk>/', views.bill_detail, name='bill_detail'),
 ]

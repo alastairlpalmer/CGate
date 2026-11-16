@@ -15,6 +15,7 @@ import uuid
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 from simple_history.models import HistoricalRecords
@@ -108,12 +109,27 @@ class PracticeYardLink(models.Model):
         YARD = 'yard', 'The yard (the yard invoices its owners)'
         OWNERS = 'owners', 'Each horse owner directly'
 
+    class BillWhen(models.TextChoices):
+        VISIT = 'visit', 'After each visit'
+        MONTH = 'month', 'Once a month'
+
     practice = models.OneToOneField(Practice, on_delete=models.CASCADE, related_name='yard_link')
     # Who the practice's client is at this yard. Normally the yard: the
     # vet deals with the yard's owner, bills the yard for the visit, and
     # the yard puts each horse's part on its owner's invoice. Some yards
     # have the vet bill each owner; then co-owners share a horse's part.
     bill_to = models.CharField(max_length=10, choices=BillTo.choices, default=BillTo.YARD)
+    # When the practice makes its bill. The vet or the practice office
+    # chooses, on the Bills page of C-vet.
+    bill_when = models.CharField(max_length=10, choices=BillWhen.choices, default=BillWhen.VISIT)
+    # The yard's own choice: what it adds to a vet item when it invoices
+    # the owner. The yard can still change one charge by hand.
+    yard_margin_percent = models.DecimalField(
+        'Yard margin (%)', max_digits=5, decimal_places=2, default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0')), MaxValueValidator(Decimal('100'))],
+        help_text="Added to each vet item when it becomes a charge for the owner. "
+                  "0 passes the vet's amount on as it is.",
+    )
     # The practice as the yard already knows it: the entry in the yard's
     # own list of providers, which its vet visit log and charges use.
     service_provider = models.OneToOneField(
@@ -345,15 +361,20 @@ class NoteLine(models.Model):
 
 
 class Bill(models.Model):
-    """The practice's bill for a visit: to the yard, or to one owner.
+    """The practice's bill: to the yard, or to one owner.
 
-    Made when the vet taps Finish visit (cvet.billing). It is a copy of
-    what was done and what it cost at that moment, and it never changes:
-    work that arrives later goes on a further bill for the same visit.
+    For one visit, made when the vet taps Finish visit; or for a month of
+    visits (cvet.billing). It is a copy of what was done and what it cost
+    at that moment, and it never changes: work that arrives later goes on
+    a further bill.
     """
 
     practice = models.ForeignKey(Practice, on_delete=models.PROTECT, related_name='bills')
-    visit = models.ForeignKey(Visit, on_delete=models.PROTECT, related_name='bills')
+    # The visit, for a bill made after a visit. Empty for a monthly bill,
+    # which covers the visits from period_start to period_end.
+    visit = models.ForeignKey(Visit, on_delete=models.PROTECT, null=True, blank=True, related_name='bills')
+    period_start = models.DateField(null=True, blank=True)
+    period_end = models.DateField(null=True, blank=True)
     number = models.CharField(max_length=30)
     bill_to = models.CharField(max_length=10, choices=PracticeYardLink.BillTo.choices)
     # Who it is addressed to: the yard's name, or the owner's.
@@ -395,6 +416,8 @@ class BillLine(models.Model):
     note_line = models.ForeignKey(
         NoteLine, on_delete=models.SET_NULL, null=True, blank=True, related_name='bill_lines',
     )
+    # The day of the visit the item was done on.
+    date = models.DateField(default=timezone.localdate)
     horse_name = models.CharField(max_length=200)
     description = models.CharField(max_length=200)
     quantity = models.DecimalField(max_digits=6, decimal_places=2)

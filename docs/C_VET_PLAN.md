@@ -4,7 +4,7 @@
 **The client:** the yard. Tim works for a yard (for example Colgate Farm, where he deals with Charlie), bills the yard, and the yard invoices its horse owners. C-vet works in that order: the yard first, then its horses, then one bill to the yard.
 **Scope now:** Tim, our own yard. C-vet is a companion to Tim's practice system. It does not replace it.
 **Scope later (1 to 3 years):** sell C-vet to other vets, with C-gate or without it.
-**Status:** Phases 1 to 6 are built: the offline app, the ownership seam, the API and sync, the screens for a visit, spoken notes, and the bill to the yard with records back. C-vet is off by default, and in test mode. Next: the test on Tim's phone (section 8), then phase 7 (the trial).
+**Status:** Phases 1 to 6 are built, and the screens were reviewed and corrected (section 7f). C-vet is off by default, and in test mode. Next: the test on Tim's phone (section 8), then phase 7 (the trial).
 **Date:** 16 November 2026.
 
 Names. **C-gate** is the yard product. Older documents call it Yardway. **C-vet** is the vet product. This document sets the structure and the order of the work. `VET_TRIAL_PLAN.md` stays the description of Tim's screens.
@@ -37,8 +37,11 @@ Names. **C-gate** is the yard product. Older documents call it Yardway. **C-vet*
 | 20 | The app reads a recheck date from the words of the note ("recheck in two weeks") and offers it. The vet taps to use it. Nothing is set without the tap. | Less typing, and the vet stays in control of the record. |
 | 21 | What goes back to the yard is written as the yard's own records, the way its staff would type them: a vaccination record, a vet visit record with its cost. C-gate's existing code then makes the charge, splits it between co-owners and puts it on the owners' invoices. | No second billing route to keep correct. The yard sees and changes these records with the screens it already has. |
 | 22 | **Nothing goes to the yard in test mode.** A test bill is made, with a number of its own (TEST-…). No record, charge, cost or email is. | The phone test must not put a charge on a real owner's invoice. |
-| 23 | A yard that charges VAT gets each horse's part without VAT. A yard that does not gets the full amount. | A VAT-registered yard takes the vet's VAT back and its own invoice adds VAT again. A yard that is not registered passes on what it paid. An accountant must confirm this (open decision 14). |
-| 24 | One bill for each visit, made when the vet taps Finish visit. A bill never changes: work that arrives later goes on a further bill for the same visit. | An invoice that was issued must not change. A monthly statement can be added on top (open decision 12). |
+| 23 | A yard that charges VAT gets each horse's part without VAT. A yard that does not gets the full amount. | A VAT-registered yard takes the vet's VAT back and its own invoices add VAT again. A yard that is not registered passes on what it paid. Confirmed by the owner of C-gate. |
+| 24 | A bill never changes. Work that arrives after a bill goes on a further bill. | An invoice that was issued must not change. |
+| 25 | **The vet or the practice office chooses when to bill a yard:** after each visit, or once a month. The choice is on the Bills page. With "once a month", the bill is made on the 1st for the month before, and **Bill it now** makes it on any day. In both cases the yard's records and the owners' charges are written when the visit is finished. | Some yards want a bill for each visit and some want one statement. The owner's charge must not wait for the vet's monthly bill, or the yard's own invoices are late. |
+| 26 | **The yard can add a margin** to each vet item when it becomes an owner's charge (a percentage, set in the link to the yard). The vet's bill and the yard's cost do not include it. The yard can change one charge by hand before it invoices. | The yard normally adds a margin, and sometimes does not. |
+| 27 | The limit on the size of the app's files is on what the phone downloads: under 40 KB compressed, and under 150 KB as written. Before, it was 100 KB as written. | The written size grows with the comments in the code, which cost the phone nothing. The phone downloads the compressed files once and then opens the app from its own store. Now: 27 KB compressed, 102 KB as written. |
 
 ## 2. What each product is for
 
@@ -131,7 +134,7 @@ C-vet is used with one hand, outdoors, between horses. Every screen in every pha
 | Rule | Limit |
 |---|---|
 | Open the app, from the tap on the icon to the horse list | Under 1 second, with or without a signal |
-| Page files (script, styles) | Under 100 KB in total. No web fonts, no framework. Now 95 KB: the next change to the app needs a step that makes the files smaller first (risk 8). |
+| Page files (script, styles) | Under 40 KB as the phone downloads them (compressed), and under 150 KB as written (decision 27). No web fonts, no framework. Now 27 KB and 102 KB. |
 | Horses on the first screen of a phone | 8 or more |
 | Tap targets | 44 px or more |
 | A tap shows its result | At once. No screen waits for the network. The app reads and writes the phone's storage, and the sync runs behind it. |
@@ -191,10 +194,10 @@ Checked before the phone test:
 
 | Check | Result |
 |---|---|
-| Server tests (`cvet/tests.py`, `tests_ownership.py`, `tests_visit.py`, `tests_billing.py`) | 148 pass |
+| Server tests (`cvet/tests.py`, `tests_ownership.py`, `tests_visit.py`, `tests_billing.py`) | 160 pass |
 | Logic tests (`static/js/tests/cvet_app_core.test.js`) | 34 pass |
-| Chromium, phone size (`tools/qa/cvet_offline_qa.js`), signed in as a vet, from a cold start: a whole visit with no signal (sections 7c and 7d), signal back, one lost reply, read the records back, the bill, add a price, sign out | 62 of 62 pass in test mode, and 62 of 62 with test mode off. With test mode off, C-gate held the bill, 4 vaccination records, 1 vet visit record, charges for 3 owners and 1 cost (section 7e). |
-| Speed and layout, in the same script, with no signal | Opens in 51 ms. 10 horses on the first screen of an iPhone 13, above the tabs. Page files: 95 KB. Rows, tabs and buttons 44 px or more. No sideways scroll on any screen. |
+| Chromium, phone size (`tools/qa/cvet_offline_qa.js`), signed in as a vet, from a cold start: a whole visit with no signal (sections 7c and 7d), a reload in the middle of a note, signal back, one lost reply, read the records back, the bill, add a price, sign out | 74 of 74 pass in test mode, and 74 of 74 with test mode off. With test mode off, C-gate held the bill, 4 vaccination records, 1 vet visit record, charges for 3 owners and 1 cost (section 7e). |
+| Speed and layout, in the same script, with no signal | Opens in 53 ms. 10 horses on the first screen of an iPhone 13, above the tabs. Page files: 27 KB compressed. Rows, tabs and buttons 44 px or more. No sideways scroll on any screen, and the top bar is one line on a 320 px phone. |
 
 Chromium on a computer is not an iPhone, and it is faster than one. The checks above prove the code. They do not prove the phone. The page measures its own open time on the phone (**This phone → Opened in**) and sends it with each note.
 
@@ -386,14 +389,14 @@ The bill to the yard, and what goes back to the yard. This phase is server work.
 
 ### What happens when the vet taps Finish visit
 
-After every note of the visit has arrived, the server does this (`cvet/billing.py`):
+After every note of the visit has arrived, the server does this (`cvet/billing.py`). Steps 2 to 4 are done at once. Steps 1, 5 and 6 are done at once for a yard that is billed after each visit, and on the 1st of the next month for a yard that is billed once a month (decision 25):
 
 | Step | What | Where the yard sees it |
 |---|---|---|
 | 1 | **Makes the bill.** One bill for the visit, to the yard, with a number such as HV-0001. Each line: horse, item, quantity, price, amount. Totals: net, VAT and total at each VAT rate. | — |
 | 2 | **Records each vaccination** in the yard's vaccination records: the horse, the type, the date. C-gate works out the next due date. | Health → Vaccinations. The yard's reminders use it. |
 | 3 | **Records the other items and the recheck date** as a vet visit record for the horse. The text is the item names, for example "2 x Sedation; Visit fee". The recheck is a date with no reason. | Health → Vet visits. The recheck is in "Needs action". |
-| 4 | **C-gate makes a charge** from each record, for the horse's owner, as it does for a record that staff type. | Charges. Then the owner's next invoice. A co-owned horse is split by C-gate, as now. |
+| 4 | **C-gate makes a charge** from each record, for the horse's owner, as it does for a record that staff type. The yard's margin is added, if it has one (decision 26). | Charges. Then the owner's next invoice. A co-owned horse is split by C-gate, as now. |
 | 5 | **Records the bill as a cost**: supplier, bill number, net amount and VAT. | Costs. |
 | 6 | **Emails the bill to the yard**, with each horse's items and the problems the yard must act on. | The yard's email address in C-gate's settings. |
 
@@ -411,13 +414,17 @@ Then the app shows the bill on the Visit screen: "All sent to the practice. Bill
 - **A horse that left C-gate** is on the bill. No record is made. The email tells the yard.
 - **The yard can turn each thing off** in the link: charges, vaccination dates, recheck dates.
 - **After the link ends,** a bill is still made for work done. Nothing more goes into the yard's records.
-- **Only the practice sees its bills.** Another practice gets "not found". A yard administrator gets "no access".
+- **Only the practice sees its bills,** chooses when to bill, and bills. Another practice gets "not found". A yard administrator gets "no access".
+- **Monthly.** With "once a month", Finish makes no bill, and the owner's charge is made at once. The monthly run makes one bill for the visits before the 1st, with one cost and one email. A second run bills nothing twice. An open visit is not billed.
+- **The margin** is on the owner's charge, and not on the vet's bill or on the yard's cost. For a yard that charges VAT, it is added to the amount without VAT.
 
 ### For the practice
 
 | Part | Where |
 |---|---|
 | The list of bills, and each bill as a page to print or to save as a PDF | In the app: **Phone → Bills**. It needs a signal. Address: `/c-vet/bills/`. |
+| When to bill the yard: after each visit, or once a month | **Bills**, at the top. |
+| What is finished and not on a bill yet, and **Bill it now** | **Bills**, at the top. |
 | All bill lines as a CSV file, for the practice's accounts | **Bills → Download all as a CSV file**. One row for each line: bill, date, bill to, horse, item, quantity, price, VAT rate, net, VAT, total. |
 | The practice's letters for bill numbers, its address, VAT number and how to pay | Django admin → C-vet → Practices. |
 | Which price is a vaccination | In the app: **Prices**, "Records a vaccination at the yard". The list is the yard's own vaccination types. |
@@ -430,18 +437,52 @@ One bill for each owner, for that owner's part (decision 18). The yard still get
 
 1. Django admin → C-vet → Practices: the practice's address, VAT number, letters for bill numbers, and how to pay.
 2. C-gate → Settings: the yard's email address, and its VAT rate (0 if the yard is not VAT-registered).
-3. In the app, **Prices**: mark each vaccination price with its vaccination type.
-4. Set `CVET_TEST_MODE=False`. Delete the test notes first (section 7b).
-5. After the first real visit, check in C-gate: Charges, Costs, the horses' health records, and the email.
+3. Django admin → C-vet → Practices, in the link to the yard: the yard's margin on vet items (0 for none).
+4. In the app, **Prices**: mark each vaccination price with its vaccination type.
+5. In the app, **Phone → Bills**: choose when to bill the yard.
+6. Set `CVET_TEST_MODE=False`. Delete the test notes first (section 7b).
+7. After the first real visit, check in C-gate: Charges, Costs, the horses' health records, and the email.
 
 ### What phase 6 does not do
 
 - **The practice's own Xero.** C-gate's Xero link is the yard's. The practice gets a CSV file. A direct link, or a file in the exact form of Tim's practice system, needs Tim's answer (open decision 2).
-- **A monthly statement** to the yard (open decision 12).
 - **Bills by email to owners,** for a yard set to "bill each owner".
 - **Payment of a bill.** C-vet does not record that the yard paid. The yard's cost record does not mark it as paid.
 - **A change to a bill.** A wrong bill needs a credit, which is not built. The yard can change its own charge before it invoices the owner.
 - **Pay-now links, medicines, insurance claim pack:** later.
+
+## 7f. The review of the screens
+
+Every screen and state was captured at three sizes: a small phone (320 px wide), an iPhone 13 and an iPad. A script checked each one for text that is cut, tap targets under 44 px, low contrast, controls with no label and sideways scroll. Then each screen was read by eye.
+
+No contrast failure, no control without a label, no sideways scroll and no script error was found. These were found and corrected:
+
+| Found | Corrected |
+|---|---|
+| On a 320 px phone the top bar took two lines. | One line. The label is **TEST**. The counter says "All sent". "No signal" shows only when there is none. |
+| "Signal" showed when the phone had a network with no way out. | A request that gets no answer also shows "No signal". |
+| The counter is also the Sync button, and it was 28 px high. | It looks the same and takes a 44 px finger area. |
+| A long horse name was cut short in the list. | The name takes a second line. |
+| In Select, the last horses were under the bar. | The list has room under it. |
+| The item list for several horses did not say how many. | "Add item to 3 horses". A tap outside the list closes it. |
+| A refused Save gave its reason in small grey text under the button, and the wrong box could be off the screen. | The reason is in red next to Save, the screen goes to the wrong box, and the cursor is in it. |
+| Save was at the end of a long screen. | Save stays at the foot of the screen. |
+| A photo or a recording could not be taken off a note. | **Remove** next to each one. |
+| A recording showed no time. | "Recording: 12 s of 60." |
+| The offered recheck date looked like a choice already made. | A dashed outline: an offer. |
+| **A note being written was lost if the app closed or the phone reloaded it.** An iPhone can reload a web app after the camera is used. | The note is kept on the phone as it is typed, with its items, recheck date, photo and recording. The app opens on it again and says so. |
+| On Prices, the form was under the list, and its buttons took two lines on a small phone. | **Add a price** at the top opens the form at the top. Buttons: Save, Hide, Cancel. A saved price is confirmed in the line under the top bar. |
+| Buttons side by side broke their words on a small phone. | They go one under the other when there is no room. |
+| A finished visit did not say what to do next. | "A new note starts a new visit." For a monthly bill: "It goes on the monthly bill." |
+| On the Bills pages the links were small and a bill number broke over three lines. | Links have a 44 px area. Numbers and dates stay on one line. |
+
+Left as they are, on purpose:
+
+- **The owner and field line of a horse** is cut with "…" when it is long. The horse screen shows it in full.
+- **A sent note cannot be changed** (decision 14).
+- **Questions use the phone's own Yes/No box** ("Finish this visit?"). It is plain, and it works with no signal.
+
+Not reviewed here: the screens on a real iPhone in sunlight, with gloves or with wet hands. That is the phone test.
 
 ## 8. The test on Tim's phone
 
@@ -468,7 +509,8 @@ Tim's login opens C-vet only. It cannot open a C-gate page.
 |---|---|---|
 | 1 | Turn on aeroplane mode. Open C-vet from the home screen. | The app opens. The list is headed by the yard's name. The due horses are at the top. |
 | 2 | Find a horse with the search box. | The correct horse shows. |
-| 3 | Tap the horse. Tap an item. Type a note. Tap a recheck. Save. | The app goes back to the list. The horse has a tick. The counter says "1 note not sent". |
+| 3 | Tap the horse. Tap an item. Type a note. Tap a recheck. Save. | Save is at the foot of the screen. The app goes back to the list. The horse has a tick. The counter says "1 note not sent". |
+| 3a | Start a note on a horse. Take a photo. Close the app fully. Open it again. | The app opens on that horse, with the note, the items and the photo as they were. |
 | 4 | On another horse, add a photo. | The photo is ready in a few seconds. |
 | 5 | On another horse, add a voice recording. Play it back. | The recording plays. |
 | 6 | Still in aeroplane mode: on another horse, tap the note box, tap the microphone on the keyboard, and say "Mild heat left fore, no lameness at trot. Recheck in two weeks." | The words appear in the note box with no signal. The app offers "Use … : you said Recheck in two weeks". One tap sets the date. |
@@ -527,7 +569,7 @@ Open the Django admin → C-vet → **Sync receipts**. They show how each note a
 | 5 | Two teams change the same visit code. | Closed by decision 10: C-vet has its own `Visit` and does not change the farrier's code. |
 | 6 | The scope grows into a full practice system. | Decision 3. C-vet covers the yard visit only. The practice system stays the full record. |
 | 7 | Offline is not a selling point. Other equine vet products say they work offline (VetIT, Lupa). We did not verify their claims. | The selling point is the link to the yard: one horse list, the correct payer, co-owner splits, dates that go back to the yard. |
-| 8 | The page files are at 95 KB of the 100 KB limit. | The next change to the app starts with a build step that makes the files smaller (it removes comments and spaces). |
+| 8 | The app's files grow with each screen. | The limit is on what the phone downloads (decision 27), and the check script measures it on each run: 27 KB of 40 KB. |
 | 9 | C-vet now writes into the yard's records: vaccinations, vet visits, charges and costs. A fault here puts a wrong charge on an owner's invoice. | One module does all of it (`cvet/billing.py`). It uses C-gate's own charge code. Nothing is written in test mode. The yard can change a charge before it invoices. The first real visit is checked by hand (section 7e). |
 
 ## 10. Open decisions
@@ -545,10 +587,10 @@ Open the Django admin → C-vet → **Sync receipts**. They show how each note a
 | 9 | Does Tim give prices with VAT included? What must a clinical note always contain? Are the recheck choices (1 wk, 2 wk, 4 wk, 3 mo) the correct ones? | Tim | Phase 5 |
 | 10 | Shares that do not add up to 100%: closed by decision 18. | — | — |
 | 11 | The yard is the practice's client. May the yard read the clinical notes for its horses, or only the bill and the dates? Built as: only the bill and the dates. | Owner of C-gate, Tim, with a vet adviser | Phase 7 |
-| 12 | When does the yard get the bill: after each visit, or one statement each month? Built: after each visit (decision 24). | Tim | Phase 7 |
+| 12 | When does the yard get the bill: after each visit, or one statement each month? Closed by decision 25: the practice chooses. | — | — |
 | 13 | Is there a yard where Tim bills the owners and not the yard? Built as a setting for each yard. | Tim | Phase 7 |
-| 14 | Is decision 23 correct for our yard: does a VAT-registered yard pass on the vet's bill without VAT, and add its own? | An accountant | Before the first real visit |
-| 15 | Does the yard add a margin or a handling fee when it re-invoices a vet item? Built: no, the same amount. | Owner of C-gate | Phase 7 |
+| 14 | Is decision 23 correct for our yard? Confirmed by the owner of C-gate. An accountant's check is still good practice before the first real visit. | — | — |
+| 15 | What margin does the yard add to a vet item, and in which cases does it add none? Built: one percentage for the yard (decision 26), and the yard changes a charge by hand for an exception. | Owner of C-gate | Before the first real visit |
 
 The other questions for Tim are in `VET_TRIAL_PLAN.md` 7.7.
 

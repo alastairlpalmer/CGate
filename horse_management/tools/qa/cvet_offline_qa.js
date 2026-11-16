@@ -19,6 +19,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 const { chromium, devices } = require('playwright');
 
 const BASE = process.argv[2] || 'http://127.0.0.1:8765';
@@ -109,7 +110,7 @@ function horseRow(page, name) {
   await page.waitForFunction(() => document.querySelectorAll('#horses .horse').length > 0);
   check('the app opens with no signal', (await text(page, 'h1')).startsWith('C-vet'));
   check('the horse list is still there with no signal', (await page.locator('#horses .horse').count()) === horses);
-  check('the signal chip says No signal', (await text(page, '#signal')) === 'No signal');
+  check('the top bar says No signal', (await page.locator('#signal').isVisible()) && (await text(page, '#signal')) === 'No signal');
   await page.fill('#search', 'bram');
   check('search works with no signal', (await page.locator('#horses .horse').count()) === 1);
   await page.fill('#search', '');
@@ -133,6 +134,37 @@ function horseRow(page, name) {
   check('one tap uses it', (await page.locator('#followups .tile.on').textContent()) === '2 wk' && await page.locator('#recheck-suggestion').isHidden());
   await page.setInputFiles('#photo', { name: 'leg.png', mimeType: 'image/png', buffer: PHOTO });
   await page.waitForFunction(() => document.getElementById('photo-state').textContent.startsWith('Photo ready'));
+  // A photo taken by mistake comes off again.
+  await page.click('#photo-state .link');
+  check('a photo can be removed', (await text(page, '#photo-state')) === '');
+  await page.setInputFiles('#photo', { name: 'leg.png', mimeType: 'image/png', buffer: PHOTO });
+  await page.waitForFunction(() => document.getElementById('photo-state').textContent.startsWith('Photo ready'));
+
+  // A save that is refused says why next to Save, and goes to the box.
+  await page.locator('#lines input[aria-label="Price for Sedation"]').fill('abc');
+  await page.click('#save');
+  check('a refused save says why, in view', (await text(page, '#entry-message')).includes('not a number') && await page.locator('#entry-message').isVisible());
+  check('and puts the cursor in the wrong box', await page.evaluate(() => document.activeElement.getAttribute('aria-label') === 'Price for Sedation'));
+  check('nothing was saved', (await text(page, '#unsent')) === 'All sent');
+  await page.locator('#lines input[aria-label="Price for Sedation"]').fill('27.50');
+
+  // The phone reloads the app in the middle of the note (an iPhone can,
+  // after the camera). The note comes back as it was.
+  await page.waitForTimeout(500);
+  await page.reload();
+  await page.waitForFunction(() => !document.getElementById('view-horse').hidden);
+  const back = await page.evaluate(() => ({
+    horse: document.getElementById('horse-name').textContent,
+    note: document.getElementById('note').value,
+    total: document.getElementById('lines-total').textContent,
+    recheck: document.getElementById('follow-up').value !== '',
+    photo: document.getElementById('photo-state').textContent.startsWith('Photo ready'),
+  }));
+  check('a note being written survives a reload of the app, with no signal', back.horse === 'Willow' && back.note.startsWith('Mild heat') && back.total === 'Total £87.50' && back.recheck && back.photo, JSON.stringify(back));
+  check('Save stays in view at the foot of the screen', await page.evaluate(() => {
+    const box = document.getElementById('save').getBoundingClientRect();
+    return box.top > 0 && box.bottom <= document.querySelector('.tabs').getBoundingClientRect().top + 1;
+  }));
   await page.click('#record');
   await page.waitForFunction(() => document.getElementById('record').textContent === 'Stop recording');
   await page.waitForTimeout(1200);
@@ -207,7 +239,7 @@ function horseRow(page, name) {
   // ── Sync again. The first note goes a second time; the server must
   //    answer "duplicate". Then the finished visit goes.
   await page.click('#unsent');
-  await page.waitForFunction(() => document.getElementById('unsent').textContent === 'Everything is sent', null, { timeout: 30000 });
+  await page.waitForFunction(() => document.getElementById('unsent').textContent === 'All sent', null, { timeout: 30000 });
   check('everything is sent after the second sync, the finished visit too', true);
   check('the visit screen says all is sent', (await text(page, '#visit-state')).includes('All sent to the practice'), await text(page, '#visit-state'));
   // The server made the bill when the visit was finished: one bill, to
@@ -264,12 +296,16 @@ function horseRow(page, name) {
 
   // ── The vet adds a price.
   await tab(page, 'prices');
-  check('a price can be marked as one of the yard\'s vaccinations', (await page.locator('#price-vaccination option').allTextContents()).join(',') === 'No,Flu/Tet');
   check('the booster is marked as a vaccination', (await page.locator('#prices .price', { hasText: 'Flu/Tet booster' }).textContent()).includes('records a vaccination'));
+  await page.click('#price-add');
+  check('a price can be marked as one of the yard\'s vaccinations', (await page.locator('#price-vaccination option').allTextContents()).join(',') === 'No,Flu/Tet');
   await page.fill('#price-name', 'Dental check');
+  await page.fill('#price-amount', 'forty');
+  await page.click('#price-save');
+  check('a price that is not a number is refused, with the reason', (await text(page, '#price-message')).includes('as a number'));
   await page.fill('#price-amount', '48');
   await page.click('#price-save');
-  await page.waitForFunction(() => document.getElementById('price-message').textContent === 'Dental check saved.');
+  await page.waitForFunction(() => document.getElementById('sync-message').textContent === 'Dental check saved.');
   check('the vet adds a price', (await page.locator('#prices .price', { hasText: 'Dental check' }).count()) === 1);
   await page.screenshot({ path: path.join(OUT, '4-prices.png'), fullPage: true });
 
@@ -289,12 +325,43 @@ function horseRow(page, name) {
   check('opens with no signal in under 1 second', speed.ready < 1000, `${speed.ready} ms to the horse list`);
   check('8 or more horses on the first screen, above the tabs', speed.visible >= 8, `${speed.visible} on a ${speed.height} px screen`);
   check('rows, tabs and buttons are 44 px or more to tap', speed.small === 0, `${speed.small} too small`);
-  const weight = await page.evaluate(() => performance.getEntriesByType('resource')
-    .filter((entry) => entry.name.includes('/static/cvet/'))
-    .reduce((sum, entry) => sum + (entry.decodedBodySize || 0), 0));
-  check('page files are under 100 KB', weight > 0 && weight < 100 * 1024, `${Math.round(weight / 1024)} KB`);
+  // What the phone downloads, once: the page's files as the server
+  // sends them (compressed). And as written, which is what it stores.
+  const files = await page.evaluate(() => performance.getEntriesByType('resource')
+    .map((entry) => entry.name).filter((name) => name.includes('/static/cvet/')));
+  await context.setOffline(false);
+  let written = 0;
+  let sent = 0;
+  for (const url of [...new Set(files)]) {
+    const body = await (await context.request.get(url)).body();
+    written += body.length;
+    sent += zlib.gzipSync(body).length;
+  }
+  await context.setOffline(true);
+  check('page files are under 40 KB as the phone downloads them', files.length >= 3 && sent < 40 * 1024, `${Math.round(sent / 1024)} KB compressed`);
+  check('and under 150 KB as written', written < 150 * 1024, `${Math.round(written / 1024)} KB`);
   await page.screenshot({ path: path.join(OUT, '5-compact.png') });
   await context.setOffline(false);
+
+  // ── A long horse name is shown in full, and Select hides no horse.
+  const longName = await horseRow(page, 'Thunderbolt Magnificent Champion of Wettenhall').locator('.strong').evaluate((node) => node.scrollWidth <= node.clientWidth + 1);
+  check('a long horse name is not cut short', longName);
+  await page.click('#select-toggle');
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const lastHidden = await page.evaluate(() => {
+    const rows = document.querySelectorAll('#horses .horse');
+    return rows[rows.length - 1].getBoundingClientRect().bottom > document.getElementById('select-bar').getBoundingClientRect().top + 1;
+  });
+  check('in Select, the last horse is not under the bar', !lastHidden);
+  await page.click('#select-toggle');
+  await page.evaluate(() => window.scrollTo(0, 0));
+
+  // ── On the smallest phone (320 px) the top bar is one line.
+  await page.setViewportSize({ width: 320, height: 568 });
+  const barHeight = await page.locator('.bar').evaluate((node) => node.getBoundingClientRect().height);
+  check('the top bar is one line on a 320 px phone', barHeight < 48, `${Math.round(barHeight)} px high`);
+  check('no sideways scroll on a 320 px phone', !(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)));
+  await page.setViewportSize({ width: 390, height: 664 });
 
   // ── Every screen fits a phone.
   let wide = [];
