@@ -42,6 +42,7 @@ Names. **C-gate** is the yard product. Older documents call it Yardway. **C-vet*
 | 25 | **The vet or the practice office chooses when to bill a yard:** after each visit, or once a month. The choice is on the Bills page. With "once a month", the bill is made on the 1st for the month before, and **Bill it now** makes it on any day. In both cases the yard's records and the owners' charges are written when the visit is finished. | Some yards want a bill for each visit and some want one statement. The owner's charge must not wait for the vet's monthly bill, or the yard's own invoices are late. |
 | 26 | **The yard's margin is the yard manager's matter, in C-gate. It is not in C-vet.** C-vet passes the vet's amount into C-gate as it is. The yard manager adds the margin in C-gate: **Charges → Add margin** puts a percentage on many unbilled charges in one step, and one charge can still be changed by hand. | The margin varies from charge to charge, and it is the yard's price to its own client. The vet does not set it and does not see it. |
 | 27 | The limit on the size of the app's files is on what the phone downloads: under 40 KB compressed, and under 150 KB as written. Before, it was 100 KB as written. | The written size grows with the comments in the code, which cost the phone nothing. The phone downloads the compressed files once and then opens the app from its own store. Now: 27 KB compressed, 102 KB as written. |
+| 28 | A login with the Vet role joins the practice by itself, the first time it opens C-vet, when the database has one practice. The administrator makes the practice, and takes a login out of it, on one page in C-gate: **Settings → Users & Roles → C-vet → Set up**. | Before, the role was set in C-gate and the place in the practice was set in the Django admin, and no page said so. An administrator gave the role, and the vet saw "not set up for C-vet" on every address. An administrator's login is never put in the practice by this rule, and a login that was taken out stays out. With two practices, a person must choose. |
 
 ## 2. What each product is for
 
@@ -151,7 +152,7 @@ The phone holds owner names and, in the trial, clinical notes that are not sent 
 - **Clear this phone** removes the horse list and every note. The sign-in stays. It works with no signal.
 - **Sign out** removes them too, removes the stored app, and ends the sign-in. It needs a signal.
 - The phone deletes its copy of a photo or a recording when the server confirms it. It keeps the text of sent notes until Clear or Sign out.
-- A lost phone: an administrator unticks the login in its practice (Django admin → C-vet → Practices). The next request from the phone is refused. The phone lock protects the data that is on it. This must be in Tim's instructions.
+- A lost phone: an administrator unticks the login in its practice (Settings → Users & Roles → C-vet → Set up). The next request from the phone is refused. The phone lock protects the data that is on it. This must be in Tim's instructions.
 
 ## 6. Phases
 
@@ -214,7 +215,7 @@ The ownership seam. It has no new screen. It is the set of rules that every late
 | The gate and the scope | `cvet/access.py` | The only way to read a clinical note: `notes_for(practice)`. The practice comes from the signed-in login, never from an address or a form. |
 | The Vet role | `cvet/migrations/0002_seed_vet_role.py`, feature `cvet` | Opens C-vet and nothing else. |
 | The fence | `cvet/middleware.py` | Sends a Vet login back to C-vet from every yard page, the Django admin and uploaded files. |
-| Set-up screen | Django admin → C-vet → Practices | The practice's details, its logins and its link to the yard. It shows who can read the notes. It does not show the notes. |
+| Set-up screen | C-gate: Settings → Users & Roles → C-vet → Set up (`cvet/setup.py`, decision 28) | The practice's name, its logins and its link to the yard. It shows who can read the notes. It does not show the notes. The other details of the practice are in the Django admin → C-vet → Practices. |
 
 ### Who can read what
 
@@ -489,7 +490,9 @@ Not reviewed here: the screens on a real iPhone in sunlight, with gloves or with
 
 1. Set `CVET_ENABLED=True` on the server and deploy. Leave `CVET_TEST_MODE` as it is (on).
 2. In C-gate, **Settings → Users**: add a login for Tim with the role **Vet**.
-3. In the Django admin, **C-vet → Practices → Add**: type the practice name. In **Practice yard link**, leave today's date. In **Practice members**, choose Tim's login. Save.
+3. In C-gate, **Settings → Users & Roles → C-vet → Set up**: type the practice name. Leave **The practice can see this yard's horses** ticked and Tim's login ticked. Press **Make the practice**.
+
+Steps 2 and 3 can be done in either order. When the practice is there, each new login with the Vet role is in it with no more steps (decision 28). If a Vet login cannot open C-vet, the Settings page says so in red.
 
 Tim's login opens C-vet only. It cannot open a C-gate page.
 

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load cvet_setup %}
 
 {% block title %}{% if object %}Edit User{% else %}Add User{% endif %} - Cgate{% endblock %}
 
@@ -46,6 +47,7 @@
                     {{ form.role }}
                     {% if form.role.errors %}<p id="{{ form.role.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.role.errors.0 }}</p>{% endif %}
                     <p class="text-xs text-sage mt-0.5">{{ form.role.help_text }}</p>
+                    {% if object %}{% cvet_login_gap object as cvet_gap %}{% if cvet_gap %}<p class="text-sm text-error-red mt-1">This login has the Vet role, but it is not in a practice. C-vet shows it "not set up". <a href="{% url 'cvet:setup' %}" class="underline">Open C-vet set-up</a>.</p>{% endif %}{% endif %}
                     {% if is_self %}<p class="text-xs text-saddle mt-0.5">You can't remove your own access to Users &amp; Roles — ask another administrator.</p>{% endif %}
                 </div>
                 {% if not object %}

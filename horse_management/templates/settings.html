@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load ui_extras %}
+{% load ui_extras cvet_setup %}
 
 {% block title %}Settings - Cgate{% endblock %}
 
@@ -192,6 +192,36 @@
                 {% endfor %}
             </div>
         </div>
+
+        {% cvet_setup_status as cvet %}
+        {% if cvet %}
+        <div class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">C-vet</h3>
+                <a href="{% url 'cvet:setup' %}" class="btn-secondary btn-sm">Set up</a>
+            </div>
+            <p class="settings-note">The vet's app. A login with the Vet role opens C-vet only, and must be in the practice.</p>
+            <div class="settings-rows">
+                <div class="settings-row">
+                    <div class="min-w-0">
+                        {% if cvet.many %}
+                        <p class="settings-row-title">More than one practice</p>
+                        <p class="settings-row-meta">{{ cvet.logins }} Vet login{{ cvet.logins|pluralize }} can open C-vet.</p>
+                        {% elif cvet.practice %}
+                        <p class="settings-row-title truncate">{{ cvet.practice.name }}</p>
+                        <p class="settings-row-meta">{{ cvet.logins }} login{{ cvet.logins|pluralize }} &middot; {% if cvet.link_open %}sees the yard's horses{% else %}does not see the yard's horses{% endif %}{% if cvet.test_mode %} &middot; test mode{% endif %}</p>
+                        {% else %}
+                        <p class="settings-row-title">No practice yet</p>
+                        <p class="settings-row-meta">Make the practice before the vet signs in.</p>
+                        {% endif %}
+                        {% if cvet.left_out %}
+                        <p class="text-sm text-error-red mt-1">{{ cvet.left_out }} login{{ cvet.left_out|pluralize }} with the Vet role cannot open C-vet. Open Set up.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <div class="card overflow-hidden">
             <div class="section-header">

@@ -5,16 +5,20 @@ scope (static/cvet/manifest.json), so the three must change together.
 
 No URL carries a practice id: the practice always comes from the
 signed-in login (cvet.access).
+
+``setup/`` is the one page here for the yard's administrator, not for
+the practice (cvet.setup).
 """
 
 from django.urls import path
 
-from . import views
+from . import setup, views
 
 app_name = 'cvet'
 
 urlpatterns = [
     path('', views.app, name='app'),
+    path('setup/', setup.setup, name='setup'),
     path('sw.js', views.service_worker, name='service_worker'),
     path('api/session/', views.api_session, name='api_session'),
     path('api/yard/', views.api_yard, name='api_yard'),
