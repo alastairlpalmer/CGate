@@ -40,7 +40,7 @@ Names. **C-gate** is the yard product. Older documents call it Yardway. **C-vet*
 | 23 | A yard that charges VAT gets each horse's part without VAT. A yard that does not gets the full amount. | A VAT-registered yard takes the vet's VAT back and its own invoices add VAT again. A yard that is not registered passes on what it paid. Confirmed by the owner of C-gate. |
 | 24 | A bill never changes. Work that arrives after a bill goes on a further bill. | An invoice that was issued must not change. |
 | 25 | **The vet or the practice office chooses when to bill a yard:** after each visit, or once a month. The choice is on the Bills page. With "once a month", the bill is made on the 1st for the month before, and **Bill it now** makes it on any day. In both cases the yard's records and the owners' charges are written when the visit is finished. | Some yards want a bill for each visit and some want one statement. The owner's charge must not wait for the vet's monthly bill, or the yard's own invoices are late. |
-| 26 | **The yard's margin is the yard manager's matter, in C-gate. It is not in C-vet.** C-vet passes the vet's amount into C-gate as it is. The yard manager changes the cost on the record, or the charge, before the owner is invoiced. | The margin varies from charge to charge, and it is the yard's price to its own client. The vet does not set it and does not see it. |
+| 26 | **The yard's margin is the yard manager's matter, in C-gate. It is not in C-vet.** C-vet passes the vet's amount into C-gate as it is. The yard manager adds the margin in C-gate: **Charges → Add margin** puts a percentage on many unbilled charges in one step, and one charge can still be changed by hand. | The margin varies from charge to charge, and it is the yard's price to its own client. The vet does not set it and does not see it. |
 | 27 | The limit on the size of the app's files is on what the phone downloads: under 40 KB compressed, and under 150 KB as written. Before, it was 100 KB as written. | The written size grows with the comments in the code, which cost the phone nothing. The phone downloads the compressed files once and then opens the app from its own store. Now: 27 KB compressed, 102 KB as written. |
 
 ## 2. What each product is for
@@ -440,7 +440,7 @@ One bill for each owner, for that owner's part (decision 18). The yard still get
 3. In the app, **Prices**: mark each vaccination price with its vaccination type.
 4. In the app, **Phone → Bills**: choose when to bill the yard.
 5. Set `CVET_TEST_MODE=False`. Delete the test notes first (section 7b).
-6. After the first real visit, check in C-gate: Charges, Costs, the horses' health records, and the email. Add the yard's margin to the charges before the owners are invoiced.
+6. After the first real visit, check in C-gate: Charges, Costs, the horses' health records, and the email. Then **Charges → Add margin**: choose "Vet and vaccination", type the margin, untick the charges that get none, and set it, before the owners are invoiced.
 
 ### What phase 6 does not do
 
@@ -589,7 +589,7 @@ Open the Django admin → C-vet → **Sync receipts**. They show how each note a
 | 12 | When does the yard get the bill: after each visit, or one statement each month? Closed by decision 25: the practice chooses. | — | — |
 | 13 | Is there a yard where Tim bills the owners and not the yard? Built as a setting for each yard. | Tim | Phase 7 |
 | 14 | Is decision 23 correct for our yard? Confirmed by the owner of C-gate. An accountant's check is still good practice before the first real visit. | — | — |
-| 15 | The yard's margin: closed by decision 26. It is the yard manager's matter, in C-gate. A tool in C-gate to add a margin to many charges in one step is a possible later addition to C-gate. | — | — |
+| 15 | The yard's margin: closed by decision 26. C-gate has the tool: Charges → Add margin (`billing/margin.py`). | — | — |
 
 The other questions for Tim are in `VET_TRIAL_PLAN.md` 7.7.
 

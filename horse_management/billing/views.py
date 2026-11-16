@@ -87,6 +87,81 @@ class ExtraChargeListView(FeatureAccessMixin, ListView):
         return context
 
 
+@feature_required('charges')
+def charge_margin(request):
+    """Add margin: put the yard's margin on many unbilled charges in one step.
+
+    GET shows the unbilled charges that match the filters, each with its
+    cost and its amount at the margin typed. POST sets the margin on the
+    ticked charges. The rules are in ``billing.margin``.
+    """
+    from django.utils.dateparse import parse_date
+    from django.utils.http import urlencode
+
+    from . import margin
+
+    source = request.POST if request.method == 'POST' else request.GET
+    filters = {
+        'type': source.get('type', ''),
+        'provider': source.get('provider', '') if source.get('provider', '').isdigit() else '',
+        'from': source.get('from', ''),
+        'to': source.get('to', ''),
+        'search': source.get('search', '').strip()[:100],
+    }
+    raw_percent = source.get('percent', request.session.get('charge_margin_percent', ''))
+    percent = margin.parse_percent(raw_percent) if str(raw_percent).strip() != '' else None
+    percent_error = str(raw_percent).strip() != '' and percent is None
+
+    if request.method == 'POST':
+        # Each charge once, in the order sent.
+        ids = list(dict.fromkeys(int(pk) for pk in request.POST.getlist('charge') if pk.isdigit()))
+        back = f"{reverse('charge_margin')}?{urlencode(dict(filters, percent=raw_percent))}"
+        if percent is None:
+            messages.error(request, "Type the margin as a number from 0 to 500, for example 10 or 12.5.")
+        elif not ids:
+            messages.error(request, "Tick one charge or more first.")
+        else:
+            changed, skipped = margin.apply_margin(ids, percent)
+            request.session['charge_margin_percent'] = str(percent.normalize())
+            messages.success(
+                request,
+                f"Margin of {percent.normalize():f}% set on {changed} charge{'s' if changed != 1 else ''}."
+                if percent else f"Margin taken off {changed} charge{'s' if changed != 1 else ''}.",
+            )
+            if skipped:
+                messages.warning(
+                    request,
+                    f"{skipped} charge{'s were' if skipped != 1 else ' was'} not changed: "
+                    f"already on an invoice, or deleted.",
+                )
+        return redirect(back)
+
+    charges = margin.filtered(
+        charge_type=filters['type'], provider_id=filters['provider'],
+        date_from=parse_date(filters['from']) if filters['from'] else None,
+        date_to=parse_date(filters['to']) if filters['to'] else None,
+        search=filters['search'],
+    )
+    total = charges.count()
+    shown = list(charges[:MARGIN_PAGE_ROWS])
+    return render(request, 'billing/charge_margin.html', dict(
+        margin.preview(shown, percent),
+        filters=filters,
+        percent=percent,
+        percent_text='' if percent is None else f'{percent.normalize():f}',
+        percent_raw=raw_percent,
+        percent_error=percent_error,
+        total=total,
+        hidden=total - len(shown),
+        charge_types=ExtraCharge.ChargeType.choices,
+        providers=ServiceProvider.objects.filter(is_active=True).only('pk', 'name'),
+    ))
+
+
+# The most charges the Add margin page shows, and so changes, at one time.
+MARGIN_PAGE_ROWS = 300
+
+
 class ExtraChargeCreateView(PopupFormMixin, FeatureAccessMixin, CreateView):
     feature = 'charges'
     model = ExtraCharge

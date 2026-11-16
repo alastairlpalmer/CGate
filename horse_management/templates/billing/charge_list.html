@@ -20,6 +20,9 @@
                 </svg>
                 Providers
             </a>
+            {% if feature_access.charges.full %}
+            <a href="{% url 'charge_margin' %}{% if request.GET.type %}?type={{ request.GET.type|urlencode }}{% endif %}" class="btn-secondary">Add margin</a>
+            {% endif %}
             <a href="{% url 'charge_create' %}" class="btn-primary">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
@@ -125,6 +128,7 @@
                 </div>
                 <div class="flex flex-col items-end gap-1 shrink-0">
                     <span class="font-semibold text-charcoal tabular-nums">{{ charge.amount|gbp }}</span>
+                    {% if charge.cost_amount is not None and charge.cost_amount != charge.amount %}<span class="list-card-meta">cost {{ charge.cost_amount|gbp }}</span>{% endif %}
                     {% if not charge.invoiced %}
                     <div class="list-card-actions mt-1">
                         <div class="more-menu" x-data="moreMenu" @click.outside="close(false)" @keydown.escape="close(true)">
@@ -175,7 +179,7 @@
                             </span>
                         </td>
                         <td class="text-charcoal" title="{{ charge.description }}">{{ charge.description|truncatewords:10 }}</td>
-                        <td class="text-right font-medium text-charcoal whitespace-nowrap">{{ charge.amount|gbp }}</td>
+                        <td class="text-right font-medium text-charcoal whitespace-nowrap">{{ charge.amount|gbp }}{% if charge.cost_amount is not None and charge.cost_amount != charge.amount %}<br><span class="text-sm font-normal text-sage">cost {{ charge.cost_amount|gbp }}</span>{% endif %}</td>
                         <td>
                             {% if charge.invoiced %}
                                 <span class="badge-success">Invoiced</span>
