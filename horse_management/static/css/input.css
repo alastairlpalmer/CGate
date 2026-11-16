@@ -630,6 +630,46 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     input[type="file"] { font-size: 16px; } /* match text inputs: no iOS zoom */
 }
 
+/* ── Compact forms on the Settings pages ────────────────────────────────
+   `.settings-page` is on Settings and on each page opened from it (a user,
+   a role, a rate, a service, a provider, a vaccination type, account
+   security, C-vet set-up). Their forms are short lists of fields, so they
+   are set tight, like the page they come from: small labels, fields 32px
+   high on a wide screen, 12px between fields, a thin footer.
+
+   These rules are not in a layer, on purpose. The field rule above is not
+   in a layer either, and the templates set their spacing with utility
+   classes (p-4 sm:p-5, space-y-4, gap-4, text-sm on labels), which a
+   layered rule cannot change. One block here does the work of an edit to
+   each of those templates, and a form that is opened both from Settings
+   and from its own page (a location) needs no second copy.
+
+   A phone keeps its 44px fields and 16px text: a finger needs the height,
+   and iOS zooms the page on a field with smaller text. */
+.settings-page fieldset { padding: 0.75rem 1rem; }
+.settings-page fieldset > * { margin-block: 0; }
+.settings-page fieldset > * + * { margin-block-start: 0.75rem; }
+/* A legend floats (see "Form section headings"), so the gap under it must
+   be its own margin: the next block clears it and its top margin is lost. */
+.settings-page fieldset > legend { margin-block-end: 0.5rem; }
+.settings-page fieldset > .grid { gap: 0.75rem 1rem; }
+.settings-page label[for] { @apply text-charcoal-light; font-size: 0.75rem; line-height: 1rem; }
+/* The label of a tick box is its text, not a caption over a field. */
+.settings-page input[type="checkbox"] + label[for] { @apply text-charcoal; font-size: 0.875rem; line-height: 1.25rem; }
+.settings-page .form-footer { padding: 0.5rem 1rem; gap: 0.5rem; }
+@media (min-width: 640px) {
+    .settings-page input[type="text"], .settings-page input[type="email"], .settings-page input[type="password"],
+    .settings-page input[type="number"], .settings-page input[type="url"], .settings-page input[type="tel"],
+    .settings-page input[type="date"], .settings-page input[type="datetime-local"],
+    .settings-page textarea, .settings-page select { padding: 0.3125rem 0.625rem; }
+    .settings-page select:not([multiple]):not([size]) { padding-right: 2rem; background-position: right 0.5rem center; }
+    .settings-page .money-input input { padding-left: 1.75rem; }
+    /* Buttons that are not already small (.btn-sm) or icon-only. */
+    .settings-page .btn-primary:not(.btn-sm), .settings-page .btn-secondary:not(.btn-sm),
+    .settings-page .btn-danger:not(.btn-sm), .settings-page .btn-success:not(.btn-sm),
+    .settings-page .btn-ghost:not(.btn-sm) { padding: 0.3125rem 0.75rem; font-size: 0.8125rem; line-height: 1.25rem; }
+}
+
 /* Progress bar glow */
 #htmx-progress { box-shadow: 0 0 8px rgba(61, 90, 99, 0.6); }
 

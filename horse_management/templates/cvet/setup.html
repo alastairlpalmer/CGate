@@ -14,7 +14,7 @@
     </div>
 
     {% if many %}
-    <div class="card px-4 py-3 sm:px-5 sm:py-4 space-y-2">
+    <div class="card px-4 py-3 space-y-2">
         <p class="text-charcoal">There is more than one practice. This page works with one practice.</p>
         <p class="text-sm text-sage">Put each login in its practice in the Django admin: C-vet, then Practices.</p>
     </div>
@@ -25,7 +25,7 @@
         <div class="section-header">
             <h3 class="section-title">Practice</h3>
         </div>
-        <div class="px-4 py-3 sm:px-5 sm:py-4 space-y-5">
+        <div class="px-4 py-3 space-y-3">
             {% if form.non_field_errors %}<p class="text-sm text-error-red" role="alert">{{ form.non_field_errors.0 }}</p>{% endif %}
 
             <div>
@@ -67,7 +67,7 @@
         </div>
     </form>
 
-    <div class="card px-4 py-3 sm:px-5 sm:py-4 space-y-2">
+    <div class="card px-4 py-3 space-y-2">
         <p class="text-sm font-medium text-charcoal">How the vet opens C-vet</p>
         <p class="text-sm text-charcoal">On the phone, open <strong class="break-words">{{ address }}</strong> and sign in with the Vet login.</p>
         <p class="text-sm text-sage">A Vet login opens C-vet only. It cannot open the yard's pages.</p>

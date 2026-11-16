@@ -3,7 +3,7 @@
 {% block title %}{% if object %}Edit Vaccination Type{% else %}Add Vaccination Type{% endif %} - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6{% if from_settings %} settings-page{% endif %}">
+<div class="max-w-2xl mx-auto space-y-4 settings-page">
     {% if from_settings %}{% include 'includes/settings_back.html' with group=settings_group %}{% endif %}
 
     <!-- Page Header -->
