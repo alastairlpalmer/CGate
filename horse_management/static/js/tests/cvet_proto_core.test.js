@@ -45,7 +45,7 @@ test('outcome: created and duplicate both mean the server has the note', () => {
 
 test('outcome: a note is never dropped because of a sign-in or a server fault', () => {
     assert.equal(core.outcome(401), 'signin');
-    assert.equal(core.outcome(403), 'signin');
+    assert.equal(core.outcome(403), 'denied');
     assert.equal(core.outcome(429), 'later');
     assert.equal(core.outcome(500), 'later');
     assert.equal(core.outcome(502), 'later');

@@ -5,7 +5,7 @@
 // photo and a voice recording, get the signal back, sync. It also cuts
 // the reply to one upload, to prove that the note is then stored once.
 //
-//   # on a farrier_seed.py database (see README.md), with the page on:
+//   # on a farrier_seed.py + cvet_seed.py database (see README.md), with the page on:
 //   CVET_PROTOTYPE_ENABLED=True python manage.py runserver 127.0.0.1:8765
 //   node tools/qa/cvet_offline_qa.js http://127.0.0.1:8765 /path/to/out
 //
@@ -75,11 +75,15 @@ async function addNote(page, horseIndex, note, { photo = false, voice = false } 
   });
   page.on('pageerror', (error) => consoleErrors.push(String(error)));
 
-  // Sign in, as the vet does once with a signal.
-  await page.goto(`${BASE}/accounts/login/?next=/c-vet/`);
-  await page.fill('input[name=username]', 'yard');
+  // Sign in, as the vet does once with a signal. No "next" address: a
+  // Vet-role login must land on C-vet by itself.
+  await page.goto(`${BASE}/accounts/login/`);
+  await page.fill('input[name=username]', 'vet');
   await page.fill('input[name=password]', PASSWORD);
   await Promise.all([page.waitForURL('**/c-vet/'), page.click('button[type=submit]')]);
+  check('a vet login lands on C-vet', new URL(page.url()).pathname === '/c-vet/');
+  await page.goto(`${BASE}/health/`);
+  check('a vet login cannot open a yard page', new URL(page.url()).pathname === '/c-vet/', page.url());
 
   // 1. The page stores itself.
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null, null, { timeout: 15000 });

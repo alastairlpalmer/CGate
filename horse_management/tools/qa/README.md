@@ -40,11 +40,12 @@ The report lists, per phone and screen, overflow and tap targets under
 
 `cvet_offline_qa.js` is kept on purpose: it is the browser check of the
 C-vet offline prototype (`docs/C_VET_PLAN.md`, section 7). It uses the
-farrier seed above for its horses and its login. Start the server with
-the test page on, and allow the microphone test to store files somewhere
-throwaway:
+farrier seed above for its horses, and `cvet_seed.py` for the practice
+and the vet login. Start the server with the test page on, and store the
+test's files somewhere throwaway:
 
 ```bash
+python manage.py shell < tools/qa/cvet_seed.py
 export CVET_PROTOTYPE_ENABLED=True MEDIA_ROOT=/tmp/cvet-qa-media
 python manage.py runserver 127.0.0.1:8765
 node tools/qa/cvet_offline_qa.js http://127.0.0.1:8765 /tmp/cvet-qa

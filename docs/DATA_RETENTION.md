@@ -26,6 +26,8 @@ deployment can change them without a code change.
 | Farrier notes and the yard's list for the farrier | As the horse record | Advice on the horse; the list is the yard's request | Kept with the horse. Deleted with the horse. |
 | Farrier visits, lines and the farrier's prices | As invoices (6 years) | The lines are the source of owners' charges and of the yard's payment to the farrier | Kept. A line on a live invoice cannot be changed from the farrier page. |
 | C-vet offline test notes, photos and voice recordings (`PrototypeEntry`) | Until the phone test ends (`docs/C_VET_PLAN.md`, section 8) | Test data only. Not a clinical record. | An administrator deletes every row in the Django admin (C-vet → Offline prototype entries). The files go with the rows. |
+| C-vet clinical notes (`ClinicalNote`), with their change history | Set by the practice, not by the yard. No clinical note is written until C-vet phase 3. | They are the practice's clinical records (`docs/C_VET_PLAN.md`, section 3) | Not by a yard screen. The practice decides. A deleted horse leaves the note in place, with the horse's name and numbers on it. |
+| Practice, its logins and its link to the yard | While the practice works with the yard | Access to C-vet | An administrator ends the link or removes a login in the Django admin (C-vet → Practices). The history of who had access is kept. |
 | Off-site backups | 7 daily, 4 weekly, 12 monthly | Disaster recovery | Age out under the backup retention (`core/backup/retention.py`). Erased data is gone from all backups within 12 months. |
 
 ## A subject access request
@@ -54,6 +56,7 @@ deployment can change them without a code change.
 | Recipient | What they see | What they never see | Where |
 |---|---|---|---|
 | The yard's farrier (Farrier role, `farrier_portal`) | Horse names, profile photos, field names, farrier due dates, their own visits and prices | Owners (names, contact details, what they owe), invoices, vet and health records, other farriers' data | `/farrier/` only. `core.middleware.ProviderPortalMiddleware` sends every other page back to `/farrier/`. Their summary email after a visit lists horses and prices, never owners. |
+| The veterinary practice (Vet role, `cvet`, and a member of the practice) | While its link to the yard is open: horse names, microchip and passport numbers, field names, owner names. Its own clinical notes. | Owner contact details, invoices, what an owner owes, the yard's health records, another practice's notes | `/c-vet/` only. `cvet.middleware.VetPortalMiddleware` sends every other page back to `/c-vet/`. |
 
 A farrier login stays signed in for up to 30 days of no use
 (`PROVIDER_SESSION_IDLE_AGE`), so the farrier does not type a password at

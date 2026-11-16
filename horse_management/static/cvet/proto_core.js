@@ -39,11 +39,13 @@
     // What to do with a reply from the entries endpoint.
     //   sent    the server has the note: mark it sent
     //   signin  the session ended: stop, keep the note, ask for a sign-in
+    //   denied  this login may not use C-vet: stop, keep the note, say so
     //   later   the server or the network failed: stop, try again later
     //   failed  the server will never take this note: keep it, show why
     function outcome(status) {
         if (status === 200 || status === 201) return 'sent';
-        if (status === 401 || status === 403) return 'signin';
+        if (status === 401) return 'signin';
+        if (status === 403) return 'denied';
         if (status === 400 || status === 409 || status === 413) return 'failed';
         return 'later';
     }

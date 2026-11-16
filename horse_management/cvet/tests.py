@@ -18,9 +18,10 @@ from django.utils import timezone
 from PIL import Image
 
 from core.models import Horse, Location, Owner, Placement, RateType
-from core.roles_testutils import make_admin, make_user_with_access
+from core.roles_testutils import assign_role, make_admin, make_user_with_access
 
-from .models import PrototypeEntry
+from .models import PracticeMember, PracticeYardLink, PrototypeEntry
+from .testutils import make_practice, make_vet, vet_role
 
 User = get_user_model()
 
@@ -77,12 +78,41 @@ class GateTests(TestCase):
         response = self.client.post(ENTRIES, entry_data())
         self.assertEqual(response.status_code, 401)
 
-    def test_health_view_only_is_not_enough(self):
-        self.client.force_login(make_user_with_access('viewer', health='view', dashboard='full'))
+    def test_yard_staff_cannot_open_it(self):
+        # Full access to the yard's health pages is not access to C-vet.
+        self.client.force_login(make_user_with_access('staff', health='full', dashboard='full'))
         self.assertEqual(self.client.get(APP).status_code, 302)
         self.assertEqual(self.client.get(BOOTSTRAP).status_code, 403)
         self.assertEqual(self.client.post(ENTRIES, entry_data()).status_code, 403)
         self.assertFalse(PrototypeEntry.objects.exists())
+
+    def test_the_vet_role_alone_names_no_practice(self):
+        user = User.objects.create_user('newvet', password='pw')
+        assign_role(user, vet_role())
+        self.client.force_login(user)
+        response = self.client.get(APP)
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(response, 'not set up for C-vet', status_code=403)
+        self.assertEqual(self.client.get(SESSION).json(), {'error': 'no_access'})
+
+    def test_an_administrator_is_not_a_member_of_the_practice(self):
+        make_practice()
+        self.client.force_login(make_admin())
+        self.assertEqual(self.client.get(APP).status_code, 403)
+        self.assertEqual(self.client.get(BOOTSTRAP).status_code, 403)
+
+    def test_a_member_who_is_made_inactive_loses_access_at_once(self):
+        user = make_vet()
+        self.client.force_login(user)
+        self.assertEqual(self.client.get(SESSION).status_code, 200)
+        PracticeMember.objects.filter(user=user).update(is_active=False)
+        self.assertEqual(self.client.get(SESSION).status_code, 403)
+
+    def test_a_closed_practice_loses_access(self):
+        user = make_vet()
+        user.practice_membership.practice.__class__.objects.update(is_active=False)
+        self.client.force_login(user)
+        self.assertEqual(self.client.get(SESSION).status_code, 403)
 
     def test_a_farrier_login_cannot_open_it(self):
         self.client.force_login(make_user_with_access('farrier', farrier_portal='full'))
@@ -90,8 +120,8 @@ class GateTests(TestCase):
             self.client.get(BOOTSTRAP), '/farrier/', fetch_redirect_response=False,
         )
 
-    def test_health_full_opens_the_page(self):
-        self.client.force_login(make_user_with_access('vet', health='full'))
+    def test_a_vet_of_the_practice_opens_the_page(self):
+        self.client.force_login(make_vet())
         response = self.client.get(APP)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-entries-url="/c-vet/api/entries/"')
@@ -99,7 +129,7 @@ class GateTests(TestCase):
     def test_the_page_holds_no_token_and_no_name(self):
         # The service worker stores this page and opens it for whoever
         # holds the phone, signed in or not.
-        user = make_user_with_access('vet', health='full')
+        user = make_vet()
         user.first_name, user.last_name = 'Tim', 'Vetson'
         user.save()
         self.client.force_login(user)
@@ -108,13 +138,13 @@ class GateTests(TestCase):
         self.assertNotIn('Vetson', body)
 
     def test_only_the_page_allows_the_microphone(self):
-        self.client.force_login(make_user_with_access('vet', health='full'))
+        self.client.force_login(make_vet())
         self.assertIn('microphone=(self)', self.client.get(APP)['Permissions-Policy'])
         for url in (SESSION, '/_health/'):
             self.assertIn('microphone=()', self.client.get(url)['Permissions-Policy'], url)
 
     def test_post_needs_a_csrf_token(self):
-        user = make_user_with_access('vet', health='full')
+        user = make_vet()
         strict = Client(enforce_csrf_checks=True)
         strict.force_login(user)
         self.assertEqual(strict.post(ENTRIES, entry_data()).status_code, 403)
@@ -136,7 +166,7 @@ class ServiceWorkerTests(TestCase):
     def test_it_stores_the_page_and_every_file_the_page_loads(self):
         worker = self.client.get(WORKER).content.decode()
         self.assertIn('const SHELL = "/c-vet/";', worker)
-        self.client.force_login(make_user_with_access('vet', health='full'))
+        self.client.force_login(make_vet())
         page = self.client.get(APP).content.decode()
         for name in ('cvet/proto.css', 'cvet/proto_core.js', 'cvet/proto.js', 'cvet/manifest.json'):
             # The same address, version and all, in both places: a file
@@ -162,7 +192,7 @@ class BootstrapTests(TestCase):
         Horse.objects.create(name='Gone', is_active=False)
 
     def test_lists_active_horses_with_identity_and_place(self):
-        self.client.force_login(make_user_with_access('vet', health='full', owners='view'))
+        self.client.force_login(make_vet())
         data = self.client.get(BOOTSTRAP).json()
         self.assertEqual(data['horses'], [{
             'id': self.horse.pk,
@@ -174,14 +204,24 @@ class BootstrapTests(TestCase):
         }])
         self.assertEqual(data['user']['name'], 'vet')
 
-    def test_owner_names_need_access_to_owners(self):
-        self.client.force_login(make_user_with_access('vet', health='full'))
-        horse = self.client.get(BOOTSTRAP).json()['horses'][0]
-        self.assertEqual(horse['owner'], '')
-        self.assertEqual(horse['location'], 'Top Field')
+    def test_names_the_practice(self):
+        self.client.force_login(make_vet())
+        self.assertEqual(self.client.get(BOOTSTRAP).json()['practice'], 'Hill Vets')
+
+    def test_no_horses_without_a_link_to_the_yard(self):
+        self.client.force_login(make_vet(practice=make_practice('Far Vets', linked=False)))
+        response = self.client.get(BOOTSTRAP)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json(), {'error': 'no_yard_link'})
+
+    def test_no_horses_after_the_link_ends(self):
+        self.client.force_login(make_vet())
+        self.assertEqual(self.client.get(BOOTSTRAP).status_code, 200)
+        PracticeYardLink.objects.update(ended_on=timezone.localdate())
+        self.assertEqual(self.client.get(BOOTSTRAP).status_code, 403)
 
     def test_is_never_stored_by_a_browser(self):
-        self.client.force_login(make_user_with_access('vet', health='full'))
+        self.client.force_login(make_vet())
         self.assertIn('no-store', self.client.get(BOOTSTRAP)['Cache-Control'])
 
 
@@ -195,7 +235,7 @@ class EntryTests(TestCase):
         self.addCleanup(shutil.rmtree, media, ignore_errors=True)
         self.enterContext(override_settings(MEDIA_ROOT=media))
         cache.clear()
-        self.user = make_user_with_access('vet', health='full')
+        self.user = make_vet()
         self.client.force_login(self.user)
         self.horse = Horse.objects.create(name='Bramble')
 
@@ -239,7 +279,7 @@ class EntryTests(TestCase):
     def test_another_login_cannot_learn_about_a_note_by_its_id(self):
         data = entry_data()
         self.client.post(ENTRIES, data)
-        self.client.force_login(make_user_with_access('other', health='full'))
+        self.client.force_login(make_vet('other', practice=make_practice('Other Vets')))
         response = self.client.post(ENTRIES, data)
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json(), {'error': 'client_id_in_use'})

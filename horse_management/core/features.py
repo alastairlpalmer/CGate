@@ -90,6 +90,15 @@ FEATURES = [
                        "Give it to the Farrier role only; staff do not need it.",
     },
     {
+        "key": "cvet",
+        "label": "C-vet (vet's app)",
+        "group": "Manage",
+        "supports_view": False,
+        "description": "The vet's own app, for a login that works for the veterinary practice. "
+                       "Give it to the Vet role only. The login must also be a member of the "
+                       "practice. Yard staff do not need it and it shows them no clinical notes.",
+    },
+    {
         "key": "finances",
         "label": "Finances overview",
         "group": "Finance",

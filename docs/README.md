@@ -23,7 +23,7 @@
 | [`DASHBOARD_REDESIGN_PLAN.md`](DASHBOARD_REDESIGN_PLAN.md) | Dashboard redesign. |
 | [`POPUP_EDIT_PLAN.md`](POPUP_EDIT_PLAN.md) | Popup editing. |
 | [`FARRIER_PAGE_PLAN.md`](FARRIER_PAGE_PLAN.md) | Farrier page test (Option A): our farrier records visits on a phone; charges go on owners' monthly invoices; the yard pays the farrier monthly. |
-| [`C_VET_PLAN.md`](C_VET_PLAN.md) | C-vet, the vet's app built on C-gate: the two products, who owns which data, the offline rules, the phases, and the phone test of the offline prototype (phase 1, built). |
+| [`C_VET_PLAN.md`](C_VET_PLAN.md) | C-vet, the vet's app built on C-gate: the two products, who owns which data, the offline rules, the phases, the phone test of the offline prototype (phase 1, built) and the ownership seam that keeps clinical notes with the practice (phase 2, built). |
 | [`VET_TRIAL_PLAN.md`](VET_TRIAL_PLAN.md) | Vet trial with Tim, after the farrier test: horse list and treatment screen, voice notes typed by the app, no-signal mode, invoices in the practice's name, records back to Yardway. |
 | [`UX_REVIEW_PLAN.md`](UX_REVIEW_PLAN.md) | UX and visual review (Nov 2026): findings and a phased plan for hierarchy, consistency and phone lists. |
 | [`UI_AUDIT.md`](UI_AUDIT.md) | Interface audit. |

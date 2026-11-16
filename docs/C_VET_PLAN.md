@@ -3,7 +3,7 @@
 **Goal:** Tim finishes a yard visit on his phone, with or without a signal. Every note, every bill and every record is correct before he leaves the yard. Nobody types the same data twice.
 **Scope now:** Tim, our own yard. C-vet is a companion to Tim's practice system. It does not replace it.
 **Scope later (1 to 3 years):** sell C-vet to other vets, with C-gate or without it.
-**Status:** Phase 1 (offline prototype) is built and is off by default. Next: the test on Tim's phone (section 8).
+**Status:** Phase 1 (offline prototype) and phase 2 (ownership seam) are built. C-vet is off by default. Next: the test on Tim's phone (section 8), then phase 3.
 **Date:** 16 November 2026.
 
 Names. **C-gate** is the yard product. Older documents call it Yardway. **C-vet** is the vet product. This document sets the structure and the order of the work. `VET_TRIAL_PLAN.md` stays the description of Tim's screens.
@@ -22,6 +22,7 @@ Names. **C-gate** is the yard product. Older documents call it Yardway. **C-vet*
 | 6 | C-vet works with no signal after one download. It sends by itself when the app is open and has a signal. There is also a **Sync** button. | The yard has no signal. |
 | 7 | The phone test comes before all other build work. | If the iPhone fails the test, the plan for the app changes (section 9, Risk 1). |
 | 8 | Compact screens and fast pages are a rule, with limits that a script checks. | The vet uses the app with one hand between horses. A slow or long screen will not be used. |
+| 9 | A C-vet clinical note is a new record that belongs to the practice. The yard's "vet visit" log in C-gate stays as it is, as the yard's own record. | The yard's log is what yard staff wrote down for the yard's bills and reminders. It is not the vet's clinical record. To hide it from the yard would break a C-gate feature and move no clinical record to the practice. |
 
 ## 2. What each product is for
 
@@ -42,7 +43,8 @@ The yard database is the shared source for the horse's **identity**. It is not t
 | Name, microchip, passport, photo | Shared | Yes | Yes |
 | Owner, co-owner shares, who pays | Shared | Yes | Yes |
 | Location, stable, livery rate, yard invoices | Yard | Yes | Field name only |
-| Clinical notes, diagnosis, photos of the horse's condition | Practice | No | Yes |
+| Clinical notes, diagnosis, photos of the horse's condition (C-vet) | Practice | No | Yes |
+| The yard's vet visit log (C-gate, Health → Vet visits) | Yard | Yes | No (open decision 7) |
 | Medicines given, batch, withdrawal period | Practice | Food-chain status only | Yes |
 | Vet price list, vet invoices, vet payments | Practice | No | Yes |
 | Vaccination dates and next due dates | Practice, sent to the yard | Yes | Yes |
@@ -68,7 +70,7 @@ Why this split:
 
 Four parts:
 
-1. **The ownership seam.** A `Practice` record. A link between a practice and a yard. A `practice` field on every clinical record. For the trial there is one practice and one yard. This is the smallest part of the multi-tenant work that `market/uk-market-sizing.md` names as the blocker for sales.
+1. **The ownership seam (built, section 7a).** A `Practice` record. A link between a practice and a yard. A `practice` field on every clinical record. For the trial there is one practice and one yard. This is the smallest part of the multi-tenant work that `market/uk-market-sizing.md` names as the blocker for sales.
 2. **The C-vet API.** JSON endpoints under `/c-vet/api/`. C-gate has no API today: every page is made on the server, and a page made on the server cannot open with no signal.
 3. **The C-vet app.** One page that the phone stores, with its data in the phone's database (IndexedDB). It lives in the same repository as C-gate, in the `cvet` Django app.
 4. **The records that go back to the yard.** After a sync, the server writes the vaccination dates and follow-up dates to the yard's records. The yard's reminders stay correct. Clinical notes do not go to the yard.
@@ -126,7 +128,7 @@ The phone holds owner names and, in the trial, clinical notes that are not sent 
 | Phase | What | Estimate | Done when |
 |---|---|---|---|
 | **1. Offline prototype** | A test page on Tim's phone: download horses, save notes, photos and recordings with no signal, sync. Throwaway code. | Built. Test: 1 to 2 weeks of Tim's use. | Section 8 pass list. |
-| **2. Ownership seam** | `Practice`, the practice-to-yard link, `practice` on clinical records. Vet role. Clinical notes hidden from yard roles. | 1 week | A yard login cannot read a clinical note by any route. Tests prove it. |
+| **2. Ownership seam** | `Practice`, the practice-to-yard link, `practice` on clinical records. Vet role. Clinical notes hidden from yard roles. | Built. | A yard login cannot read a clinical note by any route. Tests prove it (section 7a). |
 | **3. API and sync** | Yard download, visit upload, ids from the phone, long sign-in for the phone, clear on sign-out. | 1 to 1.5 weeks | The phase 1 checks pass on the real records, not on test records. |
 | **4. Screens** | Horse list with due items, treatment screen, price list with VAT, several horses at once, end-of-visit summary. Screens as in `VET_TRIAL_PLAN.md` 7.2. | 1.5 to 2 weeks | Tim records a 10-horse visit with no signal and with no help. |
 | **5. Voice notes** | Record, type on the server, tidy, Tim's check, delete the audio. | 1 week | Fewer than 1 note in 5 needs a large change. |
@@ -155,7 +157,7 @@ A test page at `/c-vet/`. It is in the `cvet` Django app.
 Safety:
 
 - **Off by default.** Every `/c-vet/` address is a 404 until `CVET_PROTOTYPE_ENABLED=True` is set.
-- **Access:** Full access to Health. Owner names show only with access to Owners. A farrier login cannot open it.
+- **Access:** the Vet role and membership of a practice (section 7a). The horse list needs the practice's open link to the yard. Yard staff, administrators and a farrier login cannot open it.
 - **Test notes are not clinical records.** They go to `PrototypeEntry` and to no other table. C-gate does not show them.
 - **Uploads:** a photo must be a real image. A recording must be an audio type on a list. Files get a name made by the server. Limits: 8 MB each, 300 notes an hour for one login.
 - **Microphone:** allowed on the test page only. It stays off on every other page.
@@ -164,19 +166,69 @@ Checked before the phone test:
 
 | Check | Result |
 |---|---|
-| Server tests (`cvet/tests.py`): the gate, the API, uploads, "stored once" | 27 pass |
+| Server tests (`cvet/tests.py`): the gate, the API, uploads, "stored once" | 33 pass |
 | Logic tests (`static/js/tests/cvet_proto_core.test.js`) | 11 pass |
-| Chromium, phone size (`tools/qa/cvet_offline_qa.js`): download, no signal, open again, 3 notes with photo and voice, signal back, one lost reply | 20 of 20 pass. The server stored 3 notes from 4 uploads. |
+| Chromium, phone size (`tools/qa/cvet_offline_qa.js`), signed in as a vet: download, no signal, open again, 3 notes with photo and voice, signal back, one lost reply | 22 of 22 pass. The server stored 3 notes from 4 uploads. |
 | Speed and layout, in the same script, with no signal | Opens in 58 ms. 9 horses on the first screen of an iPhone 13. Page files: 42 KB. All tap targets 44 px or more. |
 
 Chromium on a computer is not an iPhone, and it is faster than one. The checks above prove the code. They do not prove the phone. The page measures its own open time on the phone (**Test details → Opened in**) and sends it with each note.
+
+## 7a. Phase 2: what is built
+
+The ownership seam. It has no new screen. It is the set of rules that every later phase builds on.
+
+| Part | File | What it does |
+|---|---|---|
+| `Practice` | `cvet/models.py` | The veterinary practice: the owner of the clinical records. |
+| `PracticeMember` | `cvet/models.py` | A login that works for the practice. One login, one practice. |
+| `PracticeYardLink` | `cvet/models.py` | The agreement between the practice and the yard. While it is open, the practice sees the yard's horses. It also holds what the practice sends back to the yard: vaccination dates, follow-up dates. |
+| `ClinicalNote` | `cvet/models.py` | What a vet found and did for one horse on one day. It has a `practice`. It keeps a copy of the horse's name and numbers. Every change keeps the text before it. |
+| The gate and the scope | `cvet/access.py` | The only way to read a clinical note: `notes_for(practice)`. The practice comes from the signed-in login, never from an address or a form. |
+| The Vet role | `cvet/migrations/0003_seed_vet_role.py`, feature `cvet` | Opens C-vet and nothing else. |
+| The fence | `cvet/middleware.py` | Sends a Vet login back to C-vet from every yard page, the Django admin and uploaded files. |
+| Set-up screen | Django admin → C-vet → Practices | The practice's details, its logins and its link to the yard. It shows who can read the notes. It does not show the notes. |
+
+### Who can read what
+
+| Login | C-vet | Clinical notes | Yard pages |
+|---|---|---|---|
+| Vet role and a member of the practice | Yes | Its own practice's notes only | No. Each one sends the login back to C-vet. |
+| Vet role, not a member | A page that says the login is not set up | No | No |
+| Yard staff, any role | No | No | As the role permits |
+| Yard administrator or superuser | No, unless made a member of the practice | No | Yes |
+| Farrier | No | No | The farrier page only |
+| A vet of a second practice | Yes | Its own practice's notes only | No |
+
+### How the rule is kept
+
+- **The sweep.** A test signs in as a superuser and requests every GET address of the site, the Django admin included, with the ids of a real horse, owner and note, and with the note's text as a search. The note's text must come back on no page. A second test proves that the sweep finds text that the yard does show.
+- **The tripwire.** A test fails if code outside the `cvet` app names the clinical models. The person who writes the first yard page that reads them sees the failure before the page ships.
+- **No way back from a horse.** A `Horse` has no link to its notes, so a yard page that holds a horse cannot follow it to them.
+- **Not in the Django admin, not in the audit log page, not in the owner data export.** Tests check each one.
+
+Tests: `cvet/tests_ownership.py`, 26 pass.
+
+### What the rule does not reach
+
+- **The database and the backups.** A person with access to the server reads every table. The off-site backups hold the clinical notes. This is the same as for every hosted practice system: the host can read the data. It must be in the agreement between the yard and the practice.
+- **A superuser can make itself a member of the practice.** The membership history records who did it and when.
+- **Files.** There are no clinical photos or recordings yet. Phase 3 stores them, and must give them the same rule: practice members only.
+
+### What phase 2 does not do
+
+- No clinical note is written yet: phase 3 (the API) and phase 4 (the screens) do that. The phase 1 test page still stores test notes, not clinical notes.
+- The yard's vet visit log (C-gate, Health → Vet visits) does not change (decision 9).
+- No data goes back to the yard yet: phase 6.
 
 ## 8. Phase 1: the test on Tim's phone
 
 ### Set-up (once, by an administrator)
 
 1. Set `CVET_PROTOTYPE_ENABLED=True` on the server and deploy.
-2. Give Tim a login with Full access to Health and View access to Owners.
+2. In C-gate, **Settings → Users**: add a login for Tim with the role **Vet**.
+3. In the Django admin, **C-vet → Practices → Add**: type the practice name. In **Practice yard link**, leave today's date. In **Practice members**, choose Tim's login. Save.
+
+Tim's login opens C-vet only. It cannot open a C-gate page.
 
 ### Set-up (once, by Tim, with a signal)
 
@@ -239,7 +291,7 @@ Open the Django admin → **Offline prototype entries**.
 |---|---|---|
 | 1 | The iPhone clears a web app's storage, or does not send in the background. | Phase 1 tests this first. The fallback is an app-store wrapper around the same code. |
 | 2 | A lost phone holds owner names and unsent clinical notes. | Section 5, "Data on the phone". Decide before phase 3 if a PIN is necessary. |
-| 3 | Clinical notes become visible to the yard by mistake. | Phase 2 puts them behind the practice, with tests on every route. Today `VetVisit` is a yard record that yard staff can read. |
+| 3 | Clinical notes become visible to the yard by mistake. | Phase 2 put them behind the practice (section 7a). A sweep test requests every page as a yard administrator, and a tripwire test stops yard code that reads them. Phase 3 must give files the same rule. |
 | 4 | RCVS rules on clinical records (revised April 2026) and UK GDPR. | A vet adviser checks the record design before phase 4. The voice service needs a UK GDPR data agreement and must not keep the audio. |
 | 5 | Two teams change the same visit code. | Agree the order of the changes before phase 3. |
 | 6 | The scope grows into a full practice system. | Decision 3. C-vet covers the yard visit only. The practice system stays the full record. |
@@ -255,6 +307,8 @@ Open the Django admin → **Offline prototype entries**.
 | 4 | How long must Tim's phone stay signed in? Proposed: 90 days, ended by an administrator if the phone is lost. | Owner of C-gate | Phase 3 |
 | 5 | Is a PIN necessary to open C-vet? | Owner of C-gate, Tim | Phase 3 |
 | 6 | Which speech-to-text service? | Owner of C-gate | Phase 5 |
+| 7 | Does the vet see the yard's own vet visit log and medical conditions for a horse, as history? | Owner of C-gate, Tim | Phase 4 |
+| 8 | What does the agreement between the yard and the practice say about the server and the backups, which hold the clinical notes? | Owner of C-gate, with a vet adviser | Phase 7 (before real clinical notes) |
 
 The other questions for Tim are in `VET_TRIAL_PLAN.md` 7.7.
 

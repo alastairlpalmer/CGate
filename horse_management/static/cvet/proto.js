@@ -27,6 +27,7 @@
     var MAX_RECORDING_MS = 60 * 1000;
     var PHOTO_MAX_EDGE = 1600;
     var AUTO_SYNC_MS = 60 * 1000;
+    var DENIED_TEXT = 'This login may not use C-vet. Your notes are safe on this phone. Ask the administrator.';
 
     var state = {
         horses: [],
@@ -142,7 +143,7 @@
     function getSession() {
         return request(config.sessionUrl, {}, 20000).then(function (result) {
             if (result.kind === 'ok' && result.status === 200) return { kind: 'ok', session: result.data };
-            if (result.kind === 'ok') return { kind: 'signin' };  // 401 or 403
+            if (result.kind === 'ok') return { kind: result.status === 403 ? 'denied' : 'signin' };
             return { kind: result.kind };
         });
     }
@@ -382,6 +383,12 @@
         return request(config.bootstrapUrl, {}, 30000).then(function (result) {
             if (result.kind === 'offline') {
                 $('sync-message').textContent = 'No signal. The horse list on this phone has not changed.';
+                return;
+            }
+            if (result.kind === 'ok' && result.status === 403) {
+                $('sync-message').textContent = result.data && result.data.error === 'no_yard_link'
+                    ? 'The practice has no open link to this yard. Ask the yard administrator.'
+                    : DENIED_TEXT;
                 return;
             }
             if (result.kind === 'signin' || result.status !== 200) {
@@ -646,7 +653,7 @@
 
         return getSession().then(function (result) {
             if (result.kind !== 'ok') {
-                stop = result.kind === 'signin' ? 'signin' : 'later';
+                stop = result.kind === 'signin' || result.kind === 'denied' ? result.kind : 'later';
                 return;
             }
             var session = result.session;
@@ -665,6 +672,8 @@
             if (stop === 'signin') {
                 message.textContent = 'Sign in again to send. Your notes are safe on this phone.';
                 showSignIn(true);
+            } else if (stop === 'denied') {
+                message.textContent = DENIED_TEXT;
             } else if (stop === 'other') {
                 message.textContent = otherPersonText();
             } else if (stop === 'later') {

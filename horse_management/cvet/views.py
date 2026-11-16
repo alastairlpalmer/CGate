@@ -12,8 +12,9 @@ One page, one service worker and three JSON endpoints:
 * ``api_entries`` takes one note, with its photo and recording, and
   stores it once however many times it is sent.
 
-Everything is a 404 unless ``CVET_PROTOTYPE_ENABLED`` is set, and needs
-Full access to Health.
+Everything is a 404 unless ``CVET_PROTOTYPE_ENABLED`` is set. The gate is
+``cvet.access``: Full on the ``cvet`` feature and membership of a practice.
+The horse list also needs the practice's link to the yard to be open.
 """
 
 import hashlib
@@ -26,23 +27,20 @@ from io import BytesIO
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import IntegrityError, transaction
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
-from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 
 from core import ratelimit
 from core.models import Horse, Placement, prime_current_owners
-from core.permissions import LEVEL_FULL, LEVEL_VIEW, feature_required, has_feature_access
 from core.templatetags.cache_bust import _VERSION, static_v
 
+from .access import cvet_enabled, horses_for, open_link, practice_api, practice_page
 from .models import PrototypeEntry
-
-FEATURE = 'health'
 
 NOTE_MAX_CHARS = 5000
 PHOTO_MAX_BYTES = 8 * 1024 * 1024
@@ -76,41 +74,11 @@ STATIC_FILES = (
 )
 
 
-def prototype_enabled(view_func):
-    """404 unless the prototype is turned on for this deployment."""
-    @wraps(view_func)
-    def _wrapped(request, *args, **kwargs):
-        if not settings.CVET_PROTOTYPE_ENABLED:
-            raise Http404
-        return view_func(request, *args, **kwargs)
-    return _wrapped
-
-
-def api(view_func):
-    """Gate for the JSON endpoints: answers in JSON, never with a redirect.
-
-    A phone that gets a sign-in page back cannot tell it from a failure.
-    401 means "sign in again"; the page keeps every unsent note and shows
-    a link. 403 means the login has no access to this page.
-    """
-    @wraps(view_func)
-    @prototype_enabled
-    @never_cache
-    def _wrapped(request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({'error': 'signed_out'}, status=401)
-        if not has_feature_access(request.user, FEATURE, LEVEL_FULL):
-            return JsonResponse({'error': 'no_access'}, status=403)
-        return view_func(request, *args, **kwargs)
-    return _wrapped
-
-
 def _user_payload(user):
     return {'id': user.pk, 'name': user.get_full_name() or user.get_username()}
 
 
-@prototype_enabled
-@feature_required(FEATURE, LEVEL_FULL)
+@practice_page
 def app(request):
     """The page. No data in it: the phone gets that from the API."""
     response = render(request, 'cvet/prototype.html', {
@@ -134,7 +102,7 @@ def app(request):
     return response
 
 
-@prototype_enabled
+@cvet_enabled
 @require_GET
 def service_worker(request):
     """The service worker script.
@@ -156,23 +124,28 @@ def service_worker(request):
     return response
 
 
-@api
+@practice_api
 @require_GET
 def api_session(request):
     return JsonResponse({
         'user': _user_payload(request.user),
+        'practice': request.practice.name,
         'csrf': get_token(request),
     })
 
 
-@api
+@practice_api
 @require_GET
 def api_bootstrap(request):
-    """Every horse at the yard, with what the vet needs to pick the right one."""
-    horses = list(Horse.objects.filter(is_active=True).order_by('name'))
-    show_owners = has_feature_access(request.user, 'owners', LEVEL_VIEW)
-    if show_owners:
-        prime_current_owners(horses)
+    """The yard's horses, with what the vet needs to pick the right one.
+
+    Identity, owner and field name are shared data (docs/C_VET_PLAN.md,
+    section 3), but only while the practice's link to the yard is open.
+    """
+    if open_link(request.practice) is None:
+        return JsonResponse({'error': 'no_yard_link'}, status=403)
+    horses = list(horses_for(request.practice).order_by('name'))
+    prime_current_owners(horses)
     locations = {}
     for placement in (
         Placement.objects.filter(horse__in=horses, end_date__isnull=True)
@@ -182,6 +155,7 @@ def api_bootstrap(request):
     return JsonResponse({
         'generated_at': timezone.now().isoformat(),
         'user': _user_payload(request.user),
+        'practice': request.practice.name,
         'horses': [
             {
                 'id': horse.pk,
@@ -189,10 +163,7 @@ def api_bootstrap(request):
                 'microchip': horse.microchip,
                 'passport': horse.passport_number,
                 'location': locations.get(horse.pk, ''),
-                'owner': (
-                    horse.current_owner.name
-                    if show_owners and horse.current_owner else ''
-                ),
+                'owner': horse.current_owner.name if horse.current_owner else '',
             }
             for horse in horses
         ],
@@ -258,7 +229,7 @@ def _entry_payload(entry, status):
     }
 
 
-@api
+@practice_api
 @require_POST
 def api_entries(request):
     """Store one note. Safe to call again with the same ``client_id``."""

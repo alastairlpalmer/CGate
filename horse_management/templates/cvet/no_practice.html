@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C-vet</title>
+</head>
+<body style="font: 16px/1.4 -apple-system, sans-serif; max-width: 30em; margin: 3em auto; padding: 0 1em;">
+    <h1 style="font-size: 20px;">This login is not set up for C-vet</h1>
+    <p>C-vet shows the records of a veterinary practice. This login is not a member of a practice.</p>
+    <p>Ask the administrator to add it to the practice.</p>
+    <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">Sign out</button></form>
+</body>
+</html>

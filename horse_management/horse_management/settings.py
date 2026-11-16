@@ -137,6 +137,8 @@ MIDDLEWARE = [
     # Keeps a farrier's login on the farrier page (core.permissions
     # .is_provider_only). After MFAMiddleware: the code page comes first.
     'core.middleware.ProviderPortalMiddleware',
+    # Keeps a practice login (the Vet role) on C-vet. After MFAMiddleware.
+    'cvet.middleware.VetPortalMiddleware',
     # Records the signed-in user on every history row (core/audit.py).
     'simple_history.middleware.HistoryRequestMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -526,10 +528,10 @@ INVOICE_SEND_ASYNC = env.bool(
     'INVOICE_SEND_ASYNC', default=not bool(os.environ.get('VERCEL'))
 )
 
-# C-vet offline prototype (docs/C_VET_PLAN.md, phase 1): the test page at
-# /c-vet/ that stores a horse list, notes, photos and voice recordings on
-# a phone with no signal. Off by default: every /c-vet/ address is a 404.
-# Turn it on for the phone test, then off again when the test ends.
+# C-vet, the vet's app (docs/C_VET_PLAN.md). While it is being built, its
+# pages are the phase 1 offline test page at /c-vet/. Off by default:
+# every /c-vet/ address is a 404. The practice and clinical-note tables
+# exist either way; this turns the pages on and off, not the data rules.
 CVET_PROTOTYPE_ENABLED = env.bool('CVET_PROTOTYPE_ENABLED', default=False)
 
 # Location mapping (coordinates, the nearest-location chip, the map tab
