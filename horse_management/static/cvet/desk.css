@@ -62,6 +62,7 @@
     .cols > :last-child > h3:first-child { margin-top: 0; }
 
     /* A client: its details and its visits are under its horses. */
+    /* The client's visits are on its page: no need for the link to them. */
     #client-history { display: none; }
     #client-desk dl { padding: 12px 14px; font-size: 14px; }
 

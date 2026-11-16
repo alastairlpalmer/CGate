@@ -5,9 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bill {{ bill.number }}</title>
     <style>
-        body { font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1f2d32; max-width: 46em; margin: 0 auto; padding: 12px; }
+        body { margin: 0; background: #f3f1ea; color: #17252a; font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .page { max-width: 46em; margin: 0 auto; padding: 4px 16px 32px; }
+        /* The bill as a sheet of paper on the screen; plain on the printer. */
+        .sheet { padding: 20px; border-radius: 12px; background: #fff; box-shadow: 0 1px 2px rgba(23, 37, 42, .06), 0 1px 6px rgba(23, 37, 42, .05); }
         h1 { font-size: 22px; margin: 0; }
-        a { color: #3D5A63; font-weight: 600; }
+        a { color: #2f5560; font-weight: 600; }
         .nav a, td a { display: inline-block; padding: 12px 8px 12px 0; }
         .nowrap { white-space: nowrap; }
         .top { display: flex; justify-content: space-between; gap: 24px; margin: 12px 0 20px; }
@@ -20,11 +23,13 @@
         .grand td { font-weight: 700; font-size: 17px; border-top: 2px solid #1f2d32; }
         .muted { color: #5d6b70; font-size: 13px; }
         .tag { padding: 1px 6px; border-radius: 4px; background: #ffe2b8; color: #5c3600; font-size: 13px; font-weight: 600; }
-        @media print { .screen { display: none; } body { padding: 0; } }
+        @media print { .screen { display: none; } body { background: #fff; } .page, .sheet { padding: 0; box-shadow: none; } }
     </style>
 </head>
 <body>
+    <div class="page">
     <p class="screen nav"><a href="{% url 'cvet:bill_list' %}">‹ Bills</a><br>To print it or to save it as a PDF, use Print in the browser's menu.</p>
+    <div class="sheet">
     {% if test_mode %}<p><span class="tag">Test bill. Not a real invoice.</span></p>{% endif %}
     <div class="top">
         <div>
@@ -61,5 +66,7 @@
     </table>
     <p class="muted">Prices include VAT.</p>
     {% if practice.bank_details %}<p><strong>How to pay</strong><br>{{ practice.bank_details|linebreaksbr }}</p>{% endif %}
+    </div>
+</div>
 </body>
 </html>

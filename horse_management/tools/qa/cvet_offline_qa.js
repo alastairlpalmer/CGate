@@ -427,6 +427,8 @@ async function openVisit(page, clientName) {
   await tab(page, 'prices');
   check('the booster is marked as a vaccination', (await page.locator('#prices .price', { hasText: 'Flu/Tet booster' }).textContent()).includes('records a vaccination'));
   await page.click('#price-add');
+  // The code for a price change comes with the first use: it needs a signal.
+  await page.locator('#price-form').waitFor();
   check('a price can be marked as one of the yard\'s vaccinations', (await page.locator('#price-vaccination option').allTextContents()).join(',') === 'No,Flu/Tet');
   await page.fill('#price-name', 'Dental check');
   await page.fill('#price-category', 'Dental');

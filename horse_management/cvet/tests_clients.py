@@ -257,3 +257,13 @@ class VisitRecordTests(YardCase):
         self.send(str(uuid.uuid4()))
         with override_settings(CVET_TEST_MODE=False):
             self.assertEqual(self.client.get(VISITS).json()['visits'], [])
+
+
+class NoteLengthTests(YardCase):
+    def test_a_line_break_counts_as_one_character_as_on_the_phone(self):
+        # The phone lets the vet type 5,000 characters. A browser sends
+        # each line break as two: the note must not be refused for that.
+        text = ('a' * 99 + '\r\n') * 50
+        response = self.client.post(NOTES, note_data(horse_id=str(self.horse.pk), note=text))
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertEqual(len(ClinicalNote.objects.get().findings), 5000)

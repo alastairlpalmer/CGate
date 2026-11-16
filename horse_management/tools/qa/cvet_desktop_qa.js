@@ -82,6 +82,7 @@ const OUT = process.argv[3] || 'cvet_qa';
   r.priceTable = all === 4 && (await page.locator('#prices tr.prow').count()) === 1 && (await page.locator('#prices tr.prow').textContent()).includes('Flu/Tet');
   await page.fill('#price-filter', '');
   await page.locator('#prices .rowlink', { hasText: 'Sedation' }).click();
+  await page.locator('#price-form').waitFor();
   r.priceEdit = (await page.inputValue('#price-name')) === 'Sedation';
   await page.click('#price-cancel');
   await page.screenshot({ path: `${OUT}/d5-prices.png` });

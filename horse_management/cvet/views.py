@@ -105,10 +105,12 @@ STATIC_FILES = (
     'icons/icon-192.png',
     'icons/apple-touch-icon.png',
 )
-# What only a wide screen needs (docs/C_VET_PLAN.md, section 7h). The page
-# asks for them when it is wide; the service worker stores them then, and
-# not before, so a phone never downloads them.
-WIDE_FILES = ('cvet/desk.css', 'cvet/desk.js')
+# What the page asks for later, and the service worker stores then and not
+# before: it is not part of the download that opens the app.
+# desk.*: what only a wide screen needs (docs/C_VET_PLAN.md, section 7h);
+# a phone never downloads them. online.js: what needs a signal (a change
+# to the price list, sign out), fetched the first time it is used.
+WIDE_FILES = ('cvet/desk.css', 'cvet/desk.js', 'cvet/online.js')
 
 
 def _user_name(user):
@@ -145,6 +147,7 @@ def app(request):
             'files_url': f"{reverse('cvet:app')}api/files/",
             'desk_css': static_v(WIDE_FILES[0]),
             'desk_js': static_v(WIDE_FILES[1]),
+            'online_js': static_v(WIDE_FILES[2]),
             'bills_url': reverse('cvet:bill_list'),
             'login_url': f"{reverse('login')}?next={reverse('cvet:app')}",
             'logout_url': reverse('logout'),
@@ -746,7 +749,9 @@ def _store_note(request):
         written_at = timezone.make_aware(written_at, dt_timezone.utc)
     seen_on = timezone.localtime(written_at).date()
 
-    findings = request.POST.get('note', '')
+    # A browser sends each line break of a form as two characters. The
+    # phone's limit counts it as one, and so does this.
+    findings = request.POST.get('note', '').replace('\r\n', '\n')
     if len(findings) > NOTE_MAX_CHARS:
         return JsonResponse({'error': 'note_too_long'}, status=400)
 
@@ -916,6 +921,8 @@ def _visit_payload(visit, notes=None, bill_when=None):
         # The client's name, as it was on the day.
         'yard': visit.yard_name,
         'author': visit.author_name,
+        # The phone joins its own open visit of today, and no other vet's.
+        'author_id': visit.author_id,
         'bill_to': visit.bill_to,
         # 'month': no bill now; this visit goes on the monthly bill.
         'bill_when': bill_when or _bill_when(visit.practice),

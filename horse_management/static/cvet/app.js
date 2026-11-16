@@ -335,7 +335,15 @@
     // The entries of the client's open visit: empty when there is none.
     function openEntries(clientId) {
         var visit = visits()[clientId];
-        return visit && !visit.finished ? entriesOf(visit.id) : [];
+        return visit && !visitDone(visit) ? entriesOf(visit.id) : [];
+    }
+
+    // Finished on this phone, or on another one: the practice's list of
+    // visits says so (the vet finished it at the computer).
+    function visitDone(visit) {
+        return !!visit.finished || !!closed()[visit.id] || (state.meta.visitList || []).some(function (listed) {
+            return listed.id === visit.id && listed.status === 'finished';
+        });
     }
 
     function keepVisit(clientId, visit) {
@@ -1067,7 +1075,16 @@
         });
     }
 
+    // A send that is in progress writes to the phone's storage when it
+    // ends. A removal in the middle of it would be undone.
+    function busySending() {
+        if (!state.syncing) return false;
+        say('The phone is sending. Try again in a moment.');
+        return true;
+    }
+
     function removeEntry(entry) {
+        if (busySending()) return;
         if (!window.confirm('Remove this note? It was not sent.')) return;
         remove('entries', entry.clientId).then(function () {
             state.entries.splice(state.entries.indexOf(entry), 1);
@@ -1163,7 +1180,17 @@
     // the first note of the day, and goes with every note after it. A
     // note after Finish visit starts a new one.
     function currentVisit(clientId, now) {
-        return core.visitForDay(visits()[clientId], core.localDay(now), newId);
+        var day = core.localDay(now);
+        var mine = visits()[clientId];
+        if (mine && mine.id && mine.day === day && !visitDone(mine)) return mine;
+        // The same vet on a phone and on a computer: a visit that is
+        // open for this client today in the practice's records is the
+        // visit. A second one would be a second bill.
+        var open = (state.meta.visitList || []).filter(function (visit) {
+            return visit.client_id === clientId && visit.date === day && visit.status === 'open' &&
+                !closed()[visit.id] && visit.author_id === state.meta.userId;
+        })[0];
+        return open ? { id: open.id, day: day, finished: false } : core.visitForDay(null, day, newId);
     }
 
     function newEntry(horse, visit, now, parts) {
@@ -1301,7 +1328,7 @@
         core.localVisits(state.entries).forEach(function (local) {
             var row = byId[local.id];
             if (!row) {
-                var clientId = local.clientId || yardClientId();
+                var clientId = local.clientId && local.clientId !== OLD_YARD ? local.clientId : yardClientId();
                 var client = clientById(clientId);
                 rows.push(row = byId[local.id] = {
                     id: local.id, clientId: clientId, clientName: (client && client.name) || local.clientName || yardName(),
@@ -1476,12 +1503,13 @@
             countText(row.horses, 'horse', 'horses') + ', ' + core.money(row.total) + '.';
         if (!window.confirm(question)) return;
         var finishedAt = new Date().toISOString();
-        var current = visits()[row.clientId];
+        // Found by the id of the visit, under whichever client it is kept.
+        var key = Object.keys(visits()).filter(function (clientId) { return visits()[clientId].id === row.id; })[0];
         var done = Object.assign({}, closed());
         done[row.id] = { finishedAt: finishedAt };
         // The client's visit of today is closed: its next note starts a new one.
-        var first = current && current.id === row.id
-            ? keepVisit(row.clientId, Object.assign({}, current, { finished: true, finishedAt: finishedAt }))
+        var first = key
+            ? keepVisit(key, Object.assign({}, visits()[key], { finished: true, finishedAt: finishedAt }))
             : Promise.resolve();
         first.then(function () {
             return setMeta('closed', done);
@@ -1513,6 +1541,8 @@
                 });
             }
             $('visits-message').textContent = message;
+            // The notes on the phone may have changed (sent, or not): show that.
+            if (state.view === 'visits') renderVisits();
         }).catch(function () { /* the list on the phone stays */ });
     }
 
@@ -1559,34 +1589,37 @@
         desk('prices');
     }
 
-    // Open the form at the top of the screen: for a new price (null), or
-    // for one of the list.
-    function editPrice(price) {
-        state.editingPrice = price;
-        state.priceFormOpen = true;
-        $('price-name').value = price ? price.name : '';
-        $('price-category').value = price ? price.category || '' : '';
-        // The categories in use, offered as the vet types.
-        fill($('price-categories'), core.priceCategories(state.prices.map(function (other) {
-            return { name: other.name, category: other.category, isActive: true };
-        })).filter(function (name) { return name !== 'Other'; }).map(function (name) {
-            var option = el('option');
-            option.value = name;
-            return option;
-        }));
-        $('price-amount').value = price ? core.decimal(price.pence) : '';
-        $('price-vat').value = price ? String(Number(price.vatRate)) : '20';
-        renderVaccinationTypes(price ? price.vaccinationTypeId : null);
-        $('price-message').textContent = '';
-        renderPrices();
-        window.scrollTo(0, 0);
-        $('price-name').focus({ preventScroll: true });
+    // To change the price list and to sign out need a signal, so their
+    // code is in a file of its own (online.js) that the phone fetches the
+    // first time it is needed, and keeps. It is not part of the download
+    // that opens the app.
+    var onlineLoading = null;
+    function online() {
+        if (window.CvetOnline) return Promise.resolve(window.CvetOnline);
+        if (!onlineLoading) {
+            onlineLoading = new Promise(function (resolve, reject) {
+                var script = el('script');
+                script.src = config.onlineJs;
+                script.onload = function () { resolve(window.CvetOnline); };
+                script.onerror = function () { onlineLoading = null; script.remove(); reject(new Error('no signal')); };
+                document.head.appendChild(script);
+            });
+        }
+        return onlineLoading;
     }
 
-    function closePriceForm() {
-        state.editingPrice = null;
-        state.priceFormOpen = false;
-        renderPrices();
+    // Open the form for a new price (null), or for one of the list.
+    function editPrice(price) {
+        online().then(function (part) { part.editPrice(price); }, function () {
+            say('No signal. A price change needs a signal.');
+        });
+    }
+
+    function signOut() {
+        if (busySending()) return;
+        online().then(function (part) { part.signOut(); }, function () {
+            say('No signal. Sign out needs a signal. To remove the data now, tap Clear this phone.');
+        });
     }
 
     function fromServerPrice(item) {
@@ -1595,66 +1628,6 @@
             pence: core.toPence(item.price) || 0, vatRate: item.vat_rate,
             isActive: item.is_active, vaccinationTypeId: item.vaccination_type_id || null
         };
-    }
-
-    // The yard's vaccinations. A price marked as one of them also puts
-    // the dose in the yard's vaccination records when the visit is billed.
-    function renderVaccinationTypes(selected) {
-        var types = state.meta.vaccinationTypes || [];
-        var select = $('price-vaccination');
-        $('price-vaccination-row').hidden = types.length === 0;
-        var options = [el('option', '', 'No')];
-        options[0].value = '';
-        types.forEach(function (type) {
-            var option = el('option', '', type.name);
-            option.value = String(type.id);
-            options.push(option);
-        });
-        fill(select, options);
-        select.value = selected ? String(selected) : '';
-    }
-
-    function savePrice(event, flipActive) {
-        if (event) event.preventDefault();
-        var message = $('price-message');
-        var editing = state.editingPrice;
-        var name = $('price-name').value.trim();
-        var pence = core.toPence($('price-amount').value);
-        var vat = core.toPence($('price-vat').value);
-        if (!name) { message.textContent = 'Type a name.'; return; }
-        if (pence === null) { message.textContent = 'Type the price as a number, for example 65 or 65.50.'; return; }
-        if (vat === null || vat >= 10000) { message.textContent = 'Type the VAT rate as a number, for example 20.'; return; }
-        var form = new FormData();
-        form.append('id', editing ? editing.id : newId());
-        form.append('name', name);
-        form.append('category', $('price-category').value.trim());
-        form.append('price', core.decimal(pence));
-        form.append('vat_rate', core.decimal(vat));
-        form.append('vaccination_type_id', $('price-vaccination').value);
-        var active = editing ? editing.isActive : true;
-        if (flipActive) active = !active;
-        form.append('is_active', active ? 'true' : 'false');
-        message.textContent = '';
-        say('Saving…');
-        getSession().then(function (result) {
-            if (result.kind !== 'ok') say('');
-            if (result.kind === 'offline') { message.textContent = 'No signal. A price change needs a signal.'; return; }
-            if (result.kind !== 'ok') { message.textContent = result.kind === 'denied' ? DENIED_TEXT : 'Sign in again to change a price.'; return; }
-            return post(config.pricesUrl, form, result.session.csrf).then(function (reply) {
-                if (reply.kind !== 'ok' || (reply.status !== 200 && reply.status !== 201)) {
-                    say('');
-                    message.textContent = reply.kind === 'offline' ? 'No signal. The price was not saved.' : 'The price was not saved.';
-                    return;
-                }
-                var saved = fromServerPrice(reply.data);
-                state.prices = state.prices.filter(function (price) { return price.id !== saved.id; }).concat([saved])
-                    .sort(function (a, b) { return a.name.localeCompare(b.name); });
-                return put('prices', saved).then(function () {
-                    closePriceForm();
-                    say(saved.name + ' saved.');
-                });
-            });
-        });
     }
 
     // ── A client and a horse: add, change, archive ───────────────────────
@@ -1764,11 +1737,14 @@
     // phone: clients first, so that a new horse finds its client.
     // Resolves to '' or to why it stopped.
     function sendChanges(csrf) {
-        var queue = pendingChanges().filter(function (item) { return item.id !== OLD_YARD; });
+        var queue = pendingChanges().filter(function (item) { return item.id !== OLD_YARD; }).map(function (item) {
+            return { item: item, isHorse: state.horsesById[item.id] === item };
+        });
         function next() {
-            var item = queue.shift();
-            if (!item) return Promise.resolve('');
-            var isHorse = state.horsesById[item.id] === item;
+            var job = queue.shift();
+            if (!job) return Promise.resolve('');
+            var item = job.item;
+            var isHorse = job.isHorse;
             var form = new FormData();
             form.append('id', item.id);
             form.append('name', item.name);
@@ -1789,6 +1765,9 @@
                 // "Not found": C-vet is turned off on the server. Try later.
                 if (result.status === 404) what = 'later';
                 if (what !== 'sent' && what !== 'failed') return what;
+                // Saved again while this was on its way: the newer one
+                // stays in the queue and goes with the next sync.
+                if ((isHorse ? state.horsesById : state.clientsById)[item.id] !== item) return next();
                 delete item.unsent;
                 // The server will never take it as it is: say so on its row.
                 if (what === 'failed') item.refused = (result.data && result.data.error) || 'refused';
@@ -1911,6 +1890,12 @@
     // `quiet`: the refresh the app does by itself when it opens. It says
     // nothing unless it brought new data.
     function download(quiet) {
+        // After the send that is in progress: a client that the send has
+        // just delivered must be in the list this download brings.
+        if (state.syncing && state.syncPromise) {
+            return state.syncPromise.then(function () { return download(quiet); });
+        }
+        state.downloading = true;
         var buttons = [$('download'), $('download-first')];
         buttons.forEach(function (node) { node.disabled = true; });
         if (!quiet) {
@@ -1938,7 +1923,8 @@
                 return;
             }
             var data = result.data;
-            if (state.meta.userId && state.meta.userId !== data.user.id && unsentEntries().length) {
+            var otherPerson = !!state.meta.userId && state.meta.userId !== data.user.id;
+            if (otherPerson && (unsentEntries().length || pendingChanges().length || finishQueue().length)) {
                 if (!quiet) say(otherPersonText());
                 return;
             }
@@ -1947,15 +1933,26 @@
             // A client or a horse that was made or changed on this phone
             // and is not sent yet stays as the phone has it.
             function merged(fromServer, onPhone) {
-                var waiting = onPhone.filter(function (item) { return item.unsent; });
+                var waiting = onPhone.filter(function (item) { return item.unsent || item.refused; });
                 var ids = {};
                 waiting.forEach(function (item) { ids[item.id] = true; });
                 return fromServer.filter(function (item) { return !ids[item.id]; }).concat(waiting);
             }
-            var clients = merged(data.clients || [], state.clients);
-            var horses = merged(data.horses || [], state.horses);
+            var clients = merged(data.clients || [], otherPerson ? [] : state.clients);
+            var horses = merged(data.horses || [], otherPerson ? [] : state.horses);
             var wasOldYard = !!state.clientsById[OLD_YARD];
-            return replaceAll('horses', horses).then(function () {
+            // Nothing of the person before stays: notes, visits, a note
+            // in progress. All of it was sent (checked above).
+            var fresh = !otherPerson ? Promise.resolve() : replaceAll('entries', []).then(function () {
+                state.entries = [];
+                state.visitDetails = {};
+                return Promise.all(['visits', 'closed', 'finishQueue', 'visitList', 'draft'].map(function (key) {
+                    return setMeta(key, null);
+                }));
+            });
+            return fresh.then(function () {
+                return replaceAll('horses', horses);
+            }).then(function () {
                 return replaceAll('clients', clients);
             }).then(function () {
                 return replaceAll('prices', prices);
@@ -1989,13 +1986,21 @@
                 return rememberSession(data);
             }).then(function () {
                 if (!quiet) say('Clients and horses downloaded.');
+                // And the practice's visits: a visit that is open for a
+                // client today is joined, not made again (currentVisit).
+                loadVisitList(true);
             });
         }).catch(function (error) {
             say('The phone could not store the download: ' + error.message, true);
         }).then(function () {
             buttons.forEach(function (node) { node.disabled = false; });
-            render();
+            state.downloading = false;
+            // A note in progress keeps its boxes and the keyboard.
+            if (state.view === 'horse') renderBar();
+            else render();
             refreshStorage();
+            // What was saved while the download ran goes now.
+            sync(false);
         });
     }
 
@@ -2087,7 +2092,9 @@
     // also sends notes the server refused before, and it always says
     // what happened.
     function sync(byHand) {
-        if (state.syncing) return Promise.resolve();
+        if (state.syncing) return state.syncPromise || Promise.resolve();
+        // A download sends what waits when it ends.
+        if (state.downloading) return Promise.resolve();
         var queue = unsentEntries().filter(function (entry) {
             return byHand || entry.status !== 'failed';
         });
@@ -2138,7 +2145,8 @@
             });
         }
 
-        return getSession().then(function (result) {
+        var changesBefore = pendingChanges().length;
+        state.syncPromise = getSession().then(function (result) {
             if (result.kind !== 'ok') {
                 stop = result.kind === 'signin' || result.kind === 'denied' ? result.kind : 'later';
                 return;
@@ -2186,72 +2194,46 @@
             if (sent) setMeta('lastSyncAt', new Date().toISOString());
             // A visit screen that is open keeps its place: only the bar
             // and the list of visits are brought up to date.
-            if (state.view === 'visits') { renderBar(); loadVisitList(true); }
-            else render();
+            var changed = sent > 0 || byHand || pendingChanges().length !== changesBefore;
+            if (!changed) {
+                // Nothing went (no signal): the screen stays as it is. A
+                // redraw would close the keyboard and stop a recording
+                // that is playing.
+                renderBar();
+            } else if (state.view === 'visits') {
+                renderBar();
+                loadVisitList(true);
+            } else if (state.view === 'horse') {
+                // The note in progress keeps its boxes. Its history shows what was sent.
+                renderBar();
+                if (sent && state.draft) renderHistory();
+            } else {
+                render();
+            }
             refreshStorage();
         });
+        return state.syncPromise;
     }
 
     // ── Sign out and clear ───────────────────────────────────────────────
 
-    function forgetThisPhone() {
-        setHorses([]);
-        setClients([]);
-        state.prices = [];
-        state.entries = [];
-        state.meta = {};
-        state.draft = null;
-        var jobs = [clearEverything()];
-        // The stored page too, so the app does not open for the next
-        // person who holds the phone.
-        if (window.caches && caches.keys) {
-            jobs.push(caches.keys().then(function (names) {
-                return Promise.all(names.filter(function (name) {
-                    return name.indexOf('cvet-') === 0;
-                }).map(function (name) { return caches.delete(name); }));
-            }));
-        }
-        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
-            jobs.push(navigator.serviceWorker.getRegistrations().then(function (registrations) {
-                return Promise.all(registrations.map(function (registration) {
-                    return registration.unregister();
-                }));
-            }));
-        }
-        return Promise.all(jobs);
-    }
-
     function lossQuestion(action, plain) {
+        // Notes, new or changed clients and horses, and finished visits
+        // that the practice has not received.
+        var waiting = [];
         var count = unsentEntries().length;
-        return count
-            ? core.unsentText(count) + '. ' + action + ' deletes ' + (count === 1 ? 'it' : 'them') + ' from this phone for good. Sync first if you can. Go on?'
+        var changes = pendingChanges().length;
+        var finishes = finishQueue().length;
+        if (count) waiting.push(countText(count, 'note', 'notes'));
+        if (changes) waiting.push(countText(changes, 'client or horse', 'clients and horses'));
+        if (finishes) waiting.push(countText(finishes, 'finished visit', 'finished visits'));
+        return waiting.length
+            ? 'Not sent yet: ' + waiting.join(', ') + '. ' + action + ' deletes this from the phone for good. Sync first if you can. Go on?'
             : plain;
     }
 
-    // Sign out needs a signal: the server must end the sign-in. With no
-    // signal, Clear this phone removes the data and the sign-in stays.
-    function signOut() {
-        if (!window.confirm(lossQuestion('Signing out', 'Sign out and remove the clients, the horses and all notes from this phone?'))) return;
-        say('Signing out…');
-        getSession().then(function (result) {
-            if (result.kind === 'offline') {
-                say('No signal. Sign out needs a signal. To remove the data now, tap Clear this phone.');
-                return;
-            }
-            var done = result.kind === 'ok' ? request(config.logoutUrl, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': result.session.csrf },
-                redirect: 'manual'
-            }, 20000) : Promise.resolve();
-            return done.then(forgetThisPhone).then(function () {
-                window.location.href = config.loginUrl;
-            });
-        }).catch(function (error) {
-            say('Sign out did not finish: ' + error.message);
-        });
-    }
-
     function clearPhone() {
+        if (busySending()) return;
         if (!window.confirm(lossQuestion('Clearing', 'Remove the clients, the horses and all notes from this phone?'))) return;
         clearEverything().then(function () {
             setHorses([]);
@@ -2352,9 +2334,6 @@
         $('record').addEventListener('click', toggleRecording);
         $('save').addEventListener('click', saveDraft);
         $('load-history').addEventListener('click', function () { loadOlderNotes(false); });
-        $('price-form').addEventListener('submit', function (event) { savePrice(event, false); });
-        $('price-hide').addEventListener('click', function () { savePrice(null, true); });
-        $('price-cancel').addEventListener('click', closePriceForm);
         $('price-add').addEventListener('click', function () { editPrice(null); });
         // A tap on the dark area round a sheet closes it. So does Escape.
         ['picker', 'client-sheet', 'horse-sheet'].forEach(function (id) {
@@ -2391,9 +2370,13 @@
         }
         // What desk.js works with.
         window.CvetApp = {
-            state: state, core: core, $: $, el: el, button: button, fill: fill, isWide: isWide,
-            visitRows: visitRows, visitFold: visitFold, editPrice: editPrice, renderPrices: renderPrices,
-            loadVisitList: loadVisitList, clientById: clientById
+            state: state, core: core, config: config, $: $, el: el, button: button, fill: fill, say: say,
+            isWide: isWide, visitRows: visitRows, visitFold: visitFold, editPrice: editPrice,
+            renderPrices: renderPrices, loadVisitList: loadVisitList, clientById: clientById,
+            // For online.js.
+            newId: newId, getSession: getSession, request: request, post: post, put: put,
+            fromServerPrice: fromServerPrice, lossQuestion: lossQuestion, clearEverything: clearEverything,
+            setHorses: setHorses, setClients: setClients, DENIED_TEXT: DENIED_TEXT
         };
         loadDesk();
 
@@ -2430,6 +2413,7 @@
             if (window.performance && performance.now) state.openMs = Math.round(performance.now());
             refreshStorage();
             sync(false);
+            if (navigator.onLine) loadVisitList(true);
             // Fresh due dates and prices for today's visit, if the list
             // is from another day. Behind the screen: nothing waits for it.
             var age = state.meta.downloadedAt ? Date.now() - new Date(state.meta.downloadedAt).getTime() : 0;

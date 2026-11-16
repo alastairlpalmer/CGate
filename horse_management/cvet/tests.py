@@ -83,6 +83,9 @@ class WideScreenFilesTests(TestCase):
         self.assertNotIn('desk.', assets)
         self.assertIn('/static/cvet/desk.css', wide)
         self.assertIn('/static/cvet/desk.js', wide)
+        # And what needs a signal: fetched on first use.
+        self.assertNotIn('online.js', assets)
+        self.assertIn('/static/cvet/online.js', wide)
 
     def test_the_page_names_them_and_does_not_load_them(self):
         self.client.force_login(make_vet())
