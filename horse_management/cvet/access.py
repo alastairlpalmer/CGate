@@ -25,7 +25,7 @@ from django.views.decorators.cache import never_cache
 
 from core.permissions import LEVEL_FULL, LEVEL_HIDDEN, access_map, feature_required, has_feature_access
 
-from .models import ClinicalFile, ClinicalNote, NoteLine, PracticeMember, PriceItem, Visit
+from .models import Bill, ClinicalFile, ClinicalNote, NoteLine, PracticeMember, PriceItem, Visit
 
 FEATURE = 'cvet'
 
@@ -99,6 +99,11 @@ def prices_for(practice):
 def lines_for(practice):
     """The items done and their prices, for this practice."""
     return NoteLine.objects.for_practice(practice)
+
+
+def bills_for(practice):
+    """The practice's bills."""
+    return Bill.objects.for_practice(practice)
 
 
 def visits_for(practice):

@@ -51,6 +51,8 @@ for name, price in (('Flu/Tet booster', '65.00'), ('Sedation', '27.50'), ('Visit
 
 today = timezone.localdate()
 flu, _ = VaccinationType.objects.get_or_create(name='Flu/Tet')
+# The booster is a vaccination: giving it records the dose at the yard.
+PriceItem.objects.filter(practice=practice, name='Flu/Tet booster').update(vaccination_type=flu)
 if not Vaccination.objects.exists():
     for name, days in (('Willow', -10), ('Fudge', 5), ('Hazel', 200)):
         Vaccination.objects.create(

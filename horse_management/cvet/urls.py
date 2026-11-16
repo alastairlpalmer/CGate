@@ -22,4 +22,7 @@ urlpatterns = [
     path('api/files/<uuid:client_id>/', views.api_file, name='api_file'),
     path('api/prices/', views.api_prices, name='api_prices'),
     path('api/visits/<uuid:client_id>/finish/', views.api_visit_finish, name='api_visit_finish'),
+    path('bills/', views.bill_list, name='bill_list'),
+    path('bills/export.csv', views.bill_export, name='bill_export'),
+    path('bills/<int:pk>/', views.bill_detail, name='bill_detail'),
 ]

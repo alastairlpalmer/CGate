@@ -140,6 +140,10 @@ section 7c): Horses, a horse, Visit, Prices, Phone. One is shown at a time.
                     <input id="price-vat" type="text" inputmode="decimal" autocomplete="off" value="20">
                 </div>
             </div>
+            <div id="price-vaccination-row" hidden>
+                <label for="price-vaccination">Records a vaccination at the yard</label>
+                <select id="price-vaccination"></select>
+            </div>
             <div class="row">
                 <button id="price-save" type="submit" class="button primary">Save price</button>
                 <button id="price-hide" type="button" class="button" hidden>Hide</button>
@@ -157,6 +161,7 @@ section 7c): Horses, a horse, Visit, Prices, Phone. One is shown at a time.
             <button id="download" type="button" class="button">Download horses</button>
         </div>
         <p class="muted"><span id="downloaded"></span> <span id="who"></span></p>
+        <p><a class="button" href="{{ config.bills_url }}">Bills (needs a signal)</a></p>
         <dl id="details"></dl>
         <div class="row">
             <button id="sign-out" type="button" class="button">Sign out</button>

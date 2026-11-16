@@ -54,7 +54,7 @@ class PriceListTests(YardCase):
         self.assertEqual(item.vat_rate, Decimal('20.00'))
         self.assertEqual(self.client.get(YARD).json()['prices'], [{
             'id': str(item.client_id), 'name': 'Flu/Tet booster',
-            'price': '65.00', 'vat_rate': '20.00', 'is_active': True,
+            'price': '65.00', 'vat_rate': '20.00', 'is_active': True, 'vaccination_type_id': None,
         }])
 
     def test_the_same_id_changes_the_price_and_makes_no_second_one(self):

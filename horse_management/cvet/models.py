@@ -2,8 +2,8 @@
 
 The practice side: ``Practice``, ``PracticeMember``, ``PracticeYardLink``.
 The clinical records: ``Visit``, ``ClinicalNote``, ``ClinicalFile``, and
-the practice's money: ``PriceItem``, ``NoteLine``. They
-belong to a practice, not to the yard. Read them only through
+the practice's money: ``PriceItem``, ``NoteLine``, ``Bill``, ``BillLine``.
+They belong to a practice, not to the yard. Read them only through
 ``cvet.access``; no code outside this app may import them
 (cvet/tests_ownership.py checks).
 
@@ -38,10 +38,21 @@ class Practice(models.Model):
         default=True,
         help_text="Untick to close the practice's access. Its records are kept.",
     )
+    # The practice's bills (cvet.billing). Numbers run 1, 2, 3 with no
+    # gaps, as an invoice sequence must; test bills count apart.
+    bill_prefix = models.CharField(
+        max_length=10, blank=True,
+        help_text='Letters before a bill number, for example "HV" for HV-0001. Empty gives "CV".',
+    )
+    next_bill_number = models.PositiveIntegerField(default=1, editable=False)
+    next_test_bill_number = models.PositiveIntegerField(default=1, editable=False)
+    bank_details = models.TextField(blank=True, help_text="How to pay. Printed at the foot of each bill.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    history = HistoricalRecords(excluded_fields=['updated_at'])
+    history = HistoricalRecords(
+        excluded_fields=['updated_at', 'next_bill_number', 'next_test_bill_number'],
+    )
 
     class Meta:
         ordering = ['name']
@@ -121,6 +132,11 @@ class PracticeYardLink(models.Model):
     )
     sends_follow_up_dates = models.BooleanField(
         default=True, help_text="The yard receives follow-up dates, with no reason.",
+    )
+    sends_charges = models.BooleanField(
+        default=True,
+        help_text="When the yard is billed: each horse's part of the bill goes into C-gate "
+                  "as a charge, so the yard's invoices bill each owner.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -231,6 +247,12 @@ class ClinicalNote(models.Model):
     # billed for work already done. The practice's invoices read it.
     payers = models.JSONField(default=list, blank=True)
 
+    # When this note's dates and charges went into the yard's records, and
+    # which yard records they made ({"vet_visit": 12, "vaccinations": [7]}).
+    # Empty until the visit is finished; never set for a test note.
+    yard_sent_at = models.DateTimeField(null=True, blank=True)
+    yard_records = models.JSONField(default=dict, blank=True)
+
     # The phone's clock when the vet tapped Save.
     written_at = models.DateTimeField(default=timezone.now)
     # Made while CVET_TEST_MODE was on: not a clinical record, and the
@@ -270,6 +292,12 @@ class PriceItem(models.Model):
     name = models.CharField(max_length=100)
     price_inc_vat = models.DecimalField(max_digits=8, decimal_places=2)
     vat_rate = models.DecimalField('VAT rate (%)', max_digits=4, decimal_places=2, default=Decimal('20.00'))
+    # Set when this item is a vaccination: giving it also records the
+    # dose in the yard's vaccination records, so the yard's due dates and
+    # reminders stay correct. The types are the yard's own list.
+    vaccination_type = models.ForeignKey(
+        'health.VaccinationType', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -314,6 +342,73 @@ class NoteLine(models.Model):
     @property
     def total_inc_vat(self):
         return (self.quantity * self.unit_price_inc_vat).quantize(Decimal('0.01'), ROUND_HALF_UP)
+
+
+class Bill(models.Model):
+    """The practice's bill for a visit: to the yard, or to one owner.
+
+    Made when the vet taps Finish visit (cvet.billing). It is a copy of
+    what was done and what it cost at that moment, and it never changes:
+    work that arrives later goes on a further bill for the same visit.
+    """
+
+    practice = models.ForeignKey(Practice, on_delete=models.PROTECT, related_name='bills')
+    visit = models.ForeignKey(Visit, on_delete=models.PROTECT, related_name='bills')
+    number = models.CharField(max_length=30)
+    bill_to = models.CharField(max_length=10, choices=PracticeYardLink.BillTo.choices)
+    # Who it is addressed to: the yard's name, or the owner's.
+    to_name = models.CharField(max_length=200)
+    to_owner = models.ForeignKey(
+        'core.Owner', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    date = models.DateField()
+    issued_at = models.DateTimeField(auto_now_add=True)
+    total_inc_vat = models.DecimalField(max_digits=10, decimal_places=2)
+    total_vat = models.DecimalField(max_digits=10, decimal_places=2)
+    is_test = models.BooleanField(default=False)
+    # The cost this bill made in the yard's books, when the yard is billed.
+    yard_cost = models.ForeignKey(
+        'billing.YardCost', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    emailed_at = models.DateTimeField(null=True, blank=True)
+
+    objects = PracticeScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['-issued_at', '-pk']
+        constraints = [
+            models.UniqueConstraint(fields=['practice', 'number'], name='cvet_bill_number_once'),
+        ]
+
+    def __str__(self):
+        return f'Bill {self.number}'
+
+    @property
+    def total_ex_vat(self):
+        return self.total_inc_vat - self.total_vat
+
+
+class BillLine(models.Model):
+    """One line of a bill: a copy of an item done, or of an owner's part of it."""
+
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='lines')
+    note_line = models.ForeignKey(
+        NoteLine, on_delete=models.SET_NULL, null=True, blank=True, related_name='bill_lines',
+    )
+    horse_name = models.CharField(max_length=200)
+    description = models.CharField(max_length=200)
+    quantity = models.DecimalField(max_digits=6, decimal_places=2)
+    unit_price_inc_vat = models.DecimalField(max_digits=8, decimal_places=2)
+    vat_rate = models.DecimalField(max_digits=4, decimal_places=2)
+    # The part of the item this bill carries: 100, or a co-owner's part.
+    share = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('100.00'))
+    amount_inc_vat = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        ordering = ['pk']
+
+    def __str__(self):
+        return f'Bill line {self.pk}'
 
 
 def clinical_file_path(instance, filename):

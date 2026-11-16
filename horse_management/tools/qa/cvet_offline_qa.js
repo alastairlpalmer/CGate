@@ -25,6 +25,11 @@ const BASE = process.argv[2] || 'http://127.0.0.1:8765';
 const OUT = process.argv[3] || 'cvet_qa';
 const PASSWORD = 'qa-pass-123';
 const YARD_NAME = 'Palmer Farm';   // set by cvet_seed.py
+// Run the server with CVET_TEST_MODE=False, and this script with the same
+// variable, to check the real path: bills with real numbers, and the
+// yard's records written. The default is test mode, as on a new server.
+const TEST_MODE = process.env.CVET_TEST_MODE !== 'False';
+const BILL = TEST_MODE ? 'TEST-CV-0001' : 'CV-0001';
 
 // A 1x1 PNG. The page shrinks it and stores it as a JPEG.
 const PHOTO = Buffer.from(
@@ -205,6 +210,9 @@ function horseRow(page, name) {
   await page.waitForFunction(() => document.getElementById('unsent').textContent === 'Everything is sent', null, { timeout: 30000 });
   check('everything is sent after the second sync, the finished visit too', true);
   check('the visit screen says all is sent', (await text(page, '#visit-state')).includes('All sent to the practice'), await text(page, '#visit-state'));
+  // The server made the bill when the visit was finished: one bill, to
+  // the yard. In test mode it has a TEST number.
+  check('the visit screen shows the bill the server made', (await text(page, '#visit-state')).includes(`Bill ${BILL} to Palmer Farm, £282.50.`), await text(page, '#visit-state'));
 
   // ── Sync once more: nothing goes again.
   let extra = 0;
@@ -238,8 +246,8 @@ function horseRow(page, name) {
   check('the changed price was stored for that horse only', stored.willowLines === 'Flu/Tet booster 60.00, Sedation 27.50', stored.willowLines);
   check('the recheck date was stored', /^\d{4}-\d{2}-\d{2}$/.test(stored.willowRecheck || ''), stored.willowRecheck);
   check('the photo and the recording were stored and download complete', stored.willowFiles === 2 && stored.fileStatus === 200 && stored.fileBytes > 0);
-  check('the notes are marked as test notes', stored.allTest);
-  check('the screen says the notes are test notes', await page.locator('#test-mode').isVisible());
+  check(TEST_MODE ? 'the notes are marked as test notes' : 'the notes are real notes', stored.allTest === TEST_MODE);
+  check(TEST_MODE ? 'the screen says the notes are test notes' : 'the screen does not say test notes', (await page.locator('#test-mode').isVisible()) === TEST_MODE);
 
   // ── History on the horse screen, and a new download shows the recheck.
   await tab(page, 'phone');
@@ -256,6 +264,8 @@ function horseRow(page, name) {
 
   // ── The vet adds a price.
   await tab(page, 'prices');
+  check('a price can be marked as one of the yard\'s vaccinations', (await page.locator('#price-vaccination option').allTextContents()).join(',') === 'No,Flu/Tet');
+  check('the booster is marked as a vaccination', (await page.locator('#prices .price', { hasText: 'Flu/Tet booster' }).textContent()).includes('records a vaccination'));
   await page.fill('#price-name', 'Dental check');
   await page.fill('#price-amount', '48');
   await page.click('#price-save');
@@ -299,6 +309,18 @@ function horseRow(page, name) {
   check('no sideways scroll on any screen of an iPhone 13', wide.length === 0, wide.join(','));
   check('no script errors', consoleErrors.length === 0, consoleErrors.join(' | ').slice(0, 300));
 
+  // ── The practice's bills: a page, with a signal.
+  await tab(page, 'phone');
+  await Promise.all([page.waitForURL('**/c-vet/bills/'), page.click('a[href="/c-vet/bills/"]')]);
+  check('the bills page lists the bill', (await page.locator('table').textContent()).includes(BILL));
+  await page.click(`a:has-text("${BILL}")`);
+  const billPage = await page.locator('body').textContent();
+  check('the bill names the yard, each horse and the total', ['Palmer Farm', 'Willow', 'Bramble', 'No Owner Ned', '£282.50'].every((t) => billPage.includes(t)) && billPage.includes('Test bill') === TEST_MODE);
+  check('the bill does not carry the clinical note', !billPage.includes('Mild heat'));
+  await page.screenshot({ path: path.join(OUT, '6-bill.png'), fullPage: true });
+  await page.goto(`${BASE}/c-vet/`);
+  await page.waitForFunction(() => document.querySelectorAll('#horses .horse').length > 0);
+
   // ── Sign out: the phone is emptied and the sign-in ends.
   await tab(page, 'phone');
   await Promise.all([page.waitForURL('**/accounts/login/**'), page.click('#sign-out')]);
@@ -326,7 +348,9 @@ function horseRow(page, name) {
   const failed = results.filter((r) => !r.ok);
   fs.writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(results, null, 2));
   console.log(`\n${results.length - failed.length} of ${results.length} checks passed.`);
-  console.log('The server must now hold: 4 clinical notes, 5 items (total 282.50), 2 files, 4 receipts (1 with attempts = 2), 1 finished visit, 4 prices.');
+  console.log('The server must now hold: 4 clinical notes, 5 items (total 282.50), 2 files, 4 receipts (1 with attempts = 2), 1 finished visit, 1 bill (' + BILL + '), 4 prices. ' + (TEST_MODE
+    ? 'Test mode: no vet record, charge or cost at the yard.'
+    : 'At the yard: 4 vaccination records, 1 vet visit record (Willow: sedation and the recheck), charges for 3 horses (No Owner Ned has no owner), and 1 cost for the bill.'));
   process.exit(failed.length ? 1 : 0);
 })().catch((error) => {
   console.error(error);

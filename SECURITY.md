@@ -112,7 +112,10 @@ no cross-customer isolation boundary to get wrong.
   included: not in a page, the Django admin, an export or the media view.
   A Vet-role login is kept on `/c-vet/` and stays signed in for 90 days
   (`CVET_SESSION_*`); untick the login in its practice to cut off a lost
-  phone at once.
+  phone at once. When a visit is finished, one module (`cvet/billing.py`)
+  writes the yard's part into the yard's own records: item names, amounts
+  and dates, never note text. It writes nothing while `CVET_TEST_MODE` is
+  on.
 - The database connection requires TLS (`sslmode=require`), and so does the
   backup's `pg_dump`. `DATABASE_SSLMODE` changes it.
 

@@ -103,7 +103,7 @@ p { margin: 4px 0; }
 .button:disabled { opacity: .5; }
 .back { min-height: 44px; padding: 0 8px 0 0; border: 0; background: none; color: var(--brand); font-weight: 600; cursor: pointer; }
 
-input[type=search], input[type=text], input[type=date], textarea {
+input[type=search], input[type=text], input[type=date], textarea, select {
     width: 100%;
     min-height: 44px;
     padding: 10px;

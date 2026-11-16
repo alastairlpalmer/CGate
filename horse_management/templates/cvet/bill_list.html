@@ -1,0 +1,41 @@
+{% load ui_extras %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bills · {{ practice.name }}</title>
+    <style>
+        body { font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1f2d32; max-width: 46em; margin: 0 auto; padding: 12px; }
+        h1 { font-size: 20px; margin: 8px 0; }
+        a { color: #3D5A63; font-weight: 600; }
+        .bar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin: 8px 0 12px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 6px; text-align: left; border-bottom: 1px solid #d9d4c7; }
+        .num { text-align: right; white-space: nowrap; }
+        .muted { color: #5d6b70; font-size: 14px; }
+        .tag { padding: 1px 6px; border-radius: 4px; background: #ffe2b8; color: #5c3600; font-size: 13px; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="bar">
+        <a href="{% url 'cvet:app' %}">‹ C-vet</a>
+        <a href="{% url 'cvet:bill_export' %}">Download all as a CSV file</a>
+    </div>
+    <h1>Bills · {{ practice.name }} {% if test_mode %}<span class="tag">test bills</span>{% endif %}</h1>
+    {% if bills %}
+    <table>
+        <tr><th>Bill</th><th>Date</th><th>To</th><th class="num">Total</th></tr>
+        {% for bill in bills %}
+        <tr>
+            <td><a href="{% url 'cvet:bill_detail' bill.pk %}">{{ bill.number }}</a></td>
+            <td>{{ bill.date|date:"j M Y" }}</td>
+            <td>{{ bill.to_name }}</td>
+            <td class="num">{{ bill.total_inc_vat|gbp }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="muted">No bills yet. A bill is made when a visit is finished and all of its notes are sent.</p>
+    {% endif %}
+</body>
+</html>

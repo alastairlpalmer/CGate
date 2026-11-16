@@ -1,8 +1,9 @@
 from django.contrib import admin
 
-from .models import ClinicalNote, Practice, PracticeMember, PracticeYardLink, SyncReceipt, Visit
+from .models import Bill, ClinicalNote, Practice, PracticeMember, PracticeYardLink, SyncReceipt, Visit
 
-# ClinicalNote, ClinicalFile and Visit are not registered here, on
+# ClinicalNote, ClinicalFile, Visit, the price list and the bills are not
+# registered here, on
 # purpose, and must never be. The Django admin is the yard
 # administrator's tool, and the yard does not read a practice's clinical
 # records (docs/C_VET_PLAN.md, section 3). cvet/tests_ownership.py fails
@@ -15,6 +16,8 @@ def delete_test_notes(practice):
     Only notes made while CVET_TEST_MODE was on. The count is all that
     comes back: nothing here reads a note.
     """
+    # Test bills first: a bill protects its visit.
+    Bill.objects.filter(practice=practice, is_test=True).delete()
     notes = ClinicalNote.objects.filter(practice=practice, is_test=True)
     ids = list(notes.values_list('pk', flat=True))
     # One at a time, so each file's row sends the signal that removes
@@ -39,7 +42,7 @@ class PracticeYardLinkInline(admin.StackedInline):
     max_num = 1
     fields = (
         'started_on', 'ended_on', 'bill_to', 'service_provider',
-        'sends_vaccination_dates', 'sends_follow_up_dates',
+        'sends_charges', 'sends_vaccination_dates', 'sends_follow_up_dates',
     )
 
 

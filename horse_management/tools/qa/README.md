@@ -58,3 +58,9 @@ Then it brings the network back, loses the reply to one upload on
 purpose, reads the records back, adds a price and signs out. It prints
 what the server must then hold. It is Chromium, not an iPhone: the test
 on the real phone is section 8 of the plan.
+
+The run above is in test mode, as a new server is: a test bill is made and
+nothing goes into the yard's records. To check the real path, set
+`CVET_TEST_MODE=False` for the server and for the script, on a fresh
+throwaway database. The script then prints the yard records to look for:
+vaccination records, a vet visit record, charges and a cost.

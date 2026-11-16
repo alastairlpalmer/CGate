@@ -14,7 +14,10 @@ One page, one service worker and a small JSON API:
   practice's notes for one horse.
 * ``api_file`` serves a note's photo or recording to its practice.
 * ``api_prices`` saves one line of the practice's price list.
-* ``api_visit_finish`` closes a visit, when the vet taps Finish visit.
+* ``api_visit_finish`` closes a visit, when the vet taps Finish visit, and
+  bills it (``cvet.billing``).
+* ``bill_list``, ``bill_detail`` and ``bill_export`` are the practice's own
+  pages for its bills. They need a signal and are not part of the stored app.
 
 Everything is a 404 unless ``CVET_ENABLED`` is set. The gate and the scope
 are in ``cvet.access``: every view below gets ``request.practice`` from
@@ -48,10 +51,11 @@ from django.utils.dateparse import parse_date, parse_datetime
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from core import ratelimit
+from core.csv_export import csv_response
 from core.models import prime_current_owners
 from core.templatetags.cache_bust import _VERSION, static_v
 
-from . import access, yard
+from . import access, billing, yard
 from .access import cvet_enabled, practice_api, practice_page
 from .models import ClinicalFile, ClinicalNote, NoteLine, PriceItem, SyncReceipt, Visit
 
@@ -125,6 +129,7 @@ def app(request):
             'prices_url': reverse('cvet:api_prices'),
             # The phone adds "<visit id>/finish/".
             'visits_url': f"{reverse('cvet:app')}api/visits/",
+            'bills_url': reverse('cvet:bill_list'),
             'login_url': f"{reverse('login')}?next={reverse('cvet:app')}",
             'logout_url': reverse('logout'),
         },
@@ -210,6 +215,9 @@ def api_yard(request):
             for horse in horses
         ],
         prices=[_price_payload(item) for item in access.prices_for(request.practice)],
+        # The yard's own list of vaccinations. A price can be marked as
+        # one of them; giving it then records the dose at the yard.
+        vaccination_types=yard.vaccination_types() if link.sends_vaccination_dates else [],
     ))
 
 
@@ -222,6 +230,7 @@ def _price_payload(item):
         'price': f'{item.price_inc_vat:.2f}',
         'vat_rate': f'{item.vat_rate:.2f}',
         'is_active': item.is_active,
+        'vaccination_type_id': item.vaccination_type_id,
     }
 
 
@@ -258,11 +267,21 @@ def api_prices(request):
     if vat_rate is None:
         return JsonResponse({'error': 'vat_rate_invalid'}, status=400)
     is_active = request.POST.get('is_active', 'true') != 'false'
+    vaccination_type_id = None
+    if request.POST.get('vaccination_type_id'):
+        known = {item['id'] for item in yard.vaccination_types()}
+        raw = request.POST['vaccination_type_id']
+        if not raw.isdigit() or int(raw) not in known:
+            return JsonResponse({'error': 'vaccination_type_invalid'}, status=400)
+        vaccination_type_id = int(raw)
 
     existing = PriceItem.objects.filter(client_id=client_id).first()
     if existing is not None and existing.practice_id != request.practice.pk:
         return JsonResponse({'error': 'id_in_use'}, status=409)
-    fields = {'name': name, 'price_inc_vat': price, 'vat_rate': vat_rate, 'is_active': is_active}
+    fields = {
+        'name': name, 'price_inc_vat': price, 'vat_rate': vat_rate, 'is_active': is_active,
+        'vaccination_type_id': vaccination_type_id,
+    }
     if existing is None:
         try:
             with transaction.atomic():
@@ -608,6 +627,10 @@ def _store_note(request):
         if duplicate is not None:
             return duplicate
         return JsonResponse({'error': 'id_in_use'}, status=409)
+    if visit is not None and visit.status == Visit.Status.FINISHED:
+        # A note that arrived after Finish visit: bill it and send the
+        # yard its part now, on a further bill.
+        billing.close_out(visit)
     return JsonResponse(_receipt_payload(note, 'created'), status=201)
 
 
@@ -652,6 +675,10 @@ def _visit_payload(visit):
         'notes': visit.notes.count(),
         'horses': visit.notes.values('horse_name').distinct().count(),
         'total': f'{total:.2f}',
+        'bills': [
+            {'number': bill.number, 'to': bill.to_name, 'total': f'{bill.total_inc_vat:.2f}'}
+            for bill in visit.bills.order_by('pk')
+        ],
     }
 
 
@@ -674,4 +701,59 @@ def api_visit_finish(request, client_id):
         visit.status = Visit.Status.FINISHED
         visit.finished_at = finished_at
         visit.save(update_fields=['status', 'finished_at'])
+    # Every call, not only the first: if the first one made the bill and
+    # then failed, this one finishes the job. It makes nothing twice.
+    billing.close_out(visit)
     return JsonResponse(_visit_payload(visit))
+
+
+# ── The practice's bills (pages, with a signal) ──────────────────────────
+
+@practice_page
+@require_GET
+def bill_list(request):
+    bills = access.bills_for(request.practice).filter(is_test=settings.CVET_TEST_MODE)
+    return render(request, 'cvet/bill_list.html', {
+        'practice': request.practice,
+        'bills': bills.select_related('visit')[:200],
+        'test_mode': settings.CVET_TEST_MODE,
+    })
+
+
+def _bill_or_404(request, pk):
+    bill = access.bills_for(request.practice).select_related('practice', 'visit').filter(pk=pk).first()
+    if bill is None:
+        raise Http404
+    return bill
+
+
+@practice_page
+@require_GET
+def bill_detail(request, pk):
+    """One bill, as a page to print or to save as a PDF."""
+    return render(request, 'cvet/bill_detail.html', billing.bill_context(_bill_or_404(request, pk)))
+
+
+@practice_page
+@require_GET
+def bill_export(request):
+    """Every bill line of the practice as a CSV file, for its accounts."""
+    lines = (
+        billing.BillLine.objects
+        .filter(bill__practice=request.practice, bill__is_test=settings.CVET_TEST_MODE)
+        .select_related('bill').order_by('bill__issued_at', 'bill_id', 'pk')
+    )
+    rows = []
+    for line in lines:
+        vat = billing.vat_in(line.amount_inc_vat, line.vat_rate)
+        rows.append([
+            line.bill.number, line.bill.date, line.bill.to_name, line.horse_name, line.description,
+            line.quantity, line.unit_price_inc_vat, line.vat_rate, line.share,
+            line.amount_inc_vat - vat, vat, line.amount_inc_vat,
+        ])
+    return csv_response(
+        'c-vet-bills',
+        ['Bill', 'Date', 'Bill to', 'Horse', 'Item', 'Quantity', 'Unit price inc VAT',
+         'VAT rate %', 'Share %', 'Net', 'VAT', 'Total inc VAT'],
+        rows,
+    )

@@ -8,7 +8,7 @@ already let the practice see. Nothing here writes to a yard record.
 from collections import defaultdict
 
 from core.models import BusinessSettings, OwnershipShare, Placement
-from health.models import Vaccination
+from health.models import Vaccination, VaccinationType
 
 from . import access
 
@@ -109,3 +109,11 @@ def due_by_horse(practice, horses):
     for items in due.values():
         items.sort(key=lambda item: item['date'])
     return due
+
+
+def vaccination_types():
+    """The yard's active vaccination types: [{'id', 'name'}]."""
+    return [
+        {'id': pk, 'name': name}
+        for pk, name in VaccinationType.objects.filter(is_active=True).order_by('name').values_list('pk', 'name')
+    ]

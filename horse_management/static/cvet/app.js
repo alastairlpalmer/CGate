@@ -921,7 +921,14 @@
             : 'Visit finished ' + timeText(visit.finishedAt) + '. ' +
               (waiting || summary.horses.some(function (row) { return row.unsent; })
                   ? 'Not all sent yet: keep the app open when you have a signal.'
-                  : 'All sent to the practice.');
+                  : 'All sent to the practice.' + billsText(visit));
+    }
+
+    // " Bill HV-0001 to Palmer Farm, £282.50." once the server has made it.
+    function billsText(visit) {
+        return (visit.bills || []).map(function (bill) {
+            return ' Bill ' + bill.number + ' to ' + bill.to + ', £' + bill.total + '.';
+        }).join('');
     }
 
     function finishVisit() {
@@ -951,13 +958,15 @@
             var row = button('price' + (price.isActive ? '' : ' hidden-price'), undefined, function () { editPrice(price); });
             var text = el('span', 'text');
             text.appendChild(el('span', 'strong', price.name));
-            text.appendChild(el('small', '', (price.isActive ? '' : 'Hidden · ') + 'VAT ' + Number(price.vatRate) + '%'));
+            text.appendChild(el('small', '', (price.isActive ? '' : 'Hidden · ') + 'VAT ' + Number(price.vatRate) + '%' +
+                (price.vaccinationTypeId ? ' · records a vaccination' : '')));
             row.appendChild(text);
             row.appendChild(el('span', 'amount', core.money(price.pence)));
             item.appendChild(row);
             return item;
         }));
         var editing = state.editingPrice;
+        if (!$('price-vaccination').options.length) renderVaccinationTypes(null);
         $('price-form-title').textContent = editing ? 'Change a price' : 'Add a price';
         $('price-hide').hidden = !editing;
         $('price-hide').textContent = editing && !editing.isActive ? 'Show' : 'Hide';
@@ -969,13 +978,34 @@
         $('price-name').value = price ? price.name : '';
         $('price-amount').value = price ? core.decimal(price.pence) : '';
         $('price-vat').value = price ? String(Number(price.vatRate)) : '20';
+        renderVaccinationTypes(price ? price.vaccinationTypeId : null);
         $('price-message').textContent = '';
         renderPrices();
         if (price) $('price-name').focus();
     }
 
     function fromServerPrice(item) {
-        return { id: item.id, name: item.name, pence: core.toPence(item.price) || 0, vatRate: item.vat_rate, isActive: item.is_active };
+        return {
+            id: item.id, name: item.name, pence: core.toPence(item.price) || 0, vatRate: item.vat_rate,
+            isActive: item.is_active, vaccinationTypeId: item.vaccination_type_id || null
+        };
+    }
+
+    // The yard's vaccinations. A price marked as one of them also puts
+    // the dose in the yard's vaccination records when the visit is billed.
+    function renderVaccinationTypes(selected) {
+        var types = state.meta.vaccinationTypes || [];
+        var select = $('price-vaccination');
+        $('price-vaccination-row').hidden = types.length === 0;
+        var options = [el('option', '', 'No')];
+        options[0].value = '';
+        types.forEach(function (type) {
+            var option = el('option', '', type.name);
+            option.value = String(type.id);
+            options.push(option);
+        });
+        fill(select, options);
+        select.value = selected ? String(selected) : '';
     }
 
     function savePrice(event, flipActive) {
@@ -993,6 +1023,7 @@
         form.append('name', name);
         form.append('price', core.decimal(pence));
         form.append('vat_rate', core.decimal(vat));
+        form.append('vaccination_type_id', $('price-vaccination').value);
         var active = editing ? editing.isActive : true;
         if (flipActive) active = !active;
         form.append('is_active', active ? 'true' : 'false');
@@ -1176,6 +1207,9 @@
                 var yard = data.yard || {};
                 return setMeta('yard', { name: yard.name || '', billTo: yard.bill_to || 'yard' });
             }).then(function () {
+                fill($('price-vaccination'), []);
+                return setMeta('vaccinationTypes', data.vaccination_types || []);
+            }).then(function () {
                 return rememberSession(data);
             }).then(function () {
                 if (!quiet) say('Horse list downloaded.');
@@ -1243,9 +1277,15 @@
                 // such visit (none of its notes arrived). Either way
                 // there is nothing more to send for it.
                 if (what !== 'sent' && what !== 'failed') return what;
-                return setMeta('finishQueue', finishQueue().filter(function (left) {
-                    return left.id !== item.id;
-                })).then(next);
+                var visit = state.meta.visit;
+                var keep = what === 'sent' && visit && visit.id === item.id
+                    ? setMeta('visit', Object.assign({}, visit, { bills: result.data.bills || [] }))
+                    : Promise.resolve();
+                return keep.then(function () {
+                    return setMeta('finishQueue', finishQueue().filter(function (left) {
+                        return left.id !== item.id;
+                    }));
+                }).then(next);
             });
         }
         return next();
