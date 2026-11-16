@@ -259,3 +259,38 @@ class CompactFormTests(TestCase):
                 response = self.client.get(reverse(name))
                 self.assertEqual(response.status_code, 200)
                 self.assertContains(response, 'form-footer')
+
+
+class PageTitleTests(SimpleTestCase):
+    """The page title is 20px on every screen (static/css/input.css)."""
+
+    def test_the_title_rule_is_one_size(self):
+        import re
+        from pathlib import Path
+
+        from django.conf import settings
+        source = (Path(settings.BASE_DIR) / 'static' / 'css' / 'input.css').read_text()
+        rule = re.search(r'^\s*\.page-title \{ @apply ([^;]+); \}', source, re.M).group(1).split()
+        self.assertIn('text-xl', rule)
+        # No larger size for a wide screen: that was the 30px heading.
+        self.assertEqual([name for name in rule if 'text-2xl' in name or 'text-3xl' in name], [])
+
+    def test_no_page_heading_sets_a_larger_size_of_its_own(self):
+        import re
+        from pathlib import Path
+
+        from django.conf import settings
+        base = Path(settings.BASE_DIR) / 'templates'
+        # Pages with no sidebar keep their own heading: sign-in, the public
+        # privacy page, the farrier's phone page and C-vet.
+        apart = ('registration', 'account/_auth_layout.html', 'core/privacy.html', 'farrier', 'cvet', 'emails')
+        large = re.compile(r'<h1[^>]*class="[^"]*\btext-(2xl|3xl|4xl|\[2[1-9]px\]|\[[3-9]\dpx\])')
+        offenders = []
+        for path in sorted(base.rglob('*.html')):
+            name = str(path.relative_to(base))
+            if name.startswith(apart):
+                continue
+            for number, line in enumerate(path.read_text().splitlines(), 1):
+                if large.search(line):
+                    offenders.append(f'{name}:{number}')
+        self.assertEqual(offenders, [], 'Use class="page-title" for a page heading.')

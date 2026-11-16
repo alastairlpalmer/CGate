@@ -210,9 +210,12 @@
     .nav-group-label { @apply px-3 pt-5 pb-1 text-[11px] font-semibold text-white/70 uppercase tracking-widest; }
 
     /* Page Headers — plain title, no decorative bar underneath. */
-    .page-header { @apply flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between; }
-    .page-title { @apply text-2xl lg:text-3xl font-semibold text-charcoal tracking-[-0.02em] font-heading; }
-    .page-subtitle { @apply mt-1 text-sm text-sage; }
+    /* The page title is 20px on every screen. It was 24px, and 30px on a
+       wide screen: a size for a landing page, not for a page of records.
+       The sidebar and the phone's top bar already say where the reader is. */
+    .page-header { @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between; }
+    .page-title { @apply text-xl font-semibold text-charcoal tracking-[-0.01em] font-heading; }
+    .page-subtitle { @apply mt-0.5 text-sm text-sage; }
 
     /* Detail / filter labels — sentence case, 13px. Uppercase tracking is
        reserved for table column headers so it keeps its signal. */
@@ -449,8 +452,7 @@
        longer and said nothing. `.settings-page` is on the page and on the
        pages opened from it, so their headings match. */
 
-    .settings-page .page-title { @apply text-xl lg:text-xl; }
-    .settings-page .page-subtitle { @apply mt-0.5 text-xs; }
+    .settings-page .page-subtitle { @apply text-xs; }
     .settings-page .section-header { @apply px-4 lg:px-4 py-2 min-h-[44px] gap-3; }
     .settings-page .section-title { @apply text-sm; }
 

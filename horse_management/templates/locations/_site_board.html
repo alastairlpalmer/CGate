@@ -53,7 +53,7 @@ buttons are the ones it has always had.
                     </svg>
                     {{ board_site|default:"Back" }}
                 </button>
-                <h2 class="text-[22px] font-bold font-heading text-charcoal leading-tight">Sites</h2>
+                <h2 class="text-xl font-semibold font-heading text-charcoal leading-tight">Sites</h2>
                 <p class="mt-1 text-[13px] text-sage">{{ board_sites|length }} sites &middot; how much of each is drawn</p>
             </div>
             <div class="loc-rail-sites-rows">
@@ -97,7 +97,7 @@ buttons are the ones it has always had.
                         </button>
                     </h1>
                     {% else %}
-                    <h1 class="text-[22px] font-bold font-heading text-charcoal leading-tight">{{ board_site|default:"No site" }}</h1>
+                    <h1 class="text-xl font-semibold font-heading text-charcoal leading-tight">{{ board_site|default:"No site" }}</h1>
                     {% endif %}
                     <span class="loc-chip">{{ board_payload.horses }} horse{{ board_payload.horses|pluralize }}</span>
                 </div>
