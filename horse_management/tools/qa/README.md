@@ -39,20 +39,21 @@ The report lists, per phone and screen, overflow and tap targets under
 ## The C-vet offline check
 
 `cvet_offline_qa.js` is kept on purpose: it is the browser check of the
-C-vet offline prototype (`docs/C_VET_PLAN.md`, section 7). It uses the
+C-vet app (`docs/C_VET_PLAN.md`, sections 7 and 7b). It uses the
 farrier seed above for its horses, and `cvet_seed.py` for the practice
 and the vet login. Start the server with the test page on, and store the
 test's files somewhere throwaway:
 
 ```bash
 python manage.py shell < tools/qa/cvet_seed.py
-export CVET_PROTOTYPE_ENABLED=True MEDIA_ROOT=/tmp/cvet-qa-media
+export CVET_ENABLED=True MEDIA_ROOT=/tmp/cvet-qa-media
 python manage.py runserver 127.0.0.1:8765
 node tools/qa/cvet_offline_qa.js http://127.0.0.1:8765 /tmp/cvet-qa
 ```
 
 It downloads the horse list, cuts the network, opens the page again,
 saves three notes (one with a photo and a voice recording), brings the
-network back and loses the reply to one upload on purpose. The server
-must end with exactly three entries. It is Chromium, not an iPhone: the
+network back and loses the reply to one upload on purpose, reads the
+notes back and signs out. The server must end with exactly three clinical
+notes, three files and three receipts. It is Chromium, not an iPhone: the
 test on the real phone is section 8 of the plan.

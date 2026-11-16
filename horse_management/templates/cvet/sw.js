@@ -1,8 +1,8 @@
-{% autoescape off %}// C-vet offline prototype: the service worker (docs/C_VET_PLAN.md, phase 1).
+{% autoescape off %}// C-vet: the service worker (docs/C_VET_PLAN.md, section 5).
 //
 // It keeps a copy of the page and its files on the phone, so the page
 // opens with no signal. It never stores data: the horse list and the
-// notes are in IndexedDB (static/cvet/proto.js). It never touches the API.
+// notes are in IndexedDB (static/cvet/app.js). It never touches the API.
 //
 // Django writes the three values below (cvet.views.service_worker). The
 // version changes with each deploy, which makes the browser install this
@@ -11,7 +11,7 @@ const VERSION = {{ version }};
 const SHELL = {{ shell_url }};
 const ASSETS = {{ asset_urls }};
 
-const PREFIX = 'cvet-prototype-';
+const PREFIX = 'cvet-';
 const CACHE = PREFIX + VERSION;
 
 // Store one address. A sign-in redirect or an error page is never stored:

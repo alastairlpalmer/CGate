@@ -1,8 +1,8 @@
 {
     "id": "/c-vet/",
-    "name": "C-vet offline test",
+    "name": "C-vet",
     "short_name": "C-vet",
-    "description": "Test page for C-vet: notes, photos and voice recordings with no signal.",
+    "description": "The vet's app: notes, photos and voice recordings at the yard, with or without a signal.",
     "start_url": "/c-vet/",
     "scope": "/c-vet/",
     "display": "standalone",

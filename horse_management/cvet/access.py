@@ -7,7 +7,7 @@ cannot get them wrong:
   ``cvet`` feature who is an active member of an active practice. The
   practice is put on ``request.practice``.
 * **The scope.** Every read of a clinical record goes through
-  ``notes_for`` with that practice. No view takes a practice id from a
+  ``notes_for``, ``visits_for`` or ``files_for`` with that practice. No view takes a practice id from a
   URL or a form, so one practice can never reach another's notes.
 * **The link.** The practice sees the yard's horses only while its link
   to the yard is open (``horses_for``).
@@ -25,7 +25,7 @@ from django.views.decorators.cache import never_cache
 
 from core.permissions import LEVEL_FULL, LEVEL_HIDDEN, access_map, feature_required, has_feature_access
 
-from .models import ClinicalNote, PracticeMember
+from .models import ClinicalFile, ClinicalNote, PracticeMember, Visit
 
 FEATURE = 'cvet'
 
@@ -81,6 +81,16 @@ def notes_for(practice):
     return ClinicalNote.objects.for_practice(practice)
 
 
+def visits_for(practice):
+    """The visits of this practice."""
+    return Visit.objects.for_practice(practice)
+
+
+def files_for(practice):
+    """The clinical photos and recordings of this practice."""
+    return ClinicalFile.objects.for_practice(practice)
+
+
 def horses_for(practice):
     """The yard's active horses, while the practice's link to the yard is open."""
     from core.models import Horse
@@ -94,7 +104,7 @@ def cvet_enabled(view_func):
     """404 unless C-vet is turned on for this deployment."""
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):
-        if not settings.CVET_PROTOTYPE_ENABLED:
+        if not settings.CVET_ENABLED:
             raise Http404
         return view_func(request, *args, **kwargs)
     return _wrapped

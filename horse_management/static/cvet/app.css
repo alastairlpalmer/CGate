@@ -1,4 +1,4 @@
-/* C-vet offline prototype (docs/C_VET_PLAN.md, phase 1).
+/* C-vet (docs/C_VET_PLAN.md, section 5: speed and layout rules).
    One small file, written by hand, so the page needs nothing from the
    C-gate stylesheet and the service worker has one thing to store. */
 :root {
@@ -138,3 +138,5 @@ summary { font-weight: 600; font-size: 14px; cursor: pointer; min-height: 28px; 
     clip: rect(0 0 0 0);
     white-space: nowrap;
 }
+/* Shown while notes are test notes (CVET_TEST_MODE). */
+#test-mode { opacity: 1; padding: 1px 6px; border-radius: 4px; background: #ffe2b8; color: #5c3600; font-weight: 600; }

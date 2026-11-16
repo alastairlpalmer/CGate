@@ -51,7 +51,7 @@ def unseed_vet_role(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('cvet', '0002_ownership_seam'),
+        ('cvet', '0001_initial'),
         ('core', '0061_attention_dismissal'),
     ]
 

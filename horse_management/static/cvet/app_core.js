@@ -1,5 +1,5 @@
-/* C-vet offline prototype: the parts with no browser in them, so Node can
-   test them (static/js/tests/cvet_proto_core.test.js). */
+/* C-vet: the parts with no browser in them, so Node can test them
+   (static/js/tests/cvet_app_core.test.js). */
 (function (root) {
     'use strict';
 
@@ -22,6 +22,20 @@
         return hex.slice(0, 4).join('') + '-' + hex.slice(4, 6).join('') + '-' +
             hex.slice(6, 8).join('') + '-' + hex.slice(8, 10).join('') + '-' +
             hex.slice(10, 16).join('');
+    }
+
+    // The calendar day on the phone, as YYYY-MM-DD.
+    function localDay(date) {
+        function two(n) { return (n < 10 ? '0' : '') + n; }
+        return date.getFullYear() + '-' + two(date.getMonth() + 1) + '-' + two(date.getDate());
+    }
+
+    // The visit a new note belongs to: one visit for each day at the
+    // yard. The same visit while the day is the same; a new one, with a
+    // new id, on the first note of another day.
+    function visitForDay(current, day, makeId) {
+        if (current && current.id && current.day === day) return current;
+        return { id: makeId(), day: day };
     }
 
     // Notes still to send, oldest first: the order they are sent in.
@@ -80,6 +94,8 @@
 
     var api = {
         newId: newId,
+        localDay: localDay,
+        visitForDay: visitForDay,
         unsent: unsent,
         unsentText: unsentText,
         outcome: outcome,
@@ -91,6 +107,6 @@
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
     } else {
-        root.CvetProtoCore = api;
+        root.CvetCore = api;
     }
 })(typeof window !== 'undefined' ? window : this);

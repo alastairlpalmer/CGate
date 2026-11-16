@@ -29,6 +29,11 @@ class ServerTimingMiddleware:
 
 
 SESSION_STARTED_KEY = '_session_started'
+# A session's own absolute lifetime, in seconds, in place of
+# SESSION_ABSOLUTE_AGE. Set at sign-in for a login that works with no
+# signal (C-vet's Vet role: cvet/signals.py). The session is stored on
+# the server, so a browser cannot set or change it.
+SESSION_ABSOLUTE_AGE_KEY = '_session_absolute_age'
 
 
 def mark_session_started(request):
@@ -61,8 +66,12 @@ class AbsoluteSessionLifetimeMiddleware:
             now = int(time.time())
             if started is None:
                 request.session[SESSION_STARTED_KEY] = now
-            elif now - started > settings.SESSION_ABSOLUTE_AGE:
-                logout(request)
+            else:
+                limit = request.session.get(SESSION_ABSOLUTE_AGE_KEY)
+                if not isinstance(limit, int) or limit <= 0:
+                    limit = settings.SESSION_ABSOLUTE_AGE
+                if now - started > limit:
+                    logout(request)
         return self.get_response(request)
 
 

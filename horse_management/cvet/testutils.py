@@ -14,7 +14,7 @@ from core.roles_testutils import assign_role
 
 from .models import Practice, PracticeMember, PracticeYardLink
 
-VET_ACCESS = importlib.import_module('cvet.migrations.0003_seed_vet_role').VET_ACCESS
+VET_ACCESS = importlib.import_module('cvet.migrations.0002_seed_vet_role').VET_ACCESS
 
 
 def vet_role():

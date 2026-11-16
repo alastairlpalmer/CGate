@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>C-vet offline test</title>
+    <title>C-vet</title>
     <meta name="theme-color" content="#3D5A63">
     <link rel="manifest" href="{% static_v 'cvet/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static_v 'icons/apple-touch-icon.png' %}">
@@ -11,25 +11,26 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="C-vet">
-    <link rel="stylesheet" href="{% static_v 'cvet/proto.css' %}">
-    <script defer src="{% static_v 'cvet/proto_core.js' %}"></script>
-    <script defer src="{% static_v 'cvet/proto.js' %}"></script>
+    <link rel="stylesheet" href="{% static_v 'cvet/app.css' %}">
+    <script defer src="{% static_v 'cvet/app_core.js' %}"></script>
+    <script defer src="{% static_v 'cvet/app.js' %}"></script>
 </head>
 {% comment %}
 This page holds no data and no CSRF token: the service worker stores it
 and opens the stored copy with no signal, for whoever holds the phone.
-Everything a person sees comes from IndexedDB (static/cvet/proto.js).
+Everything a person sees comes from IndexedDB (static/cvet/app.js).
 {% endcomment %}
 <body data-version="{{ config.version }}"
       data-sw-url="{{ config.sw_url }}"
       data-scope="{{ config.scope }}"
       data-session-url="{{ config.session_url }}"
-      data-bootstrap-url="{{ config.bootstrap_url }}"
-      data-entries-url="{{ config.entries_url }}"
+      data-yard-url="{{ config.yard_url }}"
+      data-notes-url="{{ config.notes_url }}"
+      data-logout-url="{{ config.logout_url }}"
       data-login-url="{{ config.login_url }}">
 
 <header class="bar">
-    <h1>C-vet <span class="tag">test</span></h1>
+    <h1>C-vet <span id="test-mode" class="tag" hidden>test notes</span></h1>
     <span id="unsent" class="chip count" aria-live="polite">…</span>
     <span id="signal" class="chip">…</span>
 </header>
@@ -83,10 +84,13 @@ Everything a person sees comes from IndexedDB (static/cvet/proto.js).
     </section>
 
     <details class="card">
-        <summary>Test details</summary>
+        <summary>This phone</summary>
         <dl id="details"></dl>
-        <button id="clear" type="button" class="button danger">Clear this phone</button>
-        <p class="muted">Clear removes the horse list and every note from this phone. Notes that were sent stay on the server.</p>
+        <div class="row">
+            <button id="sign-out" type="button" class="button">Sign out</button>
+            <button id="clear" type="button" class="button danger">Clear this phone</button>
+        </div>
+        <p class="muted">Sign out removes the horse list and every note from this phone, and ends the sign-in. Clear this phone removes them and keeps the sign-in. Notes that were sent stay in the practice's records.</p>
     </details>
 </main>
 

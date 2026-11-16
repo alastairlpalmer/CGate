@@ -33,7 +33,7 @@ from core.permissions import is_provider_only
 from core.roles_testutils import make_admin, make_user_with_access
 
 from . import access
-from .models import ClinicalNote, Practice, PracticeMember, PracticeYardLink
+from .models import ClinicalFile, ClinicalNote, Practice, PracticeMember, PracticeYardLink, SyncReceipt, Visit
 from .testutils import VET_ACCESS, make_practice, make_vet, vet_role
 
 User = get_user_model()
@@ -76,6 +76,12 @@ class YardFixture(TestCase):
         # A change, so the history table holds the text too.
         cls.note.treatment += ' Recheck.'
         cls.note.save()
+        # How it arrived: the one C-vet record the yard's administrator
+        # does read, in the Django admin.
+        cls.receipt = SyncReceipt.objects.create(
+            practice=cls.practice, user=cls.vet, note=cls.note, note_client_id=cls.note.client_id,
+            device_created_at=timezone.now(), text_length=len(cls.note.findings),
+        )
 
 
 def _response_text(response):
@@ -121,7 +127,7 @@ def _addresses(route, ids):
         yield '/' + PARAMETER.sub(str(value), route)
 
 
-@override_settings(CVET_PROTOTYPE_ENABLED=True, LOCATION_MAPS_ENABLED=True)
+@override_settings(CVET_ENABLED=True, LOCATION_MAPS_ENABLED=True)
 class YardCannotReadClinicalNotesTests(YardFixture):
     """The sweep."""
 
@@ -163,6 +169,19 @@ class YardCannotReadClinicalNotesTests(YardFixture):
         _, leaks = self._sweep(root, stop_at_first=True)
         self.assertTrue(leaks, 'the sweep missed text that a yard page shows')
 
+    def test_the_receipt_screen_shows_how_a_note_arrived_and_not_the_note(self):
+        root = User.objects.create_superuser('root', 'root@example.com', 'pw')
+        self.client.force_login(root)
+        base = f'/{settings.ADMIN_URL}cvet/syncreceipt/'
+        for url in (base, f'{base}{self.receipt.pk}/change/'):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200, url)
+            text = response.content.decode()
+            self.assertNotIn(MARKER, text)
+            # Not the note's name or id either: no way from here to it.
+            self.assertNotIn('Clinical note', text)
+            self.assertNotIn('clinicalnote', text)
+
     def test_the_owner_data_export_does_not_hold_it(self):
         # A subject access request goes to the yard. The practice answers
         # for its own records.
@@ -184,7 +203,7 @@ class _Zip:
 class TripwireTests(TestCase):
     """By construction: the yard's code has no way to the notes."""
 
-    CLINICAL = [ClinicalNote, ClinicalNote.history.model]
+    CLINICAL = [ClinicalNote, ClinicalNote.history.model, ClinicalFile, Visit]
 
     def test_the_django_admin_does_not_register_clinical_notes(self):
         for model in self.CLINICAL:
@@ -209,7 +228,7 @@ class TripwireTests(TestCase):
         # Allowed outside the app: the app's registration in settings and
         # the URL include. Nothing else may reach in.
         base = Path(settings.BASE_DIR)
-        forbidden = re.compile(r'ClinicalNote|cvet\.models|cvet\.access|clinical_notes|from cvet|import cvet')
+        forbidden = re.compile(r'ClinicalNote|ClinicalFile|cvet\.models|cvet\.access|clinical_notes|from cvet|import cvet')
         offenders = []
         for path in list(base.rglob('*.py')) + list((base / 'templates').rglob('*.html')):
             relative = path.relative_to(base)
@@ -230,6 +249,50 @@ class TripwireTests(TestCase):
         )
 
 
+class PracticeFilesTests(TestCase):
+    """A practice's photos and recordings are not served by the yard's media view."""
+
+    def setUp(self):
+        import os
+        import shutil
+        import tempfile
+
+        self.media = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.media, ignore_errors=True)
+        for folder in ('cvet/photo', 'horses'):
+            os.makedirs(os.path.join(self.media, folder), exist_ok=True)
+            with open(os.path.join(self.media, folder, 'x.jpg'), 'wb') as handle:
+                handle.write(MARKER.encode())
+
+    def _get(self, *paths):
+        # The media view exists only with SERVE_MEDIA on, and is added
+        # when the URL module loads (core/tests/test_access_fixes_nov.py).
+        import importlib
+
+        from django.urls import clear_url_caches
+
+        import horse_management.urls as urls
+        with override_settings(SERVE_MEDIA=True, DEBUG=False, MEDIA_ROOT=self.media):
+            importlib.reload(urls)
+            clear_url_caches()
+            try:
+                return [self.client.get(path).status_code for path in paths]
+            finally:
+                importlib.reload(urls)
+                clear_url_caches()
+
+    def test_a_superuser_cannot_fetch_a_clinical_file(self):
+        self.client.force_login(User.objects.create_superuser('root', 'root@example.com', 'pw'))
+        self.assertEqual(
+            self._get('/media/cvet/photo/x.jpg', '/media/horses/../cvet/photo/x.jpg', '/media/horses/x.jpg'),
+            [404, 404, 200],
+        )
+
+    def test_an_administrator_cannot_fetch_a_clinical_file(self):
+        self.client.force_login(make_admin())
+        self.assertEqual(self._get('/media/cvet/photo/x.jpg'), [404])
+
+
 class ScopeTests(YardFixture):
     """A practice reads its own notes, and only those."""
 
@@ -241,6 +304,15 @@ class ScopeTests(YardFixture):
         make_note(other, self.horse, findings='Theirs.')
         self.assertEqual(list(access.notes_for(self.practice)), [self.note])
         self.assertEqual([n.findings for n in access.notes_for(other)], ['Theirs.'])
+
+    def test_visits_and_files_are_scoped_the_same_way(self):
+        visit = Visit.objects.create(practice=self.practice)
+        other = make_practice('Other Vets')
+        Visit.objects.create(practice=other)
+        self.assertEqual(list(access.visits_for(self.practice)), [visit])
+        self.assertFalse(access.visits_for(None).exists())
+        self.assertFalse(access.files_for(None).exists())
+        self.assertFalse(access.files_for(other).exists())
 
     def test_no_practice_reads_no_notes(self):
         self.assertFalse(access.notes_for(None).exists())
@@ -305,7 +377,7 @@ class NoteRecordTests(YardFixture):
         self.assertNotIn(MARKER, repr(self.note))
 
 
-@override_settings(CVET_PROTOTYPE_ENABLED=True)
+@override_settings(CVET_ENABLED=True)
 class VetFenceTests(TestCase):
     """A practice login stays on C-vet."""
 

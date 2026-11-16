@@ -1,8 +1,8 @@
-/* C-vet offline prototype: the page (docs/C_VET_PLAN.md, phase 1).
+/* C-vet: the page (docs/C_VET_PLAN.md, sections 4 and 5).
 
-   Throwaway code. It answers one question on a real phone: can a web app
-   hold a horse list, notes, photos and voice recordings with no signal,
-   and send each note exactly once when the signal comes back?
+   A web app that holds the yard's horse list and the vet's notes, photos
+   and voice recordings on the phone, with or without a signal, and sends
+   each note to the practice's records exactly once.
 
    Where things are kept:
      - the page and its files: the service worker's store (templates/cvet/sw.js)
@@ -20,7 +20,7 @@
 (function () {
     'use strict';
 
-    var core = window.CvetProtoCore;
+    var core = window.CvetCore;
     var config = document.body.dataset;
     var $ = function (id) { return document.getElementById(id); };
 
@@ -39,6 +39,7 @@
         storage: null,     // navigator.storage.estimate()
         persisted: null,   // navigator.storage.persisted()
         workerState: 'none',
+        workerReady: false, // the page is stored: the next open needs no signal
         openMs: null       // from the tap on the icon to the horse list on the screen
     };
 
@@ -49,7 +50,7 @@
     function openDb() {
         if (dbPromise) return dbPromise;
         dbPromise = new Promise(function (resolve, reject) {
-            var request = indexedDB.open('cvet-prototype', 1);
+            var request = indexedDB.open('cvet', 1);
             request.onupgradeneeded = function () {
                 var db = request.result;
                 db.createObjectStore('meta', { keyPath: 'key' });
@@ -226,7 +227,12 @@
         var node = $('unsent');
         node.textContent = core.unsentText(count);
         node.className = 'chip count ' + (count ? 'pending' : 'clear');
-        $('who').textContent = state.meta.userName ? 'Signed in as ' + state.meta.userName + '.' : '';
+        $('who').textContent = state.meta.userName
+            ? 'Signed in as ' + state.meta.userName + (state.meta.practice ? ', ' + state.meta.practice : '') + '.'
+            : '';
+        // Said on the screen for as long as it is true: these notes are
+        // test notes, not clinical records.
+        $('test-mode').hidden = state.meta.testMode !== true;
         $('downloaded').textContent = state.meta.downloadedAt
             ? state.horses.length + ' horses, downloaded ' + timeText(state.meta.downloadedAt) + '.'
             : '';
@@ -302,6 +308,7 @@
             userAgent: navigator.userAgent,
             standalone: installed(),
             workerState: state.workerState,
+            workerReady: state.workerReady,
             workerControls: !!(navigator.serviceWorker && navigator.serviceWorker.controller),
             backgroundSync: 'serviceWorker' in navigator && 'SyncManager' in window,
             online: navigator.onLine,
@@ -323,7 +330,7 @@
         var rows = [
             ['App version', info.version],
             ['Installed on the home screen', info.standalone ? 'Yes' : 'No'],
-            ['Opens with no signal', info.workerControls ? 'Yes' : 'Not yet: open the page once more with a signal'],
+            ['Opens with no signal', info.workerReady ? 'Yes' : 'Not yet: keep the app open with a signal for a moment'],
             ['Service worker', info.workerState],
             ['Sends while the app is closed', info.backgroundSync ? 'This browser can' : 'No: keep the app open to send'],
             ['Voice recording', info.canRecord ? 'Yes (' + (info.audioType || 'browser default') + ')' : 'No'],
@@ -380,7 +387,7 @@
         button.disabled = true;
         $('sync-message').textContent = 'Downloading the horse list…';
         askToKeepStorage();
-        return request(config.bootstrapUrl, {}, 30000).then(function (result) {
+        return request(config.yardUrl, {}, 30000).then(function (result) {
             if (result.kind === 'offline') {
                 $('sync-message').textContent = 'No signal. The horse list on this phone has not changed.';
                 return;
@@ -409,6 +416,8 @@
                 return setMeta('userId', data.user.id);
             }).then(function () {
                 return setMeta('userName', data.user.name);
+            }).then(function () {
+                return rememberSession(data);
             }).then(function () {
                 $('sync-message').textContent = 'Horse list downloaded.';
             });
@@ -542,16 +551,23 @@
             $('entry-message').textContent = 'Type a note, take a photo or record your voice first.';
             return;
         }
+        // One visit for each day at the yard. Its id is made here, with
+        // the first note of the day, and goes with every note after it.
+        var now = new Date();
+        var visit = core.visitForDay(state.meta.visit, core.localDay(now), function () {
+            return core.newId(window.crypto);
+        });
         var entry = {
             clientId: core.newId(window.crypto),
+            visitId: visit.id,
             horseId: draft.horse.id,
             horseName: draft.horse.name,
             note: note,
-            photo: draft.photo ? { buffer: draft.photo.buffer, type: draft.photo.type, sha256: draft.photo.sha256 } : null,
+            photo: draft.photo ? { id: core.newId(window.crypto), buffer: draft.photo.buffer, type: draft.photo.type, sha256: draft.photo.sha256 } : null,
             photoBytes: draft.photo ? draft.photo.bytes : 0,
-            audio: draft.audio ? { buffer: draft.audio.buffer, type: draft.audio.type, sha256: draft.audio.sha256 } : null,
+            audio: draft.audio ? { id: core.newId(window.crypto), buffer: draft.audio.buffer, type: draft.audio.type, sha256: draft.audio.sha256 } : null,
             audioBytes: draft.audio ? draft.audio.bytes : 0,
-            createdAt: new Date().toISOString(),
+            createdAt: now.toISOString(),
             status: 'pending',
             attempts: 0,
             sentAt: null,
@@ -559,7 +575,9 @@
         };
         $('save').disabled = true;
         askToKeepStorage();
-        put('entries', entry).then(function () {
+        setMeta('visit', visit).then(function () {
+            return put('entries', entry);
+        }).then(function () {
             state.entries.push(entry);
             closeDraft();
             render();
@@ -578,6 +596,7 @@
     function sendEntry(entry, csrf) {
         var form = new FormData();
         form.append('client_id', entry.clientId);
+        if (entry.visitId) form.append('visit_id', entry.visitId);
         form.append('horse_id', String(entry.horseId));
         form.append('horse_name', entry.horseName);
         form.append('note', entry.note);
@@ -586,13 +605,15 @@
         form.append('client_info', JSON.stringify(clientInfo()));
         if (entry.photo) {
             form.append('photo', new Blob([entry.photo.buffer], { type: entry.photo.type }), 'photo');
+            form.append('photo_id', entry.photo.id);
             form.append('photo_sha256', entry.photo.sha256);
         }
         if (entry.audio) {
             form.append('audio', new Blob([entry.audio.buffer], { type: entry.audio.type }), 'audio');
+            form.append('audio_id', entry.audio.id);
             form.append('audio_sha256', entry.audio.sha256);
         }
-        return request(config.entriesUrl, {
+        return request(config.notesUrl, {
             method: 'POST',
             body: form,
             headers: { 'X-CSRFToken': csrf }
@@ -662,7 +683,10 @@
                 return;
             }
             showSignIn(false);
-            return next(session.csrf);
+            return rememberSession(session).then(function () {
+                renderCounter();
+                return next(session.csrf);
+            });
         }).catch(function (error) {
             stop = 'storage:' + error.message;
         }).then(function () {
@@ -693,7 +717,70 @@
         });
     }
 
-    // ── Clear ────────────────────────────────────────────────────────────
+    // What the server said about this login, kept for the screen: the
+    // practice's name, and if notes are test notes (CVET_TEST_MODE).
+    function rememberSession(data) {
+        return setMeta('practice', data.practice || '').then(function () {
+            return setMeta('testMode', data.test_mode === true);
+        });
+    }
+
+    // ── Sign out and clear ───────────────────────────────────────────────
+
+    function forgetThisPhone() {
+        state.horses = [];
+        state.entries = [];
+        state.meta = {};
+        var jobs = [clearEverything()];
+        // The stored page too, so the app does not open for the next
+        // person who holds the phone.
+        if (window.caches && caches.keys) {
+            jobs.push(caches.keys().then(function (names) {
+                return Promise.all(names.filter(function (name) {
+                    return name.indexOf('cvet-') === 0;
+                }).map(function (name) { return caches.delete(name); }));
+            }));
+        }
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+            jobs.push(navigator.serviceWorker.getRegistrations().then(function (registrations) {
+                return Promise.all(registrations.map(function (registration) {
+                    return registration.unregister();
+                }));
+            }));
+        }
+        return Promise.all(jobs);
+    }
+
+    // Sign out needs a signal: the server must end the sign-in. With no
+    // signal, Clear this phone removes the data and the sign-in stays.
+    function signOut() {
+        var count = core.unsent(state.entries).length;
+        var question = count
+            ? core.unsentText(count) + '. Signing out deletes ' + (count === 1 ? 'it' : 'them') +
+              ' from this phone for good. Sync first if you can. Sign out?'
+            : 'Sign out and remove the horse list and all notes from this phone?';
+        if (!window.confirm(question)) return;
+        var message = $('sync-message');
+        message.textContent = 'Signing out…';
+        getSession().then(function (result) {
+            if (result.kind === 'offline') {
+                message.textContent = 'No signal. Sign out needs a signal. To remove the data now, tap Clear this phone.';
+                return;
+            }
+            closeDraft();
+            var signedIn = result.kind === 'ok';
+            var done = signedIn ? request(config.logoutUrl, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': result.session.csrf },
+                redirect: 'manual'
+            }, 20000) : Promise.resolve();
+            return done.then(forgetThisPhone).then(function () {
+                window.location.href = config.loginUrl;
+            });
+        }).catch(function (error) {
+            message.textContent = 'Sign out did not finish: ' + error.message;
+        });
+    }
 
     function clearPhone() {
         var count = core.unsent(state.entries).length;
@@ -706,7 +793,7 @@
             state.horses = [];
             state.entries = [];
             state.meta = {};
-            $('sync-message').textContent = 'This phone is clear.';
+            $('sync-message').textContent = 'This phone is clear. You are still signed in.';
             render();
             refreshStorage();
         });
@@ -723,8 +810,13 @@
             var worker = registration.active || registration.waiting || registration.installing;
             state.workerState = worker ? worker.state : 'registered';
             renderDetails();
+            // "ready" means an active worker holds the stored page. That
+            // is what the next open needs. This page may not be under the
+            // worker's control yet (it loaded while the worker was being
+            // installed), and it does not have to be.
             navigator.serviceWorker.ready.then(function () {
                 state.workerState = 'activated';
+                state.workerReady = true;
                 renderDetails();
             });
         }).catch(function (error) {
@@ -743,6 +835,7 @@
         $('save').addEventListener('click', saveDraft);
         $('cancel').addEventListener('click', closeDraft);
         $('clear').addEventListener('click', clearPhone);
+        $('sign-out').addEventListener('click', signOut);
 
         window.addEventListener('online', function () { renderSignal(); sync(false); });
         window.addEventListener('offline', renderSignal);

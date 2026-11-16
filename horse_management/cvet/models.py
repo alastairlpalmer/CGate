@@ -1,11 +1,13 @@
 """Models for C-vet (docs/C_VET_PLAN.md).
 
-Phase 2, the ownership seam: ``Practice``, ``PracticeMember``,
-``PracticeYardLink`` and ``ClinicalNote``. A clinical note belongs to a
-practice, not to the yard. Read these models only through ``cvet.access``;
-no code outside this app may import them (cvet/tests_ownership.py checks).
+The practice side: ``Practice``, ``PracticeMember``, ``PracticeYardLink``.
+The clinical records: ``Visit``, ``ClinicalNote``, ``ClinicalFile``. They
+belong to a practice, not to the yard. Read them only through
+``cvet.access``; no code outside this app may import them
+(cvet/tests_ownership.py checks).
 
-Phase 1, the offline prototype: ``PrototypeEntry``. Throwaway.
+``SyncReceipt`` is how each note arrived from the phone. It holds no
+clinical text, so the yard's administrator may read it.
 """
 
 import uuid
@@ -122,12 +124,49 @@ class PracticeYardLink(models.Model):
         return self.started_on <= today and (self.ended_on is None or self.ended_on > today)
 
 
-class ClinicalNoteQuerySet(models.QuerySet):
+class PracticeScopedQuerySet(models.QuerySet):
     def for_practice(self, practice):
-        """The notes one practice may read. ``None`` gives no notes."""
+        """The rows one practice may read. ``None`` gives no rows."""
         if practice is None:
             return self.none()
         return self.filter(practice=practice)
+
+
+class Visit(models.Model):
+    """One day's work by one vet at the yard: the notes made that day.
+
+    It belongs to the practice. It is not ``health.ProviderVisit``, which
+    is the yard's record of a farrier's day and of what the yard owes the
+    farrier. A vet bills in the practice's name, so this visit never
+    enters the yard's books.
+
+    The phone makes ``client_id`` when the first note of the day is
+    saved, and sends it with every note of that visit.
+    """
+
+    class Status(models.TextChoices):
+        OPEN = 'open', 'Open'
+        FINISHED = 'finished', 'Finished'
+
+    practice = models.ForeignKey(Practice, on_delete=models.PROTECT, related_name='visits')
+    client_id = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    author_name = models.CharField(max_length=200, blank=True)
+    date = models.DateField(default=timezone.localdate)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    is_test = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = PracticeScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['-date', '-created_at']
+
+    def __str__(self):
+        return f'Visit {self.pk} ({self.date})'
 
 
 class ClinicalNote(models.Model):
@@ -143,6 +182,9 @@ class ClinicalNote(models.Model):
     """
 
     practice = models.ForeignKey(Practice, on_delete=models.PROTECT, related_name='clinical_notes')
+    visit = models.ForeignKey(
+        Visit, on_delete=models.SET_NULL, null=True, blank=True, related_name='notes',
+    )
     horse = models.ForeignKey(
         'core.Horse', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
     )
@@ -155,15 +197,21 @@ class ClinicalNote(models.Model):
     )
     author_name = models.CharField(max_length=200, blank=True)
 
-    # Made on the phone when the note is saved (phase 3). A note that is
-    # sent twice is stored once.
+    # Made on the phone when the note is saved. A note that is sent twice
+    # is stored once.
     client_id = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
 
     seen_on = models.DateField(default=timezone.localdate)
-    findings = models.TextField()
+    # Empty when the note is a photo or a recording with no text.
+    findings = models.TextField(blank=True)
     treatment = models.TextField(blank=True)
     follow_up_date = models.DateField(null=True, blank=True)
 
+    # The phone's clock when the vet tapped Save.
+    written_at = models.DateTimeField(default=timezone.now)
+    # Made while CVET_TEST_MODE was on: not a clinical record, and the
+    # yard's administrator may delete it (without reading it).
+    is_test = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -171,10 +219,10 @@ class ClinicalNote(models.Model):
     # change keeps the text before it.
     history = HistoricalRecords(excluded_fields=['updated_at'])
 
-    objects = ClinicalNoteQuerySet.as_manager()
+    objects = PracticeScopedQuerySet.as_manager()
 
     class Meta:
-        ordering = ['-seen_on', '-created_at']
+        ordering = ['-seen_on', '-written_at']
         indexes = [
             models.Index(fields=['practice', 'horse', '-seen_on'], name='cvet_note_practice_horse'),
         ]
@@ -184,74 +232,88 @@ class ClinicalNote(models.Model):
         return f'Clinical note {self.pk} ({self.seen_on})'
 
 
-def _upload_path(kind):
-    def path(instance, filename):
-        # The name the phone sent is never used: only its extension, which
-        # the view has already replaced with one from its own list.
-        extension = filename.rsplit('.', 1)[-1].lower()
-        return f'cvet_prototype/{kind}/{uuid.uuid4().hex}.{extension}'
-    return path
+def clinical_file_path(instance, filename):
+    # The name the phone sent is never used: only an extension, which the
+    # view has already replaced with one from its own list. Files under
+    # cvet/ are never served by the media view (horse_management/urls.py).
+    extension = filename.rsplit('.', 1)[-1].lower()
+    return f'cvet/{instance.kind}/{uuid.uuid4().hex}.{extension}'
 
 
-def photo_path(instance, filename):
-    return _upload_path('photos')(instance, filename)
+class ClinicalFile(models.Model):
+    """A photo or a voice recording that belongs to a clinical note.
 
-
-def audio_path(instance, filename):
-    return _upload_path('audio')(instance, filename)
-
-
-class PrototypeEntry(models.Model):
-    """One note saved on a phone during the offline test, as it arrived.
-
-    This is test data, not a clinical record. Nothing reads it except the
-    Django admin, where the test results are checked. Delete every row
-    (and with it every file) when phase 1 ends.
-
-    ``client_id`` is made on the phone when the note is saved. The phone
-    sends it with every attempt, so a note that is sent twice (the reply
-    was lost in a weak signal) is stored once.
+    Served only by ``cvet.views.api_file``, to a member of the practice.
+    ``practice`` repeats the note's practice so that the file can be
+    scoped without a join, and stays scoped if the note is ever moved.
     """
 
-    client_id = models.UUIDField(unique=True)
+    class Kind(models.TextChoices):
+        PHOTO = 'photo', 'Photo'
+        AUDIO = 'audio', 'Voice recording'
+
+    practice = models.ForeignKey(Practice, on_delete=models.PROTECT, related_name='+')
+    note = models.ForeignKey(ClinicalNote, on_delete=models.CASCADE, related_name='files')
+    # Made on the phone. The address of the file is built from it.
+    client_id = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    file = models.FileField(upload_to=clinical_file_path)
+    content_type = models.CharField(max_length=50)
+    bytes = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = PracticeScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'{self.get_kind_display()} {self.pk}'
+
+
+class SyncReceipt(models.Model):
+    """How one note arrived from the phone. No clinical text.
+
+    The measures of the phone test (docs/C_VET_PLAN.md, section 8): how
+    long the note waited on the phone, how many tries it took, and if
+    its files arrived complete. The yard's administrator reads these in
+    the Django admin. The note itself is not shown there.
+    """
+
+    practice = models.ForeignKey(Practice, on_delete=models.CASCADE, related_name='+')
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='+',
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
     )
-    horse = models.ForeignKey(
-        'core.Horse', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    # Kept when the note is deleted, so the test results outlive the
+    # test notes.
+    note = models.OneToOneField(
+        ClinicalNote, on_delete=models.SET_NULL, null=True, blank=True, related_name='receipt',
     )
-    # The name on the phone when the note was saved: the horse can be
-    # renamed or deleted before the note arrives.
-    horse_name = models.CharField(max_length=200, blank=True)
-    note = models.TextField(blank=True)
+    note_client_id = models.UUIDField(unique=True)
+    is_test = models.BooleanField(default=False)
 
-    photo = models.FileField(upload_to=photo_path, blank=True)
-    photo_bytes = models.PositiveIntegerField(default=0)
-    # True when the file that arrived has the SHA-256 the phone worked out
-    # before it sent it. None when there is no file or the phone sent no hash.
-    photo_intact = models.BooleanField(null=True, blank=True)
-
-    audio = models.FileField(upload_to=audio_path, blank=True)
-    audio_bytes = models.PositiveIntegerField(default=0)
-    audio_intact = models.BooleanField(null=True, blank=True)
-
-    # The phone's clock when the note was saved, and the server's clock
-    # when it arrived. The difference is how long the note waited.
+    # The phone's clock at Save, and the server's clock at arrival.
     device_created_at = models.DateTimeField()
     received_at = models.DateTimeField(auto_now_add=True)
-    # How many times the phone tried to send this note, this one included.
+    # How many times the phone tried to send this note.
     attempts = models.PositiveIntegerField(default=1)
+    text_length = models.PositiveIntegerField(default=0)
+    photo_bytes = models.PositiveIntegerField(default=0)
+    # True when the file that arrived has the SHA-256 the phone worked
+    # out before it sent it. None: no file, or the phone sent no hash.
+    photo_intact = models.BooleanField(null=True, blank=True)
+    audio_bytes = models.PositiveIntegerField(default=0)
+    audio_intact = models.BooleanField(null=True, blank=True)
     # What the phone reported about itself: browser, installed or not,
-    # storage used. See static/cvet/proto.js, clientInfo().
+    # storage used, time to open. See static/cvet/app.js, clientInfo().
     client_info = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ['-received_at']
-        verbose_name = 'offline prototype entry'
-        verbose_name_plural = 'offline prototype entries'
+        verbose_name = 'sync receipt'
 
     def __str__(self):
-        return f'{self.horse_name or "No horse"} - {self.received_at:%d %b %Y %H:%M}'
+        return f'Receipt {self.pk} ({self.received_at:%d %b %Y %H:%M})'
 
     @property
     def waited(self):

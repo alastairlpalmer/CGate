@@ -2,6 +2,9 @@
 
 The prefix is also the service worker's scope and the installed app's
 scope (static/cvet/manifest.json), so the three must change together.
+
+No URL carries a practice id: the practice always comes from the
+signed-in login (cvet.access).
 """
 
 from django.urls import path
@@ -14,6 +17,7 @@ urlpatterns = [
     path('', views.app, name='app'),
     path('sw.js', views.service_worker, name='service_worker'),
     path('api/session/', views.api_session, name='api_session'),
-    path('api/bootstrap/', views.api_bootstrap, name='api_bootstrap'),
-    path('api/entries/', views.api_entries, name='api_entries'),
+    path('api/yard/', views.api_yard, name='api_yard'),
+    path('api/notes/', views.api_notes, name='api_notes'),
+    path('api/files/<uuid:client_id>/', views.api_file, name='api_file'),
 ]

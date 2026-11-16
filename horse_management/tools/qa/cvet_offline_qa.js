@@ -1,4 +1,4 @@
-// Offline check of the C-vet prototype (docs/C_VET_PLAN.md, phase 1).
+// Offline check of C-vet (docs/C_VET_PLAN.md, sections 5, 7 and 7b).
 //
 // Drives the test page in Chromium the way the phone test does: download
 // the horse list, lose the signal, open the app again, save notes with a
@@ -6,7 +6,7 @@
 // the reply to one upload, to prove that the note is then stored once.
 //
 //   # on a farrier_seed.py + cvet_seed.py database (see README.md), with the page on:
-//   CVET_PROTOTYPE_ENABLED=True python manage.py runserver 127.0.0.1:8765
+//   CVET_ENABLED=True python manage.py runserver 127.0.0.1:8765
 //   node tools/qa/cvet_offline_qa.js http://127.0.0.1:8765 /path/to/out
 //
 // Then count the rows: the script prints how many the server must hold.
@@ -86,8 +86,11 @@ async function addNote(page, horseIndex, note, { photo = false, voice = false } 
   check('a vet login cannot open a yard page', new URL(page.url()).pathname === '/c-vet/', page.url());
 
   // 1. The page stores itself.
-  await page.waitForFunction(() => navigator.serviceWorker.controller !== null, null, { timeout: 15000 });
-  check('service worker controls the page', true);
+  await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));
+  await page.locator('details summary').click();
+  await page.waitForFunction(() => document.getElementById('details').textContent.includes('Opens with no signalYes'));
+  await page.locator('details summary').click();
+  check('the page is stored on the phone', true);
 
   // 2. Download the horse list.
   await page.click('#download');
@@ -131,7 +134,7 @@ async function addNote(page, horseIndex, note, { photo = false, voice = false } 
   // 8. The signal is back, but the reply to the first upload is lost:
   //    the server stores the note and the phone never hears about it.
   let cut = 0;
-  await context.route('**/c-vet/api/entries/', async (route) => {
+  await context.route('**/c-vet/api/notes/', async (route) => {
     if (cut === 0) {
       cut += 1;
       await route.fetch();     // the server stores the note...
@@ -160,7 +163,7 @@ async function addNote(page, horseIndex, note, { photo = false, voice = false } 
   // 10. Sync once more: nothing goes again.
   let extra = 0;
   page.on('request', (request) => {
-    if (request.method() === 'POST' && request.url().includes('/c-vet/api/entries/')) extra += 1;
+    if (request.method() === 'POST' && request.url().includes('/c-vet/api/notes/')) extra += 1;
   });
   await page.click('#sync');
   await page.waitForFunction(() => document.getElementById('sync-message').textContent === 'Nothing to send.');
@@ -187,16 +190,60 @@ async function addNote(page, horseIndex, note, { photo = false, voice = false } 
   await page.screenshot({ path: path.join(OUT, '4-compact.png') });
   await context.setOffline(false);
 
-  // 12. The page fits a phone.
+  // 12. The notes are the practice's clinical notes now, and the vet can
+  //     read them back, with their files, through the API.
+  const listed = await page.evaluate(async () => {
+    const reply = await fetch('/c-vet/api/notes/', { credentials: 'same-origin' });
+    const notes = (await reply.json()).notes;
+    const withFiles = notes.filter((note) => note.files.length);
+    const file = await fetch(withFiles[0].files[0].url, { credentials: 'same-origin' });
+    return {
+      count: notes.length,
+      allTest: notes.every((note) => note.is_test === true),
+      files: notes.reduce((sum, note) => sum + note.files.length, 0),
+      fileStatus: file.status,
+      fileBytes: (await file.arrayBuffer()).byteLength,
+    };
+  });
+  check('the practice reads its 3 notes back', listed.count === 3, `${listed.count} notes, ${listed.files} files`);
+  check('the notes are marked as test notes', listed.allTest);
+  check('a stored photo or recording downloads complete', listed.fileStatus === 200 && listed.fileBytes > 0, `${listed.fileBytes} bytes`);
+  check('the screen says the notes are test notes', await page.locator('#test-mode').isVisible());
+
+  // 13. The page fits a phone.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   check('no sideways scroll on an iPhone 13', !overflow);
   check('no script errors', consoleErrors.length === 0, consoleErrors.join(' | ').slice(0, 300));
+
+  // 14. Sign out: the phone is emptied and the sign-in ends.
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.locator('details summary').click();
+  await Promise.all([page.waitForURL('**/accounts/login/**'), page.click('#sign-out')]);
+  const left = await page.evaluate(async () => {
+    const names = (await indexedDB.databases()).map((db) => db.name);
+    const stores = await caches.keys();
+    return { databases: names, stores };
+  });
+  await page.goto(`${BASE}/c-vet/`);
+  check('sign out ends the sign-in', new URL(page.url()).pathname === '/accounts/login/', page.url());
+  const after = await page.evaluate(() => new Promise((resolve) => {
+    const open = indexedDB.open('cvet');
+    open.onsuccess = () => {
+      const db = open.result;
+      if (!db.objectStoreNames.contains('entries')) { resolve(0); return; }
+      const all = db.transaction(['entries', 'horses']).objectStore('horses').count();
+      all.onsuccess = () => resolve(all.result);
+    };
+    open.onerror = () => resolve(-1);
+  }));
+  check('sign out removes the horse list from the phone', after === 0, `${after} horses left`);
+  check('sign out removes the stored page', left.stores.filter((name) => name.startsWith('cvet-')).length === 0, left.stores.join(','));
 
   await browser.close();
   const failed = results.filter((r) => !r.ok);
   fs.writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(results, null, 2));
   console.log(`\n${results.length - failed.length} of ${results.length} checks passed.`);
-  console.log('The server must now hold exactly 3 entries: 2 with a photo, 1 with a recording, and 1 with attempts = 2.');
+  console.log('The server must now hold exactly 3 clinical notes, 3 files (2 photos, 1 recording) and 3 receipts, 1 with attempts = 2.');
   process.exit(failed.length ? 1 : 0);
 })().catch((error) => {
   console.error(error);

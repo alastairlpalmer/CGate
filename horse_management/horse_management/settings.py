@@ -528,11 +528,21 @@ INVOICE_SEND_ASYNC = env.bool(
     'INVOICE_SEND_ASYNC', default=not bool(os.environ.get('VERCEL'))
 )
 
-# C-vet, the vet's app (docs/C_VET_PLAN.md). While it is being built, its
-# pages are the phase 1 offline test page at /c-vet/. Off by default:
-# every /c-vet/ address is a 404. The practice and clinical-note tables
-# exist either way; this turns the pages on and off, not the data rules.
-CVET_PROTOTYPE_ENABLED = env.bool('CVET_PROTOTYPE_ENABLED', default=False)
+# C-vet, the vet's app (docs/C_VET_PLAN.md). Off by default: every /c-vet/
+# address is a 404. The practice and clinical-note tables exist either
+# way; this turns the pages on and off, not the data rules.
+CVET_ENABLED = env.bool('CVET_ENABLED', default=False)
+# While True, every note C-vet stores is marked as a test note: it is not
+# a clinical record, the app says so on the screen, and an administrator
+# can delete the test notes of a practice (Django admin, C-vet,
+# Practices). Set False when the trial with real clinical notes starts.
+CVET_TEST_MODE = env.bool('CVET_TEST_MODE', default=True)
+# How long a Vet-role login stays signed in on a phone: with no use, and
+# in total from sign-in. Long, because a vet who is asked for a password
+# at the yard has no signal to sign in with. To end a lost phone's
+# access at once, untick the login in its practice (Django admin).
+CVET_SESSION_IDLE_AGE = env.int('CVET_SESSION_IDLE_AGE', default=90 * 24 * 60 * 60)
+CVET_SESSION_ABSOLUTE_AGE = env.int('CVET_SESSION_ABSOLUTE_AGE', default=90 * 24 * 60 * 60)
 
 # Location mapping (coordinates, the nearest-location chip, the map tab
 # and the Near you dashboard card). Off by default in every environment;
