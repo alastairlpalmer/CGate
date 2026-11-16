@@ -89,8 +89,164 @@ test('visitForDay: one visit for a day, a new one the next day', () => {
     let made = 0;
     const makeId = () => `visit-${++made}`;
     const first = core.visitForDay(undefined, '2026-11-16', makeId);
-    assert.deepEqual(first, { id: 'visit-1', day: '2026-11-16' });
+    assert.deepEqual(first, { id: 'visit-1', day: '2026-11-16', finished: false });
     assert.equal(core.visitForDay(first, '2026-11-16', makeId), first, 'same day: same visit');
     assert.equal(made, 1, 'no id is made for a note of the same visit');
-    assert.deepEqual(core.visitForDay(first, '2026-11-17', makeId), { id: 'visit-2', day: '2026-11-17' });
+    assert.deepEqual(core.visitForDay(first, '2026-11-17', makeId), { id: 'visit-2', day: '2026-11-17', finished: false });
+});
+
+test('visitForDay: a note after Finish visit starts a new visit the same day', () => {
+    const finished = { id: 'visit-1', day: '2026-11-16', finished: true };
+    assert.deepEqual(core.visitForDay(finished, '2026-11-16', () => 'visit-2'), { id: 'visit-2', day: '2026-11-16', finished: false });
+});
+
+test('unsentText: a finished visit that is not sent is not "everything"', () => {
+    assert.equal(core.unsentText(0, 1), 'Finish not sent');
+    assert.equal(core.unsentText(2, 1), '2 notes not sent');
+    assert.equal(core.unsentText(0, 0), 'Everything is sent');
+});
+
+test('toPence: prices as people type them', () => {
+    assert.equal(core.toPence('65'), 6500);
+    assert.equal(core.toPence('65.5'), 6550);
+    assert.equal(core.toPence(' 65.50 '), 6550);
+    assert.equal(core.toPence('0'), 0);
+    assert.equal(core.toPence('0.07'), 7);
+    for (const bad of ['', 'abc', '-5', '1.234', '1,50', '65.', '.5', '1e3', '123456', null, undefined]) {
+        assert.equal(core.toPence(bad), null, String(bad));
+    }
+});
+
+test('decimal and money: exact, with two places', () => {
+    assert.equal(core.decimal(6500), '65.00');
+    assert.equal(core.decimal(7), '0.07');
+    assert.equal(core.decimal(123456), '1234.56');
+    assert.equal(core.money(2750), '\u00a327.50');
+});
+
+test('toPence: sums that floats get wrong stay exact', () => {
+    // 0.1 + 0.2 !== 0.3 in floating point; 10 + 20 === 30 in pence.
+    assert.equal(core.toPence('0.1') + core.toPence('0.2'), core.toPence('0.3'));
+    assert.equal(core.lineTotal({ qty: 3, unitPence: core.toPence('19.99') }), 5997);
+});
+
+test('vatPart: the VAT inside a price that includes it', () => {
+    assert.equal(core.vatPart(6000, 20), 1000);
+    assert.equal(core.vatPart(6500, 20), 1083);
+    assert.equal(core.vatPart(6500, 0), 0);
+});
+
+test('splitByShare: the parts add up to the amount, to the penny', () => {
+    const thirds = [{ name: 'A', share: '33.33' }, { name: 'B', share: '33.33' }, { name: 'C', share: '33.34' }];
+    const split = core.splitByShare(10000, thirds);
+    assert.deepEqual(split.parts.map((p) => p.pence), [3333, 3333, 3334]);
+    assert.equal(split.unallocated, 0);
+
+    const halves = core.splitByShare(6501, [{ name: 'A', share: '50.00' }, { name: 'B', share: '50.00' }]);
+    assert.equal(halves.parts[0].pence + halves.parts[1].pence, 6501);
+    assert.equal(Math.abs(halves.parts[0].pence - halves.parts[1].pence), 1);
+});
+
+test('splitByShare: one owner pays all; no owner leaves it all unallocated', () => {
+    assert.deepEqual(core.splitByShare(6500, [{ name: 'Jo', share: '100.00' }]), {
+        parts: [{ name: 'Jo', pence: 6500 }], unallocated: 0,
+    });
+    assert.deepEqual(core.splitByShare(6500, []), { parts: [], unallocated: 6500 });
+    assert.deepEqual(core.splitByShare(6500, undefined), { parts: [], unallocated: 6500 });
+});
+
+test('splitByShare: shares under 100% leave the rest unallocated', () => {
+    const split = core.splitByShare(10000, [{ name: 'A', share: '60.00' }]);
+    assert.deepEqual(split, { parts: [{ name: 'A', pence: 6000 }], unallocated: 4000 });
+});
+
+test('visitSummary: horses, lines, payers and totals of one visit', () => {
+    const horses = {
+        1: { id: 1, payers: [{ name: 'Jo', share: '100.00' }] },
+        2: { id: 2, payers: [{ name: 'Jo', share: '50.00' }, { name: 'Ali', share: '50.00' }] },
+    };
+    const entries = [
+        {
+            horseId: 1, horseName: 'Bramble', note: 'Mild heat.', followUp: '2026-11-30', status: 'sent',
+            createdAt: '2026-11-16T10:00:00Z', photoBytes: 10, audioBytes: 0,
+            lines: [{ description: 'Flu/Tet booster', qty: 1, unitPence: 6500, vatRate: '20.00' }],
+        },
+        {
+            horseId: 2, horseName: 'Clover', note: '', followUp: '', status: 'pending',
+            createdAt: '2026-11-16T10:05:00Z', photoBytes: 0, audioBytes: 0,
+            lines: [
+                { description: 'Flu/Tet booster', qty: 1, unitPence: 6500, vatRate: '20.00' },
+                { description: 'Sedation', qty: 2, unitPence: 2750, vatRate: '20.00' },
+            ],
+        },
+        {
+            horseId: 1, horseName: 'Bramble', note: 'Second look.', followUp: '', status: 'pending',
+            createdAt: '2026-11-16T10:10:00Z', photoBytes: 0, audioBytes: 5, lines: [],
+        },
+    ];
+    const summary = core.visitSummary(entries, horses);
+    assert.deepEqual(summary.horses.map((h) => [h.horseName, h.total, h.notes, h.unsent]), [
+        ['Bramble', 6500, 2, 1],
+        ['Clover', 12000, 0, 1],
+    ]);
+    assert.equal(summary.horses[0].followUp, '2026-11-30');
+    assert.equal(summary.horses[0].photos, 1);
+    assert.equal(summary.horses[0].recordings, 1);
+    assert.equal(summary.total, 18500);
+    assert.deepEqual(summary.payers, [{ name: 'Jo', pence: 12500 }, { name: 'Ali', pence: 6000 }]);
+    assert.equal(summary.unallocated, 0);
+    assert.equal(summary.payers.reduce((sum, p) => sum + p.pence, 0), summary.total);
+    assert.equal(summary.vat, 1083 + 1083 + 917);
+});
+
+test('visitSummary: a horse that left the phone\'s list has no payer', () => {
+    const summary = core.visitSummary([{
+        horseId: 9, horseName: 'Gone', note: '', status: 'sent', createdAt: 'x',
+        lines: [{ description: 'Visit fee', qty: 1, unitPence: 4000, vatRate: '20.00' }],
+    }], {});
+    assert.deepEqual(summary.payers, []);
+    assert.equal(summary.unallocated, 4000);
+});
+
+test('addDays and shortDate', () => {
+    assert.equal(core.addDays('2026-11-16', 14), '2026-11-30');
+    assert.equal(core.addDays('2026-12-25', 14), '2027-01-08');
+    assert.equal(core.addDays('2028-02-28', 1), '2028-02-29');
+    assert.equal(core.shortDate('2026-11-03', '2026-11-16'), '3 Nov');
+    assert.equal(core.shortDate('2027-01-08', '2026-11-16'), '8 Jan 2027');
+    assert.equal(core.shortDate('', '2026-11-16'), '');
+});
+
+test('dueStatus: overdue, soon (14 days) and later', () => {
+    assert.equal(core.dueStatus('2026-11-15', '2026-11-16'), 'overdue');
+    assert.equal(core.dueStatus('2026-11-16', '2026-11-16'), 'soon');
+    assert.equal(core.dueStatus('2026-11-30', '2026-11-16'), 'soon');
+    assert.equal(core.dueStatus('2026-12-01', '2026-11-16'), 'later');
+});
+
+test('horseDue: the first thing that is overdue or soon', () => {
+    const horse = { due: [
+        { kind: 'vaccination', label: 'Flu/Tet', date: '2026-11-20' },
+        { kind: 'follow_up', label: 'Recheck', date: '2026-11-10' },
+        { kind: 'vaccination', label: 'Tetanus', date: '2027-06-01' },
+    ] };
+    assert.deepEqual(core.horseDue(horse, '2026-11-16'), { label: 'Recheck', date: '2026-11-10', status: 'overdue', more: 1 });
+    assert.equal(core.horseDue({ due: [{ label: 'Flu', date: '2027-06-01' }] }, '2026-11-16'), null);
+    assert.equal(core.horseDue({}, '2026-11-16'), null);
+});
+
+test('sortHorses: due horses first, most overdue at the top, then by name', () => {
+    const horses = [
+        { name: 'Willow' },
+        { name: 'Clover', due: [{ label: 'Flu', date: '2026-11-25' }] },
+        { name: 'Bramble' },
+        { name: 'Echo', due: [{ label: 'Recheck', date: '2026-11-01' }] },
+        { name: 'Dancer', due: [{ label: 'Flu', date: '2027-08-01' }] },
+    ];
+    assert.deepEqual(core.sortHorses(horses, '2026-11-16').map((h) => h.name), ['Echo', 'Clover', 'Bramble', 'Dancer', 'Willow']);
+    assert.equal(horses[0].name, 'Willow', 'the list passed in is not reordered');
+});
+
+test('outcome: a visit the server does not know is dropped from the queue, not retried for ever', () => {
+    assert.equal(core.outcome(404), 'failed');
 });

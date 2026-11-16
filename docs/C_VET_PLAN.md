@@ -3,7 +3,7 @@
 **Goal:** Tim finishes a yard visit on his phone, with or without a signal. Every note, every bill and every record is correct before he leaves the yard. Nobody types the same data twice.
 **Scope now:** Tim, our own yard. C-vet is a companion to Tim's practice system. It does not replace it.
 **Scope later (1 to 3 years):** sell C-vet to other vets, with C-gate or without it.
-**Status:** Phases 1 to 3 are built: the offline app, the ownership seam, and the API and sync for clinical notes. C-vet is off by default, and in test mode. Next: the test on Tim's phone (section 8), then phase 4 (screens).
+**Status:** Phases 1 to 4 are built: the offline app, the ownership seam, the API and sync, and the screens for a visit. C-vet is off by default, and in test mode. Next: the test on Tim's phone (section 8), then phase 5 (voice notes).
 **Date:** 16 November 2026.
 
 Names. **C-gate** is the yard product. Older documents call it Yardway. **C-vet** is the vet product. This document sets the structure and the order of the work. `VET_TRIAL_PLAN.md` stays the description of Tim's screens.
@@ -26,6 +26,10 @@ Names. **C-gate** is the yard product. Older documents call it Yardway. **C-vet*
 | 10 | C-vet has its own `Visit` record, which belongs to the practice. It does not use `ProviderVisit`, the yard's record of a farrier's day. | A vet bills in the practice's name, so a vet's visit never enters the yard's books. It also means the vet work and the farrier work do not change the same code. |
 | 11 | **Test mode** is on until the trial with real clinical notes starts (`CVET_TEST_MODE`). Each note made in test mode is marked. The app shows "test notes". An administrator can delete a practice's test notes without reading them. | The phone test and the build use the real tables, so the test proves the real path. The mark keeps test data apart from clinical records. |
 | 12 | A vet's phone stays signed in for 90 days (`CVET_SESSION_IDLE_AGE`, `CVET_SESSION_ABSOLUTE_AGE`). C-gate staff keep 7 days idle and 30 days in total. | A vet who is asked for a password at the yard has no signal to sign in with. To cut off a lost phone at once, untick the login in its practice. |
+| 13 | Prices are typed and shown with VAT included, as the owner pays them. Each price has a VAT rate (20% unless changed). | A vet says "£65 for a booster" to an owner. The invoice (phase 6) shows the VAT part. Tim must confirm (open decision 9). |
+| 14 | A note that was sent is not changed on the phone. A correction is a new note. A note that is not sent yet can be removed. | A clinical record is corrected, not replaced. This is also the simplest rule that cannot lose or duplicate data in a sync. |
+| 15 | The price list belongs to the practice. The vet sets it in C-vet. It is not in the Django admin. | Section 3: the yard does not see the vet's prices. |
+| 16 | Phase 4 was built with defaults in place of two answers from Tim: phone first (the same screens work on an iPad), and a note that holds text, items, a recheck date, a photo and a voice recording. | To keep the build moving. The two questions stay open (decisions 3 and 9 in section 10). |
 
 ## 2. What each product is for
 
@@ -90,7 +94,8 @@ What is reused from the farrier page (`FARRIER_PAGE_PLAN.md`), as a pattern and 
 | Horse list, owners, who pays, items due | Download or refresh the yard |
 | Price list and treatment screen | Voice to text (the phone keeps the audio; the server types it later) |
 | Typed notes, photos, voice recordings | Make and send invoices (the server does this after the sync) |
-| End-of-visit summary | |
+| End-of-visit summary and Finish visit | A change to the price list |
+| The horse's notes that are on this phone | The horse's older notes from the practice's records |
 
 ### Sync rules
 
@@ -109,7 +114,7 @@ C-vet is used with one hand, outdoors, between horses. Every screen in every pha
 | Rule | Limit |
 |---|---|
 | Open the app, from the tap on the icon to the horse list | Under 1 second, with or without a signal |
-| Page files (script, styles) | Under 100 KB in total. No web fonts, no framework. |
+| Page files (script, styles) | Under 100 KB in total. No web fonts, no framework. Now 88 KB: phase 5 must add a step that makes the files smaller, or split a screen off. |
 | Horses on the first screen of a phone | 8 or more |
 | Tap targets | 44 px or more |
 | A tap shows its result | At once. No screen waits for the network. The app reads and writes the phone's storage, and the sync runs behind it. |
@@ -135,7 +140,7 @@ The phone holds owner names and, in the trial, clinical notes that are not sent 
 | **1. Offline app** | The app on Tim's phone: download horses, save notes, photos and recordings with no signal, sync. | Built. Test: 1 to 2 weeks of Tim's use. | Section 8 pass list. |
 | **2. Ownership seam** | `Practice`, the practice-to-yard link, `practice` on clinical records. Vet role. Clinical notes hidden from yard roles. | Built. | A yard login cannot read a clinical note by any route. Tests prove it (section 7a). |
 | **3. API and sync** | Yard download, note upload with ids from the phone, visits, files, long sign-in for the phone, clear on sign-out, test mode. | Built. | The phase 1 checks pass on the real records, not on test records (section 7b). |
-| **4. Screens** | Horse list with due items, treatment screen, price list with VAT, several horses at once, end-of-visit summary. Screens as in `VET_TRIAL_PLAN.md` 7.2. | 1.5 to 2 weeks | Tim records a 10-horse visit with no signal and with no help. |
+| **4. Screens** | Horse list with due items, treatment screen, price list with VAT, several horses at once, end-of-visit summary and Finish visit. | Built. | Tim records a 10-horse visit with no signal and with no help (section 8, step 12). |
 | **5. Voice notes** | Record, type on the server, tidy, Tim's check, delete the audio. | 1 week | Fewer than 1 note in 5 needs a large change. |
 | **6. Practice invoices and records back** | Invoices in the practice's name with VAT. Export to Xero or a file. Dates back to the yard. | 1 week | An invoice from a visit is in the practice's accounts the same day. |
 | **7. Trial** | Tim uses C-vet at our yard for 8 to 12 weeks. | — | The measures in `VET_TRIAL_PLAN.md` 7.6. |
@@ -169,10 +174,10 @@ Checked before the phone test:
 
 | Check | Result |
 |---|---|
-| Server tests (`cvet/tests.py`, `cvet/tests_ownership.py`) | 80 pass |
-| Logic tests (`static/js/tests/cvet_app_core.test.js`) | 13 pass |
-| Chromium, phone size (`tools/qa/cvet_offline_qa.js`), signed in as a vet, from a cold start: download, no signal, open again, 3 notes with photo and voice, signal back, one lost reply, read the notes back, sign out | 29 of 29 pass. The server stored 3 clinical notes, 3 files and 3 receipts from 4 uploads. |
-| Speed and layout, in the same script, with no signal | Opens in 43 ms. 9 horses on the first screen of an iPhone 13. Page files: 48 KB. All tap targets 44 px or more. |
+| Server tests (`cvet/tests.py`, `cvet/tests_ownership.py`, `cvet/tests_visit.py`) | 111 pass |
+| Logic tests (`static/js/tests/cvet_app_core.test.js`) | 29 pass |
+| Chromium, phone size (`tools/qa/cvet_offline_qa.js`), signed in as a vet, from a cold start: a whole visit with no signal (section 7c), signal back, one lost reply, read the records back, add a price, sign out | 50 of 50 pass. The server stored 4 clinical notes, 5 items (£282.50), 2 files, 4 receipts and 1 finished visit. |
+| Speed and layout, in the same script, with no signal | Opens in 46 ms. 10 horses on the first screen of an iPhone 13, above the tabs. Page files: 88 KB. Rows, tabs and buttons 44 px or more. No sideways scroll on any screen. |
 
 Chromium on a computer is not an iPhone, and it is faster than one. The checks above prove the code. They do not prove the phone. The page measures its own open time on the phone (**This phone → Opened in**) and sends it with each note.
 
@@ -268,6 +273,61 @@ Rules that tests hold (`cvet/tests.py`):
 - The vet cannot change a note that was sent. Phase 4 decides how a correction is made. The record already keeps the text before each change.
 - The phone does not download old notes. To read history with no signal is phase 4, with open decision 5 (a PIN).
 
+## 7c. Phase 4: what is built
+
+The screens for a yard visit. All of them work with no signal, except a change to the price list and the load of older notes.
+
+| Screen | What the vet does |
+|---|---|
+| **Horses** | The list, with the horses that have something due at the top: the most overdue first. Each row: name, owner, field, and a label such as "Flu/Tet overdue 6 Nov". A tick shows the horses already on today's visit. Search by name, owner, field, microchip or passport. |
+| **Select** (on Horses) | Tap **Select**, tap the horses, tap **Add item**, tap an item. The item goes on every selected horse in one step, for example a booster for 10 horses. |
+| **A horse** | Who pays and each share. What is due. Tap items from the price list; tap again for 2. Change the quantity or the price for this horse. **Other item** for a line that is not on the list. A note. A recheck date: None, 1 wk, 2 wk, 4 wk, 3 mo, or a date. A photo. A voice recording. **Save** goes back to the list. |
+| **History** (on a horse) | The notes for this horse that are on this phone. **Load older notes** gets the practice's records for the horse, with a signal. A note that is not sent yet can be removed. |
+| **Visit** | The end-of-visit summary: each horse with its items and its total, who pays with the split between co-owners, the total and the VAT in it. **Finish visit** closes the visit. A note after that starts a new visit. |
+| **Prices** | The practice's price list: add, change, hide. Prices include VAT (decision 13). Needs a signal. |
+| **Phone** | Sync now, Download horses, the details of this phone, Sign out, Clear this phone. |
+
+The line under the top bar says what the app did ("Willow saved.", "3 notes sent."). The counter in the top bar is also the Sync button.
+
+| Address | What it does |
+|---|---|
+| `GET /c-vet/api/yard/` | Now also: who pays for each horse and each share, what is due for each horse, and the price list. |
+| `POST /c-vet/api/notes/` | Now also: the items done (each with its own description, quantity, price and VAT rate) and the recheck date. |
+| `POST /c-vet/api/prices/` | Save one price. Stored once for each id from the phone. |
+| `POST /c-vet/api/visits/<id>/finish/` | Close a visit. The first call sets the time. |
+
+| Record | What it holds |
+|---|---|
+| `PriceItem` | One line of the practice's price list: name, price with VAT, VAT rate. |
+| `NoteLine` | One item done for a horse on a visit. The description, the price and the VAT rate are copied from the price list when the vet taps the item. |
+| `ClinicalNote.payers` | Who pays and each share, as the yard's records said when the note arrived. A copy. |
+
+Where the data comes from (`cvet/yard.py`, read only):
+
+- **Who pays:** the horse's ownership shares in C-gate. If there are none, the owner on its open placement, at 100%. This is the rule that C-gate's own invoices use.
+- **Vaccination due:** the next due date of the newest dose of each vaccination type in C-gate.
+- **Recheck due:** the date on the practice's own newest note for the horse. A newer note with no date clears it.
+
+Rules that tests hold (`cvet/tests_visit.py`, `static/js/tests/cvet_app_core.test.js`):
+
+- **Money is exact.** The phone counts in whole pence. The split between co-owners adds up to the total, to the penny.
+- **Work done keeps its price.** A later change to the price list does not change an item already on a note.
+- **The server decides who pays, when the note arrives** (sync rule 4). A later change of owner at the yard does not rewrite the note.
+- **The price list is the practice's.** Another practice cannot read or change it. The yard cannot read or set it. It is not in the Django admin.
+- **Finish is safe to send twice,** and a note that arrives after Finish still joins its visit.
+- **The download takes the same number of database queries for 1 horse or for 20.**
+- **Test notes leave the history and the due list when test mode is turned off.**
+
+### What phase 4 does not do
+
+- **Horse photos on the list.** Each photo must be stored on the phone and the vet's login cannot read the yard's files. Later.
+- **Dental due.** C-gate has no dental record to read a date from.
+- **Open the yard by QR code.** There is one yard. It is needed when a vet has more than one.
+- **Medicines** (batch, dose, withdrawal period): later, as in the trial plan.
+- **The yard's own vet visit log as history:** open decision 7.
+- **Old notes on the phone with no signal:** open decision 5 (a PIN) comes first.
+- **Invoices and dates back to the yard:** phase 6. Phase 4 stores what they need: the items, the prices, the VAT rates and the payers.
+
 ## 8. The test on Tim's phone
 
 ### Set-up (once, by an administrator)
@@ -284,25 +344,29 @@ Tim's login opens C-vet only. It cannot open a C-gate page.
 2. Tap Share, then **Add to Home Screen**.
 3. Open **C-vet** from the home screen. Sign in again if it asks: an installed app has its own storage.
 4. Tap **Download horses**.
-5. Open **This phone**. "Opens with no signal" must say Yes. The top of the screen must say **test notes**.
+5. Tap **Prices** and add the items of a normal yard visit, for example "Flu/Tet booster", "Sedation", "Visit fee".
+6. Tap **Phone**. "Opens with no signal" must say Yes. The top of the screen must say **test notes**.
 
 ### The test (Tim, at the yard)
 
 | # | Step | Pass |
 |---|---|---|
-| 1 | Turn on aeroplane mode. Open C-vet from the home screen. | The app opens. The horse list is there. |
+| 1 | Turn on aeroplane mode. Open C-vet from the home screen. | The app opens. The horse list is there, with the due horses at the top. |
 | 2 | Find a horse with the search box. | The correct horse shows. |
-| 3 | Type a note. Save. | The counter says "1 note not sent". |
-| 4 | Add a note with a photo. | The photo is ready in a few seconds. |
-| 5 | Add a note with a voice recording. Play it back. | The recording plays. |
-| 6 | Close the app fully. Open it again. | All notes are there. |
-| 7 | Turn off aeroplane mode. Keep the app open. | The counter reaches "Everything is sent" with no tap. |
-| 8 | Do steps 3 to 5 in a place with a weak signal (1 bar). | Every note arrives once. |
-| 9 | Save 2 notes with no signal. Do not open the app for 8 days. Then open it with a signal. | The 2 notes are there and are sent. |
-| 10 | Open **This phone** and read "Opened in". | Under 1000 ms. |
-| 11 | Use the app on a real visit for 1 to 2 weeks. | No note is lost. Tim says the app is fast enough and the list is easy to read outdoors. |
+| 3 | Tap the horse. Tap an item. Type a note. Tap a recheck. Save. | The app goes back to the list. The horse has a tick. The counter says "1 note not sent". |
+| 4 | On another horse, add a photo. | The photo is ready in a few seconds. |
+| 5 | On another horse, add a voice recording. Play it back. | The recording plays. |
+| 6 | Tap **Select**, tap 3 horses, tap **Add item**, tap an item. | The item is on the 3 horses. |
+| 7 | Tap **Visit**. | Each horse, each item, who pays and the total are correct. |
+| 8 | Close the app fully. Open it again. | The visit and all notes are there. |
+| 9 | Tap **Finish visit**. Turn off aeroplane mode. Keep the app open. | The counter reaches "Everything is sent" with no tap. The Visit screen says "All sent to the practice". |
+| 10 | Do steps 3 to 5 in a place with a weak signal (1 bar). | Every note arrives once. |
+| 11 | Save 2 notes with no signal. Do not open the app for 8 days. Then open it with a signal. | The 2 notes are there and are sent. |
+| 12 | Record a real visit of about 10 horses with no signal, with no help. | Tim finishes the visit on the phone. He says what was slow or not clear. |
+| 13 | Tap **Phone** and read "Opened in". | Under 1000 ms. |
+| 14 | Use the app on real visits for 1 to 2 weeks. | No note is lost. Tim says the app is fast enough and the list is easy to read outdoors. |
 
-Step 9 is the most important. Safari can clear a web app's storage after 7 days with no use. Reports disagree on whether an app on the home screen is safe from this.
+Step 11 is the most important. Safari can clear a web app's storage after 7 days with no use. Reports disagree on whether an app on the home screen is safe from this.
 
 ### What we read from the results
 
@@ -320,11 +384,11 @@ Open the Django admin → C-vet → **Sync receipts**. They show how each note a
 
 | Result | Next step |
 |---|---|
-| All steps pass | Build phases 2 to 6 as a web app. |
-| Step 9 fails (storage cleared) | Put the same web code in an app-store wrapper (Capacitor), which gives it storage that is not cleared. Add about 2 weeks and an Apple developer account. |
+| All steps pass | Continue with phases 5 and 6 as a web app. |
+| Step 11 fails (storage cleared) | Put the same web code in an app-store wrapper (Capacitor), which gives it storage that is not cleared. Add about 2 weeks and an Apple developer account. |
 | Step 5 fails (no voice recording in the installed app) | Typed notes only in the web app, or the wrapper as above. |
-| Step 10 fails (slow to open) | Find the slow part with Safari's tools before any other work. The limit stays. |
-| Step 7 is a problem (Tim forgets to keep the app open) | Add a reminder on the summary screen. If that is not enough, the wrapper permits a send in the background. |
+| Step 13 fails (slow to open) | Find the slow part with Safari's tools before any other work. The limit stays. |
+| Step 9 is a problem (Tim forgets to keep the app open) | Add a reminder on the summary screen. If that is not enough, the wrapper permits a send in the background. |
 
 ### When the phone test ends
 
@@ -344,6 +408,7 @@ Open the Django admin → C-vet → **Sync receipts**. They show how each note a
 | 5 | Two teams change the same visit code. | Closed by decision 10: C-vet has its own `Visit` and does not change the farrier's code. |
 | 6 | The scope grows into a full practice system. | Decision 3. C-vet covers the yard visit only. The practice system stays the full record. |
 | 7 | Offline is not a selling point. Other equine vet products say they work offline (VetIT, Lupa). We did not verify their claims. | The selling point is the link to the yard: one horse list, the correct payer, co-owner splits, dates that go back to the yard. |
+| 8 | The page files are at 88 KB of the 100 KB limit. | Phase 5 adds a step that makes the files smaller before it adds a screen. |
 
 ## 10. Open decisions
 
@@ -351,12 +416,14 @@ Open the Django admin → C-vet → **Sync receipts**. They show how each note a
 |---|---|---|---|
 | 1 | Must livery owners consent before the yard sees vet dates for their horse? | Owner of C-gate, with a vet adviser | Phase 6 |
 | 2 | Which practice system holds Tim's records? Can it import a file? | Tim | Phase 6 |
-| 3 | Phone or iPad on visits? | Tim | Phase 4 |
+| 3 | Phone or iPad on visits? Built for a phone first (decision 16). | Tim | Phase 7 |
 | 4 | How long must Tim's phone stay signed in? Built as 90 days (decision 12). Change the two settings if another length is better. | Owner of C-gate | Phase 7 |
-| 5 | Is a PIN necessary to open C-vet? | Owner of C-gate, Tim | Phase 4 (before the phone holds old notes) |
+| 5 | Is a PIN necessary to open C-vet? | Owner of C-gate, Tim | Before the phone holds old notes |
 | 6 | Which speech-to-text service? | Owner of C-gate | Phase 5 |
-| 7 | Does the vet see the yard's own vet visit log and medical conditions for a horse, as history? | Owner of C-gate, Tim | Phase 4 |
+| 7 | Does the vet see the yard's own vet visit log and medical conditions for a horse, as history? | Owner of C-gate, Tim | Phase 7 |
 | 8 | What does the agreement between the yard and the practice say about the server and the backups, which hold the clinical notes? | Owner of C-gate, with a vet adviser | Phase 7 (before real clinical notes) |
+| 9 | Does Tim give prices with VAT included? What must a clinical note always contain? Are the recheck choices (1 wk, 2 wk, 4 wk, 3 mo) the correct ones? | Tim | Phase 5 |
+| 10 | Shares that do not add up to 100% in C-gate leave part of a bill with "No owner on record". Who pays that part? | Owner of C-gate | Phase 6 |
 
 The other questions for Tim are in `VET_TRIAL_PLAN.md` 7.7.
 

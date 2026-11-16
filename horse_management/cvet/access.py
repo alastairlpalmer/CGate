@@ -25,7 +25,7 @@ from django.views.decorators.cache import never_cache
 
 from core.permissions import LEVEL_FULL, LEVEL_HIDDEN, access_map, feature_required, has_feature_access
 
-from .models import ClinicalFile, ClinicalNote, PracticeMember, Visit
+from .models import ClinicalFile, ClinicalNote, NoteLine, PracticeMember, PriceItem, Visit
 
 FEATURE = 'cvet'
 
@@ -79,6 +79,26 @@ def open_link(practice):
 def notes_for(practice):
     """The clinical notes this practice may read. The only door to them."""
     return ClinicalNote.objects.for_practice(practice)
+
+
+def current_notes_for(practice):
+    """The notes the vet sees in the app.
+
+    While CVET_TEST_MODE is on, the test notes; after it is turned off,
+    the real ones. Test notes that were not deleted then stay out of the
+    horse's history and out of what is due.
+    """
+    return notes_for(practice).filter(is_test=settings.CVET_TEST_MODE)
+
+
+def prices_for(practice):
+    """The practice's price list."""
+    return PriceItem.objects.for_practice(practice)
+
+
+def lines_for(practice):
+    """The items done and their prices, for this practice."""
+    return NoteLine.objects.for_practice(practice)
 
 
 def visits_for(practice):

@@ -1,7 +1,8 @@
 """Models for C-vet (docs/C_VET_PLAN.md).
 
 The practice side: ``Practice``, ``PracticeMember``, ``PracticeYardLink``.
-The clinical records: ``Visit``, ``ClinicalNote``, ``ClinicalFile``. They
+The clinical records: ``Visit``, ``ClinicalNote``, ``ClinicalFile``, and
+the practice's money: ``PriceItem``, ``NoteLine``. They
 belong to a practice, not to the yard. Read them only through
 ``cvet.access``; no code outside this app may import them
 (cvet/tests_ownership.py checks).
@@ -11,6 +12,7 @@ clinical text, so the yard's administrator may read it.
 """
 
 import uuid
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
 from django.db import models
@@ -207,6 +209,12 @@ class ClinicalNote(models.Model):
     treatment = models.TextField(blank=True)
     follow_up_date = models.DateField(null=True, blank=True)
 
+    # Who pays, and each one's share, as the yard's records said when the
+    # note arrived: [{"owner_id": 3, "name": "Jo Smith", "share": "50.00"}].
+    # A copy, so that a later change of owner does not change who is
+    # billed for work already done. The practice's invoices read it.
+    payers = models.JSONField(default=list, blank=True)
+
     # The phone's clock when the vet tapped Save.
     written_at = models.DateTimeField(default=timezone.now)
     # Made while CVET_TEST_MODE was on: not a clinical record, and the
@@ -230,6 +238,66 @@ class ClinicalNote(models.Model):
     def __str__(self):
         # No clinical text here: this string reaches logs and error pages.
         return f'Clinical note {self.pk} ({self.seen_on})'
+
+
+class PriceItem(models.Model):
+    """One line of a practice's price list, for example "Flu/Tet booster".
+
+    The practice's own data: the vet sets it in C-vet, and no yard screen
+    shows it. The price is the one the client pays, VAT included; the VAT
+    rate says how much of it is VAT.
+    """
+
+    practice = models.ForeignKey(Practice, on_delete=models.CASCADE, related_name='price_items')
+    # Made on the phone, so that a price saved twice is stored once.
+    client_id = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100)
+    price_inc_vat = models.DecimalField(max_digits=8, decimal_places=2)
+    vat_rate = models.DecimalField('VAT rate (%)', max_digits=4, decimal_places=2, default=Decimal('20.00'))
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = PracticeScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class NoteLine(models.Model):
+    """One item done for a horse on a visit, with its price: a line of the bill.
+
+    It belongs to a clinical note. The description, the price and the VAT
+    rate are copied from the price list when the vet taps the item, so a
+    later change of the price list does not change work already done.
+    """
+
+    practice = models.ForeignKey(Practice, on_delete=models.PROTECT, related_name='+')
+    note = models.ForeignKey(ClinicalNote, on_delete=models.CASCADE, related_name='lines')
+    client_id = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
+    price_item = models.ForeignKey(
+        PriceItem, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    description = models.CharField(max_length=200)
+    quantity = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('1'))
+    unit_price_inc_vat = models.DecimalField(max_digits=8, decimal_places=2)
+    vat_rate = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('20.00'))
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = PracticeScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['created_at', 'pk']
+
+    def __str__(self):
+        return f'Line {self.pk}'
+
+    @property
+    def total_inc_vat(self):
+        return (self.quantity * self.unit_price_inc_vat).quantize(Decimal('0.01'), ROUND_HALF_UP)
 
 
 def clinical_file_path(instance, filename):

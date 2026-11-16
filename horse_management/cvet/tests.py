@@ -239,7 +239,10 @@ class YardDownloadTests(YardCase):
             'passport': '826002',
             'location': 'Top Field',
             'owner': 'Jo Smith',
+            'payers': [{'name': 'Jo Smith', 'share': '100.00'}],
+            'due': [],
         }])
+        self.assertEqual(data['prices'], [])
         self.assertEqual(data['practice'], 'Hill Vets')
         self.assertIs(data['test_mode'], True)
 
@@ -447,7 +450,7 @@ class NoteFileTests(YardCase):
         self.client.post(NOTES, note_data(photo=photo_upload(), photo_id=file_id))
         response = self.client.post(NOTES, note_data(photo=photo_upload(), photo_id=file_id))
         self.assertEqual(response.status_code, 409)
-        self.assertEqual(response.json(), {'error': 'file_id_in_use'})
+        self.assertEqual(response.json(), {'error': 'id_in_use'})
         self.assertEqual(ClinicalNote.objects.count(), 1)
         self.assertEqual(len(self.stored_files()), 1)
 

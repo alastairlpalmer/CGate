@@ -20,4 +20,6 @@ urlpatterns = [
     path('api/yard/', views.api_yard, name='api_yard'),
     path('api/notes/', views.api_notes, name='api_notes'),
     path('api/files/<uuid:client_id>/', views.api_file, name='api_file'),
+    path('api/prices/', views.api_prices, name='api_prices'),
+    path('api/visits/<uuid:client_id>/finish/', views.api_visit_finish, name='api_visit_finish'),
 ]

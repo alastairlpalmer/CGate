@@ -5,8 +5,9 @@ Run after farrier_seed.py, against the same throwaway database:
     python manage.py shell < tools/qa/farrier_seed.py
     python manage.py shell < tools/qa/cvet_seed.py
 
-Makes: the practice "Hill Vets" with an open link to the yard, and a vet
-login ("vet" / "qa-pass-123") with the Vet role, a member of the practice.
+Makes: the practice "Hill Vets" with an open link to the yard, a vet
+login ("vet" / "qa-pass-123") with the Vet role, a member of the practice,
+three prices, and vaccination dates: Willow overdue, Fudge due in 5 days.
 """
 
 from django.contrib.auth import get_user_model
@@ -28,4 +29,27 @@ vet.save()
 assign_role(vet, Role.objects.get(name='Vet'))
 PracticeMember.objects.get_or_create(practice=practice, user=vet)
 
-print('C-vet seed done.')
+
+
+# Phase 4: a price list, and vaccination dates so some horses are due.
+from datetime import timedelta  # noqa: E402
+from decimal import Decimal  # noqa: E402
+
+from django.utils import timezone  # noqa: E402
+
+from core.models import Horse  # noqa: E402
+from cvet.models import PriceItem  # noqa: E402
+from health.models import Vaccination, VaccinationType  # noqa: E402
+
+for name, price in (('Flu/Tet booster', '65.00'), ('Sedation', '27.50'), ('Visit fee', '40.00')):
+    PriceItem.objects.get_or_create(practice=practice, name=name, defaults={'price_inc_vat': Decimal(price)})
+
+today = timezone.localdate()
+flu, _ = VaccinationType.objects.get_or_create(name='Flu/Tet')
+if not Vaccination.objects.exists():
+    for name, days in (('Willow', -10), ('Fudge', 5), ('Hazel', 200)):
+        Vaccination.objects.create(
+            horse=Horse.objects.get(name=name), vaccination_type=flu,
+            date_given=today + timedelta(days=days - 365), next_due_date=today + timedelta(days=days),
+        )
+print('C-vet phase 4 seed done.')

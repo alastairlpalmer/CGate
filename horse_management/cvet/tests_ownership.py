@@ -33,7 +33,9 @@ from core.permissions import is_provider_only
 from core.roles_testutils import make_admin, make_user_with_access
 
 from . import access
-from .models import ClinicalFile, ClinicalNote, Practice, PracticeMember, PracticeYardLink, SyncReceipt, Visit
+from .models import (
+    ClinicalFile, ClinicalNote, NoteLine, Practice, PracticeMember, PracticeYardLink, PriceItem, SyncReceipt, Visit,
+)
 from .testutils import VET_ACCESS, make_practice, make_vet, vet_role
 
 User = get_user_model()
@@ -73,6 +75,12 @@ class YardFixture(TestCase):
         cls.practice = make_practice()
         cls.vet = make_vet()
         cls.note = make_note(cls.practice, cls.horse, author=cls.vet)
+        # An item on the bill, with text of its own to look for.
+        NoteLine.objects.create(
+            practice=cls.practice, note=cls.note, description=f'Nerve block {TREATMENT_MARKER}',
+            unit_price_inc_vat=45,
+        )
+        PriceItem.objects.create(practice=cls.practice, name=f'Price {TREATMENT_MARKER}', price_inc_vat=45)
         # A change, so the history table holds the text too.
         cls.note.treatment += ' Recheck.'
         cls.note.save()
@@ -203,7 +211,7 @@ class _Zip:
 class TripwireTests(TestCase):
     """By construction: the yard's code has no way to the notes."""
 
-    CLINICAL = [ClinicalNote, ClinicalNote.history.model, ClinicalFile, Visit]
+    CLINICAL = [ClinicalNote, ClinicalNote.history.model, ClinicalFile, Visit, PriceItem, NoteLine]
 
     def test_the_django_admin_does_not_register_clinical_notes(self):
         for model in self.CLINICAL:
@@ -228,7 +236,9 @@ class TripwireTests(TestCase):
         # Allowed outside the app: the app's registration in settings and
         # the URL include. Nothing else may reach in.
         base = Path(settings.BASE_DIR)
-        forbidden = re.compile(r'ClinicalNote|ClinicalFile|cvet\.models|cvet\.access|clinical_notes|from cvet|import cvet')
+        forbidden = re.compile(
+            r'ClinicalNote|ClinicalFile|NoteLine|PriceItem|cvet\.models|cvet\.access|clinical_notes|from cvet|import cvet'
+        )
         offenders = []
         for path in list(base.rglob('*.py')) + list((base / 'templates').rglob('*.html')):
             relative = path.relative_to(base)
