@@ -118,7 +118,7 @@
        links); `panel` is a Crown-cream fill with no border (hero, summaries). */
     .card, .card-raised, .kpi-card, .empty-state { @apply bg-white rounded-card border border-light-sage; }
     .card-raised, .kpi-card { @apply shadow-card transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-float hover:border-sage/40; }
-    .panel { @apply bg-sand-50 rounded-card p-5 lg:p-6; }
+    .panel { @apply bg-sand-50 rounded-card p-4; }
 
     /* Buttons */
     .btn,
@@ -126,15 +126,15 @@
     .btn-secondary,
     .btn-danger,
     .btn-success,
-    .btn-ghost { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-btn transition-all duration-150 focus:outline-hidden focus:ring-2 focus:ring-offset-2 cursor-pointer active:scale-[0.97] touch-manipulation min-h-[44px] sm:min-h-0; }
+    .btn-ghost { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm sm:px-3 sm:py-1.5 sm:text-[13px] sm:leading-5 font-medium rounded-btn transition-all duration-150 focus:outline-hidden focus:ring-2 focus:ring-offset-2 cursor-pointer active:scale-[0.97] touch-manipulation min-h-[44px] sm:min-h-0; }
     .btn-primary { @apply bg-saddle text-white hover:bg-saddle-dark focus:ring-saddle shadow-xs; }
     .btn-secondary { @apply bg-white text-charcoal border border-sage/30 hover:bg-light-sage focus:ring-sage; }
     .btn-danger { @apply bg-error-red text-white hover:bg-error-red/90 focus:ring-error-red shadow-xs; }
     .btn-success { @apply bg-forest text-white hover:bg-forest-light focus:ring-sage shadow-xs; }
-    .btn-record { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-btn bg-meadow text-white hover:bg-meadow-dark focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-meadow shadow-xs cursor-pointer active:scale-[0.97] touch-manipulation min-h-[44px] sm:min-h-0 transition-all duration-150; }
+    .btn-record { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm sm:px-3 sm:py-1.5 sm:text-[13px] sm:leading-5 font-medium rounded-btn bg-meadow text-white hover:bg-meadow-dark focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-meadow shadow-xs cursor-pointer active:scale-[0.97] touch-manipulation min-h-[44px] sm:min-h-0 transition-all duration-150; }
     .btn-ghost { @apply text-sage hover:text-charcoal hover:bg-light-sage focus:ring-sage; }
     /* A button inside a card header or a row. */
-    .btn-sm { @apply px-2.5 py-1 text-xs gap-1 min-h-[36px] sm:min-h-0; }
+    .btn-sm { @apply px-2.5 py-1 text-xs sm:px-2.5 sm:py-1 sm:text-xs sm:leading-4 gap-1 min-h-[36px] sm:min-h-0; }
     .btn-xs { @apply px-2 py-1 text-xs rounded-sm; }
     /* Icon-only action button — 44px touch target on mobile, compact on desktop */
     .btn-icon, .btn-icon-danger { @apply inline-flex items-center justify-center w-11 h-11 sm:w-8 sm:h-8 shrink-0 rounded-btn text-sage hover:text-charcoal hover:bg-light-sage active:bg-light-sage/70 transition-colors duration-100 touch-manipulation; }
@@ -142,7 +142,7 @@
 
     /* App bar icon buttons — square, the same height as the search input, so
        search + filter + add read as one control strip. */
-    .btn-icon-base, .btn-icon-primary, .btn-icon-outline { @apply relative inline-flex items-center justify-center w-11 h-11 sm:w-9 sm:h-9 shrink-0 rounded-btn transition-all duration-150 focus:outline-hidden focus:ring-2 focus:ring-sage focus:ring-offset-2 active:scale-95 cursor-pointer touch-manipulation; }
+    .btn-icon-base, .btn-icon-primary, .btn-icon-outline { @apply relative inline-flex items-center justify-center w-11 h-11 sm:w-8 sm:h-8 shrink-0 rounded-btn transition-all duration-150 focus:outline-hidden focus:ring-2 focus:ring-sage focus:ring-offset-2 active:scale-95 cursor-pointer touch-manipulation; }
     .btn-icon-primary { @apply bg-saddle text-white shadow-xs hover:bg-saddle-dark focus:ring-saddle/40; }
     .btn-icon-outline { @apply bg-white text-sage border border-sage/30 hover:text-charcoal hover:bg-light-sage; }
     .btn-icon-outline.is-on { @apply bg-light-sage text-forest border-forest/40; }
@@ -168,10 +168,9 @@
        reads on both stripe colours. */
     .data-table { @apply min-w-full divide-y divide-light-sage; }
     .data-table thead { @apply bg-light-sage/60; }
-    .data-table th { @apply px-5 py-3 text-left text-xs font-semibold text-forest uppercase tracking-wider; }
-    .data-table td { @apply px-5 py-3.5 text-sm; }
+    .data-table th { @apply px-4 py-2 text-left text-[11px] font-semibold text-forest uppercase tracking-wider; }
+    .data-table td { @apply px-4 py-2 text-sm; }
     .data-table tbody tr { @apply border-b border-light-sage transition-colors duration-150 hover:bg-sage-50/80; }
-    .data-table tbody tr:nth-child(even) { @apply bg-parchment/60 hover:bg-sage-50/80; }
 
     /* Forms */
     .form-input { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-xs focus:outline-hidden focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150 min-h-[44px] sm:min-h-0; }
@@ -226,21 +225,23 @@
        promoted into the brand teal. */
     /* rounded-t matches the parent card so the tint never pokes past its corners
        on cards without overflow-hidden */
-    .section-header { @apply flex items-center justify-between px-5 lg:px-6 py-4 bg-sand-50 border-b border-sand-200 rounded-t-card; }
-    .section-title { @apply text-[15px] font-semibold text-forest font-heading; }
+    /* A thin header: 44px, the height of one row. It was 56px with a
+       15px title, which made each card start with a band of empty space. */
+    .section-header { @apply flex items-center justify-between gap-3 px-4 py-2 min-h-[44px] bg-sand-50 border-b border-sand-200 rounded-t-card; }
+    .section-title { @apply text-sm font-semibold text-forest font-heading; }
 
     /* Dashboard KPI cards — whole card is the link; numbers in mono with
        tabular figures so columns of digits align. Each card carries a 3px
        top accent (brand teal by default; templates override with
        border-t-saddle / border-t-info-blue / border-t-sage to colour-code
        the metric) so the KPI row reads with more colour confidence. */
-    .kpi-card { @apply block p-5 lg:p-6 no-underline; }
+    .kpi-card { @apply block px-4 py-3 no-underline; }
     .kpi-label { @apply text-[13px] font-medium text-charcoal-light; }
     /* Figures (money, counts) use the text fonts with tabular digits; the
        mono face is for codes and the small date labels (UX plan C3). */
-    .kpi-value { @apply font-heading tabular-nums text-4xl font-semibold tracking-[-0.02em] text-forest mt-2 leading-none; }
+    .kpi-value { @apply font-heading tabular-nums text-2xl font-semibold tracking-[-0.01em] text-forest mt-1 leading-tight; }
     /* min-h keeps all four cards equal height when only some have a meta line */
-    .kpi-meta { @apply text-xs text-sage mt-2 min-h-[1rem]; }
+    .kpi-meta { @apply text-xs text-sage mt-1 min-h-[1rem]; }
 
     /* App bar search — the box that reaches horses, owners and locations
        from every page. It fills its row, so it is taller and rounder than
@@ -275,6 +276,11 @@
     .qa-tile-label { @apply text-xs font-medium text-charcoal-light; }
     .qa-strip { @apply grid grid-cols-4 gap-2; }
     .qa-strip .qa-tile { @apply p-2; }
+    /* In the side card of a wide screen the shortcuts are a short list: the
+       icon, then the name, on one 40px row. Eight tall tiles took 370px. */
+    #quick-actions .qa-tile { @apply flex-row justify-start gap-2 px-2.5 py-1.5 min-h-[40px] text-left; }
+    #quick-actions .qa-tile-icon { @apply w-7 h-7 shrink-0; }
+    #quick-actions .qa-tile-icon svg { @apply w-3.5 h-3.5; }
 
     /* Health warning after a horse's name (UX plan H1): red when overdue,
        saddle when due within 14 days. The words are in the title and a
@@ -436,8 +442,7 @@
 
     /* Mobile list cards (cards < md, table at md+) — zebra to mirror the
        desktop table striping, so long lists stay scannable on phones */
-    .list-card { @apply relative flex items-start gap-3 px-4 py-3 active:bg-sand-50/60 transition-colors duration-100; }
-    .list-card:nth-child(even) { @apply bg-parchment/60; }
+    .list-card { @apply relative flex items-start gap-3 px-4 py-2.5 active:bg-sand-50/60 transition-colors duration-100; }
     .list-card-title { @apply font-medium text-charcoal text-sm leading-snug; }
     .list-card-meta { @apply text-xs text-sage mt-0.5; }
     /* Stretched link: makes the whole card tappable; sibling actions stack above via relative z-10 */
@@ -453,8 +458,6 @@
        pages opened from it, so their headings match. */
 
     .settings-page .page-subtitle { @apply text-xs; }
-    .settings-page .section-header { @apply px-4 lg:px-4 py-2 min-h-[44px] gap-3; }
-    .settings-page .section-title { @apply text-sm; }
 
     /* The way back to Settings from a page opened from it. */
     .settings-back { @apply inline-flex items-center gap-1 text-sm text-sage no-underline hover:text-forest transition-colors duration-100; }
@@ -509,6 +512,18 @@
     .settings-fold-title { @apply text-sm font-semibold text-charcoal truncate; }
     .settings-fold-count { @apply text-xs text-sage shrink-0; }
     .settings-fold .settings-row { @apply pl-9; }
+
+    /* A heading that folds the cards under it: a site on the Locations
+       page. The same memory as the Settings folds (settings_nav.js). */
+    .group-fold > summary { @apply flex items-center gap-2 py-1.5 min-h-[40px] cursor-pointer list-none select-none; }
+    .group-fold > summary::-webkit-details-marker { display: none; }
+    .group-fold > summary:focus-visible { @apply outline-2 outline-offset-2 outline-forest rounded-btn; }
+    .group-fold > summary .settings-fold-chevron { @apply transition-transform duration-100; }
+    .group-fold[open] > summary .settings-fold-chevron { @apply rotate-90; }
+    .group-fold-title { @apply text-sm font-semibold text-charcoal; }
+    .group-fold-meta { @apply text-xs text-sage whitespace-nowrap; }
+    .group-fold-rule { @apply flex-1 border-b border-light-sage; }
+    .group-fold[open] > summary { @apply mb-2; }
 
     /* One line of help for a whole card. */
     .settings-note { @apply px-4 py-1.5 text-xs text-sage border-b border-light-sage; }
@@ -669,8 +684,6 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
         textarea, select) { padding: 0.3125rem 0.625rem; }
     :is(.settings-page, form:has(.form-footer, .popup-footer)) select:not([multiple]):not([size]) { padding-right: 2rem; background-position: right 0.5rem center; }
     :is(.settings-page, form:has(.form-footer, .popup-footer)) .money-input input { padding-left: 1.75rem; }
-    /* Buttons that are not already small (.btn-sm). */
-    :is(.settings-page, .form-footer, .popup-footer) :is(.btn-primary, .btn-secondary, .btn-danger, .btn-success, .btn-ghost):not(.btn-sm) { padding: 0.3125rem 0.75rem; font-size: 0.8125rem; line-height: 1.25rem; }
 }
 
 /* Progress bar glow */
@@ -1306,13 +1319,13 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
    ══════════════════════════════════════════════════════════════════════════ */
 @layer components {
     /* One empty state for every list */
-    .empty-state { @apply px-6 py-14 text-center; }
-    .empty-state-compact { @apply rounded-none border-0 py-10; }
-    .empty-state-icon { @apply mx-auto grid h-14 w-14 place-items-center rounded-full bg-sand-50 text-saddle; }
+    .empty-state { @apply px-4 py-8 text-center; }
+    .empty-state-compact { @apply rounded-none border-0 py-6; }
+    .empty-state-icon { @apply mx-auto grid h-10 w-10 place-items-center rounded-full bg-sand-50 text-saddle; }
     .empty-state-icon.is-search { @apply bg-sage-50 text-sage; }
-    .empty-state-title { @apply mt-4 font-heading text-[15px] font-semibold text-charcoal; }
+    .empty-state-title { @apply mt-3 font-heading text-sm font-semibold text-charcoal; }
     .empty-state-body { @apply mx-auto mt-1 max-w-sm text-sm text-sage; }
-    .empty-state-actions { @apply mt-5 flex flex-wrap items-center justify-center gap-2; }
+    .empty-state-actions { @apply mt-4 flex flex-wrap items-center justify-center gap-2; }
 
     /* What changed: glyph, coat-dotted name chips, what happened, money */
     .log-day { @apply flex items-center gap-3 pb-1.5 pt-4 font-mono text-[10px] uppercase tracking-[.08em] text-sage; }

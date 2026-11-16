@@ -10,7 +10,7 @@
 </div>
 
 <!-- Filter Bar -->
-<div class="card px-5 py-4 mb-4">
+<div class="card px-4 py-3 mb-4">
     <form hx-boost="false"
           hx-get="{% url 'health_dashboard' %}"
           hx-target="#health-table-area" hx-select="unset"
@@ -79,7 +79,7 @@
             </div>
         </li>
         {% empty %}
-        <li class="py-12 text-center">
+        <li class="py-8 text-center">
             <p class="text-sm font-medium text-sage">No medical conditions recorded</p>
             <a href="{% url 'condition_create' %}" class="btn-primary mt-4 inline-flex">Add your first condition</a>
         </li>
@@ -122,7 +122,7 @@
                 {% empty %}
                 <tr>
                     <td colspan="5">
-                        <div class="py-12 text-center">
+                        <div class="py-8 text-center">
                             <p class="text-sm font-medium text-sage">No medical conditions recorded</p>
                             <a href="{% url 'condition_create' %}" class="btn-primary mt-4 inline-flex">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

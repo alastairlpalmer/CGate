@@ -1,6 +1,6 @@
 {% load ui_extras %}
 <!-- Filter Bar -->
-<div class="card px-5 py-4 mb-4">
+<div class="card px-4 py-3 mb-4">
     <form hx-boost="false"
           hx-get="{{ records_url }}"
           hx-target="#health-table-area" hx-select="unset"
@@ -65,7 +65,7 @@
             </div>
         </li>
         {% empty %}
-        <li class="py-12 text-center">
+        <li class="py-8 text-center">
             <p class="text-sm font-medium text-sage">No farrier visits recorded</p>
             {% if feature_access.health.full %}<a href="{% url 'farrier_create' %}" class="btn-primary mt-4 inline-flex">Add your first record</a>{% endif %}
         </li>
@@ -110,7 +110,7 @@
                 {% empty %}
                 <tr>
                     <td colspan="7">
-                        <div class="py-12 text-center">
+                        <div class="py-8 text-center">
                             <p class="text-sm font-medium text-sage">No farrier records yet</p>
                             {% if feature_access.health.full %}
                             <a href="{% url 'farrier_create' %}" class="btn-primary mt-4 inline-flex">

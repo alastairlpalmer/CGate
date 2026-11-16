@@ -37,7 +37,7 @@
             owners and locations from every page. What is left is filtering
             the list you are looking at.{% endcomment %}
             <div x-show="filtersOpen" x-collapse x-cloak>
-                <div class="card px-5 py-4">
+                <div class="card px-4 py-3">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label for="filter-location" class="dt-label mb-1">Location</label>
@@ -370,7 +370,7 @@
                 {% if not group.horses %}
                 <!-- An empty group is the point of "show empty", not a
                      missing row: say what the space is free for. -->
-                <div class="px-5 py-6 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-sage">
+                <div class="px-4 py-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-sage">
                     <span>No horses here.</span>
                     {% if group.kind == 'location' and group.pk %}
                     <a href="{% url 'location_arrive' group.pk %}" class="link tap-pad" @click.stop>Log an arrival</a>
@@ -411,7 +411,7 @@
                 All axis this card is the whole list, and the line under it
                 already says the same thing.{% endcomment %}
                 {% if group.hidden_here and grouped_horses|length > 1 %}
-                <p class="px-5 py-3 text-sm text-sage border-t border-light-sage">
+                <p class="px-4 py-3 text-sm text-sage border-t border-light-sage">
                     {{ group.hidden_here }} more here, not shown.
                 </p>
                 {% endif %}
@@ -441,7 +441,7 @@
     and says what it has stopped at; asking for the rest is one tap, and
     filtering or grouping is usually the better answer.
     {% endcomment %}
-    <div class="card px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+    <div class="card px-4 py-3 flex flex-wrap items-center justify-between gap-3">
         <p class="text-sm text-sage">
             Showing {{ rows_shown }} of {{ rows_total }} horses.
         </p>

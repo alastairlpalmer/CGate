@@ -19,7 +19,7 @@
         </div>
         <ul class="divide-y divide-light-sage">
             {% for task in failures %}
-            <li class="px-4 sm:px-5 py-3 space-y-2">
+            <li class="px-4 py-3 space-y-2">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <p class="text-sm font-medium text-charcoal">{{ task.short_name }}</p>
@@ -48,7 +48,7 @@
                 {% endif %}
             </li>
             {% empty %}
-            <li class="px-4 sm:px-5 py-6 text-sm text-sage">No failed tasks.</li>
+            <li class="px-4 py-4 text-sm text-sage">No failed tasks.</li>
             {% endfor %}
         </ul>
     </div>
@@ -59,7 +59,7 @@
         </div>
         <ul class="divide-y divide-light-sage">
             {% for item in schedule %}
-            <li class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3">
+            <li class="flex items-center justify-between gap-3 px-4 py-3">
                 <p class="text-sm text-charcoal min-w-0">{{ item.label }}</p>
                 <div class="text-right shrink-0">
                     {% if item.run %}

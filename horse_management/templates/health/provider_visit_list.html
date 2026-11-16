@@ -4,10 +4,10 @@
 {% block title %}Farrier: visits from the farrier's phone - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-4">
     {% include 'health/_farrier_header.html' with hub_tab='visits' %}
 
-    <div class="card px-5 py-4">
+    <div class="card px-4 py-3">
         <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
                 <label for="filter-provider" class="dt-label mb-1">Farrier</label>
@@ -31,7 +31,7 @@
     </div>
 
     {% if can_pay %}
-    <div class="card px-5 py-4 space-y-2">
+    <div class="card px-4 py-3 space-y-2">
         <h2 class="font-heading font-semibold">Monthly statements</h2>
         <ul class="flex flex-wrap gap-3">
             {% for p in providers %}

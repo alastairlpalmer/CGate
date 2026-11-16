@@ -17,7 +17,7 @@
             {% csrf_token %}
 
             {% if form.non_field_errors %}
-            <div class="p-5 pb-0">
+            <div class="p-4 pb-0">
                 <div class="p-3 bg-error-red-50 border border-error-red/20 rounded text-sm text-error-red">
                     {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
                 </div>

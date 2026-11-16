@@ -14,7 +14,7 @@ and documents=<queryset>:
     {% if documents %}
     <ul class="divide-y divide-light-sage">
         {% for doc in documents %}
-        <li class="flex items-center justify-between gap-3 px-5 py-3">
+        <li class="flex items-center justify-between gap-3 px-4 py-3">
             <div class="min-w-0">
                 <a href="{{ doc.file.url }}" target="_blank" rel="noopener" class="link text-sm font-medium tap-pad" hx-boost="false">{{ doc.title }}</a>
                 <p class="text-xs text-sage mt-0.5">
@@ -46,6 +46,6 @@ and documents=<queryset>:
         {% endfor %}
     </ul>
     {% else %}
-    <div class="p-5 text-sm text-sage">No documents yet{% if horse and feature_access.horses.full or not horse and feature_access.owners.full %} — add a passport scan or insurance certificate{% endif %}.</div>
+    <div class="p-4 text-sm text-sage">No documents yet{% if horse and feature_access.horses.full or not horse and feature_access.owners.full %} — add a passport scan or insurance certificate{% endif %}.</div>
     {% endif %}
 </div>

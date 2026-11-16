@@ -3,7 +3,7 @@
 {% block title %}Match fields - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6" x-data>
+<div class="space-y-4" x-data>
     <div class="page-header">
         <div class="min-w-0">
             <a href="{% url 'boundary_import_upload' %}?site={{ site|urlencode }}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest transition-colors duration-100 mb-1 tap-pad">
@@ -48,7 +48,7 @@
         {% endif %}
 
         {% for row in rows %}
-        <div class="px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6 items-start" id="shape-{{ row.shape.index }}" data-testid="shape-row">
+        <div class="px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-3 items-start" id="shape-{{ row.shape.index }}" data-testid="shape-row">
             <!-- Left: the shape -->
             <div class="flex items-start gap-3 min-w-0">
                 <span class="board-count shrink-0">{{ row.shape.index }}</span>

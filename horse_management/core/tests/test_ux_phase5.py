@@ -294,3 +294,74 @@ class PageTitleTests(SimpleTestCase):
                 if large.search(line):
                     offenders.append(f'{name}:{number}')
         self.assertEqual(offenders, [], 'Use class="page-title" for a page heading.')
+
+
+class LocationSiteFoldTests(TestCase):
+    """Each site on the Locations page folds, as on the Settings page."""
+
+    def setUp(self):
+        from django.utils import timezone
+
+        from core.models import Horse, Location, Owner, Placement, RateType
+        self.client.force_login(make_admin())
+        self.busy = Location.objects.create(name='Top Field', site='Home')
+        Location.objects.create(name='Far Field', site='Away')
+        Location.objects.create(name='Low Field', site='Away')
+        Placement.objects.create(
+            horse=Horse.objects.create(name='Bramble'), owner=Owner.objects.create(name='Jo Smith'),
+            location=self.busy, start_date=timezone.localdate(),
+            rate_type=RateType.objects.create(name='Grass', daily_rate=5),
+        )
+
+    def fold(self, body, site):
+        import re
+        return re.search(r'<details class="group-fold" x-data="settingsFold" data-fold-key="locations:%s"( open)?>' % site, body)
+
+    def test_a_site_with_horses_opens_and_an_empty_site_is_one_line(self):
+        body = self.client.get(reverse('location_list')).content.decode()
+        self.assertEqual(self.fold(body, 'Home').group(1), ' open')
+        self.assertIsNone(self.fold(body, 'Away').group(1))
+        self.assertIn('1 horse &middot; 1 location', body)
+        self.assertIn('0 horses &middot; 2 locations', body)
+        # The cards of a closed site are still on the page, for the reader who opens it.
+        self.assertIn('Far Field', body)
+
+    def test_a_search_opens_every_site_it_shows(self):
+        body = self.client.get(reverse('location_list'), {'search': 'Far'}).content.decode()
+        self.assertEqual(self.fold(body, 'Away').group(1), ' open')
+
+    def test_a_yard_with_one_site_opens_it(self):
+        # One site, with no horse on it: still open, there is nothing else to show.
+        from core.models import Location
+        Location.objects.filter(site='Home').update(site='Away')
+        from core.models import Placement
+        Placement.objects.all().delete()
+        body = self.client.get(reverse('location_list')).content.decode()
+        self.assertEqual(self.fold(body, 'Away').group(1), ' open')
+        self.assertIn('0 horses &middot; 3 locations', body)
+
+
+class DensityTests(SimpleTestCase):
+    """The shared parts are the compact size (static/css/input.css)."""
+
+    def rule(self, selector):
+        import re
+        from pathlib import Path
+
+        from django.conf import settings
+        source = (Path(settings.BASE_DIR) / 'static' / 'css' / 'input.css').read_text()
+        return re.search(r'^\s*%s \{ @apply ([^;]+); \}' % re.escape(selector), source, re.M).group(1).split()
+
+    def test_card_headers_tables_and_tiles(self):
+        self.assertIn('py-2', self.rule('.section-header'))
+        self.assertIn('text-sm', self.rule('.section-title'))
+        self.assertIn('py-2', self.rule('.data-table td'))
+        self.assertIn('text-2xl', self.rule('.kpi-value'))
+
+    def test_table_rows_have_no_stripes(self):
+        from pathlib import Path
+
+        from django.conf import settings
+        source = (Path(settings.BASE_DIR) / 'static' / 'css' / 'input.css').read_text()
+        self.assertNotIn('.data-table tbody tr:nth-child(even)', source)
+        self.assertNotIn('.list-card:nth-child(even)', source)

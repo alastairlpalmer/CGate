@@ -4,7 +4,7 @@
 {% block title %}Breeding Records - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-4">
 
     <!-- Page Header -->
     {% comment %}The <h1> shows from `lg` only. On a phone the tab bar names the
@@ -52,7 +52,7 @@
     </div>
 
     <!-- Filter Bar -->
-    <div class="card px-4 py-3 sm:px-5 sm:py-4">
+    <div class="card px-4 py-3 sm:py-4">
         <form method="get" class="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
                 <label class="dt-label mb-1" for="filter-mare">Mare</label>
@@ -97,7 +97,7 @@
         </form>
     </div>
 
-    <div id="list-results" class="space-y-6">
+    <div id="list-results" class="space-y-4">
 
     <!-- Breeding Record Table -->
     <div class="card overflow-hidden">
@@ -152,7 +152,7 @@
                 {% endif %}
             </li>
             {% empty %}
-            <li class="py-12 text-center">
+            <li class="py-8 text-center">
                 <p class="text-sm font-medium text-sage">No breeding records found</p>
                 {% if can_edit %}
                 <a href="{% url 'breeding_create' %}" hx-get="{% url 'breeding_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record a covering" class="btn-primary mt-4 inline-flex">Record the first covering</a>
@@ -242,7 +242,7 @@
                     {% empty %}
                     <tr>
                         <td colspan="{% if can_edit %}8{% else %}7{% endif %}">
-                            <div class="py-12 text-center">
+                            <div class="py-8 text-center">
                                 <svg class="mx-auto h-12 w-12 text-sage/50" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/>
                                 </svg>

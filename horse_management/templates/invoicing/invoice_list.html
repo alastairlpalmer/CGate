@@ -4,7 +4,7 @@
 {% block title %}Invoices - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6"
+<div class="space-y-4"
      x-data="{ invCount: 0, refreshInv() { this.invCount = new Set(Array.from(document.querySelectorAll('input[data-invoice-cb]:checked'), cb => cb.value).filter(Boolean)).size } }"
      @htmx:after-swap.camel.window="refreshInv()">
 
@@ -53,7 +53,7 @@
                 {% include 'includes/search_bar.html' with placeholder="Filter invoices by owner or number…" action_url=request.path %}
             </div>
             <div x-show="filtersOpen" x-collapse x-cloak>
-            <div class="card px-4 py-3 sm:px-5 sm:py-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="card px-4 py-3 sm:py-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                     <label for="filter-owner" class="dt-label mb-1">Owner</label>
                     <select id="filter-owner" name="owner" class="form-select" data-filter-field
@@ -117,11 +117,11 @@
          style="--split-pane-default: 30rem">
     <div class="split-view-main">
 
-    <div id="list-results" class="space-y-6">
+    <div id="list-results" class="space-y-4">
 
     {% if invoices %}
     <!-- Filtered totals (whole result set, not just this page) -->
-    <div class="card px-4 py-3 sm:px-5 flex flex-wrap items-center gap-x-6 gap-y-1.5 text-sm">
+    <div class="card px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-1.5 text-sm">
         <span class="text-sage">{{ summary_count }} invoice{{ summary_count|pluralize }}</span>
         <span class="text-charcoal">Invoiced: <strong class="tabular-nums">{{ summary_invoiced|gbp }}</strong></span>
         <span class="{% if summary_outstanding > 0 %}text-error-red{% else %}text-charcoal{% endif %}">
@@ -318,7 +318,7 @@
          x-transition:leave-end="translate-y-full opacity-0"
          x-cloak
          class="fixed bulk-bar-above-tabs left-0 lg:left-64 right-0 z-40 bg-white border-t border-light-sage shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
+        <div class="max-w-7xl mx-auto px-4 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
             <div class="flex items-center gap-3">
                 <span class="text-sm font-medium text-charcoal"
                       x-text="invCount + ' invoice' + (invCount !== 1 ? 's' : '') + ' selected'"></span>
