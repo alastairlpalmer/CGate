@@ -599,6 +599,32 @@ Not in step 2:
 - **Not tested in Safari or Firefox on a computer.** Chromium only.
 - **Voice recording on a computer** needs a microphone and the browser's permission, as on the phone.
 
+## 7i. The review after the first use of clients and the computer
+
+A second reader went through the app's code for faults, and each screen was looked at again on a phone. Found and corrected:
+
+| Found | Corrected |
+|---|---|
+| The vet starts a visit on the phone and goes on at a computer: two visits, and so two bills, for one client and one day. | The app joins the vet's own visit that is open for that client today in the practice's records. It reads the list of visits at start and after a download. |
+| A visit that was finished on another device stayed "Visit open" on this phone, and each later note went on a bill of its own. | A visit that the practice's list says is finished is finished on this phone too. The next note starts a new visit. |
+| Each sync in the background drew the horse screen again: the keyboard closed while the vet typed, a half-typed price was rewritten, and a recording stopped. With no signal this was once a minute. | A sync that sent nothing draws only the top bar. A note in progress keeps its boxes; its history is drawn again only when a note was sent. |
+| A download that ran at the same time as a sync could drop a client or a horse that the sync had just sent. | They never run together: a download waits for the sync, and a sync waits for the download. |
+| A client or a horse saved twice while the first save was on its way lost the second save, or was sent as the wrong kind of record. | The kind is fixed when the queue is made. A newer save stays in the queue. |
+| Sign out and Clear this phone warned only about notes that were not sent. | They name the notes, the clients and horses, and the finished visits that are not sent. |
+| Clear, Sign out or Remove during a send: the send put the note back. | They are refused while the phone is sending, with a line that says so. |
+| Another person who signed in on the same phone saw the notes of the person before. | When all of the first person's work is sent, the phone is emptied of it before the new download. When it is not, the download is refused, as before; now for unsent clients, horses and finished visits too. |
+| The Visits screen kept "Not sent yet" on notes that were sent, when the signal dropped after the send. | The screen is drawn again when the list cannot be read. |
+| A note of nearly 5,000 characters with line breaks was refused for good: the browser sends a line break as two characters. | The server counts a line break as one, as the phone does. |
+| A client or a horse that the server refused left the phone at the next download, and its notes had no horse. | It stays, marked "not saved". |
+| A phone from before the client list: Finish visit did not close the visit of the yard. | The visit is found by its own id. |
+| The Bills page moved sideways on a phone, and looked like another product. | It fits, and has the look of the app. The setting says it is for every client. |
+| On a client with many horses, Visit history and Add horse were under the last horse. | They are at the top. |
+| The five recheck choices took two lines. | One line. |
+
+**The download that opens the app is at its limit: 39.9 KB of 40 KB** (decision 27). To stay under it, the code for the two things that need a signal, a change to the price list and sign out, moved to `static/cvet/online.js`. The phone fetches it the first time one of them is used, and keeps it. The next function for the phone needs a decision first: raise the limit (50 KB is still small), or take something out.
+
+Not corrected, on purpose: a note that waits on the phone for a visit that was finished elsewhere still goes to that visit when it is sent, and the server puts it on a further bill (sync rule 7: nothing the vet saved is refused).
+
 ## 8. The test on Tim's phone
 
 ### Set-up (once, by an administrator)
