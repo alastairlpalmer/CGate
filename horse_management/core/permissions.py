@@ -145,6 +145,39 @@ def feature_required(feature, level=LEVEL_FULL):
     return decorator
 
 
+class SettingsReturnMixin:
+    """A form opened from the Settings page goes back to the Settings page.
+
+    Service providers, vaccination types and locations each have a list
+    page of their own, and their forms return to it. The Settings page
+    lists them too. Its links add ``?from=settings``; the form then saves,
+    cancels and steps back to Settings, in the group it was opened from
+    (``settings_group``). The value is a fixed word, never an address, so
+    it cannot send the reader to another site.
+    """
+
+    settings_group = ''
+
+    def opened_from_settings(self):
+        return self.request.GET.get('from') == 'settings'
+
+    def settings_url(self):
+        from django.urls import reverse
+        url = reverse('app_settings')
+        return f'{url}#{self.settings_group}' if self.settings_group else url
+
+    def get_success_url(self):
+        if self.opened_from_settings():
+            return self.settings_url()
+        return super().get_success_url()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['from_settings'] = self.opened_from_settings()
+        context['settings_group'] = self.settings_group
+        return context
+
+
 class _FeatureLevels:
     """Template-friendly bools for one feature: ``.view`` / ``.full``."""
 

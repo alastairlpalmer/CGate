@@ -15,7 +15,8 @@
 @media (max-width: 640px) { .seg-control { width: 100%; } .seg-option { flex: 1; text-align: center; } }
 </style>
 
-<div class="max-w-2xl mx-auto space-y-6" x-data="{ usersLevel: '{{ form.access_users.value }}' }">
+<div class="max-w-2xl mx-auto space-y-4 settings-page" x-data="{ usersLevel: '{{ form.access_users.value }}' }">
+    {% include 'includes/settings_back.html' with group='set-roles' %}
 
     <div class="page-header">
         <div>
@@ -98,7 +99,7 @@
                 {% if form.non_field_errors %}<p class="text-sm text-error-red">{{ form.non_field_errors.0 }}</p>{% endif %}
             </div>
             <footer class="form-footer">
-                <a href="{% url 'app_settings' %}" class="btn-secondary">Cancel</a>
+                <a href="{% url 'app_settings' %}#set-roles" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">{% if object %}Save Role{% else %}Create Role{% endif %}</button>
             </footer>
         </div>

@@ -4,7 +4,8 @@
 {% block title %}{% if object %}Edit User{% else %}Add User{% endif %} - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-lg mx-auto space-y-6">
+<div class="max-w-lg mx-auto space-y-4 settings-page">
+    {% include 'includes/settings_back.html' with group='set-users' %}
 
     <div class="page-header">
         <div>
@@ -66,7 +67,7 @@
                 {% if form.non_field_errors %}<p class="text-sm text-error-red">{{ form.non_field_errors.0 }}</p>{% endif %}
             </fieldset>
             <footer class="form-footer">
-                <a href="{% url 'app_settings' %}" class="btn-secondary">Cancel</a>
+                <a href="{% url 'app_settings' %}#set-users" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">{% if object %}Save Changes{% else %}Add User{% endif %}</button>
             </footer>
         </form>
