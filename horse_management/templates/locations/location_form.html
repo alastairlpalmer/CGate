@@ -3,7 +3,7 @@
 {% block title %}{% if object %}Edit {{ object.name }}{% elif adding_barn %}Add Barn{% else %}Add Location{% endif %} - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6{% if from_settings %} settings-page{% endif %}">
+<div class="max-w-2xl mx-auto {% if from_settings %}space-y-4 settings-page{% else %}space-y-6{% endif %}">
     {% if from_settings %}{% include 'includes/settings_back.html' with group=settings_group %}{% endif %}
 
     <!-- Page Header -->

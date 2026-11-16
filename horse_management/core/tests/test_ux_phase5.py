@@ -180,3 +180,30 @@ class SettingsCompactTests(TestCase):
                      'settings-back', 'settings-label', 'settings-row-state', 'settings-group'):
             with self.subTest(name=name):
                 self.assertIn(f'.{name}', css)
+
+    def test_the_forms_opened_from_settings_are_compact(self):
+        # The compact form rules hang on .settings-page (static/css/input.css,
+        # "Compact forms on the Settings pages"). A provider and a
+        # vaccination type are Settings records, so their forms always carry
+        # it. A location has a page of its own: its form is compact only
+        # when it is opened from Settings.
+        from pathlib import Path
+
+        from django.conf import settings
+
+        from core.models import Location
+        css = (Path(settings.BASE_DIR) / 'static' / 'css' / 'styles.css').read_text()
+        self.assertIn('.settings-page fieldset', css)
+        self.assertIn('.settings-page label[for]', css)
+        field = Location.objects.create(name='Top Field', site='Home')
+        always = [reverse('user_create'), reverse('role_create'), reverse('rate_type_create'),
+                  reverse('service_item_create'), reverse('provider_create'),
+                  reverse('vaccination_type_create'), reverse('account_security')]
+        for address in always:
+            with self.subTest(address=address):
+                self.assertContains(self.client.get(address), 'settings-page"')
+        edit = reverse('location_update', args=[field.pk])
+        self.assertContains(self.client.get(edit + '?from=settings'), 'settings-page"')
+        self.assertNotContains(self.client.get(edit), 'settings-page')
+        # A page that is not a Settings page keeps the app's standard form.
+        self.assertNotContains(self.client.get(reverse('horse_create')), 'settings-page')
