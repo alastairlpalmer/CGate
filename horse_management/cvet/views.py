@@ -105,6 +105,10 @@ STATIC_FILES = (
     'icons/icon-192.png',
     'icons/apple-touch-icon.png',
 )
+# What only a wide screen needs (docs/C_VET_PLAN.md, section 7h). The page
+# asks for them when it is wide; the service worker stores them then, and
+# not before, so a phone never downloads them.
+WIDE_FILES = ('cvet/desk.css', 'cvet/desk.js')
 
 
 def _user_name(user):
@@ -139,6 +143,8 @@ def app(request):
             'visits_url': reverse('cvet:api_visits'),
             # The phone adds "<file id>/".
             'files_url': f"{reverse('cvet:app')}api/files/",
+            'desk_css': static_v(WIDE_FILES[0]),
+            'desk_js': static_v(WIDE_FILES[1]),
             'bills_url': reverse('cvet:bill_list'),
             'login_url': f"{reverse('login')}?next={reverse('cvet:app')}",
             'logout_url': reverse('logout'),
@@ -163,12 +169,13 @@ def service_worker(request):
     /static/ could only control pages under /static/. No sign-in is
     needed: it holds a list of addresses and nothing else.
     """
-    # json.dumps writes each value as a JavaScript literal. All three are
+    # json.dumps writes each value as a JavaScript literal. All four are
     # made here, from the deploy version and the URL table.
     response = render(request, 'cvet/sw.js', {
         'version': json.dumps(_VERSION),
         'shell_url': json.dumps(reverse('cvet:app')),
         'asset_urls': json.dumps([static_v(path) for path in STATIC_FILES]),
+        'wide_urls': json.dumps([static_v(path) for path in WIDE_FILES]),
     }, content_type='text/javascript')
     # The browser checks for a new worker on each visit. It must get the
     # current one, not a stored copy.
