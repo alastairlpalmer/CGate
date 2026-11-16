@@ -23,7 +23,8 @@ opens the horse page instead of the viewer.
 
 Args:
     horse  – Horse instance (required)
-    size   – 'sm' (32px, default), 'md' (40px), 'lg' (96px hero)
+    size   – 'sm' (default: 32px on a phone card, 24px in a table row from md),
+             'md' (40px), 'lg' (96px hero)
 {% endcomment %}
 {% if horse.photo %}
     {% if size == 'lg' %}
@@ -39,7 +40,7 @@ Args:
     {% else %}
     <img src="{% if horse.photo_thumb %}{{ horse.photo_thumb.url }}{% else %}{{ horse.photo.url }}{% endif %}"
          alt="" width="{% if size == 'md' %}40{% else %}32{% endif %}" height="{% if size == 'md' %}40{% else %}32{% endif %}"
-         class="{% if size == 'md' %}w-10 h-10{% else %}w-8 h-8{% endif %} rounded-full object-cover shrink-0 ring-1 ring-light-sage cursor-zoom-in hover:ring-2 hover:ring-forest transition-shadow relative z-10"
+         class="{% if size == 'md' %}w-10 h-10{% else %}w-8 h-8 md:w-6 md:h-6{% endif %} rounded-full object-cover shrink-0 ring-1 ring-light-sage cursor-zoom-in hover:ring-2 hover:ring-forest transition-shadow relative z-10"
          loading="lazy" decoding="async"
          role="button" tabindex="0" title="View photo full screen"
          aria-label="View the photo of {{ horse.name }} full screen"
@@ -62,9 +63,9 @@ Args:
         <svg class="w-5 h-5 opacity-90" aria-hidden="true"><use href="#i-horse"/></svg>
     </div>
     {% else %}
-    <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 ring-1 ring-black/10"
+    <div class="w-8 h-8 md:w-6 md:h-6 rounded-full flex items-center justify-center shrink-0 ring-1 ring-black/10"
          style="background:{{ coat.0 }};color:{{ coat.1 }}" title="{{ horse.get_color_display }}">
-        <svg class="w-4 h-4 opacity-90" aria-hidden="true"><use href="#i-horse"/></svg>
+        <svg class="w-4 h-4 md:w-3.5 md:h-3.5 opacity-90" aria-hidden="true"><use href="#i-horse"/></svg>
     </div>
     {% endif %}
     {% endwith %}

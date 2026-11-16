@@ -29,25 +29,29 @@ test('pickSection: no groups, no answer', () => {
     assert.equal(pickSection([], '#you', '', ''), '');
 });
 
-test('parseFolds: what the store holds becomes a list of keys', () => {
-    assert.deepEqual(parseFolds('["site:Home","archived-locations"]'), ['site:Home', 'archived-locations']);
-    assert.deepEqual(parseFolds(null), []);
-    assert.deepEqual(parseFolds(''), []);
+test('parseFolds: what the store holds becomes a record of folds', () => {
+    assert.deepEqual(parseFolds('{"site:Home":true,"archived-locations":false}'), { 'site:Home': true, 'archived-locations': false });
+    assert.deepEqual(parseFolds(null), {});
+    assert.deepEqual(parseFolds(''), {});
 });
 
-test('parseFolds: a damaged store is an empty list, not an error', () => {
-    assert.deepEqual(parseFolds('{not json'), []);
-    assert.deepEqual(parseFolds('{"a":1}'), []);
-    assert.deepEqual(parseFolds('["site:Home", 3, null]'), ['site:Home']);
+test('parseFolds: a damaged store is an empty record, not an error', () => {
+    assert.deepEqual(parseFolds('{not json'), {});
+    assert.deepEqual(parseFolds('["site:Home"]'), {});
+    assert.deepEqual(parseFolds('{"site:Home":true,"x":3,"y":null,"z":"open"}'), { 'site:Home': true });
 });
 
-test('withFold: a fold that opens is added once', () => {
-    assert.deepEqual(withFold([], 'site:Home', true), ['site:Home']);
-    assert.deepEqual(withFold(['site:Home'], 'site:Home', true), ['site:Home']);
-    assert.deepEqual(withFold(['site:Home'], 'site:Away', true), ['site:Home', 'site:Away']);
+test('withFold: a fold that opens or closes is kept, and the old record is not changed', () => {
+    const before = { 'site:Home': true };
+    assert.deepEqual(withFold(before, 'site:Away', true), { 'site:Home': true, 'site:Away': true });
+    assert.deepEqual(withFold(before, 'site:Home', false), { 'site:Home': false });
+    assert.deepEqual(before, { 'site:Home': true });
 });
 
-test('withFold: a fold that closes is taken out', () => {
-    assert.deepEqual(withFold(['site:Home', 'site:Away'], 'site:Home', false), ['site:Away']);
-    assert.deepEqual(withFold([], 'site:Home', false), []);
+test('withFold: a closed fold is not the same as an untouched one', () => {
+    // A site that opens by itself must stay closed after the reader closes it.
+    const folds = withFold({}, 'locations:Main yard', false);
+    assert.equal(Object.prototype.hasOwnProperty.call(folds, 'locations:Main yard'), true);
+    assert.equal(folds['locations:Main yard'], false);
+    assert.equal(Object.prototype.hasOwnProperty.call(folds, 'locations:Other'), false);
 });

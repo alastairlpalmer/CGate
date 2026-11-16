@@ -17,7 +17,7 @@ Needs ``hub_tab``: 'records', 'visits' or 'list'.
         {% endif %}
     </div>
 </div>
-<nav class="border-b border-light-sage -mb-px flex gap-6 overflow-x-auto" aria-label="Farrier" data-farrier-tabs>
+<nav class="border-b border-light-sage -mb-px flex gap-4 overflow-x-auto" aria-label="Farrier" data-farrier-tabs>
     {% if feature_access.health.view %}
     <a href="{% url 'farrier_list' %}" class="{% if hub_tab == 'records' %}tab-underline-active{% else %}tab-underline-inactive{% endif %} min-w-[44px] justify-center px-1" data-farrier-tab="records"{% if hub_tab == 'records' %} aria-current="page"{% endif %}>Records</a>
     {% endif %}

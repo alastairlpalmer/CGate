@@ -80,11 +80,11 @@ from 30rem, two rows of 7 narrower than that.
         {% endfor %}
     </ul>
     {% if upcoming.more_visits %}
-    <p class="border-t border-light-sage px-5 py-2.5 text-xs text-sage">
+    <p class="border-t border-light-sage px-4 py-2.5 text-xs text-sage">
         {{ upcoming.more_visits }} more &middot; <a href="{% url 'health_dashboard' %}" class="link">Health overview</a>
     </p>
     {% endif %}
     {% elif not upcoming.total %}
-    <p class="border-t border-light-sage px-5 py-5 text-sm text-sage">Nothing is dated in the next two weeks.</p>
+    <p class="border-t border-light-sage px-4 py-4 text-sm text-sage">Nothing is dated in the next two weeks.</p>
     {% endif %}
 </div>

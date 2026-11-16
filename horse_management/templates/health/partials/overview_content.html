@@ -1,8 +1,8 @@
 {% load ui_extras %}
 
 <!-- Stat Cards -->
-<div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-    <div class="card p-5 lg:p-6">
+<div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+    <div class="card p-4">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full {% if stat_overdue_vax > 0 %}bg-error-red-50{% else %}bg-light-sage{% endif %} flex items-center justify-center shrink-0">
                 <svg class="w-5 h-5 {% if stat_overdue_vax > 0 %}text-error-red{% else %}text-sage{% endif %}" aria-hidden="true"><use href="#i-syringe"/></svg>
@@ -13,7 +13,7 @@
             </div>
         </div>
     </div>
-    <div class="card p-5 lg:p-6">
+    <div class="card p-4">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full {% if stat_vet_followups > 0 %}bg-info-blue-50{% else %}bg-light-sage{% endif %} flex items-center justify-center shrink-0">
                 <svg class="w-5 h-5 {% if stat_vet_followups > 0 %}text-info-blue{% else %}text-sage{% endif %}" aria-hidden="true"><use href="#i-stethoscope"/></svg>
@@ -24,7 +24,7 @@
             </div>
         </div>
     </div>
-    <div class="card p-5 lg:p-6">
+    <div class="card p-4">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full {% if stat_high_eggs > 0 %}bg-error-red-50{% else %}bg-light-sage{% endif %} flex items-center justify-center shrink-0">
                 <svg class="w-5 h-5 {% if stat_high_eggs > 0 %}text-error-red{% else %}text-sage{% endif %}" aria-hidden="true"><use href="#i-egg"/></svg>
@@ -37,7 +37,7 @@
     </div>
 </div>
 
-<div class="space-y-6 mt-6">
+<div class="space-y-4 mt-4">
 
     <!-- Action Required -->
     {% if action_required %}
@@ -134,7 +134,7 @@
 
     <!-- Monitoring -->
     {% if active_conditions or high_egg_counts %}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <!-- Active Conditions -->
         <div class="card overflow-hidden">
             <div class="section-header">
@@ -144,7 +144,7 @@
             {% if active_conditions %}
             <ul class="divide-y divide-light-sage">
                 {% for c in active_conditions %}
-                <li class="px-5 py-3 flex items-center justify-between">
+                <li class="px-4 py-3 flex items-center justify-between">
                     <div>
                         <span class="inline-flex items-center gap-2">{% include 'horses/_coat_dot.html' with horse=c.horse %}<a href="{% url 'horse_detail' c.horse.pk %}" class="link text-sm font-medium tap-pad">{{ c.horse.name }}</a></span>
                         <p class="text-xs text-sage mt-0.5">{{ c.name }}</p>
@@ -154,7 +154,7 @@
                 {% endfor %}
             </ul>
             {% else %}
-            <p class="px-5 py-6 text-sm text-sage text-center">No active conditions</p>
+            <p class="px-4 py-4 text-sm text-sage text-center">No active conditions</p>
             {% endif %}
         </div>
 
@@ -167,7 +167,7 @@
             {% if high_egg_counts %}
             <ul class="divide-y divide-light-sage">
                 {% for ec in high_egg_counts %}
-                <li class="px-5 py-3 flex items-center justify-between">
+                <li class="px-4 py-3 flex items-center justify-between">
                     <div>
                         <span class="inline-flex items-center gap-2">{% include 'horses/_coat_dot.html' with horse=ec.horse %}<a href="{% url 'horse_detail' ec.horse.pk %}" class="link text-sm font-medium tap-pad">{{ ec.horse.name }}</a></span>
                         <p class="text-xs text-sage mt-0.5">{{ ec.date|ago_label }} &middot; <span class="text-error-red font-semibold">{{ ec.count }} EPG</span></p>
@@ -177,7 +177,7 @@
                 {% endfor %}
             </ul>
             {% else %}
-            <p class="px-5 py-6 text-sm text-sage text-center">No high counts in last 90 days</p>
+            <p class="px-4 py-4 text-sm text-sage text-center">No high counts in last 90 days</p>
             {% endif %}
         </div>
     </div>
@@ -185,7 +185,7 @@
 
     {% if not action_required and not coming_up and not active_conditions and not high_egg_counts %}
     <div class="card">
-        <div class="px-5 py-12 text-center">
+        <div class="px-4 py-8 text-center">
             <svg class="mx-auto h-12 w-12 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>

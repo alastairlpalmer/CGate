@@ -4,7 +4,7 @@
 {% block title %}Invoice {{ invoice.invoice_number }} - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-4">
 
     <!-- Back link, as on the horse page: the way out to the list -->
     <a href="{% url 'invoice_list' %}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest transition-colors group tap-pad">
@@ -151,14 +151,14 @@
     </div>
 
     <!-- Info Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         <!-- Details Card -->
         <div class="card">
             <div class="section-header">
                 <h3 class="section-title">Details</h3>
             </div>
-            <div class="p-5 lg:p-6">
+            <div class="p-4">
                 <dl class="space-y-4">
                     <div>
                         <dt class="dt-label">Status</dt>
@@ -218,7 +218,7 @@
             <div class="section-header">
                 <h3 class="section-title">Bill To</h3>
             </div>
-            <div class="p-5 lg:p-6">
+            <div class="p-4">
                 <p class="text-sm font-medium text-charcoal">{{ invoice.owner.name }}</p>
                 {% if invoice.owner.address %}
                 <p class="mt-1 text-sm text-sage whitespace-pre-line">{{ invoice.owner.address }}</p>
@@ -235,7 +235,7 @@
             <div class="section-header">
                 <h3 class="section-title">Balance</h3>
             </div>
-            <div class="p-5 lg:p-6">
+            <div class="p-4">
                 <p class="dt-label">{% if amount_paid > 0 %}Balance due{% else %}Amount due{% endif %}</p>
                 <p class="mt-1 font-heading text-3xl font-semibold tracking-[-0.02em] tabular-nums {% if balance_due > 0 and invoice.is_overdue and invoice.status != 'draft' %}text-error-red{% else %}text-charcoal{% endif %}">{{ balance_due|gbp }}</p>
                 <dl class="mt-4 space-y-2 text-sm">
@@ -334,7 +334,7 @@
         {% if payments %}
         <ul class="divide-y divide-light-sage">
             {% for payment in payments %}
-            <li class="flex items-center justify-between gap-3 px-5 py-3">
+            <li class="flex items-center justify-between gap-3 px-4 py-3">
                 <div class="min-w-0">
                     <p class="text-sm font-medium text-charcoal">
                         {{ payment.amount|gbp }}
@@ -365,12 +365,12 @@
             {% endfor %}
         </ul>
         {% else %}
-        <div class="p-5 text-sm text-sage">No payments recorded yet.</div>
+        <div class="p-4 text-sm text-sage">No payments recorded yet.</div>
         {% endif %}
         {% if voided_payments %}
         <ul class="divide-y divide-light-sage border-t border-light-sage bg-parchment/50" aria-label="Voided payments">
             {% for payment in voided_payments %}
-            <li class="flex items-center justify-between gap-3 px-5 py-3">
+            <li class="flex items-center justify-between gap-3 px-4 py-3">
                 <div class="min-w-0">
                     <p class="text-sm text-sage"><span class="line-through">{{ payment.amount|gbp }} &middot; {{ payment.get_method_display }} &middot; {{ payment.date|date:"j M Y" }}</span> <span class="badge-neutral">Voided</span></p>
                     <p class="text-xs text-sage mt-0.5">{{ payment.void_reason }} &middot; {{ payment.voided_by.email|default:payment.voided_by.username|default:"System" }}, {{ payment.voided_at|date:"j M Y, H:i" }}</p>
@@ -394,7 +394,7 @@
         <div class="section-header">
             <h3 class="section-title">Notes</h3>
         </div>
-        <div class="p-5 lg:p-6">
+        <div class="p-4">
             <p class="text-sm text-charcoal-light">{{ invoice.notes }}</p>
         </div>
     </div>

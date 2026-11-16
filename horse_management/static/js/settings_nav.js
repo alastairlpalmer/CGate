@@ -13,9 +13,10 @@
  *      where you were;
  *   3. else the first.
  *
- * Groups of rows that fold (a site and its locations) stay open in this
- * browser tab: Archive and Delete reload the page, and the site the reader
- * was working in must not close under them.
+ * Groups that fold (a site and its locations, here and on the Locations
+ * page) stay as the reader left them in this browser tab: Archive and
+ * Delete reload the page, and the site the reader was working in must not
+ * close under them.
  */
 (function () {
     'use strict';
@@ -43,38 +44,48 @@
         try { window.sessionStorage.setItem(STORE_KEY, id); } catch (err) { /* private mode */ }
     }
 
-    // The open folds, as a list of keys. `raw` is what the store holds.
+    // What the reader did to each fold: { key: true (opened) or false
+    // (closed) }. A fold the reader has not touched is not in it, and the
+    // page decides if it starts open. `raw` is what the store holds.
     function parseFolds(raw) {
+        var out = {};
         try {
-            var list = JSON.parse(raw || '[]');
-            return Array.isArray(list) ? list.filter(function (key) { return typeof key === 'string'; }) : [];
-        } catch (err) { return []; }
+            var data = JSON.parse(raw || '{}');
+            if (!data || typeof data !== 'object' || Array.isArray(data)) return out;
+            Object.keys(data).forEach(function (key) {
+                if (typeof data[key] === 'boolean') out[key] = data[key];
+            });
+        } catch (err) { /* a damaged store is an empty one */ }
+        return out;
     }
 
-    // The list after one fold opens or closes. No key is held twice.
-    function withFold(list, key, open) {
-        var rest = list.filter(function (item) { return item !== key; });
-        return open ? rest.concat([key]) : rest;
+    // The record after one fold opens or closes. The old record is not changed.
+    function withFold(folds, key, open) {
+        var out = {};
+        Object.keys(folds).forEach(function (item) { out[item] = folds[item]; });
+        out[key] = !!open;
+        return out;
     }
 
     function readFolds() {
-        try { return parseFolds(window.sessionStorage.getItem(FOLDS_KEY)); } catch (err) { return []; }
+        try { return parseFolds(window.sessionStorage.getItem(FOLDS_KEY)); } catch (err) { return {}; }
     }
 
-    function writeFolds(list) {
-        try { window.sessionStorage.setItem(FOLDS_KEY, JSON.stringify(list)); } catch (err) { /* private mode */ }
+    function writeFolds(folds) {
+        try { window.sessionStorage.setItem(FOLDS_KEY, JSON.stringify(folds)); } catch (err) { /* private mode */ }
     }
 
     function register(Alpine) {
         // On a <details data-fold-key="...">. The page decides if a fold
-        // starts open; one the reader opened in this tab opens again.
+        // starts open; one the reader opened or closed in this tab stays so.
         Alpine.data('settingsFold', function () {
             return {
                 init: function () {
                     var el = this.$el;
                     var key = el.dataset.foldKey;
                     if (!key) return;
-                    if (readFolds().indexOf(key) !== -1) el.open = true;
+                    var folds = readFolds();
+                    if (Object.prototype.hasOwnProperty.call(folds, key)) el.open = folds[key];
                     el.addEventListener('toggle', function () {
                         writeFolds(withFold(readFolds(), key, el.open));
                     });

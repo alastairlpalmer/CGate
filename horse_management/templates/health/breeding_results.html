@@ -3,7 +3,7 @@
 {% block title %}Breeding Results {{ season }} - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-4">
     <div class="page-header">
         <div>
             <h1 class="page-title">Season Results</h1>
@@ -66,7 +66,7 @@
                         <td class="text-right">{{ st.open }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="9" class="py-8 text-center text-sm text-sage">No coverings recorded in {{ season }}.{% if can_edit %} Add records with past dates to reconcile the season.{% endif %}</td></tr>
+                    <tr><td colspan="9" class="py-6 text-center text-sm text-sage">No coverings recorded in {{ season }}.{% if can_edit %} Add records with past dates to reconcile the season.{% endif %}</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -106,7 +106,7 @@
                         {% endif %}
                     </tr>
                     {% empty %}
-                    <tr><td colspan="{% if can_edit %}8{% else %}7{% endif %}" class="py-8 text-center text-sm text-sage">No records.</td></tr>
+                    <tr><td colspan="{% if can_edit %}8{% else %}7{% endif %}" class="py-6 text-center text-sm text-sage">No records.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

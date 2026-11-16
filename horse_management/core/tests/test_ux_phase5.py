@@ -259,3 +259,157 @@ class CompactFormTests(TestCase):
                 response = self.client.get(reverse(name))
                 self.assertEqual(response.status_code, 200)
                 self.assertContains(response, 'form-footer')
+
+
+class PageTitleTests(SimpleTestCase):
+    """The page title is 20px on every screen (static/css/input.css)."""
+
+    def test_the_title_rule_is_one_size(self):
+        import re
+        from pathlib import Path
+
+        from django.conf import settings
+        source = (Path(settings.BASE_DIR) / 'static' / 'css' / 'input.css').read_text()
+        rule = re.search(r'^\s*\.page-title \{ @apply ([^;]+); \}', source, re.M).group(1).split()
+        self.assertIn('text-xl', rule)
+        # No larger size for a wide screen: that was the 30px heading.
+        self.assertEqual([name for name in rule if 'text-2xl' in name or 'text-3xl' in name], [])
+
+    def test_no_page_heading_sets_a_larger_size_of_its_own(self):
+        import re
+        from pathlib import Path
+
+        from django.conf import settings
+        base = Path(settings.BASE_DIR) / 'templates'
+        # Pages with no sidebar keep their own heading: sign-in, the public
+        # privacy page, the farrier's phone page and C-vet.
+        apart = ('registration', 'account/_auth_layout.html', 'core/privacy.html', 'farrier', 'cvet', 'emails')
+        large = re.compile(r'<h1[^>]*class="[^"]*\btext-(2xl|3xl|4xl|\[2[1-9]px\]|\[[3-9]\dpx\])')
+        offenders = []
+        for path in sorted(base.rglob('*.html')):
+            name = str(path.relative_to(base))
+            if name.startswith(apart):
+                continue
+            for number, line in enumerate(path.read_text().splitlines(), 1):
+                if large.search(line):
+                    offenders.append(f'{name}:{number}')
+        self.assertEqual(offenders, [], 'Use class="page-title" for a page heading.')
+
+
+class LocationSiteFoldTests(TestCase):
+    """Each site on the Locations page folds, as on the Settings page."""
+
+    def setUp(self):
+        from django.utils import timezone
+
+        from core.models import Horse, Location, Owner, Placement, RateType
+        self.client.force_login(make_admin())
+        self.busy = Location.objects.create(name='Top Field', site='Home')
+        Location.objects.create(name='Far Field', site='Away')
+        Location.objects.create(name='Low Field', site='Away')
+        Placement.objects.create(
+            horse=Horse.objects.create(name='Bramble'), owner=Owner.objects.create(name='Jo Smith'),
+            location=self.busy, start_date=timezone.localdate(),
+            rate_type=RateType.objects.create(name='Grass', daily_rate=5),
+        )
+
+    def fold(self, body, site):
+        import re
+        return re.search(r'<details class="group-fold" x-data="settingsFold" data-fold-key="locations:%s"( open)?>' % site, body)
+
+    def test_a_site_with_horses_opens_and_an_empty_site_is_one_line(self):
+        body = self.client.get(reverse('location_list')).content.decode()
+        self.assertEqual(self.fold(body, 'Home').group(1), ' open')
+        self.assertIsNone(self.fold(body, 'Away').group(1))
+        self.assertIn('1 horse &middot; 1 location', body)
+        self.assertIn('0 horses &middot; 2 locations', body)
+        # The cards of a closed site are still on the page, for the reader who opens it.
+        self.assertIn('Far Field', body)
+
+    def test_a_search_opens_every_site_it_shows(self):
+        body = self.client.get(reverse('location_list'), {'search': 'Far'}).content.decode()
+        self.assertEqual(self.fold(body, 'Away').group(1), ' open')
+
+    def test_a_yard_with_one_site_opens_it(self):
+        # One site, with no horse on it: still open, there is nothing else to show.
+        from core.models import Location
+        Location.objects.filter(site='Home').update(site='Away')
+        from core.models import Placement
+        Placement.objects.all().delete()
+        body = self.client.get(reverse('location_list')).content.decode()
+        self.assertEqual(self.fold(body, 'Away').group(1), ' open')
+        self.assertIn('0 horses &middot; 3 locations', body)
+
+
+class YardBoardFoldTests(LocationSiteFoldTests):
+    """On the dashboard an empty site is one line; a site with horses shows its tiles."""
+
+    def board(self):
+        return self.client.get(reverse('dashboard')).content.decode()
+
+    def test_an_empty_site_is_one_line_that_opens(self):
+        body = self.board()
+        self.assertIn('<details class="board-fold" x-data="settingsFold" data-fold-key="board:Away">', body)
+        self.assertIn('0 horses &middot; 2 locations', body)
+        # Its fields are in the page, for the reader who opens it.
+        self.assertIn('Far Field', body)
+        # The site with a horse is not folded.
+        self.assertNotIn('data-fold-key="board:Home"', body)
+        self.assertEqual(body.count('<div class="board-site">'), 1)
+
+    def test_one_site_is_never_folded(self):
+        from core.models import Location, Placement
+        Location.objects.filter(site='Home').update(site='Away')
+        Placement.objects.all().delete()
+        body = self.board()
+        self.assertNotIn('board-fold', body)
+        self.assertEqual(body.count('<div class="board-site">'), 1)
+
+
+class ListRowTests(LocationSiteFoldTests):
+    """Horse rows are one line, and the filters above a list fold on a phone."""
+
+    def test_a_horse_with_no_age_colour_or_sex_has_no_stray_dots(self):
+        from core.models import Horse
+        Horse.objects.filter(name='Bramble').update(color='', sex='')
+        body = self.client.get(reverse('horse_list')).content.decode()
+        detail = body.split('<div class="horse-name-detail">')[1].split('</div>')[0]
+        self.assertNotIn('·', detail)
+
+    def test_the_details_follow_the_name(self):
+        body = self.client.get(reverse('horse_list')).content.decode()
+        self.assertIn('<div class="horse-name">', body)
+        self.assertIn('md:w-6 md:h-6', body)
+
+    def test_a_list_has_filters_that_fold(self):
+        for name in ('vaccination_list', 'worming_list', 'vet_visit_list', 'egg_count_list', 'condition_list'):
+            with self.subTest(page=name):
+                response = self.client.get(reverse(name))
+                self.assertContains(response, 'class="filter-toggle"')
+                self.assertContains(response, 'class="filter-bar"')
+
+
+class DensityTests(SimpleTestCase):
+    """The shared parts are the compact size (static/css/input.css)."""
+
+    def rule(self, selector):
+        import re
+        from pathlib import Path
+
+        from django.conf import settings
+        source = (Path(settings.BASE_DIR) / 'static' / 'css' / 'input.css').read_text()
+        return re.search(r'^\s*%s \{ @apply ([^;]+); \}' % re.escape(selector), source, re.M).group(1).split()
+
+    def test_card_headers_tables_and_tiles(self):
+        self.assertIn('py-2', self.rule('.section-header'))
+        self.assertIn('text-sm', self.rule('.section-title'))
+        self.assertIn('py-2', self.rule('.data-table td'))
+        self.assertIn('text-2xl', self.rule('.kpi-value'))
+
+    def test_table_rows_have_no_stripes(self):
+        from pathlib import Path
+
+        from django.conf import settings
+        source = (Path(settings.BASE_DIR) / 'static' / 'css' / 'input.css').read_text()
+        self.assertNotIn('.data-table tbody tr:nth-child(even)', source)
+        self.assertNotIn('.list-card:nth-child(even)', source)

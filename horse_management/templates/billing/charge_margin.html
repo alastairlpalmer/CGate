@@ -4,7 +4,7 @@
 {% block title %}Add margin - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-4">
 
     <div class="page-header">
         <div>
@@ -17,7 +17,7 @@
     </div>
 
     {# 1. Which charges, and what margin. A plain GET form: the page shows the result. #}
-    <form method="get" class="card px-4 py-3 sm:px-5 sm:py-4 space-y-3">
+    <form method="get" class="card px-4 py-3 sm:py-4 space-y-3">
         <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
             <div>
                 <label for="margin-type" class="dt-label mb-1">Type</label>
@@ -111,7 +111,7 @@
         <p class="text-sm text-sage">{{ hidden }} more charge{{ hidden|pluralize }} match. Use the filters to work on fewer at a time.</p>
         {% endif %}
 
-        <div class="card px-4 py-3 sm:px-5 sm:py-4 space-y-3">
+        <div class="card px-4 py-3 sm:py-4 space-y-3">
             {% if percent is not None %}
             <p class="text-charcoal">
                 Cost {{ cost_total|gbp }}. With a margin of {{ percent_text }}%: <strong>{{ new_total|gbp }}</strong>

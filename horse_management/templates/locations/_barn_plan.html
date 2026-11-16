@@ -37,7 +37,7 @@ is in the table below this card.
     </div>
 
     {% if not barn_plan.has_cells %}
-    <div class="px-5 py-10 text-center" data-testid="barn-empty">
+    <div class="px-4 py-6 text-center" data-testid="barn-empty">
         <p class="text-sm font-medium text-charcoal">This barn has no stables yet.</p>
         <p class="mt-1 text-sm text-sage">Horses can go into the barn without them. Add stables to see who is where.</p>
         {% if feature_access.locations.full and not location.is_archived %}

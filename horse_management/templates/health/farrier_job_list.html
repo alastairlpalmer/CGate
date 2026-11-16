@@ -4,16 +4,16 @@
 {% block title %}Farrier: the farrier's list - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-4">
     {% include 'health/_farrier_header.html' with hub_tab='list' %}
     <p class="text-sage text-sm">The horses and work you want on a farrier visit. On that day the farrier sees them at the top of their page.</p>
 
     {% if not provider %}
-    <div class="card px-5 py-4">
+    <div class="card px-4 py-3">
         <p>Add a farrier in <a href="{% url 'provider_list' %}" class="link">Service Providers</a> first.</p>
     </div>
     {% else %}
-    <div class="card px-5 py-4">
+    <div class="card px-4 py-3">
         <form method="get" class="flex flex-wrap items-end gap-3">
             {% if providers|length > 1 %}
             <div>
@@ -78,11 +78,11 @@
         </table>
         </div>
         {% else %}
-        <p class="px-5 py-6 text-sage">No horses on the list for this day yet.</p>
+        <p class="px-4 py-4 text-sage">No horses on the list for this day yet.</p>
         {% endif %}
 
         {% if can_edit %}
-        <form method="post" class="border-t border-light-sage px-5 py-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-end" data-job-add>
+        <form method="post" class="border-t border-light-sage px-4 py-3 grid grid-cols-1 md:grid-cols-4 gap-3 items-end" data-job-add>
             {% csrf_token %}
             <input type="hidden" name="provider" value="{{ provider.pk }}">
             <input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}">

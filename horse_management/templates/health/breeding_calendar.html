@@ -4,7 +4,7 @@
 {% block title %}Foaling Calendar {{ season }} - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-4">
     <div class="page-header">
         <div>
             <h1 class="page-title">Foaling Calendar</h1>
@@ -37,7 +37,7 @@
             {% endfor %}
         </div>
         {% else %}
-        <div class="card p-5 text-sm text-sage">No mare is within three weeks of foaling.</div>
+        <div class="card p-4 text-sm text-sage">No mare is within three weeks of foaling.</div>
         {% endif %}
     </section>
 
@@ -78,7 +78,7 @@
                     </a>
                 </div>
                 {% empty %}
-                <div class="py-10 text-center text-sm text-sage">No pregnancies due in {{ season }}.</div>
+                <div class="py-6 text-center text-sm text-sage">No pregnancies due in {{ season }}.</div>
                 {% endfor %}
                 {% if cal.today_pct is not None %}
                 <div class="foal-cal-today" style="left: {{ cal.today_pct }}%;" aria-hidden="true"></div>
