@@ -93,7 +93,16 @@ class PracticeYardLink(models.Model):
     one link for each yard it visits.
     """
 
+    class BillTo(models.TextChoices):
+        YARD = 'yard', 'The yard (the yard invoices its owners)'
+        OWNERS = 'owners', 'Each horse owner directly'
+
     practice = models.OneToOneField(Practice, on_delete=models.CASCADE, related_name='yard_link')
+    # Who the practice's client is at this yard. Normally the yard: the
+    # vet deals with the yard's owner, bills the yard for the visit, and
+    # the yard puts each horse's part on its owner's invoice. Some yards
+    # have the vet bill each owner; then co-owners share a horse's part.
+    bill_to = models.CharField(max_length=10, choices=BillTo.choices, default=BillTo.YARD)
     # The practice as the yard already knows it: the entry in the yard's
     # own list of providers, which its vet visit log and charges use.
     service_provider = models.OneToOneField(
@@ -157,6 +166,13 @@ class Visit(models.Model):
     )
     author_name = models.CharField(max_length=200, blank=True)
     date = models.DateField(default=timezone.localdate)
+    # Where the visit was and who its bill goes to, as they were when the
+    # visit started. Copies: the bill for work done does not change when
+    # the yard is renamed or the arrangement changes later.
+    yard_name = models.CharField(max_length=200, blank=True)
+    bill_to = models.CharField(
+        max_length=10, choices=PracticeYardLink.BillTo.choices, default=PracticeYardLink.BillTo.YARD,
+    )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
     finished_at = models.DateTimeField(null=True, blank=True)
     is_test = models.BooleanField(default=False)

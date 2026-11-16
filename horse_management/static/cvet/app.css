@@ -71,6 +71,9 @@ p { margin: 4px 0; }
 .muted { color: var(--muted); font-size: 13px; }
 .muted:empty, .total:empty { display: none; }
 .strong { font-weight: 600; }
+.yard { margin: 0 0 4px; font-weight: 600; }
+.yard:empty { display: none; }
+#recheck-suggestion { display: block; width: 100%; margin: 4px 0; }
 .total { font-weight: 700; font-size: 17px; text-align: right; }
 .card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 8px 0; }
 

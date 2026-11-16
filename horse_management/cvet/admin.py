@@ -37,7 +37,10 @@ class PracticeYardLinkInline(admin.StackedInline):
     model = PracticeYardLink
     extra = 1
     max_num = 1
-    fields = ('started_on', 'ended_on', 'service_provider', 'sends_vaccination_dates', 'sends_follow_up_dates')
+    fields = (
+        'started_on', 'ended_on', 'bill_to', 'service_provider',
+        'sends_vaccination_dates', 'sends_follow_up_dates',
+    )
 
 
 @admin.register(Practice)

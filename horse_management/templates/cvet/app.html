@@ -45,6 +45,7 @@ section 7c): Horses, a horse, Visit, Prices, Phone. One is shown at a time.
 <main>
     {# ── Horses ── #}
     <section id="view-horses" class="view" aria-label="Horses">
+        <p id="yard-line" class="yard"></p>
         <div class="row">
             <input id="search" type="search" placeholder="Find a horse" autocomplete="off" aria-label="Find a horse">
             <button id="select-toggle" type="button" class="button slim">Select</button>
@@ -76,9 +77,11 @@ section 7c): Horses, a horse, Visit, Prices, Phone. One is shown at a time.
 
         <label for="note">Note</label>
         <textarea id="note" rows="3" maxlength="5000" placeholder="What you found, what you did"></textarea>
+        <p class="muted">To speak the note, tap the microphone on the keyboard.</p>
 
         <h3>Recheck</h3>
         <div id="followups" class="tiles"></div>
+        <button id="recheck-suggestion" type="button" class="tile on" hidden></button>
         <input id="follow-up" type="date" aria-label="Recheck date">
 
         <div class="row">
@@ -105,10 +108,11 @@ section 7c): Horses, a horse, Visit, Prices, Phone. One is shown at a time.
     {# ── The visit: the end-of-visit summary ── #}
     <section id="view-visit" class="view" aria-labelledby="visit-title" hidden>
         <h2 id="visit-title">Visit</h2>
+        <p id="visit-bill" class="strong"></p>
         <p id="visit-empty" class="muted">No horses on this visit yet. Tap a horse to start.</p>
         <ul id="visit-horses" class="list"></ul>
         <div id="visit-money" hidden>
-            <h3>Who pays</h3>
+            <h3 id="visit-payers-title">Who pays</h3>
             <ul id="visit-payers" class="list"></ul>
             <p id="visit-total" class="total"></p>
             <p id="visit-vat" class="muted"></p>

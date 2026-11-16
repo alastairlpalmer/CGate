@@ -24,6 +24,7 @@ const { chromium, devices } = require('playwright');
 const BASE = process.argv[2] || 'http://127.0.0.1:8765';
 const OUT = process.argv[3] || 'cvet_qa';
 const PASSWORD = 'qa-pass-123';
+const YARD_NAME = 'Palmer Farm';   // set by cvet_seed.py
 
 // A 1x1 PNG. The page shrinks it and stores it as a JPEG.
 const PHOTO = Buffer.from(
@@ -93,6 +94,7 @@ function horseRow(page, name) {
   check('horse list downloaded', horses > 0, `${horses} horses`);
   const firstTwo = await page.locator('#horses .horse .strong').evaluateAll((nodes) => nodes.slice(0, 2).map((n) => n.textContent));
   check('horses with something due are at the top, the overdue one first', firstTwo.join(',') === 'Willow,Fudge', firstTwo.join(','));
+  check('the list is headed by the yard and its number of horses', (await text(page, '#yard-line')) === `${YARD_NAME} · ${horses} horses`, await text(page, '#yard-line'));
   check('the overdue horse says so', (await text(page, '#horses .horse >> nth=0 >> .due')).startsWith('Flu/Tet overdue'), await text(page, '#horses .horse >> nth=0 >> .due'));
   await page.screenshot({ path: path.join(OUT, '1-horses.png') });
 
@@ -109,15 +111,21 @@ function horseRow(page, name) {
 
   // ── Treat one horse, with no signal.
   await horseRow(page, 'Willow').click();
-  check('the horse screen says who pays', (await text(page, '#horse-payers')) === 'Pays: Jo Bloggs', await text(page, '#horse-payers'));
+  check('the horse screen names the owner', (await text(page, '#horse-payers')) === 'Owner: Jo Bloggs', await text(page, '#horse-payers'));
   check('the horse screen says what is due', (await text(page, '#horse-due')).includes('Flu/Tet overdue'));
   await page.locator('#tiles .tile', { hasText: 'Flu/Tet booster' }).click();
   await page.locator('#tiles .tile', { hasText: 'Sedation' }).click();
   // The booster costs less for this horse: change the price on the line.
   await page.locator('#lines input[aria-label="Price for Flu/Tet booster"]').fill('60');
   check('the total follows the items and a changed price', (await text(page, '#lines-total')) === 'Total £87.50', await text(page, '#lines-total'));
-  await page.fill('#note', 'Mild heat left fore, no lameness at trot.');
-  await page.locator('#followups .tile', { hasText: '2 wk' }).click();
+  // The note, as dictation types it. The app offers the recheck date
+  // from its words; one tap uses it.
+  check('no recheck is offered before the note asks for one', await page.locator('#recheck-suggestion').isHidden());
+  await page.fill('#note', 'Mild heat left fore, no lameness at trot. Recheck in two weeks.');
+  await page.waitForFunction(() => !document.getElementById('recheck-suggestion').hidden);
+  check('the app offers a recheck date from the words of the note', (await text(page, '#recheck-suggestion')) === 'Use 30 Nov: you said “Recheck in two weeks”' || /Use \d+ \w+: you said “Recheck in two weeks”/.test(await text(page, '#recheck-suggestion')), await text(page, '#recheck-suggestion'));
+  await page.click('#recheck-suggestion');
+  check('one tap uses it', (await page.locator('#followups .tile.on').textContent()) === '2 wk' && await page.locator('#recheck-suggestion').isHidden());
   await page.setInputFiles('#photo', { name: 'leg.png', mimeType: 'image/png', buffer: PHOTO });
   await page.waitForFunction(() => document.getElementById('photo-state').textContent.startsWith('Photo ready'));
   await page.click('#record');
@@ -144,9 +152,12 @@ function horseRow(page, name) {
   // ── The end-of-visit summary.
   await tab(page, 'visit');
   check('the summary lists 4 horses and the total', (await text(page, '#visit-total')) === '4 horses · Total £282.50', await text(page, '#visit-total'));
-  const payers = await page.locator('#visit-payers .pay').evaluateAll((rows) => rows.map((row) => row.textContent));
-  // Willow 87.50 (Jo). Bramble 65 split Jo/Ali. Clover 65 (Ali). Ned 65 (no owner).
-  check('the split between payers is correct', payers.join('|') === 'Jo Bloggs£120.00|Ali Khan£97.50|No owner on record£65.00', payers.join('|'));
+  // The practice's client is the yard: one bill, to the yard, which
+  // invoices each owner. No split between owners on the vet's screen.
+  check('the summary says the bill goes to the yard', (await text(page, '#visit-bill')) === `Bill to ${YARD_NAME}`, await text(page, '#visit-bill'));
+  check('no split between owners when the yard is billed', (await page.locator('#visit-payers .pay').count()) === 0 && await page.locator('#visit-payers-title').isHidden());
+  const owners = await page.locator('#visit-horses .horse', { hasText: 'Bramble' }).locator('small').last().textContent();
+  check('each horse still names its owners, for the yard', owners === 'Owners: Jo Bloggs 50% · Ali Khan 50%', owners);
   const cutShort = await page.locator('#view-visit .amount').evaluateAll((nodes) => nodes.filter((n) => n.scrollWidth > n.clientWidth + 1).length);
   check('no amount of money is cut short on the summary', cutShort === 0, `${cutShort} cut`);
   const finishWidth = await page.locator('#finish').evaluate((node) => node.getBoundingClientRect().width / window.innerWidth);

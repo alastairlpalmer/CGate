@@ -20,7 +20,7 @@ from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 from PIL import Image
 
-from core.models import Horse, Location, Owner, Placement, RateType
+from core.models import BusinessSettings, Horse, Location, Owner, Placement, RateType
 from core.roles_testutils import assign_role, make_admin, make_user_with_access
 
 from . import access
@@ -60,6 +60,7 @@ def photo_upload(data=None):
     return SimpleUploadedFile('photo', data or png_bytes(), 'image/png')
 
 
+@override_settings(CVET_ENABLED=False)
 class TurnedOffTests(TestCase):
     """With the setting off, which is the default, nothing is there."""
 
@@ -206,6 +207,7 @@ class YardCase(TestCase):
         self.addCleanup(shutil.rmtree, media, ignore_errors=True)
         self.enterContext(override_settings(MEDIA_ROOT=media, CVET_ENABLED=True))
         cache.clear()
+        BusinessSettings.objects.create(business_name='Palmer Farm')
         owner = Owner.objects.create(name='Jo Smith')
         field = Location.objects.create(name='Top Field', site='Home')
         self.horse = Horse.objects.create(
@@ -244,6 +246,8 @@ class YardDownloadTests(YardCase):
         }])
         self.assertEqual(data['prices'], [])
         self.assertEqual(data['practice'], 'Hill Vets')
+        # The practice's client is the yard, by its own name in C-gate.
+        self.assertEqual(data['yard'], {'name': 'Palmer Farm', 'bill_to': 'yard'})
         self.assertIs(data['test_mode'], True)
 
     def test_no_horses_without_a_link_to_the_yard(self):

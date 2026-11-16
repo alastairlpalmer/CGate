@@ -184,9 +184,13 @@ def api_yard(request):
     locations = yard.locations_by_horse(horses)
     payers = yard.payers_by_horse(horses)
     due = yard.due_by_horse(request.practice, horses)
+    link = access.open_link(request.practice)
     return JsonResponse(dict(
         _session_payload(request),
         generated_at=timezone.now().isoformat(),
+        # The practice's client: the yard the vet is at, and who the
+        # bill for a visit goes to.
+        yard={'name': yard.yard_name(), 'bill_to': link.bill_to},
         horses=[
             {
                 'id': horse.pk,
@@ -429,11 +433,14 @@ def _visit_for(request, visit_id, seen_on):
         # Another practice's visit id: store the note without a visit
         # rather than refuse it or join it to their visit.
         return visit if visit.practice_id == request.practice.pk else None
+    link = access.open_link(request.practice)
     try:
         with transaction.atomic():
             return Visit.objects.create(
                 practice=request.practice, client_id=visit_id, author=request.user,
                 author_name=_user_name(request.user), date=seen_on,
+                yard_name=yard.yard_name() if link else '',
+                bill_to=link.bill_to if link else Visit._meta.get_field('bill_to').default,
                 is_test=settings.CVET_TEST_MODE,
             )
     except IntegrityError:
@@ -639,6 +646,8 @@ def _visit_payload(visit):
         'status': visit.status,
         'id': str(visit.client_id),
         'date': visit.date.isoformat(),
+        'yard': visit.yard_name,
+        'bill_to': visit.bill_to,
         'finished_at': visit.finished_at.isoformat() if visit.finished_at else None,
         'notes': visit.notes.count(),
         'horses': visit.notes.values('horse_name').distinct().count(),

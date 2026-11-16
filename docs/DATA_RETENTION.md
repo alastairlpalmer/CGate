@@ -58,7 +58,7 @@ deployment can change them without a code change.
 | Recipient | What they see | What they never see | Where |
 |---|---|---|---|
 | The yard's farrier (Farrier role, `farrier_portal`) | Horse names, profile photos, field names, farrier due dates, their own visits and prices | Owners (names, contact details, what they owe), invoices, vet and health records, other farriers' data | `/farrier/` only. `core.middleware.ProviderPortalMiddleware` sends every other page back to `/farrier/`. Their summary email after a visit lists horses and prices, never owners. |
-| The veterinary practice (Vet role, `cvet`, and a member of the practice) | While its link to the yard is open: horse names, microchip and passport numbers, field names, owner names, each co-owner's share, and vaccination due dates. Its own clinical notes. | Owner contact details, invoices, what an owner owes, the yard's health records, another practice's notes | `/c-vet/` only. `cvet.middleware.VetPortalMiddleware` sends every other page back to `/c-vet/`. |
+| The veterinary practice (Vet role, `cvet`, and a member of the practice) | While its link to the yard is open: the yard's name, horse names, microchip and passport numbers, field names, owner names, each co-owner's share, and vaccination due dates. Its own clinical notes. | Owner contact details, invoices, what an owner owes, the yard's health records, another practice's notes | `/c-vet/` only. `cvet.middleware.VetPortalMiddleware` sends every other page back to `/c-vet/`. |
 
 A farrier login stays signed in for up to 30 days of no use
 (`PROVIDER_SESSION_IDLE_AGE`), so the farrier does not type a password at

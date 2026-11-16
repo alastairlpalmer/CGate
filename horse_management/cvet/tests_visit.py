@@ -17,7 +17,7 @@ from core.roles_testutils import make_admin
 from health.models import Vaccination, VaccinationType
 
 from . import access
-from .models import ClinicalNote, NoteLine, PriceItem, Visit
+from .models import ClinicalNote, NoteLine, PracticeYardLink, PriceItem, Visit
 from .tests import NOTES, YARD, YardCase, note_data
 from .tests_ownership import TripwireTests
 from .testutils import make_practice, make_vet
@@ -294,6 +294,42 @@ class DueTests(YardCase):
         for number in range(19):
             Horse.objects.create(name=f'Horse {number}')
         self.assertEqual(count(), one)
+
+
+class BillToTests(YardCase):
+    """The practice's client is the yard; the yard invoices its owners."""
+
+    def test_a_visit_is_billed_to_the_yard_by_default(self):
+        visit_id = str(uuid.uuid4())
+        self.client.post(NOTES, note_data(visit_id=visit_id, lines=json.dumps([line()])))
+        visit = Visit.objects.get()
+        self.assertEqual((visit.yard_name, visit.bill_to), ('Palmer Farm', 'yard'))
+        data = self.client.post(finish_url(visit_id)).json()
+        self.assertEqual((data['yard'], data['bill_to'], data['total']), ('Palmer Farm', 'yard', '65.00'))
+
+    def test_a_yard_can_have_the_vet_bill_each_owner(self):
+        PracticeYardLink.objects.update(bill_to='owners')
+        self.assertEqual(self.client.get(YARD).json()['yard']['bill_to'], 'owners')
+        self.client.post(NOTES, note_data(visit_id=str(uuid.uuid4())))
+        self.assertEqual(Visit.objects.get().bill_to, 'owners')
+
+    def test_the_visit_keeps_its_yard_and_arrangement_when_they_change_later(self):
+        from core.models import BusinessSettings
+        self.client.post(NOTES, note_data(visit_id=str(uuid.uuid4())))
+        BusinessSettings.objects.update(business_name='New Name Stud')
+        PracticeYardLink.objects.update(bill_to='owners')
+        visit = Visit.objects.get()
+        self.assertEqual((visit.yard_name, visit.bill_to), ('Palmer Farm', 'yard'))
+
+    def test_the_note_still_keeps_the_owners_for_the_yards_own_invoices(self):
+        self.client.post(NOTES, note_data(horse_id=str(self.horse.pk), visit_id=str(uuid.uuid4())))
+        self.assertEqual([p['name'] for p in ClinicalNote.objects.get().payers], ['Jo Smith'])
+
+    def test_the_download_reads_the_yard_name_and_writes_nothing_to_the_yard(self):
+        from core.models import BusinessSettings
+        BusinessSettings.objects.all().delete()
+        self.assertEqual(self.client.get(YARD).json()['yard']['name'], 'The yard')
+        self.assertFalse(BusinessSettings.objects.exists())
 
 
 class FinishVisitTests(YardCase):

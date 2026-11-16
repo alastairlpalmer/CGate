@@ -155,9 +155,67 @@ test('splitByShare: one owner pays all; no owner leaves it all unallocated', () 
     assert.deepEqual(core.splitByShare(6500, undefined), { parts: [], unallocated: 6500 });
 });
 
-test('splitByShare: shares under 100% leave the rest unallocated', () => {
-    const split = core.splitByShare(10000, [{ name: 'A', share: '60.00' }]);
-    assert.deepEqual(split, { parts: [{ name: 'A', pence: 6000 }], unallocated: 4000 });
+test('splitByShare: the owners on record pay all of it when shares are under 100%', () => {
+    // Decision 18: bill the owners present in full, in proportion.
+    assert.deepEqual(core.splitByShare(10000, [{ name: 'A', share: '60.00' }]), {
+        parts: [{ name: 'A', pence: 10000 }], unallocated: 0,
+    });
+    assert.deepEqual(core.splitByShare(10000, [{ name: 'A', share: '30.00' }, { name: 'B', share: '30.00' }]).parts.map((p) => p.pence), [5000, 5000]);
+    const uneven = core.splitByShare(10000, [{ name: 'A', share: '60.00' }, { name: 'B', share: '20.00' }]);
+    assert.deepEqual(uneven.parts.map((p) => p.pence), [7500, 2500]);
+    assert.equal(uneven.unallocated, 0);
+    const odd = core.splitByShare(1001, [{ name: 'A', share: '10.00' }, { name: 'B', share: '20.00' }]);
+    assert.equal(odd.parts[0].pence + odd.parts[1].pence, 1001);
+});
+
+test('ownersText: owners when the yard is billed, payers when owners are billed', () => {
+    const one = [{ name: 'Jo', share: '100.00' }];
+    const two = [{ name: 'Jo', share: '30.00' }, { name: 'Ali', share: '30.00' }];
+    assert.equal(core.ownersText([], 'yard'), 'No owner on record');
+    assert.equal(core.ownersText(one, 'yard'), 'Owner: Jo');
+    assert.equal(core.ownersText(one, 'owners'), 'Pays: Jo');
+    // To the yard: the shares as the yard recorded them.
+    assert.equal(core.ownersText(two, 'yard'), 'Owners: Jo 30% \u00b7 Ali 30%');
+    // To owners: the part of the bill each one pays.
+    assert.equal(core.ownersText(two, 'owners'), 'Pays: Jo 50% \u00b7 Ali 50%');
+    assert.equal(core.ownersText(undefined, undefined), 'No owner on record');
+});
+
+test('addMonths: the same day, or the last day of a shorter month', () => {
+    assert.equal(core.addMonths('2026-11-16', 3), '2027-02-16');
+    assert.equal(core.addMonths('2027-01-31', 1), '2027-02-28');
+    assert.equal(core.addMonths('2028-01-31', 1), '2028-02-29');
+    assert.equal(core.addMonths('2026-11-30', 12), '2027-11-30');
+});
+
+test('suggestRecheck: a date from the words of the note', () => {
+    const today = '2026-11-16';
+    const date = (text) => (core.suggestRecheck(text, today) || {}).date;
+    assert.equal(date('Mild heat left fore, no lameness at trot. Recheck in two weeks.'), '2026-11-30');
+    assert.equal(date('re-check in 10 days'), '2026-11-26');
+    assert.equal(date('Recheck in a week'), '2026-11-23');
+    assert.equal(date('I will review her in 3 months'), '2027-02-16');
+    assert.equal(date('Re-examine in a couple of weeks'), '2026-11-30');
+    assert.equal(date('recheck in a fortnight'), '2026-11-30');
+    assert.equal(date('Follow up next week'), '2026-11-23');
+    assert.equal(date('See again tomorrow'), '2026-11-17');
+    assert.equal(date('Recheck the near fore in six weeks'), '2026-12-28');
+    assert.equal(date('Dictated: Recheck in Two Weeks'), '2026-11-30');
+});
+
+test('suggestRecheck: the last phrase wins, and it gives the words it used', () => {
+    const found = core.suggestRecheck('Recheck in a week. No, recheck   in two weeks.', '2026-11-16');
+    assert.deepEqual(found, { date: '2026-11-30', phrase: 'recheck in two weeks' });
+});
+
+test('suggestRecheck: no date from a note that does not ask for one', () => {
+    const today = '2026-11-16';
+    for (const text of [
+        '', 'Lame for two weeks.', 'Sound. No recheck needed.', 'Booster given, next due in 12 months.',
+        'Improved in 3 days on bute.', 'Owner to call in a week if no better.', null,
+    ]) {
+        assert.equal(core.suggestRecheck(text, today), null, String(text));
+    }
 });
 
 test('visitSummary: horses, lines, payers and totals of one visit', () => {

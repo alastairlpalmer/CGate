@@ -279,14 +279,12 @@
         return state.entries.filter(function (entry) { return entry.visitId === visit.id; });
     }
 
-    function payersText(horse) {
-        var payers = horse.payers || [];
-        if (!payers.length) return 'No owner on record';
-        if (payers.length === 1) return 'Pays: ' + payers[0].name;
-        return 'Pays: ' + payers.map(function (payer) {
-            return payer.name + ' ' + Number(payer.share) + '%';
-        }).join(' · ');
-    }
+    // Who the bill for a visit goes to at this yard: 'yard' (the yard
+    // invoices its owners) or 'owners'.
+    function billTo() { return (state.meta.yard && state.meta.yard.billTo) || 'yard'; }
+    function yardName() { return (state.meta.yard && state.meta.yard.name) || 'the yard'; }
+
+    function payersText(horse) { return core.ownersText(horse.payers, billTo()); }
 
     function dueText(due) {
         var when = core.shortDate(due.date, today());
@@ -386,6 +384,9 @@
         });
         fill($('horses'), rows);
         var none = state.horses.length === 0;
+        // Where the vet is: the yard is the client, and these are its horses.
+        $('yard-line').textContent = none ? ''
+            : yardName() + ' · ' + (state.horses.length === 1 ? '1 horse' : state.horses.length + ' horses');
         $('no-horses').hidden = !none;
         $('search').parentNode.hidden = none;
 
@@ -582,6 +583,21 @@
         $('lines-total').textContent = state.draft.lines.length ? 'Total ' + core.money(pence) : '';
     }
 
+    // A recheck date from the words of the note ("recheck in two weeks"),
+    // typed or spoken. It is offered; the vet taps to use it.
+    function renderSuggestion() {
+        var draft = state.draft;
+        var node = $('recheck-suggestion');
+        var found = draft ? core.suggestRecheck($('note').value, today()) : null;
+        if (!found || found.date === draft.followUp) { node.hidden = true; return; }
+        node.hidden = false;
+        node.textContent = 'Use ' + core.shortDate(found.date, today()) + ': you said “' + found.phrase + '”';
+        node.onclick = function () {
+            draft.followUp = found.date;
+            renderFollowUps();
+        };
+    }
+
     function renderFollowUps() {
         var draft = state.draft;
         var day = today();
@@ -594,6 +610,7 @@
             return tile;
         }));
         $('follow-up').value = draft.followUp;
+        renderSuggestion();
     }
 
     function renderHistory() {
@@ -848,6 +865,9 @@
         var summary = core.visitSummary(entries, state.horsesById);
         var day = today();
         $('visit-title').textContent = visit ? 'Visit · ' + core.shortDate(visit.day, day) : 'Visit';
+        var toOwners = billTo() === 'owners';
+        $('visit-bill').textContent = !entries.length ? ''
+            : toOwners ? 'Bill to each owner' : 'Bill to ' + yardName();
         $('visit-empty').hidden = entries.length > 0;
 
         fill($('visit-horses'), summary.horses.map(function (row) {
@@ -886,11 +906,13 @@
             item.appendChild(el('span', 'amount', core.money(summary.unallocated)));
             payers.push(item);
         }
-        fill($('visit-payers'), payers);
+        fill($('visit-payers'), toOwners ? payers : []);
+        $('visit-payers-title').hidden = !toOwners;
         var count = summary.horses.length;
         $('visit-total').textContent = (count === 1 ? '1 horse' : count + ' horses') + ' · Total ' + core.money(summary.total);
-        $('visit-vat').textContent = 'Includes VAT of ' + core.money(summary.vat) +
-            '. The practice confirms who pays when the notes arrive.';
+        $('visit-vat').textContent = 'Includes VAT of ' + core.money(summary.vat) + '. ' +
+            (toOwners ? 'The practice confirms who pays when the notes arrive.'
+                : yardName() + ' invoices each owner for their horse.');
 
         var finished = !!(visit && visit.finished);
         $('finish').hidden = entries.length === 0 || finished;
@@ -1150,6 +1172,9 @@
                 return setMeta('userId', data.user.id);
             }).then(function () {
                 return setMeta('userName', data.user.name);
+            }).then(function () {
+                var yard = data.yard || {};
+                return setMeta('yard', { name: yard.name || '', billTo: yard.bill_to || 'yard' });
             }).then(function () {
                 return rememberSession(data);
             }).then(function () {
@@ -1444,6 +1469,7 @@
             state.draft.followUp = $('follow-up').value;
             renderFollowUps();
         });
+        $('note').addEventListener('input', renderSuggestion);
         $('photo').addEventListener('change', onPhotoChosen);
         $('record').addEventListener('click', toggleRecording);
         $('save').addEventListener('click', saveDraft);

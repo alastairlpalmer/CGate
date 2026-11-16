@@ -12,11 +12,16 @@ three prices, and vaccination dates: Willow overdue, Fudge due in 5 days.
 
 from django.contrib.auth import get_user_model
 
-from core.models import Role
+from core.models import BusinessSettings, Role
 from core.roles_testutils import assign_role
 from cvet.models import Practice, PracticeMember, PracticeYardLink
 
 User = get_user_model()
+
+# The yard's own name: the vet's client.
+yard_settings = BusinessSettings.get_settings()
+yard_settings.business_name = 'Palmer Farm'
+yard_settings.save()
 
 practice, _ = Practice.objects.get_or_create(name='Hill Vets')
 PracticeYardLink.objects.get_or_create(practice=practice)

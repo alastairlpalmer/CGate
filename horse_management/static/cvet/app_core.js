@@ -73,26 +73,44 @@
         return Math.round(grossPence * rate / (100 + rate));
     }
 
-    // Split an amount between co-owners by their shares. The parts add up
-    // to the amount exactly: the odd pence go to the largest remainders.
-    // Shares that do not reach 100% leave the rest as `unallocated`.
+    // Split an amount between the owners on record, in proportion to
+    // their shares. The owners on record pay all of it: shares of 60%
+    // and 20% pay three quarters and one quarter (plan, decision 18).
+    // The parts add up to the amount exactly: the odd pence go to the
+    // largest remainders. With no owner on record, all is `unallocated`.
     function splitByShare(totalPence, payers) {
-        var list = (payers || []).map(function (payer) {
-            var exact = totalPence * (Number(payer.share) || 0) / 100;
+        var shareSum = (payers || []).reduce(function (sum, payer) { return sum + (Number(payer.share) || 0); }, 0);
+        if (!shareSum) return { parts: [], unallocated: totalPence };
+        var list = payers.map(function (payer) {
+            var exact = totalPence * (Number(payer.share) || 0) / shareSum;
             return { name: payer.name, pence: Math.floor(exact), rest: exact - Math.floor(exact) };
         });
-        var shareSum = (payers || []).reduce(function (sum, payer) { return sum + (Number(payer.share) || 0); }, 0);
-        var target = Math.round(totalPence * Math.min(shareSum, 100) / 100);
         var given = list.reduce(function (sum, part) { return sum + part.pence; }, 0);
         var order = list.slice().sort(function (a, b) { return b.rest - a.rest; });
-        for (var i = 0; given < target && order.length; i = (i + 1) % order.length) {
+        for (var i = 0; given < totalPence; i = (i + 1) % order.length) {
             order[i].pence += 1;
             given += 1;
         }
         return {
             parts: list.map(function (part) { return { name: part.name, pence: part.pence }; }),
-            unallocated: totalPence - given
+            unallocated: 0
         };
+    }
+
+    // The line about a horse's owners. When the yard is billed, they are
+    // named as owners, for the yard's own invoices. When owners are
+    // billed, the line says who pays and the part each one pays.
+    function ownersText(payers, billTo) {
+        var list = payers || [];
+        if (!list.length) return 'No owner on record';
+        var toOwners = billTo === 'owners';
+        if (list.length === 1) return (toOwners ? 'Pays: ' : 'Owner: ') + list[0].name;
+        var shareSum = list.reduce(function (sum, payer) { return sum + (Number(payer.share) || 0); }, 0);
+        return (toOwners ? 'Pays: ' : 'Owners: ') + list.map(function (payer) {
+            var share = Number(payer.share) || 0;
+            var percent = toOwners && shareSum ? Math.round(share * 100 / shareSum) : share;
+            return payer.name + ' ' + percent + '%';
+        }).join(' \u00b7 ');
     }
 
     // Everything the end-of-visit screen shows, from the notes of one
@@ -159,6 +177,60 @@
         var parts = day.split('-');
         var date = new Date(Date.UTC(+parts[0], +parts[1] - 1, +parts[2] + days));
         return date.toISOString().slice(0, 10);
+    }
+
+    // The same day of the month, `months` later. 31 Jan + 1 -> 28 Feb.
+    function addMonths(day, months) {
+        var parts = day.split('-');
+        var first = new Date(Date.UTC(+parts[0], +parts[1] - 1 + months, 1));
+        var last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+        first.setUTCDate(Math.min(+parts[2], last));
+        return first.toISOString().slice(0, 10);
+    }
+
+    // ── A recheck date from the words of the note ───────────────────────
+    //
+    // "Mild heat left fore. Recheck in two weeks." -> two weeks from today.
+    // The vet speaks or types the note; the app offers the date; the vet
+    // taps to use it. Nothing is set without that tap.
+
+    var NUMBERS = {
+        a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6,
+        seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, couple: 2
+    };
+    var AGAIN = '(?:re-?check|re-?examine|re-?assess|re-?visit|review|check\\s+again|see\\s+(?:again|him|her|it|them)|follow[\\s-]?up)';
+    var COUNT = '(a\\s+couple\\s+of|a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\\d{1,2})';
+    var WHEN = new RegExp(
+        '\\b' + AGAIN + '\\b[^.;!?\\n]{0,40}?\\b(?:' +
+        '(?:in|after)\\s+' + COUNT + '\\s+(day|week|month)s?\\b' +
+        '|(?:in\\s+a\\s+)?(fortnight)\\b' +
+        '|(next\\s+week)\\b' +
+        '|(tomorrow)\\b)', 'gi');
+
+    // { date: 'YYYY-MM-DD', phrase: the words it came from }, or null.
+    // The last such phrase in the note wins: "recheck in a week... no,
+    // recheck in two weeks" gives two weeks.
+    function suggestRecheck(text, today) {
+        var found = null;
+        var match;
+        WHEN.lastIndex = 0;
+        while ((match = WHEN.exec(String(text || ''))) !== null) {
+            var date;
+            if (match[2]) {
+                var word = match[1].toLowerCase().replace(/\s+/g, ' ');
+                var count = word === 'a couple of' ? 2 : (NUMBERS[word] || parseInt(word, 10));
+                var unit = match[2].toLowerCase();
+                date = unit === 'month' ? addMonths(today, count) : addDays(today, count * (unit === 'week' ? 7 : 1));
+            } else if (match[3]) {
+                date = addDays(today, 14);
+            } else if (match[4]) {
+                date = addDays(today, 7);
+            } else {
+                date = addDays(today, 1);
+            }
+            found = { date: date, phrase: match[0].replace(/\s+/g, ' ').trim() };
+        }
+        return found;
     }
 
     // "2026-11-03" -> "3 Nov", with the year when it is not `today`'s.
@@ -263,6 +335,9 @@
         entryTotal: entryTotal,
         vatPart: vatPart,
         splitByShare: splitByShare,
+        ownersText: ownersText,
+        addMonths: addMonths,
+        suggestRecheck: suggestRecheck,
         visitSummary: visitSummary,
         addDays: addDays,
         shortDate: shortDate,

@@ -7,10 +7,16 @@ already let the practice see. Nothing here writes to a yard record.
 
 from collections import defaultdict
 
-from core.models import OwnershipShare, Placement
+from core.models import BusinessSettings, OwnershipShare, Placement
 from health.models import Vaccination
 
 from . import access
+
+
+def yard_name():
+    """The yard's own name, as C-gate's business settings hold it."""
+    settings_row = BusinessSettings.objects.only('business_name').first()
+    return settings_row.business_name if settings_row else 'The yard'
 
 
 def payers_by_horse(horses):
