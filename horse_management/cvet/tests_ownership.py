@@ -34,9 +34,12 @@ from core.roles_testutils import make_admin, make_user_with_access
 
 from . import access
 from .models import (
-    Bill, BillLine, ClinicalFile, ClinicalNote, NoteLine, Practice, PracticeMember, PracticeYardLink, PriceItem,
+    Bill, BillLine, ClinicalFile, ClinicalNote, ClientHorse, NoteLine, Practice, PracticeMember,
+    PracticeYardLink, PriceItem,
     SyncReceipt, Visit,
 )
+# Not ``Client``: that name is the test client here.
+from .models import Client as PracticeClient
 from .testutils import VET_ACCESS, make_practice, make_vet, vet_role
 
 User = get_user_model()
@@ -212,7 +215,11 @@ class _Zip:
 class TripwireTests(TestCase):
     """By construction: the yard's code has no way to the notes."""
 
-    CLINICAL = [ClinicalNote, ClinicalNote.history.model, ClinicalFile, Visit, PriceItem, NoteLine, Bill, BillLine]
+    CLINICAL = [
+        ClinicalNote, ClinicalNote.history.model, ClinicalFile, Visit, PriceItem, NoteLine, Bill, BillLine,
+        # The practice's client list is its own too: the yard does not read it.
+        PracticeClient, ClientHorse,
+    ]
 
     def test_the_django_admin_does_not_register_clinical_notes(self):
         for model in self.CLINICAL:
@@ -238,7 +245,7 @@ class TripwireTests(TestCase):
         # the URL include. Nothing else may reach in.
         base = Path(settings.BASE_DIR)
         forbidden = re.compile(
-            r'ClinicalNote|ClinicalFile|NoteLine|PriceItem|BillLine|cvet\.models|cvet\.access|cvet\.billing|clinical_notes|from cvet|import cvet'
+            r'ClinicalNote|ClinicalFile|ClientHorse|NoteLine|PriceItem|BillLine|cvet\.models|cvet\.access|cvet\.billing|clinical_notes|from cvet|import cvet'
         )
         offenders = []
         for path in list(base.rglob('*.py')) + list((base / 'templates').rglob('*.html')):

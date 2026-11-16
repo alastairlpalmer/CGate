@@ -19,6 +19,43 @@ def yard_name():
     return settings_row.business_name if settings_row else 'The yard'
 
 
+def client_for(practice, link):
+    """The C-gate yard as a client of the practice, made on first use.
+
+    ``link`` is the practice's open link to the yard. The client carries
+    the yard's name as C-gate holds it now.
+    """
+    from .models import Client
+
+    name = yard_name()
+    client, made = Client.objects.get_or_create(
+        yard_link=link, defaults={'practice': practice, 'name': name, 'kind': Client.Kind.YARD},
+    )
+    if not made and (client.name != name or not client.is_active):
+        client.name = name
+        client.is_active = True
+        client.save(update_fields=['name', 'is_active', 'updated_at'])
+    return client
+
+
+def recheck_due_by_client_horse(practice, horses):
+    """{client horse pk: [{'kind', 'label', 'date'}]}: the recheck on its newest note."""
+    due = {}
+    seen = set()
+    for note in (
+        access.current_notes_for(practice).filter(client_horse__in=horses)
+        .order_by('client_horse_id', '-seen_on', '-written_at').only('client_horse_id', 'follow_up_date')
+    ):
+        if note.client_horse_id in seen:
+            continue
+        seen.add(note.client_horse_id)
+        if note.follow_up_date:
+            due[note.client_horse_id] = [{
+                'kind': 'follow_up', 'label': 'Recheck', 'date': note.follow_up_date.isoformat(),
+            }]
+    return due
+
+
 def payers_by_horse(horses):
     """{horse id: [{'owner_id', 'name', 'share'}]}: who pays, and how much of it.
 

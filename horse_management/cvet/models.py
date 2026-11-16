@@ -1,6 +1,8 @@
 """Models for C-vet (docs/C_VET_PLAN.md).
 
 The practice side: ``Practice``, ``PracticeMember``, ``PracticeYardLink``.
+The practice's clients: ``Client`` and, for a client that is not in
+C-gate, its horses, ``ClientHorse``.
 The clinical records: ``Visit``, ``ClinicalNote``, ``ClinicalFile``, and
 the practice's money: ``PriceItem``, ``NoteLine``, ``Bill``, ``BillLine``.
 They belong to a practice, not to the yard. Read them only through
@@ -166,8 +168,82 @@ class PracticeScopedQuerySet(models.QuerySet):
         return self.filter(practice=practice)
 
 
+class Client(models.Model):
+    """One client of a practice: a livery yard, a stud, a racing yard, an owner.
+
+    The practice's own list. The vet makes it in C-vet, and no yard screen
+    shows it. One client can be the C-gate yard (``yard_link``): its
+    horses come from C-gate, and its bills and dates go back there. Every
+    other client holds its own horses (``ClientHorse``) and nothing of it
+    reaches C-gate.
+
+    The phone makes ``client_id``, so a client that is saved twice is
+    stored once, and a client can be made at a yard with no signal.
+    """
+
+    class Kind(models.TextChoices):
+        YARD = 'yard', 'Livery yard'
+        STUD = 'stud', 'Stud'
+        RACING = 'racing', 'Racing yard'
+        COMPETITION = 'competition', 'Competition yard'
+        PRIVATE = 'private', 'Private owner'
+        OTHER = 'other', 'Other'
+
+    practice = models.ForeignKey(Practice, on_delete=models.PROTECT, related_name='clients')
+    client_id = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=200)
+    kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.YARD)
+    contact_name = models.CharField(max_length=200, blank=True)
+    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=50, blank=True)
+    address = models.TextField(blank=True)
+    # Set for the one client that is the C-gate yard.
+    yard_link = models.OneToOneField(
+        PracticeYardLink, on_delete=models.SET_NULL, null=True, blank=True, related_name='client',
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = PracticeScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return f'Client {self.pk}'
+
+    @property
+    def is_yard(self):
+        return self.yard_link_id is not None
+
+
+class ClientHorse(models.Model):
+    """A horse of a client that is not in C-gate. The practice's own record."""
+
+    practice = models.ForeignKey(Practice, on_delete=models.PROTECT, related_name='+')
+    practice_client = models.ForeignKey(Client, on_delete=models.PROTECT, related_name='horses')
+    client_id = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=200)
+    microchip = models.CharField(max_length=50, blank=True)
+    passport = models.CharField(max_length=100, blank=True)
+    # Who owns the horse, as the client says. Text only: not a C-gate owner.
+    owner_name = models.CharField(max_length=200, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = PracticeScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return f'Client horse {self.pk}'
+
+
 class Visit(models.Model):
-    """One day's work by one vet at the yard: the notes made that day.
+    """One day's work by one vet for one client: the notes made that day.
 
     It belongs to the practice. It is not ``health.ProviderVisit``, which
     is the yard's record of a farrier's day and of what the yard owes the
@@ -189,9 +265,14 @@ class Visit(models.Model):
     )
     author_name = models.CharField(max_length=200, blank=True)
     date = models.DateField(default=timezone.localdate)
-    # Where the visit was and who its bill goes to, as they were when the
+    # The client the visit was for. Empty on a visit made before C-vet
+    # had a client list: that visit was at the C-gate yard.
+    practice_client = models.ForeignKey(
+        Client, on_delete=models.SET_NULL, null=True, blank=True, related_name='visits',
+    )
+    # The client's name and who its bill goes to, as they were when the
     # visit started. Copies: the bill for work done does not change when
-    # the yard is renamed or the arrangement changes later.
+    # the client is renamed or the arrangement changes later.
     yard_name = models.CharField(max_length=200, blank=True)
     bill_to = models.CharField(
         max_length=10, choices=PracticeYardLink.BillTo.choices, default=PracticeYardLink.BillTo.YARD,
@@ -208,6 +289,11 @@ class Visit(models.Model):
 
     def __str__(self):
         return f'Visit {self.pk} ({self.date})'
+
+    @property
+    def at_cgate_yard(self):
+        """True when the visit was at the C-gate yard, so its dates and costs go there."""
+        return self.practice_client is None or self.practice_client.is_yard
 
 
 class ClinicalNote(models.Model):
@@ -228,6 +314,10 @@ class ClinicalNote(models.Model):
     )
     horse = models.ForeignKey(
         'core.Horse', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    # The horse, when it is a client's horse that C-gate does not hold.
+    client_horse = models.ForeignKey(
+        ClientHorse, on_delete=models.SET_NULL, null=True, blank=True, related_name='notes',
     )
     horse_name = models.CharField(max_length=200)
     horse_microchip = models.CharField(max_length=50, blank=True)
@@ -297,6 +387,9 @@ class PriceItem(models.Model):
     # Made on the phone, so that a price saved twice is stored once.
     client_id = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)
+    # A heading the practice chooses, for example "Vaccination": the item
+    # list on the phone is grouped by it. Empty: under "Other".
+    category = models.CharField(max_length=50, blank=True)
     price_inc_vat = models.DecimalField(max_digits=8, decimal_places=2)
     vat_rate = models.DecimalField('VAT rate (%)', max_digits=4, decimal_places=2, default=Decimal('20.00'))
     # Set when this item is a vaccination: giving it also records the
@@ -352,7 +445,7 @@ class NoteLine(models.Model):
 
 
 class Bill(models.Model):
-    """The practice's bill: to the yard, or to one owner.
+    """The practice's bill: to a client, or to one owner of a horse at the C-gate yard.
 
     For one visit, made when the vet taps Finish visit; or for a month of
     visits (cvet.billing). It is a copy of what was done and what it cost
@@ -364,6 +457,11 @@ class Bill(models.Model):
     # The visit, for a bill made after a visit. Empty for a monthly bill,
     # which covers the visits from period_start to period_end.
     visit = models.ForeignKey(Visit, on_delete=models.PROTECT, null=True, blank=True, related_name='bills')
+    # The client it is for. Empty on a bill made before C-vet had a client
+    # list: that bill was for the C-gate yard.
+    practice_client = models.ForeignKey(
+        Client, on_delete=models.SET_NULL, null=True, blank=True, related_name='bills',
+    )
     period_start = models.DateField(null=True, blank=True)
     period_end = models.DateField(null=True, blank=True)
     number = models.CharField(max_length=30)

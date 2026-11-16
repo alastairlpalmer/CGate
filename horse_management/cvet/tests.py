@@ -234,8 +234,14 @@ class YardDownloadTests(YardCase):
     def test_lists_active_horses_with_identity_owner_and_place(self):
         Horse.objects.create(name='Gone', is_active=False)
         data = self.client.get(YARD).json()
+        # The yard is the practice's first client, and the horses are its horses.
+        yard_client = data['clients'][0]
+        self.assertEqual(
+            (yard_client['name'], yard_client['kind'], yard_client['is_yard']), ('Palmer Farm', 'yard', True),
+        )
         self.assertEqual(data['horses'], [{
             'id': self.horse.pk,
+            'client_id': yard_client['id'],
             'name': 'Bramble',
             'microchip': '985100012345678',
             'passport': '826002',
@@ -252,14 +258,16 @@ class YardDownloadTests(YardCase):
 
     def test_no_horses_without_a_link_to_the_yard(self):
         self.client.force_login(make_vet('far', practice=make_practice('Far Vets', linked=False)))
-        response = self.client.get(YARD)
-        self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json(), {'error': 'no_yard_link'})
+        # The practice can still have clients of its own, so the download
+        # works: it holds no yard, no yard client and no horse.
+        data = self.client.get(YARD).json()
+        self.assertEqual((data['yard'], data['clients'], data['horses']), (None, [], []))
 
     def test_no_horses_after_the_link_ends(self):
-        self.assertEqual(self.client.get(YARD).status_code, 200)
+        self.assertEqual(len(self.client.get(YARD).json()['horses']), 1)
         PracticeYardLink.objects.update(ended_on=timezone.localdate())
-        self.assertEqual(self.client.get(YARD).status_code, 403)
+        data = self.client.get(YARD).json()
+        self.assertEqual((data['yard'], data['clients'], data['horses']), (None, [], []))
 
     def test_is_never_stored_by_a_browser(self):
         self.assertIn('no-store', self.client.get(YARD)['Cache-Control'])
