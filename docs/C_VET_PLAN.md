@@ -41,7 +41,7 @@ Names. **C-gate** is the yard product. Older documents call it Yardway. **C-vet*
 | 24 | A bill never changes. Work that arrives after a bill goes on a further bill. | An invoice that was issued must not change. |
 | 25 | **The vet or the practice office chooses when to bill a yard:** after each visit, or once a month. The choice is on the Bills page. With "once a month", the bill is made on the 1st for the month before, and **Bill it now** makes it on any day. In both cases the yard's records and the owners' charges are written when the visit is finished. | Some yards want a bill for each visit and some want one statement. The owner's charge must not wait for the vet's monthly bill, or the yard's own invoices are late. |
 | 26 | **The yard's margin is the yard manager's matter, in C-gate. It is not in C-vet.** C-vet passes the vet's amount into C-gate as it is. The yard manager adds the margin in C-gate: **Charges → Add margin** puts a percentage on many unbilled charges in one step, and one charge can still be changed by hand. | The margin varies from charge to charge, and it is the yard's price to its own client. The vet does not set it and does not see it. |
-| 27 | The limit on the size of the app's files is on what the phone downloads: under 40 KB compressed, and under 150 KB as written. Before, it was 100 KB as written. | The written size grows with the comments in the code, which cost the phone nothing. The phone downloads the compressed files once and then opens the app from its own store. Now: 27 KB compressed, 102 KB as written. |
+| 27 | The limit on the size of the app's files is on what the phone downloads: under 40 KB compressed, and under 150 KB as written. Before, it was 100 KB as written. | The written size grows with the comments in the code, which cost the phone nothing. The phone downloads the compressed files once and then opens the app from its own store. Now: 27 KB compressed, 102 KB as written. **Changed with section 7h:** under 40 KB compressed, as before, and under 200 KB as written. The clients, the visit record and the wide screen took the written size to 155 KB; the download, which is what the phone waits for, is 39 KB. |
 | 28 | A login with the Vet role joins the practice by itself, the first time it opens C-vet, when the database has one practice. The administrator makes the practice, and takes a login out of it, on one page in C-gate: **Settings → Users & Roles → C-vet → Set up**. | Before, the role was set in C-gate and the place in the practice was set in the Django admin, and no page said so. An administrator gave the role, and the vet saw "not set up for C-vet" on every address. An administrator's login is never put in the practice by this rule, and a login that was taken out stays out. With two practices, a person must choose. |
 
 ## 2. What each product is for
@@ -135,7 +135,7 @@ C-vet is used with one hand, outdoors, between horses. Every screen in every pha
 | Rule | Limit |
 |---|---|
 | Open the app, from the tap on the icon to the horse list | Under 1 second, with or without a signal |
-| Page files (script, styles) | Under 40 KB as the phone downloads them (compressed), and under 150 KB as written (decision 27). No web fonts, no framework. Now 38 KB and 150 KB: at the limit after section 7g. The next change to the app must make the files smaller, or decision 27 must change. |
+| Page files (script, styles) | Under 40 KB as the phone downloads them (compressed), and under 200 KB as written (decision 27). No web fonts, no framework. Under 200 KB as written since section 7h. Now 39 KB and 155 KB. The download is 1 KB under its limit: the next screen must come with a smaller file, or as a file that only a wide screen loads. |
 | Horses on the first screen of a phone | 8 or more |
 | Tap targets | 44 px or more |
 | A tap shows its result | At once. No screen waits for the network. The app reads and writes the phone's storage, and the sync runs behind it. |
@@ -532,6 +532,62 @@ Asked for after the first use of the practice: start from the client, make the v
 - **One setting for when bills are made** (each visit, or monthly) for all clients, on the Bills page.
 - **A second yard that uses C-gate.** C-gate holds one yard.
 - **Old notes with no signal.** A sent visit needs a signal to show its photos and recordings. The phone gives its copy back when the server has the file (sync rule 3).
+
+## 7h. C-vet on a computer
+
+Asked for after section 7g: a version for a computer, for the vet at a desk and for the practice office.
+
+### What was looked at
+
+| Way | For | Against |
+|---|---|---|
+| **A. The same app, laid out for a wide screen** | One set of screens, one set of rules, one place for a fault. It works with no signal on a laptop too. No new server code. | The app's files grow, and the phone downloads them too. |
+| B. Separate pages made by the server | Free choice of layout. Tables and reports are easy. | A second copy of every screen. No use with no signal. The two copies drift apart. |
+| C. A program to install (Windows, Mac) | None that A does not give: the app installs from the browser. | A build, a release and an update for each system. |
+
+**Chosen: A, in steps.** The office work that needs tables (step 3) can be server pages, as the Bills pages are, behind the same gate.
+
+### Step 1: the layout (built)
+
+On a screen 1000 px wide or more (a computer, a tablet on its side):
+
+| Part | On a wide screen |
+|---|---|
+| The tabs | A column on the left edge: Clients, Visits, Prices, More. |
+| Clients | The client list stays on the left. The client, or the horse, is on the right. The client that is open is marked in the list. The right part is never empty. |
+| A note being written | A tap on another client or horse asks "Leave without saving this horse?" first. |
+| The item list and the forms | A box in the middle of the screen. Escape closes it. |
+| Save | At the end of the form, not across the foot of the screen. |
+| A pointer | Rows and buttons change when the pointer is on them. |
+
+The window can be made narrow and wide again: the same screen is laid out again and nothing is lost. `tools/qa/cvet_desktop_qa.js` checks this.
+
+### Step 2: work at a desk (next)
+
+| Item | What it gives |
+|---|---|
+| Keyboard | `/` goes to the search. Up, down and Enter in a list. Ctrl+Enter saves a note. |
+| The horse screen in two columns | The note on the left, the horse's history on the right, so the last visit is in view while the vet writes. |
+| Prices as a table | Every price and category in view, and a change in the row. |
+| A client's page | Contact details, horses, visits and bills in one place. |
+| Print | One visit, or one horse's record, on paper or as a PDF. |
+
+### Step 3: the practice office (later, needs decisions)
+
+| Item | Decision needed |
+|---|---|
+| Bills inside the app: a list with a filter by client and month, paid or not paid | Does C-vet record payments? Today it does not. |
+| A statement for one client | Format, and who sends it. |
+| A bill by email to a client of the practice's own | The sender address of the practice. |
+| Price list from a file (CSV) | None. |
+| Reports: work by client, by vet, by item | Which reports the practice uses. |
+| A login for the practice office that cannot write clinical notes | Open decision: `PracticeMember.kind` has "office" already; no rule uses it yet. |
+
+### What step 1 does not do
+
+- **No new function.** Every screen does what it does on the phone.
+- **Not tested in Safari or Firefox on a computer.** Chromium only.
+- **Voice recording on a computer** needs a microphone and the browser's permission, as on the phone.
 
 ## 8. The test on Tim's phone
 
