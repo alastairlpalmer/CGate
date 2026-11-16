@@ -402,13 +402,32 @@
 
     var VIEWS = ['clients', 'client', 'horse', 'visits', 'prices', 'phone'];
 
+    // A computer, or a tablet on its side: the screen has room for two
+    // parts. The clients stay on the left while one client, or one
+    // horse, is on the right (static/cvet/app.css, "A wide screen").
+    var wideScreen = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 1000px)') : null;
+    function isWide() { return !!(wideScreen && wideScreen.matches); }
+    function besideClients(view) { return isWide() && (view === 'client' || view === 'horse'); }
+
     function show(view) {
+        if (isWide() && view === 'clients') {
+            // The right part is never empty: the client that was open, or the first one.
+            var kept = clientById(state.client);
+            var pick = kept && kept.is_active !== false ? kept : state.clients.filter(function (client) {
+                return client.is_active !== false;
+            })[0];
+            if (pick) {
+                state.client = pick.id;
+                view = 'client';
+            }
+        }
         if (state.view === 'horse' && view !== 'horse') stopRecording();
         if (state.view !== view) freeMedia();
         state.view = view;
         VIEWS.forEach(function (name) {
-            $('view-' + name).hidden = name !== view;
+            $('view-' + name).hidden = name !== view && !(name === 'clients' && besideClients(view));
         });
+        document.body.classList.toggle('split', besideClients(view));
         Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (tab) {
             // A client and a horse are under Clients.
             var current = tab.dataset.view === view ||
@@ -423,7 +442,12 @@
     }
 
     function render() {
+        // A wide screen with clients: `show` puts one of them on the right.
+        if (state.view === 'clients' && isWide() && state.clients.some(function (client) {
+            return client.is_active !== false;
+        })) { show('clients'); return; }
         renderBar();
+        if (besideClients(state.view)) renderClients();
         if (state.view === 'clients') renderClients();
         else if (state.view === 'client') renderClient();
         else if (state.view === 'horse') renderHorse();
@@ -437,6 +461,8 @@
     function clientRow(client) {
         var item = el('li');
         var row = button('horse go', undefined, function () { openClient(client.id); });
+        // On a wide screen: which client is on the right.
+        if (client.id === state.client && besideClients(state.view)) row.setAttribute('aria-current', 'true');
         row.appendChild(el('span', 'initial', (client.name || '?').charAt(0).toUpperCase()));
         var text = el('span', 'text');
         text.appendChild(el('span', 'strong', client.name));
@@ -460,6 +486,7 @@
         options = options || {};
         var item = el('li');
         var row = button('horse' + (options.selecting ? '' : ' go'), undefined, options.onClick || function () {
+            if (state.view === 'horse' && state.draft && state.draft.horse !== horse && !leaveHorse()) return;
             openHorse(horse);
         });
         if (options.selecting) {
@@ -515,6 +542,8 @@
     // ── One client: its horses ───────────────────────────────────────────
 
     function openClient(id) {
+        // On a wide screen the clients are in reach while a note is written.
+        if (state.view === 'horse' && !leaveHorse()) return;
         state.client = id;
         state.selecting = false;
         state.selected = {};
@@ -2327,6 +2356,11 @@
         // The phone cannot send while the app is closed (no background
         // sync on iPhone), so it tries each minute while the app is open.
         setInterval(function () { sync(false); }, AUTO_SYNC_MS);
+
+        // The window is made wide or narrow: the same screen, laid out again.
+        if (wideScreen && wideScreen.addEventListener) {
+            wideScreen.addEventListener('change', function () { show(state.view === 'client' && !isWide() ? 'client' : state.view); });
+        }
 
         registerWorker();
 
