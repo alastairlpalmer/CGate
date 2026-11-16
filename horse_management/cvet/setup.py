@@ -6,11 +6,19 @@ three were in the Django admin only, and nothing in C-gate said so: an
 administrator gave a login the Vet role and the vet then saw "not set up
 for C-vet" on every address.
 
-The page holds set-up records only: the practice's name, its link, its
+The page also holds what the yard and the practice agree (who is billed,
+what the yard takes from the practice) and what is printed on the
+practice's bills (address, VAT number, the letters of a bill number, how
+to pay). With these, an administrator needs the Django admin for nothing
+before the first visit.
+
+The page holds set-up records only: the practice's details, its link, its
 logins. It reads no clinical note, price or bill, so the rule of
 docs/C_VET_PLAN.md, section 3 stays whole: the administrator decides
 who works for the practice and does not read what they write.
 """
+
+import re
 
 from django import forms
 from django.conf import settings
@@ -22,6 +30,8 @@ from django.utils import timezone
 from core.permissions import feature_required
 
 from .access import cvet_enabled, vet_logins
+from billing.models import ServiceProvider
+
 from .models import Practice, PracticeMember, PracticeYardLink
 
 
@@ -45,11 +55,75 @@ class SetupForm(forms.Form):
         widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-checkbox'}),
     )
 
-    def __init__(self, *args, practice=None, **kwargs):
+    # What the yard and the practice agree. Kept on the link.
+    bill_to = forms.ChoiceField(
+        choices=PracticeYardLink.BillTo.choices, label='The practice bills',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    sends_charges = forms.BooleanField(
+        required=False, label="Charges: each horse's part of a bill becomes a charge in C-gate",
+        widget=forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+    )
+    sends_vaccination_dates = forms.BooleanField(
+        required=False, label='Vaccination dates and next due dates',
+        widget=forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+    )
+    sends_follow_up_dates = forms.BooleanField(
+        required=False, label='Follow-up dates, with no reason',
+        widget=forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+    )
+    service_provider = forms.ModelChoiceField(
+        queryset=None, required=False, label="The practice in the yard's list of service providers",
+        empty_label='Not in the list', widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+
+    # What is printed on the practice's bills. Kept on the practice.
+    email = forms.EmailField(required=False, widget=forms.EmailInput(attrs={'class': 'form-input', 'autocomplete': 'off'}))
+    phone = forms.CharField(required=False, max_length=50, widget=forms.TextInput(attrs={'class': 'form-input', 'autocomplete': 'off'}))
+    address = forms.CharField(required=False, widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}))
+    vat_number = forms.CharField(
+        required=False, max_length=30, label='VAT number',
+        widget=forms.TextInput(attrs={'class': 'form-input', 'autocomplete': 'off'}),
+    )
+    bill_prefix = forms.CharField(
+        required=False, max_length=10, label='Letters before a bill number',
+        widget=forms.TextInput(attrs={'class': 'form-input', 'autocomplete': 'off', 'placeholder': 'CV'}),
+    )
+    bank_details = forms.CharField(
+        required=False, label='How to pay',
+        widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
+    )
+
+    PRACTICE_FIELDS = ('email', 'phone', 'address', 'vat_number', 'bill_prefix', 'bank_details')
+    LINK_FIELDS = ('bill_to', 'sends_charges', 'sends_vaccination_dates', 'sends_follow_up_dates', 'service_provider')
+
+    def __init__(self, *args, practice=None, link=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.practice = practice
+        self.link = link
         self.fields['logins'].queryset = vet_logins()
         self.fields['logins'].label_from_instance = login_label
+        # The yard's vets. One that is another practice's is not offered.
+        taken = PracticeYardLink.objects.exclude(service_provider=None)
+        if link is not None:
+            taken = taken.exclude(pk=link.pk)
+        self.fields['service_provider'].queryset = (
+            ServiceProvider.objects.filter(provider_type='vet')
+            .exclude(pk__in=taken.values('service_provider'))
+            .order_by('name')
+        )
+
+    def clean_bill_prefix(self):
+        prefix = self.cleaned_data['bill_prefix'].strip().upper()
+        if prefix and not re.fullmatch(r'[A-Z0-9]+', prefix):
+            raise forms.ValidationError('Use letters and numbers only, for example HV.')
+        return prefix
+
+    def clean_address(self):
+        return self.cleaned_data['address'].strip()
+
+    def clean_bank_details(self):
+        return self.cleaned_data['bank_details'].strip()
 
     def clean_name(self):
         name = ' '.join(self.cleaned_data['name'].split())
@@ -109,41 +183,65 @@ def login_gap(user):
     return not can_open(user, members_by_user([user]).get(user.pk), practices)
 
 
+def _link_initial(link):
+    """The agreement as it is, or as a new link starts (the model's defaults)."""
+    source = link if link is not None else PracticeYardLink()
+    data = {name: getattr(source, name) for name in SetupForm.LINK_FIELDS if name != 'service_provider'}
+    data['service_provider'] = link.service_provider_id if link is not None else None
+    return data
+
+
 def _initial(practice, link, logins, members):
     if practice is None:
         # A first set-up: the link open and every Vet login in.
-        return {'name': '', 'link_open': True, 'logins': [user.pk for user in logins]}
+        return {'name': '', 'link_open': True, 'logins': [user.pk for user in logins], **_link_initial(None)}
     chosen = []
     for user in logins:
         member = members.get(user.pk)
         # No row yet: the login joins at its first sign-in, so it is in.
         if member is None or (member.is_active and member.practice_id == practice.pk):
             chosen.append(user.pk)
-    return {'name': practice.name, 'link_open': bool(link and link.is_open), 'logins': chosen}
+    return {
+        'name': practice.name, 'link_open': bool(link and link.is_open), 'logins': chosen,
+        **{name: getattr(practice, name) for name in SetupForm.PRACTICE_FIELDS},
+        **_link_initial(link),
+    }
 
 
 @transaction.atomic
 def save(form, practice):
     """Make the records say what the form says. Returns the practice."""
     data = form.cleaned_data
+    details = {name: data[name] for name in SetupForm.PRACTICE_FIELDS}
     if practice is None:
-        practice = Practice.objects.create(name=data['name'])
-    elif practice.name != data['name']:
-        practice.name = data['name']
-        practice.save(update_fields=['name', 'updated_at'])
+        practice = Practice.objects.create(name=data['name'], **details)
+    else:
+        changed = [name for name, value in {'name': data['name'], **details}.items() if getattr(practice, name) != value]
+        if changed:
+            for name in changed:
+                setattr(practice, name, data[name])
+            practice.save(update_fields=[*changed, 'updated_at'])
 
     today = timezone.localdate()
+    agreement = {name: data[name] for name in SetupForm.LINK_FIELDS}
     link = PracticeYardLink.objects.filter(practice=practice).first()
-    if data['link_open']:
-        if link is None:
-            PracticeYardLink.objects.create(practice=practice)
-        elif not link.is_open:
+    if link is None:
+        # No link and none asked for: there is no agreement to keep yet.
+        if data['link_open']:
+            PracticeYardLink.objects.create(practice=practice, **agreement)
+    else:
+        changed = [name for name, value in agreement.items() if getattr(link, name) != value]
+        for name in changed:
+            setattr(link, name, agreement[name])
+        if data['link_open'] and not link.is_open:
             link.started_on = min(link.started_on, today)
             link.ended_on = None
-            link.save(update_fields=['started_on', 'ended_on'])
-    elif link is not None and link.is_open:
-        link.ended_on = today
-        link.save(update_fields=['ended_on'])
+            changed += ['started_on', 'ended_on']
+        elif not data['link_open'] and link.is_open:
+            link.ended_on = today
+            changed.append('ended_on')
+        if changed:
+            link.save(update_fields=changed)
 
     chosen = {user.pk for user in data['logins']}
     logins = list(vet_logins())
@@ -182,13 +280,13 @@ def setup(request):
     link = PracticeYardLink.objects.filter(practice=practice).first() if practice else None
     logins = list(vet_logins())
     if request.method == 'POST':
-        form = SetupForm(request.POST, practice=practice)
+        form = SetupForm(request.POST, practice=practice, link=link)
         if form.is_valid():
             save(form, practice)
             messages.success(request, 'C-vet set-up saved.')
             return redirect('cvet:setup')
     else:
-        form = SetupForm(practice=practice, initial=_initial(practice, link, logins, members_by_user(logins)))
+        form = SetupForm(practice=practice, link=link, initial=_initial(practice, link, logins, members_by_user(logins)))
     return render(request, 'cvet/setup.html', {
         **context, 'form': form, 'practice': practice, 'has_logins': bool(logins),
     })

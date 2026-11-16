@@ -106,6 +106,7 @@ class SetupPageTests(TestCase):
 
     def post(self, **data):
         data.setdefault('name', 'Hill Vets')
+        data.setdefault('bill_to', 'yard')
         return self.client.post(SETUP, data)
 
     def test_only_a_login_that_manages_users_opens_it(self):
@@ -213,6 +214,128 @@ class SetupPageTests(TestCase):
         make_practice()
         self.client.force_login(User.objects.create_superuser('root', password='pw'))
         self.assertContains(self.client.get(SETUP), 'Django admin')
+        # A login that is not staff gets no link to the admin.
+        self.client.force_login(self.admin)
+        self.assertNotContains(self.client.get(SETUP), 'Django admin')
+
+
+@override_settings(CVET_ENABLED=True)
+class SetupDetailsTests(TestCase):
+    """The agreement with the yard and the details on the practice's bills:
+    all of the set-up, with no step in the Django admin."""
+
+    def setUp(self):
+        self.admin = make_admin(email='admin@example.com')
+        self.client.force_login(self.admin)
+
+    def post(self, **data):
+        data.setdefault('name', 'Hill Vets')
+        data.setdefault('bill_to', 'yard')
+        data.setdefault('link_open', 'on')
+        return self.client.post(SETUP, data)
+
+    def test_a_first_set_up_starts_with_what_a_new_link_has(self):
+        initial = self.client.get(SETUP).context['form'].initial
+        self.assertEqual(initial['bill_to'], 'yard')
+        self.assertTrue(initial['sends_charges'])
+        self.assertTrue(initial['sends_vaccination_dates'])
+        self.assertTrue(initial['sends_follow_up_dates'])
+
+    def test_the_details_on_the_bills_are_saved(self):
+        self.assertRedirects(self.post(
+            email='office@hillvets.example', phone='01234 567890', address='1 High Street\nTown',
+            vat_number='GB123456789', bill_prefix=' hv ', bank_details='Sort 00-00-00\nAccount 12345678',
+        ), SETUP)
+        practice = Practice.objects.get()
+        self.assertEqual(practice.email, 'office@hillvets.example')
+        self.assertEqual(practice.phone, '01234 567890')
+        self.assertEqual(practice.address, '1 High Street\nTown')
+        self.assertEqual(practice.vat_number, 'GB123456789')
+        self.assertEqual(practice.bill_prefix, 'HV')
+        self.assertEqual(practice.bank_details, 'Sort 00-00-00\nAccount 12345678')
+        # The page shows them again.
+        initial = self.client.get(SETUP).context['form'].initial
+        self.assertEqual(initial['bill_prefix'], 'HV')
+        self.assertEqual(initial['vat_number'], 'GB123456789')
+
+    def test_the_letters_of_a_bill_number_are_letters_and_numbers(self):
+        for bad in ('H-V', 'H V', 'HV/1', 'ÉV!'):
+            with self.subTest(prefix=bad):
+                self.assertContains(self.post(bill_prefix=bad), 'Use letters and numbers only')
+        self.assertFalse(Practice.objects.exists())
+        self.assertContains(self.post(bill_prefix='TOOLONGPREFIX'), 'at most 10 characters')
+
+    def test_the_bill_prefix_is_used_on_the_next_bill(self):
+        from . import billing
+        self.post(bill_prefix='hv')
+        practice = Practice.objects.get()
+        self.assertTrue(billing._next_number(practice, is_test=False).startswith('HV-'))
+
+    def test_the_agreement_is_saved_on_the_link(self):
+        from billing.models import ServiceProvider
+        vets = ServiceProvider.objects.create(name='Hill Vets', provider_type='vet')
+        self.post(bill_to='owners', sends_vaccination_dates='on', service_provider=vets.pk)
+        link = PracticeYardLink.objects.get()
+        self.assertEqual(link.bill_to, 'owners')
+        self.assertFalse(link.sends_charges)
+        self.assertTrue(link.sends_vaccination_dates)
+        self.assertFalse(link.sends_follow_up_dates)
+        self.assertEqual(link.service_provider, vets)
+        # Changed again, and the provider taken off.
+        self.post(bill_to='yard', sends_charges='on', sends_follow_up_dates='on')
+        link.refresh_from_db()
+        self.assertEqual(link.bill_to, 'yard')
+        self.assertTrue(link.sends_charges)
+        self.assertFalse(link.sends_vaccination_dates)
+        self.assertIsNone(link.service_provider)
+
+    def test_when_the_practice_bills_is_not_changed_here(self):
+        # The practice chooses that on its Bills page.
+        practice = make_practice()
+        PracticeYardLink.objects.filter(practice=practice).update(bill_when='month')
+        self.post()
+        self.assertEqual(PracticeYardLink.objects.get().bill_when, 'month')
+
+    def test_only_a_vet_of_the_yard_can_be_the_practice(self):
+        from billing.models import ServiceProvider
+        farrier = ServiceProvider.objects.create(name='Sam Shoe', provider_type='farrier')
+        response = self.post(service_provider=farrier.pk)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Select a valid choice')
+        self.assertFalse(Practice.objects.exists())
+
+    def test_a_vet_that_is_another_practices_is_not_offered(self):
+        from billing.models import ServiceProvider
+        vets = ServiceProvider.objects.create(name='Hill Vets', provider_type='vet')
+        other = Practice.objects.create(name='Closed Vets', is_active=False)
+        PracticeYardLink.objects.create(practice=other, service_provider=vets)
+        form = self.client.get(SETUP).context['form']
+        self.assertNotIn(vets, form.fields['service_provider'].queryset)
+        self.assertContains(self.post(service_provider=vets.pk), 'Select a valid choice')
+
+    def test_no_link_and_none_asked_for_keeps_no_agreement(self):
+        self.post(link_open='', bill_to='owners')
+        self.assertTrue(Practice.objects.exists())
+        self.assertFalse(PracticeYardLink.objects.exists())
+
+    def test_the_agreement_changes_while_the_link_stays_closed(self):
+        practice = make_practice()
+        self.post(link_open='')
+        self.post(link_open='', bill_to='owners')
+        link = PracticeYardLink.objects.get(practice=practice)
+        self.assertFalse(link.is_open)
+        self.assertEqual(link.bill_to, 'owners')
+
+    def test_the_page_sends_nobody_to_the_django_admin_for_set_up(self):
+        make_practice()
+        self.client.force_login(User.objects.create_superuser('root', password='pw'))
+        body = self.client.get(SETUP).content.decode()
+        for label in ('The practice bills', 'What the yard takes from the practice', 'VAT number',
+                      'Letters before a bill number', 'How to pay'):
+            self.assertIn(label, body)
+        self.assertNotIn('bank details and what the practice sends to the yard are in the', body)
+        # The one thing left there is the delete of the test notes.
+        self.assertIn('Delete the test notes', body)
 
 
 class SettingsPagesTests(TestCase):
