@@ -43,7 +43,7 @@ class XeroConnectionAdmin(admin.ModelAdmin):
 @admin.register(XeroContactMapping)
 class XeroContactMappingAdmin(admin.ModelAdmin):
     list_display = ('owner', 'xero_contact_name', 'xero_contact_id', 'last_synced_at')
-    search_fields = ('owner__first_name', 'owner__last_name', 'xero_contact_name')
+    search_fields = ('owner__name', 'xero_contact_name')
     readonly_fields = ('last_synced_at',)
 
 
