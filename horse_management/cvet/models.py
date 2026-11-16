@@ -15,7 +15,6 @@ import uuid
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
-from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 from simple_history.models import HistoricalRecords
@@ -122,14 +121,6 @@ class PracticeYardLink(models.Model):
     # When the practice makes its bill. The vet or the practice office
     # chooses, on the Bills page of C-vet.
     bill_when = models.CharField(max_length=10, choices=BillWhen.choices, default=BillWhen.VISIT)
-    # The yard's own choice: what it adds to a vet item when it invoices
-    # the owner. The yard can still change one charge by hand.
-    yard_margin_percent = models.DecimalField(
-        'Yard margin (%)', max_digits=5, decimal_places=2, default=Decimal('0.00'),
-        validators=[MinValueValidator(Decimal('0')), MaxValueValidator(Decimal('100'))],
-        help_text="Added to each vet item when it becomes a charge for the owner. "
-                  "0 passes the vet's amount on as it is.",
-    )
     # The practice as the yard already knows it: the entry in the yard's
     # own list of providers, which its vet visit log and charges use.
     service_provider = models.OneToOneField(

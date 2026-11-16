@@ -5,9 +5,9 @@ When the vet taps Finish visit, ``close_out`` does two things:
 1. **Writes the yard's records**, as the yard's staff would by hand: a
    vaccination record for each vaccination, a vet visit record with the
    other items and the recheck date. When the yard is billed, each
-   record carries its cost (with the yard's margin, if it has one), and
-   C-gate's own code makes the charge that the yard's next invoices bill
-   to each owner.
+   record carries its cost, and C-gate's own code makes the charge that
+   the yard's next invoices bill to each owner. The yard manager can
+   change that charge in C-gate, to add the yard's margin.
 2. **Makes the bill**, if the practice bills this yard after each visit:
    one bill to the yard (the practice's client), or, for a yard set to
    "bill each owner", one bill for each owner.
@@ -81,18 +81,20 @@ def split_amount(total, payers):
     return [(payer, amount) for payer, amount, _ in parts]
 
 
-def yard_amount(gross, rate, yard_charges_vat, margin_percent=0):
-    """What the yard puts on an owner's invoice for an item of the vet's bill.
+def yard_amount(gross, rate, yard_charges_vat):
+    """What an item of the vet's bill costs the yard: the owner's charge starts here.
 
     A yard that is not VAT-registered passes on what it pays: the whole
     amount. A VAT-registered yard takes the VAT back from HMRC and its
     own invoices add VAT again, so it passes on the amount without VAT
-    (decision 23). Then the yard's margin, if it has one (decision 26).
+    (decision 23).
+
+    No margin is added here. What the yard adds when it invoices an owner
+    is the yard manager's decision, made in C-gate on the charge
+    (decision 26). C-vet passes the vet's amount on as it is.
     """
     gross = Decimal(gross)
-    amount = gross - vat_in(gross, rate) if yard_charges_vat else gross
-    margin = Decimal(margin_percent or 0)
-    return (amount * (Decimal('100') + margin) / Decimal('100')).quantize(PENNY, ROUND_HALF_UP)
+    return gross - vat_in(gross, rate) if yard_charges_vat else gross
 
 
 # ── The bill ─────────────────────────────────────────────────────────────
@@ -235,8 +237,7 @@ def send_note_to_yard(note, link):
                 if not with_charges:
                     return Decimal('0.00')
                 return sum((
-                    yard_amount(line.total_inc_vat, line.vat_rate, yard_charges_vat, link.yard_margin_percent)
-                    for line in line_set
+                    yard_amount(line.total_inc_vat, line.vat_rate, yard_charges_vat) for line in line_set
                 ), Decimal('0.00'))
 
             records = []

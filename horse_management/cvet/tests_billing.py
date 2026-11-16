@@ -374,30 +374,35 @@ class MonthlyBillTests(BillingCase):
 
 
 class YardMarginTests(BillingCase):
-    """The yard adds its margin when a vet item becomes an owner's charge."""
+    """The yard's margin is the yard manager's matter, in C-gate, not C-vet's."""
 
-    def test_the_margin_is_on_the_owners_charge_and_not_on_the_vets_bill(self):
-        PracticeYardLink.objects.update(yard_margin_percent=Decimal('10.00'))
+    def test_cvet_passes_the_vets_amount_on_as_it_is(self):
         self.finish(self.visit((self.horse, [line()], {})))
+        self.assertEqual(ExtraCharge.objects.get().amount, Decimal('65.00'))
+        self.assertFalse(hasattr(PracticeYardLink, 'yard_margin_percent'))
+
+    def test_the_yard_manager_adds_a_margin_on_the_record_in_c_gate(self):
+        # The way yard staff change a vet cost today: on the yard's own
+        # vet visit record. C-gate brings the unbilled charge into line.
+        from health.views import sync_record_charge
+
+        self.finish(self.visit((self.horse, [line()], {})))
+        record = VetVisit.objects.get()
+        record.cost = Decimal('71.50')
+        record.save()
+        self.assertEqual(sync_record_charge(record), 'updated')
         self.assertEqual(ExtraCharge.objects.get().amount, Decimal('71.50'))
+        # The vet's bill and the yard's cost are what the vet charged.
         self.assertEqual(Bill.objects.get().total_inc_vat, Decimal('65.00'))
         self.assertEqual(YardCost.objects.get().total_with_vat, Decimal('65.00'))
 
-    def test_no_margin_passes_the_amount_on(self):
-        self.finish(self.visit((self.horse, [line()], {})))
-        self.assertEqual(ExtraCharge.objects.get().amount, Decimal('65.00'))
-
-    def test_a_yard_that_charges_vat_adds_its_margin_to_the_amount_without_vat(self):
-        BusinessSettings.objects.update(vat_rate=Decimal('20.00'))
-        PracticeYardLink.objects.update(yard_margin_percent=Decimal('10.00'))
-        self.finish(self.visit((self.horse, [line()], {})))
-        # 65.00 with VAT is 54.17 without. Plus 10% is 59.59.
-        self.assertEqual(ExtraCharge.objects.get().amount, Decimal('59.59'))
-
-    def test_the_margin_is_worked_out_item_by_item(self):
-        self.assertEqual(billing.yard_amount('65.00', '20.00', False, '12.5'), Decimal('73.13'))
-        self.assertEqual(billing.yard_amount('0.00', '20.00', False, '10'), Decimal('0.00'))
-        self.assertEqual(billing.yard_amount('65.00', '20.00', False, None), Decimal('65.00'))
+    def test_a_later_sync_from_cvet_does_not_undo_the_managers_change(self):
+        visit_id = self.visit((self.horse, [line()], {}))
+        self.finish(visit_id)
+        ExtraCharge.objects.update(amount=Decimal('71.50'))
+        self.finish(visit_id)
+        billing.close_out(Visit.objects.get())
+        self.assertEqual(ExtraCharge.objects.get().amount, Decimal('71.50'))
 
 
 class TestModeTests(YardCase):

@@ -42,7 +42,7 @@ class PracticeYardLinkInline(admin.StackedInline):
     max_num = 1
     fields = (
         'started_on', 'ended_on', 'bill_to', 'bill_when', 'service_provider',
-        'sends_charges', 'yard_margin_percent', 'sends_vaccination_dates', 'sends_follow_up_dates',
+        'sends_charges', 'sends_vaccination_dates', 'sends_follow_up_dates',
     )
 
 
