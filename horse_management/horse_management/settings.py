@@ -102,6 +102,7 @@ INSTALLED_APPS = [
     'invoicing.apps.InvoicingConfig',
     'health.apps.HealthConfig',
     'billing.apps.BillingConfig',
+    'cvet.apps.CvetConfig',
     'notifications.apps.NotificationsConfig',
     'xero_integration.apps.XeroIntegrationConfig',
 ]
@@ -524,6 +525,12 @@ POSTHOG_PROXY_PATH = '/ingest'
 INVOICE_SEND_ASYNC = env.bool(
     'INVOICE_SEND_ASYNC', default=not bool(os.environ.get('VERCEL'))
 )
+
+# C-vet offline prototype (docs/C_VET_PLAN.md, phase 1): the test page at
+# /c-vet/ that stores a horse list, notes, photos and voice recordings on
+# a phone with no signal. Off by default: every /c-vet/ address is a 404.
+# Turn it on for the phone test, then off again when the test ends.
+CVET_PROTOTYPE_ENABLED = env.bool('CVET_PROTOTYPE_ENABLED', default=False)
 
 # Location mapping (coordinates, the nearest-location chip, the map tab
 # and the Near you dashboard card). Off by default in every environment;

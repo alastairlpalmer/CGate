@@ -35,3 +35,23 @@ node tools/qa/farrier_phone_qa.js http://127.0.0.1:8765 /tmp/farrier-qa
 
 The report lists, per phone and screen, overflow and tap targets under
 44 px. Screenshots go in the same folder.
+
+## The C-vet offline check
+
+`cvet_offline_qa.js` is kept on purpose: it is the browser check of the
+C-vet offline prototype (`docs/C_VET_PLAN.md`, section 7). It uses the
+farrier seed above for its horses and its login. Start the server with
+the test page on, and allow the microphone test to store files somewhere
+throwaway:
+
+```bash
+export CVET_PROTOTYPE_ENABLED=True MEDIA_ROOT=/tmp/cvet-qa-media
+python manage.py runserver 127.0.0.1:8765
+node tools/qa/cvet_offline_qa.js http://127.0.0.1:8765 /tmp/cvet-qa
+```
+
+It downloads the horse list, cuts the network, opens the page again,
+saves three notes (one with a photo and a voice recording), brings the
+network back and loses the reply to one upload on purpose. The server
+must end with exactly three entries. It is Chromium, not an iPhone: the
+test on the real phone is section 8 of the plan.

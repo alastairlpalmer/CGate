@@ -1,0 +1,95 @@
+{% load static %}{% load cache_bust %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>C-vet offline test</title>
+    <meta name="theme-color" content="#3D5A63">
+    <link rel="manifest" href="{% static_v 'cvet/manifest.json' %}">
+    <link rel="apple-touch-icon" href="{% static_v 'icons/apple-touch-icon.png' %}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{% static_v 'icons/icon-192.png' %}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="C-vet">
+    <link rel="stylesheet" href="{% static_v 'cvet/proto.css' %}">
+    <script defer src="{% static_v 'cvet/proto_core.js' %}"></script>
+    <script defer src="{% static_v 'cvet/proto.js' %}"></script>
+</head>
+{% comment %}
+This page holds no data and no CSRF token: the service worker stores it
+and opens the stored copy with no signal, for whoever holds the phone.
+Everything a person sees comes from IndexedDB (static/cvet/proto.js).
+{% endcomment %}
+<body data-version="{{ config.version }}"
+      data-sw-url="{{ config.sw_url }}"
+      data-scope="{{ config.scope }}"
+      data-session-url="{{ config.session_url }}"
+      data-bootstrap-url="{{ config.bootstrap_url }}"
+      data-entries-url="{{ config.entries_url }}"
+      data-login-url="{{ config.login_url }}">
+
+<header class="bar">
+    <h1>C-vet <span class="tag">test</span></h1>
+    <span id="unsent" class="chip count" aria-live="polite">…</span>
+    <span id="signal" class="chip">…</span>
+</header>
+
+<main>
+    <section class="card tools" aria-label="Sync">
+        <div class="row">
+            <button id="sync" type="button" class="button primary">Sync now</button>
+            <button id="download" type="button" class="button">Download horses</button>
+        </div>
+        <p id="sync-message" class="muted" aria-live="polite"></p>
+        <p id="sign-in" hidden>
+            <a id="sign-in-link" class="button" href="#">Sign in again</a>
+        </p>
+        <p class="muted"><span id="downloaded"></span> <span id="who"></span></p>
+    </section>
+
+    <section class="card" aria-labelledby="horses-title">
+        <h2 id="horses-title" class="visually-hidden">Horses</h2>
+        <input id="search" type="search" placeholder="Find a horse" autocomplete="off" aria-label="Find a horse">
+        <ul id="horses" class="list"></ul>
+        <p id="no-horses" class="muted" hidden>No horses on this phone. Tap Download horses while you have a signal.</p>
+    </section>
+
+    <section id="entry" class="card" aria-labelledby="entry-title" hidden>
+        <h2 id="entry-title">New note</h2>
+        <p id="entry-horse" class="strong"></p>
+        <label for="note">Note</label>
+        <textarea id="note" rows="3" maxlength="5000" placeholder="What you found, what you did, when to check again"></textarea>
+
+        <div class="row">
+            <label class="button" for="photo">Take photo</label>
+            <input id="photo" type="file" accept="image/*" capture="environment" class="visually-hidden">
+            <button id="record" type="button" class="button">Record voice</button>
+        </div>
+        <p id="photo-state" class="muted"></p>
+        <p id="audio-state" class="muted"></p>
+        <audio id="audio-preview" controls hidden></audio>
+
+        <div class="row">
+            <button id="save" type="button" class="button primary">Save note</button>
+            <button id="cancel" type="button" class="button">Cancel</button>
+        </div>
+        <p id="entry-message" class="muted" aria-live="polite"></p>
+    </section>
+
+    <section class="card" aria-labelledby="entries-title">
+        <h2 id="entries-title">Notes on this phone</h2>
+        <ul id="entries" class="list"></ul>
+        <p id="no-entries" class="muted">No notes yet. Tap a horse to add one.</p>
+    </section>
+
+    <details class="card">
+        <summary>Test details</summary>
+        <dl id="details"></dl>
+        <button id="clear" type="button" class="button danger">Clear this phone</button>
+        <p class="muted">Clear removes the horse list and every note from this phone. Notes that were sent stay on the server.</p>
+    </details>
+</main>
+
+<noscript><p class="card">This page needs JavaScript.</p></noscript>
+</body>
+</html>

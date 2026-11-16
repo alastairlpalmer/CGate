@@ -4,6 +4,7 @@
 **Scope:** Tim, our own yard, our own horses. 8 to 12 weeks of use after the build.
 **Status:** Plan. Not built. Starts after the farrier test (`docs/FARRIER_PAGE_PLAN.md`) passes.
 **Build estimate:** about 4 to 6 weeks, because it reuses the farrier page foundations.
+**See also:** [`C_VET_PLAN.md`](C_VET_PLAN.md) sets the structure and the order of the build (the product is now named C-vet, and Yardway is now C-gate). This document stays the description of Tim's screens.
 
 This is the text for section 7 of the Google Doc "Vet Visit App Product Spec". It uses the same plain style, so Tim can add to it.
 

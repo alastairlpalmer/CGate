@@ -103,7 +103,9 @@ no cross-customer isolation boundary to get wrong.
   do not leak to third parties.
 - `Permissions-Policy` on every response: location and camera for this
   site only (maps, photo uploads); microphone, payment, USB and the rest off
-  (`core/middleware.py`).
+  (`core/middleware.py`). One exception: the C-vet offline test page
+  (`/c-vet/`, a 404 unless `CVET_PROTOTYPE_ENABLED` is set) allows the
+  microphone for this site, for voice recordings (`cvet/views.py`).
 - The database connection requires TLS (`sslmode=require`), and so does the
   backup's `pg_dump`. `DATABASE_SSLMODE` changes it.
 

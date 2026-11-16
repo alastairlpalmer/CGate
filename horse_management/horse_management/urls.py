@@ -90,6 +90,8 @@ urlpatterns = [
     # match ProviderPortalMiddleware.PORTAL_PREFIX.
     path('farrier/', include('health.farrier_urls')),
     path('billing/', include('billing.urls')),
+    # C-vet (docs/C_VET_PLAN.md). The prefix is the service worker's scope.
+    path('c-vet/', include('cvet.urls')),
     path('xero/', include('xero_integration.urls')),
 ]
 

@@ -1,0 +1,140 @@
+/* C-vet offline prototype (docs/C_VET_PLAN.md, phase 1).
+   One small file, written by hand, so the page needs nothing from the
+   C-gate stylesheet and the service worker has one thing to store. */
+:root {
+    --ink: #1f2d32;
+    --muted: #5d6b70;
+    --brand: #3D5A63;
+    --paper: #F5F2EA;
+    --card: #ffffff;
+    --line: #d9d4c7;
+    --good: #2f6b45;
+    --warn: #9a5b00;
+    --bad: #a3322b;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    /* The phone's own font: nothing to download, nothing to wait for. */
+    font: 16px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding-bottom: env(safe-area-inset-bottom);
+    -webkit-tap-highlight-color: transparent;
+}
+/* No 300 ms wait after a tap. */
+button, a, label, input, summary { touch-action: manipulation; }
+.bar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: calc(6px + env(safe-area-inset-top)) 12px 6px;
+    background: var(--brand);
+    color: #fff;
+}
+.bar h1 { margin: 0 auto 0 0; font-size: 17px; }
+.tag { font-size: 12px; font-weight: 400; opacity: .85; }
+main { max-width: 640px; margin: 0 auto; padding: 8px 8px 32px; }
+.card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+}
+h2 { margin: 0 0 4px; font-size: 15px; }
+p { margin: 4px 0; }
+.muted { color: var(--muted); font-size: 13px; }
+.muted:empty { display: none; }
+.strong { font-weight: 600; }
+.row { display: flex; gap: 8px; margin: 4px 0; }
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--brand);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--brand);
+    font: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    flex: 1 1 0;
+}
+.button.primary { background: var(--brand); color: #fff; }
+.button.danger { border-color: var(--bad); color: var(--bad); flex: 0 0 auto; }
+.button.recording { background: var(--bad); border-color: var(--bad); color: #fff; }
+.button:disabled { opacity: .5; }
+.chip {
+    flex: 0 0 auto;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.chip.off, .chip.pending { background: #ffe2b8; color: #5c3600; }
+.chip.clear { background: #d9f0e0; color: #1d4a2e; }
+input[type=search], textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    /* 16px or more: an iPhone zooms the page on a smaller field. */
+    font: inherit;
+    background: #fff;
+    color: var(--ink);
+}
+input[type=search] { height: 44px; }
+label { display: block; font-weight: 600; font-size: 13px; margin: 4px 0 2px; }
+label.button { margin: 0; font-size: inherit; }
+.list { list-style: none; margin: 4px 0 0; padding: 0; }
+.list li { border-top: 1px solid var(--line); }
+.list li:first-child { border-top: 0; }
+.horse {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: 5px 0;
+    border: 0;
+    background: none;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+.horse:active { background: var(--paper); }
+.horse .strong, .horse small, .entry small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.horse small, .entry small { color: var(--muted); font-size: 13px; }
+.entry { padding: 5px 0; }
+.entry small.state { font-weight: 600; }
+.entry small.sent { color: var(--good); }
+.entry small.pending { color: var(--warn); }
+.entry small.failed { color: var(--bad); white-space: normal; }
+audio { width: 100%; height: 40px; margin-top: 4px; }
+dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 13px; margin: 8px 0; }
+dt { color: var(--muted); }
+dd { margin: 0; word-break: break-word; }
+summary { font-weight: 600; font-size: 14px; cursor: pointer; min-height: 28px; }
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}

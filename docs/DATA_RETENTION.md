@@ -25,6 +25,7 @@ deployment can change them without a code change.
 | Farrier login (Farrier role) | While the farrier works for the yard | The farrier page | Remove the login from the provider (Settings → Service providers), then deactivate the user. The farrier's visits, prices and records stay, as the yard's farrier records. |
 | Farrier notes and the yard's list for the farrier | As the horse record | Advice on the horse; the list is the yard's request | Kept with the horse. Deleted with the horse. |
 | Farrier visits, lines and the farrier's prices | As invoices (6 years) | The lines are the source of owners' charges and of the yard's payment to the farrier | Kept. A line on a live invoice cannot be changed from the farrier page. |
+| C-vet offline test notes, photos and voice recordings (`PrototypeEntry`) | Until the phone test ends (`docs/C_VET_PLAN.md`, section 8) | Test data only. Not a clinical record. | An administrator deletes every row in the Django admin (C-vet → Offline prototype entries). The files go with the rows. |
 | Off-site backups | 7 daily, 4 weekly, 12 monthly | Disaster recovery | Age out under the backup retention (`core/backup/retention.py`). Erased data is gone from all backups within 12 months. |
 
 ## A subject access request
