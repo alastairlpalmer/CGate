@@ -1,0 +1,195 @@
+{% load static %}{% load cache_bust %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>C-vet</title>
+    <meta name="theme-color" content="#3D5A63">
+    <link rel="manifest" href="{% static_v 'cvet/manifest.json' %}">
+    <link rel="apple-touch-icon" href="{% static_v 'icons/apple-touch-icon.png' %}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{% static_v 'icons/icon-192.png' %}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="C-vet">
+    <link rel="stylesheet" href="{% static_v 'cvet/app.css' %}">
+    <script defer src="{% static_v 'cvet/app_core.js' %}"></script>
+    <script defer src="{% static_v 'cvet/app.js' %}"></script>
+</head>
+{% comment %}
+This page holds no data and no CSRF token: the service worker stores it
+and opens the stored copy with no signal, for whoever holds the phone.
+Everything a person sees comes from IndexedDB (static/cvet/app.js).
+
+Four screens and one more that opens from the first (docs/C_VET_PLAN.md,
+section 7c): Horses, a horse, Visit, Prices, Phone. One is shown at a time.
+{% endcomment %}
+<body data-version="{{ config.version }}"
+      data-sw-url="{{ config.sw_url }}"
+      data-scope="{{ config.scope }}"
+      data-session-url="{{ config.session_url }}"
+      data-yard-url="{{ config.yard_url }}"
+      data-notes-url="{{ config.notes_url }}"
+      data-prices-url="{{ config.prices_url }}"
+      data-visits-url="{{ config.visits_url }}"
+      data-login-url="{{ config.login_url }}"
+      data-logout-url="{{ config.logout_url }}">
+
+<header class="bar">
+    <h1>C-vet <span id="test-mode" class="tag" title="Notes are test notes, not clinical records" hidden>test</span></h1>
+    <button id="unsent" type="button" class="chip count" aria-live="polite" aria-label="Sync now" title="Sync now">…</button>
+    <span id="signal" class="chip off" hidden>No signal</span>
+</header>
+<p id="sync-message" class="status" aria-live="polite"></p>
+<p id="sign-in" class="status" hidden><a id="sign-in-link" class="button" href="#">Sign in again</a></p>
+
+<main>
+    {# ── Horses ── #}
+    <section id="view-horses" class="view" aria-label="Horses">
+        <p id="yard-line" class="yard"></p>
+        <div class="row">
+            <input id="search" type="search" placeholder="Find a horse" autocomplete="off" aria-label="Find a horse">
+            <button id="select-toggle" type="button" class="button slim">Select</button>
+        </div>
+        <ul id="horses" class="list"></ul>
+        <div id="no-horses" class="card" hidden>
+            <p>No horses on this phone.</p>
+            <button id="download-first" type="button" class="button primary">Download horses</button>
+            <p class="muted">You need a signal for this. After that, the app works with no signal.</p>
+        </div>
+        <div id="select-bar" class="actionbar" hidden>
+            <span id="select-count" class="strong"></span>
+            <button id="select-add" type="button" class="button primary">Add item</button>
+        </div>
+    </section>
+
+    {# ── One horse: the treatment screen ── #}
+    <section id="view-horse" class="view" aria-labelledby="horse-name" hidden>
+        <button id="back" type="button" class="back">‹ Horses</button>
+        <h2 id="horse-name"></h2>
+        <p id="horse-ids" class="muted"></p>
+        <p id="horse-payers" class="muted"></p>
+        <p id="horse-due"></p>
+
+        <h3>Items</h3>
+        <div id="tiles" class="tiles"></div>
+        <ul id="lines" class="list lines"></ul>
+        <p id="lines-total" class="total"></p>
+
+        <label for="note">Note</label>
+        <textarea id="note" rows="3" maxlength="5000" placeholder="What you found, what you did"></textarea>
+        <p class="muted">To speak the note, tap the microphone on the keyboard.</p>
+
+        <h3>Recheck</h3>
+        <div id="followups" class="tiles"></div>
+        <button id="recheck-suggestion" type="button" class="suggest" hidden></button>
+        <input id="follow-up" type="date" aria-label="Recheck date">
+
+        <div class="row">
+            <label class="button" for="photo">Take photo</label>
+            <input id="photo" type="file" accept="image/*" capture="environment" class="visually-hidden">
+            <button id="record" type="button" class="button">Record voice</button>
+        </div>
+        <p id="photo-state" class="muted"></p>
+        <p id="audio-state" class="muted"></p>
+        <audio id="audio-preview" controls hidden></audio>
+
+        {# Stays in reach at the foot of the screen, with the reason when a save is refused. #}
+        <div class="savebar">
+            <p id="entry-message" class="problem" aria-live="assertive"></p>
+            <button id="save" type="button" class="button primary">Save</button>
+        </div>
+
+        <h3>History</h3>
+        <ul id="history" class="list"></ul>
+        <p id="no-history" class="muted">No notes on this phone for this horse.</p>
+        <button id="load-history" type="button" class="button">Load older notes</button>
+        <p id="history-message" class="muted" aria-live="polite"></p>
+    </section>
+
+    {# ── The visit: the end-of-visit summary ── #}
+    <section id="view-visit" class="view" aria-labelledby="visit-title" hidden>
+        <h2 id="visit-title">Visit</h2>
+        <p id="visit-bill" class="strong"></p>
+        <p id="visit-empty" class="muted">No horses on this visit yet. Tap a horse to start.</p>
+        <ul id="visit-horses" class="list"></ul>
+        <div id="visit-money" hidden>
+            <h3 id="visit-payers-title">Who pays</h3>
+            <ul id="visit-payers" class="list"></ul>
+            <p id="visit-total" class="total"></p>
+            <p id="visit-vat" class="muted"></p>
+        </div>
+        <div class="row"><button id="finish" type="button" class="button primary" hidden>Finish visit</button></div>
+        <p id="visit-state" class="muted" aria-live="polite"></p>
+    </section>
+
+    {# ── The practice's price list ── #}
+    <section id="view-prices" class="view" aria-label="Prices" hidden>
+        <h2>Prices</h2>
+        <p class="muted">Prices include VAT. A change needs a signal.</p>
+        <div class="row"><button id="price-add" type="button" class="button">Add a price</button></div>
+        <form id="price-form" class="card" novalidate hidden>
+            <h3 id="price-form-title">Add a price</h3>
+            <label for="price-name">Name</label>
+            <input id="price-name" type="text" maxlength="100" autocomplete="off" placeholder="Flu/Tet booster">
+            <div class="row">
+                <div>
+                    <label for="price-amount">Price (£)</label>
+                    <input id="price-amount" type="text" inputmode="decimal" autocomplete="off" placeholder="65.00">
+                </div>
+                <div>
+                    <label for="price-vat">VAT (%)</label>
+                    <input id="price-vat" type="text" inputmode="decimal" autocomplete="off" value="20">
+                </div>
+            </div>
+            <div id="price-vaccination-row" hidden>
+                <label for="price-vaccination">Records a vaccination at the yard</label>
+                <select id="price-vaccination"></select>
+            </div>
+            <div class="row">
+                <button id="price-save" type="submit" class="button primary">Save</button>
+                <button id="price-hide" type="button" class="button" hidden>Hide</button>
+                <button id="price-cancel" type="button" class="button">Cancel</button>
+            </div>
+            <p id="price-message" class="problem" aria-live="assertive"></p>
+        </form>
+        <ul id="prices" class="list"></ul>
+    </section>
+
+    {# ── This phone ── #}
+    <section id="view-phone" class="view" aria-label="This phone" hidden>
+        <h2>This phone</h2>
+        <div class="row">
+            <button id="sync" type="button" class="button primary">Sync now</button>
+            <button id="download" type="button" class="button">Download horses</button>
+        </div>
+        <p class="muted"><span id="downloaded"></span> <span id="who"></span></p>
+        <p><a class="button" href="{{ config.bills_url }}">Bills (needs a signal)</a></p>
+        <dl id="details"></dl>
+        <div class="row">
+            <button id="sign-out" type="button" class="button">Sign out</button>
+            <button id="clear" type="button" class="button danger">Clear this phone</button>
+        </div>
+        <p class="muted">Sign out removes the horse list and every note from this phone, and ends the sign-in. Clear this phone removes them and keeps the sign-in. Notes that were sent stay in the practice's records.</p>
+    </section>
+</main>
+
+{# The item list for several horses at once. #}
+<div id="picker" class="sheet" role="dialog" aria-modal="true" aria-labelledby="picker-title" hidden>
+    <div class="sheet-body">
+        <h2 id="picker-title">Add item</h2>
+        <div id="picker-tiles" class="tiles"></div>
+        <p id="picker-empty" class="muted" hidden>No prices yet. Add them on the Prices screen.</p>
+        <button id="picker-cancel" type="button" class="button">Cancel</button>
+    </div>
+</div>
+
+<nav class="tabs" aria-label="Screens">
+    <button type="button" class="tab" data-view="horses" aria-current="page">Horses</button>
+    <button type="button" class="tab" data-view="visit">Visit <span id="visit-badge" class="badge" hidden></span></button>
+    <button type="button" class="tab" data-view="prices">Prices</button>
+    <button type="button" class="tab" data-view="phone">Phone</button>
+</nav>
+
+<noscript><p class="card">This page needs JavaScript.</p></noscript>
+</body>
+</html>

@@ -90,6 +90,8 @@ urlpatterns = [
     # match ProviderPortalMiddleware.PORTAL_PREFIX.
     path('farrier/', include('health.farrier_urls')),
     path('billing/', include('billing.urls')),
+    # C-vet (docs/C_VET_PLAN.md). The prefix is the service worker's scope.
+    path('c-vet/', include('cvet.urls')),
     path('xero/', include('xero_integration.urls')),
 ]
 
@@ -116,6 +118,8 @@ if getattr(settings, 'SERVE_MEDIA', False) and not settings.DEBUG:
         ('business/', None),  # logo — any signed-in user (renders app-wide)
     )
 
+    PRACTICE_MEDIA_PREFIX = 'cvet/'
+
     def _document_feature(path):
         """Owner documents follow Owners access; horse documents, Horses."""
         from core.models import Document
@@ -141,6 +145,11 @@ if getattr(settings, 'SERVE_MEDIA', False) and not settings.DEBUG:
             or normalised.startswith(('/', '..'))
             or '/../' in f'/{normalised}/'
         ):
+            raise Http404
+        # A practice's clinical photos and recordings (C-vet). No yard
+        # login reads them here, a superuser included: only the practice
+        # does, through C-vet's own file address (docs/C_VET_PLAN.md).
+        if normalised.startswith(PRACTICE_MEDIA_PREFIX):
             raise Http404
         for prefix, feature in MEDIA_FEATURE_BY_PREFIX:
             if path.startswith(prefix):

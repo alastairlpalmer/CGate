@@ -1,0 +1,65 @@
+{% load ui_extras %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill {{ bill.number }}</title>
+    <style>
+        body { font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1f2d32; max-width: 46em; margin: 0 auto; padding: 12px; }
+        h1 { font-size: 22px; margin: 0; }
+        a { color: #3D5A63; font-weight: 600; }
+        .nav a, td a { display: inline-block; padding: 12px 8px 12px 0; }
+        .nowrap { white-space: nowrap; }
+        .top { display: flex; justify-content: space-between; gap: 24px; margin: 12px 0 20px; }
+        .top div:last-child { text-align: right; }
+        table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+        th, td { padding: 6px; text-align: left; border-bottom: 1px solid #d9d4c7; }
+        .num { text-align: right; white-space: nowrap; }
+        .horse td { font-weight: 600; background: #F5F2EA; }
+        .totals td { border: 0; }
+        .grand td { font-weight: 700; font-size: 17px; border-top: 2px solid #1f2d32; }
+        .muted { color: #5d6b70; font-size: 13px; }
+        .tag { padding: 1px 6px; border-radius: 4px; background: #ffe2b8; color: #5c3600; font-size: 13px; font-weight: 600; }
+        @media print { .screen { display: none; } body { padding: 0; } }
+    </style>
+</head>
+<body>
+    <p class="screen nav"><a href="{% url 'cvet:bill_list' %}">‹ Bills</a><br>To print it or to save it as a PDF, use Print in the browser's menu.</p>
+    {% if test_mode %}<p><span class="tag">Test bill. Not a real invoice.</span></p>{% endif %}
+    <div class="top">
+        <div>
+            <h1>{{ practice.name }}</h1>
+            {% if practice.address %}<p>{{ practice.address|linebreaksbr }}</p>{% endif %}
+            <p class="muted">{% if practice.phone %}{{ practice.phone }} · {% endif %}{{ practice.email }}{% if practice.vat_number %}<br>VAT number {{ practice.vat_number }}{% endif %}</p>
+        </div>
+        <div>
+            <p><strong>Invoice {{ bill.number }}</strong><br>{{ bill.date|date:"j F Y" }}{% if monthly %}<br><span class="muted">Visits from {{ bill.period_start|date:"j M Y" }} to {{ bill.period_end|date:"j M Y" }}</span>{% endif %}</p>
+            <p>To: <strong>{{ bill.to_name }}</strong>{% if to_owners and bill.visit.yard_name %}<br><span class="muted">Horse at {{ bill.visit.yard_name }}</span>{% endif %}</p>
+        </div>
+    </div>
+    <table>
+        <tr><th>Item</th><th class="num">Quantity</th><th class="num">Price</th>{% if to_owners %}<th class="num">Your part</th>{% endif %}<th class="num">Amount</th></tr>
+        {% for horse in horses %}
+        <tr class="horse"><td colspan="{% if to_owners %}4{% else %}3{% endif %}">{{ horse.name }}</td><td class="num">{{ horse.total|gbp }}</td></tr>
+        {% for line in horse.lines %}
+        <tr>
+            <td>{{ line.description }}{% if monthly %} <span class="muted">{{ line.date|date:"j M" }}</span>{% endif %}</td>
+            <td class="num">{{ line.quantity|floatformat:"-2" }}</td>
+            <td class="num">{{ line.unit_price_inc_vat|gbp }}</td>
+            {% if to_owners %}<td class="num">{{ line.share|floatformat:"-2" }}%</td>{% endif %}
+            <td class="num">{{ line.amount_inc_vat|gbp }}</td>
+        </tr>
+        {% endfor %}
+        {% endfor %}
+    </table>
+    <table class="totals">
+        {% for band in vat_bands %}
+        <tr><td class="num">Net at {{ band.rate|floatformat:"-2" }}% VAT</td><td class="num" style="width: 8em;">{{ band.net|gbp }}</td></tr>
+        <tr><td class="num">VAT at {{ band.rate|floatformat:"-2" }}%</td><td class="num">{{ band.vat|gbp }}</td></tr>
+        {% endfor %}
+        <tr class="grand"><td class="num">Total to pay</td><td class="num">{{ bill.total_inc_vat|gbp }}</td></tr>
+    </table>
+    <p class="muted">Prices include VAT.</p>
+    {% if practice.bank_details %}<p><strong>How to pay</strong><br>{{ practice.bank_details|linebreaksbr }}</p>{% endif %}
+</body>
+</html>

@@ -1,0 +1,29 @@
+{% extends "notifications/email/_base.html" %}
+{% load ui_extras %}
+{% block extra_styles %}
+        .lines th, .lines td { padding: 6px 10px; text-align: left; }
+        .lines th { border-bottom: 1px solid #ccc; }
+        .lines .num { text-align: right; white-space: nowrap; }
+        .lines .horse td { padding-top: 12px; font-weight: bold; }
+        .warn { color: #A0522D; font-weight: bold; }
+{% endblock %}
+{% block content %}
+    {% if monthly %}<p>This is the bill from {{ practice.name }} for its visits from {{ bill.period_start|date:"j M Y" }} to {{ bill.period_end|date:"j M Y" }}: <strong>{{ bill.number }}</strong>.</p>
+    {% else %}<p>{{ practice.name }} finished a visit on {{ bill.date|date:"j M Y" }}. This is the bill for it: <strong>{{ bill.number }}</strong>.</p>{% endif %}
+    <div class="invoice-details">
+        <table class="lines" width="100%">
+            <tr><th>Item</th><th class="num">Quantity</th><th class="num">Amount</th></tr>
+            {% for horse in horses %}
+            <tr class="horse"><td colspan="2">{{ horse.name }}</td><td class="num">{{ horse.total|gbp }}</td></tr>
+            {% for line in horse.lines %}
+            <tr><td>{{ line.description }}{% if monthly %} ({{ line.date|date:"j M" }}){% endif %}</td><td class="num">{{ line.quantity|floatformat:"-2" }}</td><td class="num">{{ line.amount_inc_vat|gbp }}</td></tr>
+            {% endfor %}
+            {% endfor %}
+            <tr><td colspan="2"><strong>Total, VAT included</strong></td><td class="num"><strong>{{ bill.total_inc_vat|gbp }}</strong></td></tr>
+            <tr><td colspan="2">Of which VAT</td><td class="num">{{ bill.total_vat|gbp }}</td></tr>
+        </table>
+    </div>
+    <p>In C-gate, each horse's part {% if monthly %}became{% else %}is already{% endif %} a charge for its owner{% if monthly %} when each visit was finished{% endif %}, and it goes on the owner's next invoice. The bill is in Costs. Vaccination dates and recheck dates are in each horse's health records. Change a charge in Charges before it goes on an invoice.</p>
+    {% for problem in problems %}<p class="warn">{{ problem }}</p>{% endfor %}
+    {% if practice.bank_details %}<p><strong>To pay {{ practice.name }}:</strong><br>{{ practice.bank_details|linebreaksbr }}</p>{% endif %}
+{% endblock %}

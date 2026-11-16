@@ -103,7 +103,19 @@ no cross-customer isolation boundary to get wrong.
   do not leak to third parties.
 - `Permissions-Policy` on every response: location and camera for this
   site only (maps, photo uploads); microphone, payment, USB and the rest off
-  (`core/middleware.py`).
+  (`core/middleware.py`). One exception: the C-vet page
+  (`/c-vet/`, a 404 unless `CVET_ENABLED` is set) allows the
+  microphone for this site, for voice recordings (`cvet/views.py`).
+- C-vet (`docs/C_VET_PLAN.md`, sections 7a and 7b): a practice's clinical
+  notes and files are read only by members of that practice
+  (`cvet/access.py`). No yard login reads them, an administrator
+  included: not in a page, the Django admin, an export or the media view.
+  A Vet-role login is kept on `/c-vet/` and stays signed in for 90 days
+  (`CVET_SESSION_*`); untick the login in its practice to cut off a lost
+  phone at once. When a visit is finished, one module (`cvet/billing.py`)
+  writes the yard's part into the yard's own records: item names, amounts
+  and dates, never note text. It writes nothing while `CVET_TEST_MODE` is
+  on.
 - The database connection requires TLS (`sslmode=require`), and so does the
   backup's `pg_dump`. `DATABASE_SSLMODE` changes it.
 

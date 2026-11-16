@@ -35,3 +35,32 @@ node tools/qa/farrier_phone_qa.js http://127.0.0.1:8765 /tmp/farrier-qa
 
 The report lists, per phone and screen, overflow and tap targets under
 44 px. Screenshots go in the same folder.
+
+## The C-vet offline check
+
+`cvet_offline_qa.js` is kept on purpose: it is the browser check of the
+C-vet app (`docs/C_VET_PLAN.md`, sections 7 to 7c). It uses the
+farrier seed above for its horses, and `cvet_seed.py` for the practice
+and the vet login. Start the server with the test page on, and store the
+test's files somewhere throwaway:
+
+```bash
+python manage.py shell < tools/qa/cvet_seed.py
+export CVET_ENABLED=True MEDIA_ROOT=/tmp/cvet-qa-media
+python manage.py runserver 127.0.0.1:8765
+node tools/qa/cvet_offline_qa.js http://127.0.0.1:8765 /tmp/cvet-qa
+```
+
+It runs a whole visit with no network: it treats one horse (items, a
+changed price, a note, a recheck, a photo, a voice recording), adds one
+item to three horses at once, reads the summary and finishes the visit.
+Then it brings the network back, loses the reply to one upload on
+purpose, reads the records back, adds a price and signs out. It prints
+what the server must then hold. It is Chromium, not an iPhone: the test
+on the real phone is section 8 of the plan.
+
+The run above is in test mode, as a new server is: a test bill is made and
+nothing goes into the yard's records. To check the real path, set
+`CVET_TEST_MODE=False` for the server and for the script, on a fresh
+throwaway database. The script then prints the yard records to look for:
+vaccination records, a vet visit record, charges and a cost.
