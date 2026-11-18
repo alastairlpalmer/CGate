@@ -21,6 +21,7 @@ Prism won Australia with a loop. The yard sends updates to owners. Owners get a 
 | 1 | Faster yard office: charge rules, invoice run checks, QR cards, welfare flags | No | 5–6 weeks |
 | 2 | Owner updates and owner portal | No (one yard) | 6–8 weeks |
 | 3 | Owner payments | Phases 1–2 of the payments plan: no. Connect fees: yes | 7 weeks, then 3 weeks after P2 |
+| R | Racing yards and owner managers: training fees, trackwork, race entries and results, race reports, syndicates, prize money | Pilot with one trainer: no. To sell: yes | 6–8 weeks with parallel agents |
 | 4 | SaaS and the growth loop: many yards, free tier, owners across yards, import | Yes ([`MULTI_TENANCY_PLAN.md`](MULTI_TENANCY_PLAN.md)) | 7–10 weeks with parallel agents for multi-tenancy, then 4–6 weeks for the growth-loop features |
 | 5 | Later: staff tasks and rota, yard websites, data feeds, native apps, Australia | Yes | Not sized |
 
@@ -28,7 +29,7 @@ Prism won Australia with a loop. The yard sends updates to owners. Owners get a 
 
 ## Phase 0 — Module boundaries (6–7 weeks, beside phase 1)
 
-Goal: C-gate can serve different yard types (grass livery, full livery, stud, maybe racing) and different people (staff, owners, suppliers) without separate copies of the code. The full plan is [`MODULES_PLAN.md`](MODULES_PLAN.md).
+Goal: C-gate can serve different yard types (grass livery, full livery, stud, racing) and different people (staff, owners, suppliers) without separate copies of the code. The full plan is [`MODULES_PLAN.md`](MODULES_PLAN.md).
 
 Why first: half the code is in `core`, and 18 files in `core` import the modules above it. The multi-tenancy build gives one agent per app, so clean lines make that build faster and safer. The owner portal and payments are new code, so they must start inside the new lines.
 
@@ -73,7 +74,7 @@ Depends on: Launch plan P2 item 2 (**per-object access checks**). An owner must 
 | 2.1 | **Per-object access** | Owner permissions per horse | Roles for staff only | Owner user type. Every owner view filters by `OwnershipShare`. Tests that try to read another owner's horse. | 1.5 weeks |
 | 2.2 | **Owner sign-in** | Owner login by email | Staff sign-in, MFA, Google sign-in, invites | Invite an owner from the owner page. Magic link or password. Owner MFA optional. | 1 week |
 | 2.3 | **Yard updates** | Trainer updates with photo, video, audio, reports; 151m sent | Horse photos | Staff post an update on a horse: text and photos, from a phone. Choose "send to owners". One update can go to many horses (for example "all horses in Top Field wormed today"). | 1.5 weeks |
-| 2.4 | **Owner portal** | Owner portal: notifications, horse, comms | None | Phone-first pages: my horses, where each horse is (site, field, stable), next vaccination, farrier and worming dates, updates feed, invoices and statements, documents (passport, insurance). | 2 weeks |
+| 2.4 | **Owner portal** | Owner portal: notifications, horse, comms | None | One shared address for all owners (for example `my.<domain>`). The owner account sits above yards from the start, so item 4.2 needs no rebuild. Phone-first pages: my horses, where each horse is (site, field, stable), next vaccination, farrier and worming dates, updates feed, invoices and statements, documents (passport, insurance). | 2 weeks |
 | 2.5 | **Notification choices** | Each notification type by web, push or email | Owner email preferences | Per type: update, health due, location change, invoice issued, payment received. Per channel: email, web push (PWA). | 1 week |
 | 2.6 | **Owner requests** | Add horse request to trainer | None | Owner asks for a service from the portal (for example "extra farrier visit", "bring in"). The request goes to the staff task list and can make a charge. | 1 week |
 
@@ -96,6 +97,30 @@ The full design is in [`payments/payments-plan.md`](payments/payments-plan.md). 
 
 ---
 
+## Phase R — Racing yards and owner managers (6–8 weeks)
+
+Goal: sell C-gate to racing trainers and to the people who manage racing syndicates and clubs. This is Prism's home market, so C-gate must match its core and win on owner experience and billing. Scope is in [`MODULES_PLAN.md`](MODULES_PLAN.md) section 6a.
+
+Depends on: phase 0 steps 0.1–0.5 (module lines), phase 2 (owner updates and portal). To sell to more than one trainer, also multi-tenancy (phase 4.1).
+
+Market: about 600 licensed trainers and 14,555 horses in training in the UK (BHA, September 2024). Assumed revenue per account: £1,200 per year. Add racing and syndicates to [`market/uk-market-sizing.md`](market/uk-market-sizing.md) before you set prices.
+
+| # | Feature | From Prism | C-gate today | Build | Size |
+|---|---|---|---|---|---|
+| R.1 | **Racing edition** | Trainer solution | Stables, placements, day rates | Preset modules and words: box, lot, training fees, spelling | 3 days |
+| R.2 | **Horses in training** | Horse status and location | Horse status, stables | Statuses: in training, spelling, injured, retired. Move between yard and spelling farm. | 3 days |
+| R.3 | **Trackwork** | Trackwork and schedules | None | Daily lot list on a phone: rider, work, notes. Optional "share with owners". | 1.5 weeks |
+| R.4 | **Race entries and results** | Racing Australia feed: nominations, acceptances, results | None | Read-only feed for the yard's horses from a Weatherbys data licence. Manual entry if the licence is not ready. Owner notifications for entry, declaration, non-runner, result. | 2 weeks, after the licence |
+| R.5 | **Race reports** | Pre-race and post-race reports, media | Owner updates (phase 2) | Report types on owner updates. Video links. | 3 days |
+| R.6 | **Syndicates (owner manager)** | Syndicator portal, one-click forwarding, large owner groups | `OwnershipShare` | Ownership groups with a member register. Forward trainer updates to all members. Manager login across yards. | 2 weeks |
+| R.7 | **Prize money and distributions** | Finance module, owner splits | Split charges, credit notes | Record prize money. Take trainer and jockey percentages. Split the rest by share. Cash calls in advance. | 1.5 weeks |
+| R.8 | **Member and owner statements** | Syndicator statements | Invoices, statements | Monthly statement per member: training fees, extras, prize money, cash calls | 1 week |
+| R.9 | **Pilot trainer** | Built with leading trainers | — | One small or mid-size trainer and one syndicate manager. Weekly feedback for three months. | Non-code |
+
+Not in scope: making entries and declarations inside C-gate. They stay in Weatherbys' own system unless an API allows them. No betting or form tools.
+
+---
+
 ## Phase 4 — SaaS and the growth loop (about 3–4 months)
 
 Goal: many yards on one platform. Owners bring in new yards. This is how Prism grew.
@@ -111,7 +136,7 @@ Depends on: the multi-tenancy build in [`MULTI_TENANCY_PLAN.md`](MULTI_TENANCY_P
 | 4.5 | **Modular pricing by horse count** | $30 / $90 / $125 per module by horse count | Keep the three tiers in the market sizing (£29, £49, £89). Add paid add-ons: payments, breeding, maps, C-vet link. | In Stripe Billing work |
 | 4.6 | **Fast onboarding import** | Profiles already built from Racing Australia | Import wizard: CSV and Excel from spreadsheets and from other UK products. Map columns. Dry run. Undo. | 3 weeks |
 | 4.7 | **Supplier logins** | Multi-login for suppliers | One login type for farriers, dentists, physios and vets across many yards. Reuse the farrier page and C-vet. | 3 weeks |
-| 4.8 | **Reference yards** | Built with leading trainers | Five pilot yards, chosen with care: one stud, one large full livery, one multi-site grazing, two DIY. Weekly feedback for three months. | Non-code |
+| 4.8 | **Reference yards** | Built with leading trainers | Six pilot yards, chosen with care: one stud, one large full livery, one multi-site grazing, two DIY, and the racing pilot trainer from R.9. Weekly feedback for three months. | Non-code |
 
 ---
 
@@ -122,19 +147,28 @@ Depends on: the multi-tenancy build in [`MULTI_TENANCY_PLAN.md`](MULTI_TENANCY_P
 | 5.1 | **Staff tasks and rota** | Tasks, timesheets, rostering, auto scheduling | Daily yard jobs from turnout, feeds and health due dates. Tick off on a phone. Rota by person. Timesheets export for payroll. |
 | 5.2 | **Yard board mode** | Prism Plus Tablet | A tablet view for the tack room: today's jobs, flags, who is in which stable. Use with QR cards (1.4). |
 | 5.3 | **Yard websites** | Website builder, horses for sale | Reuse the Astro `website/` as templates. Show live livery vacancies and horses for sale from C-gate. Leads go into C-gate. |
-| 5.4 | **UK data feeds** | Racing Australia daily file, Stud Book lookup | Look at Weatherbys for thoroughbred studs and passport issuing organisations for horse identity. Check API access, terms and cost before you commit. |
+| 5.4 | **UK data feeds** | Racing Australia daily file, Stud Book lookup | Weatherbys racing data comes forward to R.4. Later: Weatherbys stud book data for studs, and Equine Register (ChipChecker, Digital Stable) for horse identity. Check API access, terms and cost before you commit. |
 | 5.5 | **Native apps** | Three iOS and Android apps | Only if the PWA blocks something (for example push on old iPhones or Bluetooth scanners). Start with a wrapper around the PWA. |
 | 5.6 | **QuickBooks and Sage** | MYOB | The second accounting link for the UK. |
 | 5.7 | **Australia** | Prism owns racing | Agistment and breaking farms are the entry point, not racing. Needs AUD, GST, MYOB, Racing Australia or Stud Book data. Prism already sells an agistment module, so check the gap first. |
 
 ## Not on the roadmap
 
-- **Racing, for now:** nominations, acceptances, declarations, trackwork, race reports. The market sizing excludes racing trainers ([`market/uk-market-sizing.md`](market/uk-market-sizing.md)). The modules plan leaves room for a `racing` module if you decide to add it (decision 0 below).
+- **Racing entries and declarations made inside C-gate.** They stay in Weatherbys' own system unless an API allows them. Phase R shows them read-only.
+- **Betting and form tools.**
 - **Lesson and arena bookings.** Riding schools are a weak fit.
+
+## Decisions made
+
+Made on 18 November 2026:
+
+- **Racing yards and owner managers are in the product** (phase R).
+- **Split `health` into care and breeding later**, not now.
+- **One shared owner portal address** for all yards, with the owner account above yards from the start.
 
 ## Decisions needed from you
 
-0. **Racing.** In the product as a module and edition, or a later option? See [`MODULES_PLAN.md`](MODULES_PLAN.md) section 8. Today the roadmap leaves racing out.
+0. **Weatherbys data licence.** Contact Weatherbys for terms and cost before phase R starts. Item R.4 depends on it.
 
 1. **Phase order.** This plan builds owner updates (phase 2) before payments (phase 3). Prism's lesson is that updates bring owners in, and owners are the growth channel. Payments can go first if cash collection is the bigger pain at our yard.
 2. **Free tier.** Do we give a free tier for small yards and home owners (4.4)? It is the cheapest lead source, but it adds support load.

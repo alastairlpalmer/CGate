@@ -4,7 +4,7 @@ Date: 18 November 2026. Status: proposal.
 
 ## Summary
 
-- C-gate will serve different businesses (grass livery, full livery, studs, maybe racing) and different people (yard staff, owners, suppliers). This needs clear lines inside the code.
+- C-gate will serve different businesses (grass livery, full livery, studs, racing yards, and owner and syndicate managers) and different people (yard staff, owners, suppliers). This needs clear lines inside the code.
 - **Keep one app and one database** (a "modular monolith"). Do not split into microservices. Do not build a separate app for each yard type.
 - Separate on **three axes**:
   1. **Who uses it** → separate interfaces (yard office, owner portal, supplier portal, platform admin).
@@ -47,7 +47,7 @@ COMPOSITION (may use any module; nothing uses it)
   Dashboard  │  Menus  │  Search  │  Exports  │  GDPR tools
 ─────────────────────────────────────────────────────────────────────────────────────
 MODULES (each can be on or off for a yard)
-  Places & maps │ Stables & turnout │ Care │ Breeding │ Racing (decision needed)
+  Places & maps │ Stables & turnout │ Care │ Breeding │ Racing │ Syndicates
   Charges │ Invoicing │ Payments │ Accounting links │ Messages & updates │ Staff tasks
 ─────────────────────────────────────────────────────────────────────────────────────
 BASE (always on)
@@ -78,6 +78,7 @@ BASE (always on)
 | Messages & updates | `notifications` | `notifications` | Base |
 | Staff tasks | `tasks` | Not built | Base |
 | Racing | `racing` | Not built | Base, Care, Charges (by service) |
+| Syndicates (owner manager) | `syndicates` | Not built. `OwnershipShare` covers simple shares today. | Base, Charges, Invoicing and Messages (by service) |
 | C-vet | `cvet` | `cvet` | Base. It keeps its own data owner, the practice. |
 
 Moving `health` into `care` and `breeding` is optional. Do it only if breeding grows. The rules matter more than the folder names.
@@ -113,7 +114,8 @@ An edition is a preset. It sets the modules, the words and the setup steps for a
 | Grass livery | Places & maps, Care, Charges, Invoicing, Messages, Owner portal | Field, livery, owner |
 | Full livery | Grass livery + Stables & turnout, Staff tasks | Stable, livery |
 | Stud | Full livery + Breeding | Mare, covering, foal |
-| Racing (if approved) | Stables & turnout, Care, Charges, Invoicing, Messages, Racing, Owner portal | Box, training fees, trainer, syndicate |
+| Racing yard | Stables & turnout, Care, Charges, Invoicing, Messages, Racing, Owner portal | Box, training fees, trainer, lot, syndicate |
+| Owner manager (syndicates, racing clubs) | Syndicates, Messages, Charges, Invoicing, Owner portal. Racing in read-only mode. | Syndicate, member, share, cash call, distribution |
 
 Words come from one table per edition, used by templates through a template tag. Example: `{% term "field" %}` shows "Field" for livery and "Paddock" for an Australian yard.
 
@@ -122,7 +124,7 @@ Words come from one table per edition, used by templates through a template tag.
 | Interface | Users | URL | Layout and menu | Login rule |
 |---|---|---|---|---|
 | Yard office | Yard staff | `/` | Current layout. Menu from the registry. | Membership of the yard, MFA for administrators |
-| Owner portal | Owners | `/my/` | Phone first. Short menu: horses, updates, invoices, documents. | Owner account. Sees only horses where the owner has a share. |
+| Owner portal | Owners and syndicate members | **One shared address for all yards**, for example `my.<domain>` | Phone first. Short menu: horses, updates, races, invoices, documents. | Owner account that sits above yards. Sees only horses where the owner has a share, at every yard and syndicate they use. |
 | Supplier portal | Farriers, dentists, physios | `/supplier/` | Today's farrier page, extended | Supplier account, per yard link |
 | C-vet | Vet practices | `/cvet/` | As today | Practice membership |
 | Platform admin | C-gate staff | `/platform/` | Yards, plans, support login | C-gate staff only, MFA, audit |
@@ -154,6 +156,34 @@ Now ──► Modules steps 1–3 ──► Multi-tenancy wave 0 ──► Modul
 - Roadmap phase 1 (charge rules, invoice checks, QR cards, welfare flags) can run beside steps 1–3. Build charge rules (1.1) with the event pattern in rule 2.
 - Step 4 gives the module switches that Stripe Billing needs for add-ons (multi-tenancy wave 4).
 
+## 6a. Racing and syndicate modules
+
+Decided on 18 November 2026: racing yards and owner managers are in the product. Build both as modules after steps 1–5, so they start inside the new lines.
+
+### Racing module (`racing`)
+
+| Part | What it does | Reuses |
+|---|---|---|
+| Horses in training | Status: in training, spelling (out at grass), injured, retired. Box and barn. | Stables & turnout, Places |
+| Training fees | Daily training fee by horse, plus extras | Placements and day rates, Charges |
+| Trackwork | Daily lot list. Who rode, what work, notes. On a phone. | Base, Messages for owner updates |
+| Race entries and results | Upcoming entries, declarations and results for the yard's horses. Read-only feed. | Weatherbys data licence (check terms and cost first). Manual entry as a fallback. |
+| Race reports | Pre-race and post-race reports, video links, sent to owners | Messages & updates (roadmap phase 2) |
+| Prize money | Record prize money. Split by ownership share after the trainer's and jockey's percentages. | Charges, Invoicing (credit lines) |
+
+Not in scope: making entries and declarations inside C-gate. Those stay in Weatherbys' own system unless an API allows them.
+
+### Syndicates module (`syndicates`), the "owner manager"
+
+| Part | What it does | Reuses |
+|---|---|---|
+| Ownership groups | A syndicate or racing club owns one or more horses. Many members, each with a share. Member register with joining and leaving dates. | Owner & shares (base) |
+| Forward updates | One click forwards the trainer's update to all members | Messages & updates |
+| Cash calls | Ask members for their share of costs in advance | Invoicing, Payments |
+| Distributions | Share prize money and sale proceeds by share | Charges, Invoicing |
+| Member statements | Monthly statement per member | Invoicing |
+| Manager login | A syndicate manager works across the yards where the group's horses are trained | Membership (multi-tenancy plan), owner account above yards |
+
 ## 7. Risks
 
 | Risk | Control |
@@ -163,8 +193,14 @@ Now ──► Modules steps 1–3 ──► Multi-tenancy wave 0 ──► Modul
 | Too many small modules | Split only where a yard type needs to switch a module off, or where a module has its own users |
 | The work stops feature work | Steps are small PRs on `main`. Roadmap phase 1 runs in parallel. |
 
-## 8. Decisions needed
+## 8. Decisions
 
-1. **Racing.** In the product, or a later option? The UK market sizing excludes racing. If it is in, add a `racing` module with Weatherbys as the data source, and a racing edition.
-2. **Split `health`** into Care and Breeding now, or only when breeding grows? Recommendation: later.
-3. **Owner portal address:** `/my/` on the yard's address, or one shared address for owners with horses at many yards (needed for roadmap item 4.2)? Recommendation: one shared owner address from the start.
+Made on 18 November 2026:
+
+1. **Racing: yes.** Racing yards and owner managers (syndicates, racing clubs) are in the product as modules and editions. See section 6a.
+2. **Split `health`: later.** Keep care and breeding in `health` until breeding grows.
+3. **Owner portal address: one shared address** for all owners, for example `my.<domain>`. The owner account sits above yards from the start.
+
+Still open:
+
+4. **Weatherbys data.** Ask Weatherbys for the terms and cost of a data licence for entries and results before the racing build starts.
