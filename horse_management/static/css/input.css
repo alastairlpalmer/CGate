@@ -2043,6 +2043,9 @@ a.pane-item-title:hover { @apply text-forest; }
     @apply mt-1.5 w-2.5 h-2.5 rounded-full bg-saddle hover:ring-4 hover:ring-saddle/20 transition-shadow;
 }
 
+/* The tab bar of the four money pages (includes/_finance_tabs.html). */
+.finance-tabs { @apply flex gap-4 overflow-x-auto border-b border-light-sage -mb-1; }
+
 /* ── Help centre (templates/help/) ── */
 .help-search { @apply relative flex items-center gap-2; }
 .help-search-icon { @apply absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-sage pointer-events-none; }

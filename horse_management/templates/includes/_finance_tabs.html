@@ -1,0 +1,20 @@
+{% comment %}
+The tab bar shared by the four money pages, which the sidebar shows as one
+item, "Finances". Each tab shows only for a role that can open its page.
+Usage: {% include 'includes/_finance_tabs.html' with finance_tab='invoices' %}
+finance_tab: 'overview', 'invoices', 'charges' or 'costs'.
+{% endcomment %}
+<nav class="finance-tabs" aria-label="Finances">
+    {% if feature_access.finances.view %}
+    <a href="{% url 'finances' %}" class="{% if finance_tab == 'overview' %}tab-underline-active{% else %}tab-underline-inactive{% endif %} min-w-[44px] justify-center px-1"{% if finance_tab == 'overview' %} aria-current="page"{% endif %}>Overview</a>
+    {% endif %}
+    {% if feature_access.invoices.view %}
+    <a href="{% url 'invoice_list' %}" class="{% if finance_tab == 'invoices' %}tab-underline-active{% else %}tab-underline-inactive{% endif %} min-w-[44px] justify-center px-1"{% if finance_tab == 'invoices' %} aria-current="page"{% endif %}>Invoices</a>
+    {% endif %}
+    {% if feature_access.charges.view %}
+    <a href="{% url 'charge_list' %}" class="{% if finance_tab == 'charges' %}tab-underline-active{% else %}tab-underline-inactive{% endif %} min-w-[44px] justify-center px-1"{% if finance_tab == 'charges' %} aria-current="page"{% endif %}>Charges</a>
+    {% endif %}
+    {% if feature_access.costs.view %}
+    <a href="{% url 'costs_list' %}" class="{% if finance_tab == 'costs' %}tab-underline-active{% else %}tab-underline-inactive{% endif %} min-w-[44px] justify-center px-1"{% if finance_tab == 'costs' %} aria-current="page"{% endif %}>Costs</a>
+    {% endif %}
+</nav>
