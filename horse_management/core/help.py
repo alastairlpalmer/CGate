@@ -51,6 +51,19 @@ GUIDES = [
           'Start here', keywords=('needs action', 'bell', 'badge', 'email', 'overdue', 'dismiss', 'reminder')),
     Guide('profile-and-security', 'Your profile and security', 'Your name, email, phone, photo, password and two-step sign-in.',
           'Start here', keywords=('account', 'password', 'two-step', 'mfa', 'authenticator', 'photo', 'email', 'google')),
+    Guide('health', 'Health', 'Vaccinations, worming, egg counts and vet visits.',
+          'Health', features=('health',), keywords=('vaccination', 'flu', 'tetanus', 'worming', 'egg count', 'vet')),
+    Guide('farrier', 'Farrier', 'Farrier visits and when each horse is next due.',
+          'Health', features=('health', 'charges'), keywords=('shoes', 'trim', 'farrier visit')),
+    Guide('charges-and-invoices', 'Charges and invoices', 'Extra charges, monthly invoices, payments and overdue invoices.',
+          'Money', features=('invoices', 'charges'), keywords=('bill', 'invoice', 'payment', 'paid', 'overdue', 'charge', 'debtors')),
+    Guide('costs-and-finances', 'Costs and finances', 'Yard costs and the Finances overview.',
+          'Money', features=('costs', 'finances'), keywords=('cost', 'expense', 'profit', 'finances')),
+    Guide('xero', 'Xero', 'Connect Xero, send invoices and keep payments in step.',
+          'Money', features=('xero',), keywords=('accounting', 'sync', 'connect', 'reconnect')),
+    Guide('users-and-roles', 'Users and roles', 'Invite people and choose what each role can see and change.',
+          'Administration', features=('users',), level='full',
+          keywords=('invite', 'user', 'role', 'access', 'permission', 'administrator', 'deactivate')),
 ]
 
 GUIDES_BY_SLUG = {g.slug: g for g in GUIDES}

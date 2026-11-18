@@ -1,0 +1,72 @@
+<p class="help-lead">This guide is for administrators. It tells you how to add users, give each user a role, and control what each role can see and change.</p>
+
+<p>You need full access to Users &amp; Roles to do the tasks in this guide.</p>
+
+<h2 id="invite">Invite a user</h2>
+<ol class="help-steps">
+    <li>Select <strong>Settings</strong> in the sidebar.</li>
+    <li>Select <strong>Users &amp; Roles</strong>.</li>
+    <li>In <strong>Users</strong>, select <strong>Add User</strong>.</li>
+    <li>Enter the <strong>First Name</strong>, <strong>Last Name</strong> and <strong>Email</strong>.</li>
+    <li>Select the <strong>Role</strong>.</li>
+    <li>Do not enter a password.</li>
+    <li>Select <strong>Add User</strong>.</li>
+</ol>
+<p>Cgate emails an invitation to the new user. The user then chooses their own password. If the link expires or the email is lost, edit the user and select <strong>Send Invitation Again</strong>.</p>
+
+<h2 id="roles">Make or change a role</h2>
+<ol class="help-steps">
+    <li>In <strong>Users &amp; Roles</strong>, find <strong>Roles</strong>.</li>
+    <li>Select <strong>New Role</strong>, or select <strong>Edit</strong> next to a role.</li>
+    <li>Enter the <strong>Role Name</strong> and a <strong>Description</strong>.</li>
+    <li>In <strong>Feature Access</strong>, select one access level for each area.</li>
+    <li>Select <strong>Create Role</strong> or <strong>Save Role</strong>.</li>
+</ol>
+<ul>
+    <li><strong>Hidden</strong>: the area is not in the sidebar. The user cannot open it.</li>
+    <li><strong>View only</strong>: the user can see the area, but cannot add or change records.</li>
+    <li><strong>Full access</strong>: the user can see, add and change records.</li>
+</ul>
+<p>Some areas, for example <strong>Finances overview</strong>, have only <strong>Hidden</strong> and <strong>Full access</strong>. The <strong>Administrator</strong> role always has full access to all areas. You cannot change it.</p>
+<p class="help-note">To delete a role, edit it and select <strong>Delete Role</strong>. If users have this role, select a different role for them first.</p>
+
+<h2 id="change-role">Change the role of a user</h2>
+<ol class="help-steps">
+    <li>In <strong>Users</strong>, select <strong>Edit</strong> next to the user.</li>
+    <li>Select a different <strong>Role</strong>.</li>
+    <li>Select <strong>Save Changes</strong>.</li>
+</ol>
+<p>You cannot remove your own access to Users &amp; Roles. Ask a different administrator to do it.</p>
+
+<h2 id="deactivate">Deactivate a user</h2>
+<ol class="help-steps">
+    <li>In <strong>Users</strong>, select <strong>Edit</strong> next to the user.</li>
+    <li>In <strong>Account Status</strong>, select <strong>Deactivate</strong>.</li>
+    <li>Confirm the action.</li>
+</ol>
+<p>A deactivated user cannot sign in. Cgate keeps their history. To let the user sign in again, select <strong>Reactivate</strong>. To end all the sessions of a user immediately, select <strong>Sign Out Everywhere</strong>.</p>
+
+<h2 id="two-step">Two-step sign-in for administrators</h2>
+<p>A user with the <strong>Administrator</strong> role must use two-step sign-in. Cgate asks the user to set it up at their next sign-in.</p>
+<p>In <strong>Sign-In Security</strong> on the user's page, an administrator can do these tasks for a different user:</p>
+<ul>
+    <li>Select <strong>Turn Off</strong> when the user lost their phone. Do this only when you are sure who is asking.</li>
+    <li>Select <strong>Excuse</strong> when the user cannot use an authenticator app. Then a password alone protects their account.</li>
+</ul>
+
+<h2 id="audit-log">Read the audit log</h2>
+<ol class="help-steps">
+    <li>In <strong>Users &amp; Roles</strong>, find <strong>System</strong>.</li>
+    <li>Next to <strong>Audit Log</strong>, select <strong>Open</strong>.</li>
+</ol>
+<p>The audit log shows who did what, and when. The newest change is first. Only administrators can see it.</p>
+
+<h2 id="problems">Common problems</h2>
+<dl class="help-faq">
+    <dt>A user sees "Your role doesn't include access to that area". What do I do?</dt>
+    <dd>Edit the role of the user. Set that area to <strong>View only</strong> or <strong>Full access</strong>.</dd>
+    <dt>A user is locked out after too many wrong passwords. What do I do?</dt>
+    <dd>Edit the user and select <strong>Unlock</strong>. The lock also stops after a short time.</dd>
+    <dt>Why is <strong>Users &amp; Roles</strong> not in my Settings?</dt>
+    <dd>Your role does not have full access to Users &amp; Roles. Ask an administrator.</dd>
+</dl>
