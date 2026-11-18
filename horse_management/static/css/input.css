@@ -913,18 +913,28 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     /* Two columns, a small label over each value. One value to a line made
        a record 210px tall; this is about 120px. The record's name (a horse,
        an owner) and the cells with no label (the actions) take the full
-       width. */
+       width.
+
+       The table and its sections are blocks here, not a table. A row that
+       is a grid inside a real table is laid out as one table cell: when the
+       table also has a normal row (a totals row in a tfoot), that cell is
+       only as wide as the first column, and each value breaks to one
+       character a line. That was the fault on Aged Debtors. */
+    .data-table-cards, .data-table-cards tbody, .data-table-cards tfoot { display: block; width: 100%; }
     .data-table-cards thead { display: none; }
-    .data-table-cards tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.375rem 1rem; padding: 0.625rem 1rem; }
-    .data-table-cards tbody td { display: block; min-width: 0; border: 0; padding: 0 !important; text-align: left; overflow-wrap: anywhere; }
-    .data-table-cards tbody td:not([data-label]) { grid-column: 1 / -1; }
-    .data-table-cards tbody td[data-label]::before {
+    .data-table-cards :is(tbody, tfoot) tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.375rem 1rem; padding: 0.625rem 1rem; }
+    .data-table-cards :is(tbody, tfoot) td { display: block; min-width: 0; border: 0; padding: 0 !important; text-align: left; overflow-wrap: anywhere; }
+    .data-table-cards :is(tbody, tfoot) td:empty { display: none; }
+    .data-table-cards :is(tbody, tfoot) td:not([data-label]) { grid-column: 1 / -1; }
+    .data-table-cards :is(tbody, tfoot) td[data-label]::before {
         content: attr(data-label); display: block;
         font-weight: 600; font-size: 0.625rem; line-height: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;
         color: #4F727D; white-space: nowrap;
     }
-    .data-table-cards tbody td:is([data-label="Horse"], [data-label="Name"], [data-label="Owner"]):first-child { grid-column: 1 / -1; font-weight: 600; }
-    .data-table-cards tbody td:is([data-label="Horse"], [data-label="Name"], [data-label="Owner"]):first-child::before { display: none; }
+    /* The card's title: the record's name, or a cell with an empty label (a totals row). */
+    .data-table-cards :is(tbody, tfoot) td:is([data-label="Horse"], [data-label="Name"], [data-label="Owner"], [data-label="Mare"], [data-label=""]):first-child { grid-column: 1 / -1; font-weight: 600; }
+    .data-table-cards :is(tbody, tfoot) td:is([data-label="Horse"], [data-label="Name"], [data-label="Owner"], [data-label="Mare"], [data-label=""]):first-child::before { display: none; }
+    .data-table-cards tfoot tr { border-top: 2px solid var(--color-light-sage, #E3E8E6); }
 }
 
 /* Inline-link tap target: on touch layouts, pad the link's hit box out to

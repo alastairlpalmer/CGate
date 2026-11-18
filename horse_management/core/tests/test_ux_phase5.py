@@ -406,6 +406,22 @@ class DensityTests(SimpleTestCase):
         self.assertIn('py-2', self.rule('.data-table td'))
         self.assertIn('text-2xl', self.rule('.kpi-value'))
 
+    def test_a_record_table_is_not_a_table_on_a_phone(self):
+        # On a phone each row of a .data-table-cards table is a grid. Inside
+        # a real table that grid is laid out as one table cell. When the
+        # table also has a normal row (the totals row of Aged Debtors, in a
+        # tfoot) the cell is as wide as the first column only, and each
+        # value breaks to one character a line. So the table and its
+        # sections must be blocks there, and the tfoot rows must be cards.
+        from pathlib import Path
+
+        from django.conf import settings
+        source = (Path(settings.BASE_DIR) / 'static' / 'css' / 'input.css').read_text()
+        self.assertIn('.data-table-cards, .data-table-cards tbody, .data-table-cards tfoot { display: block; width: 100%; }', source)
+        self.assertIn('.data-table-cards :is(tbody, tfoot) tr { display: grid;', source)
+        built = (Path(settings.BASE_DIR) / 'static' / 'css' / 'styles.css').read_text()
+        self.assertIn('.data-table-cards,.data-table-cards tbody,.data-table-cards tfoot{', built)
+
     def test_table_rows_have_no_stripes(self):
         from pathlib import Path
 
