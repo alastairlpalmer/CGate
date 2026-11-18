@@ -1,52 +1,79 @@
-{% load ui_extras %}<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bills · {{ practice.name }}</title>
-    <style>
-        :root { --ink: #17252a; --muted: #5b6a70; --brand: #2f5560; --paper: #f3f1ea; --line: #e1ddd2; }
-        body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        .page { max-width: 46em; margin: 0 auto; padding: 4px 16px 32px; }
-        h1 { font-size: 22px; margin: 4px 0 12px; letter-spacing: -.01em; }
-        a { color: var(--brand); font-weight: 600; }
-        .nav a, td a { display: inline-block; padding: 12px 8px 12px 0; }
-        .nowrap { white-space: nowrap; }
-        .bar { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-        /* A wide table moves sideways inside its box, never the page. */
-        .box { overflow-x: auto; margin: 12px 0; border-radius: 12px; background: #fff; box-shadow: 0 1px 2px rgba(23, 37, 42, .06), 0 1px 6px rgba(23, 37, 42, .05); }
-        .box.pad { padding: 12px 14px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 2px 6px; text-align: left; border-top: 1px solid var(--line); }
-        th:first-child, td:first-child { padding-left: 14px; }
-        th:last-child, td:last-child { padding-right: 14px; }
-        th { padding-top: 10px; padding-bottom: 10px; border-top: 0; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
-        .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-        td.num { font-weight: 600; }
-        .muted { color: var(--muted); font-size: 14px; }
-        fieldset { border: 0; padding: 0; margin: 0; }
-        legend { font-weight: 600; padding: 0; margin-bottom: 4px; }
-        label { display: flex; align-items: center; gap: 10px; min-height: 44px; }
-        input[type=radio] { width: 22px; height: 22px; flex: 0 0 auto; margin: 0; accent-color: var(--brand); }
-        button { min-height: 44px; margin-top: 4px; padding: 0 16px; border: 1px solid var(--brand); border-radius: 10px; background: var(--brand); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
-        .tag { padding: 2px 6px; border-radius: 4px; background: #ffe2b8; color: #5c3600; font-size: 12px; font-weight: 700; text-transform: uppercase; vertical-align: 3px; }
-    </style>
-</head>
-<body>
-<div class="page">
-    <div class="bar nav">
-        <a href="{% url 'cvet:app' %}">‹ C-vet</a>
-        <a href="{% url 'cvet:bill_export' %}">Download all as a CSV file</a>
+{% extends "cvet/office_base.html" %}
+{% load ui_extras %}
+{% block title %}Bills{% endblock %}
+{% block content %}
+    <div class="bar">
+        <h1>Bills {% if test_mode %}<span class="tag">test bills</span>{% endif %}</h1>
+        <a class="screen" href="{% url 'cvet:bill_export' %}">Download all as a CSV file</a>
     </div>
-    <h1>Bills · {{ practice.name }} {% if test_mode %}<span class="tag">test bills</span>{% endif %}</h1>
+
+    {# Find: by client, by month, paid or not. #}
+    <form method="get" class="box pad screen">
+        <div class="fields">
+            <div><label for="f-client">Client</label>
+                <select id="f-client" name="client">
+                    <option value="">Every client</option>
+                    {% for item in clients %}<option value="{{ item.client_id }}"{% if chosen.client == item.client_id|stringformat:"s" %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
+                </select></div>
+            <div><label for="f-month">Month</label>
+                <select id="f-month" name="month">
+                    <option value="">Every month</option>
+                    {% for month in months %}<option value="{{ month|date:"Y-m" }}"{% if chosen.month == month|date:"Y-m" %} selected{% endif %}>{{ month|date:"F Y" }}</option>{% endfor %}
+                </select></div>
+            <div><label for="f-state">Paid</label>
+                <select id="f-state" name="state">
+                    <option value="">Paid and not paid</option>
+                    <option value="unpaid"{% if chosen.state == 'unpaid' %} selected{% endif %}>Not paid</option>
+                    <option value="paid"{% if chosen.state == 'paid' %} selected{% endif %}>Paid</option>
+                </select></div>
+            <button type="submit">Show</button>
+            {% if client %}<a class="button quiet" href="{% url 'cvet:statement' client.client_id %}">Statement for {{ client.name }}</a>{% endif %}
+        </div>
+    </form>
+
+    <div class="tiles">
+        <div class="tile"><strong>{{ total|gbp }}</strong><span>{{ bills|length }} bill{{ bills|length|pluralize }}</span></div>
+        <div class="tile"><strong>{{ paid|gbp }}</strong><span>Paid</span></div>
+        <div class="tile"><strong{% if to_pay %} class="bad"{% endif %}>{{ to_pay|gbp }}</strong><span>Still to pay</span></div>
+    </div>
+
+    {% if bills %}
+    <div class="box">
+    <table>
+        <tr><th>Bill</th><th class="wide">Date</th><th>To</th><th class="num">Total</th><th>Paid</th></tr>
+        {% for bill in bills %}
+        <tr>
+            <td class="nowrap"><a href="{% url 'cvet:bill_detail' bill.pk %}">{{ bill.number }}</a><span class="narrow muted">{{ bill.date|date:"j M Y" }}</span></td>
+            <td class="nowrap wide">{{ bill.date|date:"j M Y" }}{% if bill.period_start %}<br><span class="muted">{{ bill.period_start|date:"j M" }} to {{ bill.period_end|date:"j M" }}</span>{% endif %}</td>
+            <td>{{ bill.to_name }}</td>
+            <td class="num">{{ bill.total_inc_vat|gbp }}</td>
+            <td class="nowrap">
+                <form method="post" action="{% url 'cvet:bill_paid' bill.pk %}">
+                    {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    {% if bill.paid_on %}
+                    <span class="good">{{ bill.paid_on|date:"j M" }}</span>
+                    <button type="submit" name="paid" value="no" class="quiet small screen" aria-label="Mark {{ bill.number }} as not paid">Undo</button>
+                    {% else %}
+                    <button type="submit" class="quiet small screen" aria-label="Mark {{ bill.number }} as paid today">Mark paid</button>
+                    {% endif %}
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    </div>
+    {% else %}
+    <p class="muted">{% if chosen.client or chosen.month or chosen.state %}No bill fits this choice.{% else %}No bills yet. A bill is made when a visit is finished and all of its notes are sent, or once a month.{% endif %}</p>
+    {% endif %}
+
     {% if link %}
-    <div class="box pad">
+    <div class="box pad screen">
         <form method="post" action="{% url 'cvet:bill_settings' %}">
             {% csrf_token %}
             <fieldset>
                 <legend>When to make the bills, for every client</legend>
-                <label><input type="radio" name="bill_when" value="visit"{% if link.bill_when == 'visit' %} checked{% endif %}> After each visit, when the vet taps Finish visit</label>
-                <label><input type="radio" name="bill_when" value="month"{% if link.bill_when == 'month' %} checked{% endif %}> Once a month, on the 1st, for the month before</label>
+                <label class="choice"><input type="radio" name="bill_when" value="visit"{% if link.bill_when == 'visit' %} checked{% endif %}> After each visit, when the vet taps Finish visit</label>
+                <label class="choice"><input type="radio" name="bill_when" value="month"{% if link.bill_when == 'month' %} checked{% endif %}> Once a month, on the 1st, for the month before</label>
                 <button type="submit">Save</button>
             </fieldset>
         </form>
@@ -61,23 +88,4 @@
         {% endif %}
     </div>
     {% endif %}
-    {% if bills %}
-    <div class="box">
-    <table>
-        <tr><th>Bill</th><th>Date</th><th>To</th><th class="num">Total</th></tr>
-        {% for bill in bills %}
-        <tr>
-            <td class="nowrap"><a href="{% url 'cvet:bill_detail' bill.pk %}">{{ bill.number }}</a></td>
-            <td class="nowrap">{{ bill.date|date:"j M" }}{% if bill.period_start %}<br><span class="muted">{{ bill.period_start|date:"j M" }} to {{ bill.period_end|date:"j M" }}</span>{% endif %}</td>
-            <td>{{ bill.to_name }}</td>
-            <td class="num">{{ bill.total_inc_vat|gbp }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-    </div>
-    {% else %}
-    <p class="muted">No bills yet. A bill is made when a visit is finished and all of its notes are sent, or once a month.</p>
-    {% endif %}
-</div>
-</body>
-</html>
+{% endblock %}

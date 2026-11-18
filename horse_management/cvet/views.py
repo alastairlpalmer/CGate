@@ -23,6 +23,7 @@ One page, one service worker and a small JSON API:
   bills it (``cvet.billing``).
 * ``bill_list``, ``bill_detail`` and ``bill_export`` are the practice's own
   pages for its bills. They need a signal and are not part of the stored app.
+  The rest of the practice office's pages are in ``cvet.office``.
 
 Everything is a 404 unless ``CVET_ENABLED`` is set. The gate and the scope
 are in ``cvet.access``: every view below gets ``request.practice`` from
@@ -1012,16 +1013,50 @@ def api_visit_finish(request, client_id):
 @practice_page
 @require_GET
 def bill_list(request):
+    """The practice's bills. ``?client=<id>``, ``?month=YYYY-MM``, ``?state=paid|unpaid``."""
     is_test = settings.CVET_TEST_MODE
-    bills = access.bills_for(request.practice).filter(is_test=is_test)
-    visits, total = billing.unbilled_summary(request.practice, is_test)
+    every = access.bills_for(request.practice).filter(is_test=is_test)
+    bills = every.select_related('visit', 'practice_client')
+    chosen = {'client': '', 'month': request.GET.get('month', ''), 'state': request.GET.get('state', '')}
+    client = None
+    client_id = _uuid(request.GET.get('client'))
+    if client_id is not None:
+        client = access.clients_for(request.practice).filter(client_id=client_id).first()
+        if client is not None:
+            bills = bills.filter(practice_client=client)
+            chosen['client'] = str(client.client_id)
+    month = parse_date(f"{chosen['month']}-01") if chosen['month'] else None
+    if month is not None:
+        bills = bills.filter(date__year=month.year, date__month=month.month)
+    else:
+        chosen['month'] = ''
+    if chosen['state'] == 'paid':
+        bills = bills.filter(paid_on__isnull=False)
+    elif chosen['state'] == 'unpaid':
+        bills = bills.filter(paid_on__isnull=True)
+    else:
+        chosen['state'] = ''
+    bills = list(bills[:500])
+    total = sum((bill.total_inc_vat for bill in bills), Decimal('0.00'))
+    paid = sum((bill.total_inc_vat for bill in bills if bill.paid_on), Decimal('0.00'))
+    visits, unbilled = billing.unbilled_summary(request.practice, is_test)
     return render(request, 'cvet/bill_list.html', {
+        'section': 'bills',
         'practice': request.practice,
-        'bills': bills.select_related('visit')[:200],
+        'bills': bills,
         'test_mode': is_test,
         'link': access.open_link(request.practice),
         'unbilled_visits': visits,
-        'unbilled_total': total,
+        'unbilled_total': unbilled,
+        # The filter: the clients that have a bill, and the months that have one.
+        'clients': access.clients_for(request.practice).filter(bills__in=every).distinct(),
+        'months': every.dates('date', 'month', order='DESC'),
+        'chosen': chosen,
+        'client': client,
+        'total': total,
+        'paid': paid,
+        'to_pay': total - paid,
+        'today': timezone.localdate(),
     })
 
 
@@ -1045,18 +1080,17 @@ def bill_now(request):
     return redirect('cvet:bill_list')
 
 
-def _bill_or_404(request, pk):
-    bill = access.bills_for(request.practice).select_related('practice', 'visit').filter(pk=pk).first()
-    if bill is None:
-        raise Http404
-    return bill
-
-
 @practice_page
 @require_GET
 def bill_detail(request, pk):
     """One bill, as a page to print or to save as a PDF."""
-    return render(request, 'cvet/bill_detail.html', billing.bill_context(_bill_or_404(request, pk)))
+    from . import office
+
+    bill = office._bill_or_404(request, pk)
+    return render(request, 'cvet/bill_detail.html', dict(
+        billing.bill_context(bill), can_email=office.can_email(bill), sent=request.GET.get('sent', ''),
+        today=timezone.localdate(),
+    ))
 
 
 @practice_page
