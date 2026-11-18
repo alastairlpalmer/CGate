@@ -330,7 +330,7 @@
 
 /* Search panel: no blank strip while the results are still on their way
    (kept outside @layer — :empty with !important must beat Alpine's x-show) */
-#app-search-results:empty { display: none !important; }
+[data-search-results]:empty { display: none !important; }
 
 @layer components {
 
@@ -1882,28 +1882,144 @@ a.pane-item-title:hover { @apply text-forest; }
 .pane-dot-vet_visit { @apply bg-error-red; }
 .pane-dot-breeding { @apply bg-forest; }
 
-/* ── Collapsible sidebar (base.html) ──────────────────────────────────
-   The rail is the same nav at 4rem: icons only, names as tooltips. The
-   choice is written to localStorage and re-applied on <html> before the
-   first paint, so a reload does not flash the wide sidebar first. */
+/* ── Sidebar (includes/_sidebar.html) ─────────────────────────────────
+   Dark Brim teal, cream icons. Top to bottom: logo row, search, nav, then
+   Support and Settings, then the profile card. */
+.sidebar-brand { @apply relative flex items-center gap-3 px-4 h-16 shrink-0; }
+.sidebar-logo {
+    @apply w-9 h-9 rounded-lg bg-white/10 ring-1 ring-inset ring-white/15
+           flex items-center justify-center shrink-0 transition-opacity duration-100;
+}
+.sidebar-brand-name { @apply text-lg font-bold text-white tracking-tight font-heading truncate flex-1 min-w-0; }
+.sidebar-toggle {
+    @apply inline-flex items-center justify-center w-8 h-8 rounded-btn text-white/50
+           hover:text-white hover:bg-white/10 transition-[color,background-color,opacity] duration-100 shrink-0;
+}
+
+/* Search. The results panel opens to the right of the sidebar, over the
+   page, so it can be as wide as the app bar's panel was. */
+.side-search { @apply relative px-3 pb-3 shrink-0; min-height: 3.25rem; }
+.side-search-field { @apply relative; }
+.side-search-icon {
+    @apply absolute left-3 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-white/60 pointer-events-none transition-colors;
+}
+.side-search-input {
+    @apply block w-full h-10 pl-10 pr-9 rounded-btn bg-white/10 border border-white/15 text-sm text-white
+           placeholder:text-white/60 hover:bg-white/[0.14] focus:outline-hidden focus:bg-white/[0.14]
+           focus:border-sand/60 focus:ring-2 focus:ring-sand/25 transition-colors duration-100;
+}
+.side-search-input::-webkit-search-cancel-button { appearance: none; display: none; }
+.side-search-kbd {
+    @apply absolute right-2.5 top-1/2 -translate-y-1/2 inline-flex items-center justify-center h-5 min-w-[20px] px-1
+           rounded border border-white/20 font-mono text-[10px] leading-none text-white/60 pointer-events-none;
+}
+.side-search-clear {
+    @apply absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 inline-flex items-center justify-center
+           text-white/60 hover:text-white rounded-btn transition-colors;
+}
+.side-search-panel {
+    @apply absolute top-0 z-[60] w-[30rem] max-w-[calc(100vw-20rem)] bg-white rounded-card border border-light-sage shadow-float overflow-hidden;
+    left: calc(100% + 0.25rem);
+}
+
+/* Support, Settings and the profile card. */
+.sidebar-footer { @apply shrink-0 px-3 pt-3 pb-4 space-y-3 border-t border-white/10; }
+.sidebar-user { @apply relative; }
+.sidebar-user-card {
+    @apply w-full flex items-center gap-3 p-2.5 rounded-card text-left bg-white/[0.08] ring-1 ring-inset ring-white/[0.12]
+           hover:bg-white/[0.12] transition-colors duration-100;
+}
+.sidebar-avatar {
+    @apply w-9 h-9 rounded-full bg-sand text-forest flex items-center justify-center text-sm font-semibold shrink-0 overflow-hidden;
+}
+.sidebar-avatar img { @apply w-full h-full object-cover; }
+.sidebar-user-name { @apply flex-1 min-w-0; }
+.sidebar-user-dots { rotate: 90deg; }
+.sidebar-user-menu {
+    @apply absolute bottom-full left-0 right-0 mb-2 py-1 bg-white rounded-lg shadow-float border border-light-sage overflow-hidden z-[60];
+}
+
+/* ── The rail (collapsed sidebar) ──
+   The same sidebar at 4rem: icons only, names as tooltips. The choice is
+   written to localStorage and re-applied on <html> before the first
+   paint, so a reload does not flash the wide sidebar first. */
 .sidebar-collapsed .app-sidebar { width: 4rem; }
 .sidebar-collapsed .app-shell { padding-left: 4rem; }
 .sidebar-collapsed .sidebar-label,
 .sidebar-collapsed .nav-group-label,
-.sidebar-collapsed .sidebar-user-name { display: none; }
-.sidebar-collapsed .app-sidebar nav a,
-.sidebar-collapsed .sidebar-brand,
-.sidebar-collapsed .sidebar-user { justify-content: center; }
-.sidebar-collapsed .app-sidebar nav a { padding-left: 0; padding-right: 0; }
-.sidebar-collapsed .sidebar-user-actions { display: none; }
+.sidebar-collapsed .sidebar-user-name,
+.sidebar-collapsed .sidebar-user-dots,
+.sidebar-collapsed .side-search-kbd { display: none; }
+.sidebar-collapsed .app-sidebar nav a { justify-content: center; padding-left: 0; padding-right: 0; }
+
+/* The logo and the expand button share one square: side by side they
+   need 74px and the rail has 40px, which made them overlap. The button
+   sits on top of the logo, invisible until the pointer is on the row or
+   it has keyboard focus. A tap on a touch screen still reaches it. */
+.sidebar-collapsed .sidebar-brand { justify-content: center; padding-left: 0; padding-right: 0; }
+.sidebar-collapsed .sidebar-toggle {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 2.25rem;
+    height: 2.25rem;
+    translate: -50% -50%;
+    opacity: 0;
+}
 .sidebar-collapsed .sidebar-toggle svg { transform: rotate(180deg); }
+.sidebar-collapsed .sidebar-brand:hover .sidebar-toggle,
+.sidebar-collapsed .sidebar-toggle:focus-visible {
+    opacity: 1;
+    color: #fff;
+    background-color: rgb(255 255 255 / 0.1);
+}
+.sidebar-collapsed .sidebar-brand:hover .sidebar-logo,
+.sidebar-collapsed .sidebar-brand:has(.sidebar-toggle:focus-visible) .sidebar-logo { opacity: 0; }
+
+/* Search on the rail: a square with the magnifier. In use, the box floats
+   out next to the rail as a light field, with the panel under it.
+   Tailwind 4's -translate-y-1/2 uses the `translate` property, which
+   reads --tw-translate-x, so the icon centres through that variable. */
+.sidebar-collapsed .side-search:not(.is-open) .side-search-input {
+    padding-left: 0;
+    padding-right: 0;
+    color: transparent;
+    cursor: pointer;
+}
+.sidebar-collapsed .side-search:not(.is-open) .side-search-input::placeholder { color: transparent; }
+.sidebar-collapsed .side-search:not(.is-open) .side-search-clear { display: none; }
+.sidebar-collapsed .side-search:not(.is-open) .side-search-icon { left: 50%; --tw-translate-x: -50%; }
+.sidebar-collapsed .side-search.is-open .side-search-field {
+    position: absolute;
+    top: 0;
+    left: calc(100% + 0.25rem);
+    width: 30rem;
+    z-index: 61;
+}
+.sidebar-collapsed .side-search.is-open .side-search-input {
+    @apply bg-white text-charcoal border-forest placeholder:text-sage shadow-float ring-4 ring-forest/10;
+}
+.sidebar-collapsed .side-search.is-open .side-search-icon,
+.sidebar-collapsed .side-search.is-open .side-search-clear { @apply text-sage; }
+.sidebar-collapsed .side-search-panel { top: 3rem; }
+
+/* The profile card shrinks to the avatar; its menu opens to the right. */
+.sidebar-collapsed .sidebar-user-card {
+    justify-content: center;
+    padding: 0.25rem;
+    background-color: transparent;
+    --tw-ring-color: transparent;
+}
+.sidebar-collapsed .sidebar-user-menu {
+    left: calc(100% + 1rem);
+    right: auto;
+    bottom: 0;
+    margin-bottom: 0;
+    width: 15rem;
+}
 
 .app-sidebar { transition: width 150ms ease-out; }
 .app-shell { transition: padding-left 150ms ease-out; }
-.sidebar-toggle {
-    @apply inline-flex items-center justify-center w-8 h-8 rounded-btn text-white/50
-           hover:text-white hover:bg-white/10 transition-colors duration-100 shrink-0;
-}
 
 @media (prefers-reduced-motion: reduce) {
     .app-sidebar, .app-shell, .split-view-pane { transition: none; }
