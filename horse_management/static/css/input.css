@@ -171,6 +171,8 @@
     .data-table th { @apply px-4 py-2 text-left text-[11px] font-semibold text-forest uppercase tracking-wider; }
     .data-table td { @apply px-4 py-2 text-sm; }
     .data-table tbody tr { @apply border-b border-light-sage transition-colors duration-150 hover:bg-sage-50/80; }
+    /* A table with many columns: less side padding, so it fits its card. */
+    .data-table.is-dense th, .data-table.is-dense td { @apply px-3; }
 
     /* Forms */
     .form-input { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-xs focus:outline-hidden focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150 min-h-[44px] sm:min-h-0; }
@@ -540,6 +542,18 @@
     /* An icon button in a table row: 24px with a mouse, so the row stays 40px. */
     .data-table tbody td .btn-icon, .data-table tbody td .btn-icon-danger { @apply sm:w-6 sm:h-6; }
 
+    /* The first line of a horse on an invoice: a firmer rule above it, so
+       the horses read as groups with no heading row between them. */
+    .data-table tbody tr.invoice-group-start > td { @apply border-t border-sage/30; }
+
+    /* The buttons beside a page title, on a phone. Three full-size buttons
+       do not fit one line there, so each label broke to two lines. They are
+       40px high with 13px text, kept on one line, and the row wraps. */
+    @media (max-width: 639px) {
+        .page-header > .flex { @apply flex-wrap gap-2; }
+        .page-header :is(.btn-primary, .btn-secondary, .btn-record) { @apply min-h-[40px] px-3 py-0 text-[13px] whitespace-nowrap; }
+    }
+
     /* One line of help for a whole card. */
     .settings-note { @apply px-4 py-1.5 text-xs text-sage border-b border-light-sage; }
     .settings-empty { @apply px-4 py-4 text-sm text-sage; }
@@ -669,9 +683,9 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
    same goes for the Settings pages (`.settings-page`), where some cards
    hold fields with no footer.
 
-   A filter bar, a search box and a one-line form in a list have no
-   footer, so they keep their size and still line up with the buttons
-   beside them.
+   The fields of a filter (.filter-bar, and each form that sends a GET)
+   are the same 32px, so they line up with the 32px buttons beside them.
+   A one-line form in a list row keeps its own size.
 
    The templates give the spacing (px-4 py-3, space-y-3, gap-y-3). These
    rules give what a template cannot give once for all forms: the field
@@ -693,11 +707,11 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 :is(.settings-page, form:has(.form-footer, .popup-footer)) fieldset > legend { margin-block-end: 0.5rem; }
 :is(.settings-page, form:has(.form-footer, .popup-footer)) fieldset > legend.section-title { font-size: 0.875rem; }
 @media (min-width: 640px) {
-    :is(.settings-page, form:has(.form-footer, .popup-footer), .filter-bar) :is(
+    :is(.settings-page, form:has(.form-footer, .popup-footer), .filter-bar, form[method="get" i]) :is(
         input[type="text"], input[type="email"], input[type="password"], input[type="number"],
         input[type="url"], input[type="tel"], input[type="date"], input[type="datetime-local"],
         textarea, select) { padding: 0.3125rem 0.625rem; }
-    :is(.settings-page, form:has(.form-footer, .popup-footer), .filter-bar) select:not([multiple]):not([size]) { padding-right: 2rem; background-position: right 0.5rem center; }
+    :is(.settings-page, form:has(.form-footer, .popup-footer), .filter-bar, form[method="get" i]) select:not([multiple]):not([size]) { padding-right: 2rem; background-position: right 0.5rem center; }
     :is(.settings-page, form:has(.form-footer, .popup-footer)) .money-input input { padding-left: 1.75rem; }
 }
 

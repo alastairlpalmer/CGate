@@ -52,8 +52,13 @@
     </div>
 
     <!-- Filter Bar -->
-    <div class="card px-4 py-3 sm:py-4">
-        <form method="get" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="card px-4 py-2" x-data="{ open: false }" x-init="open = Array.from($el.querySelectorAll('select, input:not([type=hidden])')).some(function (field) { return field.value })">
+        {# On a phone the filters fold away: the list is what the page is for. A filter that is set opens them. #}
+        <button type="button" class="filter-toggle" @click="open = !open" aria-expanded="false" :aria-expanded="open ? 'true' : 'false'">
+            <svg class="w-3.5 h-3.5 shrink-0 text-sage transition-transform duration-100" :class="open && 'rotate-90'" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+            Filters
+        </button>
+        <form method="get" class="filter-bar" :class="{ 'is-open': open }">
             <div>
                 <label class="dt-label mb-1" for="filter-mare">Mare</label>
                 <select name="horse" id="filter-mare" class="form-select"
@@ -163,7 +168,8 @@
 
         <!-- Desktop table -->
         <div class="hidden md:block overflow-x-auto">
-            <table class="data-table">
+            {# Eight columns: is-dense gives each a little less side padding, so the actions fit the card. #}
+            <table class="data-table is-dense">
                 <thead>
                     <tr>
                         <th>Mare</th>
@@ -187,15 +193,18 @@
                             {{ br.date_covered|date:"j M Y" }}
                             {% with n=br.coverings.all|length %}{% if n > 1 %}<div class="text-xs">{{ n }} coverings</div>{% endif %}{% endwith %}
                             {% if br.is_active_pregnancy %}
-                            <div class="foal-bar !mt-1.5 w-24" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ br.gestation_progress }}" aria-label="Gestation progress">
-                                <i style="width: {{ br.gestation_progress }}%"></i>
+                            {# The bar and the day count share one line: a row is two lines, not three. #}
+                            <div class="flex items-center gap-2">
+                                <div class="foal-bar !mt-0 w-10 shrink-0" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ br.gestation_progress }}" aria-label="Gestation progress">
+                                    <i style="width: {{ br.gestation_progress }}%"></i>
+                                </div>
+                                <span class="text-xs">Day {{ br.day_of_gestation }}/340</span>
                             </div>
-                            <span class="text-xs">Day {{ br.day_of_gestation }} of 340</span>
                             {% endif %}
                         </td>
                         <td>
                             {% include 'health/partials/breeding_status_badge.html' with br=br %}
-                            {% if br.next_scan %}<div class="mt-1 text-xs text-sage">{{ br.next_scan }} scan due</div>{% endif %}
+                            {% if br.next_scan %}<div class="mt-0.5 text-xs text-sage whitespace-nowrap">{{ br.next_scan }} scan due</div>{% endif %}
                         </td>
                         <td class="whitespace-nowrap">
                             {% if br.date_foal_due and br.is_active_pregnancy %}
@@ -233,9 +242,11 @@
                             <a href="{% url 'breeding_scan' br.pk %}" hx-get="{% url 'breeding_scan' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Scan result for {{ br.mare.name }}" class="{% if br.status == 'covered' %}btn-secondary{% else %}btn-ghost{% endif %} btn-xs">Scan</a>
                             {% endif %}
                             {% if br.can_record_foaling %}
-                            <a href="{% url 'breeding_foaling' br.pk %}" hx-get="{% url 'breeding_foaling' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ br.mare.name }}" class="btn-secondary btn-xs">Record foaling</a>
+                            <a href="{% url 'breeding_foaling' br.pk %}" hx-get="{% url 'breeding_foaling' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ br.mare.name }}" class="btn-secondary btn-xs" title="Record foaling">Foaling</a>
                             {% endif %}
-                            <a href="{% url 'breeding_update' br.pk %}" hx-get="{% url 'breeding_update' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record" class="btn-ghost btn-xs">Edit</a>
+                            <a href="{% url 'breeding_update' br.pk %}" hx-get="{% url 'breeding_update' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record" class="btn-icon align-middle" title="Edit" aria-label="Edit the breeding record of {{ br.mare.name }}">
+                                <svg class="w-4 h-4" aria-hidden="true"><use href="#i-pencil"/></svg>
+                            </a>
                         </td>
                         {% endif %}
                     </tr>
