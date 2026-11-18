@@ -9,6 +9,7 @@ from django.urls import include, path
 
 from core.views import account as account_views
 from core.views import profile as profile_views
+from core.views import help as help_views
 from notifications import centre_views
 from core.views import audit_log as audit_log_views
 from core.views import google as google_views
@@ -64,6 +65,9 @@ urlpatterns = [
     path('settings/deleted/', recently_deleted_views.recently_deleted, name='recently_deleted'),
     # Public: the unsubscribe link in reminder emails, and the email
     # provider's bounce and complaint webhooks (notifications/views.py).
+    # The help centre (core/views/help.py, core/help.py).
+    path('help/', help_views.help_index, name='help_index'),
+    path('help/<slug:slug>/', help_views.help_article, name='help_article'),
     # The notification centre (notifications/centre_views.py).
     path('notifications/panel/', centre_views.panel, name='notification_panel'),
     path('notifications/badge/', centre_views.badge, name='notification_badge'),

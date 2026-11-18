@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ guide.title }} - Help - Cgate{% endblock %}
+
+{% block content %}
+{% comment %}One guide (core/views/help.py). The text is the fragment in
+help/articles/<slug>.html; the list of guides sits beside it on a wide
+screen.{% endcomment %}
+<div class="max-w-5xl mx-auto">
+    <nav aria-label="Breadcrumb" class="mb-3 text-sm">
+        <a href="{% url 'help_index' %}" class="link">Help</a>
+        <span class="text-sage" aria-hidden="true"> / </span>
+        <span class="text-sage">{{ guide.group }}</span>
+    </nav>
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
+        <nav aria-label="Guides" class="hidden lg:block">
+            {% for group in groups %}
+            <p class="help-group-title">{{ group.name }}</p>
+            <ul class="mb-4 space-y-0.5">
+                {% for each in group.guides %}
+                <li><a href="{% url 'help_article' each.slug %}" class="help-nav-link{% if each.slug == guide.slug %} is-active{% endif %}"{% if each.slug == guide.slug %} aria-current="page"{% endif %}>{{ each.title }}</a></li>
+                {% endfor %}
+            </ul>
+            {% endfor %}
+        </nav>
+
+        <div class="min-w-0 space-y-5">
+            <article class="card help-article" aria-labelledby="help-title">
+                <h1 id="help-title" class="page-title">{{ guide.title }}</h1>
+                {% include guide.template %}
+            </article>
+            {% include 'help/_contact.html' %}
+        </div>
+    </div>
+</div>
+{% endblock %}

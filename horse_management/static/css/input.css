@@ -2043,6 +2043,35 @@ a.pane-item-title:hover { @apply text-forest; }
     @apply mt-1.5 w-2.5 h-2.5 rounded-full bg-saddle hover:ring-4 hover:ring-saddle/20 transition-shadow;
 }
 
+/* ── Help centre (templates/help/) ── */
+.help-search { @apply relative flex items-center gap-2; }
+.help-search-icon { @apply absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-sage pointer-events-none; }
+.help-search-input { @apply mt-0 flex-1 pl-11 h-11 sm:h-10; }
+.help-group-title { @apply mb-2 text-xs font-semibold uppercase tracking-widest text-sage; }
+.help-card {
+    @apply flex flex-col gap-1 p-4 bg-white rounded-card border border-light-sage no-underline
+           hover:border-sage/40 hover:shadow-card transition-[border-color,box-shadow] duration-150;
+}
+.help-row { @apply flex flex-col gap-0.5 px-4 py-3 no-underline hover:bg-parchment; }
+.help-row-title { @apply text-sm font-semibold text-forest; }
+.help-row-summary { @apply text-sm text-charcoal-light; }
+.help-nav-link { @apply block px-2.5 py-1.5 rounded-btn text-sm text-charcoal-light no-underline hover:bg-light-sage hover:text-charcoal; }
+.help-nav-link.is-active { @apply bg-light-sage text-forest font-semibold; }
+.help-article { @apply px-5 py-5 sm:px-7 sm:py-6 text-[15px] leading-relaxed text-charcoal; }
+.help-article .page-title { @apply mb-3; }
+.help-article .help-lead { @apply text-base text-charcoal-light; }
+.help-article h2 { @apply mt-7 mb-2 text-base font-semibold text-forest font-heading scroll-mt-24; }
+.help-article p { @apply my-2; }
+.help-article ol.help-steps { @apply my-2 pl-5 list-decimal space-y-1.5 marker:text-sage marker:font-semibold; }
+.help-article ul { @apply my-2 pl-5 list-disc space-y-1 marker:text-sage; }
+.help-article .help-note { @apply my-3 px-3.5 py-2.5 rounded-lg bg-sand-50 border border-sand-200 text-sm text-charcoal-light; }
+.help-article .help-faq dt { @apply mt-4 font-semibold text-charcoal; }
+.help-article .help-faq dd { @apply mt-1 text-charcoal-light; }
+.help-article a { @apply text-forest underline decoration-forest/30 underline-offset-2 hover:decoration-forest; }
+.help-article strong { @apply font-semibold text-charcoal; }
+.help-contact { @apply flex items-start gap-3 p-4 rounded-card bg-sand-50 border border-sand-200; }
+.help-contact-icon { @apply w-9 h-9 rounded-full bg-white text-forest flex items-center justify-center shrink-0; }
+
 /* ── The rail (collapsed sidebar) ──
    The same sidebar at 4rem: icons only, names as tooltips. The choice is
    written to localStorage and re-applied on <html> before the first

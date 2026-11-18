@@ -54,7 +54,7 @@ class SidebarContentTests(TestCase):
 
     def test_support_and_settings_sit_above_the_profile_card(self):
         sidebar = _sidebar(self._get())
-        support = sidebar.index('mailto:help@c-gate.app')
+        support = sidebar.index(f'href="{reverse("help_index")}"')
         settings_link = sidebar.index(f'href="{reverse("app_settings")}"')
         card = sidebar.index('sidebar-user-card')
         nav_end = sidebar.index('User footer')

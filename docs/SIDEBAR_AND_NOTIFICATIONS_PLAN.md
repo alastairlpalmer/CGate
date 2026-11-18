@@ -1,6 +1,20 @@
 # Sidebar, profile, notification centre and help centre — plan
 
-Status: approved. Work starts with WP1.
+Status: built. All five work packages are in one pull request, one commit
+each (the session may push to one branch only).
+
+Changes from the plan, found while building:
+
+- The notification panel has three tabs: **New** (unread), **Needs action**
+  (every open job, read or not) and **All**. "Unread / All" did not show
+  open jobs that a person had already read.
+- The avatar photo's file name is kept in the session, so pages make no
+  extra database query (a query-count test caught the first version).
+- The hourly sync needed core/jobs.py to claim some scheduled tasks once
+  an hour (HOURLY_SCHEDULED_TASKS), not once a day.
+- "Confirm all N departures" moved from the dashboard card to the
+  Needs action tab.
+- Guides are template fragments, not Markdown (no new library).
 
 ## 1. Decisions (from the questions)
 
