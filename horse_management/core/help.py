@@ -51,6 +51,8 @@ GUIDES = [
           'Start here', keywords=('needs action', 'bell', 'badge', 'email', 'overdue', 'dismiss', 'reminder')),
     Guide('profile-and-security', 'Your profile and security', 'Your name, email, phone, photo, password and two-step sign-in.',
           'Start here', keywords=('account', 'password', 'two-step', 'mfa', 'authenticator', 'photo', 'email', 'google')),
+    Guide('breeding', 'Breeding', 'Mares, scans, foaling and foals.',
+          'Health', features=('breeding',), keywords=('mare', 'stallion', 'scan', 'foal', 'ehv', 'pregnant')),
     Guide('health', 'Health', 'Vaccinations, worming, egg counts and vet visits.',
           'Health', features=('health',), keywords=('vaccination', 'flu', 'tetanus', 'worming', 'egg count', 'vet')),
     Guide('farrier', 'Farrier', 'Farrier visits and when each horse is next due.',
