@@ -406,6 +406,22 @@ class DensityTests(SimpleTestCase):
         self.assertIn('py-2', self.rule('.data-table td'))
         self.assertIn('text-2xl', self.rule('.kpi-value'))
 
+    def test_a_record_table_is_not_a_table_on_a_phone(self):
+        # On a phone each row of a .data-table-cards table is a grid. Inside
+        # a real table that grid is laid out as one table cell. When the
+        # table also has a normal row (the totals row of Aged Debtors, in a
+        # tfoot) the cell is as wide as the first column only, and each
+        # value breaks to one character a line. So the table and its
+        # sections must be blocks there, and the tfoot rows must be cards.
+        from pathlib import Path
+
+        from django.conf import settings
+        source = (Path(settings.BASE_DIR) / 'static' / 'css' / 'input.css').read_text()
+        self.assertIn('.data-table-cards, .data-table-cards tbody, .data-table-cards tfoot { display: block; width: 100%; }', source)
+        self.assertIn('.data-table-cards :is(tbody, tfoot) tr { display: grid;', source)
+        built = (Path(settings.BASE_DIR) / 'static' / 'css' / 'styles.css').read_text()
+        self.assertIn('.data-table-cards,.data-table-cards tbody,.data-table-cards tfoot{', built)
+
     def test_table_rows_have_no_stripes(self):
         from pathlib import Path
 
@@ -413,3 +429,47 @@ class DensityTests(SimpleTestCase):
         source = (Path(settings.BASE_DIR) / 'static' / 'css' / 'input.css').read_text()
         self.assertNotIn('.data-table tbody tr:nth-child(even)', source)
         self.assertNotIn('.list-card:nth-child(even)', source)
+
+
+class InvoicePageTests(TestCase):
+    """The invoice page: the horse is a column of the line items, not a heading row of its own."""
+
+    def setUp(self):
+        import datetime
+        from decimal import Decimal
+
+        from core.models import Horse, Owner
+        from invoicing.models import Invoice, InvoiceLineItem
+        self.client.force_login(make_admin())
+        owner = Owner.objects.create(name='Jo Smith')
+        today = datetime.date.today()
+        self.invoice = Invoice.objects.create(
+            owner=owner, invoice_number='INV-T1', period_start=today.replace(day=1), period_end=today,
+            due_date=today, subtotal=Decimal('200.00'), total=Decimal('200.00'),
+        )
+        for name, amounts in (('Bramble', ('155.00', '20.00')), ('Clover', ('25.00',))):
+            horse = Horse.objects.create(name=name)
+            for amount in amounts:
+                InvoiceLineItem.objects.create(
+                    invoice=self.invoice, horse=horse, description=f'Line for {name} {amount}',
+                    quantity=1, unit_price=Decimal(amount), line_total=Decimal(amount),
+                )
+
+    def test_each_horse_is_named_once_on_the_first_line_of_its_group(self):
+        body = self.client.get(reverse('invoice_detail', args=[self.invoice.pk])).content.decode()
+        table = body.split('<h3 class="section-title">Line Items</h3>')[1].split('</table>')[0]
+        rows = table.split('<tbody>')[1].split('</tbody>')[0].count('<tr')
+        # Three lines, three rows: no heading row for a horse.
+        self.assertEqual(rows, 3)
+        import re
+        self.assertEqual(len(re.findall(r'<th[ >]', table)), 3)
+        # Named in the column (wide screens) and over its first line (a phone): twice each.
+        self.assertEqual(table.count('Bramble'), 2 + 2)   # the name twice, and in its two lines
+        self.assertEqual(table.count('Clover'), 2 + 1)    # the name twice, and in its one line
+        self.assertEqual(table.count('class="invoice-group-start"'), 1)
+
+    def test_the_totals_rows_have_a_cell_for_each_column(self):
+        body = self.client.get(reverse('invoice_detail', args=[self.invoice.pk])).content.decode()
+        foot = body.split('<tfoot>')[1].split('</tfoot>')[0]
+        for row in foot.split('<tr')[1:]:
+            self.assertEqual(row.count('<td'), 3, row[:120])
