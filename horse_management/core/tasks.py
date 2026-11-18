@@ -136,6 +136,9 @@ def purge_soft_deleted():
                 logger.exception('Purge: could not delete %s %s', model.__name__, row.pk)
         counts[model.__name__] = purged
     counts.update(_purge_task_records())
+    # Notifications read more than 90 days ago (notifications/centre.py).
+    from notifications.centre import purge_old
+    counts['Notification'] = purge_old()
     logger.info('Purge: %s', counts)
     return counts
 

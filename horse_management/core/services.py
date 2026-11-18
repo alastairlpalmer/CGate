@@ -36,6 +36,13 @@ def _refuse_future_date(day, what):
 MAX_SUPERSEDE_TRIM_DAYS = 30
 
 
+def _tell(event, horses, location, day):
+    """Notify the yard of a horse movement once this transaction commits
+    (notifications/centre.py). Never raises."""
+    from notifications import centre
+    centre.after_commit(centre.horses_moved, event, list(horses), location=location, day=day)
+
+
 class PlacementService:
     """Service for managing horse placement lifecycle."""
 
@@ -77,6 +84,7 @@ class PlacementService:
         )
         placement.full_clean()
         placement.save()
+        _tell('arrived', [horse], location, arrival_date)
         return horse, placement
 
     @staticmethod
@@ -146,6 +154,7 @@ class PlacementService:
 
         # Views surface this so a trimmed departure is never silent.
         new_placement.superseded_trim = trimmed
+        _tell('arrived' if current_placement is None else 'moved', [horse], new_location, move_date)
         return new_placement
 
     @staticmethod
@@ -305,11 +314,13 @@ class PlacementService:
         Returns the new placement.
         Raises ValidationError if the placement is invalid.
         """
-        return PlacementService._place(
+        placement = PlacementService._place(
             horse, owner=owner, location=location, rate_type=rate_type,
             arrival_date=arrival_date, expected_departure=expected_departure,
             notes=notes,
         )
+        _tell('arrived', [horse], location, arrival_date)
+        return placement
 
     @staticmethod
     @transaction.atomic
@@ -350,6 +361,7 @@ class PlacementService:
         horse.is_active = False
         horse.save(update_fields=['is_active'])
 
+        _tell('departed', [horse], current_placement.location, departure_date)
         return current_placement
 
     @staticmethod
@@ -421,6 +433,7 @@ class PlacementService:
         """
         created = 0
         errors = []
+        arrived = []
         for horse in horses:
             try:
                 # Per-horse savepoint so a rejected arrival doesn't leave the
@@ -433,6 +446,7 @@ class PlacementService:
                         expected_departure=expected_departure, notes=notes,
                     )
                 created += 1
+                arrived.append(horse)
             except ValidationError as e:
                 errors.append(f"{horse.name}: {e}")
             except IntegrityError:
@@ -440,6 +454,8 @@ class PlacementService:
                 # overlap check took no lock, and the one-open-stay rule
                 # stopped the second insert (a 500 on Log Arrival).
                 errors.append(f"{horse.name}: already arrived somewhere else just now.")
+        if arrived:
+            _tell('arrived', arrived, location, arrival_date)
         return created, errors
 
     @staticmethod
@@ -459,6 +475,7 @@ class PlacementService:
         departed = 0
         scheduled = 0
         depart_errors = []
+        gone = []
         today = timezone.localdate()
         placements = Placement.objects.filter(
             horse_id__in=horse_ids,
@@ -488,7 +505,10 @@ class PlacementService:
             placement.horse.is_active = False
             placement.horse.save(update_fields=['is_active'])
             departed += 1
+            gone.append(placement.horse)
 
+        if gone:
+            _tell('departed', gone, location, departure_date)
         return departed, depart_errors, scheduled
 
 

@@ -1,0 +1,21 @@
+{% comment %}
+One button on a needs-action notification. Context: action, a dict made
+from core.dashboard.attention.Action (label, url, popup_title, method,
+style). The panel loads into itself, so a plain link names the page's
+main content as its target and closes the drawer.
+{% endcomment %}
+{% if action.method == 'post' %}
+<form method="post" action="{{ action.url }}" class="inline">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{% url 'notification_panel' %}?tab={{ tab }}&amp;fresh=1">
+    <button type="submit" class="{% if action.style == 'primary' %}btn-primary{% else %}btn-ghost{% endif %} btn-xs">{{ action.label }}</button>
+</form>
+{% elif action.popup_title %}
+<a href="{{ action.url }}" hx-get="{{ action.url }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+   data-popup-title="{{ action.popup_title }}"
+   class="{% if action.style == 'primary' %}btn-primary{% else %}btn-ghost{% endif %} btn-xs">{{ action.label }}</a>
+{% else %}
+<a href="{{ action.url }}" hx-get="{{ action.url }}" hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML show:window:top" hx-push-url="true"
+   @click="$store.notif.close()"
+   class="{% if action.style == 'primary' %}btn-primary{% else %}btn-ghost{% endif %} btn-xs">{{ action.label }}</a>
+{% endif %}

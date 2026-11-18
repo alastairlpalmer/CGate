@@ -407,10 +407,15 @@ def check_invoice_status():
     today = timezone.localdate()
 
     # Mark sent invoices as overdue if past due date
-    overdue = Invoice.objects.filter(
+    becoming = Invoice.objects.filter(
         status=Invoice.Status.SENT,
         due_date__lt=today,
-    ).update(status=Invoice.Status.OVERDUE)
+    )
+    newly_overdue = list(becoming.select_related('owner'))
+    overdue = becoming.update(status=Invoice.Status.OVERDUE)
+    if newly_overdue:
+        from .centre import invoices_overdue
+        invoices_overdue(newly_overdue)
 
     return f"Updated {overdue} invoices to overdue status"
 
@@ -475,3 +480,59 @@ def send_document_expiry_reminders():
         return "Document expiry reminder send failed; rolled back"
 
     return f"Sent expiry summary covering {len(documents)} document(s)"
+
+
+# ── Notification centre (notifications/centre.py) ────────────────────────────
+
+@shared_task
+def sync_action_notifications():
+    """Hourly: copy the Needs action list into everyone's notifications."""
+    from .centre import sync_everyone
+    return f"Synced needs-action notifications for {sync_everyone()} people"
+
+
+@shared_task
+def send_notification_email(user_ids, payload):
+    """Email one movement or money notification to the people who asked
+    for that category by email."""
+    from django.contrib.auth import get_user_model
+
+    from .emails import send_notification
+    sent = 0
+    for user in get_user_model().objects.filter(pk__in=user_ids, is_active=True).exclude(email=''):
+        sent += int(send_notification(user, payload))
+    return f"Sent {sent} notification email(s)"
+
+
+@shared_task
+def send_action_digests():
+    """Each morning: one email per person who asked for Needs action by
+    email, listing what is open for them now."""
+    from django.contrib.auth import get_user_model
+
+    from .centre import Category, preferences, sync_actions
+    from .emails import send_action_digest
+    from .models import Notification, NotificationPreference
+
+    sent = 0
+    wanted = NotificationPreference.objects.filter(
+        category=Category.ACTION, email=True,
+    ).values_list('user_id', flat=True)
+    for user in get_user_model().objects.filter(pk__in=wanted, is_active=True).exclude(email=''):
+        sync_actions(user, force=True)
+        if not preferences(user)[Category.ACTION][0]:
+            # In the app off, email on: the sync made no rows, so read the
+            # live list for the email.
+            from .centre import _live_rows
+            rows = [{'title': r.title, 'body': r.subtitle, 'url': r.url, 'severity': r.severity}
+                    for r in _live_rows(user, timezone.localdate())]
+        else:
+            rows = [
+                {'title': n.title, 'body': n.body, 'url': n.url, 'severity': n.severity}
+                for n in Notification.objects.filter(
+                    recipient=user, category=Category.ACTION, resolved_at__isnull=True,
+                ).order_by('due_date', 'title')
+            ]
+        if rows:
+            sent += int(send_action_digest(user, rows))
+    return f"Sent {sent} needs-action digest(s)"

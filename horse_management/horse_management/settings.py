@@ -724,6 +724,19 @@ CELERY_BEAT_SCHEDULE = {
             day_of_week=REMINDER_DAYS_OF_WEEK,
         ),
     },
+    # The notification centre (notifications/centre.py): copy the
+    # dashboard's Needs action list into each person's notifications every
+    # hour, so the badge is right when they next open the app.
+    'sync-action-notifications': {
+        'task': 'notifications.tasks.sync_action_notifications',
+        'schedule': crontab(minute=20),
+    },
+    # One email a morning to each person who asked for Needs action by
+    # email, after the hourly sync above has run for the morning.
+    'send-action-digests': {
+        'task': 'notifications.tasks.send_action_digests',
+        'schedule': crontab(**_staggered(25)),
+    },
     # Documents (passports, insurance) expiring within 30 days — one summary
     # email to the business address, one reminder per document.
     'send-document-expiry-reminders': {
@@ -734,6 +747,10 @@ CELERY_BEAT_SCHEDULE = {
         ),
     },
 }
+
+# Scheduled tasks that run every hour. core/jobs.py claims these once an
+# hour instead of once a day.
+HOURLY_SCHEDULED_TASKS = {'notifications.tasks.sync_action_notifications'}
 
 # Login settings
 # Users can sign in with their email address (or legacy username).

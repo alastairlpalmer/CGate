@@ -1,0 +1,115 @@
+{% load ui_extras %}
+{% comment %}
+The notification centre's list (notifications/centre_views.py), loaded into
+#notif-panel in base.html. Every control here asks for this partial again
+(the panel's hx-target is itself), with the tab and chip kept.
+
+Tabs: New (unread), Needs action (every open job, read or not, most
+urgent first), All (the last 90 days, done jobs included).
+{% endcomment %}
+{% url 'notification_panel' as panel_url %}
+<div class="notif-tabs" role="tablist" aria-label="Notifications">
+    <a href="{{ panel_url }}?tab=new&amp;chip={{ chip }}" hx-get="{{ panel_url }}?tab=new&amp;chip={{ chip }}" hx-push-url="false" role="tab"
+       aria-selected="{% if tab == 'new' %}true{% else %}false{% endif %}" class="notif-tab{% if tab == 'new' %} is-active{% endif %}">
+        New{% if counts.new %} <b>{{ counts.new }}</b>{% endif %}
+    </a>
+    <a href="{{ panel_url }}?tab=action&amp;chip={{ chip }}" hx-get="{{ panel_url }}?tab=action&amp;chip={{ chip }}" hx-push-url="false" role="tab"
+       aria-selected="{% if tab == 'action' %}true{% else %}false{% endif %}" class="notif-tab{% if tab == 'action' %} is-active{% endif %}">
+        Needs action{% if counts.action %} <b>{{ counts.action }}</b>{% endif %}
+    </a>
+    <a href="{{ panel_url }}?tab=all&amp;chip={{ chip }}" hx-get="{{ panel_url }}?tab=all&amp;chip={{ chip }}" hx-push-url="false" role="tab"
+       aria-selected="{% if tab == 'all' %}true{% else %}false{% endif %}" class="notif-tab{% if tab == 'all' %} is-active{% endif %}">All</a>
+</div>
+
+<div class="notif-toolbar">
+    <div class="flex flex-wrap gap-1.5" role="group" aria-label="Show only">
+        {% for each in chips %}
+        <a href="{{ panel_url }}?tab={{ tab }}&amp;chip={{ each }}" hx-get="{{ panel_url }}?tab={{ tab }}&amp;chip={{ each }}" hx-push-url="false"
+           class="chip-count{% if each == chip %} is-active{% endif %}{% if each == 'overdue' %} chip-count-hot{% endif %}"
+           aria-pressed="{% if each == chip %}true{% else %}false{% endif %}">{% if each == 'all' %}All{% elif each == 'movement' %}Movements{% else %}{{ each|capfirst }}{% endif %}</a>
+        {% endfor %}
+    </div>
+    {% if counts.new %}
+    <form method="post" action="{% url 'notification_read' %}" hx-post="{% url 'notification_read' %}" hx-push-url="false" class="shrink-0">
+        {% csrf_token %}
+        <input type="hidden" name="tab" value="{{ tab }}"><input type="hidden" name="chip" value="{{ chip }}">
+        <button type="submit" class="link text-xs tap-pad">Mark all as read</button>
+    </form>
+    {% endif %}
+</div>
+
+{% if notifications %}
+<ul class="notif-list">
+    {% for n in notifications %}
+    <li class="notif-row{% if n.is_unread %} is-unread{% endif %}{% if n.resolved_at %} is-done{% endif %}{% if n.severity %} is-{{ n.severity }}{% endif %}">
+        <div class="notif-icon notif-icon-{% if n.category == 'action' %}{{ n.severity|default:'due' }}{% else %}{{ n.category }}{% endif %}" aria-hidden="true">
+            {% if n.category == 'action' %}<svg class="h-[18px] w-[18px]"><use href="#i-{{ n.kind|kind_icon }}"/></svg>
+            {% elif n.category == 'movement' %}<svg class="h-[18px] w-[18px]"><use href="#i-{% if n.kind == 'departed' %}gate{% else %}horse{% endif %}"/></svg>
+            {% else %}<svg class="h-[18px] w-[18px]"><use href="#i-pound"/></svg>{% endif %}
+        </div>
+        <div class="notif-text">
+            <a href="{% url 'notification_open' n.pk %}" class="notif-title"
+               hx-get="{% url 'notification_open' n.pk %}" hx-target="#main-content" hx-select="#main-content"
+               hx-swap="outerHTML show:window:top" hx-push-url="{{ n.url|default:'/' }}"
+               @click="$store.notif.close()">{{ n.title }}</a>
+            {% if n.body %}<p class="notif-body">{{ n.body }}</p>{% endif %}
+            <div class="notif-meta">
+                {% if n.resolved_at %}
+                <span class="badge-neutral">Done</span>
+                {% elif n.category == 'action' and n.due_date %}
+                <span class="{% if n.severity == 'overdue' %}badge-danger{% elif n.due_date == today %}badge-warning{% else %}badge-neutral{% endif %}">{{ n.due_date|due_label }}</span>
+                {% elif n.category == 'action' %}
+                <span class="badge-neutral">No date</span>
+                {% endif %}
+                <span>{% if n.category == 'action' %}{{ n.get_category_display }}{% else %}{{ n.created_at|timesince }} ago{% endif %}</span>
+            </div>
+            {% if n.is_open_action %}
+            {% with data=n.data %}
+            {% if data.row_action or can_dismiss and data.dismiss %}
+            <div class="notif-actions">
+                {% if data.row_action %}{% include 'notifications/_action.html' with action=data.row_action %}
+                {% else %}{% for line in data.lines %}{% for action in line.actions %}{% include 'notifications/_action.html' %}{% endfor %}{% endfor %}{% endif %}
+                {% if can_dismiss and data.dismiss %}
+                <form method="post" action="{% url 'notification_dismiss' %}" hx-post="{% url 'notification_dismiss' %}" hx-push-url="false" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="tab" value="{{ tab }}"><input type="hidden" name="chip" value="{{ chip }}">
+                    {% for token in data.dismiss %}<input type="hidden" name="item" value="{{ token }}">{% endfor %}
+                    <button type="submit" class="btn-ghost btn-xs" title="Take this off for everyone. It stays on its own page.">Dismiss</button>
+                </form>
+                {% endif %}
+            </div>
+            {% elif data.lines %}
+            <div class="notif-actions">{% for line in data.lines %}{% for action in line.actions %}{% include 'notifications/_action.html' %}{% endfor %}{% endfor %}</div>
+            {% endif %}
+            {% endwith %}
+            {% endif %}
+        </div>
+        {% if n.is_unread %}
+        <form method="post" action="{% url 'notification_read' %}" hx-post="{% url 'notification_read' %}" hx-push-url="false" class="shrink-0">
+            {% csrf_token %}
+            <input type="hidden" name="id" value="{{ n.pk }}">
+            <input type="hidden" name="tab" value="{{ tab }}"><input type="hidden" name="chip" value="{{ chip }}">
+            <button type="submit" class="notif-unread-dot" title="Mark as read" aria-label="Mark “{{ n.title }}” as read"></button>
+        </form>
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<div class="px-6 py-10 text-center">
+    <svg class="mx-auto h-9 w-9 text-sage" aria-hidden="true"><use href="#i-horseshoe"/></svg>
+    <p class="mt-3 text-sm font-medium text-charcoal">
+        {% if tab == 'new' %}Nothing new.{% elif tab == 'action' %}Nothing needs doing.{% else %}No notifications yet.{% endif %}
+    </p>
+    <p class="mt-1 text-xs text-sage">{% if tab == 'action' %}Anything overdue, and anything due today, shows here the moment it comes up.{% else %}Choose what you get in your profile, under Notifications.{% endif %}</p>
+</div>
+{% endif %}
+
+{% if can_dismiss and dismissed_count %}
+<form method="post" action="{% url 'notification_restore' %}" hx-post="{% url 'notification_restore' %}" hx-push-url="false" class="border-t border-light-sage px-4 py-2 text-xs text-sage">
+    {% csrf_token %}
+    <input type="hidden" name="tab" value="{{ tab }}"><input type="hidden" name="chip" value="{{ chip }}">
+    {{ dismissed_count }} dismissed &middot;
+    <button type="submit" class="link tap-pad" title="Show every dismissed item again">Restore</button>
+</form>
+{% endif %}

@@ -254,9 +254,17 @@ class Invoice(models.Model):
                 method=method,
                 reference=reference,
             )
+        was_paid = self.status == self.Status.PAID
         self.status = self.Status.PAID
         self.paid_at = timezone.now()
         self.save(update_fields=['status', 'paid_at'])
+        if not was_paid:
+            self._tell_paid()
+
+    def _tell_paid(self):
+        """Notify the yard once the payment commits (notifications/centre.py)."""
+        from notifications import centre
+        centre.after_commit(centre.invoice_paid, self)
 
     def refresh_payment_status(self):
         """Sync status with the payment ledger after a payment is added,
@@ -275,6 +283,7 @@ class Invoice(models.Model):
                 self.status = self.Status.PAID
                 self.paid_at = self.paid_at or timezone.now()
                 self.save(update_fields=['status', 'paid_at'])
+                self._tell_paid()
         elif self.status == self.Status.PAID:
             self.status = (
                 self.Status.OVERDUE

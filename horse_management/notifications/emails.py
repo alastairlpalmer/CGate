@@ -372,3 +372,49 @@ def send_yard_visit_summary(visit, lines):
     except Exception:
         logger.exception("Failed to send the farrier visit summary to the yard (visit %s)", visit.pk)
         return False
+
+
+def send_notification(user, payload):
+    """One movement or money notification, to one person who asked for
+    that category by email (notifications.centre)."""
+    from .mail import absolute_url
+
+    business = BusinessSettings.get_settings()
+    html_content = render_to_string('notifications/email/notification.html', {
+        'business': business,
+        'user': user,
+        'title': payload.get('title', ''),
+        'body': payload.get('body', ''),
+        'link': absolute_url(payload.get('url', '')) if payload.get('url') else None,
+    })
+    email = message(payload.get('title', 'Notification'), html_content, [user.email])
+    try:
+        email.send()
+        return True
+    except Exception:
+        logger.exception("Failed to send a notification email to user %s", user.pk)
+        return False
+
+
+def send_action_digest(user, rows):
+    """The morning email: what needs doing, for one person."""
+    from .mail import absolute_url
+
+    business = BusinessSettings.get_settings()
+    for row in rows:
+        row['link'] = absolute_url(row['url']) if row.get('url') else None
+    count = len(rows)
+    subject = f"{count} thing{'s' if count != 1 else ''} need{'' if count != 1 else 's'} doing today"
+    html_content = render_to_string('notifications/email/action_digest.html', {
+        'business': business,
+        'user': user,
+        'rows': rows,
+        'overdue': sum(1 for r in rows if r.get('severity') == 'overdue'),
+    })
+    email = message(subject, html_content, [user.email])
+    try:
+        email.send()
+        return True
+    except Exception:
+        logger.exception("Failed to send the needs-action digest to user %s", user.pk)
+        return False

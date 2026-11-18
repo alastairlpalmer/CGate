@@ -26,7 +26,7 @@ from ..forms import ProfileDetailsForm
 from ..models import AuditEvent, UserProfile
 from ._popup import is_popup_request, popup_saved_response
 
-TABS = ('details', 'security')
+TABS = ('details', 'security', 'notifications')
 
 
 def _initial_details(user, profile):
@@ -89,6 +89,12 @@ def profile(request):
                 remember(request, user)
                 messages.success(request, 'Your details are saved.')
                 return _saved(request, reload_page=True)
+        elif action == 'notifications':
+            from notifications import centre
+            centre.save_preferences(user, request.POST)
+            centre.resync_soon(user)
+            messages.success(request, 'Your notification choices are saved.')
+            return _saved(request, reload_page=True)
         elif action == 'password' and password_form is not None:
             tab = 'security'
             password_form = PasswordChangeForm(user, request.POST)
@@ -113,6 +119,8 @@ def profile(request):
         'google_identity': GoogleIdentity.objects.filter(user=user).first(),
         'in_popup': is_popup_request(request),
     }
+    from notifications.centre import preference_rows
+    context['notification_rows'] = preference_rows(user)
     template = 'account/_profile_body.html' if context['in_popup'] else 'account/profile.html'
     return render(request, template, context)
 

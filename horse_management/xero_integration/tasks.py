@@ -20,6 +20,12 @@ MAX_RATE_LIMIT_RETRIES = 3
 MAX_RATE_LIMIT_WAIT_SECONDS = 60
 
 
+def _tell_problem(what, detail=''):
+    """Put a Xero problem in the notification centre (never raises)."""
+    from notifications.centre import xero_problem
+    xero_problem(what, detail)
+
+
 @shared_task
 def sync_xero_invoice_statuses():
     """Poll Xero for payment status on every pushed, still-open invoice.
@@ -71,6 +77,8 @@ def sync_xero_invoice_statuses():
                     logger.warning(
                         "Xero token expired during status sync; reconnect required."
                     )
+                    _tell_problem('the connection has expired',
+                                  'Reconnect Xero in Settings, so payments made in Xero show here.')
                     return f"token_expired after {checked} checked"
                 except XeroAPIError as exc:
                     if (
@@ -120,6 +128,11 @@ def sync_xero_invoice_statuses():
 
     summary = f"Checked {checked} invoice(s): {paid} newly paid, {errors} error(s)."
     logger.info(summary)
+    if errors:
+        _tell_problem(
+            'some payment checks failed',
+            f"{errors} invoice{'s' if errors != 1 else ''} could not be checked last night. The next sweep tries again.",
+        )
     return summary
 
 
@@ -160,6 +173,7 @@ def push_invoices_to_xero(invoice_ids):
                     except (XeroNotConnectedError, XeroTokenExpiredError) as exc:
                         # Every remaining push would fail the same way.
                         logger.warning("Xero bulk push stopped: %s", exc)
+                        _tell_problem('sending invoices stopped', str(exc))
                         return (
                             f"stopped: {exc}. Pushed {pushed}, "
                             f"{failed} failed before that."
@@ -191,4 +205,9 @@ def push_invoices_to_xero(invoice_ids):
 
     summary = f"Pushed {pushed} invoice(s) to Xero, {failed} failed."
     logger.info(summary)
+    if failed:
+        _tell_problem(
+            'some invoices were not sent',
+            f"{failed} invoice{'s' if failed != 1 else ''} failed. Each invoice shows its Xero status.",
+        )
     return summary

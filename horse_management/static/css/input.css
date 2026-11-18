@@ -1953,6 +1953,58 @@ a.pane-item-title:hover { @apply text-forest; }
 .profile-photo-inner { @apply w-16 h-16 rounded-full bg-sand text-forest flex items-center justify-center text-2xl font-semibold overflow-hidden; }
 .profile-photo-inner img { @apply w-full h-full object-cover; }
 
+/* ── Notification centre (includes/_notification_drawer.html) ──
+   A drawer beside the sidebar on a computer (it follows the rail when
+   collapsed), the whole screen on a phone. Below the pop-up sheet (z-60),
+   so an action opened from a row shows on top of it. */
+.notif-count {
+    @apply inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full
+           bg-white/15 text-[11px] font-semibold leading-none text-white;
+}
+.notif-count.hidden { display: none; }
+.notif-count-dot {
+    @apply absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-saddle text-white ring-2 ring-parchment text-[10px];
+}
+.phone-bell {
+    @apply absolute left-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-10 h-10 rounded-btn
+           text-forest hover:bg-light-sage transition-colors;
+}
+.nav-link-open { @apply text-white bg-white/[0.08] ring-white/[0.12]; }
+.notif-layer { @apply fixed inset-0 z-[55]; }
+.notif-scrim { @apply absolute inset-0 bg-charcoal/30 lg:bg-charcoal/10; }
+.notif-drawer {
+    @apply absolute inset-0 flex flex-col bg-white shadow-float focus:outline-hidden
+           lg:inset-y-0 lg:right-auto lg:left-64 lg:w-[26rem] lg:border-r lg:border-light-sage;
+}
+.sidebar-collapsed .notif-drawer { @apply lg:left-16; }
+.notif-head { @apply flex items-center justify-between gap-3 px-4 h-14 border-b border-light-sage shrink-0; }
+.notif-panel { @apply flex-1 min-h-0 overflow-y-auto overscroll-contain; }
+.notif-tabs { @apply flex gap-1 px-4 pt-1 border-b border-light-sage sticky top-0 bg-white z-10; }
+.notif-tab {
+    @apply -mb-px px-2.5 py-2.5 text-sm font-medium text-sage border-b-2 border-transparent
+           hover:text-charcoal transition-colors duration-100 no-underline;
+}
+.notif-tab b { @apply ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-light-sage text-[11px] font-semibold text-forest; }
+.notif-tab.is-active { @apply text-forest border-forest; }
+.notif-toolbar { @apply flex items-start justify-between gap-3 px-4 py-2.5 border-b border-light-sage; }
+.notif-list { @apply divide-y divide-light-sage; }
+.notif-row { @apply relative flex items-start gap-3 px-4 py-3 border-l-[3px] border-transparent; }
+.notif-row.is-unread { @apply bg-sand-50; }
+.notif-row.is-overdue:not(.is-done) { @apply border-l-error-red; }
+.notif-row.is-done { @apply opacity-70; }
+.notif-icon { @apply w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-light-sage text-forest; }
+.notif-icon-overdue { @apply bg-error-red-50 text-error-red; }
+.notif-icon-due { @apply bg-saddle-50 text-saddle; }
+.notif-icon-money { @apply bg-sand-100 text-forest; }
+.notif-text { @apply flex-1 min-w-0; }
+.notif-title { @apply block text-sm font-semibold text-charcoal hover:text-forest no-underline; }
+.notif-body { @apply mt-0.5 text-sm text-charcoal-light; }
+.notif-meta { @apply mt-1.5 flex flex-wrap items-center gap-2 text-xs text-sage; }
+.notif-actions { @apply mt-2 flex flex-wrap items-center gap-1.5; }
+.notif-unread-dot {
+    @apply mt-1.5 w-2.5 h-2.5 rounded-full bg-saddle hover:ring-4 hover:ring-saddle/20 transition-shadow;
+}
+
 /* ── The rail (collapsed sidebar) ──
    The same sidebar at 4rem: icons only, names as tooltips. The choice is
    written to localStorage and re-applied on <html> before the first
@@ -2016,6 +2068,12 @@ a.pane-item-title:hover { @apply text-forest; }
 .sidebar-collapsed .side-search.is-open .side-search-icon,
 .sidebar-collapsed .side-search.is-open .side-search-clear { @apply text-sage; }
 .sidebar-collapsed .side-search-panel { top: 3rem; }
+
+/* The unread count becomes a small dot on the bell. */
+.sidebar-collapsed .app-sidebar .nav-link { position: relative; }
+.sidebar-collapsed .app-sidebar .notif-count {
+    @apply absolute top-0.5 right-1.5 min-w-[16px] h-4 px-1 text-[10px] bg-saddle ring-2 ring-forest;
+}
 
 /* The profile card shrinks to the avatar; its menu opens to the right. */
 .sidebar-collapsed .sidebar-user-card {

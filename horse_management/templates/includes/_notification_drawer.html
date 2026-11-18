@@ -1,0 +1,43 @@
+{% comment %}
+The notification centre (notifications/centre_views.py, static/js/
+notifications.js). A drawer that slides out beside the sidebar on a
+computer and covers the screen on a phone. It lives outside #main-content,
+so it survives page changes.
+
+#notif-panel loads the list into itself: hx-target="this", innerHTML, no
+page history, no hx-select (the body's boosted defaults would otherwise
+apply). The hidden poller asks for the unread count on load, every
+minute, and whenever something changes; its answer updates both badges
+out of band.
+{% endcomment %}
+{% if user.is_authenticated %}
+<div hx-get="{% url 'notification_badge' %}" hx-trigger="load, every 60s, notif:changed from:body, popup:saved from:body"
+     hx-target="this" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" class="sr-only"></div>
+
+<div x-data x-show="$store.notif.open" x-cloak class="notif-layer" @keydown.escape.window="$store.notif.close()">
+    <div class="notif-scrim" @click="$store.notif.close()" aria-hidden="true"></div>
+    <section id="notif-drawer" class="notif-drawer" role="dialog" aria-modal="false" aria-labelledby="notif-drawer-title" tabindex="-1"
+             x-show="$store.notif.open"
+             x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-x-3" x-transition:enter-end="opacity-100 translate-x-0"
+             x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+        <header class="notif-head">
+            <h2 id="notif-drawer-title" class="text-base font-semibold text-charcoal font-heading">Notifications</h2>
+            <div class="flex items-center gap-1">
+                <a href="{% url 'profile' %}?tab=notifications" hx-get="{% url 'profile' %}?tab=notifications" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                   data-popup-title="Your profile" class="btn-icon-base" title="Choose your notifications" aria-label="Choose your notifications">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/></svg>
+                </a>
+                <button type="button" class="btn-icon-base" @click="$store.notif.close()" aria-label="Close notifications" title="Close">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </header>
+        <div id="notif-panel" class="notif-panel" data-src="{% url 'notification_panel' %}"
+             hx-target="this" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" aria-busy="false">
+            <div class="p-4 space-y-3" aria-hidden="true">
+                <div class="skeleton-text w-2/3"></div><div class="skeleton-text w-1/2"></div><div class="skeleton-text w-3/4"></div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endif %}

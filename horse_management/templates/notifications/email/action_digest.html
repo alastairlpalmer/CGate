@@ -1,0 +1,27 @@
+{% extends "notifications/email/_base.html" %}
+{% comment %}The morning list of what needs doing (notifications.emails.send_action_digest).{% endcomment %}
+
+{% block extra_styles %}
+        .digest-list { padding-left: 18px; }
+        .digest-list li { margin: 0 0 8px; }
+        .overdue { color: #C0392B; font-weight: bold; }
+{% endblock %}
+
+{% block content %}
+    <p>Hello {{ user.first_name|default:user.username }},</p>
+    <p>{{ rows|length }} thing{{ rows|length|pluralize }} need{{ rows|length|pluralize:"s," }} doing{% if overdue %}, and {{ overdue }} {{ overdue|pluralize:"is,are" }} overdue{% endif %}.</p>
+    <ul class="digest-list">
+        {% for row in rows %}
+        <li>
+            {% if row.link %}<a href="{{ row.link }}">{{ row.title }}</a>{% else %}{{ row.title }}{% endif %}
+            {% if row.severity == 'overdue' %}<span class="overdue">(overdue)</span>{% endif %}
+            {% if row.body %}<br>{{ row.body }}{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+{% endblock %}
+
+{% block footer %}
+    You get this email because you turned on email for Needs action.
+    To change that, open Cgate, then your profile, then Notifications.
+{% endblock %}

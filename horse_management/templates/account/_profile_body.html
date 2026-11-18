@@ -13,6 +13,9 @@ invalid post shows its errors here, a valid one closes the sheet.
         <button type="button" role="tab" id="profile-tab-security" aria-controls="profile-panel-security"
                 class="profile-tab" :class="tab === 'security' && 'is-active'" :aria-selected="(tab === 'security').toString()"
                 @click="tab = 'security'">Security</button>
+        <button type="button" role="tab" id="profile-tab-notifications" aria-controls="profile-panel-notifications"
+                class="profile-tab" :class="tab === 'notifications' && 'is-active'" :aria-selected="(tab === 'notifications').toString()"
+                @click="tab = 'notifications'">Notifications</button>
     </div>
 
     {# ── Details ── #}
@@ -113,5 +116,48 @@ invalid post shows its errors here, a valid one closes the sheet.
                 <a href="{% url 'account_security' %}" hx-boost="false" class="mt-2 link text-sm">Open account security</a>
             </section>
         </div>
+    </div>
+
+    {# ── Notifications ── #}
+    <div id="profile-panel-notifications" role="tabpanel" aria-labelledby="profile-tab-notifications" x-show="tab === 'notifications'"{% if tab != 'notifications' %} x-cloak{% endif %}>
+        <form method="post" action="{{ profile_url }}"
+              {% if in_popup %}hx-post="{{ profile_url }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"{% endif %}>
+            {% csrf_token %}
+            <input type="hidden" name="action" value="notifications">
+            <div class="px-4 py-4">
+                <p class="text-sm text-sage">Choose what you see in the notification centre, and what also comes by email.</p>
+                <table class="mt-3 w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-xs text-sage">
+                            <th scope="col" class="py-2 font-medium">Type</th>
+                            <th scope="col" class="py-2 px-2 font-medium text-center w-20">In the app</th>
+                            <th scope="col" class="py-2 pl-2 font-medium text-center w-20">By email</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-light-sage border-t border-light-sage">
+                        {% for row in notification_rows %}
+                        <tr>
+                            <th scope="row" class="py-3 pr-2 text-left align-top font-normal">
+                                <span class="block font-semibold text-charcoal">{{ row.label }}</span>
+                                <span class="block mt-0.5 text-xs text-sage">{{ row.help }}</span>
+                            </th>
+                            <td class="py-3 px-2 text-center align-top">
+                                <input type="checkbox" name="{{ row.category }}_in_app" class="form-checkbox" aria-label="{{ row.label }} in the app"{% if row.in_app %} checked{% endif %}>
+                            </td>
+                            <td class="py-3 pl-2 text-center align-top">
+                                <input type="checkbox" name="{{ row.category }}_email" class="form-checkbox" aria-label="{{ row.label }} by email"{% if row.email %} checked{% endif %}{% if not user.email %} disabled{% endif %}>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% if not user.email %}<p class="mt-2 text-xs text-saddle">Add an email address under Details to get notifications by email.</p>{% endif %}
+                <p class="mt-3 text-xs text-sage">Needs action by email comes as one message each morning. Horse movements and money come as they happen.</p>
+            </div>
+            <div class="popup-footer">
+                {% if in_popup %}<button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>{% endif %}
+                <button type="submit" class="btn-primary">Save choices</button>
+            </div>
+        </form>
     </div>
 </div>
