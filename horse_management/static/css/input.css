@@ -1096,6 +1096,44 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .strip-legend { @apply flex flex-wrap gap-x-3 gap-y-1 px-4 pb-3 text-[11px] text-sage lg:px-5; }
     .strip-legend .strip-dot { @apply mr-1 align-middle; }
 
+    /* Month calendar (partials/dashboard/calendar.html). Monday first.
+       The grid is a size container: narrow, a day shows dots; from 36rem
+       it also names the first two kinds due. */
+    .cal-wrap { container-type: inline-size; @apply px-3 pt-3 lg:px-4; }
+    .cal-grid { @apply w-full; }
+    .cal-row { @apply grid gap-1; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+    .cal-row + .cal-row { @apply mt-1; }
+    .cal-head { @apply mb-1; }
+    .cal-dow { @apply text-center font-mono text-[10px] uppercase tracking-wide text-sage; }
+    .cal-dow abbr { text-decoration: none; }
+    .cal-day {
+        @apply relative flex flex-col items-center justify-start gap-1 min-h-[3.25rem] rounded-lg px-1 pt-1.5 pb-1
+               text-charcoal ring-1 ring-inset ring-transparent hover:bg-sand-50 hover:ring-light-sage
+               transition-colors duration-100 cursor-pointer;
+    }
+    .cal-day.is-weekend { @apply bg-sand-50/60; }
+    .cal-day.is-outside { @apply text-sage/60; }
+    .cal-day.is-past .cal-num { @apply text-sage; }
+    .cal-day.is-overdue { @apply ring-error-red/30 bg-error-red-50/50; }
+    .cal-day.is-today .cal-num { @apply bg-forest text-white; }
+    .cal-day.is-selected { @apply ring-2 ring-forest bg-white; }
+    .cal-num { @apply inline-flex items-center justify-center min-w-[1.75rem] h-7 px-1 rounded-full font-mono text-sm font-medium tabular-nums; }
+    .cal-dots { @apply flex h-1.5 items-center justify-center gap-0.5; }
+    .cal-labels { @apply hidden w-full space-y-0.5; }
+    .cal-label { @apply flex items-center gap-1 truncate text-[11px] leading-tight text-charcoal-light; }
+    .cal-label .strip-dot { @apply shrink-0; }
+    @container (min-width: 36rem) {
+        .cal-day { @apply min-h-[4.75rem] items-start px-1.5; }
+        .cal-dots { @apply hidden; }
+        .cal-labels { @apply block; }
+    }
+    .cal-nav {
+        @apply inline-flex items-center justify-center w-8 h-8 rounded-btn text-sage hover:text-forest hover:bg-light-sage
+               disabled:opacity-40 disabled:pointer-events-none transition-colors;
+    }
+    .cal-day-list { @apply border-t border-light-sage mt-1; }
+    .cal-day-title { @apply flex items-center gap-2 px-4 pt-3 pb-2 text-sm font-semibold text-charcoal lg:px-5; }
+
     /* Kind colours shared by the strip and the activity log */
     .dot-farrier, .dot-ehv { @apply bg-saddle; }
     .dot-vaccination, .dot-worming { @apply bg-forest; }

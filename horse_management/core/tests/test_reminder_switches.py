@@ -78,11 +78,13 @@ class ReminderSwitchTests(TestCase):
         self.assertEqual(reminders.muted_keys(business), {'farrier'})
 
     def test_dashboard_leaves_the_farrier_out_until_switched_on(self):
+        # Needs action is in the notification centre (notifications/centre_views.py).
         self.client.force_login(self.admin)
-        response = self.client.get(reverse('dashboard'))
+        panel = reverse('notification_panel')
+        response = self.client.get(panel, {'tab': 'action', 'fresh': '1'})
         self.assertNotContains(response, 'Record farrier visit')
         reminders.set_reminder('farrier', True)
-        response = self.client.get(reverse('dashboard'))
+        response = self.client.get(panel, {'tab': 'action', 'fresh': '1'})
         self.assertContains(response, 'Record farrier visit')
 
     def test_horse_list_puts_no_farrier_dot_while_off(self):

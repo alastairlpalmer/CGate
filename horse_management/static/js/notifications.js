@@ -11,10 +11,13 @@
 
     function panel() { return document.getElementById('notif-panel'); }
 
-    function load(fresh) {
+    function load(fresh, tab) {
         var el = panel();
         if (!el || !window.htmx) { return; }
-        var url = el.getAttribute('data-src') + (fresh ? '?fresh=1' : '');
+        var query = [];
+        if (fresh) { query.push('fresh=1'); }
+        if (tab) { query.push('tab=' + encodeURIComponent(tab)); }
+        var url = el.getAttribute('data-src') + (query.length ? '?' + query.join('&') : '');
         window.htmx.ajax('GET', url, { source: el, target: el, swap: 'innerHTML' });
     }
 
@@ -27,10 +30,11 @@
                 if (this.open) { this.close(); } else { this.show(); }
             },
 
-            show: function () {
+            // ``tab``: open on that tab ('new', 'action' or 'all').
+            show: function (tab) {
                 this._returnTo = document.activeElement;
                 this.open = true;
-                load(false);
+                load(false, tab);
                 Alpine.nextTick(function () {
                     var drawer = document.getElementById('notif-drawer');
                     if (drawer) { drawer.focus({ preventScroll: true }); }

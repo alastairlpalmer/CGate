@@ -934,15 +934,16 @@ class PendingDeparturesWidgetTests(LifecycleTestCase):
 
     def test_single_horse_group_says_confirm_not_confirm_all(self):
         self._pending(self.horse, 1)
-        response = self.client.get(reverse('dashboard'))
-        self.assertNotContains(response, 'Confirm All')
-        self.assertContains(response, 'Confirm')
+        response = self.client.get(reverse('notification_panel'), {'tab': 'action', 'fresh': '1'})
+        self.assertNotContains(response, 'Confirm all')
+        self.assertContains(response, 'Confirm departed')
 
     def test_confirm_everything_button_lists_all_pending_horses(self):
         horse2 = Horse.objects.create(name='SNOWY')
         self._pending(self.horse, 1)
         self._pending(horse2, 2)  # different date → different group
-        response = self.client.get(reverse('dashboard'))
+        # The button moved with Needs action to the notification centre.
+        response = self.client.get(reverse('notification_panel'), {'tab': 'action', 'fresh': '1'})
         self.assertContains(response, 'Confirm all 2')
 
         response = self.client.post(
@@ -1036,8 +1037,12 @@ class PendingDeparturesSelectionTests(LifecycleTestCase):
             start_date=self.today - timedelta(days=29),
             end_date=self.today - timedelta(days=2),
         )
+        # The Confirm departed button is in the notification centre now.
+        self.assertContains(
+            self.client.get(reverse('notification_panel'), {'tab': 'action', 'fresh': '1'}),
+            'Confirm departed',
+        )
         response = self.client.get(reverse('dashboard'))
-        self.assertContains(response, 'Confirm departed')
         departures = [
             item for row in response.context['rows'] for item in row.items
             if item.kind == 'departure'

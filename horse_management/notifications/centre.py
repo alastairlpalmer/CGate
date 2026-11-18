@@ -355,6 +355,7 @@ def _row_fields(row):
         'dismiss': [] if row.key == 'invoices-more' else [dismissals.token(i) for i in row.items],
         'horses': len(row.horses),
         'visit': row.kind == 'visit',
+        'horse_id': row.horse.pk if row.horse is not None else None,
     }
     return {
         'kind': row.items[0].kind if row.items else 'action',

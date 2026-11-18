@@ -8,8 +8,7 @@
 Near you card's header while that card shows, and in the page header when
 it does not (partials/dashboard/site_tools.html).{% endcomment %}
 <div class="space-y-4"
-     x-data="{ filter: 'all',
-               placeSiteTools(inCard) {
+     x-data="{ placeSiteTools(inCard) {
                    var tools = this.$root.querySelector('[data-site-tools]');
                    var dest = this.$root.querySelector(inCard ? '[data-site-tools-slot]' : '[data-site-tools-home]');
                    if (tools && dest && tools.parentNode !== dest) dest.appendChild(tools);
@@ -23,37 +22,18 @@ it does not (partials/dashboard/site_tools.html).{% endcomment %}
     <div class="page-header zone-enter relative z-30" style="--i:0">
         <div class="min-w-0">
             <h1 class="page-title">{{ greeting }}, {{ user.first_name|default:user.username }}</h1>
+            {% comment %}What needs doing lives in the notification centre now
+            (notifications/centre.py). The count here opens it on its
+            Needs action tab.{% endcomment %}
             <p class="page-subtitle">
-                <span class="{% if summary.things %}font-medium text-saddle{% else %}font-medium text-forest{% endif %}">{{ headline }}</span>
+                {% if summary.things %}
+                <button type="button" class="font-medium text-saddle underline decoration-saddle/30 underline-offset-2 hover:decoration-saddle"
+                        @click="$store.notif.show('action')" aria-controls="notif-drawer">{{ headline }}</button>
+                {% else %}
+                <span class="font-medium text-forest">{{ headline }}</span>
+                {% endif %}
                 &middot; {% now "l j F Y" %}{% if site %} &middot; {{ site }}{% endif %}
             </p>
-            {% if 'attention' in visible and rows %}
-            <div class="mt-3 flex flex-wrap gap-2" role="group" aria-label="Filter what needs doing">
-                <button type="button" class="chip-count" :class="filter === 'all' && 'is-active'" @click="filter = 'all'">
-                    All <b>{{ rows|length }}</b>
-                </button>
-                {% if summary.overdue %}
-                <button type="button" class="chip-count chip-count-hot" :class="filter === 'overdue' && 'is-active'" @click="filter = 'overdue'">
-                    Overdue <b>{{ summary.overdue }}</b>
-                </button>
-                {% endif %}
-                {% if summary.health %}
-                <button type="button" class="chip-count" :class="filter === 'health' && 'is-active'" @click="filter = 'health'">
-                    Health <b>{{ summary.health }}</b>
-                </button>
-                {% endif %}
-                {% if summary.yard %}
-                <button type="button" class="chip-count" :class="filter === 'yard' && 'is-active'" @click="filter = 'yard'">
-                    Yard <b>{{ summary.yard }}</b>
-                </button>
-                {% endif %}
-                {% if summary.money %}
-                <button type="button" class="chip-count" :class="filter === 'money' && 'is-active'" @click="filter = 'money'">
-                    Money <b>{{ summary.money }}</b>
-                </button>
-                {% endif %}
-            </div>
-            {% endif %}
         </div>
         {% comment %}Empty while the Near you card holds the tools: an empty
         flex item takes no room, so the header stays one line.{% endcomment %}
@@ -68,36 +48,26 @@ it does not (partials/dashboard/site_tools.html).{% endcomment %}
     <div class="alert-error">The dashboard could not load its data. The error has been logged; try again in a moment.</div>
     {% endif %}
 
-    {# ── Near you, Needs action, Next 14 days ── #}
+    {# ── Near you, and the month calendar ── #}
     {% comment %}
     The map of the site you are on comes first: on a phone at the top, on
-    a wide screen large on the left with a column beside it — Needs action
-    (four rows, then "Show N more") and Next 14 days under it — half and
+    a wide screen large on the left with the calendar beside it — half and
     half on a laptop, seven columns to five from 1728px. The map grows to
-    the column's height, so the two sides end together. The card announces
-    whether it shows (near-you:visible); without it the column opens out
-    and the two lists sit side by side.
+    the calendar's height, so the two sides end together. The card
+    announces whether it shows (near-you:visible); without it the calendar
+    takes the whole row and names what is due in each day.
     {% endcomment %}
-    {% if 'attention' in visible or 'upcoming' in visible or near_you_card %}
+    {% if 'upcoming' in visible or near_you_card %}
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-12"
          x-data="{ hasMap: {{ near_you_card.shows_without_gps|yesno:'true,false' }} }"
          @near-you:visible="hasMap = $event.detail">
         {% if near_you_card %}
         {% include 'partials/dashboard/near_you.html' %}
         {% endif %}
-        {% if 'attention' in visible or 'upcoming' in visible %}
-        <div class="grid grid-cols-1 gap-4 lg:self-start" :class="hasMap ? 'lg:col-span-6 min-[1728px]:col-span-5' : 'lg:col-span-12 lg:grid-cols-2 lg:items-start'">
-            {% if 'attention' in visible %}
-            <section class="zone-enter" style="--i:2" aria-labelledby="needs-action-title">
-                {% include 'partials/dashboard/attention.html' %}
-            </section>
-            {% endif %}
-            {% if 'upcoming' in visible %}
-            <section class="zone-enter" style="--i:3" aria-labelledby="upcoming-title">
-                {% include 'partials/dashboard/upcoming.html' %}
-            </section>
-            {% endif %}
-        </div>
+        {% if 'upcoming' in visible %}
+        <section class="zone-enter" style="--i:2" aria-labelledby="upcoming-title" :class="hasMap ? 'lg:col-span-6 min-[1728px]:col-span-5' : 'lg:col-span-12'">
+            {% include 'partials/dashboard/calendar.html' %}
+        </section>
         {% endif %}
     </div>
     {% endif %}

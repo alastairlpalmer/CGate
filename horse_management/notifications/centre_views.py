@@ -43,6 +43,16 @@ def _panel_context(request):
     rows = list(rows[:PANEL_LIMIT])
 
     can_dismiss = dismissals.can_dismiss(user)
+    # Horses that left and wait to be confirmed: one button for all of
+    # them, as the dashboard's Needs action card had.
+    departure_ids = []
+    if tab == 'action':
+        from core.permissions import has_feature_access
+        if has_feature_access(user, 'horses', 'full'):
+            departure_ids = [
+                str(n.data.get('horse_id')) for n in rows
+                if n.kind == 'departure' and n.resolved_at is None and n.data.get('horse_id')
+            ]
     from django.utils import timezone
     return {
         'today': timezone.localdate(),
@@ -52,6 +62,7 @@ def _panel_context(request):
         'counts': counts,
         'notifications': rows,
         'can_dismiss': can_dismiss,
+        'departure_ids': departure_ids,
         'dismissed_count': AttentionDismissal.objects.count() if can_dismiss else 0,
     }
 

@@ -825,11 +825,11 @@ class VisitRowTitleTests(DashboardDataTestCase):
         self.assertEqual(len(row.items), 5)
 
     def test_the_card_prints_the_count(self):
-        # Overdue, so the row lands in Needs action rather than the strip.
+        # Overdue, so the row lands in Needs action (the notification centre).
         for name in ('Ash', 'Beech', 'Cedar', 'Dogwood', 'Elm'):
             self.worming(self.horse(name), -1)
         self.client.force_login(self.admin)
-        body = self.client.get(reverse('dashboard')).content.decode()
+        body = self.client.get(reverse('notification_panel'), {'tab': 'action', 'fresh': '1'}).content.decode()
         self.assertIn('Ash, Beech, Cedar and 2 more', body)
         self.assertIn('5 horses, one visit', body)
 

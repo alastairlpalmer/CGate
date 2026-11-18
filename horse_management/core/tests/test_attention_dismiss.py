@@ -39,9 +39,14 @@ class DismissTests(DashboardDataTestCase):
             reverse('attention_dismiss'), {'item': dismissals.token(item or self.item)},
         )
 
+    def panel(self):
+        # Needs action, and its Dismiss button, live in the notification
+        # centre (notifications/centre_views.py).
+        return self.client.get(reverse('notification_panel'), {'tab': 'action', 'fresh': '1'})
+
     def test_an_administrator_sees_the_button(self):
-        response = self.client.get(reverse('dashboard'))
-        self.assertContains(response, reverse('attention_dismiss'))
+        response = self.panel()
+        self.assertContains(response, reverse('notification_dismiss'))
         self.assertContains(response, dismissals.token(self.item))
 
     def test_dismissing_takes_the_item_off_the_dashboard(self):
@@ -79,8 +84,8 @@ class DismissTests(DashboardDataTestCase):
         self.dismiss()
         response = self.client.get(reverse('dashboard'))
         self.assertEqual(response.context['dismissed_count'], 1)
-        self.assertContains(response, reverse('attention_restore'))
-        self.client.post(reverse('attention_restore'))
+        self.assertContains(self.panel(), reverse('notification_restore'))
+        self.client.post(reverse('notification_restore'))
         self.assertFalse(AttentionDismissal.objects.exists())
         self.assertIn(self.item.key, self.keys_on_dashboard())
 

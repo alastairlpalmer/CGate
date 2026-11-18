@@ -170,7 +170,7 @@ class NavigationVisibilityTests(TestCase):
         user = make_user_with_access(username="bk3", dashboard="full", invoices="view")
         grouped = DashboardPreference.get_for(user).visible_ordered_keys_by_group()
         flat = [k for keys in grouped.values() for k in keys]
-        self.assertIn("attention", flat)                  # the inbox needs only the dashboard
+        self.assertIn("upcoming", flat)                   # the calendar needs only the dashboard
         self.assertIn("money", flat)                      # invoices viewable
         self.assertNotIn("yard_board", flat)              # locations hidden
         self.assertNotIn("in_foal", flat)                 # breeding hidden
