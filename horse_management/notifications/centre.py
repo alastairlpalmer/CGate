@@ -145,7 +145,8 @@ def _short_key(*parts):
     raw = ':'.join(str(p) for p in parts)
     if len(raw) <= 180:
         return raw
-    return raw[:120] + ':' + hashlib.sha1(raw.encode()).hexdigest()
+    # Not a security use: a short, stable stand-in for a long key.
+    return raw[:120] + ':' + hashlib.sha256(raw.encode()).hexdigest()[:40]
 
 
 def _recipients(category, feature, actor):
