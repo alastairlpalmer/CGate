@@ -16,6 +16,8 @@
 
 | Document | What it covers |
 |---|---|
+| [`ROADMAP.md`](ROADMAP.md) | Product roadmap in five phases: yard office, owner portal, payments, SaaS growth loop, later. Many items come from the Prism review. |
+| [`market/prism-competitor-review.md`](market/prism-competitor-review.md) | How Prism won Australia: features, clients, integrations, pricing, and what C-gate can copy. |
 | [`CODEBASE_REVIEW.md`](CODEBASE_REVIEW.md) | Full review of the codebase, numbered by part. Several tests cite it. |
 | [`LOCATION_MAPPING_PLAN.md`](LOCATION_MAPPING_PLAN.md) | Design for coordinates, field boundaries and the map tab. |
 | [`BARNS_AND_STABLES_PLAN.md`](BARNS_AND_STABLES_PLAN.md) | Phased plan for barns, numbered stables and day turnout. |
