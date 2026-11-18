@@ -5,6 +5,7 @@
 {% block content %}
 <div class="max-w-5xl mx-auto space-y-4">
 
+    {% include 'includes/_finance_tabs.html' with finance_tab='overview' %}
     <div class="page-header">
         <div>
             <h1 class="page-title">Reconciliation {{ year }}</h1>

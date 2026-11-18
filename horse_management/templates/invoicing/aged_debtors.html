@@ -7,12 +7,12 @@
 <div class="space-y-4">
 
     <!-- Page Header -->
+    {% include 'includes/_finance_tabs.html' with finance_tab='invoices' %}
     <div class="page-header">
         <div>
             <h1 class="page-title">Aged Debtors</h1>
             <p class="page-subtitle">Outstanding balances by how long they've been overdue</p>
         </div>
-        <a href="{% url 'finances' %}" class="btn-secondary">Back to Finances</a>
     </div>
 
     {% if rows %}
