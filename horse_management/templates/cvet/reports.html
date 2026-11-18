@@ -1,0 +1,37 @@
+{% extends "cvet/office_base.html" %}
+{% load ui_extras %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+    <h1>Work done {% if test_mode %}<span class="tag">test notes</span>{% endif %}</h1>
+    <form method="get" class="box pad screen">
+        <div class="fields">
+            <div><label for="r-from">From</label><input id="r-from" type="date" name="from" value="{{ start|date:"Y-m-d" }}"></div>
+            <div><label for="r-to">To</label><input id="r-to" type="date" name="to" value="{{ end|date:"Y-m-d" }}"></div>
+            <button type="submit">Show</button>
+            {% for label, first, last in periods %}<a class="button quiet" href="?from={{ first|date:"Y-m-d" }}&amp;to={{ last|date:"Y-m-d" }}">{{ label }}</a>{% endfor %}
+        </div>
+    </form>
+    <p class="muted">{{ start|date:"j M Y" }} to {{ end|date:"j M Y" }}. The items on the notes of visits in these days: finished or not, on a bill or not. Amounts include VAT.</p>
+    <div class="tiles">
+        <div class="tile"><strong>{{ total|gbp }}</strong><span>Work done</span></div>
+        <div class="tile"><strong>{{ clients|length }}</strong><span>Client{{ clients|length|pluralize }}</span></div>
+        <div class="tile"><strong>{{ items|length }}</strong><span>Different item{{ items|length|pluralize }}</span></div>
+    </div>
+    {% if not items %}<p class="muted">No work in these days.</p>{% else %}
+    <div class="bar"><h2>By client</h2><a class="screen" href="?from={{ start|date:"Y-m-d" }}&amp;to={{ end|date:"Y-m-d" }}&amp;csv=clients">CSV file</a></div>
+    <div class="box"><table>
+        <tr><th>Client</th><th class="num">Visits</th><th class="num">Horses seen</th><th class="num">Total</th></tr>
+        {% for row in clients %}<tr><td>{{ row.name }}</td><td class="num">{{ row.visits }}</td><td class="num">{{ row.horses }}</td><td class="num">{{ row.total|gbp }}</td></tr>{% endfor %}
+    </table></div>
+    <div class="bar"><h2>By vet</h2><a class="screen" href="?from={{ start|date:"Y-m-d" }}&amp;to={{ end|date:"Y-m-d" }}&amp;csv=vets">CSV file</a></div>
+    <div class="box"><table>
+        <tr><th>Vet</th><th class="num">Visits</th><th class="num">Horses seen</th><th class="num">Total</th></tr>
+        {% for row in vets %}<tr><td>{{ row.name }}</td><td class="num">{{ row.visits }}</td><td class="num">{{ row.horses }}</td><td class="num">{{ row.total|gbp }}</td></tr>{% endfor %}
+    </table></div>
+    <div class="bar"><h2>By item</h2><a class="screen" href="?from={{ start|date:"Y-m-d" }}&amp;to={{ end|date:"Y-m-d" }}&amp;csv=items">CSV file</a></div>
+    <div class="box"><table>
+        <tr><th>Item</th><th class="num">Quantity</th><th class="num">Total</th></tr>
+        {% for row in items %}<tr><td>{{ row.name }}</td><td class="num">{{ row.quantity|floatformat:"-2" }}</td><td class="num">{{ row.total|gbp }}</td></tr>{% endfor %}
+    </table></div>
+    {% endif %}
+{% endblock %}

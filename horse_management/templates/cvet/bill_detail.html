@@ -23,12 +23,37 @@
         .grand td { font-weight: 700; font-size: 17px; border-top: 2px solid #1f2d32; }
         .muted { color: #5d6b70; font-size: 13px; }
         .tag { padding: 1px 6px; border-radius: 4px; background: #ffe2b8; color: #5c3600; font-size: 13px; font-weight: 600; }
+        .actions { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; margin: 8px 0 14px; }
+        .actions form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0; }
+        .actions button { min-height: 44px; padding: 0 14px; border: 1px solid #2f5560; border-radius: 10px; background: #fff; color: #2f5560; font: inherit; font-weight: 600; cursor: pointer; }
+        .actions input { min-height: 44px; padding: 8px 10px; border: 1px solid #e1ddd2; border-radius: 10px; font: inherit; }
+        .actions label { font-weight: 600; }
+        .paid { color: #2f6b45; font-weight: 600; }
+        .problem { color: #a3322b; font-weight: 600; }
         @media print { .screen { display: none; } body { background: #fff; } .page, .sheet { padding: 0; box-shadow: none; } }
     </style>
 </head>
 <body>
     <div class="page">
     <p class="screen nav"><a href="{% url 'cvet:bill_list' %}">‹ Bills</a><br>To print it or to save it as a PDF, use Print in the browser's menu.</p>
+    {# For the practice office: paid or not, and the send to the client. Not on the printed bill. #}
+    <div class="screen actions">
+        <form method="post" action="{% url 'cvet:bill_paid' bill.pk %}">
+            {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+            {% if bill.paid_on %}<span class="paid">Paid {{ bill.paid_on|date:"j M Y" }}</span> <button type="submit" name="paid" value="no">Mark as not paid</button>
+            {% else %}<label for="paid-on">Paid on</label> <input id="paid-on" type="date" name="paid_on" value="{{ today|date:"Y-m-d" }}"> <button type="submit">Mark as paid</button>{% endif %}
+        </form>
+        {% if can_email %}
+        <form method="post" action="{% url 'cvet:bill_email' bill.pk %}">
+            {% csrf_token %}
+            <button type="submit">{% if bill.emailed_at %}Send again{% else %}Send{% endif %} to {{ bill.practice_client.email }}</button>
+            {% if bill.emailed_at %}<span class="muted">Sent {{ bill.emailed_at|date:"j M Y, H:i" }} to {{ bill.emailed_to }}</span>{% endif %}
+        </form>
+        {% elif bill.practice_client and not bill.practice_client.is_yard and not test_mode %}
+        <p class="muted">To send this bill by email, give {{ bill.practice_client.name }} an email address in C-vet (Clients, Edit).</p>
+        {% endif %}
+        {% if sent == 'yes' %}<p class="paid">The bill was sent.</p>{% elif sent == 'no' %}<p class="problem">The bill was not sent. Try again later.</p>{% endif %}
+    </div>
     <div class="sheet">
     {% if test_mode %}<p><span class="tag">Test bill. Not a real invoice.</span></p>{% endif %}
     <div class="top">

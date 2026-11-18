@@ -1,0 +1,80 @@
+{% load ui_extras %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}C-vet{% endblock %} · {{ practice.name }}</title>
+    {# The practice office's pages (docs/C_VET_PLAN.md, section 7j): one look, written here once. #}
+    <style>
+        :root { --ink: #17252a; --muted: #5b6a70; --brand: #2f5560; --tint: #e8f0f1; --paper: #f3f1ea; --line: #e1ddd2; --good: #2f6b45; --bad: #a3322b; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .top { background: var(--brand); }
+        .top nav { display: flex; gap: 4px; align-items: center; max-width: 62em; margin: 0 auto; padding: 4px 12px; overflow-x: auto; }
+        .top a { flex: 0 0 auto; padding: 12px 10px; border-radius: 8px; color: #c9d8dc; font-weight: 600; text-decoration: none; white-space: nowrap; }
+        .top a.here { color: #fff; background: rgba(255, 255, 255, .16); }
+        .page { max-width: 62em; margin: 0 auto; padding: 12px 16px 40px; }
+        h1 { font-size: 22px; margin: 4px 0 12px; letter-spacing: -.01em; }
+        h2 { margin: 20px 0 6px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+        a { color: var(--brand); font-weight: 600; }
+        td a { display: inline-block; padding: 11px 0; }
+        .nowrap { white-space: nowrap; }
+        .bar { display: flex; gap: 8px 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+        /* A wide table moves sideways inside its box, never the page. */
+        .box { overflow-x: auto; margin: 12px 0; border-radius: 12px; background: #fff; box-shadow: 0 1px 2px rgba(23, 37, 42, .06), 0 1px 6px rgba(23, 37, 42, .05); }
+        .box.pad { padding: 12px 14px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 2px 6px; text-align: left; border-top: 1px solid var(--line); }
+        td { height: 44px; }
+        th:first-child, td:first-child { padding-left: 14px; }
+        th:last-child, td:last-child { padding-right: 14px; }
+        th { padding-top: 10px; padding-bottom: 10px; border-top: 0; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+        .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        td.num, tr.sum td { font-weight: 600; }
+        tr.sum td { border-top: 2px solid var(--ink); }
+        .muted { color: var(--muted); font-size: 14px; }
+        .good { color: var(--good); font-weight: 600; }
+        .bad { color: var(--bad); font-weight: 600; }
+        fieldset { border: 0; padding: 0; margin: 0; }
+        legend { font-weight: 600; padding: 0; margin-bottom: 4px; }
+        label { font-weight: 600; font-size: 13px; }
+        label.choice { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 400; font-size: inherit; }
+        input[type=radio] { width: 22px; height: 22px; flex: 0 0 auto; margin: 0; accent-color: var(--brand); }
+        select, input[type=date], input[type=file] { min-height: 44px; max-width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font: inherit; }
+        .fields { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
+        .fields > div { display: flex; flex-direction: column; gap: 3px; }
+        button, .button { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1px solid var(--brand); border-radius: 10px; background: var(--brand); color: #fff; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
+        button.quiet, .button.quiet { background: #fff; color: var(--brand); }
+        button.small { min-height: 36px; padding: 0 10px; font-size: 14px; }
+        .tag { padding: 2px 6px; border-radius: 4px; background: #ffe2b8; color: #5c3600; font-size: 12px; font-weight: 700; text-transform: uppercase; vertical-align: 3px; }
+        .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(9em, 1fr)); gap: 10px; margin: 12px 0; }
+        .tile { padding: 10px 14px; border-radius: 12px; background: #fff; box-shadow: 0 1px 2px rgba(23, 37, 42, .06); }
+        .tile strong { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+        .tile span { color: var(--muted); font-size: 13px; }
+        ul.problems { margin: 6px 0; padding-left: 20px; }
+        input[type=file] { width: 100%; }
+        .fields > div { min-width: 0; max-width: 100%; }
+        .narrow { display: none; }
+        /* A phone: the day goes under the bill number, so Paid stays in view. */
+        @media (max-width: 599px) {
+            .wide { display: none; }
+            .narrow { display: block; }
+            table { font-size: 14px; }
+            button.small { padding: 0 8px; }
+        }
+        @media print { .top, .screen { display: none; } body { background: #fff; } .page { padding: 0; } .box, .tile { box-shadow: none; } }
+        {% block style %}{% endblock %}
+    </style>
+</head>
+<body>
+<div class="top"><nav aria-label="Practice office">
+    <a href="{% url 'cvet:app' %}">‹ C-vet</a>
+    <a href="{% url 'cvet:bill_list' %}"{% if section == 'bills' %} class="here" aria-current="page"{% endif %}>Bills</a>
+    <a href="{% url 'cvet:reports' %}"{% if section == 'reports' %} class="here" aria-current="page"{% endif %}>Reports</a>
+    <a href="{% url 'cvet:price_file' %}"{% if section == 'prices' %} class="here" aria-current="page"{% endif %}>Price list file</a>
+</nav></div>
+<div class="page">
+{% block content %}{% endblock %}
+</div>
+</body>
+</html>

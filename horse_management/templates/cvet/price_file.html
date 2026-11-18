@@ -1,0 +1,31 @@
+{% extends "cvet/office_base.html" %}
+{% block title %}Price list file{% endblock %}
+{% block content %}
+    <h1>Price list file</h1>
+    {% if done %}
+    <div class="box pad"><p class="good">The price list is up to date: {{ done.added }} added, {{ done.changed }} changed, {{ done.same }} the same.</p>
+        <p class="muted">Each phone gets the new prices at its next download (More, Download again).</p></div>
+    {% endif %}
+    {% if problems %}
+    <div class="box pad"><p class="bad">Nothing was changed. Correct the file and send it again:</p>
+        <ul class="problems">{% for problem in problems %}<li>{{ problem }}</li>{% endfor %}</ul></div>
+    {% endif %}
+    <div class="box pad">
+        <h2 style="margin-top: 0;">Send a file</h2>
+        <p>A CSV file (from Excel: Save as, CSV UTF-8). The first line names the columns:</p>
+        <p><code>name,category,price,vat</code><br><code>Flu/Tet booster,Vaccination,65.00,20</code></p>
+        <p class="muted">Prices include VAT. <strong>category</strong> and <strong>vat</strong> can be left out (VAT is then 20). A name that is on the list changes that price. A new name adds a price. A price that is not in the file stays as it is. One wrong line and nothing is changed.</p>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="fields">
+                <div><label for="p-file">File</label><input id="p-file" type="file" name="file" accept=".csv,text/csv"></div>
+                <button type="submit">Send the file</button>
+            </div>
+        </form>
+    </div>
+    <div class="box pad">
+        <h2 style="margin-top: 0;">Get the list as a file</h2>
+        <p>{{ count }} price{{ count|pluralize }} on the list now. Change the file in Excel and send it back.</p>
+        <p><a class="button quiet" href="?download=1">Download the price list</a></p>
+    </div>
+{% endblock %}

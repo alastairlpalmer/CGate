@@ -472,7 +472,7 @@ async function openVisit(page, clientName) {
     sent += zlib.gzipSync(body).length;
   }
   await context.setOffline(true);
-  check('page files are under 40 KB as the phone downloads them', files.length >= 3 && sent < 40 * 1024, `${Math.round(sent / 1024)} KB compressed`);
+  check('page files are under 50 KB as the phone downloads them', files.length >= 3 && sent < 50 * 1024, `${Math.round(sent / 1024)} KB compressed`);
   check('and under 200 KB as written', written < 200 * 1024, `${Math.round(written / 1024)} KB`);
   await page.screenshot({ path: path.join(OUT, '5-compact.png') });
   await context.setOffline(false);

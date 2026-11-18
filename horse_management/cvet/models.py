@@ -481,6 +481,11 @@ class Bill(models.Model):
         'billing.YardCost', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
     )
     emailed_at = models.DateTimeField(null=True, blank=True)
+    # Where it was sent, when the practice sent it to a client of its own.
+    emailed_to = models.CharField(max_length=254, blank=True)
+    # The day the practice received the money. Empty: not paid yet. The
+    # practice office sets it on the Bills page; nothing else reads it.
+    paid_on = models.DateField(null=True, blank=True)
 
     objects = PracticeScopedQuerySet.as_manager()
 

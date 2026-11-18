@@ -12,7 +12,7 @@ the practice (cvet.setup).
 
 from django.urls import path
 
-from . import setup, views
+from . import office, setup, views
 
 app_name = 'cvet'
 
@@ -35,4 +35,10 @@ urlpatterns = [
     path('bills/settings/', views.bill_settings, name='bill_settings'),
     path('bills/now/', views.bill_now, name='bill_now'),
     path('bills/<int:pk>/', views.bill_detail, name='bill_detail'),
+    # The practice office (cvet.office): pages, with a signal.
+    path('bills/<int:pk>/paid/', office.bill_paid, name='bill_paid'),
+    path('bills/<int:pk>/email/', office.bill_email, name='bill_email'),
+    path('statements/<uuid:client_id>/', office.statement, name='statement'),
+    path('reports/', office.reports, name='reports'),
+    path('prices/file/', office.price_file, name='price_file'),
 ]
