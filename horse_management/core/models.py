@@ -2411,6 +2411,28 @@ class AuditEvent(models.Model):
         return f'{self.get_action_display()} — {self.target_label or self.actor_label} at {self.created_at:%Y-%m-%d %H:%M}'
 
 
+class UserProfile(models.Model):
+    """The signed-in person's own details beyond Django's user: a phone
+    number and a profile photo. Edited in the profile pop-up
+    (core.views.profile). The photo is stored only as a small square
+    JPEG; the upload itself is not kept."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile',
+    )
+    phone = models.CharField(max_length=50, blank=True)
+    photo = models.ImageField(upload_to='people/', blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Profile for {self.user}"
+
+    @classmethod
+    def get_for(cls, user):
+        obj, _ = cls.objects.get_or_create(user=user)
+        return obj
+
+
 # Invoice and InvoiceLineItem have been moved to invoicing.models.
 # Re-exported here for backward compatibility with existing imports.
 from invoicing.models import Invoice, InvoiceLineItem  # noqa: F401

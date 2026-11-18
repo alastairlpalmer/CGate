@@ -84,7 +84,11 @@ class ReliableTask(Task):
             logger.exception('Could not record the failure of %s', self.name)
 
 
-def _run_key():
+def _run_key(task_name=None):
+    """The claim's period: today, or this hour for a task in
+    settings.HOURLY_SCHEDULED_TASKS (one claim a day would run it once)."""
+    if task_name in getattr(settings, 'HOURLY_SCHEDULED_TASKS', ()):
+        return timezone.localtime().strftime('%Y-%m-%dT%H')
     return timezone.localdate().isoformat()
 
 
@@ -99,7 +103,7 @@ def claim_scheduled_run(task_name, task_id):
 
     from core.models import ScheduledRun
 
-    key = _run_key()
+    key = _run_key(task_name)
     try:
         with transaction.atomic():
             return ScheduledRun.objects.create(task_name=task_name, run_key=key, task_id=task_id)

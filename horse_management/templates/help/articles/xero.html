@@ -1,0 +1,60 @@
+<p class="help-lead">Cgate can send your invoices to Xero as drafts. When an invoice is paid in Xero, Cgate marks it as paid.</p>
+
+<h2 id="connect">Connect Xero</h2>
+<ol class="help-steps">
+    <li>Select <strong>Settings</strong> in the sidebar.</li>
+    <li>Select <strong>Billing</strong>, then <strong>Integrations</strong>.</li>
+    <li>Next to <strong>Xero</strong>, select <strong>Connect</strong>.</li>
+    <li>Sign in to Xero.</li>
+    <li>Select your Xero organisation and allow access.</li>
+</ol>
+<p>Xero then sends you back to <strong>Settings</strong>. The <strong>Xero</strong> row shows "Connected to" and the name of your organisation.</p>
+<p>You need full access to Xero integration and to Business settings to connect Xero.</p>
+<p class="help-note">If you connect a different Xero organisation, Cgate removes the links to the old organisation. Push the invoices again to send them to the new organisation.</p>
+
+<h2 id="push">Send an invoice to Xero</h2>
+<ol class="help-steps">
+    <li>Select <strong>Invoices</strong> in the sidebar.</li>
+    <li>Open the invoice.</li>
+    <li>Select <strong>Push to Xero</strong>.</li>
+    <li>In Xero, check and approve the draft invoice.</li>
+</ol>
+<p>To send many invoices, tick them on the <strong>Invoices</strong> page. Then select <strong>Push to Xero</strong> in the bar at the bottom of the screen.</p>
+<p>After the push, the invoice shows <strong>In Xero (Draft)</strong>. You cannot push a cancelled invoice.</p>
+<p class="help-note">Cgate does not send credit notes to Xero. Enter each credit note in Xero yourself.</p>
+
+<h2 id="payment-status">Get payment status from Xero</h2>
+<p>Each night, Cgate asks Xero about each invoice that you pushed. Cgate also asks when you open the invoice page.</p>
+<ul>
+    <li>When Xero shows the invoice as paid, Cgate records a payment and marks the invoice as paid. The invoice shows <strong>Paid in Xero</strong>. Cgate then sends no more overdue reminders for it.</li>
+    <li>When the invoice is voided in Xero, Cgate cancels the invoice in Cgate.</li>
+</ul>
+<p>Xero problems also show in the <strong>Money</strong> category of your notifications.</p>
+
+<h2 id="push-error">Push an invoice again after an error</h2>
+<ol class="help-steps">
+    <li>Read the message that Cgate shows after the push.</li>
+    <li>Correct the problem, for example in Xero.</li>
+    <li>Open the invoice again.</li>
+    <li>Select <strong>Retry Xero</strong>.</li>
+</ol>
+<p>Cgate shows <strong>Retry Xero</strong> in place of <strong>Push to Xero</strong> when the last push failed.</p>
+
+<h2 id="reconnect">Connect Xero again when the connection expires</h2>
+<p>The connection expires when Cgate does not use it for 60 days, or when Xero stops it. Then you see "Xero session expired. Please reconnect." or the notification "Xero: the connection has expired".</p>
+<ol class="help-steps">
+    <li>In <strong>Settings</strong>, select <strong>Billing</strong>, then <strong>Integrations</strong>.</li>
+    <li>Next to <strong>Xero</strong>, select <strong>Connect</strong>.</li>
+    <li>Sign in to Xero and select the same organisation.</li>
+</ol>
+<p>Cgate keeps the links to the invoices that you pushed before.</p>
+
+<h2 id="problems">Common problems</h2>
+<dl class="help-faq">
+    <dt>Why is there no <strong>Push to Xero</strong> button?</dt>
+    <dd>Xero is not connected, or your role does not have full access to Xero integration.</dd>
+    <dt>I see "More than one Xero organisation is connected to Cgate". What do I do?</dt>
+    <dd>In Xero, open <strong>Settings</strong>, <strong>Connected apps</strong>. Remove Cgate from the organisations that you do not use, then connect again.</dd>
+    <dt>I disconnected Xero. Is Cgate still in my Xero account?</dt>
+    <dd>Usually no. If Cgate shows a warning, remove Cgate in Xero, in <strong>Settings</strong>, <strong>Connected apps</strong>.</dd>
+</dl>

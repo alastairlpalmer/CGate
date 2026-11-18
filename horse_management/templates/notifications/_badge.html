@@ -1,0 +1,8 @@
+{% comment %}
+The unread count, sent out-of-band to both badges: the sidebar's
+Notifications item and the phone's bell (base.html). The poller that asks
+for it is hidden; this answer replaces both badges by id.
+{% endcomment %}
+<span id="notif-count-side" hx-swap-oob="true" class="notif-count{% if not unread %} hidden{% endif %}">{{ unread }}</span>
+<span id="notif-count-phone" hx-swap-oob="true" class="notif-count notif-count-dot{% if not unread %} hidden{% endif %}">{% if unread > 99 %}99+{% else %}{{ unread }}{% endif %}</span>
+<span class="sr-only">{{ unread }} unread notification{{ unread|pluralize }}</span>

@@ -330,7 +330,7 @@
 
 /* Search panel: no blank strip while the results are still on their way
    (kept outside @layer — :empty with !important must beat Alpine's x-show) */
-#app-search-results:empty { display: none !important; }
+[data-search-results]:empty { display: none !important; }
 
 @layer components {
 
@@ -1095,6 +1095,44 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .strip-dot { @apply inline-block h-1.5 w-1.5 rounded-full bg-sage; }
     .strip-legend { @apply flex flex-wrap gap-x-3 gap-y-1 px-4 pb-3 text-[11px] text-sage lg:px-5; }
     .strip-legend .strip-dot { @apply mr-1 align-middle; }
+
+    /* Month calendar (partials/dashboard/calendar.html). Monday first.
+       The grid is a size container: narrow, a day shows dots; from 36rem
+       it also names the first two kinds due. */
+    .cal-wrap { container-type: inline-size; @apply px-3 pt-3 lg:px-4; }
+    .cal-grid { @apply w-full; }
+    .cal-row { @apply grid gap-1; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+    .cal-row + .cal-row { @apply mt-1; }
+    .cal-head { @apply mb-1; }
+    .cal-dow { @apply text-center font-mono text-[10px] uppercase tracking-wide text-sage; }
+    .cal-dow abbr { text-decoration: none; }
+    .cal-day {
+        @apply relative flex flex-col items-center justify-start gap-1 min-h-[3.25rem] rounded-lg px-1 pt-1.5 pb-1
+               text-charcoal ring-1 ring-inset ring-transparent hover:bg-sand-50 hover:ring-light-sage
+               transition-colors duration-100 cursor-pointer;
+    }
+    .cal-day.is-weekend { @apply bg-sand-50/60; }
+    .cal-day.is-outside { @apply text-sage/60; }
+    .cal-day.is-past .cal-num { @apply text-sage; }
+    .cal-day.is-overdue { @apply ring-error-red/30 bg-error-red-50/50; }
+    .cal-day.is-today .cal-num { @apply bg-forest text-white; }
+    .cal-day.is-selected { @apply ring-2 ring-forest bg-white; }
+    .cal-num { @apply inline-flex items-center justify-center min-w-[1.75rem] h-7 px-1 rounded-full font-mono text-sm font-medium tabular-nums; }
+    .cal-dots { @apply flex h-1.5 items-center justify-center gap-0.5; }
+    .cal-labels { @apply hidden w-full space-y-0.5; }
+    .cal-label { @apply flex items-center gap-1 truncate text-[11px] leading-tight text-charcoal-light; }
+    .cal-label .strip-dot { @apply shrink-0; }
+    @container (min-width: 36rem) {
+        .cal-day { @apply min-h-[4.75rem] items-start px-1.5; }
+        .cal-dots { @apply hidden; }
+        .cal-labels { @apply block; }
+    }
+    .cal-nav {
+        @apply inline-flex items-center justify-center w-8 h-8 rounded-btn text-sage hover:text-forest hover:bg-light-sage
+               disabled:opacity-40 disabled:pointer-events-none transition-colors;
+    }
+    .cal-day-list { @apply border-t border-light-sage mt-1; }
+    .cal-day-title { @apply flex items-center gap-2 px-4 pt-3 pb-2 text-sm font-semibold text-charcoal lg:px-5; }
 
     /* Kind colours shared by the strip and the activity log */
     .dot-farrier, .dot-ehv { @apply bg-saddle; }
@@ -1882,28 +1920,245 @@ a.pane-item-title:hover { @apply text-forest; }
 .pane-dot-vet_visit { @apply bg-error-red; }
 .pane-dot-breeding { @apply bg-forest; }
 
-/* ── Collapsible sidebar (base.html) ──────────────────────────────────
-   The rail is the same nav at 4rem: icons only, names as tooltips. The
-   choice is written to localStorage and re-applied on <html> before the
-   first paint, so a reload does not flash the wide sidebar first. */
+/* ── Sidebar (includes/_sidebar.html) ─────────────────────────────────
+   Dark Brim teal, cream icons. Top to bottom: logo row, search, nav, then
+   Support and Settings, then the profile card. */
+.sidebar-brand { @apply relative flex items-center gap-3 px-4 h-16 shrink-0; }
+.sidebar-logo {
+    @apply w-9 h-9 rounded-lg bg-white/10 ring-1 ring-inset ring-white/15
+           flex items-center justify-center shrink-0 transition-opacity duration-100;
+}
+.sidebar-brand-name { @apply text-lg font-bold text-white tracking-tight font-heading truncate flex-1 min-w-0; }
+.sidebar-toggle {
+    @apply inline-flex items-center justify-center w-8 h-8 rounded-btn text-white/50
+           hover:text-white hover:bg-white/10 transition-[color,background-color,opacity] duration-100 shrink-0;
+}
+
+/* Search. The results panel opens to the right of the sidebar, over the
+   page, so it can be as wide as the app bar's panel was. */
+.side-search { @apply relative px-3 pb-3 shrink-0; min-height: 3.25rem; }
+.side-search-field { @apply relative; }
+.side-search-icon {
+    @apply absolute left-3 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-white/60 pointer-events-none transition-colors;
+}
+.side-search-input {
+    @apply block w-full h-10 pl-10 pr-9 rounded-btn bg-white/10 border border-white/15 text-sm text-white
+           placeholder:text-white/60 hover:bg-white/[0.14] focus:outline-hidden focus:bg-white/[0.14]
+           focus:border-sand/60 focus:ring-2 focus:ring-sand/25 transition-colors duration-100;
+}
+.side-search-input::-webkit-search-cancel-button { appearance: none; display: none; }
+.side-search-kbd {
+    @apply absolute right-2.5 top-1/2 -translate-y-1/2 inline-flex items-center justify-center h-5 min-w-[20px] px-1
+           rounded border border-white/20 font-mono text-[10px] leading-none text-white/60 pointer-events-none;
+}
+.side-search-clear {
+    @apply absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 inline-flex items-center justify-center
+           text-white/60 hover:text-white rounded-btn transition-colors;
+}
+.side-search-panel {
+    @apply absolute top-0 z-[60] w-[30rem] max-w-[calc(100vw-20rem)] bg-white rounded-card border border-light-sage shadow-float overflow-hidden;
+    left: calc(100% + 0.25rem);
+}
+
+/* Support, Settings and the profile card. */
+.sidebar-footer { @apply shrink-0 px-3 pt-3 pb-4 space-y-3 border-t border-white/10; }
+.sidebar-user { @apply relative; }
+.sidebar-user-card {
+    @apply w-full flex items-center gap-3 p-2.5 rounded-card text-left bg-white/[0.08] ring-1 ring-inset ring-white/[0.12]
+           hover:bg-white/[0.12] transition-colors duration-100;
+}
+.sidebar-avatar {
+    @apply w-9 h-9 rounded-full bg-sand text-forest flex items-center justify-center text-sm font-semibold shrink-0 overflow-hidden;
+}
+.sidebar-avatar img { @apply w-full h-full object-cover; }
+.more-sheet-avatar { @apply w-8 h-8 rounded-full bg-sand text-forest flex items-center justify-center text-sm font-semibold shrink-0 overflow-hidden; }
+.more-sheet-avatar img { @apply w-full h-full object-cover; }
+.sidebar-user-name { @apply flex-1 min-w-0; }
+.sidebar-user-dots { rotate: 90deg; }
+.sidebar-user-menu {
+    @apply absolute bottom-full left-0 right-0 mb-2 py-1 bg-white rounded-lg shadow-float border border-light-sage overflow-hidden z-[60];
+}
+
+/* The profile pop-up (account/_profile_body.html). */
+.profile-tabs { @apply flex gap-1 px-4 pt-2 border-b border-light-sage; }
+.profile-tab {
+    @apply -mb-px px-3 py-2.5 text-sm font-medium text-sage border-b-2 border-transparent
+           hover:text-charcoal transition-colors duration-100;
+}
+.profile-tab.is-active { @apply text-forest border-forest; }
+.profile-photo { @apply w-16 h-16 rounded-full overflow-hidden shrink-0 bg-sand flex items-center justify-center; }
+.profile-photo img { @apply w-full h-full object-cover; }
+.profile-photo-inner { @apply w-16 h-16 rounded-full bg-sand text-forest flex items-center justify-center text-2xl font-semibold overflow-hidden; }
+.profile-photo-inner img { @apply w-full h-full object-cover; }
+
+/* ── Notification centre (includes/_notification_drawer.html) ──
+   A drawer beside the sidebar on a computer (it follows the rail when
+   collapsed), the whole screen on a phone. Below the pop-up sheet (z-60),
+   so an action opened from a row shows on top of it. */
+.notif-count {
+    @apply inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full
+           bg-white/15 text-[11px] font-semibold leading-none text-white;
+}
+.notif-count.hidden { display: none; }
+.notif-count-dot {
+    @apply absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-saddle text-white ring-2 ring-parchment text-[10px];
+}
+.phone-bell {
+    @apply absolute left-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-10 h-10 rounded-btn
+           text-forest hover:bg-light-sage transition-colors;
+}
+.nav-link-open { @apply text-white bg-white/[0.08] ring-white/[0.12]; }
+.notif-layer { @apply fixed inset-0 z-[55]; }
+.notif-scrim { @apply absolute inset-0 bg-charcoal/30 lg:bg-charcoal/10; }
+.notif-drawer {
+    @apply absolute inset-0 flex flex-col bg-white shadow-float focus:outline-hidden
+           lg:inset-y-0 lg:right-auto lg:left-64 lg:w-[26rem] lg:border-r lg:border-light-sage;
+}
+.sidebar-collapsed .notif-drawer { @apply lg:left-16; }
+.notif-head { @apply flex items-center justify-between gap-3 px-4 h-14 border-b border-light-sage shrink-0; }
+.notif-panel { @apply flex-1 min-h-0 overflow-y-auto overscroll-contain; }
+.notif-tabs { @apply flex gap-1 px-4 pt-1 border-b border-light-sage sticky top-0 bg-white z-10; }
+.notif-tab {
+    @apply -mb-px px-2.5 py-2.5 text-sm font-medium text-sage border-b-2 border-transparent
+           hover:text-charcoal transition-colors duration-100 no-underline;
+}
+.notif-tab b { @apply ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-light-sage text-[11px] font-semibold text-forest; }
+.notif-tab.is-active { @apply text-forest border-forest; }
+.notif-toolbar { @apply flex items-start justify-between gap-3 px-4 py-2.5 border-b border-light-sage; }
+.notif-list { @apply divide-y divide-light-sage; }
+.notif-row { @apply relative flex items-start gap-3 px-4 py-3 border-l-[3px] border-transparent; }
+.notif-row.is-unread { @apply bg-sand-50; }
+.notif-row.is-overdue:not(.is-done) { @apply border-l-error-red; }
+.notif-row.is-done { @apply opacity-70; }
+.notif-icon { @apply w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-light-sage text-forest; }
+.notif-icon-overdue { @apply bg-error-red-50 text-error-red; }
+.notif-icon-due { @apply bg-saddle-50 text-saddle; }
+.notif-icon-money { @apply bg-sand-100 text-forest; }
+.notif-text { @apply flex-1 min-w-0; }
+.notif-title { @apply block text-sm font-semibold text-charcoal hover:text-forest no-underline; }
+.notif-body { @apply mt-0.5 text-sm text-charcoal-light; }
+.notif-meta { @apply mt-1.5 flex flex-wrap items-center gap-2 text-xs text-sage; }
+.notif-actions { @apply mt-2 flex flex-wrap items-center gap-1.5; }
+.notif-unread-dot {
+    @apply mt-1.5 w-2.5 h-2.5 rounded-full bg-saddle hover:ring-4 hover:ring-saddle/20 transition-shadow;
+}
+
+/* ── Help centre (templates/help/) ── */
+.help-search { @apply relative flex items-center gap-2; }
+.help-search-icon { @apply absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-sage pointer-events-none; }
+.help-search-input { @apply mt-0 flex-1 pl-11 h-11 sm:h-10; }
+.help-group-title { @apply mb-2 text-xs font-semibold uppercase tracking-widest text-sage; }
+.help-card {
+    @apply flex flex-col gap-1 p-4 bg-white rounded-card border border-light-sage no-underline
+           hover:border-sage/40 hover:shadow-card transition-[border-color,box-shadow] duration-150;
+}
+.help-row { @apply flex flex-col gap-0.5 px-4 py-3 no-underline hover:bg-parchment; }
+.help-row-title { @apply text-sm font-semibold text-forest; }
+.help-row-summary { @apply text-sm text-charcoal-light; }
+.help-nav-link { @apply block px-2.5 py-1.5 rounded-btn text-sm text-charcoal-light no-underline hover:bg-light-sage hover:text-charcoal; }
+.help-nav-link.is-active { @apply bg-light-sage text-forest font-semibold; }
+.help-article { @apply px-5 py-5 sm:px-7 sm:py-6 text-[15px] leading-relaxed text-charcoal; }
+.help-article .page-title { @apply mb-3; }
+.help-article .help-lead { @apply text-base text-charcoal-light; }
+.help-article h2 { @apply mt-7 mb-2 text-base font-semibold text-forest font-heading scroll-mt-24; }
+.help-article p { @apply my-2; }
+.help-article ol.help-steps { @apply my-2 pl-5 list-decimal space-y-1.5 marker:text-sage marker:font-semibold; }
+.help-article ul { @apply my-2 pl-5 list-disc space-y-1 marker:text-sage; }
+.help-article .help-note { @apply my-3 px-3.5 py-2.5 rounded-lg bg-sand-50 border border-sand-200 text-sm text-charcoal-light; }
+.help-article .help-faq dt { @apply mt-4 font-semibold text-charcoal; }
+.help-article .help-faq dd { @apply mt-1 text-charcoal-light; }
+.help-article a { @apply text-forest underline decoration-forest/30 underline-offset-2 hover:decoration-forest; }
+.help-article strong { @apply font-semibold text-charcoal; }
+.help-contact { @apply flex items-start gap-3 p-4 rounded-card bg-sand-50 border border-sand-200; }
+.help-contact-icon { @apply w-9 h-9 rounded-full bg-white text-forest flex items-center justify-center shrink-0; }
+
+/* ── The rail (collapsed sidebar) ──
+   The same sidebar at 4rem: icons only, names as tooltips. The choice is
+   written to localStorage and re-applied on <html> before the first
+   paint, so a reload does not flash the wide sidebar first. */
 .sidebar-collapsed .app-sidebar { width: 4rem; }
 .sidebar-collapsed .app-shell { padding-left: 4rem; }
 .sidebar-collapsed .sidebar-label,
 .sidebar-collapsed .nav-group-label,
-.sidebar-collapsed .sidebar-user-name { display: none; }
-.sidebar-collapsed .app-sidebar nav a,
-.sidebar-collapsed .sidebar-brand,
-.sidebar-collapsed .sidebar-user { justify-content: center; }
-.sidebar-collapsed .app-sidebar nav a { padding-left: 0; padding-right: 0; }
-.sidebar-collapsed .sidebar-user-actions { display: none; }
+.sidebar-collapsed .sidebar-user-name,
+.sidebar-collapsed .sidebar-user-dots,
+.sidebar-collapsed .side-search-kbd { display: none; }
+.sidebar-collapsed .app-sidebar nav a { justify-content: center; padding-left: 0; padding-right: 0; }
+
+/* The logo and the expand button share one square: side by side they
+   need 74px and the rail has 40px, which made them overlap. The button
+   sits on top of the logo, invisible until the pointer is on the row or
+   it has keyboard focus. A tap on a touch screen still reaches it. */
+.sidebar-collapsed .sidebar-brand { justify-content: center; padding-left: 0; padding-right: 0; }
+.sidebar-collapsed .sidebar-toggle {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 2.25rem;
+    height: 2.25rem;
+    translate: -50% -50%;
+    opacity: 0;
+}
 .sidebar-collapsed .sidebar-toggle svg { transform: rotate(180deg); }
+.sidebar-collapsed .sidebar-brand:hover .sidebar-toggle,
+.sidebar-collapsed .sidebar-toggle:focus-visible {
+    opacity: 1;
+    color: #fff;
+    background-color: rgb(255 255 255 / 0.1);
+}
+.sidebar-collapsed .sidebar-brand:hover .sidebar-logo,
+.sidebar-collapsed .sidebar-brand:has(.sidebar-toggle:focus-visible) .sidebar-logo { opacity: 0; }
+
+/* Search on the rail: a square with the magnifier. In use, the box floats
+   out next to the rail as a light field, with the panel under it.
+   Tailwind 4's -translate-y-1/2 uses the `translate` property, which
+   reads --tw-translate-x, so the icon centres through that variable. */
+.sidebar-collapsed .side-search:not(.is-open) .side-search-input {
+    padding-left: 0;
+    padding-right: 0;
+    color: transparent;
+    cursor: pointer;
+}
+.sidebar-collapsed .side-search:not(.is-open) .side-search-input::placeholder { color: transparent; }
+.sidebar-collapsed .side-search:not(.is-open) .side-search-clear { display: none; }
+.sidebar-collapsed .side-search:not(.is-open) .side-search-icon { left: 50%; --tw-translate-x: -50%; }
+.sidebar-collapsed .side-search.is-open .side-search-field {
+    position: absolute;
+    top: 0;
+    left: calc(100% + 0.25rem);
+    width: 30rem;
+    z-index: 61;
+}
+.sidebar-collapsed .side-search.is-open .side-search-input {
+    @apply bg-white text-charcoal border-forest placeholder:text-sage shadow-float ring-4 ring-forest/10;
+}
+.sidebar-collapsed .side-search.is-open .side-search-icon,
+.sidebar-collapsed .side-search.is-open .side-search-clear { @apply text-sage; }
+.sidebar-collapsed .side-search-panel { top: 3rem; }
+
+/* The unread count becomes a small dot on the bell. */
+.sidebar-collapsed .app-sidebar .nav-link { position: relative; }
+.sidebar-collapsed .app-sidebar .notif-count {
+    @apply absolute top-0.5 right-1.5 min-w-[16px] h-4 px-1 text-[10px] bg-saddle ring-2 ring-forest;
+}
+
+/* The profile card shrinks to the avatar; its menu opens to the right. */
+.sidebar-collapsed .sidebar-user-card {
+    justify-content: center;
+    padding: 0.25rem;
+    background-color: transparent;
+    --tw-ring-color: transparent;
+}
+.sidebar-collapsed .sidebar-user-menu {
+    left: calc(100% + 1rem);
+    right: auto;
+    bottom: 0;
+    margin-bottom: 0;
+    width: 15rem;
+}
 
 .app-sidebar { transition: width 150ms ease-out; }
 .app-shell { transition: padding-left 150ms ease-out; }
-.sidebar-toggle {
-    @apply inline-flex items-center justify-center w-8 h-8 rounded-btn text-white/50
-           hover:text-white hover:bg-white/10 transition-colors duration-100 shrink-0;
-}
 
 @media (prefers-reduced-motion: reduce) {
     .app-sidebar, .app-shell, .split-view-pane { transition: none; }

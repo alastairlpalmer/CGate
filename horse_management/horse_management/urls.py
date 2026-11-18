@@ -8,6 +8,9 @@ from django.contrib import admin
 from django.urls import include, path
 
 from core.views import account as account_views
+from core.views import profile as profile_views
+from core.views import help as help_views
+from notifications import centre_views
 from core.views import audit_log as audit_log_views
 from core.views import google as google_views
 from core.views import database_check as database_check_views
@@ -62,6 +65,16 @@ urlpatterns = [
     path('settings/deleted/', recently_deleted_views.recently_deleted, name='recently_deleted'),
     # Public: the unsubscribe link in reminder emails, and the email
     # provider's bounce and complaint webhooks (notifications/views.py).
+    # The help centre (core/views/help.py, core/help.py).
+    path('help/', help_views.help_index, name='help_index'),
+    path('help/<slug:slug>/', help_views.help_article, name='help_article'),
+    # The notification centre (notifications/centre_views.py).
+    path('notifications/panel/', centre_views.panel, name='notification_panel'),
+    path('notifications/badge/', centre_views.badge, name='notification_badge'),
+    path('notifications/read/', centre_views.read, name='notification_read'),
+    path('notifications/<int:pk>/open/', centre_views.open_notification, name='notification_open'),
+    path('notifications/dismiss/', centre_views.dismiss, name='notification_dismiss'),
+    path('notifications/restore/', centre_views.restore, name='notification_restore'),
     path('email/unsubscribe/<str:token>/', notification_views.unsubscribe, name='email_unsubscribe'),
     path('email/events/postmark/<str:token>/', notification_views.postmark_events, name='email_events_postmark'),
     path('email/events/resend/', notification_views.resend_events, name='email_events_resend'),
@@ -73,6 +86,7 @@ urlpatterns = [
     path('accounts/reset/<uidb64>/<token>/', account_views.UnlockingPasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('accounts/invite/<uidb64>/<token>/', account_views.InviteConfirmView.as_view(), name='invite_confirm'),
     path('accounts/security/', account_views.account_security, name='account_security'),
+    path('accounts/profile/', profile_views.profile, name='profile'),
     path('accounts/security/sign-out-others/', account_views.sign_out_other_devices, name='sign_out_other_devices'),
     path('accounts/two-step/', account_views.mfa_verify, name='mfa_verify'),
     path('accounts/two-step/setup/', account_views.mfa_setup, name='mfa_setup'),

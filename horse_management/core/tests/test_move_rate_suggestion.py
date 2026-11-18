@@ -314,7 +314,8 @@ class AttentionTests(RateTestCase):
 
     def test_the_dashboard_draws_it_with_no_price(self):
         self.horse_in(self.barn, self.grass)
-        response = self.client.get(reverse('dashboard'))
+        # Needs action is in the notification centre (notifications/centre_views.py).
+        response = self.client.get(reverse('notification_panel'), {'tab': 'action', 'fresh': '1'})
         self.assertContains(response, 'In a barn on Field care')
         self.assertNotContains(response, '12.00')
 

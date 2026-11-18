@@ -5,12 +5,14 @@ each one belongs to. Consumed by ``DashboardPreference`` (default layout and
 per-user visibility) and by the dashboard views and template.
 
 The dashboard is six zones, each answering one question; every zone is a
-widget a user can switch off in Settings. Zones render in a designed
+widget a user can switch off in Settings. What needs doing is not a zone:
+it lives in the notification centre (notifications/centre.py), and the
+dashboard's headline counts it and opens it. Zones render in a designed
 composition (the template decides where each sits), so the stored ``order``
 is kept for compatibility but not used for placement.
 
-  attention   what needs doing: one inbox across every area
-  upcoming    the next 14 days and the visits worth booking together
+  upcoming    the month calendar, the chosen day's list, and the
+              visits worth booking together (key kept from "Next 14 days")
   near_you    the site you are on, drawn, with the nearest location lit
               (only with LOCATION_MAPS_ENABLED; see ``requires_setting``)
   yard_board  sites and their locations: occupancy, land use, rest
@@ -26,8 +28,7 @@ below is the area the zone as a whole needs.
 GROUPS = ("main",)
 
 WIDGETS = [
-    {"key": "attention",  "name": "Needs action",   "group": "main", "feature": "dashboard"},
-    {"key": "upcoming",   "name": "Next 14 days",   "group": "main", "feature": "dashboard"},
+    {"key": "upcoming",   "name": "Calendar",       "group": "main", "feature": "dashboard"},
     {"key": "near_you",   "name": "Near you",       "group": "main", "feature": "locations",
      "requires_setting": "LOCATION_MAPS_ENABLED"},
     {"key": "yard_board", "name": "Yard board",     "group": "main", "feature": "locations"},

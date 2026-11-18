@@ -258,14 +258,13 @@ class NearYouCardTests(TestCase):
         self.assertContains(response, 'x-data="{ hasMap: true }"')
         self.assertContains(response, 'data-testid="near-you-zone"')
         zone = response.content[response.content.index(b'data-testid="near-you-zone"') - 400:response.content.index(b'data-testid="near-you-zone"')]
-        self.assertIn(b'lg:col-span-6 min-[1728px]:col-span-7', zone)  # half the width beside Needs action; seven of twelve from 1728px
+        self.assertIn(b'lg:col-span-6 min-[1728px]:col-span-7', zone)  # half the width beside the calendar; seven of twelve from 1728px
         self.assertIn(b'x-show="ready"', zone)       # a hidden card takes no grid cell
-        # The map is the first zone: before the Needs action and Next 14 days
-        # column, which keeps five columns for itself only while the card
-        # shows and opens out to two lists side by side when it does not.
-        self.assertLess(response.content.index(b'near-you-title'), response.content.index(b'needs-action-title'))
-        self.assertLess(response.content.index(b'needs-action-title'), response.content.index(b'upcoming-title'))
-        self.assertContains(response, "hasMap ? 'lg:col-span-6 min-[1728px]:col-span-5' : 'lg:col-span-12 lg:grid-cols-2 lg:items-start'")
+        # The map is the first zone: before the month calendar, which keeps
+        # five columns for itself only while the card shows and takes the
+        # whole row when it does not.
+        self.assertLess(response.content.index(b'near-you-title'), response.content.index(b'upcoming-title'))
+        self.assertContains(response, "hasMap ? 'lg:col-span-6 min-[1728px]:col-span-5' : 'lg:col-span-12'")
         # The card comes before the Yard board in the page
         self.assertLess(response.content.index(b'near-you-title'), response.content.index(b'yard-board-title'))
         # Both maps carry the Map button that shows the base map under the shapes.

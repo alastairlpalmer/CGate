@@ -1,0 +1,13 @@
+{% extends "notifications/email/_base.html" %}
+{% comment %}One movement or money notification (notifications.emails.send_notification).{% endcomment %}
+
+{% block content %}
+    <p>Hello {{ user.first_name|default:user.username }},</p>
+    <p><strong>{{ title }}</strong>{% if body %}<br>{{ body }}{% endif %}</p>
+    {% if link %}<p><a href="{{ link }}">Open it in Cgate</a></p>{% endif %}
+{% endblock %}
+
+{% block footer %}
+    You get this email because you turned on email for this kind of notification.
+    To change that, open Cgate, then your profile, then Notifications.
+{% endblock %}

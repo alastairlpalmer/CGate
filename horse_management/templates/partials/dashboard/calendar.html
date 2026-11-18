@@ -1,0 +1,118 @@
+{% load ui_extras %}
+{% comment %}
+The month calendar (core.dashboard.calendar), beside the map. Context:
+calendar, upcoming (for the visits list), can_dismiss.
+
+A day is a button: it asks for this card again with that day chosen
+(dashboard_calendar), and the list under the grid shows what is due that
+day, with the same buttons the notification centre has. The arrows ask
+for the month before or after. The card replaces itself (outerHTML), so it
+keeps working wherever it is.
+
+The grid is a size container (.cal-wrap): narrow, a day shows dots; from
+36rem wide (the calendar on its own row, with no map) it also names the
+first two kinds due.
+{% endcomment %}
+{% url 'dashboard_calendar' as cal_url %}
+<div class="card overflow-hidden h-full flex flex-col" id="dash-calendar" aria-busy="false">
+    <div class="section-header">
+        <div class="flex items-center gap-2.5 min-w-0">
+            <h2 class="section-title" id="upcoming-title">{{ calendar.month|date:"F Y" }}</h2>
+            {% if calendar.total %}<span class="{% if calendar.overdue %}badge-danger{% else %}badge-neutral{% endif %}" title="{{ calendar.total }} thing{{ calendar.total|pluralize }} dated this month{% if calendar.overdue %}, {{ calendar.overdue }} overdue{% endif %}">{{ calendar.total }}</span>{% endif %}
+        </div>
+        <div class="flex items-center gap-1 shrink-0">
+            {% if not calendar.is_this_month %}
+            <button type="button" class="btn-ghost btn-xs"
+                    hx-get="{{ cal_url }}?month={{ calendar.this_month|date:'Y-m' }}" hx-target="#dash-calendar" hx-select="unset" hx-swap="outerHTML" hx-push-url="false">Today</button>
+            {% endif %}
+            <button type="button" class="cal-nav" aria-label="Previous month" title="Previous month"{% if not calendar.previous %} disabled{% endif %}
+                    hx-get="{{ cal_url }}?month={{ calendar.previous|date:'Y-m' }}" hx-target="#dash-calendar" hx-select="unset" hx-swap="outerHTML" hx-push-url="false">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+            </button>
+            <button type="button" class="cal-nav" aria-label="Next month" title="Next month"{% if not calendar.next %} disabled{% endif %}
+                    hx-get="{{ cal_url }}?month={{ calendar.next|date:'Y-m' }}" hx-target="#dash-calendar" hx-select="unset" hx-swap="outerHTML" hx-push-url="false">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="cal-wrap">
+        <div class="cal-grid" role="grid" aria-labelledby="upcoming-title">
+            <div class="cal-row cal-head" role="row">
+                <span role="columnheader" class="cal-dow"><abbr title="Monday">Mon</abbr></span>
+                <span role="columnheader" class="cal-dow"><abbr title="Tuesday">Tue</abbr></span>
+                <span role="columnheader" class="cal-dow"><abbr title="Wednesday">Wed</abbr></span>
+                <span role="columnheader" class="cal-dow"><abbr title="Thursday">Thu</abbr></span>
+                <span role="columnheader" class="cal-dow"><abbr title="Friday">Fri</abbr></span>
+                <span role="columnheader" class="cal-dow is-weekend"><abbr title="Saturday">Sat</abbr></span>
+                <span role="columnheader" class="cal-dow is-weekend"><abbr title="Sunday">Sun</abbr></span>
+            </div>
+            {% for week in calendar.weeks %}
+            <div class="cal-row" role="row">
+                {% for day in week %}
+                <button type="button" role="gridcell"
+                        class="cal-day{% if not day.in_month %} is-outside{% endif %}{% if day.is_today %} is-today{% endif %}{% if day.is_selected %} is-selected{% endif %}{% if day.is_weekend %} is-weekend{% endif %}{% if day.is_past %} is-past{% endif %}{% if day.overdue %} is-overdue{% endif %}"
+                        aria-selected="{% if day.is_selected %}true{% else %}false{% endif %}"
+                        {% if day.is_today %}aria-current="date"{% endif %}
+                        aria-label="{{ day.date|date:'l j F' }}{% if day.titles %}: {{ day.titles }}{% else %}: nothing due{% endif %}{% if day.overdue %}, overdue{% endif %}"
+                        title="{{ day.date|date:'l j F' }}{% if day.titles %} · {{ day.titles }}{% endif %}"
+                        {% if day.in_month %}hx-get="{{ cal_url }}?month={{ calendar.month|date:'Y-m' }}&amp;day={{ day.date|date:'Y-m-d' }}"{% else %}hx-get="{{ cal_url }}?month={{ day.date|date:'Y-m' }}&amp;day={{ day.date|date:'Y-m-d' }}"{% endif %}
+                        hx-target="#dash-calendar" hx-select="unset" hx-swap="outerHTML" hx-push-url="false">
+                    <span class="cal-num">{{ day.date|date:"j" }}</span>
+                    {% if day.count %}
+                    <span class="cal-dots" aria-hidden="true">{% for kind in day.dots %}<i class="strip-dot dot-{{ kind }}"></i>{% endfor %}{% if day.more %}<i class="strip-dot dot-more"></i>{% endif %}</span>
+                    <span class="cal-labels" aria-hidden="true">{% for label in day.labels %}<span class="cal-label"><i class="strip-dot dot-{{ label.kind }}"></i>{{ label.text }}</span>{% endfor %}</span>
+                    {% endif %}
+                </button>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        {% if calendar.legend %}
+        <div class="strip-legend" aria-hidden="true">
+            {% for entry in calendar.legend %}<span><i class="strip-dot dot-{{ entry.kind }}"></i>{{ entry.label }}</span>{% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    {# ── The chosen day ── #}
+    <section class="cal-day-list" aria-labelledby="cal-day-title" aria-live="polite">
+        <h3 id="cal-day-title" class="cal-day-title">
+            {% if calendar.selected == today %}Today{% else %}{{ calendar.selected|date:"l j F" }}{% endif %}
+            {% if calendar.selected_items %}<span class="badge-neutral">{{ calendar.selected_items|length }}</span>{% endif %}
+        </h3>
+        {% if calendar.selected_items %}
+        <ul class="attn-list">
+            {% for item in calendar.selected_items %}
+            <li class="attn-row is-{{ item.severity }}">
+                <div class="attn-item">
+                    <div class="attn-icon attn-icon-{{ item.severity }}" aria-hidden="true">
+                        <svg class="h-[18px] w-[18px]"><use href="#i-{{ item.kind|kind_icon }}"/></svg>
+                    </div>
+                    <div class="attn-text" title="{{ item.title }}{% if item.detail %} · {{ item.detail }}{% endif %}">
+                        {% if item.horse %}{% include 'horses/_coat_dot.html' with horse=item.horse %}{% endif %}
+                        <a href="{{ item.url }}" class="attn-title">{{ item.title }}</a>
+                        {% if item.location %}<span class="attn-sub">{{ item.location }}</span>{% endif %}
+                        {% if item.detail %}<span class="attn-detail">{{ item.detail }}</span>{% endif %}
+                    </div>
+                    <div class="attn-foot">
+                        <div class="attn-when">
+                            <span class="{% if item.is_overdue %}badge-danger{% elif item.delta == 0 %}badge-warning{% else %}badge-neutral{% endif %}">{{ item.due_date|due_label }}</span>
+                        </div>
+                        {% if item.actions or can_dismiss %}
+                        <div class="attn-actions">{% for action in item.actions %}{% include 'partials/dashboard/_action.html' %}{% endfor %}{% if can_dismiss %}{% include 'partials/dashboard/_dismiss.html' with one=item %}{% endif %}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="px-4 pb-4 text-sm text-sage">Nothing is due {% if calendar.selected == today %}today{% else %}on this day{% endif %}.</p>
+        {% endif %}
+    </section>
+
+    {% if calendar.is_this_month %}
+    <div class="border-t border-light-sage">{% include 'partials/dashboard/_visits.html' %}</div>
+    {% endif %}
+</div>

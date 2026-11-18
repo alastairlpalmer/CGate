@@ -1,0 +1,60 @@
+<p class="help-lead">Charges are the extra costs that you bill to owners. Invoices collect the livery and the unbilled charges for each owner, and record the payments.</p>
+
+<h2 id="add-charge">Add an extra charge</h2>
+<ol class="help-steps">
+    <li>Select <strong>Charges</strong> in the sidebar.</li>
+    <li>Select <strong>Add Charge</strong>.</li>
+    <li>In <strong>Horses</strong>, tick one or more horses.</li>
+    <li>Select the <strong>Type</strong> and enter the <strong>Description</strong>, the amount and the <strong>Date</strong>.</li>
+    <li>Select <strong>Add Charge</strong>.</li>
+</ol>
+<p>Each ticked horse gets its own charge for the full amount. Cgate bills the current owner of each horse, unless you select an owner in <strong>Bill To (Owner)</strong>. A cost on a health or farrier record also makes a charge.</p>
+<p>You need full access to Charges to add a charge.</p>
+
+<h2 id="monthly-invoices">Make the monthly invoices</h2>
+<p>On the 1st of each month, Cgate makes draft invoices for the month before. An administrator can turn this off in <strong>Settings</strong>, <strong>Business</strong>, <strong>Auto-generate monthly draft invoices</strong>.</p>
+<ol class="help-steps">
+    <li>To make the invoices yourself, select <strong>Invoices</strong> in the sidebar.</li>
+    <li>Select <strong>Generate Monthly</strong>.</li>
+    <li>Select the <strong>Year</strong> and the <strong>Month</strong>.</li>
+    <li>Select <strong>Generate Invoices</strong>.</li>
+</ol>
+<p>Each invoice has the livery and all unbilled charges. Cgate skips an owner who already has an invoice for that month. To make one invoice, select <strong>Create Invoice</strong>.</p>
+
+<h2 id="send">Check and send an invoice</h2>
+<ol class="help-steps">
+    <li>On the <strong>Invoices</strong> page, select the invoice.</li>
+    <li>Check the lines. To change them, select <strong>More</strong>, then <strong>Edit invoice</strong>.</li>
+    <li>Select <strong>Send Invoice</strong>.</li>
+</ol>
+<p>Cgate emails the invoice to the owner. To send many drafts, tick them on the <strong>Invoices</strong> page and select <strong>Send Selected</strong>. To remove a draft, select <strong>More</strong>, then <strong>Delete Draft</strong>.</p>
+
+<h2 id="payment">Record a payment</h2>
+<ol class="help-steps">
+    <li>Open the invoice.</li>
+    <li>Select <strong>Record Payment</strong>.</li>
+    <li>Enter the date, the amount and the method.</li>
+    <li>Select <strong>Record Payment</strong>.</li>
+</ol>
+<p>Part payments are fine. The invoice stays open until the balance is zero. If the owner paid the full amount, you can select <strong>More</strong>, then <strong>Mark as Paid</strong>. To mark many invoices, tick them and select <strong>Mark Selected Paid</strong>.</p>
+<p>To lower what an owner owes on a sent invoice, select <strong>More</strong>, then <strong>Issue Credit Note</strong>. You need full access to Invoices for these tasks.</p>
+
+<h2 id="overdue">Follow up overdue invoices</h2>
+<p>When the due date of a sent invoice is in the past, its status changes to <strong>Overdue</strong>. Cgate then emails reminders to the owner at set intervals. The last reminder is a final notice. After it, Cgate sends no more reminders.</p>
+<p>The invoice page shows <strong>Reminders Sent</strong>. To stop the reminders for one owner, edit the owner and select <strong>Pause overdue reminders</strong>.</p>
+<p>Paid and overdue invoices also show in the <strong>Money</strong> category of your notifications.</p>
+<ol class="help-steps">
+    <li>To see all money that is owed, select <strong>Finances</strong> in the sidebar.</li>
+    <li>Select <strong>Outstanding</strong>. The <strong>Aged Debtors</strong> page opens.</li>
+    <li>To see the account of one owner, select <strong>Statement</strong>.</li>
+</ol>
+
+<h2 id="problems">Common problems</h2>
+<dl class="help-faq">
+    <dt>I see "Owner doesn't have an email address". What do I do?</dt>
+    <dd>Add an email address to the owner, then select <strong>Send Invoice</strong> again.</dd>
+    <dt>A charge is not on the invoice. Why?</dt>
+    <dd>The charge may have a date after the end of the invoice period. Then it goes on the next invoice. Also, check the owner in <strong>Bill To (Owner)</strong> on the charge.</dd>
+    <dt>Why can I not delete an invoice?</dt>
+    <dd>You can delete only a draft. To lower what the owner owes on a sent invoice, issue a credit note.</dd>
+</dl>

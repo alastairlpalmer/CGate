@@ -13,6 +13,7 @@ urlpatterns = [
     # Dashboard
     path('', views.dashboard, name='dashboard'),
     path('_partials/dashboard/money/', views.dashboard_money, name='dashboard_money'),
+    path('_partials/dashboard/calendar/', views.dashboard_calendar, name='dashboard_calendar'),
     path('_partials/dashboard/activity/', views.dashboard_activity, name='dashboard_activity'),
     path('dashboard/needs-action/dismiss/', views.attention_dismiss, name='attention_dismiss'),
     path('dashboard/needs-action/restore/', views.attention_restore, name='attention_restore'),

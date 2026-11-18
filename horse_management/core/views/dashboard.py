@@ -22,6 +22,7 @@ from django.views.decorators.http import require_POST
 
 from ..dashboard import activity as activity_data
 from ..dashboard import attention, board, breeding, dismissals
+from ..dashboard import calendar as calendar_data
 from ..dashboard import money as money_data
 from ..dashboard import upcoming as upcoming_data
 from ..models import DashboardPreference, Horse, Location, Owner, SiteSettings
@@ -192,19 +193,25 @@ def _dashboard_inner(request):
     visible = pref.visible_keys()
     site, sites = _site_context(request, pref)
 
-    items = []
-    if visible & {'attention', 'upcoming', 'yard_board'}:
-        items = attention.collect(request.user, site=site, today=today)
+    # The headline counts what needs doing, so the list is always read.
+    # The calendar shows this month, so the collectors look to its end.
+    month = today.replace(day=1)
+    items = attention.collect(
+        request.user, site=site, today=today,
+        horizon_days=max(attention.HORIZON_DAYS, calendar_data.horizon_days(month, today)),
+    )
     # What an Administrator dismissed leaves the dashboard, for everyone.
     items, dismissed_count = dismissals.without_dismissed(items)
     inbox_items, upcoming_items = attention.split(items, today)
 
-    rows = attention.rows(inbox_items, request.user) if 'attention' in visible else []
+    rows = attention.rows(inbox_items, request.user)
     summary = attention.summary(rows, upcoming_items, today)
 
     upcoming = None
+    month_calendar = None
     if 'upcoming' in visible:
         upcoming = upcoming_data.build(items, request.user, today)
+        month_calendar = calendar_data.build(items, today, month)
 
     sites_overview = []
     if 'yard_board' in visible:
@@ -248,6 +255,7 @@ def _dashboard_inner(request):
         'dismissed_count': dismissed_count,
         'summary': summary,
         'upcoming': upcoming,
+        'calendar': month_calendar,
         'sites_overview': sites_overview,
         'in_foal': in_foal,
         'departure_ids': departure_ids,
@@ -267,6 +275,8 @@ def attention_dismiss(request):
         raise PermissionDenied
     made = dismissals.dismiss(request.POST.getlist('item'), request.user)
     if made:
+        from notifications.centre import resync_soon
+        resync_soon()
         messages.success(
             request,
             "Dismissed. It no longer shows on the dashboard for anyone."
@@ -283,8 +293,33 @@ def attention_restore(request):
     if not dismissals.can_dismiss(request.user):
         raise PermissionDenied
     if dismissals.restore_all():
+        from notifications.centre import resync_soon
+        resync_soon()
         messages.success(request, "Dismissed items are back on the dashboard.")
     return redirect('dashboard')
+
+
+@feature_required('dashboard')
+def dashboard_calendar(request):
+    """HTMX partial: the calendar card for another month, or another day."""
+    pref = DashboardPreference.get_for(request.user)
+    if 'upcoming' not in pref.visible_keys():
+        return HttpResponse('')
+    today = timezone.localdate()
+    month = calendar_data.parse_month(request.GET.get('month'), today)
+    selected = calendar_data.parse_day(request.GET.get('day'), month)
+    site = pref.site if pref.site in board.site_names() else ''
+    items = attention.collect(
+        request.user, site=site, today=today,
+        horizon_days=max(attention.HORIZON_DAYS, calendar_data.horizon_days(month, today)),
+    )
+    items, _ = dismissals.without_dismissed(items)
+    return render(request, 'partials/dashboard/calendar.html', {
+        'calendar': calendar_data.build(items, today, month, selected),
+        'upcoming': upcoming_data.build(items, request.user, today),
+        'can_dismiss': dismissals.can_dismiss(request.user),
+        'today': today,
+    })
 
 
 @feature_required('dashboard')

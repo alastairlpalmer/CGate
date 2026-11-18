@@ -5,7 +5,7 @@ All views are re-exported here so that urls.py imports remain unchanged.
 """
 
 from .dashboard import (  # noqa: F401
-    attention_dismiss, attention_restore, dashboard, dashboard_activity, dashboard_money, quick_find,
+    attention_dismiss, attention_restore, dashboard, dashboard_activity, dashboard_calendar, dashboard_money, quick_find,
 )
 from .analytics_proxy import posthog_proxy  # noqa: F401
 from .boundary_import import boundary_import_match, boundary_import_upload  # noqa: F401

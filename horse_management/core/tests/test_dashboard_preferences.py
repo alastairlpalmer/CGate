@@ -80,7 +80,7 @@ class DashboardPreferenceModelTests(TestCase):
         self.assertFalse(layout['yard_board']['visible'])
         self.assertEqual(layout['yard_board']['order'], 99)
         # Untouched key keeps its default.
-        self.assertTrue(layout['attention']['visible'])
+        self.assertTrue(layout['upcoming']['visible'])
 
     def test_layout_from_the_old_dashboard_is_ignored(self):
         """Stored layouts predating the redesign carry the old widget keys;
@@ -91,19 +91,22 @@ class DashboardPreferenceModelTests(TestCase):
             'kpi_total_horses': {'visible': False, 'order': 0},
             'recent_activity': {'visible': True, 'order': 5},
             'chart_revenue': {'visible': True, 'order': 4},
+            # Needs action left the dashboard for the notification centre.
+            'attention': {'visible': True, 'order': 0},
         }
         pref.save()
         layout = pref.resolved_layout()
         self.assertNotIn('kpi_total_horses', layout)
         self.assertNotIn('recent_activity', layout)
-        self.assertTrue(layout['attention']['visible'])
+        self.assertNotIn('attention', layout)
+        self.assertTrue(layout['upcoming']['visible'])
         self.client.force_login(user)
         self.assertEqual(self.client.get(reverse('dashboard')).status_code, 200)
 
     def test_visible_keys_drops_zones_for_hidden_features(self):
         user = make_user('gated')  # breeding and feed hidden, locations view
         keys = DashboardPreference.get_for(user).visible_keys()
-        self.assertIn('attention', keys)
+        self.assertIn('upcoming', keys)
         self.assertIn('yard_board', keys)
         self.assertIn('money', keys)
         self.assertNotIn('in_foal', keys)
@@ -369,10 +372,9 @@ class DashboardPageTests(TestCase):
         )
         return horse
 
-    def test_rows_are_one_line_each_and_colour_coded_by_urgency(self):
-        """Zone B rows: one .attn-item per thing to do, the row marked with
-        its severity, and the card outlined (is-hot) with a red count while
-        anything is overdue."""
+    def test_rows_are_colour_coded_by_urgency(self):
+        """A needs-action row carries its severity: red edge, red icon and a
+        red date badge while overdue; saddle once it is due today."""
         field = Location.objects.create(name='Top Paddock', site='Main')
         horse = self._horse('Latebloomer', field)
         Vaccination.objects.create(
@@ -382,33 +384,32 @@ class DashboardPageTests(TestCase):
         )
         user = make_user('rowuser')
         self.client.force_login(user)
-        body = self.client.get(reverse('dashboard')).content.decode()
-        self.assertIn('class="attn-list"', body)
-        self.assertIn('class="attn-row is-overdue"', body)
-        self.assertEqual(body.count('class="attn-item"'), 1)
-        self.assertIn('class="attn-icon attn-icon-overdue"', body)
-        self.assertIn('class="attn-title">Latebloomer</a>', body)
-        self.assertIn('class="attn-sub">Top Paddock · Main</span>', body)
-        self.assertIn('class="attn-detail">', body)
-        self.assertIn('class="card overflow-hidden h-full is-hot" id="needs-action"', body)
-        self.assertIn('badge-danger">1</span>', body)
+        panel = self._panel()
+        self.assertIn('class="notif-row is-unread is-overdue"', panel)
+        self.assertIn('notif-icon notif-icon-overdue', panel)
+        self.assertIn('>Latebloomer</a>', panel)
+        self.assertIn('Top Paddock · Main', panel)
+        self.assertIn('class="badge-danger">3 days overdue</span>', panel)
 
-        # Nothing overdue: a plain card, a neutral count, and a due-today row in saddle.
         Vaccination.objects.filter(horse=horse).update(next_due_date=self.today)
-        body = self.client.get(reverse('dashboard')).content.decode()
-        self.assertIn('class="attn-row is-due"', body)
-        self.assertIn('class="card overflow-hidden h-full" id="needs-action"', body)
-        self.assertIn('badge-neutral">1</span>', body)
-        self.assertNotIn('is-hot', body)
+        panel = self._panel()
+        self.assertIn('class="notif-row is-unread is-due"', panel)
+        self.assertIn('class="badge-warning">Today</span>', panel)
+        self.assertNotIn('is-overdue', panel)
 
-    def test_list_shows_four_rows_then_folds_the_rest(self):
-        """Zone B keeps to four rows: each row defers to the list (shown),
-        and a 'Show N more' button appears only when there are more than
-        four, counting the rows the page's filter chip lets through."""
+    def _panel(self, tab='action'):
+        """The notification centre's list, synced now. Needs action moved
+        there from the dashboard (docs/SIDEBAR_AND_NOTIFICATIONS_PLAN.md)."""
+        return self.client.get(reverse('notification_panel'), {'tab': tab, 'fresh': '1'}).content.decode()
+
+    def test_every_row_is_in_the_notification_centre(self):
+        """The dashboard card folded after four rows; the notification
+        centre lists them all, and the dashboard's headline counts them and
+        opens it."""
         field = Location.objects.create(name='Top Paddock', site='Main')
         user = make_user('folduser')
         self.client.force_login(user)
-        for i in range(4):
+        for i in range(5):
             horse = self._horse(f'Horse{i}', field)
             Vaccination.objects.create(
                 horse=horse, vaccination_type=self.flu,
@@ -416,23 +417,12 @@ class DashboardPageTests(TestCase):
                 next_due_date=self.today - timedelta(days=i + 1),
             )
         body = self.client.get(reverse('dashboard')).content.decode()
-        self.assertIn('x-data="attentionList(4)"', body)
-        self.assertIn('id="needs-action-list"', body)
-        self.assertEqual(body.count('x-show="shown($el)"'), 4)
-        self.assertNotIn('aria-controls="needs-action-list"', body)
-
-        horse = self._horse('Horse4', field)
-        Vaccination.objects.create(
-            horse=horse, vaccination_type=self.flu,
-            date_given=self.today - timedelta(days=300),
-            next_due_date=self.today - timedelta(days=9),
-        )
-        body = self.client.get(reverse('dashboard')).content.decode()
-        self.assertEqual(body.count('x-show="shown($el)"'), 5)
-        self.assertIn('aria-controls="needs-action-list"', body)
-        self.assertIn('>Show 1 more</button>', body)
-        # Next 14 days sits under Needs action in the same column.
-        self.assertLess(body.index('needs-action-title'), body.index('upcoming-title'))
+        self.assertNotIn('id="needs-action"', body)
+        self.assertIn('5 things need doing', body)
+        self.assertIn("$store.notif.show('action')", body)
+        panel = self._panel()
+        for i in range(5):
+            self.assertIn(f'>Horse{i}</a>', panel)
 
     def test_dashboard_has_no_charts(self):
         user = make_user('nochartuser')
@@ -452,7 +442,9 @@ class DashboardPageTests(TestCase):
         self.assertRegex(title.strip(), r'^Good (morning|afternoon|evening), Sam$')
         subtitle = re.search(r'<p class="page-subtitle">(.*?)</p>', body, re.S).group(1)
         self.assertIn('All clear on the yard', subtitle)
-        self.assertIn('Nothing needs doing', body)
+        # Nothing to open: the all-clear is plain text, not a button.
+        self.assertNotIn('$store.notif.show', subtitle)
+        self.assertIn('Nothing needs doing', self._panel())
         self.assertNotIn('Your dashboard is empty', body)
 
     def test_search_moved_to_the_app_bar(self):
@@ -471,7 +463,7 @@ class DashboardPageTests(TestCase):
     def test_overdue_items_stay_on_dashboard_and_count_in_the_title(self):
         """Regression: the due lists once filtered next_due_date >= today, so
         an item vanished the day it became overdue. Overdue is the most
-        urgent state — it must render, and the title must count it."""
+        urgent state — it must be listed, and the title must count it."""
         field = Location.objects.create(name='Top Paddock', site='Main')
         horse = self._horse('Latebloomer', field)
         Vaccination.objects.create(
@@ -482,12 +474,13 @@ class DashboardPageTests(TestCase):
         user = make_user('overdueuser')
         self.client.force_login(user)
         body = self.client.get(reverse('dashboard')).content.decode()
-        self.assertIn('Latebloomer', body)
-        self.assertIn('3 days overdue', body)
         self.assertIn('1 thing needs doing', body)
+        panel = self._panel()
+        self.assertIn('Latebloomer', panel)
+        self.assertIn('3 days overdue', panel)
         # The action opens the record form in the pop-up sheet.
-        self.assertIn(reverse('vaccination_create') + f'?horse={horse.pk}', body)
-        self.assertIn('data-popup-title="Record vaccination for Latebloomer"', body)
+        self.assertIn(reverse('vaccination_create') + f'?horse={horse.pk}', panel)
+        self.assertIn('data-popup-title="Record vaccination for Latebloomer"', panel)
 
     def test_due_soon_items_go_to_the_strip_not_the_inbox(self):
         field = Location.objects.create(name='Top Paddock', site='Main')
@@ -523,10 +516,10 @@ class DashboardPageTests(TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0].kind, 'visit')
         self.assertEqual({h.pk for h in rows[0].horses}, {a.pk, b.pk})
-        body = resp.content.decode()
-        self.assertIn('Record for 2', body)
-        self.assertIn('1 thing needs doing', body)
-        self.assertIn(f'action_type=farrier&amp;horse_ids={a.pk}&amp;horse_ids={b.pk}', body)
+        self.assertIn('1 thing needs doing', resp.content.decode())
+        panel = self._panel()
+        self.assertIn('Record for 2', panel)
+        self.assertIn(f'action_type=farrier&amp;horse_ids={a.pk}&amp;horse_ids={b.pk}', panel)
 
     def test_view_only_health_role_gets_no_action_buttons(self):
         field = Location.objects.create(name='Top Paddock', site='Main')
@@ -537,9 +530,9 @@ class DashboardPageTests(TestCase):
         )
         user = make_user_with_access('viewonly', dashboard='full', health='view', horses='view')
         self.client.force_login(user)
-        body = self.client.get(reverse('dashboard')).content.decode()
-        self.assertIn('Watcher', body)
-        self.assertNotIn('Record farrier visit', body)
+        panel = self._panel()
+        self.assertIn('Watcher', panel)
+        self.assertNotIn('Record farrier visit', panel)
 
     def test_site_switch_is_remembered_and_narrows_the_inbox(self):
         somerford = Location.objects.create(name='Sandhills', site='Somerford')

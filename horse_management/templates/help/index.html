@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Help - Cgate{% endblock %}
+
+{% block content %}
+{% comment %}The help centre (core/views/help.py). Guides show only for the
+areas the person's role can see (core/help.py).{% endcomment %}
+<div class="max-w-4xl mx-auto space-y-5">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Help</h1>
+            <p class="page-subtitle">Short guides for each part of Cgate.</p>
+        </div>
+    </div>
+
+    <form method="get" action="{% url 'help_index' %}" role="search" class="help-search">
+        <label for="help-q" class="sr-only">Search the guides</label>
+        <svg class="help-search-icon" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+        <input type="search" id="help-q" name="q" value="{{ query }}" class="form-input help-search-input"
+               placeholder="Search the guides, for example “invoice” or “passport”" autocomplete="off">
+        <button type="submit" class="btn-primary h-11 sm:h-10">Search</button>
+    </form>
+
+    {% if results is not None %}
+    <section aria-labelledby="help-results-title" class="card overflow-hidden">
+        <div class="section-header">
+            <h2 class="section-title" id="help-results-title">{{ results|length }} guide{{ results|length|pluralize }} for “{{ query }}”</h2>
+            <a href="{% url 'help_index' %}" class="link text-xs">Clear</a>
+        </div>
+        {% if results %}
+        <ul class="divide-y divide-light-sage">
+            {% for guide in results %}
+            <li><a href="{% url 'help_article' guide.slug %}" class="help-row">
+                <span class="help-row-title">{{ guide.title }}</span>
+                <span class="help-row-summary">{{ guide.summary }}</span>
+            </a></li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="px-4 py-5 text-sm text-sage">No guide has these words. Try a shorter word, or contact support below.</p>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {% for group in groups %}
+    <section aria-labelledby="help-group-{{ forloop.counter }}">
+        <h2 id="help-group-{{ forloop.counter }}" class="help-group-title">{{ group.name }}</h2>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {% for guide in group.guides %}
+            <a href="{% url 'help_article' guide.slug %}" class="help-card">
+                <span class="help-row-title">{{ guide.title }}</span>
+                <span class="help-row-summary">{{ guide.summary }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
+
+    {% include 'help/_contact.html' %}
+</div>
+{% endblock %}
