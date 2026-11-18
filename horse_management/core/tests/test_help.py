@@ -55,6 +55,9 @@ class HelpPageTests(TestCase):
         self.client.force_login(self.groom)
         response = self.client.get(reverse('help_index'))
         self.assertContains(response, reverse('help_article', args=['getting-started']))
+        self.assertContains(response, reverse('help_article', args=['horses']))
+        self.assertNotContains(response, reverse('help_article', args=['charges-and-invoices']))
+        self.assertNotContains(response, reverse('help_article', args=['users-and-roles']))
         for guide in guides.GUIDES:
             if guide.visible_to(self.groom):
                 self.assertContains(response, reverse('help_article', args=[guide.slug]))
@@ -84,7 +87,7 @@ class HelpPageTests(TestCase):
 
     def test_search_finds_by_title_keyword_and_text(self):
         self.client.force_login(self.admin)
-        for query, slug in (('notifications', 'notifications'), ('microchip', 'search'), ('recovery codes', 'profile-and-security')):
+        for query, slug in (('xero', 'xero'), ('microchip', 'horses'), ('recovery codes', 'profile-and-security')):
             with self.subTest(query=query):
                 results = self.client.get(reverse('help_index'), {'q': query}).context['results']
                 self.assertIn(guides.GUIDES_BY_SLUG[slug], results)
@@ -93,6 +96,7 @@ class HelpPageTests(TestCase):
         self.client.force_login(self.groom)
         results = self.client.get(reverse('help_index'), {'q': 'invoice'}).context['results']
         self.assertTrue(all(g.visible_to(self.groom) for g in results))
+        self.assertNotIn(guides.GUIDES_BY_SLUG['charges-and-invoices'], results)
 
     def test_search_with_no_match_says_so(self):
         self.client.force_login(self.groom)
