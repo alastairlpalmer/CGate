@@ -69,10 +69,10 @@ Context: placements.
                     <td>
                         <a href="{% url 'location_detail' placement.location.pk %}" class="link tap-pad">{{ placement.location.name }}</a>
                     </td>
-                    <td class="text-sage">
+                    <td class="text-sage whitespace-nowrap">
                         {{ placement.rate_type.name }}{% if feature_access.charges.view %} (&pound;{{ placement.rate_type.daily_rate }}/day){% endif %}
                     </td>
-                    <td class="text-sage">{{ placement.start_date|date:"j M Y" }}</td>
+                    <td class="text-sage whitespace-nowrap">{{ placement.start_date|date:"j M Y" }}</td>
                     <td>
                         {% if placement.end_date %}
                             <span class="text-sage">{{ placement.end_date|date:"j M Y" }}</span>

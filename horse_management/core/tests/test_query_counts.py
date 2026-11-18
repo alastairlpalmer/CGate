@@ -108,6 +108,10 @@ class QueryCountTestCase(TestCase):
         # get_or_create inserts for the preference row and business
         # settings here. Steady state is about 23; per-row patterns would
         # push this well past 30 with twelve horses.
+        # +1 for the items an Administrator dismissed (AttentionDismissal:
+        # one query for the whole yard). Whether this user may dismiss is
+        # read from the role row access_map already fetched, so it adds
+        # none. Measured 29 here.
         self.assertMaxQueries(reverse('dashboard'), 30)
 
     def test_finances_query_count(self):

@@ -16,8 +16,18 @@
 'use strict';
 
 const ALLOWED = {
-    // Empty: nothing is accepted today. An entry is 'GHSA-…': 'why', and
-    // goes once npm audit stops reporting it (this script says when).
+    // An entry is 'GHSA-…': 'why', and goes once npm audit stops reporting
+    // it (this script says when).
+
+    // Accepted by the repository owner on 2026-11-18.
+    // picomatch, all versions to 4.0.7 (the newest): a pattern with
+    // repeated extglobs makes the matcher slow (ReDoS). It reaches us only
+    // as @tailwindcss/cli -> @parcel/watcher -> picomatch, the tool that
+    // builds static/css/styles.css. It does not run in the live app, and
+    // the patterns it reads are from our own tailwind.config.js, never
+    // from a user. No fixed version exists.
+    'GHSA-fc5q-39xc-vjpf':
+        'picomatch ReDoS: build tool only (tailwind CLI file watcher), our own patterns, no fixed version yet',
 };
 
 const BLOCKING = new Set(['high', 'critical']);

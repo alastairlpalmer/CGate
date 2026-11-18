@@ -4,7 +4,7 @@
 {% block title %}{{ location.name }} - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6" x-data="bulkActions"
+<div class="space-y-4" x-data="bulkActions"
      {% if not location.is_archived %}data-remember-location="{{ location.pk }}" data-remember-name="{{ location.name }}"{% endif %}>
 
     <!-- Page Header -->
@@ -96,8 +96,8 @@
 
     <!-- Info Card -->
     <div class="card">
-        <div class="p-5 lg:p-6">
-            <dl class="grid grid-cols-3 gap-4 sm:gap-6">
+        <div class="p-4">
+            <dl class="grid grid-cols-3 gap-4">
                 <div>
                     <dt class="text-xs font-medium text-sage uppercase tracking-wide">Current Horses</dt>
                     <dd class="mt-1 text-3xl font-bold text-charcoal">{{ horses|length }}</dd>
@@ -141,7 +141,7 @@
 
     <!-- Tabs -->
     <div class="border-b border-light-sage">
-        <nav class="flex gap-6 overflow-x-auto tab-strip-fade">
+        <nav class="flex gap-4 overflow-x-auto tab-strip-fade">
             <a href="{% url 'location_detail' location.pk %}"
                class="{% if current_tab == 'current' %}tab-underline-active{% else %}tab-underline-inactive{% endif %}"{% if current_tab == 'current' %} aria-current="page"{% endif %}>
                 {% if barn_plan %}Stables{% else %}Current Horses{% endif %}
@@ -167,7 +167,7 @@
     <!-- ═══ History Tab ═══ -->
 
     <!-- Status Filters -->
-    <div class="card px-5 py-3">
+    <div class="card px-4 py-3">
         <div class="inline-flex rounded-lg shadow-xs">
             <a href="{% url 'location_detail' location.pk %}?tab=history&status=active"
                class="px-4 py-2 text-sm font-medium rounded-l-lg border {% if current_status == 'active' %}bg-forest text-white border-forest{% else %}bg-white text-charcoal border-sage/30 hover:bg-parchment{% endif %}">
@@ -227,7 +227,7 @@
                     {% empty %}
                     <tr>
                         <td colspan="6">
-                            <div class="py-12 text-center">
+                            <div class="py-8 text-center">
                                 <svg class="mx-auto h-12 w-12 text-sage/50" aria-hidden="true"><use href="#i-arrows-lr"/></svg>
                                 <p class="mt-3 text-sm font-medium text-sage">No placement history at this location</p>
                             </div>
@@ -276,7 +276,7 @@
                     {% empty %}
                     <tr>
                         <td colspan="6">
-                            <div class="py-12 text-center">
+                            <div class="py-8 text-center">
                                 <svg class="mx-auto h-12 w-12 text-sage/50" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
@@ -298,7 +298,7 @@
     <!-- ═══ Usage Analytics Tab ═══ -->
 
     <!-- Period selector -->
-    <div class="card px-5 py-3 space-y-3">
+    <div class="card px-4 py-3 space-y-3">
         <div class="flex items-center justify-between flex-wrap gap-3">
             <div class="inline-flex rounded-lg shadow-xs">
                 <a href="{% url 'location_detail' location.pk %}?tab=usage&range=3mo"
@@ -324,9 +324,9 @@
     </div>
 
     <!-- Day-count summary + chart -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="card">
-            <div class="p-5 lg:p-6">
+            <div class="p-4">
                 <h3 class="text-sm font-semibold text-charcoal mb-4">Days by usage ({{ usage_period_label }})</h3>
                 <div style="position: relative; height: 200px;">
                     <canvas id="usageDaysChart"></canvas>
@@ -362,23 +362,23 @@
 
     <!-- Timeline -->
     <div class="card">
-        <div class="p-5 lg:p-6">
+        <div class="p-4">
             <h3 class="text-sm font-semibold text-charcoal mb-4">Usage timeline ({{ usage_period_label }})</h3>
             {% if usage_chart_data.segments %}
             <div style="position: relative; height: 90px;">
                 <canvas id="usageTimelineChart"></canvas>
             </div>
             {% else %}
-            <p class="text-sm text-sage py-6 text-center">No usage recorded for the {{ usage_period_label }}.</p>
+            <p class="text-sm text-sage py-4 text-center">No usage recorded for the {{ usage_period_label }}.</p>
             {% endif %}
         </div>
     </div>
 
     <!-- Multi-year comparison (Year mode only) -->
     {% if usage_range == 'year' and usage_compare_rows|length > 1 %}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="card">
-            <div class="p-5 lg:p-6">
+            <div class="p-4">
                 <h3 class="text-sm font-semibold text-charcoal mb-4">Days by usage, year on year</h3>
                 <div style="position: relative; height: 220px;">
                     <canvas id="usageCompareChart"></canvas>
@@ -419,7 +419,7 @@
 
     <!-- Change usage form -->
     <div class="card">
-        <div class="p-5 lg:p-6">
+        <div class="p-4">
             <h3 class="text-sm font-semibold text-charcoal mb-4">Change usage</h3>
             <form method="post" action="{% url 'location_set_usage' location.pk %}" class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
                 {% csrf_token %}
@@ -479,7 +479,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center text-sage py-8">No usage history recorded yet</td>
+                        <td colspan="5" class="text-center text-sage py-6">No usage history recorded yet</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -678,7 +678,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center text-sage py-8">{% if barn_tray %}Every horse in this barn has a stable{% else %}No horses at this location{% endif %}</td>
+                        <td colspan="5" class="text-center text-sage py-6">{% if barn_tray %}Every horse in this barn has a stable{% else %}No horses at this location{% endif %}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -694,7 +694,7 @@
         </div>
         <ul class="divide-y divide-light-sage">
             {% for horse in out_here %}
-            <li class="flex items-center justify-between gap-3 px-5 py-3">
+            <li class="flex items-center justify-between gap-3 px-4 py-3">
                 <a href="{% url 'horse_detail' horse.pk %}" class="link font-medium tap-pad truncate">{{ horse.name }}</a>
                 <span class="text-sm text-sage shrink-0">{% if horse.home_name %}Lives in {{ horse.home_name }} &middot; {% endif %}since {{ horse.turnout_since|date:"j M Y" }}</span>
             </li>

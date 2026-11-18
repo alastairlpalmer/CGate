@@ -2,10 +2,10 @@
 {% load ui_extras %}
 {% block title %}Farrier - Cgate{% endblock %}
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-4">
     {% include 'health/_farrier_header.html' %}
     {% if farrier_due %}
-    <div class="card px-5 py-4" data-farrier-due>
+    <div class="card px-4 py-3" data-farrier-due>
         <h2 class="section-title mb-3">Due <span class="badge-neutral ml-1">{{ farrier_due|length }}</span></h2>
         <ul class="flex flex-wrap gap-2">
             {% for item, url in farrier_due %}

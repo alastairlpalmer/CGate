@@ -64,7 +64,7 @@ group_kind ('owner'), feature_access.
             {% include 'horses/_horse_row.html' with row_attrs='x-show="!collapsed"' %}
             {% empty %}
             <tr class="is-empty" x-show="!collapsed">
-                <td colspan="{% if needs_action_only %}5{% else %}4{% endif %}" class="text-sm text-sage px-5 py-3.5">No horses here.</td>
+                <td colspan="{% if needs_action_only %}5{% else %}4{% endif %}" class="text-sm text-sage px-4 py-3.5">No horses here.</td>
             </tr>
             {% endfor %}
         </tbody>

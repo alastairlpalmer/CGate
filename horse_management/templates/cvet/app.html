@@ -1,0 +1,337 @@
+{% load static %}{% load cache_bust %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>C-vet</title>
+    <meta name="theme-color" content="#3D5A63">
+    <link rel="manifest" href="{% static_v 'cvet/manifest.json' %}">
+    <link rel="apple-touch-icon" href="{% static_v 'icons/apple-touch-icon.png' %}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{% static_v 'icons/icon-192.png' %}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="C-vet">
+    <link rel="stylesheet" href="{% static_v 'cvet/app.css' %}">
+    <script defer src="{% static_v 'cvet/app_core.js' %}"></script>
+    <script defer src="{% static_v 'cvet/app.js' %}"></script>
+</head>
+{% comment %}
+This page holds no data and no CSRF token: the service worker stores it
+and opens the stored copy with no signal, for whoever holds the phone.
+Everything a person sees comes from IndexedDB (static/cvet/app.js).
+
+The screens (docs/C_VET_PLAN.md, section 7g): Clients, one client and its
+horses, one horse, Visits, Prices, More. One is shown at a time.
+{% endcomment %}
+<body data-version="{{ config.version }}"
+      data-sw-url="{{ config.sw_url }}"
+      data-scope="{{ config.scope }}"
+      data-session-url="{{ config.session_url }}"
+      data-yard-url="{{ config.yard_url }}"
+      data-notes-url="{{ config.notes_url }}"
+      data-prices-url="{{ config.prices_url }}"
+      data-clients-url="{{ config.clients_url }}"
+      data-horses-url="{{ config.horses_url }}"
+      data-files-url="{{ config.files_url }}"
+      data-desk-css="{{ config.desk_css }}"
+      data-desk-js="{{ config.desk_js }}"
+      data-online-js="{{ config.online_js }}"
+      data-visits-url="{{ config.visits_url }}"
+      data-login-url="{{ config.login_url }}"
+      data-logout-url="{{ config.logout_url }}">
+
+<header class="bar">
+    <h1>C-vet <span id="test-mode" class="tag" title="Notes are test notes, not clinical records" hidden>test</span></h1>
+    <span id="signal" class="chip off" hidden>No signal</span>
+    <button id="unsent" type="button" class="chip count" aria-live="polite" aria-label="Sync now" title="Sync now">…</button>
+</header>
+<p id="sync-message" class="status" aria-live="polite"></p>
+<p id="sign-in" class="status" hidden><a id="sign-in-link" class="button" href="#">Sign in again</a></p>
+
+<main>
+    {# ── Clients: where every visit starts ── #}
+    <section id="view-clients" class="view" aria-label="Clients">
+        <div class="head">
+            <h2>Clients</h2>
+            <button id="client-add" type="button" class="button slim">Add client</button>
+        </div>
+        <input id="client-search" type="search" placeholder="Find a client or a horse" autocomplete="off" aria-label="Find a client or a horse">
+        <ul id="clients" class="list card"></ul>
+        <div id="found-horses-box" hidden>
+            <h3>Horses</h3>
+            <ul id="found-horses" class="list card"></ul>
+        </div>
+        <p id="no-match" class="muted" hidden>No client and no horse has these words.</p>
+        <details id="archived-clients-box" class="fold plain" hidden>
+            <summary><span class="text">Archived clients</span></summary>
+            <ul id="archived-clients" class="list card"></ul>
+        </details>
+        <div id="no-clients" class="card pad" hidden>
+            <p class="strong">No clients on this phone.</p>
+            <button id="download-first" type="button" class="button primary">Download clients and horses</button>
+            <p class="muted">You need a signal for this. After that, the app works with no signal.</p>
+        </div>
+    </section>
+
+    {# ── One client: its horses ── #}
+    <section id="view-client" class="view" aria-labelledby="client-name" hidden>
+        <button id="client-back" type="button" class="back">‹ Clients</button>
+        <div class="head">
+            <h2 id="client-name"></h2>
+            <button id="client-edit" type="button" class="button slim">Edit</button>
+        </div>
+        {# What the client is, and what the vet does most: both in reach above a long list. #}
+        <div class="meta">
+            <p id="client-line" class="muted"></p>
+            <button id="horse-add" type="button" class="link calm">Add horse</button>
+            <button id="client-history" type="button" class="link calm">Visit history</button>
+        </div>
+        <p id="client-contact" class="muted"></p>
+        <button id="client-visit" type="button" class="banner" hidden></button>
+        <div class="row">
+            <input id="search" type="search" placeholder="Find a horse" autocomplete="off" aria-label="Find a horse">
+            <button id="select-toggle" type="button" class="button slim">Select</button>
+        </div>
+        <ul id="horses" class="list card"></ul>
+        <p id="no-horses" class="muted" hidden></p>
+        <details id="archived-horses-box" class="fold plain" hidden>
+            <summary><span class="text">Archived horses</span></summary>
+            <ul id="archived-horses" class="list card"></ul>
+        </details>
+        <div id="select-bar" class="actionbar" hidden>
+            <span id="select-count" class="strong"></span>
+            <button id="select-add" type="button" class="button primary">Add item</button>
+        </div>
+    </section>
+
+    {# ── One horse: the treatment screen ── #}
+    <section id="view-horse" class="view" aria-labelledby="horse-name" hidden>
+        <button id="back" type="button" class="back">‹ Horses</button>
+        <div class="head">
+            <h2 id="horse-name"></h2>
+            <button id="horse-edit" type="button" class="button slim" hidden>Edit</button>
+        </div>
+        <p id="horse-ids" class="muted"></p>
+        <p id="horse-payers" class="muted"></p>
+        <p id="horse-due"></p>
+
+        {# Two columns on a wide screen: the note, and the horse's history beside it. #}
+        <div class="cols"><div>
+        <div class="card pad">
+            <div class="head">
+                <h3>Items</h3>
+                <button id="item-add" type="button" class="button slim primary">Add item</button>
+            </div>
+            <p id="no-lines" class="muted">No items yet.</p>
+            <ul id="lines" class="list lines"></ul>
+            <p id="lines-total" class="total"></p>
+        </div>
+
+        <div class="card pad">
+            <label for="note">Note</label>
+            <textarea id="note" rows="3" maxlength="5000" placeholder="What you found, what you did"></textarea>
+            <p class="muted">To speak the note, tap the microphone on the keyboard.</p>
+            <div class="row">
+                <label class="button" for="photo">Take photo</label>
+                <input id="photo" type="file" accept="image/*" capture="environment" class="visually-hidden">
+                <button id="record" type="button" class="button">Record voice</button>
+            </div>
+            <p id="photo-state" class="muted"></p>
+            <p id="audio-state" class="muted"></p>
+            <audio id="audio-preview" controls hidden></audio>
+        </div>
+
+        <div class="card pad">
+            <h3>Recheck</h3>
+            <div id="followups" class="tiles"></div>
+            <button id="recheck-suggestion" type="button" class="suggest" hidden></button>
+            <input id="follow-up" type="date" aria-label="Recheck date">
+        </div>
+
+        {# Stays in reach at the foot of the screen, with the reason when a save is refused. #}
+        <div class="savebar">
+            <p id="entry-message" class="problem" aria-live="assertive"></p>
+            <button id="save" type="button" class="button primary">Save</button>
+        </div>
+
+        </div><div>
+        <h3>History</h3>
+        <div id="history"></div>
+        <p id="no-history" class="muted">No notes for this horse yet.</p>
+        <button id="load-history" type="button" class="button">Load older notes</button>
+        <p id="history-message" class="muted" aria-live="polite"></p>
+        </div></div>
+    </section>
+
+    {# ── Visits: the open ones to finish, and the record of each one ── #}
+    <section id="view-visits" class="view" aria-label="Visits" hidden>
+        <div class="head">
+            <h2>Visits</h2>
+            <button id="visit-filter" type="button" class="chip filter" hidden></button>
+        </div>
+        <p id="visits-empty" class="muted" hidden>No visits yet. Tap a client, then a horse, to start one.</p>
+        <div id="open-visits-box" hidden>
+            <h3>Open</h3>
+            <div id="open-visits"></div>
+        </div>
+        <div id="past-visits-box" hidden>
+            <h3>Finished</h3>
+            <div id="past-visits"></div>
+        </div>
+        <p id="visits-message" class="muted" aria-live="polite"></p>
+    </section>
+
+    {# ── The practice's price list ── #}
+    <section id="view-prices" class="view" aria-label="Prices" hidden>
+        <div class="head">
+            <h2>Prices</h2>
+            <button id="price-add" type="button" class="button slim">Add a price</button>
+        </div>
+        <p class="muted">Prices include VAT. A change needs a signal.</p>
+        <form id="price-form" class="card pad" novalidate hidden>
+            <h3 id="price-form-title">Add a price</h3>
+            <label for="price-name">Name</label>
+            <input id="price-name" type="text" maxlength="100" autocomplete="off" placeholder="Flu/Tet booster">
+            <label for="price-category">Category</label>
+            <input id="price-category" type="text" maxlength="50" autocomplete="off" list="price-categories" placeholder="Vaccination">
+            <datalist id="price-categories"></datalist>
+            <div class="row">
+                <div>
+                    <label for="price-amount">Price (£)</label>
+                    <input id="price-amount" type="text" inputmode="decimal" autocomplete="off" placeholder="65.00">
+                </div>
+                <div>
+                    <label for="price-vat">VAT (%)</label>
+                    <input id="price-vat" type="text" inputmode="decimal" autocomplete="off" value="20">
+                </div>
+            </div>
+            <div id="price-vaccination-row" hidden>
+                <label for="price-vaccination">Records a vaccination at the yard</label>
+                <select id="price-vaccination"></select>
+            </div>
+            <div class="row">
+                <button id="price-save" type="submit" class="button primary">Save</button>
+                <button id="price-hide" type="button" class="button" hidden>Hide</button>
+                <button id="price-cancel" type="button" class="button">Cancel</button>
+            </div>
+            <p id="price-message" class="problem" aria-live="assertive"></p>
+        </form>
+        <div id="prices"></div>
+    </section>
+
+    {# ── More: this phone, bills, sign out ── #}
+    <section id="view-phone" class="view" aria-label="More" hidden>
+        <h2>More</h2>
+        <div class="card pad">
+            <p class="muted"><span id="who"></span> <span id="downloaded"></span></p>
+            <div class="row">
+                <button id="sync" type="button" class="button primary">Sync now</button>
+                <button id="download" type="button" class="button">Download again</button>
+            </div>
+            <p><a class="button wide" href="{{ config.bills_url }}">Bills and reports (needs a signal)</a></p>
+        </div>
+        <details class="fold card">
+            <summary><span class="text">This phone</span></summary>
+            <dl id="details"></dl>
+        </details>
+        <div class="card pad">
+            <div class="row">
+                <button id="sign-out" type="button" class="button">Sign out</button>
+                <button id="clear" type="button" class="button danger">Clear this phone</button>
+            </div>
+            <p class="muted">Sign out removes the clients, the horses and every note from this phone, and ends the sign-in. Clear this phone removes them and keeps the sign-in. Notes that were sent stay in the practice's records.</p>
+        </div>
+    </section>
+</main>
+
+{# The item list: a search, the categories, and the prices under them. #}
+<div id="picker" class="sheet" role="dialog" aria-modal="true" aria-labelledby="picker-title" hidden>
+    <div class="sheet-body">
+        <div class="head">
+            <h2 id="picker-title">Add item</h2>
+            <button id="picker-cancel" type="button" class="button slim primary">Done</button>
+        </div>
+        <input id="picker-search" type="search" placeholder="Find an item" autocomplete="off" aria-label="Find an item">
+        <div id="picker-categories" class="chips" role="group" aria-label="Category"></div>
+        <div id="picker-list" class="picker-list"></div>
+        <p id="picker-empty" class="muted" hidden></p>
+        <button id="picker-other" type="button" class="button wide">Other item (not on the price list)</button>
+    </div>
+</div>
+
+{# A client of the practice: a new one, or a change. #}
+<div id="client-sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="client-form-title" hidden>
+    <form id="client-form" class="sheet-body" novalidate>
+        <h2 id="client-form-title">Add client</h2>
+        <label for="client-form-name">Name</label>
+        <input id="client-form-name" type="text" maxlength="200" autocomplete="off" placeholder="Marsh Stud">
+        <label for="client-form-kind">Type</label>
+        <select id="client-form-kind"></select>
+        <label for="client-form-contact">Contact</label>
+        <input id="client-form-contact" type="text" maxlength="200" autocomplete="off" placeholder="Yard manager">
+        <div class="row">
+            <div>
+                <label for="client-form-phone">Phone</label>
+                <input id="client-form-phone" type="text" inputmode="tel" maxlength="50" autocomplete="off">
+            </div>
+            <div>
+                <label for="client-form-email">Email</label>
+                <input id="client-form-email" type="text" inputmode="email" maxlength="254" autocomplete="off">
+            </div>
+        </div>
+        <label for="client-form-address">Address</label>
+        <textarea id="client-form-address" rows="2" maxlength="1000"></textarea>
+        <p id="client-form-message" class="problem" aria-live="assertive"></p>
+        <div class="row">
+            <button type="submit" class="button primary">Save</button>
+            <button id="client-form-archive" type="button" class="button" hidden>Archive</button>
+            <button id="client-form-cancel" type="button" class="button">Cancel</button>
+        </div>
+    </form>
+</div>
+
+{# A horse of a client that C-gate does not hold. #}
+<div id="horse-sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="horse-form-title" hidden>
+    <form id="horse-form" class="sheet-body" novalidate>
+        <h2 id="horse-form-title">Add horse</h2>
+        <label for="horse-form-name">Name</label>
+        <input id="horse-form-name" type="text" maxlength="200" autocomplete="off">
+        <label for="horse-form-owner">Owner</label>
+        <input id="horse-form-owner" type="text" maxlength="200" autocomplete="off">
+        <div class="row">
+            <div>
+                <label for="horse-form-microchip">Microchip</label>
+                <input id="horse-form-microchip" type="text" inputmode="numeric" maxlength="50" autocomplete="off">
+            </div>
+            <div>
+                <label for="horse-form-passport">Passport</label>
+                <input id="horse-form-passport" type="text" maxlength="100" autocomplete="off">
+            </div>
+        </div>
+        <p id="horse-form-message" class="problem" aria-live="assertive"></p>
+        <div class="row">
+            <button type="submit" class="button primary">Save</button>
+            <button id="horse-form-archive" type="button" class="button" hidden>Archive</button>
+            <button id="horse-form-cancel" type="button" class="button">Cancel</button>
+        </div>
+    </form>
+</div>
+
+<nav class="tabs" aria-label="Screens">
+    <button type="button" class="tab" data-view="clients" aria-current="page">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21V9l9-6 9 6v12h-6v-7H9v7z"/></svg>Clients
+    </button>
+    <button type="button" class="tab" data-view="visits">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM9 10h7M9 14h7M9 18h4"/></svg>Visits <span id="visit-badge" class="badge" hidden></span>
+    </button>
+    <button type="button" class="tab" data-view="prices">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h8l8 8-8 8-8-8zM8.5 8.5h.01"/></svg>Prices
+    </button>
+    <button type="button" class="tab" data-view="phone">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>More
+    </button>
+</nav>
+
+<noscript><p class="card pad">This page needs JavaScript.</p></noscript>
+</body>
+</html>

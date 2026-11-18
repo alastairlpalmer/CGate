@@ -102,6 +102,7 @@ INSTALLED_APPS = [
     'invoicing.apps.InvoicingConfig',
     'health.apps.HealthConfig',
     'billing.apps.BillingConfig',
+    'cvet.apps.CvetConfig',
     'notifications.apps.NotificationsConfig',
     'xero_integration.apps.XeroIntegrationConfig',
 ]
@@ -136,6 +137,8 @@ MIDDLEWARE = [
     # Keeps a farrier's login on the farrier page (core.permissions
     # .is_provider_only). After MFAMiddleware: the code page comes first.
     'core.middleware.ProviderPortalMiddleware',
+    # Keeps a practice login (the Vet role) on C-vet. After MFAMiddleware.
+    'cvet.middleware.VetPortalMiddleware',
     # Records the signed-in user on every history row (core/audit.py).
     'simple_history.middleware.HistoryRequestMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -525,6 +528,22 @@ INVOICE_SEND_ASYNC = env.bool(
     'INVOICE_SEND_ASYNC', default=not bool(os.environ.get('VERCEL'))
 )
 
+# C-vet, the vet's app (docs/C_VET_PLAN.md). Off by default: every /c-vet/
+# address is a 404. The practice and clinical-note tables exist either
+# way; this turns the pages on and off, not the data rules.
+CVET_ENABLED = env.bool('CVET_ENABLED', default=False)
+# While True, every note C-vet stores is marked as a test note: it is not
+# a clinical record, the app says so on the screen, and an administrator
+# can delete the test notes of a practice (Django admin, C-vet,
+# Practices). Set False when the trial with real clinical notes starts.
+CVET_TEST_MODE = env.bool('CVET_TEST_MODE', default=True)
+# How long a Vet-role login stays signed in on a phone: with no use, and
+# in total from sign-in. Long, because a vet who is asked for a password
+# at the yard has no signal to sign in with. To end a lost phone's
+# access at once, untick the login in its practice (Django admin).
+CVET_SESSION_IDLE_AGE = env.int('CVET_SESSION_IDLE_AGE', default=90 * 24 * 60 * 60)
+CVET_SESSION_ABSOLUTE_AGE = env.int('CVET_SESSION_ABSOLUTE_AGE', default=90 * 24 * 60 * 60)
+
 # Location mapping (coordinates, the nearest-location chip, the map tab
 # and the Near you dashboard card). Off by default in every environment;
 # the edit form's coordinate picker and the backfill command work
@@ -655,6 +674,13 @@ CELERY_BEAT_SCHEDULE = {
     'generate-monthly-invoices': {
         'task': 'invoicing.tasks.generate_monthly_draft_invoices',
         'schedule': crontab(day_of_month='1', hour=MONTHLY_INVOICE_HOUR, minute=30),
+    },
+    # C-vet: the vet practice's monthly bill to the yard, for a practice
+    # that bills once a month (docs/C_VET_PLAN.md, section 7e). Before the yard's own
+    # invoices above are sent, so the yard has the vet's bill first.
+    'cvet-monthly-bills': {
+        'task': 'cvet.tasks.bill_monthly',
+        'schedule': crontab(day_of_month='1', hour=MONTHLY_INVOICE_HOUR, minute=0),
     },
     # Promote SENT invoices past their due date to OVERDUE. Runs every day
     # (including weekends) before the reminder window.

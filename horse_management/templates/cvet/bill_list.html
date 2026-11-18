@@ -1,0 +1,91 @@
+{% extends "cvet/office_base.html" %}
+{% load ui_extras %}
+{% block title %}Bills{% endblock %}
+{% block content %}
+    <div class="bar">
+        <h1>Bills {% if test_mode %}<span class="tag">test bills</span>{% endif %}</h1>
+        <a class="screen" href="{% url 'cvet:bill_export' %}">Download all as a CSV file</a>
+    </div>
+
+    {# Find: by client, by month, paid or not. #}
+    <form method="get" class="box pad screen">
+        <div class="fields">
+            <div><label for="f-client">Client</label>
+                <select id="f-client" name="client">
+                    <option value="">Every client</option>
+                    {% for item in clients %}<option value="{{ item.client_id }}"{% if chosen.client == item.client_id|stringformat:"s" %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
+                </select></div>
+            <div><label for="f-month">Month</label>
+                <select id="f-month" name="month">
+                    <option value="">Every month</option>
+                    {% for month in months %}<option value="{{ month|date:"Y-m" }}"{% if chosen.month == month|date:"Y-m" %} selected{% endif %}>{{ month|date:"F Y" }}</option>{% endfor %}
+                </select></div>
+            <div><label for="f-state">Paid</label>
+                <select id="f-state" name="state">
+                    <option value="">Paid and not paid</option>
+                    <option value="unpaid"{% if chosen.state == 'unpaid' %} selected{% endif %}>Not paid</option>
+                    <option value="paid"{% if chosen.state == 'paid' %} selected{% endif %}>Paid</option>
+                </select></div>
+            <button type="submit">Show</button>
+            {% if client %}<a class="button quiet" href="{% url 'cvet:statement' client.client_id %}">Statement for {{ client.name }}</a>{% endif %}
+        </div>
+    </form>
+
+    <div class="tiles">
+        <div class="tile"><strong>{{ total|gbp }}</strong><span>{{ bills|length }} bill{{ bills|length|pluralize }}</span></div>
+        <div class="tile"><strong>{{ paid|gbp }}</strong><span>Paid</span></div>
+        <div class="tile"><strong{% if to_pay %} class="bad"{% endif %}>{{ to_pay|gbp }}</strong><span>Still to pay</span></div>
+    </div>
+
+    {% if bills %}
+    <div class="box">
+    <table>
+        <tr><th>Bill</th><th class="wide">Date</th><th>To</th><th class="num">Total</th><th>Paid</th></tr>
+        {% for bill in bills %}
+        <tr>
+            <td class="nowrap"><a href="{% url 'cvet:bill_detail' bill.pk %}">{{ bill.number }}</a><span class="narrow muted">{{ bill.date|date:"j M Y" }}</span></td>
+            <td class="nowrap wide">{{ bill.date|date:"j M Y" }}{% if bill.period_start %}<br><span class="muted">{{ bill.period_start|date:"j M" }} to {{ bill.period_end|date:"j M" }}</span>{% endif %}</td>
+            <td>{{ bill.to_name }}</td>
+            <td class="num">{{ bill.total_inc_vat|gbp }}</td>
+            <td class="nowrap">
+                <form method="post" action="{% url 'cvet:bill_paid' bill.pk %}">
+                    {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    {% if bill.paid_on %}
+                    <span class="good">{{ bill.paid_on|date:"j M" }}</span>
+                    <button type="submit" name="paid" value="no" class="quiet small screen" aria-label="Mark {{ bill.number }} as not paid">Undo</button>
+                    {% else %}
+                    <button type="submit" class="quiet small screen" aria-label="Mark {{ bill.number }} as paid today">Mark paid</button>
+                    {% endif %}
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    </div>
+    {% else %}
+    <p class="muted">{% if chosen.client or chosen.month or chosen.state %}No bill fits this choice.{% else %}No bills yet. A bill is made when a visit is finished and all of its notes are sent, or once a month.{% endif %}</p>
+    {% endif %}
+
+    {% if link %}
+    <div class="box pad screen">
+        <form method="post" action="{% url 'cvet:bill_settings' %}">
+            {% csrf_token %}
+            <fieldset>
+                <legend>When to make the bills, for every client</legend>
+                <label class="choice"><input type="radio" name="bill_when" value="visit"{% if link.bill_when == 'visit' %} checked{% endif %}> After each visit, when the vet taps Finish visit</label>
+                <label class="choice"><input type="radio" name="bill_when" value="month"{% if link.bill_when == 'month' %} checked{% endif %}> Once a month, on the 1st, for the month before</label>
+                <button type="submit">Save</button>
+            </fieldset>
+        </form>
+        {% if unbilled_visits %}
+        <form method="post" action="{% url 'cvet:bill_now' %}">
+            {% csrf_token %}
+            <p><strong>Not on a bill yet: {{ unbilled_total|gbp }}</strong> from {{ unbilled_visits }} finished visit{{ unbilled_visits|pluralize }}.
+            <button type="submit">Bill it now</button></p>
+        </form>
+        {% else %}
+        <p class="muted">All finished work is on a bill.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+{% endblock %}

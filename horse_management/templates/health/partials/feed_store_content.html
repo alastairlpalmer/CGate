@@ -1,14 +1,15 @@
 {% load ui_extras %}
 
 <!-- Stock Summary Cards -->
-<div class="mt-6">
+<div class="mt-4">
     {% if stock_summary %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {# On a phone the tiles are one to a line, so they are kept short. #}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
         {% for item in stock_summary %}
-        <div class="card p-5 lg:p-6">
+        <div class="card px-4 py-2.5 sm:py-3">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-2xl font-bold {% if item.balance <= 0 %}text-error-red{% elif item.balance < 10 %}text-saddle{% else %}text-charcoal{% endif %}">
+                    <p class="text-xl font-semibold leading-tight {% if item.balance <= 0 %}text-error-red{% elif item.balance < 10 %}text-saddle{% else %}text-charcoal{% endif %}">
                         {{ item.balance|floatformat:0 }}
                         <span class="text-sm font-medium text-sage">{{ item.unit_display }}</span>
                     </p>
@@ -17,14 +18,15 @@
                 </div>
                 <div class="text-right text-xs text-sage">
                     <p class="text-forest">+{{ item.total_in|floatformat:0 }} in</p>
-                    <p class="text-error-red">-{{ item.total_out|floatformat:0 }} out</p>
+                    {# Nothing fed out is "0 out", not "-0 out". #}
+                    <p class="{% if item.total_out %}text-error-red{% endif %}">{% if item.total_out %}-{% endif %}{{ item.total_out|floatformat:0 }} out</p>
                 </div>
             </div>
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <div class="card p-8 text-center">
+    <div class="card p-6 text-center">
         <svg class="mx-auto h-10 w-10 text-sage/50 mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/>
         </svg>
@@ -34,7 +36,7 @@
 </div>
 
 <!-- Actions + Filters -->
-<div class="card px-5 py-4 mt-6">
+<div class="card px-4 py-3 mt-4">
     <div class="flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-3">
             <a href="{% url 'feed_stock_create' %}" class="btn-primary">
@@ -63,7 +65,7 @@
 </div>
 
 <!-- Ledger -->
-<div class="card overflow-hidden mt-6">
+<div class="card overflow-hidden mt-4">
     <div class="section-header">
         <h2 class="section-title">Stock Ledger</h2>
     </div>
@@ -110,7 +112,7 @@
                 {% empty %}
                 <tr>
                     <td colspan="7">
-                        <div class="py-8 text-center">
+                        <div class="py-6 text-center">
                             <p class="text-sm text-sage">No stock movements recorded yet</p>
                         </div>
                     </td>

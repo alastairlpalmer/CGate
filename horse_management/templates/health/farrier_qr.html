@@ -3,7 +3,7 @@
 {% block title %}Farrier page QR code - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-4">
     <div class="page-header">
         <div>
             <h1 class="page-title">Farrier page QR code</h1>
@@ -11,7 +11,7 @@
         </div>
         <a href="{% url 'provider_visit_list' %}" class="btn-secondary">Back</a>
     </div>
-    <div class="card px-6 py-8 max-w-md mx-auto text-center space-y-4">
+    <div class="card px-4 py-6 max-w-md mx-auto text-center space-y-4">
         <p class="font-heading font-bold text-2xl">{{ business.business_name|default:"Our yard" }}</p>
         <p class="font-heading text-lg">Farrier: scan to record your visit</p>
         <div class="mx-auto w-64 h-64 [&>svg]:w-full [&>svg]:h-full" aria-label="QR code for the farrier page">{{ qr_svg|safe }}</div>

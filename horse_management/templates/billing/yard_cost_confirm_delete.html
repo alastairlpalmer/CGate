@@ -4,9 +4,9 @@
 {% block title %}Delete Yard Cost - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-md mx-auto space-y-6">
+<div class="max-w-md mx-auto space-y-4">
 
-    <div class="card p-6 text-center">
+    <div class="card p-4 text-center">
         <!-- Icon -->
         <div class="mx-auto mb-4">
             <svg class="w-12 h-12 mx-auto text-error-red" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -21,7 +21,7 @@
         </p>
 
         <!-- Details card -->
-        <div class="card bg-parchment p-4 mt-4 mb-6 text-left">
+        <div class="card bg-parchment p-4 mt-4 mb-4 text-left">
             <p class="font-medium text-charcoal">{{ object.get_category_display }}</p>
             <p class="text-sm text-sage mt-1">{{ object.description }}</p>
             <p class="text-sm text-sage mt-1">{{ object.date|date:"j M Y" }} &mdash; {{ object.amount|gbp }}</p>

@@ -49,6 +49,8 @@ def assign_role(user, role):
     # Bust the per-request memo in case the same user object is reused.
     if hasattr(user, "_feature_access"):
         del user._feature_access
+    # access_map also keeps the assignment row on the user.
+    user._state.fields_cache.pop("role_assignment", None)
     return user
 
 

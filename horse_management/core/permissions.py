@@ -64,6 +64,9 @@ def access_map(user):
             result, role_name = dict(DEFAULT_LEVELS), "No role"
         else:
             result, role_name = assignment.role.resolved_access(), assignment.role.name
+            # Keep the row on the user, so ``user.role_assignment`` (read by
+            # ``mfa.is_administrator``) does not fetch it and its role again.
+            UserRole._meta.get_field('user').remote_field.set_cached_value(user, assignment)
 
     user._feature_access = result
     user._role_name = role_name
@@ -143,6 +146,39 @@ def feature_required(feature, level=LEVEL_FULL):
             return view_func(request, *args, **kwargs)
         return _wrapped
     return decorator
+
+
+class SettingsReturnMixin:
+    """A form opened from the Settings page goes back to the Settings page.
+
+    Service providers, vaccination types and locations each have a list
+    page of their own, and their forms return to it. The Settings page
+    lists them too. Its links add ``?from=settings``; the form then saves,
+    cancels and steps back to Settings, in the group it was opened from
+    (``settings_group``). The value is a fixed word, never an address, so
+    it cannot send the reader to another site.
+    """
+
+    settings_group = ''
+
+    def opened_from_settings(self):
+        return self.request.GET.get('from') == 'settings'
+
+    def settings_url(self):
+        from django.urls import reverse
+        url = reverse('app_settings')
+        return f'{url}#{self.settings_group}' if self.settings_group else url
+
+    def get_success_url(self):
+        if self.opened_from_settings():
+            return self.settings_url()
+        return super().get_success_url()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['from_settings'] = self.opened_from_settings()
+        context['settings_group'] = self.settings_group
+        return context
 
 
 class _FeatureLevels:

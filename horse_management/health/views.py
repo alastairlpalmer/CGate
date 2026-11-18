@@ -13,6 +13,7 @@ from core.permissions import (
     LEVEL_FULL,
     LEVEL_VIEW,
     FeatureAccessMixin,
+    SettingsReturnMixin,
     feature_required,
     has_feature_access,
 )
@@ -929,8 +930,9 @@ class VaccinationTypeListView(FeatureAccessMixin, ListView):
         return queryset.order_by('name')
 
 
-class VaccinationTypeCreateView(FeatureAccessMixin, CreateView):
+class VaccinationTypeCreateView(SettingsReturnMixin, FeatureAccessMixin, CreateView):
     feature = 'settings'
+    settings_group = 'set-vaccinations'
     model = VaccinationType
     form_class = VaccinationTypeForm
     template_name = 'health/vaccination_type_form.html'
@@ -941,8 +943,9 @@ class VaccinationTypeCreateView(FeatureAccessMixin, CreateView):
         return super().form_valid(form)
 
 
-class VaccinationTypeUpdateView(FeatureAccessMixin, UpdateView):
+class VaccinationTypeUpdateView(SettingsReturnMixin, FeatureAccessMixin, UpdateView):
     feature = 'settings'
+    settings_group = 'set-vaccinations'
     model = VaccinationType
     form_class = VaccinationTypeForm
     template_name = 'health/vaccination_type_form.html'

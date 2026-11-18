@@ -36,7 +36,7 @@ of the cards beside it.
         {% endfor %}
     </div>
     {% if folded_count %}
-    <div class="border-t border-light-sage px-5 py-2.5 text-center">
+    <div class="border-t border-light-sage px-4 py-2.5 text-center">
         <button type="button" class="link text-sm tap-pad" @click="all = !all" :aria-expanded="all ? 'true' : 'false'">
             <span x-show="!all">Show {{ folded_count }} earlier change{{ folded_count|pluralize }}</span>
             <span x-show="all" x-cloak>Show fewer</span>
@@ -45,6 +45,6 @@ of the cards beside it.
     {% endif %}
     </div>
     {% else %}
-    <p class="px-5 py-8 text-center text-sm text-sage">Nothing recorded yet{% if site %} at {{ site }}{% endif %}.</p>
+    <p class="px-4 py-6 text-center text-sm text-sage">Nothing recorded yet{% if site %} at {{ site }}{% endif %}.</p>
     {% endif %}
 </div>
