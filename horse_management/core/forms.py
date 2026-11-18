@@ -1575,3 +1575,77 @@ class BoundaryUploadForm(forms.Form):
     def __init__(self, *args, sites=(), **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['site'].choices = [(name, name) for name in sites]
+
+
+class ProfileDetailsForm(forms.Form):
+    """The Details tab of the profile pop-up (core.views.profile).
+
+    Name and email live on Django's user; phone and photo on UserProfile.
+    The photo is checked the same way as a horse photo (type, size, and
+    that it decodes), then stored as a small square JPEG only.
+    """
+
+    first_name = forms.CharField(
+        max_length=150, required=False, label='First name',
+        widget=forms.TextInput(attrs={'autocomplete': 'given-name'}),
+    )
+    last_name = forms.CharField(
+        max_length=150, required=False, label='Last name',
+        widget=forms.TextInput(attrs={'autocomplete': 'family-name'}),
+    )
+    email = forms.EmailField(
+        max_length=254, label='Email',
+        widget=forms.EmailInput(attrs={'autocomplete': 'email'}),
+    )
+    phone = forms.CharField(
+        max_length=50, required=False, label='Mobile phone',
+        widget=forms.TextInput(attrs={'type': 'tel', 'autocomplete': 'tel', 'inputmode': 'tel'}),
+    )
+    photo = forms.FileField(
+        required=False, label='Photo',
+        widget=forms.ClearableFileInput(attrs={'accept': 'image/*'}),
+    )
+    remove_photo = forms.BooleanField(required=False, label='Remove my photo')
+
+    def __init__(self, *args, user=None, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_email(self):
+        from django.contrib.auth import get_user_model
+        email = self.cleaned_data['email'].strip()
+        taken = (
+            get_user_model().objects
+            .filter(email__iexact=email)
+            .exclude(pk=self.user.pk)
+            .exists()
+        )
+        if taken:
+            raise forms.ValidationError('Another user already has this email address.')
+        return email
+
+    def clean_phone(self):
+        return self.cleaned_data.get('phone', '').strip()
+
+    def clean_photo(self):
+        upload = self.cleaned_data.get('photo')
+        if not upload:
+            return None
+        from PIL import Image, UnidentifiedImageError
+
+        from .images import normalise_photo
+        from .models import validate_file_size
+
+        upload = normalise_photo(upload)
+        FileExtensionValidator(
+            allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
+        )(upload)
+        validate_file_size(upload)
+        try:
+            upload.seek(0)
+            with Image.open(upload) as img:
+                img.verify()
+        except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+            raise forms.ValidationError('This file is not a photo we can read. Use a JPEG, PNG or HEIC photo.')
+        upload.seek(0)
+        return upload

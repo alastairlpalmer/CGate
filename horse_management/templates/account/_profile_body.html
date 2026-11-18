@@ -1,0 +1,117 @@
+{% comment %}
+The profile, as tabs. Rendered on its own into the pop-up sheet
+(core.views.profile, HX-Target: popup-body) and inside account/profile.html
+as a full page. In the sheet, each form posts back into #popup-body: an
+invalid post shows its errors here, a valid one closes the sheet.
+{% endcomment %}
+{% url 'profile' as profile_url %}
+<div x-data="{ tab: '{{ tab }}' }" class="profile-body">
+    <div class="profile-tabs" role="tablist" aria-label="Your profile">
+        <button type="button" role="tab" id="profile-tab-details" aria-controls="profile-panel-details"
+                class="profile-tab" :class="tab === 'details' && 'is-active'" :aria-selected="(tab === 'details').toString()"
+                @click="tab = 'details'">Details</button>
+        <button type="button" role="tab" id="profile-tab-security" aria-controls="profile-panel-security"
+                class="profile-tab" :class="tab === 'security' && 'is-active'" :aria-selected="(tab === 'security').toString()"
+                @click="tab = 'security'">Security</button>
+    </div>
+
+    {# ── Details ── #}
+    <div id="profile-panel-details" role="tabpanel" aria-labelledby="profile-tab-details" x-show="tab === 'details'"{% if tab != 'details' %} x-cloak{% endif %}>
+        <form method="post" action="{{ profile_url }}" enctype="multipart/form-data"
+              {% if in_popup %}hx-post="{{ profile_url }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" hx-encoding="multipart/form-data"{% endif %}>
+            {% csrf_token %}
+            <input type="hidden" name="action" value="details">
+            <div class="px-4 py-4 space-y-4">
+                {% with form=details_form %}
+                <div class="flex items-center gap-4" x-data="{ preview: '' }">
+                    <span class="profile-photo">
+                        <template x-if="preview"><img :src="preview" alt=""></template>
+                        <span x-show="!preview">{% include 'includes/_user_avatar.html' with person=user css='profile-photo-inner' %}</span>
+                    </span>
+                    <div class="min-w-0 space-y-1.5">
+                        <label for="{{ form.photo.id_for_label }}" class="btn-secondary btn-sm cursor-pointer">
+                            {% if profile.photo %}Change photo{% else %}Add a photo{% endif %}
+                        </label>
+                        <input type="file" name="photo" id="{{ form.photo.id_for_label }}" accept="image/*" class="sr-only"
+                               @change="preview = $event.target.files[0] ? URL.createObjectURL($event.target.files[0]) : ''">
+                        {% if profile.photo %}
+                        <label class="flex items-center gap-2 text-xs text-sage">
+                            <input type="checkbox" name="remove_photo" class="form-checkbox"> Remove my photo
+                        </label>
+                        {% endif %}
+                        {% if form.photo.errors %}<p class="text-xs text-error-red" role="alert">{{ form.photo.errors.0 }}</p>{% endif %}
+                        <p class="text-xs text-sage">JPEG, PNG or iPhone photo, up to 5 MB.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+                    {% include 'includes/form_field.html' with field=form.first_name %}
+                    {% include 'includes/form_field.html' with field=form.last_name %}
+                    {% if google_identity %}
+                    {% include 'includes/form_field.html' with field=form.email span='2' help='You sign in with Google as '|add:google_identity.email|add:'. A change here does not change your Google account.' %}
+                    {% else %}
+                    {% include 'includes/form_field.html' with field=form.email span='2' help='Password reset emails go to this address.' %}
+                    {% endif %}
+                    {% include 'includes/form_field.html' with field=form.phone span='2' %}
+                </div>
+                {% endwith %}
+            </div>
+            <div class="popup-footer">
+                {% if in_popup %}<button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>{% endif %}
+                <button type="submit" class="btn-primary">Save details</button>
+            </div>
+        </form>
+    </div>
+
+    {# ── Security ── #}
+    <div id="profile-panel-security" role="tabpanel" aria-labelledby="profile-tab-security" x-show="tab === 'security'"{% if tab != 'security' %} x-cloak{% endif %}>
+        <div class="px-4 py-4 space-y-4">
+            <section aria-labelledby="profile-password-title">
+                <h3 id="profile-password-title" class="text-sm font-semibold text-charcoal">Password</h3>
+                {% if password_form %}
+                <form method="post" action="{{ profile_url }}" class="mt-2 space-y-3"
+                      {% if in_popup %}hx-post="{{ profile_url }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"{% endif %}>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="password">
+                    {% include 'includes/form_field.html' with field=password_form.old_password label='Current password' %}
+                    {% include 'includes/form_field.html' with field=password_form.new_password1 label='New password' help='8 characters or more. Not a common password, and not only numbers.' %}
+                    {% include 'includes/form_field.html' with field=password_form.new_password2 label='New password again' %}
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button type="submit" class="btn-primary btn-sm">Change password</button>
+                        <p class="text-xs text-sage">This signs you out on your other devices.</p>
+                    </div>
+                </form>
+                {% else %}
+                <p class="mt-1 text-sm text-sage">You sign in with Google and have no password. To make one, use “Forgot password” on the sign-in page.</p>
+                {% endif %}
+            </section>
+
+            <section aria-labelledby="profile-mfa-title" class="pt-4 border-t border-light-sage">
+                <h3 id="profile-mfa-title" class="text-sm font-semibold text-charcoal">Two-step sign-in</h3>
+                {% if mfa.enabled %}
+                <p class="mt-1 text-sm text-charcoal"><strong>On.</strong> Sign-in asks for a code from your authenticator app.</p>
+                <p class="mt-1 text-xs {% if mfa.recovery_codes_left < 3 %}text-saddle font-medium{% else %}text-sage{% endif %}">
+                    {{ mfa.recovery_codes_left }} recovery code{{ mfa.recovery_codes_left|pluralize }} left.
+                </p>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    <a href="{% url 'mfa_setup' %}" hx-boost="false" class="btn-secondary btn-sm">Set up a new phone</a>
+                    <a href="{% url 'account_security' %}" hx-boost="false" class="btn-secondary btn-sm">Recovery codes and turning off</a>
+                </div>
+                {% else %}
+                <p class="mt-1 text-sm text-charcoal"><strong>Off.</strong> Anyone with your password can sign in as you.</p>
+                <p class="mt-1 text-xs text-sage">Turn it on to also ask for a 6-digit code from your phone. It takes about two minutes.</p>
+                <a href="{% url 'mfa_setup' %}" hx-boost="false" class="mt-2 btn-primary btn-sm">Turn on</a>
+                {% endif %}
+            </section>
+
+            <section aria-labelledby="profile-more-title" class="pt-4 border-t border-light-sage">
+                <h3 id="profile-more-title" class="text-sm font-semibold text-charcoal">Google sign-in and devices</h3>
+                <p class="mt-1 text-sm text-sage">
+                    {% if google_identity %}Google sign-in is connected ({{ google_identity.email }}).{% else %}Google sign-in is not connected.{% endif %}
+                    Sign out of other devices, or connect Google, on the security page.
+                </p>
+                <a href="{% url 'account_security' %}" hx-boost="false" class="mt-2 link text-sm">Open account security</a>
+            </section>
+        </div>
+    </div>
+</div>

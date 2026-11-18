@@ -41,6 +41,8 @@ def on_user_logged_in_set_up_session(sender, request, user, **kwargs):
     if request is not None and hasattr(request, 'session'):
         from core import mfa
         mfa.remember_enrolment(request, user)
+        from core import user_photos
+        user_photos.remember(request, user)
 
 
 @receiver(user_logged_in, dispatch_uid='core.audit.user_logged_in')

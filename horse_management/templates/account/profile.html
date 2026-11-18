@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}Your Profile - Cgate{% endblock %}
+
+{% block content %}
+{# The profile as a page: for a direct link, or a browser without scripts. #}
+<div class="max-w-lg mx-auto space-y-4 settings-page">
+    {% include 'includes/settings_back.html' with group='you' %}
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Your Profile</h1>
+            <p class="page-subtitle">{{ user.email|default:user.username }}</p>
+        </div>
+    </div>
+    <div class="card overflow-hidden">
+        {% include 'account/_profile_body.html' %}
+    </div>
+</div>
+{% endblock %}

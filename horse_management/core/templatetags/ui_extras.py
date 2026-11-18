@@ -278,3 +278,4 @@ def turnout_line(context, horse, compact=False, placement=None):
         'request': context.get('request'),
     }
 
+

@@ -1933,11 +1933,25 @@ a.pane-item-title:hover { @apply text-forest; }
     @apply w-9 h-9 rounded-full bg-sand text-forest flex items-center justify-center text-sm font-semibold shrink-0 overflow-hidden;
 }
 .sidebar-avatar img { @apply w-full h-full object-cover; }
+.more-sheet-avatar { @apply w-8 h-8 rounded-full bg-sand text-forest flex items-center justify-center text-sm font-semibold shrink-0 overflow-hidden; }
+.more-sheet-avatar img { @apply w-full h-full object-cover; }
 .sidebar-user-name { @apply flex-1 min-w-0; }
 .sidebar-user-dots { rotate: 90deg; }
 .sidebar-user-menu {
     @apply absolute bottom-full left-0 right-0 mb-2 py-1 bg-white rounded-lg shadow-float border border-light-sage overflow-hidden z-[60];
 }
+
+/* The profile pop-up (account/_profile_body.html). */
+.profile-tabs { @apply flex gap-1 px-4 pt-2 border-b border-light-sage; }
+.profile-tab {
+    @apply -mb-px px-3 py-2.5 text-sm font-medium text-sage border-b-2 border-transparent
+           hover:text-charcoal transition-colors duration-100;
+}
+.profile-tab.is-active { @apply text-forest border-forest; }
+.profile-photo { @apply w-16 h-16 rounded-full overflow-hidden shrink-0 bg-sand flex items-center justify-center; }
+.profile-photo img { @apply w-full h-full object-cover; }
+.profile-photo-inner { @apply w-16 h-16 rounded-full bg-sand text-forest flex items-center justify-center text-2xl font-semibold overflow-hidden; }
+.profile-photo-inner img { @apply w-full h-full object-cover; }
 
 /* ── The rail (collapsed sidebar) ──
    The same sidebar at 4rem: icons only, names as tooltips. The choice is

@@ -1,0 +1,5 @@
+{% comment %}
+The signed-in person's avatar: their profile photo, or the first letter of
+their name. my_photo_url comes from core.user_photos.context.
+Usage: {% include 'includes/_user_avatar.html' with person=user css='sidebar-avatar' %}
+{% endcomment %}<span class="{{ css|default:'sidebar-avatar' }}" aria-hidden="true">{% if my_photo_url %}<img src="{{ my_photo_url }}" alt="" width="36" height="36" loading="lazy" decoding="async">{% else %}{{ person.first_name|default:person.username|make_list|first|upper }}{% endif %}</span>

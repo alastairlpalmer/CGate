@@ -8,6 +8,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 from core.views import account as account_views
+from core.views import profile as profile_views
 from core.views import audit_log as audit_log_views
 from core.views import google as google_views
 from core.views import database_check as database_check_views
@@ -73,6 +74,7 @@ urlpatterns = [
     path('accounts/reset/<uidb64>/<token>/', account_views.UnlockingPasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('accounts/invite/<uidb64>/<token>/', account_views.InviteConfirmView.as_view(), name='invite_confirm'),
     path('accounts/security/', account_views.account_security, name='account_security'),
+    path('accounts/profile/', profile_views.profile, name='profile'),
     path('accounts/security/sign-out-others/', account_views.sign_out_other_devices, name='sign_out_other_devices'),
     path('accounts/two-step/', account_views.mfa_verify, name='mfa_verify'),
     path('accounts/two-step/setup/', account_views.mfa_setup, name='mfa_setup'),

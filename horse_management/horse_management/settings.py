@@ -169,6 +169,7 @@ TEMPLATES = [
                 'core.context_processors.location_maps',
                 'core.context_processors.barns',
                 'core.context_processors.google_sign_in',
+                'core.user_photos.context',
             ],
             'loaders': [
                 ('django.template.loaders.cached.Loader', [
