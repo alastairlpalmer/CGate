@@ -20,7 +20,7 @@ Prism won Australia with a loop. The yard sends updates to owners. Owners get a 
 | 1 | Faster yard office: charge rules, invoice run checks, QR cards, welfare flags | No | 5–6 weeks |
 | 2 | Owner updates and owner portal | No (one yard) | 6–8 weeks |
 | 3 | Owner payments | Phases 1–2 of the payments plan: no. Connect fees: yes | 7 weeks, then 3 weeks after P2 |
-| 4 | SaaS and the growth loop: many yards, free tier, owners across yards, import | Yes (Launch plan P2) | 4–6 months, mostly P2 |
+| 4 | SaaS and the growth loop: many yards, free tier, owners across yards, import | Yes ([`MULTI_TENANCY_PLAN.md`](MULTI_TENANCY_PLAN.md)) | 7–10 weeks with parallel agents for multi-tenancy, then 4–6 weeks for the growth-loop features |
 | 5 | Later: staff tasks and rota, yard websites, data feeds, native apps, Australia | Yes | Not sized |
 
 ---
@@ -76,15 +76,15 @@ The full design is in [`payments/payments-plan.md`](payments/payments-plan.md). 
 
 ---
 
-## Phase 4 — SaaS and the growth loop (4–6 months)
+## Phase 4 — SaaS and the growth loop (about 3–4 months)
 
 Goal: many yards on one platform. Owners bring in new yards. This is how Prism grew.
 
-Depends on: Launch plan **P2** (organisation model, tenant isolation, Stripe Billing, impersonation). Most of the time in this phase is P2.
+Depends on: the multi-tenancy build in [`MULTI_TENANCY_PLAN.md`](MULTI_TENANCY_PLAN.md) (organisation model, tenant isolation, Stripe Billing, support login). That plan also covers how to run the platform after the build. Wave 0 of it (the organisation key, about 1 week) can start now.
 
 | # | Feature | From Prism | Build | Size |
 |---|---|---|---|---|
-| 4.1 | **Multi-tenancy** | One platform for all stables | Launch plan P2 items 1–12 | 4–6 months |
+| 4.1 | **Multi-tenancy** | One platform for all stables | [`MULTI_TENANCY_PLAN.md`](MULTI_TENANCY_PLAN.md) waves 0–5, plus Launch plan P2 items 7–10 and 12 | 7–10 weeks elapsed with parallel agents; 19–23 weeks for one developer |
 | 4.2 | **One owner, many yards** | Owner sees all horses, at all trainers | The owner account sits above yards. The portal shows horses from each yard that the owner uses. Each yard sees only its own data. | 3 weeks |
 | 4.3 | **Owner invites yard** | Owner invites a trainer who is not on Prism | From the portal, the owner adds "my other yard". C-gate emails that yard an invitation with a free trial. Track invites as a growth number. | 1 week |
 | 4.4 | **Free starter tier** | Free Starter account | Free for 1–5 horses: horses, health reminders, owner updates. Paid tiers add invoicing, Xero, payments, maps. | 1 week after Stripe Billing |
@@ -116,4 +116,4 @@ Depends on: Launch plan **P2** (organisation model, tenant isolation, Stripe Bil
 
 1. **Phase order.** This plan builds owner updates (phase 2) before payments (phase 3). Prism's lesson is that updates bring owners in, and owners are the growth channel. Payments can go first if cash collection is the bigger pain at our yard.
 2. **Free tier.** Do we give a free tier for small yards and home owners (4.4)? It is the cheapest lead source, but it adds support load.
-3. **Multi-tenancy date.** Phase 4 needs Launch plan P2. The Launch plan asks the same question: one yard first, or multi-tenant first?
+3. **Multi-tenancy date.** Recommendation: do wave 0 of [`MULTI_TENANCY_PLAN.md`](MULTI_TENANCY_PLAN.md) now. Start the full build when Launch plan P1 is done and 3–5 yards have agreed to pay. Until then, give each new yard its own deployment.

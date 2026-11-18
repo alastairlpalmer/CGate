@@ -17,6 +17,7 @@
 | Document | What it covers |
 |---|---|
 | [`ROADMAP.md`](ROADMAP.md) | Product roadmap in five phases: yard office, owner portal, payments, SaaS growth loop, later. Many items come from the Prism review. |
+| [`MULTI_TENANCY_PLAN.md`](MULTI_TENANCY_PLAN.md) | How to rebuild C-gate for many yards (shared database, organisation key, row-level security), the build in waves with parallel agents, and how to run the platform after it. |
 | [`market/prism-competitor-review.md`](market/prism-competitor-review.md) | How Prism won Australia: features, clients, integrations, pricing, and what C-gate can copy. |
 | [`CODEBASE_REVIEW.md`](CODEBASE_REVIEW.md) | Full review of the codebase, numbered by part. Several tests cite it. |
 | [`LOCATION_MAPPING_PLAN.md`](LOCATION_MAPPING_PLAN.md) | Design for coordinates, field boundaries and the map tab. |
