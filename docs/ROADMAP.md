@@ -17,11 +17,31 @@ Prism won Australia with a loop. The yard sends updates to owners. Owners get a 
 
 | Phase | Goal | Needs multi-tenancy? | Size |
 |---|---|---|---|
+| 0 | Module boundaries: clean lines in the code, per-yard module switches, separate interfaces, editions by yard type ([`MODULES_PLAN.md`](MODULES_PLAN.md)) | No | 6–7 weeks with parallel agents; runs beside phase 1 |
 | 1 | Faster yard office: charge rules, invoice run checks, QR cards, welfare flags | No | 5–6 weeks |
 | 2 | Owner updates and owner portal | No (one yard) | 6–8 weeks |
 | 3 | Owner payments | Phases 1–2 of the payments plan: no. Connect fees: yes | 7 weeks, then 3 weeks after P2 |
 | 4 | SaaS and the growth loop: many yards, free tier, owners across yards, import | Yes ([`MULTI_TENANCY_PLAN.md`](MULTI_TENANCY_PLAN.md)) | 7–10 weeks with parallel agents for multi-tenancy, then 4–6 weeks for the growth-loop features |
 | 5 | Later: staff tasks and rota, yard websites, data feeds, native apps, Australia | Yes | Not sized |
+
+---
+
+## Phase 0 — Module boundaries (6–7 weeks, beside phase 1)
+
+Goal: C-gate can serve different yard types (grass livery, full livery, stud, maybe racing) and different people (staff, owners, suppliers) without separate copies of the code. The full plan is [`MODULES_PLAN.md`](MODULES_PLAN.md).
+
+Why first: half the code is in `core`, and 18 files in `core` import the modules above it. The multi-tenancy build gives one agent per app, so clean lines make that build faster and safer. The owner portal and payments are new code, so they must start inside the new lines.
+
+| # | Work | From Prism | Size |
+|---|---|---|---|
+| 0.1 | **Module map and checks.** Agree the modules. `import-linter` in report-only mode. | — | 2–3 days |
+| 0.2 | **Dashboard out of `core`.** Modules register their dashboard widgets and export parts. | — | 1 week |
+| 0.3 | **Split `core`** into base, places and maps, stables and turnout. Database tables stay where they are. | — | 2 weeks |
+| 0.4 | **Module registry and per-yard switches.** `features.py` built from the registry. | Modules sold separately | 1 week |
+| 0.5 | **Separate interfaces:** yard office, owner portal, supplier portal, platform admin. `import-linter` blocks PRs. | Separate trainer, owner and supplier logins | 1–1.5 weeks |
+| 0.6 | **Editions** by yard type: preset modules and words | Solutions for trainers, syndicators, agistment, studs | 3–4 days |
+
+Order with the other plans: steps 0.1–0.3, then multi-tenancy wave 0, then steps 0.4–0.6, then multi-tenancy waves 1–5. Build charge rules (1.1) with the event pattern from the modules plan.
 
 ---
 
@@ -109,10 +129,12 @@ Depends on: the multi-tenancy build in [`MULTI_TENANCY_PLAN.md`](MULTI_TENANCY_P
 
 ## Not on the roadmap
 
-- **Racing:** nominations, acceptances, declarations, trackwork, race reports. The market sizing excludes racing trainers ([`market/uk-market-sizing.md`](market/uk-market-sizing.md)).
+- **Racing, for now:** nominations, acceptances, declarations, trackwork, race reports. The market sizing excludes racing trainers ([`market/uk-market-sizing.md`](market/uk-market-sizing.md)). The modules plan leaves room for a `racing` module if you decide to add it (decision 0 below).
 - **Lesson and arena bookings.** Riding schools are a weak fit.
 
 ## Decisions needed from you
+
+0. **Racing.** In the product as a module and edition, or a later option? See [`MODULES_PLAN.md`](MODULES_PLAN.md) section 8. Today the roadmap leaves racing out.
 
 1. **Phase order.** This plan builds owner updates (phase 2) before payments (phase 3). Prism's lesson is that updates bring owners in, and owners are the growth channel. Payments can go first if cash collection is the bigger pain at our yard.
 2. **Free tier.** Do we give a free tier for small yards and home owners (4.4)? It is the cheapest lead source, but it adds support load.

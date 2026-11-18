@@ -8,6 +8,7 @@ Date: 18 November 2026. Status: proposal. Replaces the outline in [`LAUNCH_READI
 - **Design:** one shared Postgres database. Every yard-owned row has an `organisation` key. Two guards stop leaks: a default query filter in Django, and Postgres row-level security (RLS) under it.
 - **Time with one developer:** 19–23 weeks.
 - **Time with parallel AI agents:** **7–10 weeks elapsed.** It is not 1–2 weeks. The code is fast to write, but four steps cannot run in parallel: the foundation, human review of security code, the move of live data, and the external penetration test. Section 4 explains this.
+- **Do first:** steps 1–3 of [`MODULES_PLAN.md`](MODULES_PLAN.md). Wave 1 gives one agent per app, and today half the code is in `core`.
 - **When to start:** add the organisation key now (wave 0, about 1 week). Start the full build when Launch plan P1 is done and 3–5 yards have agreed to pay. Until then, give each new yard its own deployment.
 
 ## 1. The code today
