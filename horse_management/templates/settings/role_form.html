@@ -15,7 +15,8 @@
 @media (max-width: 640px) { .seg-control { width: 100%; } .seg-option { flex: 1; text-align: center; } }
 </style>
 
-<div class="max-w-2xl mx-auto space-y-6" x-data="{ usersLevel: '{{ form.access_users.value }}' }">
+<div class="max-w-2xl mx-auto space-y-4 settings-page" x-data="{ usersLevel: '{{ form.access_users.value }}' }">
+    {% include 'includes/settings_back.html' with group='set-roles' %}
 
     <div class="page-header">
         <div>
@@ -32,7 +33,7 @@
             <div class="section-header">
                 <h3 class="section-title">Details</h3>
             </div>
-            <fieldset class="p-4 sm:p-5 space-y-4">
+            <fieldset class="px-4 py-3 space-y-3">
                 <div>
                     <label for="{{ form.name.id_for_label }}" class="text-sm font-medium text-charcoal">Role Name</label>
                     {{ form.name }}
@@ -48,11 +49,11 @@
         </div>
 
         <!-- ── Access Matrix ── -->
-        <div class="card mt-6">
+        <div class="card mt-4">
             <div class="section-header">
                 <h3 class="section-title">Feature Access</h3>
             </div>
-            <div class="p-4 sm:p-5 space-y-6">
+            <div class="px-4 py-3 space-y-3">
                 {% if object.is_system %}
                 <div class="rounded-lg bg-sage-50 border border-sage/20 px-4 py-3 text-sm text-forest">
                     The Administrator role always has full access to everything, so a yard can never lock itself out. Its access levels can't be changed.
@@ -64,7 +65,7 @@
                     <p class="text-xs font-semibold text-sage uppercase tracking-widest pb-2">{{ group }}</p>
                     <div class="divide-y divide-light-sage">
                         {% for feature, field in rows %}
-                        <div class="py-3 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 sm:items-center">
+                        <div class="py-2 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 sm:items-center">
                             <div class="min-w-0">
                                 <p class="text-sm font-medium text-charcoal">{{ feature.label }}</p>
                                 <p class="text-xs text-sage">{{ feature.description }}</p>
@@ -98,7 +99,7 @@
                 {% if form.non_field_errors %}<p class="text-sm text-error-red">{{ form.non_field_errors.0 }}</p>{% endif %}
             </div>
             <footer class="form-footer">
-                <a href="{% url 'app_settings' %}" class="btn-secondary">Cancel</a>
+                <a href="{% url 'app_settings' %}#set-roles" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">{% if object %}Save Role{% else %}Create Role{% endif %}</button>
             </footer>
         </div>
@@ -110,7 +111,7 @@
         <div class="section-header">
             <h3 class="section-title">Delete Role</h3>
         </div>
-        <form method="post" action="{% url 'role_delete' object.pk %}" class="p-4 sm:p-5 space-y-4"
+        <form method="post" action="{% url 'role_delete' object.pk %}" class="px-4 py-3 space-y-3"
               hx-confirm="Delete the {{ object.name }} role?{% if member_count %} Its {{ member_count }} member{{ member_count|pluralize }} will be moved to the role you chose.{% endif %}">
             {% csrf_token %}
             {% if member_count %}

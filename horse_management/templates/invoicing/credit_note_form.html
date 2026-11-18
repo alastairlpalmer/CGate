@@ -4,7 +4,7 @@
 {% block title %}Credit Note - {{ invoice.invoice_number }} - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6">
+<div class="max-w-2xl mx-auto space-y-4">
     <div class="page-header">
         <div>
             <h1 class="page-title">Issue Credit Note</h1>
@@ -18,11 +18,11 @@
     <div class="card">
         <form method="post">
             {% csrf_token %}
-            <div class="p-5 space-y-5">
+            <div class="px-4 py-3 space-y-3">
                 {% if form.non_field_errors %}
                 <div class="alert-error" role="alert">{% for e in form.non_field_errors %}<p class="text-sm">{{ e }}</p>{% endfor %}</div>
                 {% endif %}
-                <div class="grid grid-cols-1 min-[360px]:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 min-[360px]:grid-cols-2 gap-x-4 gap-y-3">
                     {% include "includes/form_field.html" with field=form.date %}
                     {% include "includes/form_field.html" with field=form.amount help="Up to the amount still owed." %}
                 </div>

@@ -1,0 +1,24 @@
+{% comment %}The tiles of one site on the yard board (partials/dashboard/board.html).
+Context: band.{% endcomment %}
+{% for tile in band.tiles %}
+<a href="{% url 'location_detail' tile.location.pk %}" class="board-tile{% if tile.flagged %} is-flagged{% endif %}"
+   title="{{ tile.location.name }}{% if tile.holds_horses %} · {{ tile.count }} horse{{ tile.count|pluralize }}{% if tile.capacity %} of {{ tile.capacity }}{% endif %}{% else %} · {{ tile.usage_label }}{% endif %}{% if tile.flagged %} · needs attention{% if tile.flag_reasons %}: {{ tile.flag_reasons|join:", " }}{% endif %}{% endif %}">
+    <span class="min-w-0">
+        <span class="board-tile-name">{{ tile.location.name }}</span>
+        <span class="board-tile-meta{% if tile.usage == 'rested' %} text-sage{% elif tile.usage == 'hay' %} text-info-blue{% elif tile.usage == 'arable' or tile.usage == 'mixed' %} text-saddle{% endif %}">
+            {% if tile.usage == 'rested' %}Rested{% if tile.rest_days is not None %} &middot; {{ tile.rest_days }} day{{ tile.rest_days|pluralize }}{% endif %}
+            {% elif tile.is_barn and tile.in_stables %}{{ tile.in_stables }} in stables{% if tile.no_stable %} &middot; {{ tile.no_stable }} no stable{% endif %}
+            {% elif tile.holds_horses %}{{ tile.count }} horse{{ tile.count|pluralize }}{% if tile.usage == 'mixed' %} &middot; mixed grazing{% endif %}{% if tile.turnout %} &middot; {{ tile.turnout }} out by day{% endif %}
+            {% else %}{{ tile.usage_label }}{% endif %}
+        </span>
+    </span>
+    {% if tile.holds_horses and tile.capacity %}
+    {% include 'horses/_capacity_ring.html' with count=tile.count capacity=tile.capacity availability=tile.availability %}
+    {% elif tile.holds_horses %}
+    <span class="board-count">{{ tile.count }}</span>
+    {% else %}
+    <span class="board-usage">{% include 'horses/_usage_badge.html' with usage=tile.usage label='' %}</span>
+    {% endif %}
+    {% if tile.flagged %}<span class="board-flag" aria-hidden="true"></span>{% endif %}
+</a>
+{% endfor %}

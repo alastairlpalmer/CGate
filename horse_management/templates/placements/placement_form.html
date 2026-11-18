@@ -3,7 +3,7 @@
 {% block title %}{% if object %}Edit Placement{% else %}Add Placement{% endif %} - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6">
+<div class="max-w-2xl mx-auto space-y-4">
 
     <!-- Page Header -->
     <div class="page-header">
@@ -17,15 +17,15 @@
             {% csrf_token %}
 
             {% if form.non_field_errors %}
-            <div class="p-4 sm:p-5">
+            <div class="px-4 py-3">
                 {% include 'includes/form_errors.html' with form=form intro="The placement wasn't saved:" %}
             </div>
             {% endif %}
 
             <!-- Horse & Owner -->
-            <fieldset class="p-4 sm:p-5 space-y-4">
+            <fieldset class="px-4 py-3 space-y-3">
                 <legend class="section-title">Horse &amp; Owner</legend>
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
+                <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 mt-3">
                     <div class="sm:col-span-2">
                         <label for="id_horse" class="block text-sm font-medium text-charcoal">Horse <span class="text-error-red">*</span></label>
                         {{ form.horse }}
@@ -55,9 +55,9 @@
             </fieldset>
 
             <!-- Rates & Dates -->
-            <fieldset class="p-4 sm:p-5 space-y-4">
+            <fieldset class="px-4 py-3 space-y-3">
                 <legend class="section-title">Rates &amp; Dates</legend>
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
+                <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 mt-3">
                     <div>
                         <label for="id_rate_type" class="block text-sm font-medium text-charcoal">Rate Type <span class="text-error-red">*</span></label>
                         {{ form.rate_type }}
@@ -93,9 +93,9 @@
             </fieldset>
 
             <!-- Notes -->
-            <fieldset class="p-4 sm:p-5 space-y-4">
+            <fieldset class="px-4 py-3 space-y-3">
                 <legend class="section-title">Notes</legend>
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-3">
+                <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 mt-3">
                     <div class="sm:col-span-2">
                         <label for="id_notes" class="block text-sm font-medium text-charcoal">Notes</label>
                         {{ form.notes }}

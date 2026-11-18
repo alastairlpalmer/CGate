@@ -3,7 +3,7 @@
 {% block title %}Reconciliation {{ year }} - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto space-y-6">
+<div class="max-w-5xl mx-auto space-y-4">
 
     <div class="page-header">
         <div>
@@ -49,7 +49,7 @@
                     <td class="text-right">{{ m.outstanding|floatformat:2 }}</td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="8" class="text-center text-sage py-6">No months to show yet.</td></tr>
+                <tr><td colspan="8" class="text-center text-sage py-4">No months to show yet.</td></tr>
                 {% endfor %}
             </tbody>
             {% if report.months %}
@@ -84,9 +84,9 @@
         </div>
         <ul class="divide-y divide-light-sage">
             {% for gap in gaps %}
-            <li class="px-4 sm:px-5 py-3 text-sm"><span class="font-medium text-charcoal">{{ gap.number }}</span> <span class="text-sage">· {{ gap.explanation }}</span></li>
+            <li class="px-4 py-3 text-sm"><span class="font-medium text-charcoal">{{ gap.number }}</span> <span class="text-sage">· {{ gap.explanation }}</span></li>
             {% empty %}
-            <li class="px-4 sm:px-5 py-4 text-sm text-sage">No gaps. Every number in the series is in use.</li>
+            <li class="px-4 py-4 text-sm text-sage">No gaps. Every number in the series is in use.</li>
             {% endfor %}
         </ul>
     </div>

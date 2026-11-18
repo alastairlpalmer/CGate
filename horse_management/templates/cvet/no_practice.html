@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C-vet</title>
+</head>
+<body style="font: 16px/1.4 -apple-system, sans-serif; max-width: 30em; margin: 3em auto; padding: 0 1em;">
+    <h1 style="font-size: 20px;">This login is not set up for C-vet</h1>
+    <p>C-vet shows the records of a veterinary practice. This login is not in a practice.</p>
+    {% if can_set_up %}
+    <p><a href="{% url 'cvet:setup' %}">Open C-vet set-up</a> to make the practice and choose its logins.</p>
+    <p>An administrator's login does not go in a practice. Give the vet a login with the Vet role.</p>
+    <p><a href="{% url 'app_settings' %}">Back to C-gate</a></p>
+    {% else %}
+    <p>Ask the yard's administrator to open <strong>Settings</strong>, then <strong>C-vet set-up</strong>, in C-gate.</p>
+    {% endif %}
+    <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">Sign out</button></form>
+</body>
+</html>

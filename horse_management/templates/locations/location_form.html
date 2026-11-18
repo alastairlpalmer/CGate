@@ -3,7 +3,8 @@
 {% block title %}{% if object %}Edit {{ object.name }}{% elif adding_barn %}Add Barn{% else %}Add Location{% endif %} - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6">
+<div class="max-w-2xl mx-auto {% if from_settings %}space-y-4 settings-page{% else %}space-y-6{% endif %}">
+    {% if from_settings %}{% include 'includes/settings_back.html' with group=settings_group %}{% endif %}
 
     <!-- Page Header -->
     <div class="page-header">
@@ -19,12 +20,12 @@
             {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
 
             <!-- Location Details -->
-            <fieldset class="px-4 sm:px-5 py-4 sm:py-5 space-y-4 sm:space-y-5">
+            <fieldset class="px-4 py-3 space-y-3">
                 {% comment %}One page for two forms: LocationForm and BarnForm
                 (core/forms.py). A barn has a layout and stables where a
                 location has a land use, so each input is asked for only
                 when the form in hand has it.{% endcomment %}
-                <legend class="text-base font-semibold text-charcoal">{% if form.layout %}Barn Details{% else %}Location Details{% endif %}</legend>
+                <legend class="text-sm font-semibold text-charcoal">{% if form.layout %}Barn Details{% else %}Location Details{% endif %}</legend>
                 {% if form.layout %}
                 {% include "includes/form_field.html" with field=form.name help='e.g., "Top Barn", "Main Yard"' %}
                 {% else %}
@@ -62,7 +63,7 @@
 
             <!-- Footer -->
             <div class="form-footer">
-                <a href="{% if object %}{% url 'location_detail' object.pk %}{% else %}{% url 'location_list' %}{% endif %}" class="btn-secondary">Cancel</a>
+                <a href="{% if from_settings %}{% url 'app_settings' %}#{{ settings_group }}{% elif object %}{% url 'location_detail' object.pk %}{% else %}{% url 'location_list' %}{% endif %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% elif adding_barn %}Add Barn{% else %}Add Location{% endif %}
                 </button>
@@ -76,7 +77,7 @@
         <div class="section-header">
             <h3 class="section-title">Is This a Barn?</h3>
         </div>
-        <div class="p-4 sm:p-5 space-y-4">
+        <div class="px-4 py-3 space-y-3">
             <p class="text-sm text-sage">
                 A barn has a plan of its stables and no land use: it is never
                 rested, and it leaves the Usage tab. Its horses, its history and
@@ -96,7 +97,7 @@
         <div class="section-header">
             <h3 class="section-title">{% if object.is_archived %}Archived{% else %}Take This Location Out of Use{% endif %}</h3>
         </div>
-        <div class="p-4 sm:p-5 space-y-4">
+        <div class="px-4 py-3 space-y-3">
             {% if object.is_archived %}
                 <p class="text-sm text-sage">
                     This location is archived. It keeps its history and stays in

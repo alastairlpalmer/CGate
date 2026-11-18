@@ -1,43 +1,65 @@
 {% extends 'base.html' %}
-{% load ui_extras %}
+{% load ui_extras cvet_setup %}
 
 {% block title %}Settings - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+{% comment %}A dense page on purpose (static/css/input.css, "Settings page"):
+thin card headers, one line for each row, plain-word actions. A phone shows
+the page name in its top bar, so the heading is for wide screens only.{% endcomment %}
+<div class="settings-page space-y-3">
 
-    <!-- Page Header -->
     <div class="page-header">
-        <div>
-            <h1 class="page-title">Settings</h1>
-            <p class="page-subtitle">{% if feature_access.settings.full %}Manage your business, rates, providers, and integrations{% else %}Your account and dashboard preferences{% endif %}</p>
-        </div>
+        <h1 class="page-title sr-only lg:not-sr-only">Settings</h1>
     </div>
 
-    {% comment %}One group at a time (UX plan F2): a menu on the left on a
-    wide screen, a row of chips on a phone. static/js/settings_nav.js picks
-    the group from the address (#billing, or #services inside it), else the
-    last one open in this tab, else the first. Without JavaScript every
-    group shows.{% endcomment %}
+    {% comment %}One group at a time: a menu on the left on a wide screen, a
+    row of chips on a phone. static/js/settings_nav.js picks the group from
+    the address (#billing, or #services inside it), else the last one open
+    in this tab, else the first. Under the open group the menu lists its
+    cards. Without JavaScript every group shows.{% endcomment %}
     <div class="settings-layout" x-data="settingsSections">
     <nav class="settings-nav" aria-label="Settings sections">
-        {% if feature_access.settings.full %}<a href="#business" class="settings-nav-link" :class="current === 'business' && 'is-active'" :aria-current="current === 'business' ? 'page' : null" @click.prevent="show('business')">Business</a>{% endif %}
-        {% if feature_access.users.full %}<a href="#people" class="settings-nav-link" :class="current === 'people' && 'is-active'" :aria-current="current === 'people' ? 'page' : null" @click.prevent="show('people')">Users &amp; Roles</a>{% endif %}
-        {% if feature_access.settings.full %}<a href="#yard" class="settings-nav-link" :class="current === 'yard' && 'is-active'" :aria-current="current === 'yard' ? 'page' : null" @click.prevent="show('yard')">Yard setup</a>{% endif %}
-        {% if feature_access.settings.full %}<a href="#billing" class="settings-nav-link" :class="current === 'billing' && 'is-active'" :aria-current="current === 'billing' ? 'page' : null" @click.prevent="show('billing')">Billing</a>{% endif %}
+        {% if feature_access.settings.full %}
+        <a href="#business" class="settings-nav-link" :class="current === 'business' && 'is-active'" :aria-current="current === 'business' ? 'page' : null" @click.prevent="show('business')">Business</a>
+        {% endif %}
+        {% if feature_access.users.full %}
+        <a href="#people" class="settings-nav-link" :class="current === 'people' && 'is-active'" :aria-current="current === 'people' ? 'page' : null" @click.prevent="show('people')">Users &amp; Roles</a>
+        <div class="settings-nav-sub" x-show="current === 'people'" x-cloak>
+            <a href="#set-users" class="settings-nav-sublink">Users</a>
+            <a href="#set-roles" class="settings-nav-sublink">Roles</a>
+            {% cvet_setup_status as cvet %}
+            {% if cvet %}<a href="#set-cvet" class="settings-nav-sublink">C-vet</a>{% endif %}
+            {% if can_view_audit_log %}<a href="#set-system" class="settings-nav-sublink">System</a>{% endif %}
+        </div>
+        {% endif %}
+        {% if feature_access.settings.full %}
+        <a href="#yard" class="settings-nav-link" :class="current === 'yard' && 'is-active'" :aria-current="current === 'yard' ? 'page' : null" @click.prevent="show('yard')">Yard setup</a>
+        <div class="settings-nav-sub" x-show="current === 'yard'" x-cloak>
+            <a href="#set-locations" class="settings-nav-sublink">Locations</a>
+            <a href="#reminders" class="settings-nav-sublink">Reminders</a>
+            <a href="#set-vaccinations" class="settings-nav-sublink">Vaccination types</a>
+            <a href="#set-providers" class="settings-nav-sublink">Service providers</a>
+        </div>
+        <a href="#billing" class="settings-nav-link" :class="current === 'billing' && 'is-active'" :aria-current="current === 'billing' ? 'page' : null" @click.prevent="show('billing')">Billing</a>
+        <div class="settings-nav-sub" x-show="current === 'billing'" x-cloak>
+            <a href="#services" class="settings-nav-sublink">Services &amp; prices</a>
+            <a href="#set-rates" class="settings-nav-sublink">Rate types</a>
+            {% if feature_access.xero.full %}<a href="#set-integrations" class="settings-nav-sublink">Integrations</a>{% endif %}
+        </div>
+        {% endif %}
         <a href="#you" class="settings-nav-link" :class="current === 'you' && 'is-active'" :aria-current="current === 'you' ? 'page' : null" @click.prevent="show('you')">Your preferences</a>
-        {% if feature_access.settings.full %}<a href="#data" class="settings-nav-link" :class="current === 'data' && 'is-active'" :aria-current="current === 'data' ? 'page' : null" @click.prevent="show('data')">Data</a>{% endif %}
+        {% if feature_access.settings.full %}
+        <a href="#data" class="settings-nav-link" :class="current === 'data' && 'is-active'" :aria-current="current === 'data' ? 'page' : null" @click.prevent="show('data')">Data</a>
+        {% endif %}
     </nav>
     <div class="settings-panels" x-ref="panels">
 
 
     {% if feature_access.settings.full %}
     <!-- ══ Business ══ -->
-    <section id="business" data-settings-section class="space-y-4 scroll-mt-24" x-show="!current || current === 'business'">
-        <div class="settings-band">
-            <span class="settings-band-title">Business</span>
-            <span class="settings-band-rule"></span>
-        </div>
+    <section id="business" data-settings-section class="settings-group" x-show="!current || current === 'business'">
+        <h2 class="sr-only">Business</h2>
 
         {# No overflow-hidden here: it would stop the save bar sticking. #}
         <div class="card">
@@ -52,78 +74,68 @@
                 {% csrf_token %}
                 <input type="hidden" name="save_business" value="1">
 
-                <!-- Identity -->
-                <div class="settings-subhead">
-                    <span class="settings-subhead-title">Identity</span>
-                </div>
-                <div class="p-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div class="settings-fields">
                     <div class="sm:col-span-2">
-                        <label for="{{ biz_form.business_name.id_for_label }}" class="text-sm font-medium text-charcoal">Business Name</label>
+                        <label for="{{ biz_form.business_name.id_for_label }}" class="settings-label">Business name</label>
                         {{ biz_form.business_name }}
                     </div>
                     <div class="sm:col-span-2">
-                        <label for="{{ biz_form.address.id_for_label }}" class="text-sm font-medium text-charcoal">Address</label>
+                        <label for="{{ biz_form.address.id_for_label }}" class="settings-label">Address</label>
                         {{ biz_form.address }}
                     </div>
                     <div>
-                        <label for="{{ biz_form.phone.id_for_label }}" class="text-sm font-medium text-charcoal">Phone</label>
+                        <label for="{{ biz_form.phone.id_for_label }}" class="settings-label">Phone</label>
                         {{ biz_form.phone }}
                     </div>
                     <div>
-                        <label for="{{ biz_form.email.id_for_label }}" class="text-sm font-medium text-charcoal">Email</label>
+                        <label for="{{ biz_form.email.id_for_label }}" class="settings-label">Email</label>
                         {{ biz_form.email }}
                     </div>
                     <div class="sm:col-span-2">
-                        <label for="{{ biz_form.website.id_for_label }}" class="text-sm font-medium text-charcoal">Website</label>
+                        <label for="{{ biz_form.website.id_for_label }}" class="settings-label">Website</label>
                         {{ biz_form.website }}
                     </div>
                 </div>
 
-                <!-- Invoicing & tax -->
                 <div class="settings-subhead">
                     <span class="settings-subhead-title">Invoicing &amp; tax</span>
                 </div>
-                <div class="p-5 grid grid-cols-1 gap-4 sm:grid-cols-2 bg-parchment/40">
+                <div class="settings-fields">
                     <div>
-                        <label for="{{ biz_form.vat_registration.id_for_label }}" class="text-sm font-medium text-charcoal">VAT Registration</label>
+                        <label for="{{ biz_form.vat_registration.id_for_label }}" class="settings-label">VAT registration</label>
                         {{ biz_form.vat_registration }}
                     </div>
                     <div>
-                        <label for="{{ biz_form.vat_rate.id_for_label }}" class="text-sm font-medium text-charcoal">VAT Rate (%)</label>
+                        <label for="{{ biz_form.vat_rate.id_for_label }}" class="settings-label">VAT rate (%)</label>
                         {{ biz_form.vat_rate }}
                         {% if biz_form.vat_rate.errors %}
                         <p class="mt-1 text-sm text-error-red">{{ biz_form.vat_rate.errors.0 }}</p>
                         {% endif %}
-                        <p class="text-xs text-sage mt-0.5">0 if not VAT-registered, 20 for the UK standard rate. Applies to new invoices only.</p>
+                        <p class="text-xs text-sage mt-0.5">0 if not VAT-registered. New invoices only.</p>
                     </div>
                     <div>
-                        <label for="{{ biz_form.invoice_prefix.id_for_label }}" class="text-sm font-medium text-charcoal">Invoice Prefix</label>
+                        <label for="{{ biz_form.invoice_prefix.id_for_label }}" class="settings-label">Invoice prefix</label>
                         {{ biz_form.invoice_prefix }}
                     </div>
                     <div>
-                        <label for="{{ biz_form.default_payment_terms.id_for_label }}" class="text-sm font-medium text-charcoal">Payment Terms (days)</label>
+                        <label for="{{ biz_form.default_payment_terms.id_for_label }}" class="settings-label">Payment terms (days)</label>
                         {{ biz_form.default_payment_terms }}
                     </div>
                     <div class="sm:col-span-2">
-                        <label for="{{ biz_form.bank_details.id_for_label }}" class="text-sm font-medium text-charcoal">Bank Details</label>
+                        <label for="{{ biz_form.bank_details.id_for_label }}" class="settings-label">Bank details</label>
                         {{ biz_form.bank_details }}
                     </div>
                     <div class="sm:col-span-2">
-                        <label for="{{ biz_form.card_payment_url.id_for_label }}" class="text-sm font-medium text-charcoal">Card Payment URL</label>
+                        <label for="{{ biz_form.card_payment_url.id_for_label }}" class="settings-label">Card payment link</label>
                         {{ biz_form.card_payment_url }}
-                        <p class="text-xs text-sage mt-1">e.g. SumUp payment link</p>
                     </div>
                 </div>
 
-                <!-- Automation -->
-                <div class="settings-subhead">
-                    <span class="settings-subhead-title">Automation</span>
-                </div>
-                <div class="settings-rows">
+                <div class="settings-rows border-t border-light-sage">
                     <label class="settings-row cursor-pointer">
-                        <span class="min-w-0">
-                            <span class="settings-row-title block">Auto-generate monthly draft invoices</span>
-                            <span class="settings-row-meta block">{{ biz_form.auto_generate_invoices.help_text }}</span>
+                        <span class="settings-row-main">
+                            <span class="settings-row-title">Auto-generate monthly draft invoices</span>
+                            <span class="settings-row-meta">{{ biz_form.auto_generate_invoices.help_text }}</span>
                         </span>
                         <span class="inline-flex items-center shrink-0 ml-auto">
                             {{ biz_form.auto_generate_invoices }}
@@ -134,7 +146,7 @@
 
                 <div class="settings-save-bar" :class="dirty && 'is-dirty'">
                     <span class="text-xs text-saddle font-medium" x-show="dirty" x-cloak role="status">Unsaved changes</span>
-                    <button type="submit" class="btn-primary btn-sm ml-auto">Save Business Details</button>
+                    <button type="submit" class="btn-primary btn-sm ml-auto">Save</button>
                 </div>
             </form>
         </div>
@@ -143,48 +155,32 @@
 
     {% if feature_access.users.full %}
     <!-- ══ Users & Roles ══ -->
-    <section id="people" data-settings-section class="space-y-4 scroll-mt-24" x-show="!current || current === 'people'">
-        <div class="settings-band">
-            <span class="settings-band-title">Users &amp; Roles</span>
-            <span class="settings-band-rule"></span>
-        </div>
+    <section id="people" data-settings-section class="settings-group" x-show="!current || current === 'people'">
+        <h2 class="sr-only">Users &amp; Roles</h2>
 
-        <div class="card overflow-hidden">
+        <div id="set-users" class="card overflow-hidden">
             <div class="section-header">
                 <h3 class="section-title">Users</h3>
-                <a href="{% url 'user_create' %}" class="btn-primary btn-sm">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                    </svg>
-                    Add User
-                </a>
+                <a href="{% url 'user_create' %}" class="btn-primary btn-sm">Add User</a>
             </div>
-            <p class="settings-note">Users sign in with their email address. Each user's role controls which areas they can see and change.</p>
             <div class="settings-rows">
                 {% for u in app_users %}
                 <div class="settings-row">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-8 h-8 rounded-full bg-light-sage text-forest flex items-center justify-center text-xs font-semibold shrink-0">
-                            {{ u.first_name|default:u.username|make_list|first|upper }}
-                        </div>
-                        <div class="min-w-0">
-                            <p class="settings-row-title truncate">
-                                {{ u.get_full_name|default:u.username }}{% if u == user %} <span class="text-xs text-sage font-normal">(you)</span>{% endif %}
-                            </p>
-                            <p class="settings-row-meta truncate">{{ u.email|default:u.username }}</p>
-                        </div>
+                    <div class="settings-row-main">
+                        <span class="settings-row-title truncate">{{ u.get_full_name|default:u.username }}{% if u == user %} <span class="text-xs text-sage font-normal">(you)</span>{% endif %}</span>
+                        <span class="settings-row-meta truncate">{{ u.email|default:u.username }}</span>
                     </div>
                     <div class="settings-actions">
                         {% if not u.is_active %}
-                        <span class="badge-neutral">Inactive</span>
+                        <span class="badge-warning">Inactive</span>
                         {% elif u.is_superuser %}
-                        <span class="badge-neutral">Superuser</span>
+                        <span class="settings-row-state">Superuser</span>
                         {% elif u.role_assignment %}
-                        <span class="badge-neutral">{{ u.role_assignment.role.name }}</span>
+                        <span class="settings-row-state">{{ u.role_assignment.role.name }}</span>
                         {% else %}
-                        <span class="badge-neutral">No role</span>
+                        <span class="settings-row-state">No role</span>
                         {% endif %}
-                        <a href="{% url 'user_update' u.pk %}" class="settings-action">Edit</a>
+                        <a href="{% url 'user_update' u.pk %}" class="settings-action" aria-label="Edit {{ u.get_full_name|default:u.username }}">Edit</a>
                     </div>
                 </div>
                 {% empty %}
@@ -193,29 +189,20 @@
             </div>
         </div>
 
-        <div class="card overflow-hidden">
+        <div id="set-roles" class="card overflow-hidden">
             <div class="section-header">
                 <h3 class="section-title">Roles</h3>
-                <a href="{% url 'role_create' %}" class="btn-secondary btn-sm">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                    </svg>
-                    New Role
-                </a>
+                <a href="{% url 'role_create' %}" class="btn-secondary btn-sm">New Role</a>
             </div>
-            <p class="settings-note">Each role sets an access level per area: Hidden, View only, or Full access.</p>
             <div class="settings-rows">
                 {% for role in roles %}
                 <div class="settings-row">
-                    <div class="min-w-0">
-                        <p class="settings-row-title truncate">
-                            {{ role.name }}
-                            {% if role.is_system %}<span class="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-sage-50 text-forest border border-sage/20">System</span>{% endif %}
-                        </p>
-                        <p class="settings-row-meta truncate">{{ role.description|default:"No description" }} &middot; {{ role.member_count }} member{{ role.member_count|pluralize }}</p>
+                    <div class="settings-row-main">
+                        <span class="settings-row-title truncate">{{ role.name }}</span>
+                        <span class="settings-row-meta">{% if role.description %}{{ role.description }} &middot; {% endif %}{{ role.member_count }} member{{ role.member_count|pluralize }}{% if role.is_system %} &middot; System{% endif %}</span>
                     </div>
                     <div class="settings-actions">
-                        <a href="{% url 'role_update' role.pk %}" class="settings-action">Edit</a>
+                        <a href="{% url 'role_update' role.pk %}" class="settings-action" aria-label="Edit the role {{ role.name }}">Edit</a>
                     </div>
                 </div>
                 {% empty %}
@@ -224,34 +211,65 @@
             </div>
         </div>
 
-        {% if can_view_audit_log %}
-        <div class="card overflow-hidden">
+        {% if cvet %}
+        <div id="set-cvet" class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">C-vet</h3>
+                <a href="{% url 'cvet:setup' %}" class="btn-secondary btn-sm">Set up</a>
+            </div>
             <div class="settings-rows">
                 <div class="settings-row">
-                    <div class="min-w-0">
-                        <p class="settings-row-title">Audit Log</p>
-                        <p class="settings-row-meta">Who signed in, who changed invoices, payments, owners and roles, and when.</p>
+                    <div class="settings-row-main">
+                        {% if cvet.many %}
+                        <span class="settings-row-title">More than one practice</span>
+                        <span class="settings-row-meta">{{ cvet.logins }} Vet login{{ cvet.logins|pluralize }} can open C-vet.</span>
+                        {% elif cvet.practice %}
+                        <span class="settings-row-title truncate">{{ cvet.practice.name }}</span>
+                        <span class="settings-row-meta">{{ cvet.logins }} login{{ cvet.logins|pluralize }} &middot; {% if cvet.link_open %}sees the yard's horses{% else %}does not see the yard's horses{% endif %}{% if cvet.test_mode %} &middot; test mode{% endif %}</span>
+                        {% else %}
+                        <span class="settings-row-title">No practice yet</span>
+                        <span class="settings-row-meta">Make the practice before the vet signs in.</span>
+                        {% endif %}
+                        {% if cvet.left_out %}
+                        <span class="text-xs text-error-red sm:basis-full">{{ cvet.left_out }} login{{ cvet.left_out|pluralize }} with the Vet role cannot open C-vet. Open Set up.</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if can_view_audit_log %}
+        <div id="set-system" class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">System</h3>
+            </div>
+            <div class="settings-rows">
+                <div class="settings-row">
+                    <div class="settings-row-main">
+                        <span class="settings-row-title">Audit Log</span>
+                        <span class="settings-row-meta">Who changed what, and when.</span>
                     </div>
                     <div class="settings-actions">
-                        <a href="{% url 'audit_log' %}" class="btn-secondary btn-sm">View</a>
+                        <a href="{% url 'audit_log' %}" class="settings-action" aria-label="Open the audit log">Open</a>
                     </div>
                 </div>
                 <div class="settings-row">
-                    <div class="min-w-0">
-                        <p class="settings-row-title">Background Tasks</p>
-                        <p class="settings-row-meta">{% if failed_task_count %}<span class="badge-danger">{{ failed_task_count }} failed</span> {% endif %}Scheduled emails, invoice runs and backups: when each last ran, and any that failed.</p>
+                    <div class="settings-row-main">
+                        <span class="settings-row-title">Background Tasks</span>
+                        <span class="settings-row-meta">{% if failed_task_count %}<span class="badge-danger">{{ failed_task_count }} failed</span> {% endif %}Scheduled emails, invoice runs and backups.</span>
                     </div>
                     <div class="settings-actions">
-                        <a href="{% url 'background_tasks' %}" class="btn-secondary btn-sm">View</a>
+                        <a href="{% url 'background_tasks' %}" class="settings-action" aria-label="Open background tasks">Open</a>
                     </div>
                 </div>
                 <div class="settings-row">
-                    <div class="min-w-0">
-                        <p class="settings-row-title">Database Check</p>
-                        <p class="settings-row-meta">Where the live database differs from the app's code, for example columns left by an old update.</p>
+                    <div class="settings-row-main">
+                        <span class="settings-row-title">Database Check</span>
+                        <span class="settings-row-meta">Where the database differs from the app's code.</span>
                     </div>
                     <div class="settings-actions">
-                        <a href="{% url 'database_check' %}" class="btn-secondary btn-sm">View</a>
+                        <a href="{% url 'database_check' %}" class="settings-action" aria-label="Open the database check">Open</a>
                     </div>
                 </div>
             </div>
@@ -262,97 +280,97 @@
 
     {% if feature_access.settings.full %}
     <!-- ══ Yard setup ══ -->
-    <section id="yard" data-settings-section class="space-y-4 scroll-mt-24" x-show="!current || current === 'yard'">
-        <div class="settings-band">
-            <span class="settings-band-title">Yard setup</span>
-            <span class="settings-band-rule"></span>
-        </div>
+    <section id="yard" data-settings-section class="settings-group" x-show="!current || current === 'yard'">
+        <h2 class="sr-only">Yard setup</h2>
 
         <!-- ── Locations & Sites ── -->
-        <div class="card overflow-hidden">
+        <div id="set-locations" class="card overflow-hidden">
             <div class="section-header">
                 <h3 class="section-title">Locations &amp; Sites</h3>
-                <a href="{% url 'location_create' %}" hx-get="{% url 'location_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add location" class="btn-primary btn-sm">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                    </svg>
-                    Add Location
-                </a>
+                <a href="{% url 'location_create' %}" hx-get="{% url 'location_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add location" class="btn-primary btn-sm">Add Location</a>
             </div>
-            <p class="settings-note">
-                Archive a location or a site to take it out of use. Its history,
-                invoices and usage records stay, and you can restore it later.
-                Delete removes it for good, and is only possible while nothing
-                points at it.
-            </p>
+            <p class="settings-note">Archive keeps the history and can be undone. Delete is for good, and only works while nothing points at the location.</p>
+            {% comment %}Each site folds. A yard with one site opens on its
+            locations; with more, the sites are a short list and the reader
+            opens the one they want. static/js/settings_nav.js keeps an open
+            site open after Archive or Delete reloads the page.{% endcomment %}
             {% if location_groups %}
                 {% for group in location_groups %}
-                <div class="settings-subhead">
-                    <span class="settings-subhead-title">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21m-3.75 3H21"/>
+                <details class="settings-fold" x-data="settingsFold" data-fold-key="site:{{ group.site }}"{% if location_groups|length == 1 %} open{% endif %}>
+                    <summary>
+                        <svg class="settings-fold-chevron" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
                         </svg>
-                        {{ group.site }}
-                    </span>
-                    <div class="settings-actions">
-                        {% if group.can_be_archived %}
-                        <form method="post" action="{% url 'site_archive' %}" class="inline"
-                              hx-confirm="Archive every location on {{ group.site }}? They keep their history and can be restored.">
-                            {% csrf_token %}
-                            <input type="hidden" name="site" value="{{ group.site }}">
-                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                            <button type="submit" class="settings-action">Archive site</button>
-                        </form>
-                        {% endif %}
-                        {% if group.can_be_deleted %}
-                        <form method="post" action="{% url 'site_delete' %}" class="inline"
-                              hx-confirm="Delete {{ group.site }} and all its locations? This cannot be undone.">
-                            {% csrf_token %}
-                            <input type="hidden" name="site" value="{{ group.site }}">
-                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                            <button type="submit" class="settings-action-danger">Delete site</button>
-                        </form>
+                        <span class="settings-fold-title">{{ group.site }}</span>
+                        <span class="settings-fold-count">{{ group.locations|length }} location{{ group.locations|length|pluralize }}</span>
+                    </summary>
+                    <div class="settings-rows">
+                        {% for loc in group.locations %}
+                        <div class="settings-row">
+                            <div class="settings-row-main">
+                                <span class="settings-row-title">{{ loc.name }}</span>
+                                <span class="settings-row-meta">
+                                    {% if loc.is_barn %}Barn{% else %}{{ loc.get_usage_display }}{% endif %}
+                                    &middot; {% if loc.capacity %}Capacity: {{ loc.capacity }}{% else %}No capacity set{% endif %}
+                                    {% if loc.description %}&middot; {{ loc.description|truncatewords:8 }}{% endif %}
+                                </span>
+                                {% if loc.live_horse_count %}
+                                <span class="settings-row-flag">
+                                    {{ loc.live_horse_count }} horse{{ loc.live_horse_count|pluralize }} here — move them off before you archive it.
+                                </span>
+                                {% endif %}
+                            </div>
+                            {# A phone shows Edit only: Archive and Delete are on the edit page. #}
+                            <div class="settings-actions">
+                                <a href="{% url 'location_update' loc.pk %}?from=settings" class="settings-action" aria-label="Edit {{ loc.name }}">Edit</a>
+                                {% if loc.can_be_archived %}
+                                <form method="post" action="{% url 'location_archive' loc.pk %}" class="hidden sm:inline"
+                                      hx-confirm="Archive {{ loc.name }}? It keeps its history and can be restored.">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="settings-action" aria-label="Archive {{ loc.name }}">Archive</button>
+                                </form>
+                                {% endif %}
+                                {% if loc.can_be_deleted %}
+                                <form method="post" action="{% url 'location_delete' loc.pk %}" class="hidden sm:inline"
+                                      hx-confirm="Delete {{ loc.name }}? This cannot be undone.">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="settings-action-danger" aria-label="Delete {{ loc.name }}">Delete</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% if group.can_be_archived or group.can_be_deleted %}
+                        <div class="settings-row">
+                            <div class="settings-row-main">
+                                <span class="settings-row-meta">The whole site</span>
+                            </div>
+                            <div class="settings-actions">
+                                {% if group.can_be_archived %}
+                                <form method="post" action="{% url 'site_archive' %}" class="inline"
+                                      hx-confirm="Archive every location on {{ group.site }}? They keep their history and can be restored.">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="site" value="{{ group.site }}">
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="settings-action">Archive site</button>
+                                </form>
+                                {% endif %}
+                                {% if group.can_be_deleted %}
+                                <form method="post" action="{% url 'site_delete' %}" class="inline"
+                                      hx-confirm="Delete {{ group.site }} and all its locations? This cannot be undone.">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="site" value="{{ group.site }}">
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="settings-action-danger">Delete site</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
                         {% endif %}
                     </div>
-                </div>
-                <div class="settings-rows">
-                    {% for loc in group.locations %}
-                    <div class="settings-row">
-                        <div class="min-w-0">
-                            <p class="settings-row-title">{{ loc.name }}</p>
-                            <p class="settings-row-meta">
-                                {% if loc.is_barn %}Barn{% else %}{{ loc.get_usage_display }}{% endif %}
-                                &middot; {% if loc.capacity %}Capacity: {{ loc.capacity }}{% else %}No capacity set{% endif %}
-                                {% if loc.description %}&middot; {{ loc.description|truncatewords:8 }}{% endif %}
-                            </p>
-                            {% if loc.live_horse_count %}
-                            <p class="settings-row-flag">
-                                {{ loc.live_horse_count }} horse{{ loc.live_horse_count|pluralize }} here — move them off before you archive it.
-                            </p>
-                            {% endif %}
-                        </div>
-                        <div class="settings-actions">
-                            <a href="{% url 'location_update' loc.pk %}" class="settings-action">Edit</a>
-                            {% if loc.can_be_archived %}
-                            <form method="post" action="{% url 'location_archive' loc.pk %}" class="inline"
-                                  hx-confirm="Archive {{ loc.name }}? It keeps its history and can be restored.">
-                                {% csrf_token %}
-                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                <button type="submit" class="settings-action">Archive</button>
-                            </form>
-                            {% endif %}
-                            {% if loc.can_be_deleted %}
-                            <form method="post" action="{% url 'location_delete' loc.pk %}" class="inline"
-                                  hx-confirm="Delete {{ loc.name }}? This cannot be undone.">
-                                {% csrf_token %}
-                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                <button type="submit" class="settings-action-danger">Delete</button>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
+                </details>
                 {% endfor %}
             {% else %}
                 <p class="settings-empty">No locations configured.</p>
@@ -361,22 +379,15 @@
             {% if archived_location_groups %}
             <!-- Archived locations are folded away: they are rarely the reason
                  anyone opens this page, and they used to double its length. -->
-            <details class="group border-t border-light-sage">
-                <summary class="flex items-center justify-between gap-3 px-5 py-3 cursor-pointer list-none bg-parchment/50 hover:bg-light-sage/50 transition-colors duration-100">
-                    <span class="text-sm font-medium text-charcoal">Archived locations</span>
-                    <span class="flex items-center gap-2 text-xs text-sage">
-                        <span>Show</span>
-                        <svg class="w-4 h-4 transition-transform duration-150 group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
-                        </svg>
-                    </span>
+            <details class="settings-fold" x-data="settingsFold" data-fold-key="archived-locations">
+                <summary>
+                    <svg class="settings-fold-chevron" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                    </svg>
+                    <span class="settings-fold-title font-medium text-sage">Archived locations</span>
                 </summary>
-                <p class="settings-note border-t border-light-sage">
-                    These locations are out of use. They stay in reports and history,
-                    and you can restore them at any time.
-                </p>
                 {% for group in archived_location_groups %}
-                <div class="settings-subhead">
+                <div class="settings-subhead pl-9">
                     <span class="settings-subhead-title">{{ group.site }}</span>
                     <div class="settings-actions">
                         <form method="post" action="{% url 'site_restore' %}" class="inline"
@@ -391,25 +402,25 @@
                 <div class="settings-rows">
                     {% for loc in group.locations %}
                     <div class="settings-row">
-                        <div class="min-w-0">
-                            <p class="settings-row-title text-sage">{{ loc.name }}</p>
-                            <p class="settings-row-meta">
+                        <div class="settings-row-main">
+                            <span class="settings-row-title text-sage">{{ loc.name }}</span>
+                            <span class="settings-row-meta">
                                 Archived{% if loc.archived_at %} {{ loc.archived_at|date:"j M Y" }}{% endif %}
                                 {% if loc.placement_count %}&middot; {{ loc.placement_count }} placement record{{ loc.placement_count|pluralize }}{% endif %}
-                            </p>
+                            </span>
                         </div>
                         <div class="settings-actions">
                             <form method="post" action="{% url 'location_restore' loc.pk %}" class="inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                <button type="submit" class="settings-action">Restore</button>
+                                <button type="submit" class="settings-action" aria-label="Restore {{ loc.name }}">Restore</button>
                             </form>
                             {% if loc.can_be_deleted %}
                             <form method="post" action="{% url 'location_delete' loc.pk %}" class="inline"
                                   hx-confirm="Delete {{ loc.name }}? This cannot be undone.">
                                 {% csrf_token %}
                                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                <button type="submit" class="settings-action-danger">Delete</button>
+                                <button type="submit" class="settings-action-danger" aria-label="Delete {{ loc.name }}">Delete</button>
                             </form>
                             {% endif %}
                         </div>
@@ -425,17 +436,17 @@
         {% comment %}Which kinds of reminder the dashboard shows, for the
         whole yard (core/reminders.py). A yard sees its horses' feet every
         day, so the farrier starts switched off.{% endcomment %}
-        <div id="reminders" class="card overflow-hidden scroll-mt-24">
+        <div id="reminders" class="card overflow-hidden">
             <div class="section-header">
                 <h3 class="section-title">Reminders</h3>
             </div>
-            <p class="settings-note">Choose what the dashboard reminds the yard about. A reminder you switch off leaves Needs action, Next 14 days and the dots on the horse list. The records stay on their own pages. Changes save automatically.</p>
+            <p class="settings-note">What the dashboard reminds the yard about. A reminder you switch off leaves the dashboard and the dots on the horse list; the records stay. Changes save automatically.</p>
             <div class="settings-rows">
                 {% for item in reminder_rows %}
                 <div class="settings-row" data-reminder-key="{{ item.key }}" x-data="{ on: {{ item.on|yesno:'true,false' }}, saved: false }">
-                    <div class="min-w-0 flex-1">
-                        <p class="settings-row-title">{{ item.name }}</p>
-                        <p class="settings-row-meta">{{ item.help }}</p>
+                    <div class="settings-row-main">
+                        <span class="settings-row-title">{{ item.name }}</span>
+                        <span class="settings-row-meta">{{ item.help }}</span>
                     </div>
                     <span class="text-xs text-forest" x-show="saved" x-cloak x-transition.opacity role="status">Saved</span>
                     <button type="button" role="switch"
@@ -457,26 +468,21 @@
         </div>
 
         <!-- ── Vaccination Types ── -->
-        <div class="card overflow-hidden">
+        <div id="set-vaccinations" class="card overflow-hidden">
             <div class="section-header">
                 <h3 class="section-title">Vaccination Types</h3>
-                <a href="{% url 'vaccination_type_create' %}" class="btn-primary btn-sm">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                    </svg>
-                    Add Type
-                </a>
+                <a href="{% url 'vaccination_type_create' %}?from=settings" class="btn-primary btn-sm">Add Type</a>
             </div>
             <div class="settings-rows">
                 {% for vt in vaccination_types %}
                 <div class="settings-row">
-                    <div class="min-w-0">
-                        <p class="settings-row-title">{{ vt.name }}</p>
-                        <p class="settings-row-meta">Every {{ vt.interval_months }} months &middot; Reminder {{ vt.reminder_days_before }} days before</p>
+                    <div class="settings-row-main">
+                        <span class="settings-row-title">{{ vt.name }}</span>
+                        <span class="settings-row-meta">Every {{ vt.interval_months }} months &middot; Reminder {{ vt.reminder_days_before }} days before</span>
                     </div>
                     <div class="settings-actions">
                         {% if not vt.is_active %}<span class="badge-warning">Inactive</span>{% endif %}
-                        <a href="{% url 'vaccination_type_update' vt.pk %}" class="settings-action">Edit</a>
+                        <a href="{% url 'vaccination_type_update' vt.pk %}?from=settings" class="settings-action" aria-label="Edit {{ vt.name }}">Edit</a>
                     </div>
                 </div>
                 {% empty %}
@@ -486,30 +492,20 @@
         </div>
 
         <!-- ── Service Providers ── -->
-        <div class="card overflow-hidden">
+        <div id="set-providers" class="card overflow-hidden">
             <div class="section-header">
                 <h3 class="section-title">Service Providers</h3>
-                <a href="{% url 'provider_create' %}" class="btn-primary btn-sm">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                    </svg>
-                    Add Provider
-                </a>
+                <a href="{% url 'provider_create' %}?from=settings" class="btn-primary btn-sm">Add Provider</a>
             </div>
             <div class="settings-rows">
                 {% for provider in providers %}
                 <div class="settings-row">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-8 h-8 rounded-full bg-light-sage text-forest flex items-center justify-center text-xs font-semibold shrink-0">
-                            {{ provider.name|make_list|first|upper }}
-                        </div>
-                        <div class="min-w-0">
-                            <p class="settings-row-title truncate">{{ provider.name }}</p>
-                            <p class="settings-row-meta truncate">{{ provider.get_provider_type_display }}</p>
-                        </div>
+                    <div class="settings-row-main">
+                        <span class="settings-row-title truncate">{{ provider.name }}</span>
+                        <span class="settings-row-meta truncate">{{ provider.get_provider_type_display }}</span>
                     </div>
                     <div class="settings-actions">
-                        <a href="{% url 'provider_update' provider.pk %}" class="settings-action">Edit</a>
+                        <a href="{% url 'provider_update' provider.pk %}?from=settings" class="settings-action" aria-label="Edit {{ provider.name }}">Edit</a>
                     </div>
                 </div>
                 {% empty %}
@@ -520,69 +516,56 @@
     </section>
 
     <!-- ══ Billing ══ -->
-    <section id="billing" data-settings-section class="space-y-4 scroll-mt-24" x-show="!current || current === 'billing'">
-        <div class="settings-band">
-            <span class="settings-band-title">Billing</span>
-            <span class="settings-band-rule"></span>
-        </div>
+    <section id="billing" data-settings-section class="settings-group" x-show="!current || current === 'billing'">
+        <h2 class="sr-only">Billing</h2>
 
         <!-- ── Services & Prices ── -->
-        <div id="services" class="card overflow-hidden scroll-mt-24">
+        <div id="services" class="card overflow-hidden">
             <div class="section-header">
-                <div>
-                    <h3 class="section-title">Services &amp; Prices</h3>
-                    <p class="text-xs text-sage mt-0.5">Set prices once. On a record form you pick the service and the price is filled in.</p>
-                </div>
-                <a href="{% url 'service_item_create' %}" class="btn-primary btn-sm">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                    </svg>
-                    Add Service
-                </a>
+                <h3 class="section-title">Services &amp; Prices</h3>
+                <a href="{% url 'service_item_create' %}" class="btn-primary btn-sm">Add Service</a>
+            </div>
+            <p class="settings-note">Set prices once. On a record form you pick the service and the price is filled in.</p>
+            {% regroup service_items by get_category_display as service_groups %}
+            {% for group in service_groups %}
+            <div class="settings-subhead">
+                <span class="settings-subhead-title">{{ group.grouper }}</span>
             </div>
             <div class="settings-rows">
-                {% regroup service_items by get_category_display as service_groups %}
-                {% for group in service_groups %}
-                <p class="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-sage">{{ group.grouper }}</p>
                 {% for item in group.list %}
                 <div class="settings-row">
-                    <div class="min-w-0">
-                        <p class="settings-row-title">{{ item.name }}</p>
-                        <p class="settings-row-meta tabular-nums">{{ item.price_label }} per horse{% if item.farrier_work %} &middot; {{ item.get_farrier_work_display }}{% endif %}{% if item.vaccination_type %} &middot; {{ item.vaccination_type.name }}{% endif %}</p>
+                    <div class="settings-row-main">
+                        <span class="settings-row-title">{{ item.name }}</span>
+                        <span class="settings-row-meta tabular-nums">{{ item.price_label }} per horse{% if item.farrier_work %} &middot; {{ item.get_farrier_work_display }}{% endif %}{% if item.vaccination_type %} &middot; {{ item.vaccination_type.name }}{% endif %}</span>
                     </div>
                     <div class="settings-actions">
                         {% if not item.is_active %}<span class="badge-warning">Inactive</span>{% endif %}
-                        <a href="{% url 'service_item_update' item.pk %}" class="settings-action">Edit</a>
+                        <a href="{% url 'service_item_update' item.pk %}" class="settings-action" aria-label="Edit {{ item.name }}">Edit</a>
                     </div>
                 </div>
                 {% endfor %}
-                {% empty %}
-                <p class="settings-empty">No services yet. Add one and it appears on the record forms.</p>
-                {% endfor %}
             </div>
+            {% empty %}
+            <p class="settings-empty">No services yet. Add one and it appears on the record forms.</p>
+            {% endfor %}
         </div>
 
         <!-- ── Rate Types ── -->
-        <div class="card overflow-hidden">
+        <div id="set-rates" class="card overflow-hidden">
             <div class="section-header">
                 <h3 class="section-title">Rate Types</h3>
-                <a href="{% url 'rate_type_create' %}" class="btn-primary btn-sm">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                    </svg>
-                    Add Rate
-                </a>
+                <a href="{% url 'rate_type_create' %}" class="btn-primary btn-sm">Add Rate</a>
             </div>
             <div class="settings-rows">
                 {% for rate in rate_types %}
                 <div class="settings-row">
-                    <div class="min-w-0">
-                        <p class="settings-row-title">{{ rate.name }}</p>
-                        <p class="settings-row-meta tabular-nums">{{ rate.daily_rate|gbp }}/day</p>
+                    <div class="settings-row-main">
+                        <span class="settings-row-title">{{ rate.name }}</span>
+                        <span class="settings-row-meta tabular-nums">{{ rate.daily_rate|gbp }}/day</span>
                     </div>
                     <div class="settings-actions">
                         {% if not rate.is_active %}<span class="badge-warning">Inactive</span>{% endif %}
-                        <a href="{% url 'rate_type_update' rate.pk %}" class="settings-action">Edit</a>
+                        <a href="{% url 'rate_type_update' rate.pk %}" class="settings-action" aria-label="Edit {{ rate.name }}">Edit</a>
                     </div>
                 </div>
                 {% empty %}
@@ -593,40 +576,29 @@
 
         <!-- ── Integrations ── -->
         {% if feature_access.xero.full %}
-        <div class="card overflow-hidden">
+        <div id="set-integrations" class="card overflow-hidden">
             <div class="section-header">
                 <h3 class="section-title">Integrations</h3>
             </div>
             <div class="settings-rows">
                 <div class="settings-row">
-                    <div class="flex items-center gap-4 min-w-0">
-                        <div class="w-10 h-10 rounded-lg bg-info-blue-50 text-info-blue flex items-center justify-center shrink-0">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z"/>
-                            </svg>
-                        </div>
-                        <div class="min-w-0">
-                            <p class="settings-row-title">Xero</p>
-                            {% if xero_connection.is_connected %}
-                                <p class="settings-row-meta truncate">Connected to {{ xero_connection.xero_tenant_name }}</p>
-                            {% else %}
-                                <p class="settings-row-meta">Push invoices directly to Xero as drafts</p>
-                            {% endif %}
-                        </div>
+                    <div class="settings-row-main">
+                        <span class="settings-row-title">Xero</span>
+                        {% if xero_connection.is_connected %}
+                            <span class="settings-row-meta truncate">Connected to {{ xero_connection.xero_tenant_name }}</span>
+                        {% else %}
+                            <span class="settings-row-meta">Push invoices directly to Xero as drafts</span>
+                        {% endif %}
                     </div>
                     <div class="settings-actions">
                         {% if xero_connection.is_connected %}
-                            <span class="badge-success gap-1.5">
-                                <span class="w-1.5 h-1.5 rounded-full bg-forest"></span>
-                                Connected
-                            </span>
                             <form method="post" action="{% url 'xero_disconnect' %}" class="inline"
                                   hx-confirm="Are you sure you want to disconnect from Xero?">
                                 {% csrf_token %}
                                 <button type="submit" class="settings-action-danger">Disconnect</button>
                             </form>
                         {% else %}
-                            <a href="{% url 'xero_connect' %}" class="btn-primary btn-sm" hx-boost="false">Connect</a>
+                            <a href="{% url 'xero_connect' %}" class="btn-primary btn-sm mr-2" hx-boost="false">Connect</a>
                         {% endif %}
                     </div>
                 </div>
@@ -637,20 +609,8 @@
     {% endif %}
 
     <!-- ══ Your preferences ══ -->
-    <section id="you" data-settings-section class="space-y-4 scroll-mt-24" x-show="!current || current === 'you'">
-        <div class="settings-band">
-            <span class="settings-band-title">Your preferences</span>
-            <span class="settings-band-rule"></span>
-        </div>
-
-        <!-- ── Dashboard ── -->
-        <div class="card overflow-hidden">
-            <div class="section-header">
-                <h3 class="section-title">Dashboard</h3>
-                <span class="text-xs text-sage">Per-user preferences</span>
-            </div>
-            {% include "partials/settings/dashboard_prefs.html" %}
-        </div>
+    <section id="you" data-settings-section class="settings-group" x-show="!current || current === 'you'">
+        <h2 class="sr-only">Your preferences</h2>
 
         <!-- ── Account ── -->
         <div class="card overflow-hidden">
@@ -659,36 +619,41 @@
             </div>
             <div class="settings-rows">
                 <div class="settings-row">
-                    <div class="min-w-0">
-                        <p class="settings-row-title truncate">{{ user.get_full_name|default:user.username }}</p>
-                        <p class="settings-row-meta truncate">{{ user.email|default:"No email set" }}</p>
+                    <div class="settings-row-main">
+                        <span class="settings-row-title truncate">{{ user.get_full_name|default:user.username }}</span>
+                        <span class="settings-row-meta truncate">{{ user.email|default:"No email set" }}</span>
                     </div>
                     <div class="settings-actions">
-                        <a href="{% url 'account_security' %}" class="btn-secondary btn-sm">Account Security</a>
+                        <a href="{% url 'account_security' %}" class="settings-action">Account Security</a>
                     </div>
                 </div>
                 {% if feature_access.charges.full or feature_access.costs.full or feature_access.horses.full %}
                 <div class="settings-row">
-                    <div class="min-w-0">
-                        <p class="settings-row-title">Recently Deleted</p>
-                        <p class="settings-row-meta">Restore charges, yard costs and documents deleted by mistake.</p>
+                    <div class="settings-row-main">
+                        <span class="settings-row-title">Recently Deleted</span>
+                        <span class="settings-row-meta">Restore charges, yard costs and documents deleted by mistake.</span>
                     </div>
                     <div class="settings-actions">
-                        <a href="{% url 'recently_deleted' %}" class="btn-secondary btn-sm">View</a>
+                        <a href="{% url 'recently_deleted' %}" class="settings-action" aria-label="Open recently deleted">Open</a>
                     </div>
                 </div>
                 {% endif %}
             </div>
         </div>
+
+        <!-- ── Dashboard ── -->
+        <div class="card overflow-hidden">
+            <div class="section-header">
+                <h3 class="section-title">Dashboard</h3>
+            </div>
+            {% include "partials/settings/dashboard_prefs.html" %}
+        </div>
     </section>
 
     {% if feature_access.settings.full %}
     <!-- ══ Data ══ -->
-    <section id="data" data-settings-section class="space-y-4 scroll-mt-24" x-show="!current || current === 'data'">
-        <div class="settings-band">
-            <span class="settings-band-title">Data</span>
-            <span class="settings-band-rule"></span>
-        </div>
+    <section id="data" data-settings-section class="settings-group" x-show="!current || current === 'data'">
+        <h2 class="sr-only">Data</h2>
 
         <div class="card overflow-hidden">
             <div class="section-header">
@@ -696,9 +661,9 @@
             </div>
             <div class="settings-rows">
                 <div class="settings-row">
-                    <div class="min-w-0">
-                        <p class="settings-row-title">Reset Feed Stock</p>
-                        <p class="settings-row-meta">Clear all feed stock records (deliveries &amp; adjustments) to start tracking from scratch</p>
+                    <div class="settings-row-main">
+                        <span class="settings-row-title">Reset Feed Stock</span>
+                        <span class="settings-row-meta">Clear all feed stock records (deliveries &amp; adjustments) to start tracking from scratch</span>
                     </div>
                     <div class="settings-actions">
                         <a href="{% url 'feed_stock_clear' %}" class="settings-action-danger">Reset</a>

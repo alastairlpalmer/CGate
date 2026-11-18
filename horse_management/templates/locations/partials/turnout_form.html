@@ -12,7 +12,7 @@ if it were one checkbox.
     {% csrf_token %}
     {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
 
-    <div class="p-4 sm:p-5 space-y-4 sm:space-y-5">
+    <div class="px-4 py-3 space-y-3">
         {% if form.non_field_errors %}
         <div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3" role="alert">
             <p class="text-sm font-medium text-error-red">This wasn't saved:</p>

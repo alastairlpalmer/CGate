@@ -9,7 +9,7 @@ who is where and nothing to press.
 Every action posts or opens into the sheet and answers 204 + popup:saved,
 so the sheet closes and the barn redraws under it.
 {% endcomment %}
-<div class="p-4 sm:p-5 space-y-5" data-testid="stable-panel">
+<div class="px-4 py-3 space-y-3" data-testid="stable-panel">
 
     {% if not stable.in_use %}
     <p class="alert-warning">Out of use{% if stable.note %} &middot; {{ stable.note }}{% endif %}</p>

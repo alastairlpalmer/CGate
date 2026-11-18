@@ -112,6 +112,15 @@ class ExtraCharge(SoftDeleteModel):
         decimal_places=2,
         validators=[MinValueValidator(Decimal('0.00'))],
     )
+    # What the yard paid for this, before its own margin. Set by the
+    # margin tool (billing.margin) the first time a margin is put on the
+    # charge; empty for a charge that never had one. The margin is always
+    # worked out from this, so setting it twice does not add it twice.
+    cost_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal('0.00'))],
+        help_text="What the yard paid, before its margin. Set by Add margin.",
+    )
     invoiced = models.BooleanField(default=False)
     invoice = models.ForeignKey(
         'invoicing.Invoice',
@@ -188,6 +197,13 @@ class ExtraCharge(SoftDeleteModel):
             record.extra_charge = None
             record.save(update_fields=['cost', 'extra_charge'])
         self.delete()
+
+    @property
+    def margin_amount(self):
+        """What the yard adds on top of its cost, or None when no cost is recorded."""
+        if self.cost_amount is None:
+            return None
+        return self.amount - self.cost_amount
 
     def mark_as_invoiced(self, invoice):
         """Mark this charge as invoiced."""

@@ -4,7 +4,7 @@
 {% block title %}Invoice {{ invoice.invoice_number }} - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-4">
 
     <!-- Back link, as on the horse page: the way out to the list -->
     <a href="{% url 'invoice_list' %}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest transition-colors group tap-pad">
@@ -151,15 +151,16 @@
     </div>
 
     <!-- Info Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
 
         <!-- Details Card -->
         <div class="card">
             <div class="section-header">
                 <h3 class="section-title">Details</h3>
             </div>
-            <div class="p-5 lg:p-6">
-                <dl class="space-y-4">
+            <div class="px-4 py-3">
+                {# Two columns of facts: the card is two rows, not a column of five. #}
+                <dl class="grid grid-cols-2 gap-x-4 gap-y-2.5">
                     <div>
                         <dt class="dt-label">Status</dt>
                         <dd class="mt-1">
@@ -218,7 +219,7 @@
             <div class="section-header">
                 <h3 class="section-title">Bill To</h3>
             </div>
-            <div class="p-5 lg:p-6">
+            <div class="px-4 py-3">
                 <p class="text-sm font-medium text-charcoal">{{ invoice.owner.name }}</p>
                 {% if invoice.owner.address %}
                 <p class="mt-1 text-sm text-sage whitespace-pre-line">{{ invoice.owner.address }}</p>
@@ -235,10 +236,10 @@
             <div class="section-header">
                 <h3 class="section-title">Balance</h3>
             </div>
-            <div class="p-5 lg:p-6">
+            <div class="px-4 py-3">
                 <p class="dt-label">{% if amount_paid > 0 %}Balance due{% else %}Amount due{% endif %}</p>
-                <p class="mt-1 font-heading text-3xl font-semibold tracking-[-0.02em] tabular-nums {% if balance_due > 0 and invoice.is_overdue and invoice.status != 'draft' %}text-error-red{% else %}text-charcoal{% endif %}">{{ balance_due|gbp }}</p>
-                <dl class="mt-4 space-y-2 text-sm">
+                <p class="mt-0.5 font-heading text-2xl font-semibold tracking-[-0.01em] tabular-nums {% if balance_due > 0 and invoice.is_overdue and invoice.status != 'draft' %}text-error-red{% else %}text-charcoal{% endif %}">{{ balance_due|gbp }}</p>
+                <dl class="mt-2 space-y-1 text-sm">
                     <div class="flex justify-between">
                         <dt class="text-sage">Invoice total</dt>
                         <dd class="text-charcoal tabular-nums">{{ invoice.total|gbp }}</dd>
@@ -259,62 +260,77 @@
         </div>
         <div class="overflow-x-auto">
             <table class="data-table">
+                {% comment %}The horse is a column, named on the first line of its
+                group. It was a heading row of its own, which made a livery
+                invoice twice as long as its lines. On a phone the column is
+                hidden and the name sits over the first line.{% endcomment %}
                 <thead>
                     <tr>
+                        <th class="hidden sm:table-cell w-1/4">Horse</th>
                         <th>Item</th>
                         <th class="text-right">Amount</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for group in horse_groups %}
-                    <!-- Horse header -->
-                    <tr class="bg-parchment/80">
-                        <td colspan="2" class="font-bold text-charcoal">
-                            {{ group.horse_name }}{% if group.share_label %} {{ group.share_label }}{% endif %}
-                        </td>
-                    </tr>
                     {% for item in group.items %}
-                    <tr>
+                    <tr{% if forloop.first and not forloop.parentloop.first %} class="invoice-group-start"{% endif %}>
+                        <td class="hidden sm:table-cell align-top font-semibold text-charcoal">
+                            {% if forloop.first %}{{ group.horse_name }}{% if group.share_label %} <span class="font-normal text-sage">{{ group.share_label }}</span>{% endif %}{% endif %}
+                        </td>
                         <td class="text-charcoal">
+                            {% if forloop.first %}<span class="sm:hidden block font-semibold">{{ group.horse_name }}{% if group.share_label %} <span class="font-normal text-sage">{{ group.share_label }}</span>{% endif %}</span>{% endif %}
                             {% if item.line_type == 'livery' %}
-                                <span class="ml-4">{{ item.description }}</span>
+                                {{ item.description }}
                             {% else %}
-                                <span class="ml-8 text-charcoal-light">
+                                <span class="text-charcoal-light">
                                     {% if item.charge %}{{ item.charge.date|date:"j M Y" }}: {% endif %}{{ item.description }}
                                 </span>
                             {% endif %}
                         </td>
-                        <td class="text-right text-charcoal">{{ item.line_total|gbp }}</td>
+                        <td class="text-right text-charcoal whitespace-nowrap align-top">{{ item.line_total|gbp }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr{% if not forloop.first %} class="invoice-group-start"{% endif %}>
+                        <td class="hidden sm:table-cell font-semibold text-charcoal">{{ group.horse_name }}</td>
+                        <td class="text-sage"><span class="sm:hidden block font-semibold text-charcoal">{{ group.horse_name }}</span>No lines</td>
+                        <td></td>
                     </tr>
                     {% endfor %}
                     {% endfor %}
                 </tbody>
                 <tfoot>
                     <tr>
+                        <td class="hidden sm:table-cell"></td>
                         <td class="text-right text-sm font-medium text-charcoal-light">Net Total:</td>
                         <td class="text-right text-sm font-medium text-charcoal">{{ invoice.subtotal|gbp }}</td>
                     </tr>
                     <tr>
+                        <td class="hidden sm:table-cell"></td>
                         <td class="text-right text-sm font-medium text-charcoal-light">VAT{% if invoice.vat_rate > 0 %} ({{ invoice.vat_rate|floatformat:"-2" }}%){% endif %}:</td>
                         <td class="text-right text-sm font-medium text-charcoal">{{ invoice.vat_amount|gbp }}</td>
                     </tr>
                     {% if amount_paid > 0 %}
                     <tr class="border-t-2 border-sage/30">
+                        <td class="hidden sm:table-cell"></td>
                         <td class="text-right text-sm font-bold text-charcoal">Invoice Total:</td>
                         <td class="text-right text-sm font-bold text-charcoal">{{ invoice.total|gbp }}</td>
                     </tr>
                     <tr>
+                        <td class="hidden sm:table-cell"></td>
                         <td class="text-right text-sm font-medium text-charcoal-light">Paid to Date:</td>
                         <td class="text-right text-sm font-medium text-forest">&minus;{{ amount_paid|gbp }}</td>
                     </tr>
                     <tr>
-                        <td class="text-right text-lg font-bold text-charcoal">Balance Due:</td>
-                        <td class="text-right text-lg font-bold text-charcoal">{{ balance_due|gbp }}</td>
+                        <td class="hidden sm:table-cell"></td>
+                        <td class="text-right text-base font-bold text-charcoal">Balance Due:</td>
+                        <td class="text-right text-base font-bold text-charcoal">{{ balance_due|gbp }}</td>
                     </tr>
                     {% else %}
                     <tr class="border-t-2 border-sage/30">
-                        <td class="text-right text-lg font-bold text-charcoal">Amount Due:</td>
-                        <td class="text-right text-lg font-bold text-charcoal">{{ invoice.total|gbp }}</td>
+                        <td class="hidden sm:table-cell"></td>
+                        <td class="text-right text-base font-bold text-charcoal">Amount Due:</td>
+                        <td class="text-right text-base font-bold text-charcoal">{{ invoice.total|gbp }}</td>
                     </tr>
                     {% endif %}
                 </tfoot>
@@ -334,7 +350,7 @@
         {% if payments %}
         <ul class="divide-y divide-light-sage">
             {% for payment in payments %}
-            <li class="flex items-center justify-between gap-3 px-5 py-3">
+            <li class="flex items-center justify-between gap-3 px-4 py-3">
                 <div class="min-w-0">
                     <p class="text-sm font-medium text-charcoal">
                         {{ payment.amount|gbp }}
@@ -365,12 +381,12 @@
             {% endfor %}
         </ul>
         {% else %}
-        <div class="p-5 text-sm text-sage">No payments recorded yet.</div>
+        <div class="p-4 text-sm text-sage">No payments recorded yet.</div>
         {% endif %}
         {% if voided_payments %}
         <ul class="divide-y divide-light-sage border-t border-light-sage bg-parchment/50" aria-label="Voided payments">
             {% for payment in voided_payments %}
-            <li class="flex items-center justify-between gap-3 px-5 py-3">
+            <li class="flex items-center justify-between gap-3 px-4 py-3">
                 <div class="min-w-0">
                     <p class="text-sm text-sage"><span class="line-through">{{ payment.amount|gbp }} &middot; {{ payment.get_method_display }} &middot; {{ payment.date|date:"j M Y" }}</span> <span class="badge-neutral">Voided</span></p>
                     <p class="text-xs text-sage mt-0.5">{{ payment.void_reason }} &middot; {{ payment.voided_by.email|default:payment.voided_by.username|default:"System" }}, {{ payment.voided_at|date:"j M Y, H:i" }}</p>
@@ -394,7 +410,7 @@
         <div class="section-header">
             <h3 class="section-title">Notes</h3>
         </div>
-        <div class="p-5 lg:p-6">
+        <div class="p-4">
             <p class="text-sm text-charcoal-light">{{ invoice.notes }}</p>
         </div>
     </div>

@@ -118,7 +118,7 @@
        links); `panel` is a Crown-cream fill with no border (hero, summaries). */
     .card, .card-raised, .kpi-card, .empty-state { @apply bg-white rounded-card border border-light-sage; }
     .card-raised, .kpi-card { @apply shadow-card transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-float hover:border-sage/40; }
-    .panel { @apply bg-sand-50 rounded-card p-5 lg:p-6; }
+    .panel { @apply bg-sand-50 rounded-card p-4; }
 
     /* Buttons */
     .btn,
@@ -126,21 +126,23 @@
     .btn-secondary,
     .btn-danger,
     .btn-success,
-    .btn-ghost { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-btn transition-all duration-150 focus:outline-hidden focus:ring-2 focus:ring-offset-2 cursor-pointer active:scale-[0.97] touch-manipulation min-h-[44px] sm:min-h-0; }
+    .btn-ghost { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm sm:px-3 sm:py-1.5 sm:text-[13px] sm:leading-5 font-medium rounded-btn transition-all duration-150 focus:outline-hidden focus:ring-2 focus:ring-offset-2 cursor-pointer active:scale-[0.97] touch-manipulation min-h-[44px] sm:min-h-0; }
     .btn-primary { @apply bg-saddle text-white hover:bg-saddle-dark focus:ring-saddle shadow-xs; }
     .btn-secondary { @apply bg-white text-charcoal border border-sage/30 hover:bg-light-sage focus:ring-sage; }
     .btn-danger { @apply bg-error-red text-white hover:bg-error-red/90 focus:ring-error-red shadow-xs; }
     .btn-success { @apply bg-forest text-white hover:bg-forest-light focus:ring-sage shadow-xs; }
-    .btn-record { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-btn bg-meadow text-white hover:bg-meadow-dark focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-meadow shadow-xs cursor-pointer active:scale-[0.97] touch-manipulation min-h-[44px] sm:min-h-0 transition-all duration-150; }
+    .btn-record { @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm sm:px-3 sm:py-1.5 sm:text-[13px] sm:leading-5 font-medium rounded-btn bg-meadow text-white hover:bg-meadow-dark focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-meadow shadow-xs cursor-pointer active:scale-[0.97] touch-manipulation min-h-[44px] sm:min-h-0 transition-all duration-150; }
     .btn-ghost { @apply text-sage hover:text-charcoal hover:bg-light-sage focus:ring-sage; }
-    .btn-xs { @apply px-2 py-1 text-xs rounded-sm; }
+    /* A button inside a card header or a row. */
+    .btn-sm { @apply px-2.5 py-1 text-xs sm:px-2.5 sm:py-1 sm:text-xs sm:leading-4 gap-1 min-h-[36px] sm:min-h-0; }
+    .btn-xs { @apply px-2 py-1 text-xs sm:px-2 sm:py-0.5 sm:text-xs sm:leading-5 rounded-sm; }
     /* Icon-only action button — 44px touch target on mobile, compact on desktop */
     .btn-icon, .btn-icon-danger { @apply inline-flex items-center justify-center w-11 h-11 sm:w-8 sm:h-8 shrink-0 rounded-btn text-sage hover:text-charcoal hover:bg-light-sage active:bg-light-sage/70 transition-colors duration-100 touch-manipulation; }
     .btn-icon-danger { @apply text-error-red/70 hover:text-error-red hover:bg-error-red-50 active:bg-error-red-50; }
 
     /* App bar icon buttons — square, the same height as the search input, so
        search + filter + add read as one control strip. */
-    .btn-icon-base, .btn-icon-primary, .btn-icon-outline { @apply relative inline-flex items-center justify-center w-11 h-11 sm:w-9 sm:h-9 shrink-0 rounded-btn transition-all duration-150 focus:outline-hidden focus:ring-2 focus:ring-sage focus:ring-offset-2 active:scale-95 cursor-pointer touch-manipulation; }
+    .btn-icon-base, .btn-icon-primary, .btn-icon-outline { @apply relative inline-flex items-center justify-center w-11 h-11 sm:w-8 sm:h-8 shrink-0 rounded-btn transition-all duration-150 focus:outline-hidden focus:ring-2 focus:ring-sage focus:ring-offset-2 active:scale-95 cursor-pointer touch-manipulation; }
     .btn-icon-primary { @apply bg-saddle text-white shadow-xs hover:bg-saddle-dark focus:ring-saddle/40; }
     .btn-icon-outline { @apply bg-white text-sage border border-sage/30 hover:text-charcoal hover:bg-light-sage; }
     .btn-icon-outline.is-on { @apply bg-light-sage text-forest border-forest/40; }
@@ -166,10 +168,11 @@
        reads on both stripe colours. */
     .data-table { @apply min-w-full divide-y divide-light-sage; }
     .data-table thead { @apply bg-light-sage/60; }
-    .data-table th { @apply px-5 py-3 text-left text-xs font-semibold text-forest uppercase tracking-wider; }
-    .data-table td { @apply px-5 py-3.5 text-sm; }
+    .data-table th { @apply px-4 py-2 text-left text-[11px] font-semibold text-forest uppercase tracking-wider; }
+    .data-table td { @apply px-4 py-2 text-sm; }
     .data-table tbody tr { @apply border-b border-light-sage transition-colors duration-150 hover:bg-sage-50/80; }
-    .data-table tbody tr:nth-child(even) { @apply bg-parchment/60 hover:bg-sage-50/80; }
+    /* A table with many columns: less side padding, so it fits its card. */
+    .data-table.is-dense th, .data-table.is-dense td { @apply px-3; }
 
     /* Forms */
     .form-input { @apply mt-1 block w-full rounded-btn border-sage/30 shadow-xs focus:outline-hidden focus:border-sage focus:ring-sage focus:ring-2 focus:ring-sage/20 text-sm px-3 py-2 border transition-all duration-150 min-h-[44px] sm:min-h-0; }
@@ -208,9 +211,12 @@
     .nav-group-label { @apply px-3 pt-5 pb-1 text-[11px] font-semibold text-white/70 uppercase tracking-widest; }
 
     /* Page Headers — plain title, no decorative bar underneath. */
-    .page-header { @apply flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between; }
-    .page-title { @apply text-2xl lg:text-3xl font-semibold text-charcoal tracking-[-0.02em] font-heading; }
-    .page-subtitle { @apply mt-1 text-sm text-sage; }
+    /* The page title is 20px on every screen. It was 24px, and 30px on a
+       wide screen: a size for a landing page, not for a page of records.
+       The sidebar and the phone's top bar already say where the reader is. */
+    .page-header { @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between; }
+    .page-title { @apply text-xl font-semibold text-charcoal tracking-[-0.01em] font-heading; }
+    .page-subtitle { @apply mt-0.5 text-sm text-sage; }
 
     /* Detail / filter labels — sentence case, 13px. Uppercase tracking is
        reserved for table column headers so it keeps its signal. */
@@ -221,21 +227,23 @@
        promoted into the brand teal. */
     /* rounded-t matches the parent card so the tint never pokes past its corners
        on cards without overflow-hidden */
-    .section-header { @apply flex items-center justify-between px-5 lg:px-6 py-4 bg-sand-50 border-b border-sand-200 rounded-t-card; }
-    .section-title { @apply text-[15px] font-semibold text-forest font-heading; }
+    /* A thin header: 44px, the height of one row. It was 56px with a
+       15px title, which made each card start with a band of empty space. */
+    .section-header { @apply flex items-center justify-between gap-3 px-4 py-2 min-h-[44px] bg-sand-50 border-b border-sand-200 rounded-t-card; }
+    .section-title { @apply text-sm font-semibold text-forest font-heading; }
 
     /* Dashboard KPI cards — whole card is the link; numbers in mono with
        tabular figures so columns of digits align. Each card carries a 3px
        top accent (brand teal by default; templates override with
        border-t-saddle / border-t-info-blue / border-t-sage to colour-code
        the metric) so the KPI row reads with more colour confidence. */
-    .kpi-card { @apply block p-5 lg:p-6 no-underline; }
+    .kpi-card { @apply block px-4 py-3 no-underline; }
     .kpi-label { @apply text-[13px] font-medium text-charcoal-light; }
     /* Figures (money, counts) use the text fonts with tabular digits; the
        mono face is for codes and the small date labels (UX plan C3). */
-    .kpi-value { @apply font-heading tabular-nums text-4xl font-semibold tracking-[-0.02em] text-forest mt-2 leading-none; }
+    .kpi-value { @apply font-heading tabular-nums text-2xl font-semibold tracking-[-0.01em] text-forest mt-1 leading-tight; }
     /* min-h keeps all four cards equal height when only some have a meta line */
-    .kpi-meta { @apply text-xs text-sage mt-2 min-h-[1rem]; }
+    .kpi-meta { @apply text-xs text-sage mt-1 min-h-[1rem]; }
 
     /* App bar search — the box that reaches horses, owners and locations
        from every page. It fills its row, so it is taller and rounder than
@@ -270,6 +278,11 @@
     .qa-tile-label { @apply text-xs font-medium text-charcoal-light; }
     .qa-strip { @apply grid grid-cols-4 gap-2; }
     .qa-strip .qa-tile { @apply p-2; }
+    /* In the side card of a wide screen the shortcuts are a short list: the
+       icon, then the name, on one 40px row. Eight tall tiles took 370px. */
+    #quick-actions .qa-tile { @apply flex-row justify-start gap-2 px-2.5 py-1.5 min-h-[40px] text-left; }
+    #quick-actions .qa-tile-icon { @apply w-7 h-7 shrink-0; }
+    #quick-actions .qa-tile-icon svg { @apply w-3.5 h-3.5; }
 
     /* Health warning after a horse's name (UX plan H1): red when overdue,
        saddle when due within 14 days. The words are in the title and a
@@ -431,8 +444,7 @@
 
     /* Mobile list cards (cards < md, table at md+) — zebra to mirror the
        desktop table striping, so long lists stay scannable on phones */
-    .list-card { @apply relative flex items-start gap-3 px-4 py-3 active:bg-sand-50/60 transition-colors duration-100; }
-    .list-card:nth-child(even) { @apply bg-parchment/60; }
+    .list-card { @apply relative flex items-start gap-3 px-4 py-2.5 active:bg-sand-50/60 transition-colors duration-100; }
     .list-card-title { @apply font-medium text-charcoal text-sm leading-snug; }
     .list-card-meta { @apply text-xs text-sage mt-0.5; }
     /* Stretched link: makes the whole card tappable; sibling actions stack above via relative z-10 */
@@ -440,54 +452,118 @@
     .list-card-actions { @apply relative z-10 flex items-center gap-0.5 shrink-0 -my-1.5 -mr-1.5; }
 
     /* ── Settings page ──────────────────────────────────────────────────
-       Settings is one long column of many unrelated sections. Four devices
-       keep it readable: band labels split the page into named groups, a
-       chip row jumps to each group, every card lists its items as divided
-       zebra rows instead of loose text, and a tinted sub-head marks a list
-       inside a list (the sites that hold locations). */
+       Settings is many unrelated lists. It is kept dense, like a table of
+       contents and its tables: a menu picks one group, each card is a
+       thin header over one-line rows, and row actions are plain words.
+       No avatars, stripes or tinted strips: each added shape made the page
+       longer and said nothing. `.settings-page` is on the page and on the
+       pages opened from it, so their headings match. */
 
-    /* Band label above each group of cards */
-    .settings-band { @apply flex items-center gap-3 pt-2; }
-    .settings-band-title { @apply text-[11px] font-semibold uppercase tracking-widest text-sage shrink-0; }
-    .settings-band-rule { @apply h-px flex-1 bg-light-sage; }
+    .settings-page .page-subtitle { @apply text-xs; }
 
-    /* Jump-to chips under the page header */
-    .settings-jump { @apply flex flex-wrap gap-2; }
-    /* Settings in groups (static/js/settings_nav.js): a menu on the left
-       from lg, a row of chips above the group on a phone. */
-    .settings-layout { @apply flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8; }
-    .settings-nav { @apply flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 lg:sticky lg:top-24 lg:mx-0 lg:px-0 lg:w-52 lg:shrink-0 lg:flex-col lg:gap-0.5 lg:overflow-visible; scrollbar-width: none; }
+    /* The way back to Settings from a page opened from it. */
+    .settings-back { @apply inline-flex items-center gap-1 text-sm text-sage no-underline hover:text-forest transition-colors duration-100; }
+
+    /* Groups (static/js/settings_nav.js): a menu on the left from lg, a
+       row of chips above the group on a phone. Under the open group the
+       menu lists its cards, so a card far down the page is one click away. */
+    .settings-layout { @apply flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-6; }
+    .settings-nav { @apply flex gap-1.5 overflow-x-auto -mx-4 px-4 pb-1 lg:sticky lg:top-24 lg:mx-0 lg:px-0 lg:w-44 lg:shrink-0 lg:flex-col lg:gap-px lg:overflow-visible; scrollbar-width: none; }
     .settings-nav::-webkit-scrollbar { display: none; }
-    .settings-nav-link { @apply inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-sage/30 bg-white px-3 py-1.5 text-sm font-medium text-charcoal-light no-underline min-h-[40px] hover:bg-light-sage lg:rounded-btn lg:border-transparent lg:bg-transparent lg:px-3 lg:py-2; }
+    .settings-nav-link { @apply inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-sage/30 bg-white px-3 text-[13px] font-medium text-charcoal-light no-underline min-h-[36px] hover:bg-light-sage lg:rounded-btn lg:border-transparent lg:bg-transparent lg:px-2.5 lg:min-h-[30px]; }
     .settings-nav-link.is-active { @apply border-forest bg-forest/[0.06] text-forest lg:border-transparent lg:bg-forest/[0.08]; }
-    .settings-panels { @apply min-w-0 flex-1 space-y-8; }
-    .settings-save-bar { @apply flex items-center gap-3 px-5 py-4 border-t border-light-sage bg-white; }
+    .settings-nav-sub { @apply hidden lg:flex lg:flex-col lg:mb-1.5 lg:ml-2.5 lg:border-l lg:border-light-sage; }
+    .settings-nav-sublink { @apply block px-2.5 py-1 text-xs text-sage no-underline hover:text-forest; }
+    /* gap, not space-y: a hidden group before the open one must add no
+       space, so the first card lines up with the menu. */
+    .settings-panels { @apply min-w-0 flex-1 flex flex-col gap-6; }
+    /* The margin leaves the page heading (and the chips on a phone) in
+       view when an address opens a group. */
+    .settings-group { @apply flex flex-col gap-3 scroll-mt-48 lg:scroll-mt-40; }
+    .settings-group > .card { @apply scroll-mt-24; }
+
+    .settings-save-bar { @apply flex items-center gap-3 px-4 py-2.5 border-t border-light-sage bg-white rounded-b-card; }
     .settings-save-bar.is-dirty { @apply sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] lg:bottom-0 z-20 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]; }
-    .settings-jump-link { @apply inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium text-forest bg-white border border-sage/30 no-underline hover:bg-light-sage hover:border-sage/50 transition-colors duration-100; }
+    .settings-fields { @apply px-4 py-3 grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2; }
+    .settings-label { @apply text-xs font-medium text-charcoal-light; }
 
-    /* Rows inside a settings card. The list sits flush to the card edges and
-       stripes on even rows, so a card of 12 locations still scans. */
+    /* Rows inside a card. From sm the name and its detail share one line,
+       so a list of 20 locations is 20 lines, not 40. */
     .settings-rows { @apply divide-y divide-light-sage; }
-    .settings-row { @apply flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-5 py-3 transition-colors duration-100; }
-    .settings-row:nth-child(even) { @apply bg-parchment/60; }
+    .settings-row { @apply flex flex-wrap sm:flex-nowrap items-center justify-between gap-x-3 gap-y-0.5 px-4 py-1.5 min-h-[40px]; }
+    .settings-row-main { @apply min-w-0 flex flex-col sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-3; flex: 1 1 8rem; }
+    .settings-row-main > * { @apply min-w-0; }
     .settings-row-title { @apply text-sm font-medium text-charcoal; }
-    .settings-row-meta { @apply text-xs text-sage mt-0.5; }
+    .settings-row-meta { @apply text-xs text-sage; }
     /* Warm flag on a row that needs the reader to do something first */
-    .settings-row-flag { @apply text-xs text-saddle mt-0.5; }
+    .settings-row-flag { @apply text-xs text-saddle sm:basis-full; }
 
-    /* Sub-head band inside a card — a site heading over its locations */
-    .settings-subhead { @apply flex items-center justify-between gap-3 px-5 py-2.5 bg-light-sage/60 border-y border-light-sage; }
-    .settings-subhead-title { @apply flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-forest; }
+    /* A heading inside a card: a group of rows (a service category). */
+    .settings-subhead { @apply flex items-center justify-between gap-3 px-4 py-1.5 bg-parchment/60 border-y border-light-sage first:border-t-0; }
+    .settings-subhead-title { @apply flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-sage; }
 
-    /* Explanatory text that belongs to a whole card, on its own tinted strip */
-    .settings-note { @apply px-5 py-3 text-xs text-sage bg-parchment/50 border-b border-light-sage; }
-    .settings-empty { @apply px-5 py-8 text-center text-sm text-sage; }
+    /* A group of rows that opens and closes: a site and its locations.
+       static/js/settings_nav.js keeps the open ones open in this tab. */
+    .settings-fold { @apply border-b border-light-sage last:border-b-0; }
+    .settings-fold > summary { @apply flex items-center gap-2 px-4 py-1.5 min-h-[40px] cursor-pointer list-none select-none hover:bg-parchment/60; }
+    .settings-fold > summary::-webkit-details-marker { display: none; }
+    .settings-fold > summary:focus-visible { @apply outline-2 -outline-offset-2 outline-forest; }
+    .settings-fold[open] > summary { @apply bg-parchment/60 border-b border-light-sage; }
+    .settings-fold-chevron { @apply w-3.5 h-3.5 shrink-0 text-sage transition-transform duration-100; }
+    .settings-fold[open] > summary .settings-fold-chevron { @apply rotate-90; }
+    .settings-fold-title { @apply text-sm font-semibold text-charcoal truncate; }
+    .settings-fold-count { @apply text-xs text-sage shrink-0; }
+    .settings-fold .settings-row { @apply pl-9; }
 
-    /* Row actions — small outlined buttons, not bare text links, so the
-       target is obvious and large enough to tap */
-    .settings-action, .settings-action-danger { @apply inline-flex items-center justify-center gap-1 min-h-[38px] sm:min-h-[32px] px-2.5 rounded-btn border border-sage/30 bg-white text-xs font-medium text-forest no-underline hover:bg-light-sage hover:border-sage/50 active:scale-[0.97] focus:outline-hidden focus:ring-2 focus:ring-sage focus:ring-offset-1 transition-all duration-100 cursor-pointer touch-manipulation; }
-    .settings-action-danger { @apply text-error-red border-error-red/25 hover:bg-error-red-50 hover:border-error-red/40 focus:ring-error-red; }
-    .settings-actions { @apply flex flex-wrap items-center justify-end gap-2 shrink-0; }
+    /* A heading that folds the cards under it: a site on the Locations
+       page. The same memory as the Settings folds (settings_nav.js). */
+    .group-fold > summary { @apply flex items-center gap-2 py-1.5 min-h-[40px] cursor-pointer list-none select-none; }
+    .group-fold > summary::-webkit-details-marker { display: none; }
+    .group-fold > summary:focus-visible { @apply outline-2 outline-offset-2 outline-forest rounded-btn; }
+    .group-fold > summary .settings-fold-chevron { @apply transition-transform duration-100; }
+    .group-fold[open] > summary .settings-fold-chevron { @apply rotate-90; }
+    .group-fold-title { @apply text-sm font-semibold text-charcoal; }
+    .group-fold-meta { @apply text-xs text-sage whitespace-nowrap; }
+    .group-fold-rule { @apply flex-1 border-b border-light-sage; }
+    .group-fold[open] > summary { @apply mb-2; }
+
+    /* A horse's name in a list row, with its age, colour and sex. On a phone
+       card the details are a second line. In a table row (from md) they
+       follow the name on the same line, so the row is 40px and not 53px. */
+    .horse-name { @apply min-w-0 md:flex md:items-baseline md:gap-2; }
+    .horse-name-detail { @apply text-xs text-sage truncate md:min-w-0; }
+
+    /* The filters above a list. From md: one row of fields. On a phone:
+       folded behind "Filters", so the list starts at the top of the screen
+       (the bar was 235px tall there). */
+    .filter-toggle { @apply md:hidden flex w-full items-center gap-2 min-h-[36px] text-sm font-medium text-charcoal-light cursor-pointer; }
+    .filter-bar { @apply hidden md:grid grid-cols-2 md:grid-cols-4 gap-3; }
+    .filter-bar.is-open { @apply grid mt-1 mb-1; }
+    /* An icon button in a table row: 24px with a mouse, so the row stays 40px. */
+    .data-table tbody td .btn-icon, .data-table tbody td .btn-icon-danger { @apply sm:w-6 sm:h-6; }
+
+    /* The first line of a horse on an invoice: a firmer rule above it, so
+       the horses read as groups with no heading row between them. */
+    .data-table tbody tr.invoice-group-start > td { @apply border-t border-sage/30; }
+
+    /* The buttons beside a page title, on a phone. Three full-size buttons
+       do not fit one line there, so each label broke to two lines. They are
+       40px high with 13px text, kept on one line, and the row wraps. */
+    @media (max-width: 639px) {
+        .page-header > .flex { @apply flex-wrap gap-2; }
+        .page-header :is(.btn-primary, .btn-secondary, .btn-record) { @apply min-h-[40px] px-3 py-0 text-[13px] whitespace-nowrap; }
+    }
+
+    /* One line of help for a whole card. */
+    .settings-note { @apply px-4 py-1.5 text-xs text-sage border-b border-light-sage; }
+    .settings-empty { @apply px-4 py-4 text-sm text-sage; }
+
+    /* Row actions: plain words with a hover ground. Tall enough to tap on
+       a phone, the height of the text line on a desktop. */
+    .settings-action, .settings-action-danger { @apply inline-flex items-center justify-center min-h-[36px] sm:min-h-[26px] px-2 rounded-btn text-xs font-medium text-forest no-underline bg-transparent hover:bg-light-sage focus:outline-hidden focus-visible:ring-2 focus-visible:ring-sage transition-colors duration-100 cursor-pointer touch-manipulation; }
+    .settings-action-danger { @apply text-error-red hover:bg-error-red-50 focus-visible:ring-error-red; }
+    .settings-actions { @apply flex items-center justify-end gap-0.5 shrink-0 -mr-2; }
+    .settings-row-state { @apply text-xs text-sage whitespace-nowrap; }
 
     /* Checkbox rendered as a switch. The real input stays in the DOM so the
        form posts unchanged; the track that follows it draws the control.
@@ -598,6 +674,45 @@ input[type="checkbox"]:not(.switch-input) { @apply h-5 w-5 rounded-sm border-sag
 input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-3 file:rounded-btn file:border file:border-solid file:border-sage/30 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-charcoal hover:file:bg-light-sage cursor-pointer; }
 @media (max-width: 639px) {
     input[type="file"] { font-size: 16px; } /* match text inputs: no iOS zoom */
+}
+
+/* ── Compact forms ──────────────────────────────────────────────────────
+   Every form with a footer (.form-footer on a page, .popup-footer in a
+   pop-up sheet) is set tight: 12px labels, fields 32px high on a wide
+   screen, 12px between fields, a thin footer with smaller buttons. The
+   same goes for the Settings pages (`.settings-page`), where some cards
+   hold fields with no footer.
+
+   The fields of a filter (.filter-bar, and each form that sends a GET)
+   are the same 32px, so they line up with the 32px buttons beside them.
+   A one-line form in a list row keeps its own size.
+
+   The templates give the spacing (px-4 py-3, space-y-3, gap-y-3). These
+   rules give what a template cannot give once for all forms: the field
+   and the label. They are not in a layer, on purpose: the field rule
+   above is not in a layer either, and labels carry text-sm as a utility,
+   which a layered rule cannot change.
+
+   A phone keeps its 44px fields and 16px text: a finger needs the height,
+   and iOS zooms the page on a field with smaller text. */
+:is(.settings-page, form:has(.form-footer, .popup-footer)) label[for],
+/* The caption of a group that is not one field (a set of chips, a list of
+   tick boxes) is a span or a legend with the label's classes. */
+:is(.settings-page, form:has(.form-footer, .popup-footer)) :is(span, legend).block.text-sm.font-medium.text-charcoal { @apply text-charcoal-light; font-size: 0.75rem; line-height: 1rem; }
+/* The label of a tick box is its text, not a caption over a field. */
+:is(.settings-page, form:has(.form-footer, .popup-footer)) input[type="checkbox"] + label[for],
+:is(.settings-page, form:has(.form-footer, .popup-footer)) input[type="radio"] + label[for] { @apply text-charcoal; font-size: 0.875rem; line-height: 1.25rem; }
+/* A legend floats (see "Form section headings"), so the gap under it must
+   be its own margin: the next block clears it and its top margin is lost. */
+:is(.settings-page, form:has(.form-footer, .popup-footer)) fieldset > legend { margin-block-end: 0.5rem; }
+:is(.settings-page, form:has(.form-footer, .popup-footer)) fieldset > legend.section-title { font-size: 0.875rem; }
+@media (min-width: 640px) {
+    :is(.settings-page, form:has(.form-footer, .popup-footer), .filter-bar, form[method="get" i]) :is(
+        input[type="text"], input[type="email"], input[type="password"], input[type="number"],
+        input[type="url"], input[type="tel"], input[type="date"], input[type="datetime-local"],
+        textarea, select) { padding: 0.3125rem 0.625rem; }
+    :is(.settings-page, form:has(.form-footer, .popup-footer), .filter-bar, form[method="get" i]) select:not([multiple]):not([size]) { padding-right: 2rem; background-position: right 0.5rem center; }
+    :is(.settings-page, form:has(.form-footer, .popup-footer)) .money-input input { padding-left: 1.75rem; }
 }
 
 /* Progress bar glow */
@@ -732,7 +847,7 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 /* Form footer — sticky just above the mobile tab bar so Save stays reachable
    on long forms; static again on desktop where the sidebar layout has no tab bar. */
 .form-footer {
-    @apply border-t border-light-sage px-4 py-3 sm:px-5 sm:py-4 bg-parchment rounded-b-card flex justify-end gap-3 z-20;
+    @apply border-t border-light-sage px-4 py-2 bg-parchment rounded-b-card flex justify-end gap-2 z-20;
     position: sticky;
     /* Sit clear of the mobile tab bar. The bar is h-16 (4rem) plus its
        .tab-bar-safe padding of max(safe-area, 8px), so we must offset by the
@@ -762,7 +877,7 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
 #popup-body.popup-busy { @apply opacity-50 pointer-events-none transition-opacity duration-150; }
 
 .popup-footer {
-    @apply sticky bottom-0 border-t border-light-sage px-4 py-3 sm:px-5 sm:py-4 bg-parchment flex justify-end gap-3 z-10;
+    @apply sticky bottom-0 border-t border-light-sage px-4 py-2 bg-parchment flex justify-end gap-2 z-10;
 }
 @media (max-width: 639px) {
     .popup-footer { flex-wrap: wrap; padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)); }
@@ -809,17 +924,31 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
    right-clipped horizontal-scroll table. Give each <td> a `data-label="..."`;
    cells left without one (action buttons, empty-state) render as plain blocks. */
 @media (max-width: 639px) {
+    /* Two columns, a small label over each value. One value to a line made
+       a record 210px tall; this is about 120px. The record's name (a horse,
+       an owner) and the cells with no label (the actions) take the full
+       width.
+
+       The table and its sections are blocks here, not a table. A row that
+       is a grid inside a real table is laid out as one table cell: when the
+       table also has a normal row (a totals row in a tfoot), that cell is
+       only as wide as the first column, and each value breaks to one
+       character a line. That was the fault on Aged Debtors. */
+    .data-table-cards, .data-table-cards tbody, .data-table-cards tfoot { display: block; width: 100%; }
     .data-table-cards thead { display: none; }
-    .data-table-cards tbody tr { display: block; padding: 0.5rem 1rem; }
-    .data-table-cards tbody td { display: block; border: 0; padding: 0.25rem 0 !important; text-align: left; }
-    .data-table-cards tbody td[data-label] {
-        display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; text-align: right;
+    .data-table-cards :is(tbody, tfoot) tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.375rem 1rem; padding: 0.625rem 1rem; }
+    .data-table-cards :is(tbody, tfoot) td { display: block; min-width: 0; border: 0; padding: 0 !important; text-align: left; overflow-wrap: anywhere; }
+    .data-table-cards :is(tbody, tfoot) td:empty { display: none; }
+    .data-table-cards :is(tbody, tfoot) td:not([data-label]) { grid-column: 1 / -1; }
+    .data-table-cards :is(tbody, tfoot) td[data-label]::before {
+        content: attr(data-label); display: block;
+        font-weight: 600; font-size: 0.625rem; line-height: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;
+        color: #4F727D; white-space: nowrap;
     }
-    .data-table-cards tbody td[data-label]::before {
-        content: attr(data-label);
-        font-weight: 600; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em;
-        color: #4F727D; text-align: left; white-space: nowrap; flex-shrink: 0;
-    }
+    /* The card's title: the record's name, or a cell with an empty label (a totals row). */
+    .data-table-cards :is(tbody, tfoot) td:is([data-label="Horse"], [data-label="Name"], [data-label="Owner"], [data-label="Mare"], [data-label=""]):first-child { grid-column: 1 / -1; font-weight: 600; }
+    .data-table-cards :is(tbody, tfoot) td:is([data-label="Horse"], [data-label="Name"], [data-label="Owner"], [data-label="Mare"], [data-label=""]):first-child::before { display: none; }
+    .data-table-cards tfoot tr { border-top: 2px solid var(--color-light-sage, #E3E8E6); }
 }
 
 /* Inline-link tap target: on touch layouts, pad the link's hit box out to
@@ -1011,10 +1140,18 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
     .visit-date-num { @apply mt-0.5 text-sm font-semibold text-forest tabular-nums; }
 
     /* Yard board */
-    .board { @apply grid gap-5 px-4 py-4 lg:px-5; }
+    .board { @apply grid gap-3 px-4 py-3; }
     .board-site { @apply grid gap-3; }
     @media (min-width: 1024px) { .board-site { grid-template-columns: 9.5rem minmax(0, 1fr); } }
     .board-site-name { @apply font-heading text-sm font-semibold text-forest no-underline hover:text-saddle; }
+    /* A site with no horses: one line that opens (board.html). Its tiles
+       line up with the tiles of the open sites on a wide screen. */
+    .board-fold > summary { @apply flex items-center gap-2 min-h-[32px] cursor-pointer list-none select-none; }
+    .board-fold > summary::-webkit-details-marker { display: none; }
+    .board-fold > summary:focus-visible { @apply outline-2 outline-offset-2 outline-forest rounded-btn; }
+    .board-fold[open] > summary .settings-fold-chevron { @apply rotate-90; }
+    .board-fold-meta { @apply text-xs text-sage; }
+    .board-fold > .board-tiles { @apply mt-2 lg:pl-[10.25rem]; }
     .board-site-meta { @apply mt-1 text-xs leading-5 text-sage; }
     .board-site-meta b { @apply font-heading text-base font-semibold text-charcoal tabular-nums; }
     /* Why a field is marked: one short line per field under the count. */
@@ -1233,13 +1370,13 @@ input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-
    ══════════════════════════════════════════════════════════════════════════ */
 @layer components {
     /* One empty state for every list */
-    .empty-state { @apply px-6 py-14 text-center; }
-    .empty-state-compact { @apply rounded-none border-0 py-10; }
-    .empty-state-icon { @apply mx-auto grid h-14 w-14 place-items-center rounded-full bg-sand-50 text-saddle; }
+    .empty-state { @apply px-4 py-8 text-center; }
+    .empty-state-compact { @apply rounded-none border-0 py-6; }
+    .empty-state-icon { @apply mx-auto grid h-10 w-10 place-items-center rounded-full bg-sand-50 text-saddle; }
     .empty-state-icon.is-search { @apply bg-sage-50 text-sage; }
-    .empty-state-title { @apply mt-4 font-heading text-[15px] font-semibold text-charcoal; }
+    .empty-state-title { @apply mt-3 font-heading text-sm font-semibold text-charcoal; }
     .empty-state-body { @apply mx-auto mt-1 max-w-sm text-sm text-sage; }
-    .empty-state-actions { @apply mt-5 flex flex-wrap items-center justify-center gap-2; }
+    .empty-state-actions { @apply mt-4 flex flex-wrap items-center justify-center gap-2; }
 
     /* What changed: glyph, coat-dotted name chips, what happened, money */
     .log-day { @apply flex items-center gap-3 pb-1.5 pt-4 font-mono text-[10px] uppercase tracking-[.08em] text-sage; }

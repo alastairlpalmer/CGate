@@ -3,7 +3,7 @@
 {% block title %}Log Arrival at {{ location.name }} - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6">
+<div class="max-w-2xl mx-auto space-y-4">
 
     <!-- Page Header -->
     <div class="page-header">
@@ -19,8 +19,8 @@
             {% csrf_token %}
 
             <!-- Horse Selection -->
-            <fieldset class="p-4 sm:p-5 space-y-4 sm:space-y-5">
-                <legend class="text-base font-semibold text-charcoal mb-2">Select Horses</legend>
+            <fieldset class="px-4 py-3 space-y-3">
+                <legend class="text-sm font-semibold text-charcoal mb-2">Select Horses</legend>
                 <p class="text-xs text-sage mb-3">Only horses without a current placement are shown.</p>
 
                 {% if form.horses.errors %}
@@ -43,10 +43,10 @@
             </fieldset>
 
             <!-- Placement Details -->
-            <fieldset class="p-4 sm:p-5 pt-0 sm:pt-0 space-y-4 sm:space-y-5">
-                <legend class="text-base font-semibold text-charcoal mb-4">Placement Details</legend>
+            <fieldset class="px-4 py-3 pt-0 sm:pt-0 space-y-3">
+                <legend class="text-sm font-semibold text-charcoal mb-2">Placement Details</legend>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                     <div>
                         <label for="id_owner" class="block text-sm font-medium text-charcoal">Owner *</label>
                         {{ form.owner }}
@@ -64,7 +64,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                     <div>
                         <label for="id_arrival_date" class="block text-sm font-medium text-charcoal">Arrival Date *</label>
                         {{ form.arrival_date }}

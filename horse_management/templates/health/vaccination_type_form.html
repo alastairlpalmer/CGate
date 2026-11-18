@@ -3,7 +3,8 @@
 {% block title %}{% if object %}Edit Vaccination Type{% else %}Add Vaccination Type{% endif %} - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6">
+<div class="max-w-2xl mx-auto space-y-4 settings-page">
+    {% if from_settings %}{% include 'includes/settings_back.html' with group=settings_group %}{% endif %}
 
     <!-- Page Header -->
     <div class="page-header">
@@ -26,10 +27,10 @@
               </div>
             {% endif %}
 
-            <fieldset class="p-4 sm:p-5 space-y-4 sm:space-y-5">
+            <fieldset class="px-4 py-3 space-y-3">
                 <legend class="section-title">Vaccination Type Details</legend>
 
-                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
                     <div class="sm:col-span-2">
                         <label for="{{ form.name.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.name.label }}</label>
                         {{ form.name }}
@@ -79,7 +80,7 @@
             </fieldset>
 
             <footer class="form-footer">
-                <a href="{% url 'vaccination_type_list' %}" class="btn-secondary">Cancel</a>
+                <a href="{% if from_settings %}{% url 'app_settings' %}#{{ settings_group }}{% else %}{% url 'vaccination_type_list' %}{% endif %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
                     {% if object %}Save Changes{% else %}Add Vaccination Type{% endif %}
                 </button>

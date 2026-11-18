@@ -1,0 +1,39 @@
+{% extends "cvet/office_base.html" %}
+{% load ui_extras %}
+{% block title %}Statement · {{ client.name }}{% endblock %}
+{% block content %}
+    <p class="screen"><a href="{% url 'cvet:bill_list' %}?client={{ client.client_id }}">‹ Bills for {{ client.name }}</a> · To print it or to save it as a PDF, use Print in the browser's menu.</p>
+    {% if test_mode %}<p><span class="tag">Test bills. Not a real statement.</span></p>{% endif %}
+    <div class="box pad">
+        <div class="bar" style="align-items: flex-start;">
+            <div>
+                <h1>{{ practice.name }}</h1>
+                {% if practice.address %}<p>{{ practice.address|linebreaksbr }}</p>{% endif %}
+                <p class="muted">{% if practice.phone %}{{ practice.phone }} · {% endif %}{{ practice.email }}{% if practice.vat_number %}<br>VAT number {{ practice.vat_number }}{% endif %}</p>
+            </div>
+            <div>
+                <p><strong>Statement</strong><br>{{ today|date:"j F Y" }}</p>
+                <p>To: <strong>{{ client.name }}</strong>{% if client.contact_name %}<br>{{ client.contact_name }}{% endif %}{% if client.address %}<br>{{ client.address|linebreaksbr }}{% endif %}</p>
+            </div>
+        </div>
+        {% if bills %}
+        <table>
+            <tr><th>Invoice</th><th>Date</th><th class="num">Total</th><th>Paid</th></tr>
+            {% for bill in bills %}
+            <tr>
+                <td class="nowrap"><a href="{% url 'cvet:bill_detail' bill.pk %}">{{ bill.number }}</a></td>
+                <td class="nowrap">{{ bill.date|date:"j M Y" }}</td>
+                <td class="num">{{ bill.total_inc_vat|gbp }}</td>
+                <td>{% if bill.paid_on %}{{ bill.paid_on|date:"j M Y" }}{% else %}Not paid{% endif %}</td>
+            </tr>
+            {% endfor %}
+            <tr class="sum"><td colspan="2">Invoiced</td><td class="num">{{ total|gbp }}</td><td></td></tr>
+            <tr><td colspan="2">Paid</td><td class="num">{{ paid|gbp }}</td><td></td></tr>
+            <tr class="sum"><td colspan="2">Still to pay</td><td class="num">{{ to_pay|gbp }}</td><td></td></tr>
+        </table>
+        {% else %}
+        <p class="muted">No bills for this client yet.</p>
+        {% endif %}
+        {% if practice.bank_details and to_pay %}<p><strong>How to pay</strong><br>{{ practice.bank_details|linebreaksbr }}</p>{% endif %}
+    </div>
+{% endblock %}

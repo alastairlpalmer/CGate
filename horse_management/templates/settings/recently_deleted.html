@@ -3,7 +3,8 @@
 {% block title %}Recently Deleted - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-6">
+<div class="max-w-3xl mx-auto space-y-4 settings-page">
+    {% include 'includes/settings_back.html' with group='you' %}
 
     <div class="page-header">
         <div>
@@ -19,7 +20,7 @@
         </div>
         <ul class="divide-y divide-light-sage">
             {% for obj, label in section.rows %}
-            <li class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3">
+            <li class="flex items-center justify-between gap-3 px-4 py-2">
                 <div class="min-w-0">
                     <p class="text-sm text-charcoal">{{ label }}</p>
                     <p class="text-xs text-sage mt-0.5">
@@ -34,12 +35,12 @@
                 </form>
             </li>
             {% empty %}
-            <li class="px-4 sm:px-5 py-6 text-sm text-sage">Nothing deleted.</li>
+            <li class="px-4 py-4 text-sm text-sage">Nothing deleted.</li>
             {% endfor %}
         </ul>
     </div>
     {% empty %}
-    <div class="card p-5 text-sm text-sage">Your role cannot delete charges, yard costs or documents, so there is nothing to restore here.</div>
+    <div class="card p-4 text-sm text-sage">Your role cannot delete charges, yard costs or documents, so there is nothing to restore here.</div>
     {% endfor %}
 
     <p class="text-xs text-sage">Voided payments are not listed here. They stay on their invoice for good, and you can restore them there.</p>

@@ -4,7 +4,7 @@
 {% block title %}Vet Visits - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-4">
 
     <!-- Page Header -->
     <div class="page-header">
@@ -23,8 +23,13 @@
     </div>
 
     <!-- Filter Bar -->
-    <div class="card px-5 py-4">
-        <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="card px-4 py-2" x-data="{ open: false }" x-init="open = Array.from($el.querySelectorAll('select, input:not([type=hidden])')).some(function (field) { return field.value })">
+        {# On a phone the filters fold away: the list is what the page is for. A filter that is set opens them. #}
+        <button type="button" class="filter-toggle" @click="open = !open" aria-expanded="false" :aria-expanded="open ? 'true' : 'false'">
+            <svg class="w-3.5 h-3.5 shrink-0 text-sage transition-transform duration-100" :class="open && 'rotate-90'" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+            Filters
+        </button>
+        <form method="get" class="filter-bar" :class="{ 'is-open': open }">
             <div>
                 <label for="filter-horse" class="dt-label mb-1">Horse</label>
                 <select id="filter-horse" name="horse" class="form-select">
@@ -78,7 +83,7 @@
                     {% empty %}
                     <tr>
                         <td colspan="7">
-                            <div class="py-12 text-center">
+                            <div class="py-8 text-center">
                                 <svg class="mx-auto h-12 w-12 text-sage/50" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/>
                                 </svg>

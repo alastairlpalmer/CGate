@@ -4,7 +4,7 @@
 {% block title %}Statement - {{ owner.name }} - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-4">
 
     <!-- Page Header -->
     <div class="page-header">
@@ -36,15 +36,15 @@
 
     <!-- Summary KPIs -->
     <div class="grid grid-cols-1 min-[360px]:grid-cols-3 gap-4">
-        <div class="card p-5 lg:p-6">
+        <div class="card p-4">
             <p class="dt-label">Invoiced</p>
             <p class="mt-1 text-2xl font-bold text-charcoal tabular-nums">{{ statement.totals.invoiced|gbp }}</p>
         </div>
-        <div class="card p-5 lg:p-6">
+        <div class="card p-4">
             <p class="dt-label">Paid</p>
             <p class="mt-1 text-2xl font-bold text-forest tabular-nums">{{ statement.totals.paid|gbp }}</p>
         </div>
-        <div class="card p-5 lg:p-6">
+        <div class="card p-4">
             <p class="dt-label">Balance</p>
             <p class="mt-1 text-2xl font-bold {% if statement.totals.balance > 0 %}text-error-red{% else %}text-charcoal{% endif %} tabular-nums">{{ statement.totals.balance|gbp }}</p>
         </div>
@@ -89,7 +89,7 @@
         </div>
     </div>
     {% else %}
-    <div class="card py-12 text-center">
+    <div class="card py-8 text-center">
         <p class="text-sm font-medium text-sage">No invoices for this owner yet.</p>
     </div>
     {% endif %}

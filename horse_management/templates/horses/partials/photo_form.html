@@ -9,7 +9,7 @@ in the batch could be saved. Behaviour lives in static/js/photo_quick_add.js.
       x-data="quickPhotoAdd('{{ form.category.value|default:'condition' }}')" @submit="sync()">
     {% csrf_token %}
 
-    <div class="p-4 sm:p-5 space-y-5">
+    <div class="px-4 py-3 space-y-3">
 
         {% if skipped %}
         <div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3" role="alert">

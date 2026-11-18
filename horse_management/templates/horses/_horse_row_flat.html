@@ -30,11 +30,10 @@ as it was on the card list this replaced.
     <td data-col="name">
         <a href="{% url 'horse_detail' horse.pk %}" data-horse-link class="flex items-center gap-3 group/name">
             {% if departed %}<span class="opacity-70">{% include 'horses/_horse_avatar.html' with horse=horse size='sm' %}</span>{% else %}{% include 'horses/_horse_avatar.html' with horse=horse size='sm' %}{% endif %}
-            <div class="min-w-0">
+            {# From md the name and its details share one line: a 40px row. #}
+            <div class="horse-name">
                 <div class="font-medium {% if departed %}text-charcoal-light{% else %}text-charcoal{% endif %} group-hover/name:text-forest transition-colors">{{ horse.name }}</div>
-                <div class="text-xs text-sage truncate">
-                    {% if horse.calculated_age %}{{ horse.calculated_age }}yo · {% endif %}{{ horse.get_color_display }} · {{ horse.get_sex_display }}
-                </div>
+                <div class="horse-name-detail">{% with age=horse.calculated_age colour=horse.get_color_display sex=horse.get_sex_display %}{% if age %}{{ age }}yo{% endif %}{% if age and colour %} · {% endif %}{{ colour }}{% if sex %}{% if age or colour %} · {% endif %}{{ sex }}{% endif %}{% endwith %}</div>
             </div>
         </a>
     </td>

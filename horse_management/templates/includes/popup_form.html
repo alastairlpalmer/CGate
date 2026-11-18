@@ -11,7 +11,7 @@ the generic layout leaves out (inline add-a-vet, archive/delete controls).
       {% if form.is_multipart %}enctype="multipart/form-data" hx-encoding="multipart/form-data"{% endif %}>
     {% csrf_token %}
 
-    <div class="p-4 sm:p-5 space-y-4 sm:space-y-5">
+    <div class="px-4 py-3 space-y-3">
 
         {% if popup_saved_note %}
         {# data-popup-fresh: a clean form after "Save & add another", not an edited one #}
@@ -32,7 +32,7 @@ the generic layout leaves out (inline add-a-vet, archive/delete controls).
 
         {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
 
-        <div class="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2">
+        <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
             {% for field in form.visible_fields %}
                 {% if field.name in popup_deferred_fields %}
                     {# Rendered by popup_extra_template below, not in the grid #}

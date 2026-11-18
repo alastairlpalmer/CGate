@@ -5,7 +5,7 @@
 {% load ui_extras %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-4">
 
     <!-- Back link, and the horses either side in the list (name A to Z),
          so a round of the yard does not go back to the list each time. -->
@@ -36,8 +36,8 @@
 
     <!-- Hero Header -->
     <div class="panel relative overflow-hidden">
-        <div class="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
-            <div class="flex items-start gap-5 min-w-0">
+        <div class="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div class="flex items-start gap-4 min-w-0">
                 {% include 'horses/_horse_avatar.html' with horse=horse size='lg' %}
                 <div class="min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
@@ -194,10 +194,10 @@
     {% endif %}
 
     <!-- Grid Layout -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         <!-- Left Column -->
-        <div class="lg:col-span-2 space-y-6">
+        <div class="lg:col-span-2 space-y-4">
 
             {% if foal_record %}
             {% include 'horses/partials/foal_record.html' %}
@@ -222,7 +222,7 @@
                     </div>
                     {% endif %}
                 </div>
-                <div class="p-5 lg:p-6">
+                <div class="p-4">
                     {% if current_placement %}
                     <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
                         <div>
@@ -262,7 +262,7 @@
                         {% endif %}
                     </dl>
                     {% else %}
-                    <div class="text-center py-8">
+                    <div class="text-center py-6">
                         <div class="mx-auto w-12 h-12 rounded-full bg-light-sage/60 flex items-center justify-center">
                             <svg class="h-6 w-6 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -290,7 +290,7 @@
                     <h3 class="section-title">Details</h3>
                     <a href="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-get="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Condition for {{ horse.name }}" class="btn-ghost btn-xs">+ Condition</a>
                 </div>
-                <div class="p-5 lg:p-6">
+                <div class="p-4">
                     {% if horse.breeding or horse.notes or horse.passport_number %}
                     <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
                         {% if horse.breeding %}
@@ -363,7 +363,7 @@
                     </div>
                     {% endif %}
                 </div>
-                <div class="p-5 lg:p-6">
+                <div class="p-4">
                     <div class="bg-light-sage/50 rounded-lg p-4">
                         <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                             <div>
@@ -429,7 +429,7 @@
                     <a href="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-get="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record a covering for {{ horse.name }}" class="btn-ghost btn-xs">+ Covering</a>
                     {% endif %}
                 </div>
-                <div class="p-5 lg:p-6 text-sm">
+                <div class="p-4 text-sm">
                     {% with last=breeding_records.0 %}
                     {% if last %}
                     <p class="text-charcoal">Not in foal. Last record: {{ last.stallion_name }}, covered {{ last.date_covered|date:"j M Y" }} &middot; {% include 'health/partials/breeding_status_badge.html' with br=last %}</p>
@@ -506,7 +506,7 @@
                 <div class="section-header">
                     <h3 class="section-title">Foals</h3>
                 </div>
-                <div class="p-5 lg:p-6">
+                <div class="p-4">
                     <div class="overflow-x-auto">
                         <table class="data-table">
                             <thead>
@@ -574,7 +574,7 @@
                 </div>
 
                 <!-- Filter Pills -->
-                <div class="px-5 pt-4 pb-2 flex flex-wrap gap-2">
+                <div class="px-4 pt-4 pb-2 flex flex-wrap gap-2">
                     <button @click="activeFilter = 'all'" :style="pillStyle('all')"
                         class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">All</button>
                     <button @click="activeFilter = 'placement'" :style="pillStyle('placement')"
@@ -592,13 +592,13 @@
                     <button @click="activeFilter = 'worming'" :style="pillStyle('worming')"
                         class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">Worming</button>
                 </div>
-                <p class="px-5 text-xs text-sage flex items-center gap-1.5">
+                <p class="px-4 text-xs text-sage flex items-center gap-1.5">
                     <span class="inline-block w-2.5 h-2.5 rounded-full bg-saddle" aria-hidden="true"></span>
                     Rust dot: the next one is overdue.
                 </p>
 
                 <!-- Timeline Entries -->
-                <div class="px-5 pb-5 pt-2">
+                <div class="px-4 pb-5 pt-2">
                     <div class="relative">
                         <!-- Vertical line -->
                         <div class="absolute left-[9px] top-2 bottom-2 w-px bg-sand/60"></div>
@@ -783,7 +783,7 @@
         </div>
 
         <!-- Right Column (Sidebar) -->
-        <div class="space-y-6">
+        <div class="space-y-4">
 
             {# First in the column: recording is what the page is opened for most. #}
             <!-- Record shortcuts -->
@@ -807,7 +807,7 @@
                 {% if ownership_shares %}
                 <ul class="divide-y divide-light-sage">
                     {% for share in ownership_shares %}
-                    <li class="px-5 py-3 flex items-center justify-between">
+                    <li class="px-4 py-3 flex items-center justify-between">
                         <div>
                             <a href="{% url 'owner_detail' share.owner.pk %}" class="link text-sm tap-pad">{{ share.owner.name }}</a>
                             {% if share.is_primary_contact %}
@@ -819,7 +819,7 @@
                     {% endfor %}
                 </ul>
                 {% else %}
-                <div class="px-5 py-6 text-center">
+                <div class="px-4 py-4 text-center">
                     <p class="text-sm text-sage">No ownership shares set</p>
                     <a href="{% url 'horse_ownership' horse.pk %}" class="btn-primary mt-3 inline-flex text-xs">
                         Set Ownership

@@ -106,7 +106,7 @@ one click away on the Map/Cards switch.
     <!-- ═══ Usage Overview Tab ═══ -->
 
     <!-- Period selector -->
-    <div class="card px-5 py-3 space-y-3">
+    <div class="card px-4 py-3 space-y-3">
         <div class="segmented-scroll">
             <div class="segmented" x-data="segmented" role="group" aria-label="Usage period">
                 <span class="segmented-thumb" x-ref="thumb" aria-hidden="true"></span>
@@ -151,7 +151,7 @@ one click away on the Map/Cards switch.
         <h2 class="text-sm font-semibold text-charcoal">{{ site }}</h2>
         <div class="card divide-y divide-light-sage">
             {% for row in rows %}
-            <div class="p-4 sm:p-5">
+            <div class="p-4">
                 <div class="flex items-baseline justify-between gap-3">
                     <a href="{% url 'location_detail' row.location.pk %}?tab=usage&range={{ usage_range }}&year={{ usage_year }}" class="link font-medium tap-pad">{{ row.location.name }}</a>
                     <span class="text-xs text-sage tabular-nums shrink-0">{{ row.total }} day{{ row.total|pluralize }} tracked</span>
@@ -194,27 +194,29 @@ one click away on the Map/Cards switch.
     {% include 'locations/_site_board.html' %}
     {% else %}
 
-    <div id="list-results" class="space-y-6">
+    <div id="list-results" class="space-y-4">
 
     {% if grouped_locations %}
     <!-- Location Cards Grouped by Site -->
-    <div class="space-y-8">
+    {% comment %}Each site folds, as on the Settings page. A site with horses
+    on it opens; an empty one is a single line until the reader opens it. A
+    search opens every site, so no match is hidden. static/js/settings_nav.js
+    keeps what the reader opened or closed, in this tab.{% endcomment %}
+    <div class="space-y-2">
         {% for site_name, site_locations, site_horse_count in grouped_locations %}
-        <div>
+        <details class="group-fold" x-data="settingsFold" data-fold-key="locations:{{ site_name }}"{% if site_horse_count or grouped_locations|length == 1 or request.GET.search %} open{% endif %}>
             <!-- Site Header -->
-            <div class="flex items-center gap-3 mb-4">
-                <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5 text-forest" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21m-3.75 3H21"/>
-                    </svg>
-                    <h2 class="text-lg font-semibold text-charcoal">{{ site_name }}</h2>
-                </div>
-                <span class="badge-info">{{ site_horse_count }} horse{{ site_horse_count|pluralize }}</span>
-                <div class="flex-1 border-b border-light-sage"></div>
+            <summary>
+                <svg class="settings-fold-chevron w-3.5 h-3.5 shrink-0 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                </svg>
+                <h2 class="group-fold-title">{{ site_name }}</h2>
+                <span class="group-fold-meta">{{ site_horse_count }} horse{{ site_horse_count|pluralize }} &middot; {{ site_locations|length }} location{{ site_locations|length|pluralize }}</span>
+                <div class="group-fold-rule"></div>
                 {% if feature_access.locations.full and site_name %}
                 <a href="{% url 'site_settings' %}?site={{ site_name|urlencode }}" hx-get="{% url 'site_settings' %}?site={{ site_name|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit site {{ site_name }}" class="text-xs text-sage hover:text-charcoal-light transition-colors duration-100 tap-pad shrink-0">Edit site</a>
                 {% endif %}
-            </div>
+            </summary>
 
             <!-- Location Cards for this Site -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -224,7 +226,7 @@ one click away on the Map/Cards switch.
                 <h3 class="col-span-full text-xs font-semibold uppercase tracking-wider text-sage{% if not forloop.first %} mt-2{% endif %}" data-testid="location-type-heading">{{ location.type_heading }}</h3>
                 {% endif %}
                 <div class="card-raised flex flex-col overflow-hidden"{% if location.is_barn %} data-testid="barn-card"{% endif %}>
-                    <div class="p-5 flex-1">
+                    <div class="px-4 py-3 flex-1">
                         <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
                                 <h3>
@@ -289,7 +291,7 @@ one click away on the Map/Cards switch.
                             {% include 'horses/_capacity_ring.html' with count=location.using capacity=location.capacity availability=location.availability size=44 %}
                         </div>
                     </div>
-                    <div class="border-t border-light-sage px-5 py-3 flex justify-between items-center">
+                    <div class="border-t border-light-sage px-4 py-1.5 flex justify-between items-center">
                         <div class="flex items-center gap-4">
                             {# Browsing who is where is the horse list's job now. #}
                             <a href="{% url 'horse_list' %}?group_by=location&amp;location={{ location.pk }}" class="link text-sm tap-pad">View horses &rarr;</a>
@@ -303,7 +305,7 @@ one click away on the Map/Cards switch.
                 </div>
                 {% endfor %}
             </div>
-        </div>
+        </details>
         {% endfor %}
     </div>
     {% elif request.GET.search %}

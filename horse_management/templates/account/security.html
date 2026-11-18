@@ -3,7 +3,8 @@
 {% block title %}Account Security - Cgate{% endblock %}
 
 {% block content %}
-<div class="max-w-lg mx-auto space-y-6">
+<div class="max-w-lg mx-auto space-y-4 settings-page">
+    {% include 'includes/settings_back.html' with group='you' %}
 
     <div class="page-header">
         <div>
@@ -17,7 +18,7 @@
         <div class="section-header">
             <h3 class="section-title">Password</h3>
         </div>
-        <div class="p-4 sm:p-5 flex items-center justify-between gap-4">
+        <div class="px-4 py-3 flex items-center justify-between gap-4">
             <p class="text-sm text-sage">Changing your password signs you out on your other devices.</p>
             <a href="{% url 'password_change' %}" class="btn-secondary btn-sm shrink-0">Change Password</a>
         </div>
@@ -29,7 +30,7 @@
         <div class="section-header">
             <h3 class="section-title">Sign In with Google</h3>
         </div>
-        <div class="p-4 sm:p-5 space-y-4">
+        <div class="px-4 py-3 space-y-3">
             {% if google_identity %}
             <p class="text-sm text-charcoal"><strong>Connected.</strong> You can sign in with the Google account {{ google_identity.email }}.</p>
             <p class="text-sm text-sage">{% if google_identity.last_used_at %}Last used {{ google_identity.last_used_at|date:"j M Y" }}.{% else %}Not used yet.{% endif %}</p>
@@ -61,7 +62,7 @@
         <div class="section-header">
             <h3 class="section-title">Two-Step Sign-In</h3>
         </div>
-        <div class="p-4 sm:p-5 space-y-4">
+        <div class="px-4 py-3 space-y-3">
             {% if mfa.enabled %}
             <p class="text-sm text-charcoal"><strong>On.</strong> Sign-in asks for a code from your authenticator app.</p>
             <p class="text-sm {% if mfa.recovery_codes_left < 3 %}text-saddle font-medium{% else %}text-sage{% endif %}">
@@ -99,7 +100,7 @@
         <div class="section-header">
             <h3 class="section-title">Signed-In Devices</h3>
         </div>
-        <div class="p-4 sm:p-5 flex items-center justify-between gap-4">
+        <div class="px-4 py-3 flex items-center justify-between gap-4">
             <p class="text-sm text-sage">Lost a phone or used a shared computer? Sign out everywhere except here.</p>
             <form method="post" action="{% url 'sign_out_other_devices' %}"
                   hx-confirm="Sign out of every other device and browser?">

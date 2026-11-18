@@ -3,7 +3,7 @@
 {% block title %}Service Providers - Cgate{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-4">
 
     <!-- Page Header -->
     <div class="page-header">
@@ -19,7 +19,7 @@
     </div>
 
     <!-- Filters -->
-    <div class="card px-5 py-4">
+    <div class="card px-4 py-3">
         <form method="get" class="flex flex-wrap items-end gap-4">
             <div>
                 <label for="filter-type" class="dt-label mb-1">Type</label>
@@ -43,10 +43,10 @@
     </div>
 
     <!-- Provider Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for provider in providers %}
         <div class="card-raised flex flex-col">
-            <div class="p-5 flex-1">
+            <div class="p-4 flex-1">
                 <div class="flex items-start justify-between gap-3 mb-3">
                     <h3 class="text-lg font-semibold text-charcoal">{{ provider.name }}</h3>
                     {% if provider.user %}<p class="text-sm text-forest">Farrier page login: {{ provider.user.username }}</p>{% endif %}
@@ -76,7 +76,7 @@
                 </div>
                 {% endif %}
             </div>
-            <div class="border-t border-light-sage px-5 py-3">
+            <div class="border-t border-light-sage px-4 py-3">
                 <a href="{% url 'provider_update' provider.pk %}" class="link text-sm tap-pad">
                     Edit
                 </a>

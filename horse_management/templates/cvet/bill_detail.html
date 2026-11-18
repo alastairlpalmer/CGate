@@ -1,0 +1,97 @@
+{% load ui_extras %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill {{ bill.number }}</title>
+    <style>
+        body { margin: 0; background: #f3f1ea; color: #17252a; font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .page { max-width: 46em; margin: 0 auto; padding: 4px 16px 32px; }
+        /* The bill as a sheet of paper on the screen; plain on the printer. */
+        .sheet { padding: 20px; border-radius: 12px; background: #fff; box-shadow: 0 1px 2px rgba(23, 37, 42, .06), 0 1px 6px rgba(23, 37, 42, .05); }
+        h1 { font-size: 22px; margin: 0; }
+        a { color: #2f5560; font-weight: 600; }
+        .nav a, td a { display: inline-block; padding: 12px 8px 12px 0; }
+        .nowrap { white-space: nowrap; }
+        .top { display: flex; justify-content: space-between; gap: 24px; margin: 12px 0 20px; }
+        .top div:last-child { text-align: right; }
+        table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+        th, td { padding: 6px; text-align: left; border-bottom: 1px solid #d9d4c7; }
+        .num { text-align: right; white-space: nowrap; }
+        .horse td { font-weight: 600; background: #F5F2EA; }
+        .totals td { border: 0; }
+        .grand td { font-weight: 700; font-size: 17px; border-top: 2px solid #1f2d32; }
+        .muted { color: #5d6b70; font-size: 13px; }
+        .tag { padding: 1px 6px; border-radius: 4px; background: #ffe2b8; color: #5c3600; font-size: 13px; font-weight: 600; }
+        .actions { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; margin: 8px 0 14px; }
+        .actions form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0; }
+        .actions button { min-height: 44px; padding: 0 14px; border: 1px solid #2f5560; border-radius: 10px; background: #fff; color: #2f5560; font: inherit; font-weight: 600; cursor: pointer; }
+        .actions input { min-height: 44px; padding: 8px 10px; border: 1px solid #e1ddd2; border-radius: 10px; font: inherit; }
+        .actions label { font-weight: 600; }
+        .paid { color: #2f6b45; font-weight: 600; }
+        .problem { color: #a3322b; font-weight: 600; }
+        @media print { .screen { display: none; } body { background: #fff; } .page, .sheet { padding: 0; box-shadow: none; } }
+    </style>
+</head>
+<body>
+    <div class="page">
+    <p class="screen nav"><a href="{% url 'cvet:bill_list' %}">‹ Bills</a><br>To print it or to save it as a PDF, use Print in the browser's menu.</p>
+    {# For the practice office: paid or not, and the send to the client. Not on the printed bill. #}
+    <div class="screen actions">
+        <form method="post" action="{% url 'cvet:bill_paid' bill.pk %}">
+            {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+            {% if bill.paid_on %}<span class="paid">Paid {{ bill.paid_on|date:"j M Y" }}</span> <button type="submit" name="paid" value="no">Mark as not paid</button>
+            {% else %}<label for="paid-on">Paid on</label> <input id="paid-on" type="date" name="paid_on" value="{{ today|date:"Y-m-d" }}"> <button type="submit">Mark as paid</button>{% endif %}
+        </form>
+        {% if can_email %}
+        <form method="post" action="{% url 'cvet:bill_email' bill.pk %}">
+            {% csrf_token %}
+            <button type="submit">{% if bill.emailed_at %}Send again{% else %}Send{% endif %} to {{ bill.practice_client.email }}</button>
+            {% if bill.emailed_at %}<span class="muted">Sent {{ bill.emailed_at|date:"j M Y, H:i" }} to {{ bill.emailed_to }}</span>{% endif %}
+        </form>
+        {% elif bill.practice_client and not bill.practice_client.is_yard and not test_mode %}
+        <p class="muted">To send this bill by email, give {{ bill.practice_client.name }} an email address in C-vet (Clients, Edit).</p>
+        {% endif %}
+        {% if sent == 'yes' %}<p class="paid">The bill was sent.</p>{% elif sent == 'no' %}<p class="problem">The bill was not sent. Try again later.</p>{% endif %}
+    </div>
+    <div class="sheet">
+    {% if test_mode %}<p><span class="tag">Test bill. Not a real invoice.</span></p>{% endif %}
+    <div class="top">
+        <div>
+            <h1>{{ practice.name }}</h1>
+            {% if practice.address %}<p>{{ practice.address|linebreaksbr }}</p>{% endif %}
+            <p class="muted">{% if practice.phone %}{{ practice.phone }} · {% endif %}{{ practice.email }}{% if practice.vat_number %}<br>VAT number {{ practice.vat_number }}{% endif %}</p>
+        </div>
+        <div>
+            <p><strong>Invoice {{ bill.number }}</strong><br>{{ bill.date|date:"j F Y" }}{% if monthly %}<br><span class="muted">Visits from {{ bill.period_start|date:"j M Y" }} to {{ bill.period_end|date:"j M Y" }}</span>{% endif %}</p>
+            <p>To: <strong>{{ bill.to_name }}</strong>{% if to_owners and bill.visit.yard_name %}<br><span class="muted">Horse at {{ bill.visit.yard_name }}</span>{% endif %}</p>
+        </div>
+    </div>
+    <table>
+        <tr><th>Item</th><th class="num">Quantity</th><th class="num">Price</th>{% if to_owners %}<th class="num">Your part</th>{% endif %}<th class="num">Amount</th></tr>
+        {% for horse in horses %}
+        <tr class="horse"><td colspan="{% if to_owners %}4{% else %}3{% endif %}">{{ horse.name }}</td><td class="num">{{ horse.total|gbp }}</td></tr>
+        {% for line in horse.lines %}
+        <tr>
+            <td>{{ line.description }}{% if monthly %} <span class="muted">{{ line.date|date:"j M" }}</span>{% endif %}</td>
+            <td class="num">{{ line.quantity|floatformat:"-2" }}</td>
+            <td class="num">{{ line.unit_price_inc_vat|gbp }}</td>
+            {% if to_owners %}<td class="num">{{ line.share|floatformat:"-2" }}%</td>{% endif %}
+            <td class="num">{{ line.amount_inc_vat|gbp }}</td>
+        </tr>
+        {% endfor %}
+        {% endfor %}
+    </table>
+    <table class="totals">
+        {% for band in vat_bands %}
+        <tr><td class="num">Net at {{ band.rate|floatformat:"-2" }}% VAT</td><td class="num" style="width: 8em;">{{ band.net|gbp }}</td></tr>
+        <tr><td class="num">VAT at {{ band.rate|floatformat:"-2" }}%</td><td class="num">{{ band.vat|gbp }}</td></tr>
+        {% endfor %}
+        <tr class="grand"><td class="num">Total to pay</td><td class="num">{{ bill.total_inc_vat|gbp }}</td></tr>
+    </table>
+    <p class="muted">Prices include VAT.</p>
+    {% if practice.bank_details %}<p><strong>How to pay</strong><br>{{ practice.bank_details|linebreaksbr }}</p>{% endif %}
+    </div>
+</div>
+</body>
+</html>

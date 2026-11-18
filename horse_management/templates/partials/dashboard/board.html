@@ -14,6 +14,24 @@ so the two never disagree at a glance.
     </div>
     <div class="board">
         {% for band in sites_overview %}
+        {% if not band.horses and not band.flagged and sites_overview|length > 1 %}
+        {% comment %}A site with no horse on it, and nothing that needs
+        attention, is one line: the board is for where the horses are. The
+        reader opens it to see its locations; static/js/settings_nav.js keeps it
+        open in this tab.{% endcomment %}
+        <details class="board-fold" x-data="settingsFold" data-fold-key="board:{{ band.name }}">
+            <summary>
+                <svg class="settings-fold-chevron w-3.5 h-3.5 shrink-0 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                </svg>
+                <span class="board-site-name">{{ band.name|default:"No site" }}</span>
+                <span class="board-fold-meta">0 horses &middot; {{ band.tiles|length }} location{{ band.tiles|length|pluralize }}{% if band.resting %} &middot; {{ band.resting }} resting{% endif %}</span>
+            </summary>
+            <div class="board-tiles">
+                {% include 'partials/dashboard/_board_tiles.html' %}
+            </div>
+        </details>
+        {% else %}
         <div class="board-site">
             <div class="board-site-head">
                 <a href="{% url 'horse_list' %}?group_by=location" class="board-site-name">{{ band.name|default:"No site" }}</a>
@@ -24,30 +42,10 @@ so the two never disagree at a glance.
                 </p>
             </div>
             <div class="board-tiles">
-                {% for tile in band.tiles %}
-                <a href="{% url 'location_detail' tile.location.pk %}" class="board-tile{% if tile.flagged %} is-flagged{% endif %}"
-                   title="{{ tile.location.name }}{% if tile.holds_horses %} · {{ tile.count }} horse{{ tile.count|pluralize }}{% if tile.capacity %} of {{ tile.capacity }}{% endif %}{% else %} · {{ tile.usage_label }}{% endif %}{% if tile.flagged %} · needs attention{% if tile.flag_reasons %}: {{ tile.flag_reasons|join:", " }}{% endif %}{% endif %}">
-                    <span class="min-w-0">
-                        <span class="board-tile-name">{{ tile.location.name }}</span>
-                        <span class="board-tile-meta{% if tile.usage == 'rested' %} text-sage{% elif tile.usage == 'hay' %} text-info-blue{% elif tile.usage == 'arable' or tile.usage == 'mixed' %} text-saddle{% endif %}">
-                            {% if tile.usage == 'rested' %}Rested{% if tile.rest_days is not None %} &middot; {{ tile.rest_days }} day{{ tile.rest_days|pluralize }}{% endif %}
-                            {% elif tile.is_barn and tile.in_stables %}{{ tile.in_stables }} in stables{% if tile.no_stable %} &middot; {{ tile.no_stable }} no stable{% endif %}
-                            {% elif tile.holds_horses %}{{ tile.count }} horse{{ tile.count|pluralize }}{% if tile.usage == 'mixed' %} &middot; mixed grazing{% endif %}{% if tile.turnout %} &middot; {{ tile.turnout }} out by day{% endif %}
-                            {% else %}{{ tile.usage_label }}{% endif %}
-                        </span>
-                    </span>
-                    {% if tile.holds_horses and tile.capacity %}
-                    {% include 'horses/_capacity_ring.html' with count=tile.count capacity=tile.capacity availability=tile.availability %}
-                    {% elif tile.holds_horses %}
-                    <span class="board-count">{{ tile.count }}</span>
-                    {% else %}
-                    <span class="board-usage">{% include 'horses/_usage_badge.html' with usage=tile.usage label='' %}</span>
-                    {% endif %}
-                    {% if tile.flagged %}<span class="board-flag" aria-hidden="true"></span>{% endif %}
-                </a>
-                {% endfor %}
+                {% include 'partials/dashboard/_board_tiles.html' %}
             </div>
         </div>
+        {% endif %}
         {% endfor %}
     </div>
 </div>
