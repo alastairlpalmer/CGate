@@ -28,7 +28,7 @@ def _jpeg(name='me.jpg', size=(400, 300)):
 def _details(**overrides):
     data = {
         'action': 'details', 'first_name': 'Anita', 'last_name': 'Cruz',
-        'email': 'anita@example.com', 'phone': '07700 900123',
+        'email': 'anita@example.com', 'phone': '07700 900123', 'display_size': 'compact',
     }
     data.update(overrides)
     return data

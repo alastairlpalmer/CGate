@@ -72,7 +72,8 @@
     {% comment %}Period leads: it frames every figure below, so it stays in
     view. Category, type and supplier move behind the app bar's filter
     button — three fields that most visits never touch.{% endcomment %}
-    <div class="segmented-scroll">
+    <div class="flex items-center gap-2">
+    <div class="segmented-scroll min-w-0">
         <div class="segmented" x-data="segmented" role="group" aria-label="Period">
             <span class="segmented-thumb" x-ref="thumb" aria-hidden="true"></span>
             {% for key, label in period_options %}
@@ -82,6 +83,9 @@
                {% if current_period == key %}aria-current="true"{% endif %}>{{ label }}</a>
             {% endfor %}
         </div>
+    </div>
+    {# The Filters button lands here on a computer (includes/_filter_toggle.html). #}
+    <div data-filter-slot class="hidden lg:flex shrink-0 ml-auto"></div>
     </div>
 
     <!-- Filters -->

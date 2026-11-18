@@ -671,7 +671,7 @@ input[type="checkbox"]:not(.switch-input) { @apply h-5 w-5 rounded-sm border-sag
    .hidden utility (0,1,0) — the quick-add photo form hides its camera and
    gallery inputs behind real buttons, and `block` here used to force all
    three raw file pickers back on screen. */
-input[type="file"]:not(.hidden) { @apply block w-full text-sm text-sage file:mr-3 file:rounded-btn file:border file:border-solid file:border-sage/30 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-charcoal hover:file:bg-light-sage cursor-pointer; }
+input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text-sage file:mr-3 file:rounded-btn file:border file:border-solid file:border-sage/30 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-charcoal hover:file:bg-light-sage cursor-pointer; }
 @media (max-width: 639px) {
     input[type="file"] { font-size: 16px; } /* match text inputs: no iOS zoom */
 }
@@ -1920,6 +1920,19 @@ a.pane-item-title:hover { @apply text-forest; }
 .pane-dot-vet_visit { @apply bg-error-red; }
 .pane-dot-breeding { @apply bg-forest; }
 
+/* Parts of a line joined by a middle dot, only between parts that show. */
+.dot-list > span + span::before { content: '·'; margin: 0 0.35em; color: theme(colors.sage.DEFAULT); font-weight: 400; }
+
+/* ── Size on a computer (the profile's Details tab) ──
+   <html data-ui-size> scales everything set in rem from the lg breakpoint:
+   Compact matches a browser zoom of 75%, Medium 87.5%. Phones and tablets
+   keep the full size. Media queries count rem from the browser's own size,
+   so the breakpoints do not move. */
+@media (min-width: 64rem) {
+    html[data-ui-size="compact"] { font-size: 75%; }
+    html[data-ui-size="medium"] { font-size: 87.5%; }
+}
+
 /* ── Sidebar (includes/_sidebar.html) ─────────────────────────────────
    Dark Brim teal, cream icons. Top to bottom: logo row, search, nav, then
    Support and Settings, then the profile card. */
@@ -1936,7 +1949,16 @@ a.pane-item-title:hover { @apply text-forest; }
 
 /* Search. The results panel opens to the right of the sidebar, over the
    page, so it can be as wide as the app bar's panel was. */
-.side-search { @apply relative px-3 pb-3 shrink-0; min-height: 3.25rem; }
+.sidebar-tools { @apply relative flex items-start gap-2 px-3 pb-3 shrink-0; }
+.side-search { @apply static flex-1 min-w-0; min-height: 2.5rem; }
+.side-add-btn {
+    @apply inline-flex items-center justify-center w-10 h-10 rounded-btn bg-saddle text-white shadow-sm
+           hover:bg-saddle-dark transition-colors duration-100;
+}
+.side-add-menu {
+    @apply absolute top-0 z-[60] w-56 py-1 bg-white rounded-lg shadow-float border border-light-sage overflow-hidden;
+    left: calc(100% + 0.25rem);
+}
 .side-search-field { @apply relative; }
 .side-search-icon {
     @apply absolute left-3 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-white/60 pointer-events-none transition-colors;
@@ -2138,6 +2160,10 @@ a.pane-item-title:hover { @apply text-forest; }
 .sidebar-collapsed .side-search.is-open .side-search-icon,
 .sidebar-collapsed .side-search.is-open .side-search-clear { @apply text-sage; }
 .sidebar-collapsed .side-search-panel { top: 3rem; }
+/* On the rail, search and Add stack. */
+.sidebar-collapsed .sidebar-tools { flex-direction: column; align-items: stretch; }
+.sidebar-collapsed .side-search { flex: none; }
+.sidebar-collapsed .side-add-btn { width: 100%; }
 
 /* The unread count becomes a small dot on the bell. */
 .sidebar-collapsed .app-sidebar .nav-link { position: relative; }

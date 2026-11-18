@@ -1606,6 +1606,16 @@ class ProfileDetailsForm(forms.Form):
         widget=forms.ClearableFileInput(attrs={'accept': 'image/*'}),
     )
     remove_photo = forms.BooleanField(required=False, label='Remove my photo')
+    display_size = forms.ChoiceField(
+        label='Size on a computer',
+        choices=[
+            ('compact', 'Compact (best on a laptop)'),
+            ('medium', 'Medium'),
+            ('large', 'Large'),
+        ],
+        initial='compact',
+        help_text='How big text and buttons are on a computer. Phones do not change.',
+    )
 
     def __init__(self, *args, user=None, **kwargs):
         self.user = user

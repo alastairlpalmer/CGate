@@ -117,7 +117,7 @@ class OwnersInFinanceTests(TestCase):
     def test_owners_sits_under_the_finance_heading(self):
         sidebar = self._sidebar()
         finance = sidebar.index('>Finance<')
-        owners = sidebar.index(reverse('owner_list'))
+        owners = sidebar.index(f'href="{reverse("owner_list")}"')
         manage = sidebar.index('>Manage<')
         self.assertLess(manage, finance)
         self.assertLess(finance, owners, 'Owners should follow the Finance heading')
@@ -128,7 +128,7 @@ class OwnersInFinanceTests(TestCase):
         finance = sidebar.index('>Finance<')
         for name in ('horse_list', 'location_list'):
             with self.subTest(name=name):
-                position = sidebar.index(reverse(name))
+                position = sidebar.index(f'href="{reverse(name)}"')
                 self.assertLess(manage, position)
                 self.assertLess(position, finance)
 

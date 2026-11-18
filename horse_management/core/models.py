@@ -2422,6 +2422,18 @@ class UserProfile(models.Model):
     )
     phone = models.CharField(max_length=50, blank=True)
     photo = models.ImageField(upload_to='people/', blank=True, null=True)
+
+    class DisplaySize(models.TextChoices):
+        # The size of everything on a computer (lg and up). Phones are not
+        # changed. Compact matches a browser zoom of 75%, which suits a
+        # laptop screen best.
+        COMPACT = 'compact', 'Compact'
+        MEDIUM = 'medium', 'Medium'
+        LARGE = 'large', 'Large'
+
+    display_size = models.CharField(
+        max_length=10, choices=DisplaySize.choices, default=DisplaySize.COMPACT,
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
