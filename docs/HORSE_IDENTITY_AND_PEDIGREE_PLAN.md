@@ -22,9 +22,12 @@ and 5 are agreed (19 Nov 2026, §10).
 
 ## 0. Summary
 
-- **Phase 1 is all manual**: type it in, scan the chip, edit many horses
-  at once in the **records editor** (a grid in the app), import a
+- **Phase 1 is all manual**: type it in, scan the chip, go through the
+  horses one by one in **Fill in records** (Save and next), import a
   spreadsheet, link out to Weatherbys and Racing Post. No sync.
+- **The pedigree shows as a diagram**: a sideways tree with SVG lines,
+  drawn by the server from a fixed grid (§8.3). Prototype:
+  [Horse Pedigree Card](https://claude.ai/artifact/7UJyTrTVJVvVYaEND1Xs1h).
 - **One age rule for all horses**: a year older on 1 January (1 August in
   the southern hemisphere). Stored ages become a foaling year, so no age
   goes out of date.
@@ -168,23 +171,26 @@ data, **L** small.
 
 ### 4.4 Records editor (added after decision 5)
 
-The editor is a new route, so it gets the same test.
+The editor is a new route, so it gets the same test. A spreadsheet-style
+grid was tested first. Most of its risks came from pasting many cells at
+once (values replaced with no warning, partial saves of many rows). The
+plan now uses a simpler editor: one horse at a time, with **Save and
+next** (§7.5). These are the cases that remain.
 
 | # | Case | Result without a guard | Sev | Fix (§7.5) |
 |---|------|------------------------|-----|------------|
-| 25 | Staff paste 40 rows from Excel over cells that already have values. | Typed and checked values are lost with no warning. | **H** | A pasted value that replaces a value shows in amber with the old value. Nothing saves until **Save**. Undo after save. |
-| 26 | Two people edit the same horse at the same time. | The last save wins; the first person's change is lost with no message. | M | Each row carries its version. A row that changed since it was loaded does not save; it shows who changed it. |
-| 27 | A pasted sire name matches two pedigree records. | The editor joins the wrong one. | **H** | The cell shows "2 possible: choose". That cell does not save until a person chooses or selects "New". |
-| 28 | One bad cell in a save of 30 rows. | The whole save fails, or saves part with no message. | M | Good rows save. Bad cells stay as drafts with the error on the cell. |
-| 29 | Staff use the editor on a phone. | A 15-column grid does not fit. | M | Phones get "Fill in missing data": one horse at a time, only its empty fields, then the next horse. |
-| 30 | Typos in shared pedigree records ("Moonlit Bay" and "Moonlight Bay"). | Two records for one stallion; family links split. | M | A "Pedigree records" tab lists every shared record with "used in N" and a **Merge** action that a person confirms. |
+| 25 | In a long session, staff save a value on the wrong horse. | Wrong data on a horse, found late. | L | The form header shows the horse's photo and both names. After each save: "Saved Copper Rose. Undo" for 30 seconds. |
+| 26 | Two people edit the same horse at the same time. | The last save wins; the first change is lost with no message. | M | The form carries the record's version. A save on a changed record stops and shows who changed it. |
+| 27 | A typed sire name matches two pedigree records. | The editor joins the wrong one. | **H** | The field shows both, with suffix, year and parents. The form does not save until a person chooses one or "New". |
+| 28 | Typos in shared pedigree records ("Moonlit Bay" and "Moonlight Bay"). | Two records for one stallion; family links split. | M | The Pedigree records list has a "Possible duplicates" filter and a **Merge** action. |
+| 29 | Someone merges the wrong two records. | Two different horses become one. | M | Merge shows both records and their trees side by side before confirming. History stores each moved link, so the merge can be reversed. |
 
 ### 4.5 Result
 
 The first draft worked for a livery yard with a few horses. It failed for
 a stud or a racing yard (cases 1, 2, 15, 16, 17) and for polo names (case
-11). The editor adds new risks (cases 25 and 27) that need their guards
-from day one. §6 and §7 below include the fixes.
+11). The editor's main risk is a wrong pedigree match (case 27), which
+needs its guard from day one. §6 and §7 below include the fixes.
 
 ---
 
@@ -410,73 +416,73 @@ them as "Open on … ↗".
 
 #### 7.5 Records editor (decision 5)
 
-A spreadsheet-style grid in the app, for many horses at once. Open it
-from the horse list header: **Edit records**. It has three tabs: Horses,
-Pedigree records, Import a file (§7.6).
+**Not a spreadsheet grid.** A grid needs paste handling, keyboard moves,
+drafts and conflict checks for many rows at once. It caused most of the
+editor risks in the stress test (§4.4). The editor below reuses screens
+the app already has, and it works the same on a phone.
 
-**Horses tab (desktop, `lg` and up):**
+**Fill in records** (button on the horse list header). Two tabs: Horses
+and Pedigree records. A third link goes to **Import a file** (§7.6).
 
 ```
-Edit records   [Horses] Pedigree records  Import a file
-Show: Active ▾  Location ▾  Owner ▾   Missing: [Chip] [UELN] [Pedigree] [Foaled]
-Columns: [Identity] [Numbers] [Pedigree]
-┌────────────┬────────────────┬─────┬────────┬───────────────────┬──────────────┬─────────────┬────────────┐
-│ Yard name  │ Registered name│ Ctry│ Foaled │ Microchip         │ Sire         │ Dam         │ Dam's sire │
-├────────────┼────────────────┼─────┼────────┼───────────────────┼──────────────┼─────────────┼────────────┤
-│ Ballerina  │                │     │ c.2011 │                   │              │             │            │
-│ Avicii     │ Karma Avicii   │ GB  │ 2019   │ 985141000123456   │ Copper Ridge │ Rosie ●     │ Moonlit Bay│
-│ Beech      │ ▒Beech Hill▒   │ IRE │ 2021   │ ▒372…  (was 372…)▒│ ⚠ 2 possible │             │            │
-└────────────┴────────────────┴─────┴────────┴───────────────────┴──────────────┴─────────────┴────────────┘
-3 changes in 2 horses · 1 to choose                         [Discard]  [Save]
+Fill in records   [Horses]  Pedigree records  ·  Import a file
+Missing: [Any] Chip  UELN  Passport  Pedigree  Foaled          Location ▾  Owner ▾
+┌ 23 horses with gaps ──────┬ Copper Rose (GB) · yard name Rosie 23 ───── 4 of 23 ┐
+│   Ballerina        2 of 9 │ IDENTITY                                           │
+│   Avicii           6 of 9 │ Registered name [Copper Rose   ]  Country [GB ▾]   │
+│ ▸ Copper Rose      7 of 9 │ Foaled [12/04/2023] ☐ Year only   Microchip [    ] │
+│   Beech            5 of 9 │ UELN [               ]  Passport [826002] Weatherbys│
+│   …                       │ PEDIGREE                                           │
+│                           │ Sire [Copper Ridge (GB) ▾]  Dam [Starlit Rose ● ▾] │
+│                           │ Dam's sire [Moonlit Bay (FR)]   More ▾             │
+│                           │                        [Save]  [Save and next →]   │
+└───────────────────────────┴────────────────────────────────────────────────────┘
 ```
 
-- **Rows:** horses, 50 to a page. Filters for location, owner, breed and
-  "Missing …". The yard name column stays fixed when you scroll.
-- **Column groups:** Identity (registered name, country, foaled, sex,
-  colour, breed, height, markings), Numbers (microchip, UELN, passport
-  number, issuer), Pedigree (sire, dam, dam's sire).
-- **Keys:** arrow keys, Tab and Enter move like a spreadsheet. Esc undoes
-  the cell.
-- **Paste:** paste a block from Excel or Google Sheets. It fills cells
-  from the selected cell (tab and new-line separated).
-- **Drafts:** a changed cell is shaded. A cell that replaces a value is
-  amber and shows the old value (case 25). Nothing saves until **Save**.
-- **Save:** the server checks each row with the same form classes as the
-  pop-ups, so the rules are in one place. Good rows save; a bad cell
-  stays a draft with its error (case 28). Warnings (duplicate chip, odd
-  length) show but do not block.
-- **Versions:** each row carries its `updated_at`. A row that changed
-  since it was loaded does not save; it shows "Changed by Sam at 14:02.
-  Reload the row." (case 26).
-- **Pedigree cells** use the §6.4 matcher. One clear match: linked.
-  Several: "2 possible: choose" blocks that cell only (case 27). None: a
-  new pedigree record on save.
-- **Undo:** "Undo" for 30 seconds after a save, with the existing helper
-  (`core/views/_undo.py`).
-- **History:** each saved row gets the change reason "Records editor".
-- **Download:** "Download as CSV" gives the rows on screen in the import
-  template's columns, so a yard can edit offline and import again.
-- **Access:** full Horses access edits. View-only roles see a read-only
-  grid. It is still useful as a "what is missing" report.
+- **The list** is the horse list split view (HORSE_LIST_SPLIT_VIEW_PLAN.md)
+  with a completeness count: how many of 9 key fields are filled
+  (registered name, country, foaled, microchip, UELN, passport, sire,
+  dam, dam's sire). "Unknown" counts as filled. Filters: missing field,
+  location, owner, breed, "Estimated foaling year".
+- **The pane** shows one form with the identity fields (§7.1) and the
+  pedigree fields (§7.2). It uses the same form classes as the pop-ups,
+  so the rules are in one place.
+- **Save and next** saves and opens the next horse in the filtered list.
+  The pane shows "Saved Copper Rose. Undo" for 30 seconds, with the
+  existing helper (`core/views/_undo.py`) (case 25).
+- **Versions:** the form carries the record's version. A save on a record
+  that changed since it opened stops and shows who changed it (case 26).
+- **Pedigree fields** use the §6.4 matcher. A name with more than one
+  match must be chosen before the form saves (case 27).
+- **Phone:** the list, then the form on its own screen, with Save and
+  next. No separate phone design.
+- **History:** each save gets the change reason "Records editor".
+- **Access:** full Horses access edits. View-only roles see the list with
+  its counts, as a "what is missing" report.
 
-**Phones (below `lg`): "Fill in missing data"** (case 29). One horse at a
-time, with only its empty fields. **Save and next** goes to the next horse
-with a gap. The filters are the same as on the grid.
+**Pedigree records tab** (cases 10, 28, 29):
 
-**Pedigree records tab** (case 30): a grid of the shared `PedigreeHorse`
-rows: name, country, year, sex, sire, dam, "used in N pedigrees", "on the
-yard". Edit cells the same way. **Merge**: select two rows, choose which
-one to keep, confirm. Every link to the other row moves to the kept row,
-and history records the merge.
+- A list of the shared `PedigreeHorse` records: name, country, year, sex,
+  sire, dam, "used in N horses on this yard". Search by name.
+- Filter **Possible duplicates**: the same `name_key`, or names that
+  differ by one letter.
+- Select a record to edit it in the pane. A record used by more than one
+  horse shows "Used in 14 pedigrees" and asks again before a save.
+- **Merge:** choose two records. The pane shows both, with their trees,
+  side by side. Choose the one to keep, then confirm. Every link moves to
+  the kept record. History stores each moved link, so the merge can be
+  reversed.
 
-**Build:** a server-rendered table plus one small script
-(`static/js/records_grid.js`) for keys, paste and drafts, with tests in
-`static/js/tests/records_grid.test.js`. No third-party grid library: it
-would add size, and the Content Security Policy rules make it harder.
+**Bulk changes without a grid:** **Download as CSV** gives the filtered
+horses in the import template's columns. Edit the file in Excel, then
+import it (§7.6). The import's review screen shows each change before
+it saves.
+
+**Later, only if yards ask:** a spreadsheet-style grid.
 
 #### 7.6 Spreadsheet import
 
-- **Edit records → Import a file**. Download a CSV template with these
+- **Fill in records → Import a file**. Download a CSV template with these
   columns: Yard name (required), Registered name, Country, Foaled (date
   or year), Sex, Colour, Breed, Sire, Dam, Dam's sire, Microchip, UELN,
   Passport number, Passport issuer, Markings, Height.
@@ -557,56 +563,157 @@ Details card. Notes and conditions move to a smaller **Notes &
 conditions** card (UX_REVIEW_PLAN.md A2 item 5 already asks to remove
 Details).
 
-Desktop (`lg` and up):
+**Prototype with example data:**
+[Horse Pedigree Card](https://claude.ai/artifact/7UJyTrTVJVvVYaEND1Xs1h)
+(private to the account owner until shared from its Share menu).
+
+Layout: the identity pane on the left (about 17.5rem), the pedigree pane
+on the right. When the card is narrower than about 760px, the identity
+pane goes above the pedigree.
 
 ```
-┌ Identity & pedigree ──────────────────────────────── Edit · Scan to check ┐
-│ IDENTITY                        │ PEDIGREE                                │
-│ Microchip 985 141 000 123 456 ⧉ │           ┌ Copper Ridge (GB) 2004 ┬ Highland Star (IRE)
-│ UELN      826002 000123456    ⧉ │ Ballerina ┤                        └ Silver Brook (GB)
-│ Passport  826002 · Weatherbys   │           └ Rosie (IRE) 2005 ●     ┬ Moonlit Bay (FR)
-│ Breed     Thoroughbred          │                                    └ Fair Lady (GB)
-│ Height    16.1 hh               │ ● on this yard                          │
-│ Markings  Star, 4 white socks   │ Weatherbys ↗ · Racing Post ↗            │
-│ Foaled    2011, GB              │                                         │
-│ ✓ Chip scanned, matches passport · 3 Oct 2026 · Sam                       │
-├───────────────────────────────────────────────────────────────────────────┤
-│ FAMILY ON THIS YARD   Dam Rosie · 2 half-siblings · 1 foal                │
-└───────────────────────────────────────────────────────────────────────────┘
+┌ Identity & pedigree ─────────────────────────────────────── Edit · Scan to check ┐
+│ IDENTITY                     │ PEDIGREE                                           │
+│ Yard name  Rosie 23          │ by Copper Ridge (GB) out of Starlit Rose (IRE),    │
+│ Microchip  826 098 000 123 456│ by Moonlit Bay (FR)                                │
+│ UELN       826002 000123456  │                          ╭ Highland Star (IRE)     │
+│ Passport   Weatherbys        │            ╭ Copper Ridge╯                         │
+│ Breed      Thoroughbred      │ Copper Rose┤ (GB) 2014   ╰ Silver Brook (GB)       │
+│ Foaled     12 Apr 2023 · GB  │            ╰ Starlit Rose╮ Moonlit Bay (FR)        │
+│ ✓ Chip scanned · 3 Oct 2026  │              (IRE) ●     ╰ Fair Lady (GB)          │
+│                              │ FAMILY  Dam Starlit Rose · Full sibling …          │
+│                              │ SOURCE  Typed 12 Nov 2026 · Weatherbys ↗           │
+└──────────────────────────────┴────────────────────────────────────────────────────┘
 ```
 
-Phone (below `lg`):
-
-```
-IDENTITY & PEDIGREE              Edit
-Microchip   985 141 000 123 456  ⧉
-UELN        826002 000123456     ⧉
-Passport    826002 · Weatherbys
-Breed       Thoroughbred · 16.1 hh
-✓ Chip scanned · 3 Oct 2026
-
-Sire  Copper Ridge (GB) 2004
-      by Highland Star (IRE) out of Silver Brook (GB)
-Dam   Rosie (IRE) 2005 ● on yard
-      by Moonlit Bay (FR) out of Fair Lady (GB)
-
-Family here: Dam Rosie · 2 half-siblings
-```
-
-Rules:
+Identity rules:
 
 - Numbers in mono, in groups of three, with a copy button that copies the
   number with no spaces.
 - An empty field is not a row. One line lists what is missing: "Missing:
   UELN, height. **Add**". "Unknown" parents are not missing.
-- Family on this yard comes from the pedigree links: dam and sire on the
-  system, full and half siblings, offspring. At most 3 extra queries.
 - Existing tokens and `.card`, `.section-header`, `.dt-label` classes. No
   new colour.
-- The tree is a nested list (`<ul>`) with "Sire", "Dam", "Dam's sire" as
-  screen-reader text.
 
-### 8.3 Empty state
+### 8.3 The pedigree diagram
+
+This is the most visible part of the feature. The prototype above shows
+each rule below.
+
+**Shape.** A sideways tree: the horse on the left, its parents, then its
+grandparents. In each pair the sire is above the dam. This is the layout
+of sales catalogue pages, so racing staff read it at once. A round "fan"
+chart was considered and rejected: long racehorse names do not fit on
+curved wedges, and the trade does not use that layout.
+
+**Generations.** 2 by default (6 boxes). **Show 3 generations** (14 boxes)
+appears only when a third-generation record exists (decision 3).
+
+**The grid.** The diagram is a CSS grid. Nothing is measured in the
+browser.
+
+- Columns: generation 0, gap, generation 1, gap, generation 2 (and gap,
+  generation 3).
+- Rows: 2^G equal rows, where G is the number of generations shown
+  (`repeat(R, minmax(row-height, 1fr))`).
+- Each position has a code: S = sire, D = dam, read from the horse
+  outwards (SD = sire's dam). Read S as 0 and D as 1, and the code is the
+  box's index in its generation (SS 0, SD 1, DS 2, DD 3).
+- The box at generation k with index i sits in column 2k+1, starts at row
+  i × R/2^k + 1 and spans R/2^k rows. It is centred in its rows, so its
+  middle is at (i + 0.5) / 2^k of the height.
+
+**The lines.**
+
+- One inline SVG for each gap: `viewBox="0 0 100 100"`,
+  `preserveAspectRatio="none"`, spanning all rows.
+- For each box at generation k + 1, one path from the middle of its child
+  (x 0) to its own middle (x 100), using the fractions above × 100.
+- Curved: `M0 y1 C55 y1 45 y2 100 y2`. Bracket: `M0 y1 H50 V y2 H100`.
+  The prototype has both. Recommendation: curved.
+- `vector-effect: non-scaling-stroke` keeps the line width the same when
+  the SVG stretches.
+- Lines to "Unknown" or "not entered" boxes are dashed.
+- The line colour is a theme token, so it also works in dark mode.
+
+**Drawn by the server.** A template tag `{% pedigree_tree horse
+generations=2 %}` (`pedigree/templatetags/pedigree.py`) does this work:
+
+- It reads the records, one query for each generation.
+- It works out each box's grid place and each SVG path.
+- It renders `templates/pedigree/_tree.html`.
+
+No script is needed to draw the tree. One small script
+(`static/js/pedigree_tree.js`) only adds the highlight. The same tag
+serves the card, the split-view preview and the Merge screen.
+
+**Boxes.**
+
+| State | Look |
+|-------|------|
+| The horse | Filled forest box: name, year, colour, sex |
+| On record | Light box: relation label (Sire, Dam's sire, …; hidden at generation 3), name and suffix, year and colour |
+| On this yard | As "On record", with a green dot before the name |
+| Unknown | Dashed box: "Unknown" |
+| Not entered | Dashed box: "+ Add" for full access, empty for view-only |
+| Appears twice | Saddle border and fill, with a badge such as "2×3" |
+
+When a parent is Unknown or not entered, its own parents are not drawn.
+
+**Interaction.**
+
+- Point at a box, or move the keyboard focus to it: the line from that
+  box back to the horse is highlighted. Every copy of the same record
+  highlights with it.
+- Select a box: the card shows that record's own tree, with "← Back to
+  Copper Rose". A horse on the yard also offers "Open horse page".
+- Select "+ Add": the pedigree pop-up opens at that position.
+
+**Inbreeding.** A record that appears more than once in the generations
+shown is marked. A line under the tree says, for example, "Inbreeding:
+Highland Star (IRE) 2×3": the sire is generation 1, so 2×3 means
+"sire's sire, and also a great-grandparent on the dam's side". Shared
+records make this exact: the same record means the same horse, with no
+name matching.
+
+**Text around the tree.**
+
+- Above: the byline the trade uses, for example "by Copper Ridge (GB)
+  out of Starlit Rose (IRE), by Moonlit Bay (FR)".
+- Below:
+  - **Family** on this yard: dam, full and half siblings, progeny, the
+    recipient mare after an embryo transfer.
+  - **Inbreeding**, when there is any.
+  - **Not entered**, with an Add link.
+  - **Source:** "Typed 12 Nov 2026", "Filled at foaling from the Copper
+    Ridge and Starlit Rose records", or "Read from passport". Then the
+    links out (Weatherbys ↗, Racing Post ↗).
+- Family uses the pedigree links. At most 3 extra queries.
+
+**Narrow screens.**
+
+- The diagram reacts to its own width (a CSS container query), not the
+  screen width. So the same partial works in the card, in the split-view
+  pane and on a phone.
+- Below about 30rem, the horse's own box and the first gap are hidden,
+  because the page title already names the horse. Parents and
+  grandparents fill the width.
+- With 3 generations, the tree keeps a minimum width and scrolls sideways
+  inside the card. The page itself never scrolls sideways.
+
+**Accessibility.**
+
+- The boxes are in family order in the page: Sire, Sire's sire, Sire's
+  dam, Dam, Dam's sire, Dam's dam. A screen reader reads them as a list.
+- Each box has a label, for example "Sire's dam: Silver Brook (GB),
+  foaled 2008".
+- The SVGs are hidden from screen readers. The byline gives the summary.
+
+**No graph library.** A library would lay out the tree in the browser,
+add size, and need changes to the Content Security Policy. A pedigree is
+a fixed binary tree, so the server can place every box.
+
+### 8.4 Empty state
 
 ```
 ┌ Identity & pedigree ────────────────────────────────────────────┐
@@ -617,12 +724,12 @@ Rules:
 
 Phase 2 adds "Read from passport or PDF".
 
-### 8.4 Other places
+### 8.5 Other places
 
 | Place | Change |
 |-------|--------|
-| Horse list header | **Edit records** button: opens the records editor (§7.5) with the list's filters |
-| Split-view preview | Microchip, UELN, the "by … out of …" line |
+| Horse list header | **Fill in records** button: opens the records editor (§7.5) with the list's filters |
+| Split-view preview | Microchip, UELN, the "by … out of …" line, and the diagram (§8.3) in its narrow form |
 | Quick view | Microchip |
 | Search | Also by UELN and registered name |
 | Foals table | Sire from the pedigree row; a link when on the system |
@@ -635,8 +742,8 @@ Phase 2 adds "Read from passport or PDF".
 | Phase | What | Effort | Needs |
 |-------|------|--------|-------|
 | **1a. Identity and age** | §6.1 fields, the age rule and the age-to-foaling-year migration, §6.2 links, checks (§6.6), history (§6.7), scan-to-check and ChipChecker link (§7.1), identity half of the card, header, preview and quick view | M | — |
-| **1b. Pedigree** | `PedigreeHorse` and back-fill migration, matcher (§6.4), pedigree pop-up (§7.2), foaling and covering (§7.4), tree on the card, family on this yard | M/L | 1a |
-| **1c. Records editor** | Horses grid, "Fill in missing data" on phones, Pedigree records tab with Merge, Download as CSV (§7.5) | M/L | 1b |
+| **1b. Pedigree** | `PedigreeHorse` and back-fill migration, matcher (§6.4), pedigree pop-up (§7.2), foaling and covering (§7.4), the diagram and its template tag (§8.3), family on this yard | M/L | 1a |
+| **1c. Records editor** | Fill in records (list, form, Save and next), Pedigree records with duplicates filter and Merge, Download as CSV (§7.5) | M | 1b |
 | **1d. Import and clean-up** | Proposed changes (§6.5), spreadsheet import (§7.6), back-fill from text and names (§7.7) | M | 1c |
 | **2. Documents** | Read passports, Weatherbys PDFs and catalogue pages into proposals; the test set; the processor notice | M | 1d; an API key |
 | **3. Licensed data and matching** | Feeds into proposals; Returning horses; C-vet link; sales PDF; third generation | L, plus a contract | 1d |
@@ -649,9 +756,10 @@ Phase 2 adds "Read from passport or PDF".
 |---|----------|--------|
 | 1 | Shared pedigree records (§6.3), or a copy on each horse? | **Agreed: shared.** |
 | 2 | Keep `microchip` and `passport_number` on `Horse`? | Open. Recommendation: yes; use `HorseIdentifier` for extra numbers. |
-| 3 | Generations on the page? | Open. Recommendation: 2. Sire, dam, dam's sire are the minimum to enter. |
+| 3 | Generations on the page? | Open. Recommendation: 2 by default, with "Show 3 generations" when the records exist (§8.3; the prototype shows both). Sire, dam, dam's sire are the minimum to enter. |
 | 4 | Racing age? | **Agreed: one rule for all horses** (1 January, or 1 August in the southern hemisphere). Stored ages become estimated foaling years (§6.1). |
-| 5 | Spreadsheet import in phase 1? | **Agreed: yes, and a records editor in the app** (§7.5). |
+| 5 | Spreadsheet import in phase 1? | **Agreed: yes, and a records editor in the app.** The editor is a list and a form with Save and next, not a spreadsheet grid (§7.5). |
+| 8 | Pedigree lines: curved or bracket? | Open. Recommendation: curved (§8.3). The prototype shows both. |
 | 6 | Embryo transfer for polo? | Open. Recommendation: phase 1 lets the dam differ from the mare that foaled; a donor-mare field on the breeding record later. |
 | 7 | AI document reading (phase 2)? | Open. Recommendation: yes, through the review screen, after the test set passes. |
 
@@ -680,12 +788,18 @@ Phase 2 adds "Read from passport or PDF".
   stop others; nothing saves before Apply; a typed value is never
   pre-ticked for change; a value changed after the proposal is skipped.
 - `pedigree/tests/test_backfill.py`: each `breeding` text pattern.
-- `pedigree/tests/test_records_editor.py`: good rows save and bad cells
-  stay with their error; a row changed since load does not save; a
-  pedigree cell with two matches does not save until chosen; undo; a
-  view-only role cannot save; merge moves every link and keeps history.
-- `static/js/tests/records_grid.test.js`: paste parsing (tabs, new lines,
-  quoted cells from Excel), key moves, amber state for a replaced value.
+- `pedigree/tests/test_records_editor.py`: the completeness count
+  ("Unknown" counts as filled); Save and next opens the next horse in the
+  filtered list; undo; a record changed since it opened does not save; a
+  pedigree name with two matches does not save until chosen; a view-only
+  role cannot save; merge moves every link, keeps history and can be
+  reversed.
+- `pedigree/tests/test_tree.py`: grid place and SVG path for each position
+  with 2 and 3 generations; the parents of an Unknown or not-entered box
+  are not drawn; dashed lines to those boxes; inbreeding labels such as
+  2×3; one query for each generation.
+- `static/js/tests/pedigree_tree.test.js`: the highlight follows the
+  position code back to the horse, and twins highlight together.
 - `core/tests/test_query_counts.py`: a cap for the horse page with a full
   tree and family.
 - Phase 2: the review screen saves only accepted rows; the job never
