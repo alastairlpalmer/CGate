@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Edit training{% else %}Record training{% endif %} - Cgate{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-4">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{% if object %}Edit training{% else %}Record training{% endif %}</h1>
+            <p class="page-subtitle">One piece of work for one horse.</p>
+        </div>
+    </div>
+    <div class="card">
+        <form method="post">
+            {% csrf_token %}
+            <div class="px-4 py-3 space-y-3" x-data="{ status: '{{ initial_status|escapejs }}' }">
+                {% if form.non_field_errors %}
+                <div class="p-3 bg-error-red-50 border border-error-red/20 rounded text-sm text-error-red" role="alert">
+                    {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+                </div>
+                {% endif %}
+                {% include "training/partials/_activity_fields.html" %}
+            </div>
+            <div class="px-4 py-3 border-t border-light-sage flex justify-end gap-3">
+                <a href="{% url 'training_log' %}" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

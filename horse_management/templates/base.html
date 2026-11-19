@@ -253,6 +253,15 @@
                 <span class="tab-bar-label">Locations</span>
             </a>
             {% endif %}
+            {% if training_enabled and feature_access.training.view %}
+            <a href="{% url 'training_home' %}" id="tab-training"
+               class="tab-bar-item {% if '/training/' in request.path %}active{% endif %}">
+                <span class="tab-bar-icon">
+                    <svg class="w-6 h-6" aria-hidden="true"><use href="#i-stopwatch"/></svg>
+                </span>
+                <span class="tab-bar-label">Training</span>
+            </a>
+            {% endif %}
             {% comment %}The pages behind this button have no tab of their own,
             so without help the bar says "More" while you stand on Invoices.
             syncMoreTab() below relabels it with whatever the More sheet marks
@@ -308,6 +317,7 @@
                     Farrier
                 </a>
                 {% endif %}
+                {# Training has its own tab on the bar from phase 2b (TRAINING_MODULE_PLAN 8.0). #}
                 {% if feature_access.breeding.view %}
                 <a href="{% url 'breeding_list' %}" class="sheet-nav-item {% if '/health/breeding/' in request.path %}sheet-nav-item-active{% endif %}">
                     <svg class="w-5 h-5 shrink-0" aria-hidden="true"><use href="#i-foal"/></svg>
@@ -938,6 +948,7 @@ document.addEventListener('alpine:init', function() {
                     vet_visit: 'Record Vet Visit',
                     condition: 'Record Medical Condition',
                     charge: 'Add Charge',
+                    training: 'Record Training',
                     move: 'Move to Location',
                     restore: 'Undo Departure',
                     expected_departure: 'Set Expected Departure',

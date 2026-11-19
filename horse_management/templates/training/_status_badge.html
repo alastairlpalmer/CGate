@@ -1,0 +1,2 @@
+{# The status of one record, in words (principle 5.13). Usage: include with activity=a #}
+{% if activity.is_not_confirmed %}<span class="badge-warning">Not confirmed</span>{% elif activity.status == 'done' %}<span class="badge-success">Done</span>{% elif activity.status == 'planned' %}<span class="badge-neutral">Planned</span>{% else %}<span class="badge-info">Did not work{% if activity.reason %}: {{ activity.get_reason_display }}{% endif %}</span>{% endif %}

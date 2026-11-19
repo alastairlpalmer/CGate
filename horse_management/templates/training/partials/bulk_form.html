@@ -1,0 +1,31 @@
+{% comment %}
+Bulk add: one training record for each ticked horse. Opened from the bulk
+bar (health/partials/bulk_action_bar.html) through health's bulk views,
+which pass action_type=training to training/bulk.py. The selected horses
+travel as hidden inputs, so an error re-render keeps them.
+{% endcomment %}
+<form method="post" action="{% url 'bulk_health_apply' %}"
+      hx-post="{% url 'bulk_health_apply' %}" hx-target="#popup-body" hx-select="unset" hx-push-url="false" hx-swap="innerHTML">
+    {% csrf_token %}
+    <input type="hidden" name="action_type" value="training">
+    {% for id in horse_ids %}<input type="hidden" name="horse_ids" value="{{ id }}">{% endfor %}
+    <div class="px-4 py-3 space-y-3" x-data="{ status: '{{ initial_status|escapejs }}' }">
+        <p class="text-sm text-charcoal">
+            <span class="text-sage">For {{ horse_names|length }} horse{{ horse_names|length|pluralize }}{% if horse_names %}:{% endif %}</span>
+            {{ horse_names|join:", " }}
+        </p>
+        {% if skipped_names %}
+        <p class="alert-warning text-sm">Not on the yard, so not recorded: {{ skipped_names|join:", " }}.</p>
+        {% endif %}
+        {% if form.non_field_errors %}
+        <div class="rounded-md bg-error-red-50 border border-error-red/20 p-3" role="alert">
+            {% for error in form.non_field_errors %}<p class="text-sm text-error-red">{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+        {% include "training/partials/_activity_fields.html" %}
+    </div>
+    <div class="popup-footer">
+        <button type="button" @click="$store.popup.close()" class="btn-secondary text-sm">Cancel</button>
+        <button type="submit" class="btn-primary text-sm"{% if not horse_names %} disabled{% endif %}>Record for {{ horse_names|length }} horse{{ horse_names|length|pluralize }}</button>
+    </div>
+</form>

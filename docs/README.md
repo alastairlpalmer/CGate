@@ -25,6 +25,7 @@
 | [`FARRIER_PAGE_PLAN.md`](FARRIER_PAGE_PLAN.md) | Farrier page test (Option A): our farrier records visits on a phone; charges go on owners' monthly invoices; the yard pays the farrier monthly. |
 | [`C_VET_PLAN.md`](C_VET_PLAN.md) | C-vet, the vet's app built on C-gate: the two products, who owns which data, the offline rules, the phases, and what is built: the offline app (phase 1), the ownership seam that keeps clinical notes with the practice (phase 2), the API and sync (phase 3), the screens for a visit (phase 4), spoken notes with the yard as the practice's client (phase 5), the bill to the yard with charges and dates back into C-gate (phase 6), and the review of the screens. |
 | [`VET_TRIAL_PLAN.md`](VET_TRIAL_PLAN.md) | Vet trial with Tim, after the farrier test: horse list and treatment screen, voice notes typed by the app, no-signal mode, invoices in the practice's name, records back to Yardway. |
+| [`TRAINING_MODULE_PLAN.md`](TRAINING_MODULE_PLAN.md) | Training module: research, the owner's list checked against it, the owner's decisions, lots and the lot board, recording training for one horse or many, six pull requests (phases 1, 2a, 2b, 3, 4, 5), and two reviews. Phases 1 (record training), 2a (lots and training status) and 2b (the lot board) are built, behind `TRAINING_ENABLED`. |
 | [`UX_REVIEW_PLAN.md`](UX_REVIEW_PLAN.md) | UX and visual review (Nov 2026): findings and a phased plan for hierarchy, consistency and phone lists. |
 | [`UI_AUDIT.md`](UI_AUDIT.md) | Interface audit. |
 

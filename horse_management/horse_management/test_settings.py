@@ -61,3 +61,6 @@ MFA_REQUIRED_FOR_ADMINS = False
 
 # Barns and stables are built and tested ahead of being switched on.
 BARNS_ENABLED = True
+
+# Training is built and tested ahead of being switched on.
+TRAINING_ENABLED = True

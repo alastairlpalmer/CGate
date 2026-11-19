@@ -1,0 +1,32 @@
+{% comment %}
+Pick horses for a lot, in the shared pop-up sheet. A horse already in a
+lot shows that lot's name and cannot be ticked: use Move to on the Lots tab.
+{% endcomment %}
+<form method="post" action="{% url 'training_lot_add_horses' lot.pk %}"
+      hx-post="{% url 'training_lot_add_horses' lot.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+      x-data="{ q: '' }">
+    {% csrf_token %}
+    <div class="px-4 py-3 space-y-2">
+        <label for="lot-horse-search" class="sr-only">Find a horse</label>
+        <input id="lot-horse-search" type="search" x-model="q" placeholder="Find a horse…" class="form-input" autocomplete="off">
+        <ul class="max-h-[50vh] overflow-y-auto divide-y divide-light-sage">
+            {% for c in candidates %}
+            <li x-show="!q || '{{ c.horse.name|lower|escapejs }}'.includes(q.toLowerCase())">
+                <label class="flex items-center justify-between gap-2 min-h-[44px] {% if c.lot_name %}text-sage{% else %}cursor-pointer{% endif %}">
+                    <span class="flex items-center gap-2">
+                        <input type="checkbox" name="horses" value="{{ c.horse.pk }}" class="form-checkbox"{% if c.lot_name %} disabled{% endif %}>
+                        {{ c.horse.name }}
+                    </span>
+                    {% if c.lot_name %}<span class="text-xs">In {{ c.lot_name }}</span>{% endif %}
+                </label>
+            </li>
+            {% empty %}
+            <li class="py-3 text-sm text-sage">No horses on the yard.</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="popup-footer">
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        <button type="submit" class="btn-primary">Add to {{ lot.name }}</button>
+    </div>
+</form>

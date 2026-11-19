@@ -12,6 +12,7 @@ import re
 from dataclasses import dataclass, field
 from html import unescape
 
+from django.conf import settings
 from django.template.loader import render_to_string
 
 from .permissions import has_feature_access
@@ -29,12 +30,17 @@ class Guide:
     features: tuple = ()
     level: str = 'view'
     keywords: tuple = field(default_factory=tuple)
+    # A feature switch in settings that must be on, e.g. 'TRAINING_ENABLED'.
+    # With it off the guide would lead to pages that answer 404.
+    requires_setting: str = ''
 
     @property
     def template(self):
         return f'help/articles/{self.slug}.html'
 
     def visible_to(self, user):
+        if self.requires_setting and not getattr(settings, self.requires_setting, False):
+            return False
         if not self.features:
             return True
         return any(has_feature_access(user, f, self.level) for f in self.features)
@@ -57,6 +63,9 @@ GUIDES = [
           'The yard', features=('locations',), keywords=('field', 'paddock', 'site', 'barn', 'stable', 'map', 'rest', 'capacity')),
     Guide('feed', 'Feed', 'Feed stock, feeding out and low stock.',
           'The yard', features=('feed',), keywords=('hay', 'haylage', 'stock', 'feed out')),
+    Guide('training', 'Training', 'Work types and what each horse did, for one horse or many.',
+          'The yard', features=('training',), requires_setting='TRAINING_ENABLED',
+          keywords=('exercise', 'work', 'canter', 'ride', 'lunge', 'walker', 'lot', 'trainer')),
     Guide('owners', 'Owners', 'Owner details, their horses, invoices and statements.',
           'The yard', features=('owners',), keywords=('client', 'contact', 'statement', 'share')),
     Guide('breeding', 'Breeding', 'Mares, scans, foaling and foals.',

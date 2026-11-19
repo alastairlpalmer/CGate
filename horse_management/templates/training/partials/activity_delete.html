@@ -1,0 +1,13 @@
+<form method="post" action="{% url 'training_activity_delete' activity.pk %}"
+      hx-post="{% url 'training_activity_delete' activity.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false">
+    {% csrf_token %}
+    <div class="px-4 py-3 space-y-2 text-sm">
+        <p>Delete this training record?</p>
+        <p class="font-medium">{{ activity.horse.name }} · {{ activity.work_type.name }} · {{ activity.date|date:"D j M Y" }}</p>
+        <p class="text-sage">Use this for a record made by mistake. If the horse did not work, choose Edit and set Did not work instead.</p>
+    </div>
+    <div class="popup-footer">
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        <button type="submit" class="btn-danger">Delete</button>
+    </div>
+</form>

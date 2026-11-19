@@ -238,6 +238,9 @@ does from the horse page, so nothing here has to know it is in a pane.
             <button type="button" class="pane-chip" :class="filter === 'breeding' && 'is-active'" @click="filter = 'breeding'">Breeding</button>
             {% endif %}
             <button type="button" class="pane-chip" :class="filter === 'worming' && 'is-active'" @click="filter = 'worming'">Worming</button>
+            {% if has_training %}
+            <button type="button" class="pane-chip" :class="filter === 'training' && 'is-active'" @click="filter = 'training'">Training</button>
+            {% endif %}
         </div>
 
         {% if timeline_events %}
@@ -256,6 +259,7 @@ does from the horse page, so nothing here has to know it is in a pane.
                         {% elif event.type == 'vet_visit' %}{{ event.obj.reason|default:"Vet visit" }}
                         {% elif event.type == 'farrier_note' %}Farrier note
                         {% elif event.type == 'breeding' %}Covered by {{ event.obj.stallion_name|default:"stallion" }}
+                        {% elif event.type == 'training' %}{{ event.obj.work_type.name }}
                         {% endif %}
                     </span>
                     <span class="pane-event-note">
@@ -268,6 +272,7 @@ does from the horse page, so nothing here has to know it is in a pane.
                         {% elif event.type == 'farrier_note' %}{{ event.obj.text|truncatechars:120 }}
                         {% elif event.type == 'stable' %}{{ event.obj.stable.location.name }}
                         {% elif event.type == 'breeding' %}{{ event.obj.get_status_display }}
+                        {% elif event.type == 'training' %}{{ event.obj.status_label }}{% if event.obj.reason %}: {{ event.obj.get_reason_display }}{% endif %}{% if event.obj.minutes %} · {{ event.obj.minutes }} min{% endif %}
                         {% endif %}
                     </span>
                 </span>

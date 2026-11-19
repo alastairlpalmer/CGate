@@ -407,7 +407,12 @@ class VetFenceTests(TestCase):
         levels = vet_role().resolved_access()
         self.assertEqual(levels.pop('cvet'), 'full')
         self.assertEqual(set(levels.values()), {'hidden'})
-        self.assertEqual(set(VET_ACCESS), {feature['key'] for feature in FEATURES})
+        # The seed map is frozen. A feature added after it resolves to hidden
+        # (DEFAULT_LEVELS); list it here once someone has checked that a vet
+        # should not see it. Training: the yard's exercise records, not the
+        # practice's (docs/TRAINING_MODULE_PLAN.md, 4.3).
+        added_after_the_vet_role = {'training'}
+        self.assertEqual(set(VET_ACCESS) | added_after_the_vet_role, {feature['key'] for feature in FEATURES})
 
     def test_sign_in_lands_on_cvet(self):
         self.assertRedirects(self.client.get('/'), '/c-vet/', fetch_redirect_response=False)

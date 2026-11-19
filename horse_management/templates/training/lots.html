@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+
+{% block title %}Lots - Cgate{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Training</h1>
+            <p class="page-subtitle">A lot is a group of horses that usually work together. The lot board for each day starts from these lots. A change here does not change a board that already started.</p>
+        </div>
+        {% if can_change %}
+        <div class="flex items-center gap-3">
+            <a href="{% url 'training_lot_create' %}" hx-get="{% url 'training_lot_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Add lot" class="btn-primary">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                Add lot
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    {% include 'training/_tabs.html' %}
+
+    {% if in_work_no_lot %}
+    <div class="alert-warning text-sm" role="status">
+        <p>In work but in no lot: {% for h in in_work_no_lot %}<a href="{% url 'horse_detail' h.pk %}#training" class="link">{{ h.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+    </div>
+    {% endif %}
+
+    {% for lot in lots %}
+    <section class="card" aria-labelledby="lot-{{ lot.pk }}">
+        <div class="section-header flex flex-wrap items-center justify-between gap-2">
+            <div>
+                <h2 id="lot-{{ lot.pk }}" class="section-title">{{ lot.name }}</h2>
+                <p class="text-xs text-sage mt-0.5">
+                    {{ lot.on_yard|length }} horse{{ lot.on_yard|length|pluralize }}
+                    &middot; {{ lot.usual_work_type.name }}{% if lot.usual_time %} &middot; {{ lot.usual_time|time:"H:i" }}{% endif %}
+                </p>
+            </div>
+            {% if can_change %}
+            <div class="flex flex-wrap items-center gap-1">
+                <a href="{% url 'training_lot_add_horses' lot.pk %}" hx-get="{% url 'training_lot_add_horses' lot.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                   data-popup-title="Add horses to {{ lot.name }}" class="btn-secondary btn-sm min-h-[44px] sm:min-h-0 px-3">Add horses</a>
+                <a href="{% url 'training_lot_update' lot.pk %}" hx-get="{% url 'training_lot_update' lot.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                   data-popup-title="Edit {{ lot.name }}" class="btn-ghost btn-sm min-h-[44px] sm:min-h-0 px-3">Edit</a>
+                <form method="post" action="{% url 'training_lot_archive' lot.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-ghost btn-sm min-h-[44px] sm:min-h-0 px-3">Archive</button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+        {% if lot.notes %}<p class="px-4 pt-2 text-sm text-charcoal-light">{{ lot.notes }}</p>{% endif %}
+
+        {% if lot.on_yard %}
+        <ol class="divide-y divide-light-sage">
+            {% for m in lot.on_yard %}
+            <li class="px-4 py-2 flex flex-wrap items-center justify-between gap-2">
+                <span class="flex items-center gap-2 min-w-0">
+                    <span class="text-sage text-sm w-6 text-right shrink-0">{{ forloop.counter }}</span>
+                    <a href="{% url 'horse_detail' m.horse.pk %}#training" class="link font-medium truncate">{{ m.horse.name }}</a>
+                    {% with row=m.horse.training %}
+                    {% if row %}{% include 'training/_training_status.html' with value=row.status label=row.get_status_display %}{% endif %}
+                    {% endwith %}
+                </span>
+                {% if can_change %}
+                <span class="flex flex-wrap items-center gap-1">
+                    <form method="post" action="{% url 'training_lot_member' m.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" name="action" value="up" class="btn-ghost btn-xs min-h-[44px] min-w-[44px] sm:min-h-0" aria-label="Move {{ m.horse.name }} up"{% if forloop.first %} disabled{% endif %}>Up</button>
+                        <button type="submit" name="action" value="down" class="btn-ghost btn-xs min-h-[44px] min-w-[44px] sm:min-h-0" aria-label="Move {{ m.horse.name }} down"{% if forloop.last %} disabled{% endif %}>Down</button>
+                    </form>
+                    {% if other_lots|length > 1 %}
+                    <form method="post" action="{% url 'training_lot_member' m.pk %}" class="flex items-center gap-1">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="move">
+                        <label for="move-{{ m.pk }}" class="sr-only">Move {{ m.horse.name }} to</label>
+                        <select id="move-{{ m.pk }}" name="lot" class="form-select !mt-0 !w-auto text-xs py-1">
+                            {% for other in other_lots %}{% if other.pk != lot.pk %}<option value="{{ other.pk }}">{{ other.name }}</option>{% endif %}{% endfor %}
+                        </select>
+                        <button type="submit" class="btn-ghost btn-xs min-h-[44px] sm:min-h-0">Move to</button>
+                    </form>
+                    {% endif %}
+                    <form method="post" action="{% url 'training_lot_member' m.pk %}" class="flex items-center gap-1">
+                        {% csrf_token %}
+                        {% if boards_started %}
+                        <label class="inline-flex items-center gap-1 text-xs text-sage min-h-[44px] sm:min-h-0" title="Also take it off boards that already started, today and later">
+                            <input type="checkbox" name="also_boards" class="form-checkbox"> and from boards
+                        </label>
+                        {% endif %}
+                        <button type="submit" name="action" value="remove" class="btn-ghost btn-xs min-h-[44px] sm:min-h-0" aria-label="Remove {{ m.horse.name }} from {{ lot.name }}">Remove</button>
+                    </form>
+                </span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ol>
+        {% else %}
+        <p class="px-4 py-4 text-sm text-sage">No horses in this lot yet.</p>
+        {% endif %}
+
+        {% if lot.left_yard %}
+        <div class="px-4 pb-3">
+            <h3 class="dt-label mt-2">Left the yard</h3>
+            <ul class="mt-1 space-y-1">
+                {% for m in lot.left_yard %}
+                <li class="flex items-center justify-between gap-2 text-sm text-sage">
+                    <a href="{% url 'horse_detail' m.horse.pk %}" class="link">{{ m.horse.name }}</a>
+                    {% if can_change %}
+                    <form method="post" action="{% url 'training_lot_member' m.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" name="action" value="remove" class="btn-ghost btn-xs min-h-[44px] sm:min-h-0">Remove</button>
+                    </form>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            <p class="mt-1 text-xs text-sage">They stay in the lot in case the departure is undone. They do not go on the board.</p>
+        </div>
+        {% endif %}
+    </section>
+    {% empty %}
+    <div class="card px-4 py-8 text-center">
+        <p class="text-sm font-medium text-sage">No lots yet.</p>
+        {% if can_change %}
+        <a href="{% url 'training_lot_create' %}" hx-get="{% url 'training_lot_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add lot" class="btn-primary mt-4 inline-flex">Add the first lot</a>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    {% if archived_lots %}
+    <details class="card">
+        <summary class="px-4 py-3 cursor-pointer text-sm font-medium text-charcoal min-h-[44px]">Archived lots ({{ archived_lots|length }})</summary>
+        <ul class="divide-y divide-light-sage">
+            {% for lot in archived_lots %}
+            <li class="px-4 py-2 flex items-center justify-between gap-2 text-sm">
+                <span>{{ lot.name }}</span>
+                {% if can_change %}
+                <form method="post" action="{% url 'training_lot_archive' lot.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-ghost btn-xs min-h-[44px] sm:min-h-0">Restore</button>
+                </form>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </details>
+    {% endif %}
+
+</div>
+{% endblock %}
