@@ -10,7 +10,8 @@ Opening it makes no record (principle 5.3).
         <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
             {% include "includes/form_field.html" with field=form.status %}
             {% include "includes/form_field.html" with field=form.status_since %}
-            {% include "includes/form_field.html" with field=form.lot span="2" %}
+            {% include "includes/form_field.html" with field=form.review_on %}
+            {% include "includes/form_field.html" with field=form.lot %}
             {% include "includes/form_field.html" with field=form.default_who %}
             {% include "includes/form_field.html" with field=form.default_gear %}
             {% include "includes/form_field.html" with field=form.days_per_week %}

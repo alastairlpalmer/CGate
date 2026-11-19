@@ -277,6 +277,8 @@ class HorseTraining(models.Model):
 
     # The statuses that go on the board (phase 2b).
     ON_BOARD = (Status.IN_WORK, Status.LIGHT, Status.PRE_TRAINING)
+    # The statuses in the Overview's Not in work card (dashboard plan T6).
+    ON_REST = (Status.RESTING, Status.BOX_REST)
 
     horse = models.OneToOneField('core.Horse', on_delete=models.CASCADE, related_name='training')
     status = models.CharField(max_length=14, choices=Status.choices, default=Status.NOT_IN_TRAINING)
@@ -289,6 +291,12 @@ class HorseTraining(models.Model):
     # Phase 4 (D1): the exercise days a week the horse's livery includes.
     days_per_week = models.PositiveSmallIntegerField(
         null=True, blank=True, help_text='Exercise days a week, for example from a ridden livery. Leave empty if none.',
+    )
+    # Dashboard plan 4.4 (T5): when a horse on rest needs a decision.
+    # Cleared when the horse goes back on the board.
+    review_on = models.DateField(
+        null=True, blank=True, verbose_name='Review on',
+        help_text='For a horse on rest: the date to check it again. The Overview shows it when it is due.',
     )
     history = HistoricalRecords()
 

@@ -2727,3 +2727,13 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     .training-day-missed { @apply bg-white text-saddle border-saddle/40; }
     .training-day-planned { @apply bg-white text-sage border-dashed border-sage-300; }
 }
+
+/* Training Overview (docs/TRAINING_DASHBOARD_PLAN.md, phase A): the lot
+   filter for a large yard, and the progress bar of each lot today. */
+@layer components {
+    .training-lot-chips { @apply flex gap-1.5 overflow-x-auto pb-0.5; }
+    .training-lot-chip { @apply shrink-0 inline-flex items-center min-h-[36px] px-3 rounded-full border border-light-sage bg-white text-sm text-charcoal hover:bg-sage-50; }
+    .training-lot-chip.is-on { @apply bg-forest text-white border-forest; }
+    .training-progress { @apply h-1.5 my-1 rounded-full bg-light-sage overflow-hidden; }
+    .training-progress > span { @apply block h-full bg-forest; }
+}

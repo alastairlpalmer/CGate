@@ -1,0 +1,13 @@
+{# One horse in the Overview's Not in work card (dashboard plan 4.4). #}
+<div class="flex items-center gap-2 px-4 py-2 min-h-[52px]">
+    <div class="flex-1 min-w-0">
+        <a href="{% url 'horse_detail' row.horse_id %}#training" class="link text-sm font-semibold">{{ row.horse.name }}</a>
+        <p class="text-xs text-sage truncate">{{ row.get_status_display }} {{ row.days }} day{{ row.days|pluralize }}{% if row.conditions %} &middot; {{ row.conditions|join:", " }}{% endif %}{% if row.review_word %} &middot; {{ row.review_word }}{% endif %}</p>
+    </div>
+    {% if row.badge %}<span class="badge-warning shrink-0">{{ row.badge.1 }}</span>{% endif %}
+    {% if can_change %}
+    <a href="{% url 'training_horse_edit' row.horse_id %}"
+       hx-get="{% url 'training_horse_edit' row.horse_id %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+       data-popup-title="Training for {{ row.horse.name }}" class="btn-secondary btn-sm shrink-0 min-h-[44px] sm:min-h-0 inline-flex items-center">Change</a>
+    {% endif %}
+</div>

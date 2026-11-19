@@ -85,6 +85,7 @@ KIND_LABELS = {
     'training_board': 'Lot board',
     'training_unconfirmed': 'Lot not confirmed',
     'training_no_work': 'No work',
+    'training_review': 'Review due',
 }
 
 CATEGORY_OF_KIND = {
@@ -97,6 +98,7 @@ CATEGORY_OF_KIND = {
     'capacity': 'yard',
     'calendar': 'yard',
     'training_board': 'yard', 'training_unconfirmed': 'yard', 'training_no_work': 'yard',
+    'training_review': 'yard',
     'rate': 'money',
     'document': 'documents',
     'invoice': 'money',
