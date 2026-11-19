@@ -15,14 +15,19 @@ pop-up edit forms, a spreadsheet import, the foaling flow, and later a
 "read it from the document" step.
 
 **Status:** planned. Nothing in this file is built. §4 is a stress test of
-the first draft; the rest of the file includes its fixes.
+the first draft; the rest of the file includes its fixes. Decisions 1, 4
+and 5 are agreed (19 Nov 2026, §10).
 
 ---
 
 ## 0. Summary
 
-- **Phase 1 is all manual**: type it in, scan the chip, import a
+- **Phase 1 is all manual**: type it in, scan the chip, edit many horses
+  at once in the **records editor** (a grid in the app), import a
   spreadsheet, link out to Weatherbys and Racing Post. No sync.
+- **One age rule for all horses**: a year older on 1 January (1 August in
+  the southern hemisphere). Stored ages become a foaling year, so no age
+  goes out of date.
 - **Pedigree records are shared.** Type a stallion's parents once; every
   foal by him shows them. A foal born on the yard gets its tree with no
   typing.
@@ -46,9 +51,9 @@ the first draft; the rest of the file includes its fixes.
 |--------|--------------|
 | Shared `PedigreeHorse` records replace per-horse ancestor copies | Stud yards retyped the same stallion for each foal; spellings drifted; foals inherited nothing |
 | Sire / Dam / Dam's sire first | The three names on every racecard, sales page and passport |
-| Spreadsheet import with a review screen in phase 1 | 50 horses by hand takes hours. The same review screen serves phases 2 and 3 |
+| Records editor and spreadsheet import in phase 1 | 50 horses one at a time takes hours. The import's review screen also serves phases 2 and 3 |
 | A "proposed changes" step for all non-typed routes | Imports and later syncs must not overwrite typed or checked values |
-| Year-only foaling dates, racing age for thoroughbreds | "born 1 Jan 2011" in the screenshot is almost certainly a year only |
+| Year-only foaling dates; one age rule for all horses | "born 1 Jan 2011" in the screenshot is almost certainly a year only, and a stored age never goes up |
 | Chip scanner input and scan-to-check | 15 digits have no check digit; a typo is invisible |
 | Phases: 1 manual, 2 documents, 3 licensed feeds | The order you asked for |
 
@@ -81,7 +86,7 @@ Source: Notion, CGate → Dev board. All cards have the status "ideas".
 | `sire_name`, `dam_name` | Text | Shown in the header only when filled. |
 | `dam` | Link to another `Horse` | Set only by the foaling flow. Not on any form. |
 | `breeding` | Free text | Holds "By X out of Y" and whatever the original spreadsheet had. |
-| `date_of_birth`, `age` | A date, or a number of years | No way to say "year only". |
+| `date_of_birth`, `age` | A date, or a number of years | No way to say "year only". `age` is a fixed number: "15yo" typed in 2026 still says 15 in 2030. |
 | UELN, breed, height, markings, country, breeder, registered name | **Not there** | — |
 | Record history | **Not there** | `Owner` uses `django-simple-history`; `Horse` does not. |
 
@@ -110,7 +115,7 @@ Other findings:
 | Best identity key | UELN or microchip, then registered name + suffix + year | Microchip, then passport number. Never the name. |
 | Pedigree | Known to many generations. Sire, dam and dam's sire are the minimum on every racecard and sales page. | Often part-known: "Sire unknown", "TB mare". |
 | Breeding | Natural cover only (thoroughbred stud book rules). The mare that foals is the dam. | Embryo transfer is common. The mare that foals can be a recipient, not the dam. |
-| Age | A year older on 1 January (northern hemisphere) or 1 August (southern hemisphere) | True age |
+| Age | A year older on 1 January (northern hemisphere) or 1 August (southern hemisphere) | No fixed rule. The app uses the racing rule for all horses (decision 4). |
 | Passport issuer | Weatherbys (GB and IRE thoroughbreds) | The HPA, other UK issuers, or Argentine papers |
 | Public pages to link to | Weatherbys, Racing Post horse profile, sales catalogue page | Few |
 
@@ -130,8 +135,8 @@ data, **L** small.
 | 2 | A foal is born on the yard. | Foaling sets sire and dam names. Grandparents empty. | Staff must type 4 names that the app already knows. | **H** | Foaling links the foal to the mare's and the stallion's pedigree records. The tree fills itself (§7.4). |
 | 3 | Office types a racehorse's pedigree from the racecard. | Six equal boxes | The racecard shows sire, dam and dam's sire. Staff do not know SS, SD, DD. Half the boxes stay empty and the card looks incomplete. | M | Sire, Dam, Dam's sire first. The other three under "More" (§7.2). |
 | 4 | Foal name: "Rosie 2026 colt". Registered later as "Copper Rose (GB)". | `registered_name` field | OK. The yard name stays; the registered name is added later. | L | Keep. History records the change. |
-| 5 | Foaled 2011, exact date unknown. | Date field only | Staff type 1 Jan 2011. The page says "born 1 Jan 2011" as a fact. | M | `dob_is_year_only`; show "foaled 2011" (§6.1). |
-| 6 | A 3-year-old thoroughbred, foaled 10 April, on 1 March. | True age: 2 | Wrong for racing: it runs as a 3-year-old. | M | Thoroughbreds show racing age (§6.1). Decision 4. |
+| 5 | Foaled 2011, exact date unknown. | Date field only | Staff type 1 Jan 2011. The page says "born 1 Jan 2011" as a fact. | M | `dob_precision`; show "foaled 2011" (§6.1). |
+| 6 | The age on the page. | True age from the date, or the stored `age` number | The stored number never goes up. A thoroughbred foaled 10 April shows 2 on 1 March, but it runs as a 3-year-old. | M | One age rule for all horses. Stored ages become an estimated foaling year (§6.1). Decision 4. |
 | 7 | Staff type a 15-digit chip on a phone in the yard. | Format check only | A swapped digit passes the check. ISO 11784 has no check digit. | M | Accept input from a chip scanner. "Scan to check" compares a scan with the stored number (§7.1). |
 | 8 | A Bluetooth chip scanner types "FDX-B 985 141000123456" and Enter. | Field strips spaces only | Saved with text in it, or the form submits early. | M | Keep digits only. Ignore the Enter key in this field (§6.6). |
 | 9 | An imported horse has an old 10-digit chip and a new 15-digit chip. | One microchip field | The old chip is lost. | L | Old chip as a `HorseIdentifier` row. |
@@ -145,10 +150,10 @@ data, **L** small.
 
 | # | Case | Draft | Result | Sev | Fix |
 |---|------|-------|--------|-----|-----|
-| 15 | A new customer brings 60 horses on a spreadsheet. | Type each one | 2 to 3 hours of typing. The customer gives up. | **H** | Spreadsheet import with a review screen (§7.5). |
+| 15 | A new customer brings 60 horses on a spreadsheet. | Type each one | 2 to 3 hours of typing. The customer gives up. | **H** | Records editor (§7.5) and spreadsheet import with a review screen (§7.6). |
 | 16 | The import has a horse that is already on the system. | — | A second record for the same horse. | **H** | Match by chip, then UELN, then registered name + suffix + year. Name alone only suggests (§6.4). |
 | 17 | The import has a value that differs from a typed value. | — | The import overwrites the typed value. | **H** | Proposed changes (§6.5). Empty fields are pre-ticked; differences are not. |
-| 18 | Existing `breeding` text such as "By X out of Y" or "X x Y". | Ignored | Data the yard already has stays unused. | M | Back-fill proposals from the text (§7.6). |
+| 18 | Existing `breeding` text such as "By X out of Y" or "X x Y". | Ignored | Data the yard already has stays unused. | M | Back-fill proposals from the text (§7.7). |
 | 19 | Existing names like "Avicii (Karma Avicii)". | Clean-up command | OK. | L | Keep, as proposals in the same review screen. |
 
 ### 4.3 Documents and feeds (phases 2 and 3)
@@ -161,11 +166,25 @@ data, **L** small.
 | 23 | A licensed feed sends a different spelling for a typed name. | — | Duplicate pedigree records. | M | Feeds match on UELN or name + suffix + year, and go through proposals. |
 | 24 | Someone uses a third-party "Racing Post API" wrapper. | — | It is probably against Racing Post's terms. | **H** | Use only the official B2B licence. Link to public pages; do not copy from them. |
 
-### 4.4 Result
+### 4.4 Records editor (added after decision 5)
+
+The editor is a new route, so it gets the same test.
+
+| # | Case | Result without a guard | Sev | Fix (§7.5) |
+|---|------|------------------------|-----|------------|
+| 25 | Staff paste 40 rows from Excel over cells that already have values. | Typed and checked values are lost with no warning. | **H** | A pasted value that replaces a value shows in amber with the old value. Nothing saves until **Save**. Undo after save. |
+| 26 | Two people edit the same horse at the same time. | The last save wins; the first person's change is lost with no message. | M | Each row carries its version. A row that changed since it was loaded does not save; it shows who changed it. |
+| 27 | A pasted sire name matches two pedigree records. | The editor joins the wrong one. | **H** | The cell shows "2 possible: choose". That cell does not save until a person chooses or selects "New". |
+| 28 | One bad cell in a save of 30 rows. | The whole save fails, or saves part with no message. | M | Good rows save. Bad cells stay as drafts with the error on the cell. |
+| 29 | Staff use the editor on a phone. | A 15-column grid does not fit. | M | Phones get "Fill in missing data": one horse at a time, only its empty fields, then the next horse. |
+| 30 | Typos in shared pedigree records ("Moonlit Bay" and "Moonlight Bay"). | Two records for one stallion; family links split. | M | A "Pedigree records" tab lists every shared record with "used in N" and a **Merge** action that a person confirms. |
+
+### 4.5 Result
 
 The first draft worked for a livery yard with a few horses. It failed for
 a stud or a racing yard (cases 1, 2, 15, 16, 17) and for polo names (case
-11). §6 and §7 below include the fixes.
+11). The editor adds new risks (cases 25 and 27) that need their guards
+from day one. §6 and §7 below include the fixes.
 
 ---
 
@@ -199,7 +218,7 @@ sign-in, and a scraper breaks each time a site changes.
 | `uid` | `UUIDField(unique=True, editable=False)` | Fixed internal ID (roadmap). Three-step migration: add as null, fill, make unique. |
 | `registered_name` | Text, 200, blank | The name in the passport or stud book. `name` stays the yard name. |
 | `country_of_birth` | Text, 3, blank | Stud-book suffix: GB, IRE, FR, USA, GER, ARG, … Shown as "(IRE)". |
-| `dob_is_year_only` | Boolean | True: show "foaled 2011", not a full date. |
+| `dob_precision` | Choice: Exact, Year only, Estimated | Exact: "born 3 May 2011". Year only: "foaled 2011". Estimated: "foaled c. 2011". |
 | `ueln` | Text, 15, blank, indexed | Capitals, no spaces. Refuse characters that are not letters or digits. Warn when it is not 15 long. |
 | `breed` | Text, 100, blank | Suggestions: Thoroughbred, Argentine polo pony, Thoroughbred cross, Irish Draught, Warmblood, … |
 | `passport_issuer` | Text, 100, blank | Suggestions: Weatherbys, Hurlingham Polo Association, Horse Passport Agency, British Horse Society, … |
@@ -211,10 +230,27 @@ sign-in, and a scraper breaks each time a site changes.
 `microchip`, `passport_number` and `dam` stay on `Horse`. 35 files read
 `microchip`. The foaling and Foals code reads `dam`.
 
-**Age.** For a horse with breed Thoroughbred, the header shows racing age:
-a year older on 1 January, or 1 August when the country is in the southern
-hemisphere (ARG, AUS, NZ, RSA, …). Other horses keep the true age.
-Decision 4.
+**Age (decision 4, agreed).** One rule for all horses:
+
+- A horse is a year older on 1 January. When `country_of_birth` is in the
+  southern hemisphere (ARG, AUS, NZ, RSA, …), on 1 August.
+- Age = the current season year minus the foaling season year.
+- A foal under a year old keeps the "6 weeks old" label from its true
+  age. After 1 January it also shows "yearling".
+- `Horse.calculated_age`, `age_label` and the database sort
+  (`_age_sort_expression` in `core/views/horses.py`) use this rule.
+
+**Stored ages become foaling years.** A data migration changes each horse
+that has `age` but no `date_of_birth`:
+
+- `date_of_birth` = 1 January of (the year the record was made − `age`).
+- `dob_precision` = Estimated.
+- The records editor has a filter "Estimated foaling year", so staff can
+  correct them.
+
+The forms then ask for "Foaled" (a date or a year), not "Age". A later
+migration removes the `age` column, after a release that proves no code
+reads it.
 
 ### 6.2 New table `HorseIdentifier`
 
@@ -372,9 +408,75 @@ them as "Open on … ↗".
   not the yard name. The grandparents show at once.
 - The dam is a default. Staff can change it (embryo transfer).
 
-#### 7.5 Spreadsheet import
+#### 7.5 Records editor (decision 5)
 
-- **Settings → Import horses**. Download a CSV template with these
+A spreadsheet-style grid in the app, for many horses at once. Open it
+from the horse list header: **Edit records**. It has three tabs: Horses,
+Pedigree records, Import a file (§7.6).
+
+**Horses tab (desktop, `lg` and up):**
+
+```
+Edit records   [Horses] Pedigree records  Import a file
+Show: Active ▾  Location ▾  Owner ▾   Missing: [Chip] [UELN] [Pedigree] [Foaled]
+Columns: [Identity] [Numbers] [Pedigree]
+┌────────────┬────────────────┬─────┬────────┬───────────────────┬──────────────┬─────────────┬────────────┐
+│ Yard name  │ Registered name│ Ctry│ Foaled │ Microchip         │ Sire         │ Dam         │ Dam's sire │
+├────────────┼────────────────┼─────┼────────┼───────────────────┼──────────────┼─────────────┼────────────┤
+│ Ballerina  │                │     │ c.2011 │                   │              │             │            │
+│ Avicii     │ Karma Avicii   │ GB  │ 2019   │ 985141000123456   │ Copper Ridge │ Rosie ●     │ Moonlit Bay│
+│ Beech      │ ▒Beech Hill▒   │ IRE │ 2021   │ ▒372…  (was 372…)▒│ ⚠ 2 possible │             │            │
+└────────────┴────────────────┴─────┴────────┴───────────────────┴──────────────┴─────────────┴────────────┘
+3 changes in 2 horses · 1 to choose                         [Discard]  [Save]
+```
+
+- **Rows:** horses, 50 to a page. Filters for location, owner, breed and
+  "Missing …". The yard name column stays fixed when you scroll.
+- **Column groups:** Identity (registered name, country, foaled, sex,
+  colour, breed, height, markings), Numbers (microchip, UELN, passport
+  number, issuer), Pedigree (sire, dam, dam's sire).
+- **Keys:** arrow keys, Tab and Enter move like a spreadsheet. Esc undoes
+  the cell.
+- **Paste:** paste a block from Excel or Google Sheets. It fills cells
+  from the selected cell (tab and new-line separated).
+- **Drafts:** a changed cell is shaded. A cell that replaces a value is
+  amber and shows the old value (case 25). Nothing saves until **Save**.
+- **Save:** the server checks each row with the same form classes as the
+  pop-ups, so the rules are in one place. Good rows save; a bad cell
+  stays a draft with its error (case 28). Warnings (duplicate chip, odd
+  length) show but do not block.
+- **Versions:** each row carries its `updated_at`. A row that changed
+  since it was loaded does not save; it shows "Changed by Sam at 14:02.
+  Reload the row." (case 26).
+- **Pedigree cells** use the §6.4 matcher. One clear match: linked.
+  Several: "2 possible: choose" blocks that cell only (case 27). None: a
+  new pedigree record on save.
+- **Undo:** "Undo" for 30 seconds after a save, with the existing helper
+  (`core/views/_undo.py`).
+- **History:** each saved row gets the change reason "Records editor".
+- **Download:** "Download as CSV" gives the rows on screen in the import
+  template's columns, so a yard can edit offline and import again.
+- **Access:** full Horses access edits. View-only roles see a read-only
+  grid. It is still useful as a "what is missing" report.
+
+**Phones (below `lg`): "Fill in missing data"** (case 29). One horse at a
+time, with only its empty fields. **Save and next** goes to the next horse
+with a gap. The filters are the same as on the grid.
+
+**Pedigree records tab** (case 30): a grid of the shared `PedigreeHorse`
+rows: name, country, year, sex, sire, dam, "used in N pedigrees", "on the
+yard". Edit cells the same way. **Merge**: select two rows, choose which
+one to keep, confirm. Every link to the other row moves to the kept row,
+and history records the merge.
+
+**Build:** a server-rendered table plus one small script
+(`static/js/records_grid.js`) for keys, paste and drafts, with tests in
+`static/js/tests/records_grid.test.js`. No third-party grid library: it
+would add size, and the Content Security Policy rules make it harder.
+
+#### 7.6 Spreadsheet import
+
+- **Edit records → Import a file**. Download a CSV template with these
   columns: Yard name (required), Registered name, Country, Foaled (date
   or year), Sex, Colour, Breed, Sire, Dam, Dam's sire, Microchip, UELN,
   Passport number, Passport issuer, Markings, Height.
@@ -384,7 +486,7 @@ them as "Open on … ↗".
 - Staff select **Apply**. Nothing saves before that.
 - A row with an error does not stop the other rows.
 
-#### 7.6 Back-fill from what the yard already has
+#### 7.7 Back-fill from what the yard already has
 
 A job makes one `ImportBatch` (source Back-fill) for staff to review:
 
@@ -445,8 +547,8 @@ Guard rails:
   Horses on the yard are links.
 - **ID checked** badge (green) when the stamp is set. Keep "No passport"
   (amber).
-- Age: racing age for thoroughbreds (§6.1). "foaled 2011" when the date
-  is year only.
+- Age: one rule for all horses (§6.1). "foaled 2011" when the date is
+  year only; "foaled c. 2011" when it is estimated.
 
 ### 8.2 Card: Identity & pedigree
 
@@ -519,6 +621,7 @@ Phase 2 adds "Read from passport or PDF".
 
 | Place | Change |
 |-------|--------|
+| Horse list header | **Edit records** button: opens the records editor (§7.5) with the list's filters |
 | Split-view preview | Microchip, UELN, the "by … out of …" line |
 | Quick view | Microchip |
 | Search | Also by UELN and registered name |
@@ -531,25 +634,26 @@ Phase 2 adds "Read from passport or PDF".
 
 | Phase | What | Effort | Needs |
 |-------|------|--------|-------|
-| **1a. Identity** | §6.1 fields, §6.2 links, checks (§6.6), history (§6.7), scan-to-check and ChipChecker link (§7.1), identity half of the card, header, preview and quick view | M | — |
+| **1a. Identity and age** | §6.1 fields, the age rule and the age-to-foaling-year migration, §6.2 links, checks (§6.6), history (§6.7), scan-to-check and ChipChecker link (§7.1), identity half of the card, header, preview and quick view | M | — |
 | **1b. Pedigree** | `PedigreeHorse` and back-fill migration, matcher (§6.4), pedigree pop-up (§7.2), foaling and covering (§7.4), tree on the card, family on this yard | M/L | 1a |
-| **1c. Import and clean-up** | Proposed changes (§6.5), spreadsheet import (§7.5), back-fill from text and names (§7.6) | M | 1b |
-| **2. Documents** | Read passports, Weatherbys PDFs and catalogue pages into proposals; the test set; the processor notice | M | 1c; an API key |
-| **3. Licensed data and matching** | Feeds into proposals; Returning horses; C-vet link; sales PDF; third generation | L, plus a contract | 1c |
+| **1c. Records editor** | Horses grid, "Fill in missing data" on phones, Pedigree records tab with Merge, Download as CSV (§7.5) | M/L | 1b |
+| **1d. Import and clean-up** | Proposed changes (§6.5), spreadsheet import (§7.6), back-fill from text and names (§7.7) | M | 1c |
+| **2. Documents** | Read passports, Weatherbys PDFs and catalogue pages into proposals; the test set; the processor notice | M | 1d; an API key |
+| **3. Licensed data and matching** | Feeds into proposals; Returning horses; C-vet link; sales PDF; third generation | L, plus a contract | 1d |
 
 ---
 
 ## 10. Decisions for you
 
-| # | Question | Recommendation |
-|---|----------|----------------|
-| 1 | Shared pedigree records (§6.3), or a copy on each horse? | Shared. Copies fail on any yard that breeds (§4, cases 1 and 2). |
-| 2 | Keep `microchip` and `passport_number` on `Horse`? | Yes. Use `HorseIdentifier` for extra numbers. |
-| 3 | Generations on the page? | 2. Sire, dam, dam's sire are the minimum to enter. |
-| 4 | Racing age for thoroughbreds? | Yes, by breed and hemisphere. True age for other horses. |
-| 5 | Spreadsheet import in phase 1? | Yes. Without it, a new racing yard cannot start. |
-| 6 | Embryo transfer for polo? | Phase 1: the dam can differ from the mare that foaled. Later: a donor-mare field on the breeding record. |
-| 7 | AI document reading (phase 2)? | Yes, through the review screen, after the test set passes. |
+| # | Question | Status |
+|---|----------|--------|
+| 1 | Shared pedigree records (§6.3), or a copy on each horse? | **Agreed: shared.** |
+| 2 | Keep `microchip` and `passport_number` on `Horse`? | Open. Recommendation: yes; use `HorseIdentifier` for extra numbers. |
+| 3 | Generations on the page? | Open. Recommendation: 2. Sire, dam, dam's sire are the minimum to enter. |
+| 4 | Racing age? | **Agreed: one rule for all horses** (1 January, or 1 August in the southern hemisphere). Stored ages become estimated foaling years (§6.1). |
+| 5 | Spreadsheet import in phase 1? | **Agreed: yes, and a records editor in the app** (§7.5). |
+| 6 | Embryo transfer for polo? | Open. Recommendation: phase 1 lets the dam differ from the mare that foaled; a donor-mare field on the breeding record later. |
+| 7 | AI document reading (phase 2)? | Open. Recommendation: yes, through the review screen, after the test set passes. |
 
 ---
 
@@ -558,8 +662,12 @@ Phase 2 adds "Read from passport or PDF".
 - `core/tests/test_identity.py`: chip input from a scanner string; format
   and duplicate warnings that do not block; UELN rules; height in and out;
   `uid` on new and old rows; a chip change clears the stamp; scan-to-check
-  match and mismatch; year-only date display; racing age on 1 January and
-  1 August.
+  match and mismatch; exact, year-only and estimated date display.
+- `core/tests/test_age.py`: the age goes up on 1 January, and on 1 August
+  for a southern-hemisphere country; a foal shows weeks, then "yearling"
+  after 1 January; the database sort gives the same order as
+  `calculated_age`; the migration turns `age` 15 on a 2026 record into
+  "foaled c. 2011".
 - `pedigree/tests/test_models.py`: sire not Female, dam not Male; no
   loops; "Unknown" is not missing; `set_parents` keeps `sire_name`,
   `dam_name` and `dam` in step.
@@ -572,6 +680,12 @@ Phase 2 adds "Read from passport or PDF".
   stop others; nothing saves before Apply; a typed value is never
   pre-ticked for change; a value changed after the proposal is skipped.
 - `pedigree/tests/test_backfill.py`: each `breeding` text pattern.
+- `pedigree/tests/test_records_editor.py`: good rows save and bad cells
+  stay with their error; a row changed since load does not save; a
+  pedigree cell with two matches does not save until chosen; undo; a
+  view-only role cannot save; merge moves every link and keeps history.
+- `static/js/tests/records_grid.test.js`: paste parsing (tabs, new lines,
+  quoted cells from Excel), key moves, amber state for a replaced value.
 - `core/tests/test_query_counts.py`: a cap for the horse page with a full
   tree and family.
 - Phase 2: the review screen saves only accepted rows; the job never
