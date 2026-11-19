@@ -278,3 +278,68 @@ class RestBadgeTests(TestCase):
         self.assertEqual(overview.rest_badge(row, today, today + timedelta(days=1))[1], 'Vet follow-up tomorrow')
         self.assertEqual(overview.rest_badge(row, today, today - timedelta(days=1))[1], 'Vet follow-up overdue')
         self.assertIsNone(overview.rest_badge(row, today, None))
+
+
+class WeekTests(Base):
+    """Phase B: This week, Tomorrow, Riders today."""
+
+    def test_week_cells_match_the_horse_page(self):
+        (ballybrook,) = self.horses(['Ballybrook'])
+        board.start_board(self.today, user=self.user, source='lots')
+        board.mark_lot_done(self.first.days.get(date=self.today), user=self.user, today=self.today)
+        week = self.page().context['week']
+        self.assertFalse(week['summary_rows'])
+        horse = week['groups'][0]['horses'][0]
+        cell = horse['cells'][self.today.weekday()]
+        self.assertEqual(cell['tone'], 'steady')
+        self.assertEqual(horse['days'], 1)
+        from .load import rows_for, strip
+        self.assertEqual(cell, strip(rows_for([ballybrook.pk], self.today)[ballybrook.pk], self.today)[-1])
+
+    def test_groups_follow_lots_and_horses_with_no_lot_come_last(self):
+        self.horses(['Ballybrook'], self.second)
+        self.horses(['Kestrel'], self.first)
+        loose = Horse.objects.create(name='Loose')
+        services.set_status(loose, HorseTraining.Status.IN_WORK, self.today)
+        names = [g['name'] for g in self.page().context['week']['groups']]
+        self.assertEqual(names, ['1st lot', '2nd lot', 'Not in a lot'])
+
+    def test_large_yard_gets_lot_summary_rows(self):
+        made = self.horses([f'A {i:02}' for i in range(30)])
+        board.start_board(self.today - timedelta(days=1), user=self.user, source='lots')
+        Activity.objects.filter(horse__in=made[:5], date=self.today - timedelta(days=1)).update(
+            status=Activity.Status.NOT_DONE, reason=Activity.Reason.WEATHER,
+        )
+        Activity.objects.filter(horse__in=made[5:]).update(status=Activity.Status.DONE)
+        week = self.page().context['week']
+        self.assertTrue(week['summary_rows'])
+        group = week['groups'][0]
+        self.assertEqual(len(group['shown']), 10)
+        self.assertEqual(group['more'], 20)
+        if self.today.weekday() > 0:
+            yesterday = group['summary'][self.today.weekday() - 1]
+            self.assertEqual((yesterday['text'], yesterday['tone']), ('25/30', 'low'))
+        self.assertEqual(group['summary'][self.today.weekday()]['tone'], 'today')
+        # A lot chip opens the whole lot.
+        week = self.page(lot=self.first.pk).context['week']
+        self.assertFalse(week['summary_rows'])
+        self.assertEqual(len(week['groups'][0]['shown']), 30)
+
+    def test_tomorrow_not_started_offers_start(self):
+        self.horses(['Ballybrook'])
+        response = self.page()
+        self.assertContains(response, reverse('training_board_start', args=[(self.today + timedelta(days=1)).isoformat()]))
+        self.assertContains(response, 'Start from the lots')
+        board.start_board(self.today + timedelta(days=1), user=self.user, source='lots')
+        tomorrow = self.page().context['tomorrow']
+        self.assertEqual(tomorrow['horses'], 1)
+
+    def test_riders_today(self):
+        from .models import Rider
+        sam = Rider.objects.create(name='Sam')
+        made = self.horses(['Ballybrook', 'Red Kite', 'Juniper'])
+        board.start_board(self.today, user=self.user, source='lots')
+        Activity.objects.filter(horse__in=made[:2], date=self.today).update(rider=sam)
+        Activity.objects.filter(horse=made[2], date=self.today).update(rider_is_owner=True)
+        riders = self.page().context['today_data']['riders']
+        self.assertEqual(riders, [('Sam', ['Ballybrook', 'Red Kite']), ('The owner', ['Juniper'])])

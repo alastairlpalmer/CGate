@@ -2737,3 +2737,22 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     .training-progress { @apply h-1.5 my-1 rounded-full bg-light-sage overflow-hidden; }
     .training-progress > span { @apply block h-full bg-forest; }
 }
+
+/* Training Overview, This week (phase B). The grid scrolls sideways inside
+   its card, with the horse names sticky (faults M1 and M3). */
+@layer components {
+    .training-week-wrap { @apply overflow-x-auto; }
+    .training-week { @apply w-full border-collapse text-sm; }
+    .training-week th, .training-week td { @apply px-0.5 py-1 text-center font-normal; }
+    .training-week thead th { @apply text-xs font-semibold text-sage; }
+    .training-week .training-week-name { @apply sticky left-0 z-[1] bg-white text-left pl-4 pr-2 w-36 min-w-[8rem] max-w-[12rem]; }
+    .training-week .is-today { @apply bg-sage-50; }
+    .training-week-head th { @apply text-left text-xs font-semibold text-sage pt-2 pl-4 sticky left-0 bg-white; }
+    .training-week-lot { @apply border-t border-light-sage; }
+    .training-week-day { @apply w-7 h-7 mx-auto; }
+    .training-count { @apply inline-block min-w-[2.5rem] px-1 py-0.5 rounded text-xs font-medium; }
+    .training-count-full { @apply bg-forest text-white; }
+    .training-count-part { @apply bg-light-sage text-charcoal; }
+    .training-count-low { @apply bg-saddle/15 text-saddle; }
+    .training-count-today { @apply bg-white border border-light-sage text-sage; }
+}

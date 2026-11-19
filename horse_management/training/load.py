@@ -157,30 +157,53 @@ def chips(rows, day, *, threshold, days_per_week=None, on_board=True, since=None
 EFFORT_LETTER = {WorkType.Effort.EASY: 'E', WorkType.Effort.STEADY: 'S', WorkType.Effort.FAST: 'F'}
 
 
-def strip(rows, day, *, days=STRIP_DAYS):
-    """The 28-day strip: one square for each day, oldest first (5.13)."""
+def day_cell(d, day_rows, today):
+    """One square for date ``d``: ``{'date', 'letter', 'tone', 'label'}``.
+    ``today`` decides whether Planned work is "not confirmed" (5.13)."""
+    work = [r for r in day_rows if is_work(r)]
+    if work:
+        top = max(work, key=lambda r: r.effective_effort)
+        letter, tone = EFFORT_LETTER.get(top.effective_effort, 'E'), {1: 'easy', 2: 'steady', 3: 'fast'}[top.effective_effort]
+        words = ', '.join(f'{r.work_type.name}, {r.effort_label.lower()}' for r in work)
+        label = f'{d:%a} {d.day} {d:%b}: {words}, done'
+    elif any(r.status == Activity.Status.DONE for r in day_rows):
+        letter, tone, label = 'R', 'rest', f'{d:%a} {d.day} {d:%b}: rest'
+    elif any(r.status == Activity.Status.NOT_DONE for r in day_rows):
+        reason = next(r for r in day_rows if r.status == Activity.Status.NOT_DONE).get_reason_display()
+        letter, tone, label = '×', 'missed', f'{d:%a} {d.day} {d:%b}: did not work, {reason.lower()}'
+    elif any(r.status == Activity.Status.PLANNED for r in day_rows):
+        word = 'planned, not confirmed' if d < today else 'planned'
+        letter, tone, label = '?', 'planned', f'{d:%a} {d.day} {d:%b}: {word}'
+    else:
+        letter, tone, label = '', 'none', f'{d:%a} {d.day} {d:%b}: no record'
+    return {'date': d, 'letter': letter, 'tone': tone, 'label': label}
+
+
+def _by_day(rows):
     by_day = {}
     for row in rows:
         by_day.setdefault(row.date, []).append(row)
-    out = []
-    for offset in range(days - 1, -1, -1):
-        d = day - timedelta(days=offset)
-        today_rows = by_day.get(d, [])
-        work = [r for r in today_rows if is_work(r)]
-        if work:
-            top = max(work, key=lambda r: r.effective_effort)
-            letter, tone = EFFORT_LETTER.get(top.effective_effort, 'E'), {1: 'easy', 2: 'steady', 3: 'fast'}[top.effective_effort]
-            words = ', '.join(f'{r.work_type.name}, {r.effort_label.lower()}' for r in work)
-            label = f'{d:%a} {d.day} {d:%b}: {words}, done'
-        elif any(r.status == Activity.Status.DONE for r in today_rows):
-            letter, tone, label = 'R', 'rest', f'{d:%a} {d.day} {d:%b}: rest'
-        elif any(r.status == Activity.Status.NOT_DONE for r in today_rows):
-            reason = next(r for r in today_rows if r.status == Activity.Status.NOT_DONE).get_reason_display()
-            letter, tone, label = '×', 'missed', f'{d:%a} {d.day} {d:%b}: did not work, {reason.lower()}'
-        elif any(r.status == Activity.Status.PLANNED for r in today_rows):
-            word = 'planned, not confirmed' if d < day else 'planned'
-            letter, tone, label = '?', 'planned', f'{d:%a} {d.day} {d:%b}: {word}'
-        else:
-            letter, tone, label = '', 'none', f'{d:%a} {d.day} {d:%b}: no record'
-        out.append({'date': d, 'letter': letter, 'tone': tone, 'label': label})
-    return out
+    return by_day
+
+
+def strip(rows, day, *, days=STRIP_DAYS):
+    """The 28-day strip: one square for each day, oldest first (5.13)."""
+    by_day = _by_day(rows)
+    return [
+        day_cell(d, by_day.get(d, []), day)
+        for d in (day - timedelta(days=offset) for offset in range(days - 1, -1, -1))
+    ]
+
+
+def week(rows, today):
+    """Monday to Sunday of ``today``'s week: one square for each day (dashboard
+    plan, This week). Later days show planned work only."""
+    by_day = _by_day(rows)
+    monday = today - timedelta(days=today.weekday())
+    return [day_cell(d, by_day.get(d, []), today) for d in (monday + timedelta(days=i) for i in range(7))]
+
+
+def week_fast(rows, today):
+    """Days with fast work this week, Monday to ``today``."""
+    monday = today - timedelta(days=today.weekday())
+    return len({d for d in _work_dates(rows, today, is_fast) if d >= monday})

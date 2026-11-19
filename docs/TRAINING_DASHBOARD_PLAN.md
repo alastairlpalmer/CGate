@@ -1,6 +1,6 @@
 # Training dashboard (Overview) — plan
 
-**Status:** Phase A is built (section 10). Phases B and C are next. The owner decided T1 to T7 on 2026-11-19 (section 3).
+**Status:** Phases A and B are built (section 10). Phase C is next. The owner decided T1 to T7 on 2026-11-19 (section 3).
 
 **Revision 3.** 2026-11-19. The owner decided T1 to T7. T7 is new: the yard's own **Stable Staff** role gets Full on Training (section 3.1).
 
@@ -234,3 +234,16 @@ Departures from the plan:
 | A2 | Conditions and vet follow-ups in Not in work show only to a user with view on Health. | Health data stays with the Health access level. A Stable Staff role without Health sees the review badges only. |
 | A3 | The lot filter lists the active lots, not only today's lots. | A head lad can filter on a day with no board. |
 | A4 | The test checks that the query count is the same for 30 and for 110 horses, and 40 or fewer. | Section 7 said 15 or fewer. The Not in work card, the health facts and the session and role reads of every page add queries. The count does not grow with the yard. |
+
+### 10.2 Phase B
+
+| Part | Where |
+|---|---|
+| This week: one row for each horse, grouped by today's lot, then the standing lot, then "Not in a lot". The squares are the horse page's squares (one function, `load.day_cell`). | `overview.week_block`, `load.week`, `load.week_fast`, partial `overview_week_row.html` |
+| Large yards: one summary row for each lot ("23/24" for each day), opened with a tap; the first 10 horses, then "Show all". A lot chip shows the whole lot. Today and later days are grey (M6). | `overview.WEEK_OPEN`, `.training-count-*` |
+| Tomorrow: its lots and horse count, or "Not started" with a Start button that uses the yard's board source. | `overview.tomorrow_block` |
+| Riders today: each rider with their horses, most horses first. Folded into one row for a large yard. | `today_block`, partial `overview_rider_row.html` |
+| Faults M1 to M6: the name column has a fixed width and stays in place; the grid scrolls inside its card; whole rows are links. | `static/css/input.css` |
+| Tests: 5 more. | `training/test_overview.py` |
+
+Departure B1: the records are read once for Needs attention and This week, up to Sunday, so the grid shows planned work later in the week. The query count does not grow (the same test as A4).
