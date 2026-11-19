@@ -103,6 +103,7 @@ def build(items, user, today, days=HORIZON_DAYS):
         'days': day_list,
         'visits': visits[:MAX_VISITS],
         'more_visits': max(0, len(visits) - MAX_VISITS),
+        'visit_count': len(visits),
         'total': len(dated),
         'legend': legend,
         'start': today,

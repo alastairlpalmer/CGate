@@ -6,7 +6,18 @@ N" button. Context: upcoming (core.dashboard.upcoming.build). Shown under
 the month calendar (partials/dashboard/calendar.html).
 {% endcomment %}
 {% if upcoming.visits %}
-<p class="px-4 pt-3 pb-1 text-xs font-semibold text-sage">Visits to book together &middot; next 14 days</p>
+{% comment %}Folded to one line: the calendar sits above the map, and an
+open list pushed the map off the first screen. The line says how many
+visits there are; it opens in place, and stays open for this tab
+(static/js/settings_nav.js, settingsFold).{% endcomment %}
+<details class="visits-fold" x-data="settingsFold" data-fold-key="dashboard:visits">
+<summary>
+    <svg class="settings-fold-chevron w-3.5 h-3.5 shrink-0 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+    </svg>
+    <span class="font-semibold">Visits to book together</span>
+    <span class="text-sage">&middot; {{ upcoming.visit_count }} in the next 14 days</span>
+</summary>
     <ul class="divide-y divide-light-sage border-t border-light-sage">
         {% for visit in upcoming.visits %}
         <li class="visit-row">
@@ -54,4 +65,5 @@ the month calendar (partials/dashboard/calendar.html).
         {{ upcoming.more_visits }} more &middot; <a href="{% url 'health_dashboard' %}" class="link">Health overview</a>
     </p>
     {% endif %}
+</details>
 {% endif %}

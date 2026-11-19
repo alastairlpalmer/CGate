@@ -60,9 +60,11 @@ class MetricsTests(YardTestCase):
         self.assertEqual(tiles['horses']['meta'], 'Colgate 3 · Somerford 1')
         self.assertEqual(tiles['owners']['value'], 2)
         self.assertEqual(tiles['owners']['meta'], '3 on the books')
+        self.assertEqual(tiles['ground']['label'], 'Capacity')
         self.assertEqual(tiles['ground']['value'], '4/6')
         self.assertEqual(tiles['ground']['meta'], '1 over capacity · 1 resting')
         self.assertEqual(tiles['ground']['tone'], 'alert')
+        self.assertEqual(tiles['action']['label'], 'Notifications')
         self.assertEqual(tiles['action']['value'], 3)
         self.assertEqual(tiles['outstanding']['value'], '£120.00')
         self.assertEqual(tiles['outstanding']['meta'], '1 overdue')
@@ -88,6 +90,22 @@ class MetricsTests(YardTestCase):
         self.assertLess(body.index(b'data-testid="metrics-zone"'), body.index(b'data-testid="main-grid"'))
 
 
+class CapacitySplitTests(YardTestCase):
+    def test_with_barns_the_line_splits_fields_and_stables(self):
+        barn = Location.objects.create(
+            name='Yard Barn', site='Colgate', location_type='barn', layout='row', capacity=6)
+        self.place('E', barn, self.jo)
+        with self.settings(BARNS_ENABLED=True):
+            tile = {t['key']: t for t in metrics.build(self.admin, today=self.today)}['ground']
+        self.assertEqual(tile['value'], '5/12')
+        self.assertEqual(tile['meta'], 'Fields 4/6 · Stables 1/6 · 1 over')
+
+    def test_without_barns_the_line_names_the_ground_to_look_at(self):
+        with self.settings(BARNS_ENABLED=False):
+            tile = {t['key']: t for t in metrics.build(self.admin, today=self.today)}['ground']
+        self.assertEqual(tile['meta'], '1 over capacity · 1 resting')
+
+
 class TimelineTests(YardTestCase):
     def setUp(self):
         super().setUp()
@@ -109,17 +127,21 @@ class TimelineTests(YardTestCase):
         vet = make_user_with_access(username='vet', dashboard='full', health='view')
         self.assertEqual(self.groups(vet), ['health'])
 
-    def test_the_card_is_called_timeline_and_has_chips(self):
+    def test_the_card_is_called_timeline_and_has_a_filter(self):
         self.client.force_login(self.admin)
         response = self.client.get(reverse('dashboard_activity'))
         self.assertContains(response, '>Timeline</h2>')
         self.assertNotContains(response, 'What changed')
-        self.assertContains(response, 'class="timeline-chip" data-group="health"')
-        self.assertContains(response, 'data-group="yard"')
+        # The filter is the funnel menu, listing only this viewer's kinds.
+        self.assertContains(response, 'data-testid="timeline-filter"')
+        self.assertContains(response, 'aria-label="Filter the timeline"')
+        self.assertContains(response, 'role="menuitem" class="more-menu-item" data-group="health"')
+        self.assertContains(response, 'role="menuitem" class="more-menu-item" data-group="yard"')
+        self.assertNotContains(response, 'data-group="money"')
 
-    def test_one_group_shows_no_chips(self):
+    def test_one_group_shows_no_filter(self):
         groom = make_user_with_access(username='groom3', dashboard='full', horses='view')
         self.client.force_login(groom)
         response = self.client.get(reverse('dashboard_activity'))
         self.assertContains(response, '>Timeline</h2>')
-        self.assertNotContains(response, 'timeline-chip')
+        self.assertNotContains(response, 'timeline-filter')

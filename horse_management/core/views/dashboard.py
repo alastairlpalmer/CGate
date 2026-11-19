@@ -121,8 +121,8 @@ def near_you_card(request, pref, sites, payload):
     The card is one slot filled by two independent ladders (plan 6.7)
     that the browser runs, because the first rung of each is GPS. The
     server settles what it can: the dashboard's chosen site as the
-    default (failing that the yard's ``DEFAULT_MAP_SITE``, for someone
-    GPS does not place on a site), the only site when there is one, the pinned location, and
+    default (failing that the yard's ``DEFAULT_MAP_SITE``, then the pinned
+    location's site, then the site with the most horses), the pinned location, and
     a map payload per site (``map_locations`` — the same shaping as the
     Map tab). With no site to fall back on and no GPS the card hides.
     """
@@ -135,6 +135,16 @@ def near_you_card(request, pref, sites, payload):
     if pinned is not None and (pinned.is_archived or pinned.site not in sites):
         pinned = None
     maps = {name: data for name, data in board.map_locations_by_site().items() if name in sites}
+    if not default_site:
+        # "All sites" with no yard default: the map still shows, so the
+        # page keeps its shape. The pinned location's site, else the site
+        # with the most horses on it. GPS, in the browser, still comes
+        # first; the card names the site it shows.
+        if pinned is not None:
+            default_site = pinned.site
+        elif maps:
+            default_site = max(
+                sites, key=lambda name: (sum(loc['count'] for loc in maps[name]['locations']), -sites.index(name)))
     return {
         'locations': payload['locations'],
         'sites': payload['sites'],

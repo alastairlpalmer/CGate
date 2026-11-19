@@ -1123,7 +1123,7 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
     .cal-label { @apply flex items-center gap-1 truncate text-[11px] leading-tight text-charcoal-light; }
     .cal-label .strip-dot { @apply shrink-0; }
     @container (min-width: 36rem) {
-        .cal-day { @apply min-h-[4.75rem] items-start px-1.5; }
+        .cal-day { @apply min-h-[3.5rem] items-start px-1.5 pt-1 gap-0.5; }
         .cal-dots { @apply hidden; }
         .cal-labels { @apply block; }
     }
@@ -1173,6 +1173,12 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
                hover:ring-sage hover:text-forest;
     }
     .horse-chip.is-more { @apply bg-parchment text-sage ring-0; }
+    /* Visits to book together, folded to one line under the calendar. */
+    .visits-fold > summary { @apply flex items-center gap-2 min-h-[44px] px-4 text-xs text-charcoal cursor-pointer list-none select-none lg:px-5; }
+    .visits-fold > summary::-webkit-details-marker { display: none; }
+    .visits-fold > summary:focus-visible { @apply outline-2 -outline-offset-2 outline-forest; }
+    .visits-fold[open] > summary .settings-fold-chevron { @apply rotate-90; }
+    .visits-fold > ul { @apply border-t border-light-sage; }
     .visit-date { @apply flex h-10 w-10 flex-col items-center justify-center rounded-lg bg-sand-50 font-mono leading-none; }
     .visit-date-name { @apply text-[9px] uppercase tracking-wide text-sage; }
     .visit-date-num { @apply mt-0.5 text-sm font-semibold text-forest tabular-nums; }
@@ -1300,11 +1306,17 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
     .metric.is-alert { @apply border-saddle/40 bg-saddle-50; }
     .metric.is-alert .metric-value { @apply text-saddle; }
 
-    /* The Timeline's filter chips and its scrolling list. From lg the card
-       is as tall as the calendar and map beside it; the list scrolls. */
-    .timeline-filters { @apply flex flex-wrap gap-1.5 border-b border-light-sage px-4 py-2.5 lg:px-5; }
-    .timeline-chip { @apply inline-flex min-h-[32px] items-center rounded-full border border-light-sage bg-white px-3 text-xs text-charcoal transition-colors hover:border-sage; }
-    .timeline-chip.is-on { @apply border-forest bg-sage-50 text-forest; }
+    /* The Timeline's filter (a funnel opening the app's menu) and its
+       scrolling list. From lg the card is as tall as the calendar and map
+       beside it; the list scrolls. In the menu, a tick marks the kind
+       shown and a swatch in the row icon's tint names each kind. */
+    .timeline-check { @apply grid h-4 w-4 shrink-0 place-items-center; }
+    .more-menu-item .timeline-check svg { @apply h-4 w-4 opacity-0 text-forest; }
+    .more-menu-item .timeline-check.is-on svg { @apply opacity-100; }
+    /* The swatch is the row icon's glyph colour (currentColor), not its
+       pale tile, so it reads at 10px. */
+    .more-menu-item .timeline-kind-icon { @apply h-2.5 w-2.5 min-h-0 min-w-0 rounded-full p-0; background: currentColor; }
+    .timeline-filter-dot { @apply h-2.5 min-w-0 w-2.5 p-0; }
     @media (min-width: 1024px) { .timeline-scroll { @apply min-h-0 flex-1 overflow-y-auto; } }
 
     .money-grid { @apply grid grid-cols-2 gap-3 p-4 lg:grid-cols-4 lg:p-5; }

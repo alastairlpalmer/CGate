@@ -271,7 +271,8 @@ class NearYouCardTests(TestCase):
         response = self.client.get(reverse('dashboard'))
         card = response.context['near_you_card']
         self.assertEqual(card['site_names'], ['Colgate', 'Somerford'])
-        self.assertEqual(card['default_site'], '')
+        # All sites, no horses anywhere: the first site, so the map shows.
+        self.assertEqual(card['default_site'], 'Colgate')
         self.assertEqual(card['site_counts'], {'Colgate': 1, 'Somerford': 2})
         self.assertEqual(card['unlocated'], [{'pk': self.b.pk, 'site': 'Somerford'}])
         self.assertIsNone(card['pinned'])
@@ -304,16 +305,26 @@ class NearYouCardTests(TestCase):
         self.assertContains(response, 'location-map-leaders')
         self.assertContains(response, f'data-map-label="{self.a.pk}"')
 
-    def test_card_waits_for_gps_when_all_sites_are_chosen(self):
-        Location.objects.create(name='Far', site='Colgate', latitude=Decimal('52'), longitude=Decimal('-1'))
-        response = self.client.get(reverse('dashboard'))
-        # Two sites and no chosen one: only GPS can pick a site.
-        self.assertFalse(response.context['near_you_card']['shows_without_gps'])
+    def test_all_sites_still_shows_a_map(self):
+        """With "All sites" and no yard default the card shows the site
+        with the most horses, so the calendar keeps the map under it."""
+        far = Location.objects.create(name='Far', site='Colgate', latitude=Decimal('52'), longitude=Decimal('-1'))
+        place(far, 1)
+        place(self.a, 3)
+        card = self.client.get(reverse('dashboard')).context['near_you_card']
+        self.assertEqual(card['default_site'], 'Somerford')
+        self.assertTrue(card['shows_without_gps'])
+        # A pinned location's site comes before the busiest one.
         pref = DashboardPreference.get_for(self.user)
+        pref.pinned_location = far
+        pref.save()
+        card = self.client.get(reverse('dashboard')).context['near_you_card']
+        self.assertEqual(card['default_site'], 'Colgate')
+        # A chosen site comes first of all.
         pref.site = 'Somerford'
         pref.save()
-        response = self.client.get(reverse('dashboard'))
-        self.assertTrue(response.context['near_you_card']['shows_without_gps'])
+        card = self.client.get(reverse('dashboard')).context['near_you_card']
+        self.assertEqual(card['default_site'], 'Somerford')
 
     def test_default_site_and_pin(self):
         pref = DashboardPreference.get_for(self.user)
