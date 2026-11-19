@@ -19,6 +19,7 @@ STRIP_KINDS = (
     ('foal', 'Foal due'),
     ('ehv', 'EHV'),
     ('document', 'Document'),
+    ('calendar', 'Calendar item'),
 )
 STRIP_KIND_KEYS = [kind for kind, _ in STRIP_KINDS]
 

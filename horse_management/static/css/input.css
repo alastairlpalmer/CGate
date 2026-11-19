@@ -1132,6 +1132,7 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
                disabled:opacity-40 disabled:pointer-events-none transition-colors;
     }
     .cal-day-list { @apply border-t border-light-sage mt-1; }
+    .cal-day-head { @apply flex items-center justify-between gap-2 pr-3 lg:pr-4; }
     .cal-day-title { @apply flex items-center gap-2 px-4 pt-3 pb-2 text-sm font-semibold text-charcoal lg:px-5; }
 
     /* Kind colours shared by the strip and the activity log */
@@ -1141,6 +1142,7 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
     .dot-invoice, .dot-payment, .dot-charge { @apply bg-info-blue; }
     .dot-departure, .dot-departure_expected, .dot-arrival, .dot-move { @apply bg-sage; }
     .dot-document, .dot-feed { @apply bg-sand; }
+    .dot-calendar { @apply bg-charcoal; }
     .dot-more { @apply bg-charcoal/40; }
 
     /* Visits worth booking together */

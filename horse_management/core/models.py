@@ -1803,6 +1803,44 @@ class BusinessSettings(models.Model):
         return f"{self.credit_note_prefix}{number:05d}"
 
 
+class CalendarEntry(models.Model):
+    """A general item on the dashboard calendar: a hay delivery, a yard
+    meeting, a show. Anything the yard wants on a day that no other record
+    puts there.
+
+    It shows on the calendar on its date, in that day's list, and in the
+    notification centre on the day itself
+    (core.dashboard.attention._calendar_entries). A location or a horse is
+    optional; a location puts it on that site for the site switch.
+    """
+
+    title = models.CharField(max_length=120)
+    date = models.DateField(db_index=True)
+    time = models.TimeField(null=True, blank=True, help_text="Optional.")
+    location = models.ForeignKey(
+        'Location', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='calendar_entries',
+    )
+    horse = models.ForeignKey(
+        'Horse', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='calendar_entries',
+    )
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['date', 'time', 'pk']
+        verbose_name_plural = 'calendar entries'
+
+    def __str__(self):
+        return f'{self.title} ({self.date:%d %b %Y})'
+
+
 class DashboardPreference(models.Model):
     """Per-user home dashboard layout (widget visibility + order)."""
 

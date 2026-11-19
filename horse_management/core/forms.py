@@ -16,7 +16,7 @@ from .geo import coords_from_link, parse_coords_text
 from .images import heic_to_jpeg
 from .widgets import MoneyInput
 from .models import (
-    BusinessSettings, Document, Horse, HorsePhoto, Location, Owner,
+    BusinessSettings, CalendarEntry, Document, Horse, HorsePhoto, Location, Owner,
     OwnershipShare, Placement, RateType, SiteSettings, Stable, validate_coordinate_pair,
 )
 
@@ -1659,3 +1659,40 @@ class ProfileDetailsForm(forms.Form):
             raise forms.ValidationError('This file is not a photo we can read. Use a JPEG, PNG or HEIC photo.')
         upload.seek(0)
         return upload
+
+
+class CalendarEntryForm(forms.ModelForm):
+    """A general item on the dashboard calendar (core.models.CalendarEntry)."""
+
+    class Meta:
+        model = CalendarEntry
+        fields = ['title', 'date', 'time', 'location', 'horse', 'notes']
+        labels = {'title': 'What', 'time': 'Time', 'location': 'Where', 'horse': 'Horse'}
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. Hay delivery', 'autofocus': True}),
+            'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'time': forms.TimeInput(format='%H:%M', attrs={'class': 'form-input', 'type': 'time'}),
+            'location': forms.Select(attrs={'class': 'form-select'}),
+            'horse': forms.Select(attrs={'class': 'form-select'}),
+            'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
+        }
+        help_texts = {'time': '', 'location': 'Optional.', 'horse': 'Optional.'}
+        error_messages = {
+            'title': {'required': 'Say what is on this day.'},
+            'date': {'required': 'Choose a day.'},
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['location'].queryset = Location.objects.active().order_by('site', 'name')
+        self.fields['location'].label_from_instance = (
+            lambda loc: f'{loc.name} · {loc.site}' if loc.site else loc.name)
+        self.fields['horse'].queryset = Horse.objects.filter(is_active=True).order_by('name')
+        self.fields['location'].empty_label = 'Anywhere'
+        self.fields['horse'].empty_label = 'No horse'
+
+    def clean_title(self):
+        title = (self.cleaned_data.get('title') or '').strip()
+        if not title:
+            raise forms.ValidationError('Say what is on this day.')
+        return title

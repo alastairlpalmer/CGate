@@ -80,6 +80,7 @@ KIND_LABELS = {
     'invoice': 'Invoice',
     'feed': 'Feed stock',
     'capacity': 'Over capacity',
+    'calendar': 'Calendar item',
     'rate': 'Rate to check',
 }
 
@@ -91,6 +92,7 @@ CATEGORY_OF_KIND = {
     'scan': 'health', 'foal_check': 'health', 'foal_passport': 'documents',
     'feed': 'yard',
     'capacity': 'yard',
+    'calendar': 'yard',
     'rate': 'money',
     'document': 'documents',
     'invoice': 'money',
@@ -911,6 +913,61 @@ def _capacity(ctx):
     return items
 
 
+# How far back the calendar can show a general item: the grid goes a year
+# back (core.dashboard.calendar.MONTHS_BACK), plus the days of a month.
+CALENDAR_LOOKBACK_DAYS = 400
+
+
+def _calendar_entries(ctx):
+    """General items people put on the calendar (core.models.CalendarEntry).
+
+    One item per entry from a year back to the end of the horizon. An
+    entry is never overdue: a day that has passed is history, not a job
+    left undone, so a past entry is ``info`` and stays on its calendar
+    day only. On its own day it is due, so it is in the notification
+    centre that day.
+    """
+    from ..models import CalendarEntry
+
+    start = ctx.today - timedelta(days=CALENDAR_LOOKBACK_DAYS)
+    entries = (
+        CalendarEntry.objects.filter(date__gte=start, date__lte=ctx.horizon)
+        .select_related('location', 'horse')
+    )
+    edit = ctx.can('dashboard', LEVEL_FULL)
+    items = []
+    for entry in entries:
+        location = entry.location.name if entry.location_id else ''
+        site = entry.location.site if entry.location_id else ''
+        if entry.horse_id and not entry.location_id:
+            location, site = ctx.where(entry.horse_id)
+        parts = []
+        if entry.time:
+            parts.append(entry.time.strftime('%H:%M'))
+        if entry.horse_id:
+            parts.append(entry.horse.name)
+        if entry.notes:
+            parts.append(entry.notes.splitlines()[0][:80])
+        url = reverse('calendar_entry_edit', args=[entry.pk])
+        actions = []
+        if edit:
+            actions.append(Action(label='Edit', url=url, popup_title='Edit calendar item'))
+        items.append(AttentionItem(
+            kind='calendar',
+            severity='due' if entry.date >= ctx.today else 'info',
+            title=entry.title,
+            detail=' · '.join(parts),
+            url=url,
+            due_date=entry.date,
+            delta=ctx.delta(entry.date),
+            location=location,
+            site=site,
+            actions=actions,
+            key=f'calendar-{entry.pk}',
+        ))
+    return items
+
+
 COLLECTORS = (
     ('vaccination', 'health', _vaccinations),
     ('farrier', 'health', _farrier),
@@ -925,6 +982,7 @@ COLLECTORS = (
     ('invoice', 'invoices', _invoices),
     ('feed', 'feed', _feed),
     ('capacity', 'locations', _capacity),
+    ('calendar', 'dashboard', _calendar_entries),
 )
 
 

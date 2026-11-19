@@ -77,10 +77,25 @@ first two kinds due.
 
     {# ── The chosen day ── #}
     <section class="cal-day-list" aria-labelledby="cal-day-title" aria-live="polite">
-        <h3 id="cal-day-title" class="cal-day-title">
-            {% if calendar.selected == today %}Today{% else %}{{ calendar.selected|date:"l j F" }}{% endif %}
-            {% if calendar.selected_items %}<span class="badge-neutral">{{ calendar.selected_items|length }}</span>{% endif %}
-        </h3>
+        <div class="cal-day-head">
+            <h3 id="cal-day-title" class="cal-day-title">
+                {% if calendar.selected == today %}Today{% else %}{{ calendar.selected|date:"l j F" }}{% endif %}
+                {% if calendar.selected_items %}<span class="badge-neutral">{{ calendar.selected_items|length }}</span>{% endif %}
+            </h3>
+            {% comment %}A general item (core.models.CalendarEntry) for the
+            chosen day, in the pop-up sheet. Saving refreshes the page, so it
+            shows on the grid at once.{% endcomment %}
+            {% if feature_access.dashboard.full %}
+            {% url 'calendar_entry_add' as add_url %}
+            <a href="{{ add_url }}?date={{ calendar.selected|date:'Y-m-d' }}"
+               hx-get="{{ add_url }}?date={{ calendar.selected|date:'Y-m-d' }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Add to {{ calendar.selected|date:'l j F' }}"
+               class="btn-ghost btn-xs" data-testid="calendar-add">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                Add
+            </a>
+            {% endif %}
+        </div>
         {% if calendar.selected_items %}
         <ul class="attn-list">
             {% for item in calendar.selected_items %}
@@ -99,8 +114,10 @@ first two kinds due.
                         <div class="attn-when">
                             <span class="{% if item.is_overdue %}badge-danger{% elif item.delta == 0 %}badge-warning{% else %}badge-neutral{% endif %}">{{ item.due_date|due_label }}</span>
                         </div>
+                        {% comment %}A calendar item someone added is changed or deleted
+                        with Edit, so it has no Dismiss.{% endcomment %}
                         {% if item.actions or can_dismiss %}
-                        <div class="attn-actions">{% for action in item.actions %}{% include 'partials/dashboard/_action.html' %}{% endfor %}{% if can_dismiss %}{% include 'partials/dashboard/_dismiss.html' with one=item %}{% endif %}</div>
+                        <div class="attn-actions">{% for action in item.actions %}{% include 'partials/dashboard/_action.html' %}{% endfor %}{% if can_dismiss and item.kind != 'calendar' %}{% include 'partials/dashboard/_dismiss.html' with one=item %}{% endif %}</div>
                         {% endif %}
                     </div>
                 </div>
