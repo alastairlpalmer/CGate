@@ -341,31 +341,6 @@ class LocationSiteFoldTests(TestCase):
         self.assertIn('0 horses &middot; 3 locations', body)
 
 
-class YardBoardFoldTests(LocationSiteFoldTests):
-    """On the dashboard an empty site is one line; a site with horses shows its tiles."""
-
-    def board(self):
-        return self.client.get(reverse('dashboard')).content.decode()
-
-    def test_an_empty_site_is_one_line_that_opens(self):
-        body = self.board()
-        self.assertIn('<details class="board-fold" x-data="settingsFold" data-fold-key="board:Away">', body)
-        self.assertIn('0 horses &middot; 2 locations', body)
-        # Its fields are in the page, for the reader who opens it.
-        self.assertIn('Far Field', body)
-        # The site with a horse is not folded.
-        self.assertNotIn('data-fold-key="board:Home"', body)
-        self.assertEqual(body.count('<div class="board-site">'), 1)
-
-    def test_one_site_is_never_folded(self):
-        from core.models import Location, Placement
-        Location.objects.filter(site='Home').update(site='Away')
-        Placement.objects.all().delete()
-        body = self.board()
-        self.assertNotIn('board-fold', body)
-        self.assertEqual(body.count('<div class="board-site">'), 1)
-
-
 class ListRowTests(LocationSiteFoldTests):
     """Horse rows are one line, and the filters above a list fold on a phone."""
 

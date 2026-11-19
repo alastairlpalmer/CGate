@@ -112,7 +112,11 @@ class QueryCountTestCase(TestCase):
         # one query for the whole yard). Whether this user may dismiss is
         # read from the role row access_map already fetched, so it adds
         # none. Measured 29 here.
-        self.assertMaxQueries(reverse('dashboard'), 30)
+        # The yard board went (-2) and the over-capacity collector came
+        # (+1). The figures across the top add a constant 4: open stays
+        # (horses and owners read the same rows), the owner count, the
+        # locations with occupancy and the open invoices. Measured 32.
+        self.assertMaxQueries(reverse('dashboard'), 33)
 
     def test_finances_query_count(self):
         # Measured 9 (revenue, costs union, placements, capacity, two

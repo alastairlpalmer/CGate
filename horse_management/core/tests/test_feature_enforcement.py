@@ -172,5 +172,5 @@ class NavigationVisibilityTests(TestCase):
         flat = [k for keys in grouped.values() for k in keys]
         self.assertIn("upcoming", flat)                   # the calendar needs only the dashboard
         self.assertIn("money", flat)                      # invoices viewable
-        self.assertNotIn("yard_board", flat)              # locations hidden
+        self.assertNotIn("near_you", flat)                # locations hidden
         self.assertNotIn("in_foal", flat)                 # breeding hidden

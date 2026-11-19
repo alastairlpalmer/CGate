@@ -1,0 +1,21 @@
+{% comment %}
+The yard's figures across the top of the dashboard. Context: metrics
+(core.dashboard.metrics.build). Each figure is gated on its own feature
+area there, so the strip is as long as the role's view of the yard. The
+Needs action figure opens the notification centre; the others open their
+page.
+{% endcomment %}
+<div class="metric-strip" role="list">
+    {% for m in metrics %}
+    {% if m.key == 'action' %}
+    <button type="button" role="listitem" class="metric{% if m.tone %} is-{{ m.tone }}{% endif %}"
+            data-metric="{{ m.key }}" @click="$store.notif.show('action')" aria-controls="notif-drawer">
+    {% else %}
+    <a href="{{ m.url }}" role="listitem" class="metric{% if m.tone %} is-{{ m.tone }}{% endif %}" data-metric="{{ m.key }}">
+    {% endif %}
+        <span class="metric-label">{{ m.label }}</span>
+        <span class="metric-value">{{ m.value }}</span>
+        {% if m.meta %}<span class="metric-meta" title="{{ m.meta }}">{{ m.meta }}</span>{% endif %}
+    {% if m.key == 'action' %}</button>{% else %}</a>{% endif %}
+    {% endfor %}
+</div>

@@ -74,11 +74,11 @@ class DashboardPreferenceModelTests(TestCase):
     def test_resolved_layout_merges_partial_stored(self):
         user = make_user('partialuser')
         pref = DashboardPreference.get_for(user)
-        pref.layout = {'yard_board': {'visible': False, 'order': 99}}
+        pref.layout = {'money': {'visible': False, 'order': 99}}
         pref.save()
         layout = pref.resolved_layout()
-        self.assertFalse(layout['yard_board']['visible'])
-        self.assertEqual(layout['yard_board']['order'], 99)
+        self.assertFalse(layout['money']['visible'])
+        self.assertEqual(layout['money']['order'], 99)
         # Untouched key keeps its default.
         self.assertTrue(layout['upcoming']['visible'])
 
@@ -107,7 +107,6 @@ class DashboardPreferenceModelTests(TestCase):
         user = make_user('gated')  # breeding and feed hidden, locations view
         keys = DashboardPreference.get_for(user).visible_keys()
         self.assertIn('upcoming', keys)
-        self.assertIn('yard_board', keys)
         self.assertIn('money', keys)
         self.assertNotIn('in_foal', keys)
         self.assertEqual(access_map(user)['breeding'], 'hidden')
@@ -283,7 +282,7 @@ class DashboardZoneGatingTests(TestCase):
         self.client.force_login(user)
         self._hide(user, 'activity')
         body = self.client.get(reverse('dashboard')).content.decode()
-        self.assertNotIn('What changed', body)
+        self.assertNotIn('timeline-title', body)
         self.assertNotIn(reverse('dashboard_activity'), body)
         # Money still loads lazily.
         self.assertIn(reverse('dashboard_money'), body)
@@ -573,20 +572,26 @@ class DashboardPageTests(TestCase):
         body = self.client.get(reverse('dashboard')).content.decode()
         self.assertNotIn('All sites', body)
 
-    def test_yard_board_lists_sites_and_locations(self):
+    def test_the_yard_board_is_gone(self):
+        """The Near you map and the Locations page show the same ground,
+        so the dashboard no longer carries a board of tiles."""
         field = Location.objects.create(name='Sandhills', site='Somerford', capacity=8)
-        Location.objects.create(name='Bottom Barn', site='Colgate', usage='rested')
         self._horse('Beech', field)
         user = make_user('boarduser')
         self.client.force_login(user)
         resp = self.client.get(reverse('dashboard'))
-        body = resp.content.decode()
-        self.assertIn('Yard board', body)
-        self.assertIn('Somerford', body)
-        self.assertIn('Colgate', body)
-        self.assertIn('1/8', body)  # the occupancy ring
-        self.assertIn('Rested', body)
-        self.assertEqual(resp.context['horse_count'], 1)
+        self.assertNotContains(resp, 'Yard board')
+        self.assertNotContains(resp, 'yard-board-title')
+        self.assertNotIn('yard_board', DashboardPreference.get_for(user).visible_keys())
+
+    def test_a_stored_yard_board_key_is_ignored(self):
+        user = make_user('oldboard')
+        pref = DashboardPreference.get_for(user)
+        pref.layout = {'yard_board': {'visible': True, 'order': 2}}
+        pref.save()
+        self.assertNotIn('yard_board', pref.resolved_layout())
+        self.client.force_login(user)
+        self.assertEqual(self.client.get(reverse('dashboard')).status_code, 200)
 
 
 class BulkFormPopupTests(TestCase):

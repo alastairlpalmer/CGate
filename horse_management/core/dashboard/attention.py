@@ -38,7 +38,7 @@ SEVERITY_ORDER = {'overdue': 0, 'due': 1, 'info': 2}
 
 # Kinds that belong in the inbox whatever their date: they have no natural
 # "day" and would otherwise never surface.
-INBOX_ALWAYS = frozenset({'egg_count', 'document', 'departure', 'feed', 'rate'})
+INBOX_ALWAYS = frozenset({'egg_count', 'document', 'departure', 'feed', 'rate', 'capacity'})
 
 # Kinds the health bulk form can record for several horses at once.
 BULK_ACTION_TYPES = {
@@ -79,6 +79,7 @@ KIND_LABELS = {
     'departure_expected': 'Expected departure',
     'invoice': 'Invoice',
     'feed': 'Feed stock',
+    'capacity': 'Over capacity',
     'rate': 'Rate to check',
 }
 
@@ -89,6 +90,7 @@ CATEGORY_OF_KIND = {
     'foal': 'yard', 'departure': 'yard', 'departure_expected': 'yard',
     'scan': 'health', 'foal_check': 'health', 'foal_passport': 'documents',
     'feed': 'yard',
+    'capacity': 'yard',
     'rate': 'money',
     'document': 'documents',
     'invoice': 'money',
@@ -875,6 +877,40 @@ def _feed(ctx):
     return items
 
 
+def _capacity(ctx):
+    """Locations with more horses on them than their capacity.
+
+    Counts what stands on the ground the way the location's ring does:
+    the horses that live there and the stabled horses that go out there
+    by day. A full location (8 of 8) is not over and is not listed. The
+    key carries the count, so a dismissed row comes back when one more
+    horse arrives.
+    """
+    from ..models import Location
+
+    locations = (
+        Location.objects.active().with_occupancy()
+        .filter(usage__in=Location.HORSE_USAGES, capacity__gt=0)
+        .order_by('site', 'name')
+    )
+    items = []
+    for loc in locations:
+        count = loc.horse_count + loc.turnout_count
+        if count <= loc.capacity:
+            continue
+        items.append(AttentionItem(
+            kind='capacity',
+            severity='info',
+            title=f'{loc.name} · {loc.site}' if loc.site else loc.name,
+            detail=f'Over capacity · {count} horses, room for {loc.capacity}',
+            url=reverse('location_detail', args=[loc.pk]),
+            location=loc.name,
+            site=loc.site or '',
+            key=f'capacity-{loc.pk}-{count}',
+        ))
+    return items
+
+
 COLLECTORS = (
     ('vaccination', 'health', _vaccinations),
     ('farrier', 'health', _farrier),
@@ -888,6 +924,7 @@ COLLECTORS = (
     ('rate', 'horses', _rates),
     ('invoice', 'invoices', _invoices),
     ('feed', 'feed', _feed),
+    ('capacity', 'locations', _capacity),
 )
 
 

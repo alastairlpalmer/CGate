@@ -1177,31 +1177,7 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
     .visit-date-name { @apply text-[9px] uppercase tracking-wide text-sage; }
     .visit-date-num { @apply mt-0.5 text-sm font-semibold text-forest tabular-nums; }
 
-    /* Yard board */
-    .board { @apply grid gap-3 px-4 py-3; }
-    .board-site { @apply grid gap-3; }
-    @media (min-width: 1024px) { .board-site { grid-template-columns: 9.5rem minmax(0, 1fr); } }
-    .board-site-name { @apply font-heading text-sm font-semibold text-forest no-underline hover:text-saddle; }
-    /* A site with no horses: one line that opens (board.html). Its tiles
-       line up with the tiles of the open sites on a wide screen. */
-    .board-fold > summary { @apply flex items-center gap-2 min-h-[32px] cursor-pointer list-none select-none; }
-    .board-fold > summary::-webkit-details-marker { display: none; }
-    .board-fold > summary:focus-visible { @apply outline-2 outline-offset-2 outline-forest rounded-btn; }
-    .board-fold[open] > summary .settings-fold-chevron { @apply rotate-90; }
-    .board-fold-meta { @apply text-xs text-sage; }
-    .board-fold > .board-tiles { @apply mt-2 lg:pl-[10.25rem]; }
-    .board-site-meta { @apply mt-1 text-xs leading-5 text-sage; }
-    .board-site-meta b { @apply font-heading text-base font-semibold text-charcoal tabular-nums; }
-    /* Why a field is marked: one short line per field under the count. */
-    .board-flag-reason { @apply mt-1 block text-xs text-charcoal-light; }
-    .board-flag-reason b { @apply font-body text-xs font-medium text-charcoal; }
-    /* align-content: the tiles keep their own height when the site's
-       notes beside them run long, instead of stretching to match. */
-    .board-tiles { @apply grid gap-2; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); align-content: start; }
-    .board-tile { @apply relative grid items-center gap-2 rounded-lg border border-light-sage bg-white px-3 py-2.5 no-underline transition-colors hover:border-sage hover:bg-sage-50/40; grid-template-columns: minmax(0, 1fr) auto; }
-    .board-tile.is-flagged { @apply border-saddle/40; }
-    .board-tile-name { @apply block text-sm font-medium leading-tight text-charcoal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .board-tile-meta { @apply mt-0.5 block text-[11px] leading-4 text-sage; }
+    /* Count badge: on the location map and the boundary import list. */
     .board-count { @apply grid h-10 w-10 place-items-center rounded-full bg-sage-50 font-heading text-sm font-semibold text-forest tabular-nums; }
 
     /* Location mapping. The picker map shows real tiles (the operator has
@@ -1215,14 +1191,11 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
     .location-map.is-full { height: min(70vh, 640px); min-height: 20rem; }
     /* The dashboard card's map. In one column (phones, portrait tablets) it
        is square, capped so it never outgrows the screen. From lg it sits
-       beside the Needs action and Next 14 days column and fills the card,
-       which the grid stretches to that column's height: the map is as
-       tall as the lists beside it, never much taller, so the two sides
-       end together. The floor keeps it a useful size when the column is
-       short. */
+       under the calendar, two thirds of the width, at a height that
+       follows the screen within a floor and a ceiling. */
     .location-map.is-compact { aspect-ratio: 1 / 1; max-height: min(26rem, 70vh); }
     @media (min-width: 1024px) {
-        .location-map.is-compact { aspect-ratio: auto; max-height: 48rem; flex: 1 1 auto; min-height: clamp(20rem, 45vh, 32rem); }
+        .location-map.is-compact { aspect-ratio: auto; height: clamp(22rem, 50vh, 34rem); }
     }
     .location-map .leaflet-container { @apply bg-white font-body; }
     /* The base map (Map button): muted so the parcels stay the picture, and
@@ -1256,12 +1229,13 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
     .location-map.is-zooming .location-map-badge,
     .location-map.is-zooming .location-map-label { transition: transform .25s cubic-bezier(0, 0, .25, 1); will-change: transform; }
     .location-map.is-zooming .location-map-leaders { opacity: 0; }
+    /* Days at rest, on a rested location's badge (location_map.html). */
+    .location-map-rest { @apply absolute -bottom-1.5 -right-2 z-[501] rounded-full border border-light-sage bg-white px-1 text-[10px] font-semibold leading-4 text-sage tabular-nums; }
     .location-map-pin { @apply absolute -top-1 -right-1 z-[501] grid h-4 w-4 place-items-center rounded-full bg-saddle text-white; }
     .near-chip { @apply inline-flex items-center gap-1.5 rounded-full border border-forest bg-sage-50 px-3 py-1.5 text-xs font-medium text-forest no-underline transition-colors hover:bg-white min-h-[36px]; }
     .near-chip-quiet { @apply inline-flex items-center gap-1.5 rounded-full border border-light-sage bg-white px-3 py-1.5 text-xs text-sage no-underline transition-colors hover:text-forest hover:border-sage min-h-[36px]; }
     .near-chip-ask { @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-sage transition-colors hover:text-forest min-h-[36px]; }
     .board-usage { @apply grid h-10 w-10 place-items-center rounded-full bg-sand-50; }
-    .board-flag { @apply absolute -right-1.5 -top-1.5 h-3 w-3 rounded-full bg-saddle ring-2 ring-white; }
 
     /* In foal */
     .foal-row { @apply flex items-start justify-between gap-4 px-4 py-3 lg:px-5; }
@@ -1314,6 +1288,25 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
     .milestone-action { @apply shrink-0; }
 
     /* Money */
+    /* The yard's figures across the top (partials/dashboard/metrics.html).
+       Two to a row on a phone, three on a tablet, one row on a wide
+       screen however many figures the role sees. */
+    .metric-strip { @apply grid grid-cols-2 gap-3 sm:grid-cols-3; }
+    @media (min-width: 1024px) { .metric-strip { grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); } }
+    .metric { @apply rounded-card border border-light-sage bg-white flex min-w-0 flex-col items-start px-4 py-3 text-left no-underline transition-colors hover:border-sage; }
+    .metric-label { @apply text-xs text-charcoal-light; }
+    .metric-value { @apply mt-1 font-heading text-2xl font-semibold leading-none tracking-[-0.01em] text-forest tabular-nums; }
+    .metric-meta { @apply mt-1.5 block w-full truncate text-xs text-sage; }
+    .metric.is-alert { @apply border-saddle/40 bg-saddle-50; }
+    .metric.is-alert .metric-value { @apply text-saddle; }
+
+    /* The Timeline's filter chips and its scrolling list. From lg the card
+       is as tall as the calendar and map beside it; the list scrolls. */
+    .timeline-filters { @apply flex flex-wrap gap-1.5 border-b border-light-sage px-4 py-2.5 lg:px-5; }
+    .timeline-chip { @apply inline-flex min-h-[32px] items-center rounded-full border border-light-sage bg-white px-3 text-xs text-charcoal transition-colors hover:border-sage; }
+    .timeline-chip.is-on { @apply border-forest bg-sage-50 text-forest; }
+    @media (min-width: 1024px) { .timeline-scroll { @apply min-h-0 flex-1 overflow-y-auto; } }
+
     .money-grid { @apply grid grid-cols-2 gap-3 p-4 lg:grid-cols-4 lg:p-5; }
     .money-fig { @apply flex flex-col rounded-lg bg-sand-50 px-4 py-3 no-underline transition-colors; }
     a.money-fig:hover { @apply bg-sand-100; }
@@ -2622,8 +2615,8 @@ a.barn-cell:focus-visible { @apply outline-2 outline-offset-2 outline-forest; }
 .stable-chip { @apply inline-flex items-center ml-1.5 px-1.5 py-px rounded-sm bg-light-sage text-forest text-[11px] font-bold tabular-nums align-middle; }
 .barn-cell-horse { @apply text-[12px] font-medium leading-tight text-charcoal truncate; }
 .barn-cell-more { @apply font-normal text-sage; }
-/* The app's one "needs attention" mark, the rust dot the Yard board puts
-   on a tile, on the stable of a horse the dashboard is asking about. */
+/* The app's one "needs attention" mark, a rust dot, on the stable of a
+   horse the dashboard is asking about. */
 .barn-cell.needs-attention { @apply relative; }
 .barn-cell-flag { @apply absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-saddle ring-2 ring-white; }
 /* A horse that goes out by day: a meadow-green dot beside its stable's
