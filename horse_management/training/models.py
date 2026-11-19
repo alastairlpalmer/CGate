@@ -174,3 +174,125 @@ class Activity(models.Model):
     @property
     def can_mark_done(self):
         return self.status == self.Status.PLANNED and self.date <= timezone.localdate()
+
+
+# ─── Phase 2a: lots, training status, the board setting ─────────────
+
+class LotQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(is_active=True)
+
+
+class Lot(models.Model):
+    """A standing group of horses that usually work together (D2).
+
+    The default for now: the board for a day starts from these lots. The
+    design keeps "new each day" open (principle 5.11): nothing outside
+    ``LotMember`` needs a horse to be a standing member.
+    """
+
+    name = models.CharField(max_length=60, unique=True)
+    position = models.PositiveSmallIntegerField(default=0, help_text="Order in the day. Lower goes first.")
+    usual_time = models.TimeField(null=True, blank=True)
+    usual_work_type = models.ForeignKey(
+        WorkType, on_delete=models.PROTECT, related_name='lots',
+        help_text="The work this lot usually does. Each day can change it.",
+    )
+    notes = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+
+    objects = LotQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['position', 'name']
+
+    def __str__(self):
+        return self.name
+
+
+class LotMember(models.Model):
+    """The standing lot of a horse. No history: activities hold the history.
+
+    A foreign key with a unique constraint, not a one-to-one field, so a
+    later change to D6 (more than one lot for each horse) only drops the
+    constraint. Read it through ``training.services.standing_lot``.
+    """
+
+    lot = models.ForeignKey(Lot, on_delete=models.CASCADE, related_name='members')
+    horse = models.ForeignKey('core.Horse', on_delete=models.CASCADE, related_name='lot_members')
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['position', 'pk']
+        constraints = [
+            models.UniqueConstraint(fields=['horse'], name='lotmember_one_lot_per_horse'),
+        ]
+
+    def __str__(self):
+        return f"{self.horse} in {self.lot}"
+
+
+class HorseTraining(models.Model):
+    """A horse's training settings. Made by the first POST that needs it,
+    never by a GET. A horse with no row is Not in training."""
+
+    class Status(models.TextChoices):
+        IN_WORK = 'in_work', 'In work'
+        LIGHT = 'light', 'Light work'
+        PRE_TRAINING = 'pre_training', 'Pre-training'
+        RESTING = 'resting', 'Resting'
+        BOX_REST = 'box_rest', 'Box rest'
+        NOT_IN_TRAINING = 'none', 'Not in training'
+
+    # The statuses that go on the board (phase 2b).
+    ON_BOARD = (Status.IN_WORK, Status.LIGHT, Status.PRE_TRAINING)
+
+    horse = models.OneToOneField('core.Horse', on_delete=models.CASCADE, related_name='training')
+    status = models.CharField(max_length=14, choices=Status.choices, default=Status.NOT_IN_TRAINING)
+    status_since = models.DateField(default=timezone.localdate)
+    notes = models.TextField(blank=True)
+    history = HistoricalRecords()
+
+    class Meta:
+        verbose_name = 'horse training settings'
+        verbose_name_plural = 'horse training settings'
+
+    def __str__(self):
+        return f"{self.horse}: {self.get_status_display()}"
+
+
+class TrainingSettings(models.Model):
+    """One row for the yard. Edited on Training, Set up, with Training full.
+
+    Read it with ``TrainingSettings.load()``: it returns the defaults when no
+    row exists and never writes (principle 5.3).
+    """
+
+    class BoardSource(models.TextChoices):
+        LOTS = 'lots', 'From the lots'
+        COPY = 'copy', 'Copy the last board'
+        EMPTY = 'empty', 'Empty'
+        WEEK_PLAN = 'week_plan', 'From the week plan'
+
+    # Offered now. The week plan comes in phase 3.
+    OFFERED_SOURCES = (BoardSource.LOTS, BoardSource.COPY, BoardSource.EMPTY)
+
+    board_source = models.CharField(
+        max_length=10, choices=BoardSource.choices, default=BoardSource.LOTS,
+        help_text="How the lot board starts a new day.",
+    )
+
+    class Meta:
+        verbose_name = 'training settings'
+        verbose_name_plural = 'training settings'
+
+    def __str__(self):
+        return 'Training settings'
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        return cls.objects.filter(pk=1).first() or cls(pk=1)

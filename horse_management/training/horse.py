@@ -13,7 +13,7 @@ from django.utils import timezone
 from core.permissions import LEVEL_FULL, LEVEL_VIEW, has_feature_access
 
 from .access import training_on
-from .models import Activity
+from .models import Activity, HorseTraining, LotMember
 
 RECENT_DAYS = 14
 COMING_UP = 5
@@ -38,7 +38,15 @@ def training_card(user, horse):
         return None
     today = timezone.localdate()
     rows = horse.activities.select_related('work_type')
+    # Read only: a horse with no row is Not in training (5.3).
+    status_row = HorseTraining.objects.filter(horse=horse).first()
+    member = LotMember.objects.filter(horse=horse).select_related('lot', 'lot__usual_work_type').first()
     return {
+        'status': status_row.get_status_display() if status_row else HorseTraining.Status.NOT_IN_TRAINING.label,
+        'status_value': status_row.status if status_row else HorseTraining.Status.NOT_IN_TRAINING,
+        'status_since': status_row.status_since if status_row else None,
+        'status_notes': status_row.notes if status_row else '',
+        'lot': member.lot if member else None,
         'coming_up': list(rows.filter(date__gt=today).order_by('date', 'pk')[:COMING_UP]),
         'recent': list(
             rows.filter(date__lte=today, date__gt=today - timedelta(days=RECENT_DAYS))

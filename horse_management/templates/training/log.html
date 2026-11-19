@@ -46,6 +46,17 @@
                     {% endfor %}
                 </select>
             </div>
+            {% if lots %}
+            <div>
+                <label for="filter-lot" class="dt-label mb-1">Lot</label>
+                <select id="filter-lot" name="lot" class="form-select">
+                    <option value="">All lots</option>
+                    {% for lot in lots %}
+                    <option value="{{ lot.pk }}" {% if filters.lot == lot.pk|stringformat:"s" %}selected{% endif %}>{{ lot.name }}{% if not lot.is_active %} (archived){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
             <div>
                 <label for="filter-work" class="dt-label mb-1">Work</label>
                 <select id="filter-work" name="work_type" class="form-select">

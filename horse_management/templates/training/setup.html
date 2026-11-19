@@ -63,6 +63,23 @@
         </div>
     </div>
 
+    <form method="post" action="{% url 'training_setup' %}" class="card">
+        {% csrf_token %}
+        <div class="section-header px-4 pt-3">
+            <h2 class="section-title">Lot board</h2>
+        </div>
+        <fieldset class="px-4 pb-3">
+            <legend class="text-sm text-sage pb-2">How the lot board starts a new day. The lot board comes in the next update; this setting is kept for it.</legend>
+            {% for radio in board_form.board_source %}
+            <label class="flex items-center gap-2 min-h-[44px] text-sm cursor-pointer">{{ radio.tag }} {{ radio.choice_label }}</label>
+            {% endfor %}
+            <p class="text-xs text-sage mt-1">From the lots: each lot's horses and usual work. Copy the last board: the day before, with its changes. Empty: every lot with no horses, to fill by hand.</p>
+        </fieldset>
+        <div class="px-4 py-3 border-t border-light-sage flex justify-end">
+            <button type="submit" class="btn-secondary">Save</button>
+        </div>
+    </form>
+
     {% if archived_types %}
     <details class="card">
         <summary class="px-4 py-3 cursor-pointer text-sm font-medium text-charcoal min-h-[44px]">Archived work types ({{ archived_types|length }})</summary>

@@ -2,7 +2,7 @@
 
 **Goal:** Anyone on the yard can see, for each horse, what work it did, when, and what is planned next. A trainer puts horses into lots, gives each lot its work for the day, and confirms it. Staff can also record work for one horse or for many horses in one step. Every piece of work is one record in the database, with its date.
 **Scope:** A new `training` app. A Training section in the sidebar (the "trainer panel"). A Training card on the horse page. No owner login, no offline mode, no drag tool in the first phases (section 12).
-**Status:** Phase 1 is built, behind `TRAINING_ENABLED` (off by default). Section 17 records where the build departed from this plan. Next: the phase 1 gate (section 13), then phase 2a. The owner decided D1 to D4, D7, D11 and D12 on 2026-11-19 (section 4.1). D5, D6, D8 and D10 use their recommended answers until the owner says otherwise. D9 is a test at the yard before phase 2b (section 4.2).
+**Status:** Phases 1 and 2a are built, behind `TRAINING_ENABLED` (off by default). Sections 17 and 18 record where the builds departed from this plan. Next: phase 2b, the lot board. The owner decided D1 to D4, D7, D11 and D12 on 2026-11-19 (section 4.1). D5, D6, D8 and D10 use their recommended answers until the owner says otherwise. D9 is a test at the yard before phase 2b (section 4.2).
 **Build estimate:** About 1 to 2 days of build for each of the 6 pull requests, from the speed of the farrier and barns builds. The calendar time is set by the gates: one week of real use after phases 1, 2b and 3 (section 13).
 
 Written for the owner and for an AI coding agent. Read all of it before you write any code.
@@ -20,6 +20,8 @@ Written for the owner and for an AI coding agent. Read all of it before you writ
 **Revision 6.** 2026-11-19. The owner accepted D12 (allow for now). Section 8.0 says where Training lives in the menus, with its own icon and, from phase 2b, a tab on the phone bottom bar (D13).
 
 **Revision 7.** 2026-11-19. Phase 1 is built. Section 17 records where the build departed from this document and why.
+
+**Revision 8.** 2026-11-19. Phase 2a is built. Section 18 records where the build departed from this document and why.
 
 ---
 
@@ -843,11 +845,11 @@ Build:
 
 Definition of done:
 
-- [ ] A horse cannot be in two standing lots. The second add shows a message, not an error page.
-- [ ] A horse added to a lot moves from Not in training to In work. A horse on Box rest stays on Box rest.
-- [ ] A lot with horses cannot be archived. An empty lot can.
-- [ ] A horse that departs stays a member and shows under "Left the yard". After **Cancel departure** it shows in its lot again.
-- [ ] Opening the horse page or the Lots tab makes no `HorseTraining` or `TrainingSettings` row.
+- [x] A horse cannot be in two standing lots. The second add shows a message, not an error page.
+- [x] A horse added to a lot moves from Not in training to In work. A horse on Box rest stays on Box rest.
+- [x] A lot with horses cannot be archived. An empty lot can.
+- [x] A horse that departs stays a member and shows under "Left the yard". After **Cancel departure** it shows in its lot again.
+- [x] Opening the horse page or the Lots tab makes no `HorseTraining` or `TrainingSettings` row.
 
 ### 9.3 Phase 2b — The lot board
 
@@ -1198,3 +1200,24 @@ Where the build departed from this document, and why:
 | B11 | The Set up list order. | The list is ordered by position, then name, in the view. | A count annotation drops `Meta.ordering`, and the list came out A to Z. |
 
 Not changed by phase 1: no lot, board or status model, nothing in `core/services.py`, and no charge. The bulk bar on a barn's page still reaches only horses in no stable (8.5).
+
+---
+
+## 18. What changed in the build of phase 2a
+
+Phase 2a adds `Lot`, `LotMember`, `HorseTraining` and `TrainingSettings` (migration `training/0004_lots_and_status.py`), the **Lots** tab, the status pop-up on the horse page, the board setting on **Set up**, and the lot filter on the Log. Every item in the phase 2a definition of done (9.2) has a test in `training/test_lots.py` (15 tests). The full suite passes. The pages were checked in Chromium at 1366 × 900 and at iPhone 13 size, with no script errors.
+
+Where the build departed from this document, and why:
+
+| # | The plan said | The build does | Why |
+|---|---|---|---|
+| A1 | `set_status(horse, status, day, *, user)`. | `set_status(horse, status, day, notes, *, since)`. No `user`. | `simple_history`'s request middleware already records the signed-in user. `since` corrects the start date of the current status, with history. |
+| A2 | The lot filter on the Log. | It shows the work of the horses **now** in the lot. | There are no lot days until phase 2b. Phase 2b adds the lot of each day. |
+| A3 | Not in the plan. | The Lots tab names the horses that are In work but in no lot. | Under "From the lots", the board in phase 2b will not include them. The trainer sees them before that happens. |
+| A4 | The picker shows "a horse already in a lot" with its lot name. | Such a horse shows its lot name and cannot be ticked. The picker has a search box. | One rule, one place: **Move to** on the Lots tab moves a horse. A yard with many horses needs to find one quickly. |
+| A5 | The board setting on Set up. | It is there, with the note that the lot board comes in the next update. "From the week plan" is not offered yet. | The setting is stored for phase 2b. Phase 3 adds the week plan. |
+| A6 | Not in the plan. | `set_status` writes one history row for each real change, and none when nothing changed. | A save with no change made an empty history row. |
+| A7 | Not in the plan. | The status line on the horse card reads "In work · since … · Lot: 1st lot" with a "Lot:" label, not a dot between tags. | `core/tests/test_layout_tidy.py` refuses a separator dot that stands alone between tags. |
+| A8 | Not in the plan. | Up, Down, Move to and Remove post to one URL, `training_lot_member`, with an `action`. | Fewer URLs; one access check. |
+
+Not changed by phase 2a: the sidebar's Training link still opens the Log; phase 2b makes it open today's board. Nothing in `core/services.py` changed (5.5).

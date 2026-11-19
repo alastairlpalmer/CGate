@@ -15,3 +15,13 @@ urlpatterns = [
     path('work-types/<int:pk>/edit/', views.WorkTypeUpdateView.as_view(), name='training_work_type_update'),
     path('work-types/<int:pk>/archive/', views.work_type_archive, name='training_work_type_archive'),
 ]
+
+urlpatterns += [
+    path('lots/', views.training_lots, name='training_lots'),
+    path('lots/add/', views.LotCreateView.as_view(), name='training_lot_create'),
+    path('lots/<int:pk>/edit/', views.LotUpdateView.as_view(), name='training_lot_update'),
+    path('lots/<int:pk>/archive/', views.lot_archive, name='training_lot_archive'),
+    path('lots/<int:pk>/horses/', views.lot_add_horses, name='training_lot_add_horses'),
+    path('lots/members/<int:pk>/', views.lot_member_action, name='training_lot_member'),
+    path('horses/<int:horse_pk>/status/', views.horse_training_edit, name='training_horse_edit'),
+]

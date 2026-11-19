@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from health.forms import ActiveHorseFormMixin
 
-from .models import Activity, WorkType
+from .models import Activity, HorseTraining, Lot, TrainingSettings, WorkType
 
 DATE_WIDGET = forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'})
 
@@ -150,3 +150,75 @@ class WorkTypeForm(forms.ModelForm):
         elif kind and effort == WorkType.Effort.NONE:
             self.add_error('effort', 'Choose an effort: Easy, Steady or Fast. Only a rest has none.')
         return cleaned
+
+
+# ─── Phase 2a: lots, training status, the board setting ─────────────
+
+
+class LotForm(forms.ModelForm):
+    class Meta:
+        model = Lot
+        fields = ['name', 'usual_work_type', 'usual_time', 'position', 'notes']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'For example: 1st lot'}),
+            'usual_work_type': forms.Select(attrs={'class': 'form-select'}),
+            'usual_time': forms.TimeInput(format='%H:%M', attrs={'class': 'form-input', 'type': 'time'}),
+            'position': forms.NumberInput(attrs={'class': 'form-input', 'min': 0}),
+            'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+        }
+        labels = {'usual_work_type': 'Usual work', 'usual_time': 'Usual time', 'position': 'Order in the day'}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        work_types = Q(is_active=True)
+        if self.instance.usual_work_type_id:
+            work_types |= Q(pk=self.instance.usual_work_type_id)
+        self.fields['usual_work_type'].queryset = WorkType.objects.filter(work_types)
+        self.fields['usual_work_type'].empty_label = 'Choose the work…'
+
+
+class HorseTrainingForm(forms.Form):
+    """Training status and standing lot for one horse (the horse card's Change).
+
+    A plain form, not a ModelForm: opening it must not make a row (5.3).
+    """
+
+    status = forms.ChoiceField(
+        choices=HorseTraining.Status.choices,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Training status',
+    )
+    status_since = forms.DateField(
+        widget=DATE_WIDGET, label='From',
+        help_text='The date this status started. A new status starts on the date you give.',
+    )
+    lot = forms.ModelChoiceField(
+        queryset=Lot.objects.none(), required=False, empty_label='No lot',
+        widget=forms.Select(attrs={'class': 'form-select'}), label='Lot',
+        help_text='The group the horse usually works with.',
+    )
+    notes = forms.CharField(
+        required=False, widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+    )
+
+    def __init__(self, *args, current_lot=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        lots = Q(is_active=True)
+        if current_lot is not None:
+            lots |= Q(pk=current_lot.pk)
+        self.fields['lot'].queryset = Lot.objects.filter(lots)
+
+
+class BoardSettingsForm(forms.ModelForm):
+    class Meta:
+        model = TrainingSettings
+        fields = ['board_source']
+        widgets = {'board_source': forms.RadioSelect}
+        labels = {'board_source': 'Start a new day'}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        offered = TrainingSettings.OFFERED_SOURCES
+        self.fields['board_source'].choices = [
+            (value, label) for value, label in TrainingSettings.BoardSource.choices if value in offered
+        ]
