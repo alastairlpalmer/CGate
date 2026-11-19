@@ -22,11 +22,14 @@ def collect(ctx):
     no horse in work pays one query and gets nothing."""
     if not training_on():
         return []
-    # Every item needs a horse in work: one goes on a board, misses a
-    # confirmation, or has no work. No such horse, nothing to say.
-    if not HorseTraining.objects.filter(status__in=HorseTraining.ON_BOARD).exists():
+    # Every item needs a horse in work (it goes on a board, misses a
+    # confirmation, or has no work) or a horse on rest with a review due.
+    # A horse on rest can have a review date that is due (dashboard plan 4.4).
+    if not HorseTraining.objects.filter(
+        Q(status__in=HorseTraining.ON_BOARD) | Q(status__in=HorseTraining.ON_REST, review_on__lte=ctx.today)
+    ).exists():
         return []
-    return board_not_started(ctx) + not_confirmed(ctx) + no_work(ctx)
+    return board_not_started(ctx) + not_confirmed(ctx) + no_work(ctx) + review_due(ctx)
 
 
 def board_not_started(ctx):
@@ -100,5 +103,28 @@ def no_work(ctx):
             url=reverse('horse_detail', args=[row.horse_id]) + '#training',
             horse=row.horse, horse_id=row.horse_id, location=location, site=site,
             key=f'training-nowork-{row.horse_id}-{start.isoformat()}',
+        ))
+    return items
+
+
+def review_due(ctx):
+    """Horses on rest whose review date is today or past (dashboard plan 4.4)."""
+    from core.dashboard.attention import AttentionItem
+    today = ctx.today
+    rows = (
+        HorseTraining.objects.filter(status__in=HorseTraining.ON_REST, horse__is_active=True, review_on__lte=today)
+        .select_related('horse').order_by('review_on', 'horse__name')
+    )
+    items = []
+    for row in rows:
+        location, site = ctx.placements.get(row.horse_id, ('', ''))
+        items.append(AttentionItem(
+            kind='training_review', severity='overdue' if row.review_on < today else 'due',
+            title=row.horse.name,
+            detail=f"{row.get_status_display()} · review {'today' if row.review_on == today else f'from {row.review_on:%a} {row.review_on.day} {row.review_on:%b}'}",
+            url=reverse('horse_detail', args=[row.horse_id]) + '#training',
+            horse=row.horse, horse_id=row.horse_id, location=location, site=site,
+            due_date=row.review_on, delta=(row.review_on - today).days,
+            key=f'training-review-{row.horse_id}-{row.review_on.isoformat()}',
         ))
     return items

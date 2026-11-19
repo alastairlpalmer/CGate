@@ -1,6 +1,6 @@
 # Training dashboard (Overview) — plan
 
-**Status:** Plan, ready for phase A. Nothing is built. The owner decided T1 to T7 on 2026-11-19 (section 3).
+**Status:** Phase A is built (section 10). Phases B and C are next. The owner decided T1 to T7 on 2026-11-19 (section 3).
 
 **Revision 3.** 2026-11-19. The owner decided T1 to T7. T7 is new: the yard's own **Stable Staff** role gets Full on Training (section 3.1).
 
@@ -56,7 +56,7 @@ All decided on 2026-11-19. Each one is the recommended answer.
 
 ### 3.1 The Stable Staff role (T7)
 
-"Stable Staff" is not a seeded role. The yard made it in Settings → Users & Roles. The app gives it access in a data migration, `training/migrations/0008_stable_staff_training.py`, in phase A:
+"Stable Staff" is not a seeded role. The yard made it in Settings → Users & Roles. The app gives it access in a data migration, `training/migrations/0009_stable_staff_training.py`, in phase A:
 
 - Find roles where the name, with spaces trimmed and in lower case, is `stable staff`, and `is_system` is false.
 - Set `training` to `full` only if its value is absent or `hidden`. A value that an administrator chose stays.
@@ -211,3 +211,26 @@ Each phase is one pull request, with tests and the usual checks.
 | The Overview and the main dashboard show different attention items. | Both use `training/attention.py`. One test checks that both lists are the same. |
 | Staff open the Overview and must tap again for the board. | "Open today's board" is the first, largest button. T3 can change the phone item to Board later. |
 | Too much on one page. | Each block answers one question in section 2. A block with no data is not shown (except Today). |
+
+## 10. What is built
+
+### 10.1 Phase A
+
+| Part | Where |
+|---|---|
+| The Overview: the Training landing page and first tab (T1 to T3). | `training/overview.py`, `training_home` in `training/views.py`, `templates/training/overview.html`, `_tabs.html` |
+| Figures, Today (with "Not going out today"), Needs attention, Not in work. | `overview.build`, partials `overview_entry.html` and `overview_rest_row.html` |
+| Large yards: the lot filter (`?lot=`) and the folds, from 26 horses on the board. | `overview.LARGE`, `ATTENTION_ROWS` |
+| Review on (T5): in the status pop-up; cleared when the horse goes back on the board. | `HorseTraining.review_on`, migration `0008`, `services.set_status(review_on=...)` |
+| Review due on the main dashboard. | `attention.review_due`, kind `training_review` |
+| Stable Staff (T7). | Migration `0009_stable_staff_training.py` |
+| Tests: 23. | `training/test_overview.py` |
+
+Departures from the plan:
+
+| # | Change | Why |
+|---|---|---|
+| A1 | The shared header include (C1) moves to phase C. | The four tabs already have the same header shape. Phase C changes their buttons (C2), so C1 and C2 go together. |
+| A2 | Conditions and vet follow-ups in Not in work show only to a user with view on Health. | Health data stays with the Health access level. A Stable Staff role without Health sees the review badges only. |
+| A3 | The lot filter lists the active lots, not only today's lots. | A head lad can filter on a day with no board. |
+| A4 | The test checks that the query count is the same for 30 and for 110 horses, and 40 or fewer. | Section 7 said 15 or fewer. The Not in work card, the health facts and the session and role reads of every page add queries. The count does not grow with the yard. |

@@ -19,7 +19,7 @@ from core.permissions import (
 )
 from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_response
 
-from . import board, load, services
+from . import board, load, overview, services
 from .access import TrainingEnabledMixin, training_enabled
 from .forms import (
     ActivityForm, BoardSettingsForm, HorseTrainingForm, LotDayForm, LotForm, RiderForm, VenueForm,
@@ -70,8 +70,26 @@ def _report(request, result, done_word):
 @training_enabled
 @feature_required('training', LEVEL_VIEW)
 def training_home(request):
-    """The sidebar's Training link: today's board (phase 2b)."""
-    return redirect('training_board')
+    """The Overview: the sidebar's Training link and the first tab
+    (docs/TRAINING_DASHBOARD_PLAN.md, T1 and T2)."""
+    today = timezone.localdate()
+    lot = None
+    lot_param = request.GET.get('lot', '')
+    if lot_param.isdigit():
+        lot = Lot.objects.active().filter(pk=int(lot_param)).first()
+    data = overview.build(
+        today, lot=lot, show_health=has_feature_access(request.user, 'health', LEVEL_VIEW),
+    )
+    settings_row = TrainingSettings.load()
+    return render(request, 'training/overview.html', {
+        **data,
+        'today': today,
+        'can_change': has_feature_access(request.user, 'training', LEVEL_FULL),
+        'sources': [(v, dict(TrainingSettings.BoardSource.choices)[v]) for v in TrainingSettings.OFFERED_SOURCES],
+        'default_source': settings_row.board_source,
+        'last_board': board.last_board_before(today),
+        'training_tab': 'overview',
+    })
 
 
 class ActivityLogView(TrainingEnabledMixin, FeatureAccessMixin, ListView):
@@ -516,6 +534,7 @@ def horse_training_edit(request, horse_pk):
         'status_since': row.status_since if row else timezone.localdate(),
         'lot': current_lot,
         'notes': row.notes if row else '',
+        'review_on': row.review_on if row else None,
         'default_who': who_value(row.default_rider_id, row.default_rider_is_owner) if row else '',
         'default_gear': row.default_gear if row else '',
         'days_per_week': row.days_per_week if row else None,
@@ -532,10 +551,11 @@ def horse_training_edit(request, horse_pk):
                 messages.warning(request, f"{horse.name} has left the yard, so cannot join a lot.")
             else:
                 services.move_to_lot(horse, new_lot, auto_status=not chose_status, day=data['status_since'])
-        if chose_status or 'status_since' in form.changed_data or 'notes' in form.changed_data:
+        if chose_status or {'status_since', 'notes', 'review_on'} & set(form.changed_data):
             services.set_status(
                 horse, data['status'], data['status_since'], notes=data['notes'],
                 since=data['status_since'] if 'status_since' in form.changed_data else None,
+                review_on=data['review_on'],
             )
         if 'default_who' in form.changed_data or 'default_gear' in form.changed_data:
             rider, is_owner = parse_who(data['default_who'])

@@ -292,9 +292,11 @@ class PageTests(Base):
         self.assertContains(response, 'Mark lot done')
         self.assertEqual(response.context['last_not_confirmed'], yesterday)
 
-    def test_training_home_opens_the_board_and_the_phone_bar_has_the_tab(self):
+    def test_training_home_opens_the_overview_and_the_phone_bar_has_the_tab(self):
+        # Dashboard plan T2 and T3: the Overview, with a link to the board.
         response = self.client.get(reverse('training_home'))
-        self.assertRedirects(response, reverse('training_board'), fetch_redirect_response=False)
+        self.assertTemplateUsed(response, 'training/overview.html')
+        self.assertContains(response, f'href="{reverse("training_board")}"')
         response = self.client.get(reverse('training_board'))
         self.assertContains(response, 'id="tab-training"')
         self.client.force_login(make_user_with_access('h', horses='view'))

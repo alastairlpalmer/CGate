@@ -139,6 +139,7 @@ KIND_ICONS = {
     'training_board': 'stopwatch',
     'training_unconfirmed': 'stopwatch',
     'training_no_work': 'stopwatch',
+    'training_review': 'stopwatch',
     'vaccination': 'syringe',
     'ehv': 'syringe',
     'farrier': 'horseshoe',

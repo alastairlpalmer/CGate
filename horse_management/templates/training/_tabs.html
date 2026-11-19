@@ -1,9 +1,10 @@
 {% comment %}
 The tab bar of the Training section (docs/TRAINING_MODULE_PLAN.md, 8.1).
-Board, Lots, Log and Set up (phase 2b).
+Overview (dashboard plan, phase A), Board, Lots, Log and Set up.
 Usage: {% include 'training/_tabs.html' %} with training_tab in the context.
 {% endcomment %}
 <nav class="finance-tabs" aria-label="Training">
+    <a href="{% url 'training_home' %}" class="{% if training_tab == 'overview' %}tab-underline-active{% else %}tab-underline-inactive{% endif %} min-w-[44px] justify-center px-1"{% if training_tab == 'overview' %} aria-current="page"{% endif %}>Overview</a>
     <a href="{% url 'training_board' %}" class="{% if training_tab == 'board' %}tab-underline-active{% else %}tab-underline-inactive{% endif %} min-w-[44px] justify-center px-1"{% if training_tab == 'board' %} aria-current="page"{% endif %}>Board</a>
     <a href="{% url 'training_lots' %}" class="{% if training_tab == 'lots' %}tab-underline-active{% else %}tab-underline-inactive{% endif %} min-w-[44px] justify-center px-1"{% if training_tab == 'lots' %} aria-current="page"{% endif %}>Lots</a>
     <a href="{% url 'training_log' %}" class="{% if training_tab == 'log' %}tab-underline-active{% else %}tab-underline-inactive{% endif %} min-w-[44px] justify-center px-1"{% if training_tab == 'log' %} aria-current="page"{% endif %}>Log</a>

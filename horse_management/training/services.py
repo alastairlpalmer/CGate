@@ -138,22 +138,29 @@ class AddResult:
     started_work: list = field(default_factory=list)   # Not in training -> In work
 
 
-def set_status(horse, status, day=None, notes=None, *, since=None):
+_KEEP = object()
+
+
+def set_status(horse, status, day=None, notes=None, *, since=None, review_on=_KEEP):
     """Set the horse's training status. Makes the row if needed.
 
     ``day`` is the date of the change: the status starts then when it is
     new. ``since`` corrects the start date of the current status. Saved with
     history. Phase 2b adds the board part: Planned work on boards (7.4).
+    ``review_on`` (dashboard plan 4.4): the date to check a horse on rest.
+    A status that goes on the board clears it.
     """
     if status not in HorseTraining.Status.values:
         raise ValueError(f"Unknown status: {status!r}")
     day = day or timezone.localdate()
+    on_board = status in HorseTraining.ON_BOARD
     row, created = HorseTraining.objects.get_or_create(horse=horse, defaults={
         'status': status, 'status_since': since or day, 'notes': notes or '',
+        'review_on': None if on_board or review_on is _KEEP else review_on,
     })
     if created:
         return row
-    before = (row.status, row.status_since, row.notes)
+    before = (row.status, row.status_since, row.notes, row.review_on)
     if row.status != status:
         row.status = status
         row.status_since = day
@@ -161,7 +168,11 @@ def set_status(horse, status, day=None, notes=None, *, since=None):
         row.status_since = since
     if notes is not None:
         row.notes = notes
-    if (row.status, row.status_since, row.notes) != before:
+    if review_on is not _KEEP:
+        row.review_on = review_on
+    if on_board:
+        row.review_on = None
+    if (row.status, row.status_since, row.notes, row.review_on) != before:
         row.save()   # one history row for each real change
     return row
 

@@ -252,6 +252,11 @@ class HorseTrainingForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'}), label='Lot',
         help_text='The group the horse usually works with.',
     )
+    review_on = forms.DateField(
+        required=False, widget=DATE_WIDGET, label='Review on',
+        help_text='For Resting or Box rest: the date to check the horse again. '
+                  'Cleared when the horse goes back in work.',
+    )
     notes = forms.CharField(
         required=False, widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
     )
