@@ -141,6 +141,11 @@ class Activity(models.Model):
     # changes back only these rows (5.12).
     lot_action = models.CharField(max_length=8, blank=True)
     position = models.PositiveSmallIntegerField(default=0)
+    # Phase 3: where, who and with what.
+    venue = models.ForeignKey('Venue', null=True, blank=True, on_delete=models.PROTECT, related_name='activities')
+    rider = models.ForeignKey('Rider', null=True, blank=True, on_delete=models.PROTECT, related_name='activities')
+    rider_is_owner = models.BooleanField(default=False, help_text="The horse's owner rode or handled it.")
+    gear = models.CharField(max_length=120, blank=True)
     history = HistoricalRecords()
 
     objects = ActivityQuerySet.as_manager()
@@ -156,6 +161,10 @@ class Activity(models.Model):
             models.UniqueConstraint(
                 fields=['lot_day', 'horse'], condition=Q(lot_day__isnull=False),
                 name='activity_one_row_per_horse_per_lot_day',
+            ),
+            models.CheckConstraint(
+                condition=Q(rider__isnull=True) | Q(rider_is_owner=False),
+                name='activity_rider_or_owner_not_both',
             ),
         ]
         indexes = [
@@ -184,6 +193,14 @@ class Activity(models.Model):
         if self.is_not_confirmed:
             return 'Not confirmed'
         return self.get_status_display()
+
+    @property
+    def rider_label(self):
+        """The rider's name, or the owner's name when the owner rode (D1)."""
+        if self.rider_is_owner:
+            owner = self.horse.current_owner
+            return owner.name if owner else 'The owner'
+        return self.rider.name if self.rider_id else ''
 
     @property
     def can_mark_done(self):
@@ -265,6 +282,10 @@ class HorseTraining(models.Model):
     status = models.CharField(max_length=14, choices=Status.choices, default=Status.NOT_IN_TRAINING)
     status_since = models.DateField(default=timezone.localdate)
     notes = models.TextField(blank=True)
+    # Phase 3: what new board rows take (R5). A change for one day does not change these.
+    default_rider = models.ForeignKey('Rider', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    default_rider_is_owner = models.BooleanField(default=False)
+    default_gear = models.CharField(max_length=120, blank=True)
     history = HistoricalRecords()
 
     class Meta:
@@ -288,8 +309,7 @@ class TrainingSettings(models.Model):
         EMPTY = 'empty', 'Empty'
         WEEK_PLAN = 'week_plan', 'From the week plan'
 
-    # Offered now. The week plan comes in phase 3.
-    OFFERED_SOURCES = (BoardSource.LOTS, BoardSource.COPY, BoardSource.EMPTY)
+    OFFERED_SOURCES = (BoardSource.WEEK_PLAN, BoardSource.LOTS, BoardSource.COPY, BoardSource.EMPTY)
 
     board_source = models.CharField(
         max_length=10, choices=BoardSource.choices, default=BoardSource.LOTS,
@@ -326,6 +346,7 @@ class LotDay(models.Model):
     lot = models.ForeignKey(Lot, on_delete=models.PROTECT, related_name='days')
     date = models.DateField()
     work_type = models.ForeignKey(WorkType, on_delete=models.PROTECT, related_name='lot_days')
+    venue = models.ForeignKey('Venue', null=True, blank=True, on_delete=models.PROTECT, related_name='lot_days')
     start_time = models.TimeField(null=True, blank=True)
     notes = models.TextField(blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PLANNED)
@@ -353,3 +374,82 @@ class LotDay(models.Model):
     @property
     def is_open(self):
         return self.status == self.Status.PLANNED
+
+
+
+# ─── Phase 3: venues, riders, the week plan ──────────────────────────
+
+class ActiveQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(is_active=True)
+
+
+class Venue(models.Model):
+    """Where the work happens, with its surface. For example "Woodchip gallop"."""
+
+    class Surface(models.TextChoices):
+        ALL_WEATHER = 'all_weather', 'All-weather'
+        WOODCHIP = 'woodchip', 'Woodchip'
+        GRASS = 'grass', 'Grass'
+        SAND = 'sand', 'Sand'
+        ARENA = 'arena', 'Arena'
+        ROAD = 'road', 'Road or track'
+        INDOOR = 'indoor', 'Indoor'
+        WATER = 'water', 'Pool or water'
+        OTHER = 'other', 'Other'
+
+    name = models.CharField(max_length=60, unique=True)
+    surface = models.CharField(max_length=12, choices=Surface.choices, default=Surface.OTHER)
+    position = models.PositiveSmallIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    objects = ActiveQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['position', 'name']
+
+    def __str__(self):
+        return self.name
+
+
+class Rider(models.Model):
+    """A person who rides or handles horses: a name, and a login if they have one (D5)."""
+
+    name = models.CharField(max_length=80)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='rider',
+    )
+    position = models.PositiveSmallIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    objects = ActiveQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['position', 'name']
+
+    def __str__(self):
+        return self.name
+
+
+class LotWeekPlan(models.Model):
+    """The usual work of a lot on one day of the week, or no lot that day."""
+
+    WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+    lot = models.ForeignKey(Lot, on_delete=models.CASCADE, related_name='week_plan')
+    weekday = models.PositiveSmallIntegerField()   # 0 = Monday
+    work_type = models.ForeignKey(WorkType, null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    venue = models.ForeignKey(Venue, null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    no_lot = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['lot__position', 'weekday']
+        constraints = [
+            models.UniqueConstraint(fields=['lot', 'weekday'], name='lotweekplan_one_per_lot_day'),
+            models.CheckConstraint(condition=Q(weekday__gte=0, weekday__lte=6), name='lotweekplan_weekday_0_to_6'),
+            models.CheckConstraint(condition=Q(no_lot=True) | Q(work_type__isnull=False) | Q(venue__isnull=False),
+                                   name='lotweekplan_says_something'),
+        ]
+
+    def __str__(self):
+        return f"{self.lot} · {self.WEEKDAYS[self.weekday]}"

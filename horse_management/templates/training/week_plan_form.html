@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block title %}Week plan for {{ lot.name }} - Cgate{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-4">
+    <div class="page-header"><div><h1 class="page-title">Week plan for {{ lot.name }}</h1></div></div>
+    <div class="card">{% include 'training/partials/week_plan_form.html' %}</div>
+</div>
+{% endblock %}

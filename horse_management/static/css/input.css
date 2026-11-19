@@ -2700,8 +2700,14 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     .lot-day-head {
         @apply flex items-start justify-between gap-2 px-3 py-2 bg-white border-b border-light-sage rounded-t-card;
         position: sticky;
-        top: var(--app-bar-h, 0px);
+        top: 0;
         z-index: 10;
+    }
+    /* On a phone two bars stick at the top: the title bar (2.75rem, the
+       app bar's own top-11) and the search bar (--app-bar-h). The lot
+       header stops under both, or Mark lot done hides behind them. */
+    @media (max-width: 1023px) {
+        .lot-day-head { top: calc(2.75rem + var(--app-bar-h, 0px)); }
     }
     .lot-row { @apply flex items-center gap-2 px-3 min-h-[48px]; }
     .row-menu { @apply absolute right-0 top-full mt-1 z-20 min-w-[13rem] bg-white rounded-card border border-light-sage shadow-float py-1; }

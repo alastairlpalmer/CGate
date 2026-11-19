@@ -36,3 +36,12 @@ urlpatterns += [
     path('lot-days/<int:pk>/<str:action>/', views.lot_day_action, name='training_lot_day_action'),
     path('activities/<int:pk>/move/', views.activity_move, name='training_activity_move'),
 ]
+
+urlpatterns += [
+    path('venues/add/', views.VenueCreateView.as_view(), name='training_venue_create'),
+    path('venues/<int:pk>/edit/', views.VenueUpdateView.as_view(), name='training_venue_update'),
+    path('riders/add/', views.RiderCreateView.as_view(), name='training_rider_create'),
+    path('riders/<int:pk>/edit/', views.RiderUpdateView.as_view(), name='training_rider_update'),
+    path('setup/<str:kind>/<int:pk>/archive/', views.setup_archive, name='training_setup_archive'),
+    path('lots/<int:pk>/week/', views.lot_week_plan, name='training_lot_week_plan'),
+]

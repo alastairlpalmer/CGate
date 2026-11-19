@@ -1,0 +1,26 @@
+{% comment %}
+The week plan of one lot: for each day, the usual work (or No lot) and the venue.
+{% endcomment %}
+<form method="post" action="{% url 'training_lot_week_plan' lot.pk %}"
+      hx-post="{% url 'training_lot_week_plan' lot.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false">
+    {% csrf_token %}
+    <div class="px-4 py-3 space-y-2">
+        <p class="text-xs text-sage">"Usual" uses {{ lot.name }}'s usual work, {{ lot.usual_work_type.name }}. "No lot" means the lot does not go out that day.</p>
+        <table class="w-full text-sm">
+            <thead><tr><th class="text-left font-medium py-1">Day</th><th class="text-left font-medium py-1">Work</th><th class="text-left font-medium py-1">Venue</th></tr></thead>
+            <tbody>
+                {% for name, work, venue in form.days %}
+                <tr>
+                    <th scope="row" class="text-left font-normal pr-2 py-1 whitespace-nowrap">{{ name }}</th>
+                    <td class="pr-2 py-1"><label for="{{ work.id_for_label }}" class="sr-only">{{ name }} work</label>{{ work }}</td>
+                    <td class="py-1"><label for="{{ venue.id_for_label }}" class="sr-only">{{ name }} venue</label>{{ venue }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="popup-footer">
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        <button type="submit" class="btn-primary">Save</button>
+    </div>
+</form>

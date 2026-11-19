@@ -21,8 +21,11 @@ from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_resp
 
 from . import board, services
 from .access import TrainingEnabledMixin, training_enabled
-from .forms import ActivityForm, BoardSettingsForm, HorseTrainingForm, LotDayForm, LotForm, WorkTypeForm
-from .models import Activity, HorseTraining, Lot, LotDay, LotMember, TrainingSettings, WorkType
+from .forms import (
+    ActivityForm, BoardSettingsForm, HorseTrainingForm, LotDayForm, LotForm, RiderForm, VenueForm,
+    WeekPlanForm, WorkTypeForm, parse_who, who_value,
+)
+from .models import Activity, HorseTraining, Lot, LotDay, LotMember, Rider, TrainingSettings, Venue, WorkType
 
 STATUS_FILTERS = [
     ('done', 'Done'),
@@ -286,10 +289,19 @@ def training_setup(request):
             board_form.save()
             messages.success(request, "Lot board setting saved.")
             return redirect('training_setup')
+    lots = list(Lot.objects.active().select_related('usual_work_type').prefetch_related(
+        'week_plan__work_type', 'week_plan__venue'))
+    for lot in lots:
+        by_day = {p.weekday: p for p in lot.week_plan.all()}
+        lot.week = [by_day.get(day) for day in range(7)]
     return render(request, 'training/setup.html', {
         'active_types': [w for w in work_types if w.is_active],
         'archived_types': [w for w in work_types if not w.is_active],
         'board_form': board_form,
+        'venues': Venue.objects.all(),
+        'riders': Rider.objects.select_related('user'),
+        'week_lots': lots,
+        'weekdays': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
         'training_tab': 'setup',
     })
 
@@ -484,6 +496,8 @@ def horse_training_edit(request, horse_pk):
         'status_since': row.status_since if row else timezone.localdate(),
         'lot': current_lot,
         'notes': row.notes if row else '',
+        'default_who': who_value(row.default_rider_id, row.default_rider_is_owner) if row else '',
+        'default_gear': row.default_gear if row else '',
     }
     form = HorseTrainingForm(request.POST or None, initial=initial, current_lot=current_lot)
     if request.method == 'POST' and form.is_valid():
@@ -502,6 +516,9 @@ def horse_training_edit(request, horse_pk):
                 horse, data['status'], data['status_since'], notes=data['notes'],
                 since=data['status_since'] if 'status_since' in form.changed_data else None,
             )
+        if 'default_who' in form.changed_data or 'default_gear' in form.changed_data:
+            rider, is_owner = parse_who(data['default_who'])
+            services.set_defaults(horse, rider=rider, rider_is_owner=is_owner, gear=data['default_gear'])
         if chose_status and data.get('update_boards'):
             effect = board.apply_status_to_boards(horse, data['status'], data['status_since'], user=request.user)
             if effect.not_done or effect.removed:
@@ -546,11 +563,23 @@ def training_board(request, day=None):
     day = _parse_day(day) if day else today
     can_change = has_feature_access(request.user, 'training', LEVEL_FULL)
     lot_days = board.board_days(day)
-    rows = (
+    rows = list(
         Activity.objects.filter(lot_day__in=lot_days)
-        .select_related('horse', 'horse__training', 'work_type')
+        .select_related('horse', 'horse__training', 'work_type', 'rider', 'venue')
         .order_by('position', 'pk')
     )
+    # The Rider filter shows one rider's horses; a rider with a login sees
+    # their own horses first, in a card at the top (phase 3).
+    rider_filter = request.GET.get('rider', '')
+    my_rider = Rider.objects.filter(user=request.user, is_active=True).first()
+    lot_names = {ld.pk: ld.lot.name for ld in lot_days}
+    my_rows = [r for r in rows if my_rider and r.rider_id == my_rider.pk]
+    for r in my_rows:
+        r.lot_name = lot_names.get(r.lot_day_id, '')
+    if rider_filter == 'owner':
+        rows = [r for r in rows if r.rider_is_owner]
+    elif rider_filter.isdigit():
+        rows = [r for r in rows if str(r.rider_id) == rider_filter]
     by_day = {}
     for row in rows:
         by_day.setdefault(row.lot_day_id, []).append(row)
@@ -580,10 +609,14 @@ def training_board(request, day=None):
         'lots_without_day': list(Lot.objects.active().exclude(days__date=day)) if lot_days else [],
         'not_on_board': board.not_on_board_summary(day) if lot_days else [],
         'last_not_confirmed': last_not_confirmed if last_not_confirmed != day else None,
-        'sources': [(v, l) for v, l in TrainingSettings.BoardSource.choices if v in TrainingSettings.OFFERED_SOURCES],
+        'sources': [(v, dict(TrainingSettings.BoardSource.choices)[v]) for v in TrainingSettings.OFFERED_SOURCES],
         'default_source': settings_row.board_source,
         'last_board': board.last_board_before(day),
         'reasons': Activity.Reason.choices,
+        'riders': Rider.objects.active(),
+        'rider_filter': rider_filter,
+        'my_rider': my_rider,
+        'my_rows': my_rows,
         'can_change': can_change,
         'can_record_health': has_feature_access(request.user, 'health', LEVEL_FULL),
         'board_url': request.get_full_path(),
@@ -653,7 +686,7 @@ def lot_day_change(request, pk):
         try:
             count = board.set_lot_work(
                 lot_day, work_type=form.cleaned_data['work_type'], start_time=form.cleaned_data['start_time'],
-                notes=form.cleaned_data['notes'], user=request.user,
+                notes=form.cleaned_data['notes'], venue=form.cleaned_data['venue'], user=request.user,
             )
             messages.success(request, f"{lot_day.lot.name} saved. {count} horse{'s' if count != 1 else ''} follow the new work.")
         except board.BoardError as error:
@@ -712,3 +745,69 @@ def activity_move(request, pk):
     except board.BoardError as error:
         messages.error(request, str(error))
     return redirect(_safe_next(request, _board_url(target.date, f'lot-day-{target.pk}')))
+
+
+# ─── Phase 3: venues, riders, the week plan ──────────────────────────
+
+class SetupFormViewMixin:
+    feature = 'training'
+    popup_add_another = False
+    template_name = 'training/simple_form.html'
+
+    def get_success_url(self):
+        return reverse('training_setup')
+
+    def form_valid(self, form):
+        messages.success(self.request, f"{form.instance} saved.")
+        return super().form_valid(form)
+
+
+class VenueCreateView(TrainingEnabledMixin, SetupFormViewMixin, PopupFormMixin, FeatureAccessMixin, CreateView):
+    model = Venue
+    form_class = VenueForm
+
+
+class VenueUpdateView(TrainingEnabledMixin, SetupFormViewMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
+    model = Venue
+    form_class = VenueForm
+
+
+class RiderCreateView(TrainingEnabledMixin, SetupFormViewMixin, PopupFormMixin, FeatureAccessMixin, CreateView):
+    model = Rider
+    form_class = RiderForm
+
+
+class RiderUpdateView(TrainingEnabledMixin, SetupFormViewMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
+    model = Rider
+    form_class = RiderForm
+
+
+@training_enabled
+@feature_required('training')
+@require_POST
+def setup_archive(request, kind, pk):
+    """Archive or restore a venue or a rider. Old records keep the name."""
+    model = {'venue': Venue, 'rider': Rider}.get(kind)
+    if model is None:
+        raise Http404
+    item = get_object_or_404(model, pk=pk)
+    item.is_active = not item.is_active
+    item.save(update_fields=['is_active'])
+    messages.success(request, f"{item} {'is back' if item.is_active else 'archived. Old records keep it'}.")
+    return redirect('training_setup')
+
+
+@training_enabled
+@feature_required('training')
+def lot_week_plan(request, pk):
+    """The usual work and venue of one lot for each day of the week."""
+    lot = get_object_or_404(Lot.objects.select_related('usual_work_type'), pk=pk, is_active=True)
+    form = WeekPlanForm(request.POST or None, lot=lot)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, f"Week plan for {lot.name} saved.")
+        if is_popup_request(request):
+            return popup_saved_response()
+        return redirect('training_setup')
+    template = 'training/partials/week_plan_form.html' if is_popup_request(request) else 'training/week_plan_form.html'
+    return render(request, template, {'lot': lot, 'form': form})

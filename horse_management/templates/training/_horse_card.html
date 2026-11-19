@@ -66,7 +66,7 @@ A planned row dated today or earlier can be confirmed here.
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <span>
                         <span class="font-medium">{{ a.work_type.name }}</span>{% if a.effort_label %} <span class="badge-neutral">{{ a.effort_label }}</span>{% endif %}
-                        <span class="text-sage">· {{ a.date|date:"D j M" }}{% if a.minutes %} · {{ a.minutes }} min{% endif %}</span>
+                        <span class="text-sage">· {{ a.date|date:"D j M" }}{% if a.minutes %} · {{ a.minutes }} min{% endif %}{% if a.rider_label %} · {{ a.rider_label }}{% endif %}{% if a.venue %} · {{ a.venue.name }}{% endif %}</span>
                     </span>
                     <span class="flex items-center gap-1">
                         {% include 'training/_status_badge.html' with activity=a %}

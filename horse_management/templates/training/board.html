@@ -39,6 +39,36 @@
     </nav>
 
 
+    {% if my_rows or lot_days and riders %}
+    <div class="flex items-start justify-between gap-2">
+    {% if my_rows %}
+    <details class="card px-3 flex-1 min-w-0" open x-data x-init="if (window.innerWidth < 1024) $el.open = false">
+        <summary class="min-h-[44px] flex items-center text-sm font-semibold text-charcoal cursor-pointer">Your horses today ({{ my_rows|length }})</summary>
+        <ul class="text-sm divide-y divide-light-sage pb-2">
+            {% for row in my_rows %}
+            <li class="py-1.5 flex flex-wrap items-center gap-x-2">
+                <a href="#lot-day-{{ row.lot_day_id }}" class="font-medium link">{{ row.horse.name }}</a>
+                <span class="text-sage">{{ row.lot_name }} &middot; {{ row.work_type.name }}{% if row.gear %} &middot; {{ row.gear }}{% endif %}</span>
+                {% if row.status == 'done' %}<span class="badge-success">Done</span>{% elif row.status == 'not_done' %}<span class="badge-info">{{ row.get_reason_display }}</span>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </details>
+    {% endif %}
+    {% if lot_days and riders %}
+    <form method="get" class="flex items-center justify-end gap-2 text-sm min-h-[44px] ml-auto">
+        <label for="rider-filter" class="text-sage">Rider</label>
+        <select id="rider-filter" name="rider" class="form-select !mt-0 !w-auto max-w-[9rem] text-sm py-1.5" x-data @change="$el.form.requestSubmit()">
+            <option value="">Everyone</option>
+            <option value="owner"{% if rider_filter == 'owner' %} selected{% endif %}>The owner</option>
+            {% for r in riders %}<option value="{{ r.pk }}"{% if rider_filter == r.pk|stringformat:"s" %} selected{% endif %}>{{ r.name }}</option>{% endfor %}
+        </select>
+        <noscript><button type="submit" class="btn-secondary btn-sm">Show</button></noscript>
+    </form>
+    {% endif %}
+    </div>
+    {% endif %}
+
     {% if not lot_days %}
     <div class="card px-4 py-5 space-y-3">
         <p class="text-sm text-charcoal">No board for {{ day|date:"D j M" }} yet.</p>
@@ -50,7 +80,7 @@
                 {% for value, label in sources %}
                 <label class="flex items-center gap-2 min-h-[44px] text-sm cursor-pointer">
                     <input type="radio" name="source" value="{{ value }}" class="w-4 h-4 accent-forest"{% if value == default_source %} checked{% endif %}>
-                    {% if value == 'copy' %}{% if last_board %}Copy {{ last_board|date:"D j M" }}{% else %}Copy the last board (there is none yet){% endif %}{% else %}{{ label }}{% endif %}
+                    {% if value == 'copy' %}{% if last_board %}Copy {{ last_board|date:"D j M" }}{% else %}Copy the last board (there is none yet){% endif %}{% elif value == 'week_plan' %}From the week plan ({{ day|date:"l" }}){% else %}{{ label }}{% endif %}
                 </label>
                 {% endfor %}
             </fieldset>
@@ -75,7 +105,7 @@
                         {% else %}<span class="badge-neutral">Planned</span>{% endif %}
                     </h2>
                     <p class="text-sm text-charcoal-light">
-                        {{ lot_day.work_type.name }} <span class="text-sage">&middot; {{ lot_day.rows|length }} horse{{ lot_day.rows|length|pluralize }}</span>
+                        {{ lot_day.work_type.name }}{% if lot_day.venue %}, {{ lot_day.venue.name }}{% endif %} <span class="text-sage">&middot; {{ lot_day.rows|length }} horse{{ lot_day.rows|length|pluralize }}</span>
                     </p>
                 </div>
                 {% if can_change %}
@@ -118,14 +148,15 @@
                 <li class="lot-row">
                     <span class="w-5 shrink-0 text-right text-sm text-sage">{{ forloop.counter }}</span>
                     <span class="min-w-0 flex-1">
-                        <span class="flex flex-wrap items-center gap-x-1.5">
+                        <span class="flex items-center gap-x-1.5 min-w-0">
                             {% if can_change %}
                             <a href="{% url 'training_activity_update' row.pk %}?next={{ board_url|urlencode }}" hx-get="{% url 'training_activity_update' row.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-                               data-popup-title="{{ row.horse.name }}, {{ day|date:'D j M' }}" class="font-medium text-charcoal truncate hover:underline min-h-[44px] inline-flex items-center">{{ row.horse.name }}</a>
+                               data-popup-title="{{ row.horse.name }}, {{ day|date:'D j M' }}" class="font-medium text-charcoal hover:underline min-h-[44px] inline-flex items-center shrink-0 max-w-[10rem]"><span class="truncate">{{ row.horse.name }}</span></a>
                             {% else %}
-                            <a href="{% url 'horse_detail' row.horse.pk %}#training" class="font-medium text-charcoal truncate hover:underline min-h-[44px] inline-flex items-center">{{ row.horse.name }}</a>
+                            <a href="{% url 'horse_detail' row.horse.pk %}#training" class="font-medium text-charcoal hover:underline min-h-[44px] inline-flex items-center shrink-0 max-w-[10rem]"><span class="truncate">{{ row.horse.name }}</span></a>
                             {% endif %}
                             {% if not row.follows_lot %}<span class="badge-neutral" title="This horse's own work for the day">{{ row.work_type.name }} <span aria-hidden="true">&#9998;</span><span class="sr-only">(own work)</span></span>{% endif %}
+                            {% if row.rider_label %}<span class="text-sm text-sage truncate min-w-0" title="{{ row.rider_label }}">{{ row.rider_label }}</span>{% endif %}
                             {% if not row.horse.is_active %}<span class="badge-warning">Left the yard</span>{% endif %}
                             {% if row.status == 'done' %}<span class="badge-success">Done</span>{% elif row.status == 'not_done' %}<span class="badge-info">{{ row.get_reason_display }}</span>{% endif %}
                         </span>

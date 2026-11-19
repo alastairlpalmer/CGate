@@ -248,3 +248,20 @@ def archive_lot(lot):
     lot.is_active = False
     lot.save(update_fields=['is_active'])
     return ''
+
+
+def set_defaults(horse, *, rider=None, rider_is_owner=False, gear=''):
+    """The horse's usual rider and gear for new board rows (R5). Makes the
+    status row if needed (Not in training), and saves only a real change."""
+    row, created = HorseTraining.objects.get_or_create(horse=horse, defaults={
+        'default_rider': rider, 'default_rider_is_owner': rider_is_owner and rider is None, 'default_gear': gear,
+    })
+    if created:
+        return row
+    before = (row.default_rider_id, row.default_rider_is_owner, row.default_gear)
+    row.default_rider = rider
+    row.default_rider_is_owner = rider_is_owner and rider is None
+    row.default_gear = gear
+    if (row.default_rider_id, row.default_rider_is_owner, row.default_gear) != before:
+        row.save()
+    return row
