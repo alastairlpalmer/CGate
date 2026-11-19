@@ -51,9 +51,9 @@ def build(user, *, site='', today=None, needs_action=0, in_foal=None):
         tiles.append(_ground(site))
     tiles.append({
         'key': 'action',
-        'label': 'Needs action',
+        'label': 'Notifications',
         'value': needs_action,
-        'meta': 'Open the list' if needs_action else 'Nothing waiting',
+        'meta': 'Need action' if needs_action else 'All clear',
         'url': '',
         'tone': 'alert' if needs_action else '',
     })
@@ -112,32 +112,50 @@ def _owners(stays):
 
 
 def _ground(site):
-    """Places used out of places available, and the ground that needs a look."""
+    """Capacity: the places horses live in, and how many are taken.
+
+    With barns on (``BARNS_ENABLED``) the line under the figure splits the
+    fields from the stables, because they fill and empty differently.
+    Otherwise it names the ground that needs a look: over capacity, and
+    resting.
+    """
+    from django.conf import settings
     from ..models import Location
 
     locations = Location.objects.active().with_occupancy()
     if site:
         locations = locations.filter(site=site)
-    capacity = used = over = resting = 0
+    fields = [0, 0]   # used, capacity
+    stables = [0, 0]
+    over = resting = 0
     for loc in locations:
         if loc.usage == Location.Usage.RESTED:
             resting += 1
         if loc.usage not in Location.HORSE_USAGES or not loc.capacity:
             continue
-        standing = loc.horse_count + loc.turnout_count
-        if standing > loc.capacity:
+        if loc.horse_count + loc.turnout_count > loc.capacity:
             over += 1
-        if loc.usage in Location.RESIDENT_USAGES:
-            capacity += loc.capacity
-            used += loc.horse_count
-    parts = []
-    if over:
-        parts.append(f'{over} over capacity')
-    if resting:
-        parts.append(f'{resting} resting')
+        if loc.usage not in Location.RESIDENT_USAGES:
+            continue
+        bucket = stables if loc.is_barn else fields
+        bucket[0] += loc.horse_count
+        bucket[1] += loc.capacity
+    used = fields[0] + stables[0]
+    capacity = fields[1] + stables[1]
+
+    if settings.BARNS_ENABLED and stables[1]:
+        parts = [f'Fields {fields[0]}/{fields[1]}', f'Stables {stables[0]}/{stables[1]}']
+        if over:
+            parts.append(f'{over} over')
+    else:
+        parts = []
+        if over:
+            parts.append(f'{over} over capacity')
+        if resting:
+            parts.append(f'{resting} resting')
     return {
         'key': 'ground',
-        'label': 'Places used',
+        'label': 'Capacity',
         'value': f'{used}/{capacity}' if capacity else used,
         'meta': ' · '.join(parts) or 'Nothing over capacity',
         'url': reverse('location_list'),

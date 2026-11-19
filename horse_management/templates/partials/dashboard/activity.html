@@ -7,7 +7,8 @@ first paint into the right-hand column. Context: days
 What a viewer sees follows their role: activity.recent only reads the
 sources the role may view (horses, health, charges, invoices, feed), so
 an administrator sees every kind and a groom sees no money. The filter
-chips are the groups that are left; with one group there are no chips.
+(the funnel in the header) lists the groups that are left; with one
+group there is no filter.
 
 Each row: a tinted glyph for the kind, the horses (or owner, or location)
 as chips with their coat colour, what happened, and any money on the right.
@@ -18,26 +19,55 @@ the rest fold behind "Show N earlier changes"
 (core.views.dashboard._fold_activity). A filter shows
 every row of its group.
 {% endcomment %}
-<div class="card overflow-hidden h-full flex flex-col" x-data="{ all: window.matchMedia('(min-width: 1024px)').matches, show: 'all' }">
+<div class="card overflow-hidden h-full flex flex-col" x-data="{ all: window.matchMedia('(min-width: 1024px)').matches, kind: 'all', kindLabel: '' }">
     <div class="section-header">
-        <h2 class="section-title" id="timeline-title">Timeline</h2>
-        {% if feature_access.horses.view %}<a href="{% url 'horse_list' %}?tab=movements" class="text-xs link tap-pad">Movements &rarr;</a>{% endif %}
+        <div class="flex min-w-0 items-center gap-2">
+            <h2 class="section-title" id="timeline-title">Timeline</h2>
+            <span class="truncate text-xs text-sage" x-show="kind !== 'all'" x-cloak x-text="'· ' + kindLabel"></span>
+        </div>
+        <div class="flex shrink-0 items-center gap-2">
+            {% if feature_access.horses.view %}<a href="{% url 'horse_list' %}?tab=movements" class="text-xs link tap-pad">Movements &rarr;</a>{% endif %}
+            {% if groups|length > 1 %}
+            {% comment %}The filter: the funnel the list pages use, opening
+            the app's menu (static/js/more_menu.js). Only the kinds this
+            viewer has rows of are listed; a dot on the icon shows a filter
+            is on, and the title names it.{% endcomment %}
+            <div class="more-menu" x-data="moreMenu" @click.outside="close(false)" @keydown.escape="close(true)" data-testid="timeline-filter">
+                <button type="button" x-ref="trigger" @click="toggle()" @keydown="onTriggerKey($event)"
+                        aria-haspopup="menu" :aria-expanded="open ? 'true' : 'false'"
+                        aria-label="Filter the timeline" title="Filter the timeline"
+                        class="btn-icon-outline" :class="(open || kind !== 'all') && 'is-on'">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z"/>
+                    </svg>
+                    <span class="btn-icon-badge timeline-filter-dot" x-show="kind !== 'all'" x-cloak aria-hidden="true"></span>
+                </button>
+                <div class="more-menu-panel" x-ref="panel" x-show="open" x-cloak x-transition.opacity
+                     role="menu" aria-label="Show on the timeline" @keydown="onPanelKey($event)" @click="close(false)">
+                    <p class="more-menu-label">Show</p>
+                    <button type="button" role="menuitem" class="more-menu-item" @click="kind = 'all'; kindLabel = ''">
+                        <span class="timeline-check" :class="kind === 'all' && 'is-on'" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></span>
+                        Everything<span class="sr-only" x-show="kind === 'all'"> (shown)</span>
+                    </button>
+                    {% for g in groups %}
+                    <button type="button" role="menuitem" class="more-menu-item" data-group="{{ g.key }}" @click="kind = '{{ g.key }}'; kindLabel = '{{ g.label }}'">
+                        <span class="timeline-check" :class="kind === '{{ g.key }}' && 'is-on'" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></span>
+                        <span class="log-icon log-icon-{{ g.key }} timeline-kind-icon" aria-hidden="true"></span>
+                        {{ g.label }}<span class="sr-only" x-show="kind === '{{ g.key }}'"> (shown)</span>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
     </div>
-    {% if groups|length > 1 %}
-    <div class="timeline-filters" role="group" aria-label="Show">
-        <button type="button" class="timeline-chip" :class="show === 'all' && 'is-on'" :aria-pressed="show === 'all'" @click="show = 'all'">All</button>
-        {% for g in groups %}
-        <button type="button" class="timeline-chip" data-group="{{ g.key }}" :class="show === '{{ g.key }}' && 'is-on'" :aria-pressed="show === '{{ g.key }}'" @click="show = '{{ g.key }}'">{{ g.label }}</button>
-        {% endfor %}
-    </div>
-    {% endif %}
     {% if days %}
     <div class="flex min-h-0 flex-1 flex-col">
     <div class="log timeline-scroll">
         {% for day in days %}
-        <p class="log-day" x-show="show === 'all' ? {% if day.folded %}all{% else %}true{% endif %} : '{{ day.groups|join:" " }}'.split(' ').includes(show)"{% if day.folded %} x-cloak{% endif %}><span>{{ day.label }}{% if day.with_date %} <span class="text-sage/70">&middot; {{ day.date|date:"j M" }}</span>{% endif %}</span></p>
+        <p class="log-day" x-show="kind === 'all' ? {% if day.folded %}all{% else %}true{% endif %} : '{{ day.groups|join:" " }}'.split(' ').includes(kind)"{% if day.folded %} x-cloak{% endif %}><span>{{ day.label }}{% if day.with_date %} <span class="text-sage/70">&middot; {{ day.date|date:"j M" }}</span>{% endif %}</span></p>
         {% for event in day.events %}
-        <div class="log-event" data-group="{{ event.group }}" x-show="show === 'all' ? {% if event.folded %}all{% else %}true{% endif %} : show === '{{ event.group }}'"{% if event.folded %} x-cloak{% endif %}>
+        <div class="log-event" data-group="{{ event.group }}" x-show="kind === 'all' ? {% if event.folded %}all{% else %}true{% endif %} : kind === '{{ event.group }}'"{% if event.folded %} x-cloak{% endif %}>
             <span class="log-icon log-icon-{{ event.group }}" aria-hidden="true"><svg class="w-4 h-4"><use href="#i-{{ event.kind|kind_icon }}"/></svg></span>
             <div class="log-body">
                 {% for n in event.names %}
@@ -52,7 +82,7 @@ every row of its group.
         {% endfor %}
     </div>
     {% if folded_count %}
-    <div x-show="show === 'all'" class="lg:hidden border-t border-light-sage px-4 py-2.5 text-center">
+    <div x-show="kind === 'all'" class="lg:hidden border-t border-light-sage px-4 py-2.5 text-center">
         <button type="button" class="link text-sm tap-pad" @click="all = !all" :aria-expanded="all ? 'true' : 'false'">
             <span x-show="!all">Show {{ folded_count }} earlier change{{ folded_count|pluralize }}</span>
             <span x-show="all" x-cloak>Show fewer</span>

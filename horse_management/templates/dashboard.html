@@ -25,7 +25,13 @@ it does not (partials/dashboard/site_tools.html).{% endcomment %}
             {% comment %}What needs doing lives in the notification centre now
             (notifications/centre.py). The count here opens it on its
             Needs action tab.{% endcomment %}
-            <p class="page-subtitle">
+            {% comment %}With the figures on, their Needs action figure is the
+            count and the way in, so the line under the greeting carries
+            only the date and the site; without them it keeps the count.{% endcomment %}
+            <p class="page-subtitle" data-testid="headline">
+                {% if 'metrics' in visible and metrics %}
+                {% now "l j F Y" %}{% if site %} &middot; {{ site }}{% endif %}
+                {% else %}
                 {% if summary.things %}
                 <button type="button" class="font-medium text-saddle underline decoration-saddle/30 underline-offset-2 hover:decoration-saddle"
                         @click="$store.notif.show('action')" aria-controls="notif-drawer">{{ headline }}</button>
@@ -33,6 +39,7 @@ it does not (partials/dashboard/site_tools.html).{% endcomment %}
                 <span class="font-medium text-forest">{{ headline }}</span>
                 {% endif %}
                 &middot; {% now "l j F Y" %}{% if site %} &middot; {{ site }}{% endif %}
+                {% endif %}
             </p>
         </div>
         {% comment %}Empty while the Near you card holds the tools: an empty

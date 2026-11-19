@@ -417,7 +417,7 @@ class DashboardPageTests(TestCase):
             )
         body = self.client.get(reverse('dashboard')).content.decode()
         self.assertNotIn('id="needs-action"', body)
-        self.assertIn('5 things need doing', body)
+        self.assertEqual(self._action_figure(body), '5')
         self.assertIn("$store.notif.show('action')", body)
         panel = self._panel()
         for i in range(5):
@@ -431,6 +431,12 @@ class DashboardPageTests(TestCase):
         self.assertNotIn('id="capacityChart"', body)
         self.assertNotIn('id="chart-data"', body)
 
+    @staticmethod
+    def _action_figure(body):
+        """The number on the Notifications figure at the top of the page."""
+        match = re.search(r'data-metric="action".*?<span class="metric-value">([^<]*)</span>', body, re.S)
+        return match.group(1).strip() if match else None
+
     def test_title_greets_and_the_subtext_is_the_yards_state(self):
         user = make_user('headeruser')
         user.first_name = 'Sam'
@@ -439,9 +445,20 @@ class DashboardPageTests(TestCase):
         body = self.client.get(reverse('dashboard')).content.decode()
         title = re.search(r'<h1 class="page-title">([^<]+)</h1>', body).group(1)
         self.assertRegex(title.strip(), r'^Good (morning|afternoon|evening), Sam$')
-        subtitle = re.search(r'<p class="page-subtitle">(.*?)</p>', body, re.S).group(1)
+        subtitle = re.search(r'<p class="page-subtitle"[^>]*>(.*?)</p>', body, re.S).group(1)
+        # The figures carry the count, so the line under the greeting is
+        # the date, with no second way into the notifications.
+        self.assertNotIn('$store.notif.show', subtitle)
+        self.assertEqual(self._action_figure(body), '0')
+        # With the figures off, the line keeps the yard's state.
+        pref = DashboardPreference.get_for(user)
+        layout = pref.resolved_layout()
+        layout['metrics']['visible'] = False
+        pref.layout = layout
+        pref.save()
+        body = self.client.get(reverse('dashboard')).content.decode()
+        subtitle = re.search(r'<p class="page-subtitle"[^>]*>(.*?)</p>', body, re.S).group(1)
         self.assertIn('All clear on the yard', subtitle)
-        # Nothing to open: the all-clear is plain text, not a button.
         self.assertNotIn('$store.notif.show', subtitle)
         self.assertIn('Nothing needs doing', self._panel())
         self.assertNotIn('Your dashboard is empty', body)
@@ -473,7 +490,7 @@ class DashboardPageTests(TestCase):
         user = make_user('overdueuser')
         self.client.force_login(user)
         body = self.client.get(reverse('dashboard')).content.decode()
-        self.assertIn('1 thing needs doing', body)
+        self.assertEqual(self._action_figure(body), '1')
         panel = self._panel()
         self.assertIn('Latebloomer', panel)
         self.assertIn('3 days overdue', panel)
@@ -496,7 +513,7 @@ class DashboardPageTests(TestCase):
         self.assertEqual(resp.context['upcoming']['total'], 1)
         self.assertEqual(resp.context['upcoming']['days'][5]['count'], 1)
         body = resp.content.decode()
-        self.assertIn('All clear on the yard', body)
+        self.assertEqual(self._action_figure(body), '0')
         self.assertIn('Soon', body)  # in the visits list under the strip
 
     def test_shared_visit_groups_horses_into_one_row(self):
@@ -515,7 +532,7 @@ class DashboardPageTests(TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0].kind, 'visit')
         self.assertEqual({h.pk for h in rows[0].horses}, {a.pk, b.pk})
-        self.assertIn('1 thing needs doing', resp.content.decode())
+        self.assertEqual(self._action_figure(resp.content.decode()), '1')
         panel = self._panel()
         self.assertIn('Record for 2', panel)
         self.assertIn(f'action_type=farrier&amp;horse_ids={a.pk}&amp;horse_ids={b.pk}', panel)
@@ -555,7 +572,8 @@ class DashboardPageTests(TestCase):
         resp = self.client.get(reverse('dashboard') + '?site=Colgate')
         self.assertEqual(resp.context['site'], 'Colgate')
         self.assertEqual(resp.context['rows'], [])
-        self.assertIn('All clear at Colgate', resp.content.decode())
+        self.assertEqual(resp.context['headline'], 'All clear at Colgate')
+        self.assertEqual(self._action_figure(resp.content.decode()), '0')
         self.assertEqual(DashboardPreference.get_for(user).site, 'Colgate')
 
         # Remembered on the next visit; an unknown site falls back to all.
