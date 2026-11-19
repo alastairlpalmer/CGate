@@ -25,7 +25,7 @@
 | [`FARRIER_PAGE_PLAN.md`](FARRIER_PAGE_PLAN.md) | Farrier page test (Option A): our farrier records visits on a phone; charges go on owners' monthly invoices; the yard pays the farrier monthly. |
 | [`C_VET_PLAN.md`](C_VET_PLAN.md) | C-vet, the vet's app built on C-gate: the two products, who owns which data, the offline rules, the phases, and what is built: the offline app (phase 1), the ownership seam that keeps clinical notes with the practice (phase 2), the API and sync (phase 3), the screens for a visit (phase 4), spoken notes with the yard as the practice's client (phase 5), the bill to the yard with charges and dates back into C-gate (phase 6), and the review of the screens. |
 | [`VET_TRIAL_PLAN.md`](VET_TRIAL_PLAN.md) | Vet trial with Tim, after the farrier test: horse list and treatment screen, voice notes typed by the app, no-signal mode, invoices in the practice's name, records back to Yardway. |
-| [`HORSE_IDENTITY_AND_PEDIGREE_PLAN.md`](HORSE_IDENTITY_AND_PEDIGREE_PLAN.md) | Identity and pedigree on the horse page: microchip, UELN and passport checks, the parents and grandparents tree, and how to get the data in from Weatherbys or the passport. |
+| [`HORSE_IDENTITY_AND_PEDIGREE_PLAN.md`](HORSE_IDENTITY_AND_PEDIGREE_PLAN.md) | Identity and pedigree on the horse page, for racing yards first: microchip, UELN and passport checks, a shared pedigree table, a spreadsheet import with a review step, and later reading passports and Weatherbys PDFs. Includes a stress test of every way to get the data in. |
 | [`UX_REVIEW_PLAN.md`](UX_REVIEW_PLAN.md) | UX and visual review (Nov 2026): findings and a phased plan for hierarchy, consistency and phone lists. |
 | [`UI_AUDIT.md`](UI_AUDIT.md) | Interface audit. |
 
