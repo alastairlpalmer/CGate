@@ -8,6 +8,7 @@ from .dashboard import (  # noqa: F401
     attention_dismiss, attention_restore, dashboard, dashboard_activity, dashboard_calendar, dashboard_money, quick_find,
 )
 from .analytics_proxy import posthog_proxy  # noqa: F401
+from .calendar_entries import calendar_entry_add, calendar_entry_edit  # noqa: F401
 from .boundary_import import boundary_import_match, boundary_import_upload  # noqa: F401
 from .documents import document_create, document_delete, document_restore  # noqa: F401
 from .finances import finances  # noqa: F401

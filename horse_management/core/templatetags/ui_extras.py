@@ -150,6 +150,7 @@ KIND_ICONS = {
     'invoice': 'pound',
     'feed': 'hay',
     'capacity': 'fence',
+    'calendar': 'calendar',
     'rate': 'pound',
     # activity log kinds
     'arrival': 'gate',
