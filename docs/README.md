@@ -27,7 +27,7 @@
 | [`VET_TRIAL_PLAN.md`](VET_TRIAL_PLAN.md) | Vet trial with Tim, after the farrier test: horse list and treatment screen, voice notes typed by the app, no-signal mode, invoices in the practice's name, records back to Yardway. |
 | [`UX_REVIEW_PLAN.md`](UX_REVIEW_PLAN.md) | UX and visual review (Nov 2026): findings and a phased plan for hierarchy, consistency and phone lists. |
 | [`UI_AUDIT.md`](UI_AUDIT.md) | Interface audit. |
-| [`market/platform-module-model.xlsx`](market/platform-module-model.xlsx) | Five-year revenue, cost and valuation model for each module (livery and studs, race yards, owner updates, vet portal, farrier, payments), with an investability score for each. |
+| [`market/platform-module-model.xlsx`](market/platform-module-model.xlsx) | Modular five-year model: customers buy a core and add modules (Yard only, Yard + Field, Stud, Race yard, Vet practice software, Farrier), with payments, costs, investor return and a build-your-own price sheet. |
 
 ## QA history
 
