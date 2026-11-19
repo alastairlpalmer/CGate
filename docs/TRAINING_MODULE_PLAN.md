@@ -2,7 +2,7 @@
 
 **Goal:** Anyone on the yard can see, for each horse, what work it did, when, and what is planned next. A trainer puts horses into lots, gives each lot its work for the day, and confirms it. Staff can also record work for one horse or for many horses in one step. Every piece of work is one record in the database, with its date.
 **Scope:** A new `training` app. A Training section in the sidebar (the "trainer panel"). A Training card on the horse page. No owner login, no offline mode, no drag tool in the first phases (section 12).
-**Status:** Phases 1, 2a and 2b are built, behind `TRAINING_ENABLED` (off by default). Sections 17 to 19 record where the builds departed from this plan. Next: the phase 2b gate (one week of the board in daily use, section 13), then phase 3. The owner decided D1 to D4, D7, D11 and D12 on 2026-11-19 (section 4.1). D5, D6, D8 and D10 use their recommended answers until the owner says otherwise. D9 (the phone signal) is still to be tested at the yard (section 4.2).
+**Status:** Phases 1, 2a, 2b and 3 are built, behind `TRAINING_ENABLED` (off by default). Sections 17 to 20 record where the builds departed from this plan. Next: phase 4 (signals, dashboard, print). The owner decided D1 to D4, D7, D11 and D12 on 2026-11-19 (section 4.1). D5, D6, D8 and D10 use their recommended answers until the owner says otherwise. D9 (the phone signal) is still to be tested at the yard (section 4.2).
 **Build estimate:** About 1 to 2 days of build for each of the 6 pull requests, from the speed of the farrier and barns builds. The calendar time is set by the gates: one week of real use after phases 1, 2b and 3 (section 13).
 
 Written for the owner and for an AI coding agent. Read all of it before you write any code.
@@ -24,6 +24,8 @@ Written for the owner and for an AI coding agent. Read all of it before you writ
 **Revision 8.** 2026-11-19. Phase 2a is built. Section 18 records where the build departed from this document and why.
 
 **Revision 9.** 2026-11-19. Phase 2b is built. Section 19 records where the build departed from this document and why.
+
+**Revision 10.** 2026-11-19. Phase 3 is built. Section 20 records where the build departed from this document and why, and a fault in phase 2b that this build found and fixed.
 
 ---
 
@@ -908,12 +910,12 @@ Build:
 
 Definition of done:
 
-- [ ] A Tuesday board starts with each lot's Tuesday work and venue.
-- [ ] A rider changed for one day does not change the horse's default rider.
-- [ ] An archived rider does not show in pickers. Old activities still show the name.
-- [ ] A rider with a linked login sees their own horses first when the board opens.
-- [ ] An activity with "The owner" as rider shows the owner's name on the horse page. It cannot also have a rider from the list.
-- [ ] A week plan with "No lot" for every lot on Sunday: starting a Sunday board from the week plan makes no lot days and says so.
+- [x] A Tuesday board starts with each lot's Tuesday work and venue.
+- [x] A rider changed for one day does not change the horse's default rider.
+- [x] An archived rider does not show in pickers. Old activities still show the name.
+- [x] A rider with a linked login sees their own horses first when the board opens.
+- [x] An activity with "The owner" as rider shows the owner's name on the horse page. It cannot also have a rider from the list.
+- [x] A week plan with "No lot" for every lot on Sunday: starting a Sunday board from the week plan makes no lot days and says so.
 
 ### 9.5 Phase 4 — Signals, dashboard and print
 
@@ -1249,3 +1251,24 @@ Where the build departed from this document, and why:
 | L13 | Not in the plan. | **Copy** with no earlier board starts from the lots and says so. **Add lot to this board** fills the lot from its standing horses that are not on the board yet. | A useful result instead of an empty one. |
 
 Not changed by phase 2b: nothing in `core/services.py` (5.5), no week plan, venues or riders (phase 3), and no workload signals (phase 4).
+
+---
+
+## 20. What changed in the build of phase 3
+
+Phase 3 adds `Venue`, `Rider` and `LotWeekPlan`, and the venue, rider, "the owner" and gear fields on records, lot days and each horse's training settings (migration `training/0006_week_plan_riders_venues.py`). Every item in the phase 3 definition of done (9.4) has a test in `training/test_week_plan.py` (13 tests). The full suite passes (3,305 tests). Pages checked in Chromium at 1366 × 900 and 375 × 667, with no script errors.
+
+**A fault found in phase 2b, now fixed.** On a phone, two bars stick at the top of the page: the title bar and the search bar. The lot header stopped under the title bar only, so after a scroll **Mark lot done** was hidden behind the search bar. The phase 2b check measured the button's place but not what covered it. The header now stops under both bars, and the check compares the header with the bottom of the bars.
+
+Where the build departed from this document, and why:
+
+| # | The plan said | The build does | Why |
+|---|---|---|---|
+| W1 | A week plan day must say "no lot" or give a work type. | A day can also give only a venue: the lot's usual work, at that venue. | "Canter as usual, but on the woodchip on Tuesday" is a real plan. |
+| W2 | `HorseTraining.default_rider` and `default_gear`. | Also `default_rider_is_owner`, so a livery horse's usual rider can be "The owner". | D1: on a livery yard the owner often rides. |
+| W3 | New rows take the default rider and gear. | Board rows started from the week plan or the lots, added by hand, or from bulk add with no rider chosen, take the horse's defaults. **Copy** takes the rider and gear of the copied day. | Copy means "the same as last time". |
+| W4 | "A rider with a linked login sees their own horses first." | The board shows **Your horses today (N)** at the top. It is open on a computer and folded to one line on a phone. The order of each lot does not change. | The order of a lot is the order the horses go out. It must not change for one viewer. |
+| W5 | The rider on each row. | The rider's name follows the horse's name and is cut short when space is tight. The horse's name is never cut first. | Rows stay one line. |
+| W6 | Not in the plan. | A change of venue for one horse on the board stops it following the lot, as a change of work does. | The same rule as 5.4. |
+| W7 | The phase 2b target of 6 rows on the first phone screen. | 6 rows on today's board when the signed-in person is not a rider. With the rider line and the "not confirmed" note, 4 or 5 rows. | The rider line is the first thing a rider needs. Measured, not assumed. |
+| W8 | The board setting offers the week plan from phase 3. | It does, first in the list. Phase 2a's test that it was not offered is updated. | — |

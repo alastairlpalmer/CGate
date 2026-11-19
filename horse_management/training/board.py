@@ -21,10 +21,10 @@ from django.db.models import Max
 from django.utils import timezone
 from simple_history.utils import bulk_create_with_history, bulk_update_with_history
 
-from .models import Activity, HorseTraining, Lot, LotDay, LotMember, TrainingSettings
+from .models import Activity, HorseTraining, Lot, LotDay, LotMember, LotWeekPlan, TrainingSettings
 
-ROW_FIELDS = ['status', 'reason', 'lot_action', 'work_type', 'updated_by', 'updated_at']
-SOURCES = ('lots', 'copy', 'empty')
+ROW_FIELDS = ['status', 'reason', 'lot_action', 'work_type', 'venue', 'updated_by', 'updated_at']
+SOURCES = ('week_plan', 'lots', 'copy', 'empty')
 
 
 class BoardError(Exception):
@@ -106,10 +106,29 @@ class StartResult:
     note: str = ''
 
 
-def _row(lot_day, horse_id, position, user, **values):
+def horse_defaults(horse_ids):
+    """Each horse's default rider and gear (R5): {horse_id: {...}}."""
+    rows = HorseTraining.objects.filter(horse_id__in=horse_ids).values(
+        'horse_id', 'default_rider_id', 'default_rider_is_owner', 'default_gear',
+    )
+    return {
+        r['horse_id']: {
+            'rider_id': r['default_rider_id'], 'rider_is_owner': r['default_rider_is_owner'] and not r['default_rider_id'],
+            'gear': r['default_gear'],
+        }
+        for r in rows
+    }
+
+
+def _row(lot_day, horse_id, position, user, defaults=None, **values):
+    """A new board row. Rider and gear come from ``values`` (a copy) or the
+    horse's defaults; the venue from the lot day."""
+    if 'rider_id' not in values and defaults is not None:
+        values.update(defaults.get(horse_id, {}))
     return Activity(
         horse_id=horse_id, date=lot_day.date, lot_day=lot_day, position=position,
         work_type=values.pop('work_type', None) or lot_day.work_type,
+        venue_id=values.pop('venue_id', lot_day.venue_id),
         status=values.pop('status', Activity.Status.PLANNED),
         follows_lot=values.pop('follows_lot', True),
         source=Activity.Source.BOARD, created_by=user, updated_by=user, **values,
@@ -118,10 +137,11 @@ def _row(lot_day, horse_id, position, user, **values):
 
 def _rows_from_members(lot_day, on_board, taken, user):
     rows = []
-    members = LotMember.objects.filter(lot_id=lot_day.lot_id).order_by('position', 'pk')
+    members = list(LotMember.objects.filter(lot_id=lot_day.lot_id).order_by('position', 'pk'))
+    defaults = horse_defaults([m.horse_id for m in members])
     for member in members:
         if member.horse_id in on_board and member.horse_id not in taken:
-            rows.append(_row(lot_day, member.horse_id, len(rows), user))
+            rows.append(_row(lot_day, member.horse_id, len(rows), user, defaults))
             taken.add(member.horse_id)
     return rows
 
@@ -142,9 +162,10 @@ def _rows_from_copy(lot_days, copy_from, on_board, user):
             continue
         copied_lots.add(source.lot_id)
         target.work_type = source.work_type
+        target.venue_id = source.venue_id
         target.start_time = source.start_time
         target.notes = source.notes
-        target.save(update_fields=['work_type', 'start_time', 'notes', 'updated_at'])
+        target.save(update_fields=['work_type', 'venue', 'start_time', 'notes', 'updated_at'])
         position = 0
         for old in sorted(source.activities.all(), key=lambda a: (a.position, a.pk)):
             if old.horse_id not in on_board or (target.pk, old.horse_id) in taken:
@@ -153,9 +174,12 @@ def _rows_from_copy(lot_days, copy_from, on_board, user):
             rows.append(_row(
                 target, old.horse_id, position, user,
                 work_type=old.work_type if own else target.work_type,
+                venue_id=old.venue_id if own else target.venue_id,
                 follows_lot=not own,
                 minutes=old.minutes if own else None,
                 effort=old.effort if own else None,
+                # The day's rider and gear: copy means "the same as last time".
+                rider_id=old.rider_id, rider_is_owner=old.rider_is_owner, gear=old.gear,
             ))
             taken.add((target.pk, old.horse_id))
             position += 1
@@ -185,22 +209,34 @@ def start_board(day, *, user, source=None):
             source = 'lots'
             note = 'There is no earlier board to copy, so the board started from the lots.'
     lots = list(Lot.objects.active().select_related('usual_work_type'))
+    plans = {}
+    if source == 'week_plan':
+        plans = {p.lot_id: p for p in LotWeekPlan.objects.filter(lot__in=lots, weekday=day.weekday())}
+        skipped = [lot for lot in lots if plans.get(lot.pk) and plans[lot.pk].no_lot]
+        lots = [lot for lot in lots if lot not in skipped]
+        if skipped and not lots:
+            return StartResult([], source, created=False,
+                               note=f"The week plan has no lots on {LotWeekPlan.WEEKDAYS[day.weekday()]}. No board was started.")
+        if skipped:
+            note = f"No lot on {LotWeekPlan.WEEKDAYS[day.weekday()]} in the week plan: {', '.join(lot.name for lot in skipped)}."
     try:
         with transaction.atomic():
-            lot_days = [
-                LotDay.objects.create(
-                    lot=lot, date=day, work_type=lot.usual_work_type,
+            lot_days = []
+            for lot in lots:
+                plan = plans.get(lot.pk)
+                lot_days.append(LotDay.objects.create(
+                    lot=lot, date=day,
+                    work_type=(plan.work_type if plan and plan.work_type_id else lot.usual_work_type),
+                    venue=plan.venue if plan else None,
                     start_time=lot.usual_time, created_by=user,
-                )
-                for lot in lots
-            ]
+                ))
     except IntegrityError:
         # Someone started the same date a moment before: show theirs.
         return StartResult(board_days(day), source, created=False)
 
     on_board = on_board_horse_ids()
     rows = []
-    if source == 'lots':
+    if source in ('lots', 'week_plan'):
         taken = set()
         for lot_day in lot_days:
             rows += _rows_from_members(lot_day, on_board, taken, user)
@@ -214,9 +250,14 @@ def start_board(day, *, user, source=None):
 @transaction.atomic
 def add_lot_to_board(lot, day, *, user):
     """A lot with no lot day on a started board (made after it started)."""
+    plan = LotWeekPlan.objects.filter(lot=lot, weekday=day.weekday(), no_lot=False).first()
     lot_day, created = LotDay.objects.get_or_create(
         lot=lot, date=day,
-        defaults={'work_type': lot.usual_work_type, 'start_time': lot.usual_time, 'created_by': user},
+        defaults={
+            'work_type': plan.work_type if plan and plan.work_type_id else lot.usual_work_type,
+            'venue': plan.venue if plan else None,
+            'start_time': lot.usual_time, 'created_by': user,
+        },
     )
     if created:
         rows = _rows_from_members(lot_day, on_board_horse_ids(), horses_on_board(day), user)
@@ -242,13 +283,15 @@ def _save_rows(rows, user):
 
 
 @transaction.atomic
-def set_lot_work(lot_day, *, work_type, start_time, notes, user):
-    """Change the lot's work, time and notes for the day. The work goes to
-    the Planned rows that still follow the lot; a horse's own change stays."""
+def set_lot_work(lot_day, *, work_type, start_time, notes, user, venue=None):
+    """Change the lot's work, venue, time and notes for the day. The work and
+    venue go to the Planned rows that still follow the lot; a horse's own
+    change stays."""
     lot_day = _lock(lot_day)
     if not lot_day.is_open:
         raise BoardError(f"{lot_day.lot.name} is {lot_day.get_status_display().lower()}. Reopen it first.")
     lot_day.work_type = work_type
+    lot_day.venue = venue
     lot_day.start_time = start_time
     lot_day.notes = notes
     lot_day.save()
@@ -257,6 +300,7 @@ def set_lot_work(lot_day, *, work_type, start_time, notes, user):
     ))
     for row in rows:
         row.work_type = work_type
+        row.venue = venue
     _save_rows(rows, user)
     return len(rows)
 
@@ -359,6 +403,7 @@ def add_horses(lot_day, horses, *, user, today=None):
     done = lot_day.status == LotDay.Status.DONE and lot_day.date <= today
     result = AddResult()
     present = set(lot_day.activities.values_list('horse_id', flat=True))
+    defaults = horse_defaults([h.pk for h in horses])
     for horse in horses:
         if not horse.is_active:
             result.left.append(horse.name)
@@ -367,7 +412,7 @@ def add_horses(lot_day, horses, *, user, today=None):
             result.already.append(horse.name)
             continue
         row = _row(
-            lot_day, horse.pk, _next_position(lot_day), user,
+            lot_day, horse.pk, _next_position(lot_day), user, defaults,
             status=Activity.Status.DONE if done else Activity.Status.PLANNED,
             lot_action='done' if done else '',
         )
@@ -399,6 +444,7 @@ def move_horse(activity, to_lot_day, *, user):
     if activity.status == Activity.Status.PLANNED:
         activity.follows_lot = True
         activity.work_type = to_lot_day.work_type
+        activity.venue = to_lot_day.venue
     activity.lot_action = ''
     activity.updated_by = user
     activity.save()
@@ -413,7 +459,7 @@ def apply_row_edit(activity, changed):
         activity.lot_day = None
         activity.follows_lot = False
         activity.position = 0
-    if activity.lot_day_id and 'work_type' in changed:
+    if activity.lot_day_id and ('work_type' in changed or 'venue' in changed):
         activity.follows_lot = False
     if 'status' in changed:
         activity.lot_action = ''

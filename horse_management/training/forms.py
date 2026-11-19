@@ -6,9 +6,41 @@ from django.utils import timezone
 
 from health.forms import ActiveHorseFormMixin
 
-from .models import Activity, HorseTraining, Lot, LotDay, TrainingSettings, WorkType
+from .models import Activity, HorseTraining, Lot, LotDay, LotWeekPlan, Rider, TrainingSettings, Venue, WorkType
 
 DATE_WIDGET = forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'})
+OWNER = 'owner'
+
+
+def rider_choices(current=None):
+    """The rider picker: The owner first (D1), then the active riders.
+    An archived rider shows only on a record that already has it."""
+    riders = Q(is_active=True)
+    if current is not None:
+        riders |= Q(pk=current)
+    return [('', 'No rider'), (OWNER, 'The owner')] + [
+        (str(r.pk), r.name) for r in Rider.objects.filter(riders)
+    ]
+
+
+def who_value(rider_id, is_owner):
+    return OWNER if is_owner else (str(rider_id) if rider_id else '')
+
+
+def parse_who(value):
+    """(rider, is_owner) from the picker's value."""
+    if value == OWNER:
+        return None, True
+    if value:
+        return Rider.objects.filter(pk=value).first(), False
+    return None, False
+
+
+def venue_queryset(current=None):
+    venues = Q(is_active=True)
+    if current is not None:
+        venues |= Q(pk=current)
+    return Venue.objects.filter(venues)
 
 
 class ActivityRulesMixin:
@@ -42,6 +74,17 @@ class ActivityRulesMixin:
         ]
         self.fields['minutes'].label = 'Minutes'
         self.fields['minutes'].help_text = "Leave empty to use the work's usual minutes."
+        instance = self.instance
+        self.fields['who'] = forms.ChoiceField(
+            choices=rider_choices(getattr(instance, 'rider_id', None)), required=False, label='Rider',
+            widget=forms.Select(attrs={'class': 'form-select'}),
+        )
+        if getattr(instance, 'pk', None):
+            self.fields['who'].initial = who_value(instance.rider_id, instance.rider_is_owner)
+        self.fields['venue'].queryset = venue_queryset(getattr(instance, 'venue_id', None))
+        self.fields['venue'].empty_label = 'No venue'
+        self.fields['venue'].required = False
+        self.fields['gear'].help_text = 'For example: martingale, boots.'
         if not getattr(self.instance, 'pk', None):
             self.fields['date'].initial = timezone.localdate()
             self.fields['status'].initial = Activity.Status.DONE
@@ -71,13 +114,17 @@ class ActivityRulesMixin:
         return cleaned
 
     def fill_defaults(self, activity):
-        """Minutes from the work type when none were given."""
+        """Minutes from the work type when none were given; the rider from the picker."""
         if activity.minutes is None and activity.status != Activity.Status.NOT_DONE:
             activity.minutes = activity.work_type.default_minutes
+        if 'who' in self.cleaned_data:
+            activity.rider, activity.rider_is_owner = parse_who(self.cleaned_data['who'])
         return activity
 
 
 ACTIVITY_WIDGETS = {
+    'venue': forms.Select(attrs={'class': 'form-select'}),
+    'gear': forms.TextInput(attrs={'class': 'form-input'}),
     'horse': forms.Select(attrs={'class': 'form-select'}),
     'date': DATE_WIDGET,
     'work_type': forms.Select(attrs={'class': 'form-select'}),
@@ -94,12 +141,19 @@ class ActivityForm(ActivityRulesMixin, ActiveHorseFormMixin, forms.ModelForm):
 
     class Meta:
         model = Activity
-        fields = ['horse', 'date', 'work_type', 'status', 'reason', 'minutes', 'effort', 'notes']
+        fields = ['horse', 'date', 'work_type', 'status', 'reason', 'minutes', 'effort', 'venue', 'gear', 'notes']
         widgets = ACTIVITY_WIDGETS
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._setup_activity_fields()
+        horse_id = self.initial.get('horse') if not self.instance.pk else None
+        if horse_id:
+            # A new record for one horse starts with its default rider and gear (R5).
+            row = HorseTraining.objects.filter(horse_id=horse_id).first()
+            if row:
+                self.fields['who'].initial = who_value(row.default_rider_id, row.default_rider_is_owner)
+                self.fields['gear'].initial = row.default_gear
 
     def save(self, commit=True):
         activity = self.fill_defaults(super().save(commit=False))
@@ -109,11 +163,12 @@ class ActivityForm(ActivityRulesMixin, ActiveHorseFormMixin, forms.ModelForm):
 
 
 class BulkActivityForm(ActivityRulesMixin, forms.ModelForm):
-    """The same work for many horses: the horses come from the bulk bar."""
+    """The same work for many horses: the horses come from the bulk bar.
+    With no rider or gear chosen, each horse takes its own default."""
 
     class Meta:
         model = Activity
-        fields = ['date', 'work_type', 'status', 'reason', 'minutes', 'effort', 'notes']
+        fields = ['date', 'work_type', 'status', 'reason', 'minutes', 'effort', 'venue', 'gear', 'notes']
         widgets = ACTIVITY_WIDGETS
 
     def __init__(self, *args, **kwargs):
@@ -200,6 +255,14 @@ class HorseTrainingForm(forms.Form):
     notes = forms.CharField(
         required=False, widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
     )
+    default_who = forms.ChoiceField(
+        required=False, label='Usual rider', widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text='New work on the board takes this rider. A change for one day does not change it.',
+    )
+    default_gear = forms.CharField(
+        required=False, max_length=120, label='Usual gear',
+        widget=forms.TextInput(attrs={'class': 'form-input'}),
+    )
     update_boards = forms.BooleanField(
         required=False, initial=True, label='Also change the lot boards from this date',
         help_text=('Off the board: the planned work on this date becomes Did not work, '
@@ -213,6 +276,10 @@ class HorseTrainingForm(forms.Form):
         if current_lot is not None:
             lots |= Q(pk=current_lot.pk)
         self.fields['lot'].queryset = Lot.objects.filter(lots)
+        current_rider = self.initial.get('default_who')
+        self.fields['default_who'].choices = rider_choices(
+            int(current_rider) if current_rider and current_rider.isdigit() else None,
+        )
 
 
 class BoardSettingsForm(forms.ModelForm):
@@ -224,10 +291,8 @@ class BoardSettingsForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        offered = TrainingSettings.OFFERED_SOURCES
-        self.fields['board_source'].choices = [
-            (value, label) for value, label in TrainingSettings.BoardSource.choices if value in offered
-        ]
+        labels = dict(TrainingSettings.BoardSource.choices)
+        self.fields['board_source'].choices = [(value, labels[value]) for value in TrainingSettings.OFFERED_SOURCES]
 
 
 class LotDayForm(forms.ModelForm):
@@ -235,9 +300,10 @@ class LotDayForm(forms.ModelForm):
 
     class Meta:
         model = LotDay
-        fields = ['work_type', 'start_time', 'notes']
+        fields = ['work_type', 'venue', 'start_time', 'notes']
         widgets = {
             'work_type': forms.Select(attrs={'class': 'form-select'}),
+            'venue': forms.Select(attrs={'class': 'form-select'}),
             'start_time': forms.TimeInput(format='%H:%M', attrs={'class': 'form-input', 'type': 'time'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
@@ -251,3 +317,90 @@ class LotDayForm(forms.ModelForm):
             work_types |= Q(pk=self.instance.work_type_id)
         self.fields['work_type'].queryset = WorkType.objects.filter(work_types)
         self.fields['work_type'].empty_label = None
+        self.fields['venue'].queryset = venue_queryset(self.instance.venue_id)
+        self.fields['venue'].empty_label = 'No venue'
+
+
+
+# ─── Phase 3: venues, riders, the week plan ──────────────────────────
+
+class VenueForm(forms.ModelForm):
+    class Meta:
+        model = Venue
+        fields = ['name', 'surface', 'position']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'For example: Woodchip gallop'}),
+            'surface': forms.Select(attrs={'class': 'form-select'}),
+            'position': forms.NumberInput(attrs={'class': 'form-input', 'min': 0}),
+        }
+
+
+class RiderForm(forms.ModelForm):
+    class Meta:
+        model = Rider
+        fields = ['name', 'user', 'position']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-input'}),
+            'user': forms.Select(attrs={'class': 'form-select'}),
+            'position': forms.NumberInput(attrs={'class': 'form-input', 'min': 0}),
+        }
+        labels = {'user': 'Login'}
+        help_texts = {'user': 'Optional. A rider with a login sees their own horses at the top of the board.'}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from django.contrib.auth import get_user_model
+        users = Q(is_active=True, rider__isnull=True)
+        if self.instance.user_id:
+            users |= Q(pk=self.instance.user_id)
+        self.fields['user'].queryset = get_user_model().objects.filter(users).order_by('first_name', 'username')
+        self.fields['user'].empty_label = 'No login'
+        self.fields['user'].required = False
+
+
+class WeekPlanForm(forms.Form):
+    """Seven days for one lot: the usual work (or no lot) and the venue."""
+
+    USUAL = ''
+    NO_LOT = 'none'
+
+    def __init__(self, *args, lot, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.lot = lot
+        plans = {p.weekday: p for p in lot.week_plan.all()}
+        work_types = list(WorkType.objects.active())
+        for day, name in enumerate(LotWeekPlan.WEEKDAYS):
+            plan = plans.get(day)
+            current_work = plan.work_type if plan else None
+            choices = [(self.USUAL, f'Usual: {lot.usual_work_type.name}'), (self.NO_LOT, 'No lot')]
+            choices += [(str(w.pk), w.name) for w in work_types]
+            if current_work is not None and current_work not in work_types:
+                choices.append((str(current_work.pk), f'{current_work.name} (archived)'))
+            self.fields[f'work_{day}'] = forms.ChoiceField(
+                choices=choices, required=False, label=name,
+                widget=forms.Select(attrs={'class': 'form-select'}),
+                initial=self.NO_LOT if plan and plan.no_lot else (str(current_work.pk) if current_work else self.USUAL),
+            )
+            self.fields[f'venue_{day}'] = forms.ModelChoiceField(
+                queryset=venue_queryset(plan.venue_id if plan else None), required=False,
+                empty_label='No venue', label=f'{name} venue',
+                widget=forms.Select(attrs={'class': 'form-select'}),
+                initial=plan.venue_id if plan else None,
+            )
+
+    def days(self):
+        return [(name, self[f'work_{day}'], self[f'venue_{day}']) for day, name in enumerate(LotWeekPlan.WEEKDAYS)]
+
+    def save(self):
+        for day in range(7):
+            work = self.cleaned_data.get(f'work_{day}') or self.USUAL
+            venue = self.cleaned_data.get(f'venue_{day}')
+            no_lot = work == self.NO_LOT
+            work_type = WorkType.objects.filter(pk=work).first() if work not in (self.USUAL, self.NO_LOT) else None
+            if not no_lot and work_type is None and venue is None:
+                LotWeekPlan.objects.filter(lot=self.lot, weekday=day).delete()
+                continue
+            LotWeekPlan.objects.update_or_create(
+                lot=self.lot, weekday=day,
+                defaults={'work_type': None if no_lot else work_type, 'venue': None if no_lot else venue, 'no_lot': no_lot},
+            )

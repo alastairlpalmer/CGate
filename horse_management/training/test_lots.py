@@ -162,10 +162,10 @@ class OtherPageTests(Base):
         response = self.client.get(reverse('training_log') + f'?lot={self.first.pk}')
         self.assertEqual([a.horse for a in response.context['activities']], [self.bally])
 
-    def test_board_setting_saves_and_offers_no_week_plan_yet(self):
+    def test_board_setting_saves_and_offers_the_week_plan_from_phase_3(self):
         response = self.client.get(reverse('training_setup'))
         values = [value for value, _ in response.context['board_form'].fields['board_source'].choices]
-        self.assertEqual(values, ['lots', 'copy', 'empty'])
+        self.assertEqual(values, ['week_plan', 'lots', 'copy', 'empty'])
         self.client.post(reverse('training_setup'), {'board_source': 'copy'})
         self.assertEqual(TrainingSettings.load().board_source, 'copy')
 

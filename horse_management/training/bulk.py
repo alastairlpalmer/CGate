@@ -17,8 +17,9 @@ from core.permissions import LEVEL_FULL, has_feature_access
 from core.views._popup import popup_saved_response
 
 from .access import training_on
-from .forms import BulkActivityForm
-from .models import Activity
+from .board import horse_defaults
+from .forms import BulkActivityForm, parse_who
+from .models import Activity, Rider
 
 TEMPLATE = 'training/partials/bulk_form.html'
 
@@ -67,8 +68,18 @@ def bulk_apply(request):
     active = [h for h in horses if h.is_active]
     skipped = [h.name for h in horses if not h.is_active]
     data = form.cleaned_data
+    defaults = horse_defaults([h.pk for h in active])
+    chosen_rider, chosen_owner = parse_who(data.get('who') or '')
     with transaction.atomic():
         for horse in active:
+            own = defaults.get(horse.pk, {})
+            if data.get('who'):
+                rider, is_owner = chosen_rider, chosen_owner
+            else:   # no rider chosen: each horse takes its usual rider (R5)
+                rider_id, is_owner = own.get('rider_id'), own.get('rider_is_owner', False)
+                rider = None
+                if rider_id:
+                    rider = Rider.objects.filter(pk=rider_id).first()
             activity = Activity(
                 horse=horse,
                 date=data['date'],
@@ -77,12 +88,17 @@ def bulk_apply(request):
                 reason=data.get('reason') or '',
                 minutes=data.get('minutes'),
                 effort=data.get('effort'),
+                venue=data.get('venue'),
+                rider=rider,
+                rider_is_owner=is_owner,
+                gear=data.get('gear') or own.get('gear', ''),
                 notes=data.get('notes') or '',
                 source=Activity.Source.BULK,
                 created_by=request.user,
                 updated_by=request.user,
             )
-            form.fill_defaults(activity)
+            if activity.minutes is None and activity.status != Activity.Status.NOT_DONE:
+                activity.minutes = activity.work_type.default_minutes
             activity.save()
 
     if active:
