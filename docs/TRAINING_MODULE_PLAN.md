@@ -2,7 +2,7 @@
 
 **Goal:** Anyone on the yard can see, for each horse, what work it did, when, and what is planned next. A trainer puts horses into lots, gives each lot its work for the day, and confirms it. Staff can also record work for one horse or for many horses in one step. Every piece of work is one record in the database, with its date.
 **Scope:** A new `training` app. A Training section in the sidebar (the "trainer panel"). A Training card on the horse page. No owner login, no offline mode, no drag tool in the first phases (section 12).
-**Status:** Plan, ready for phase 1. Nothing is built. The owner decided D1 to D4, D7 and D11 on 2026-11-19 (section 4.1). D5, D6, D8 and D10 use their recommended answers until the owner says otherwise. D9 is a test at the yard before phase 2b (section 4.2).
+**Status:** Plan, ready for phase 1. Nothing is built. The owner decided D1 to D4, D7 and D11 on 2026-11-19 (section 4.1). D5, D6, D8, D10 and D12 use their recommended answers until the owner says otherwise. D9 is a test at the yard before phase 2b (section 4.2).
 **Build estimate:** About 1 to 2 days of build for each of the 6 pull requests, from the speed of the farrier and barns builds. The calendar time is set by the gates: one week of real use after phases 1, 2b and 3 (section 13).
 
 Written for the owner and for an AI coding agent. Read all of it before you write any code.
@@ -14,6 +14,8 @@ Written for the owner and for an AI coding agent. Read all of it before you writ
 **Revision 3.** 2026-11-19. A separate reviewer checked the plan against the codebase. Each finding was checked again against the code before it was used. Phase 2 is now two pull requests (2a and 2b). Training no longer hooks into the departure code. Charges follow the rate type, not a flag on the horse. Section 16.3 lists each finding and its fix.
 
 **Revision 4.** 2026-11-19. The owner decided D7 (seed a **Trainer** role) and D11 (yes, to confirm before phase 5). Phase 1 now seeds the role (9.1, item 12). Section 16.4 lists the changes.
+
+**Revision 5.** 2026-11-19. The owner widened the Trainer role to full access on every yard area, with owners, money and administration hidden (4.3). New open question D12: ownership and arrivals.
 
 ---
 
@@ -223,28 +225,36 @@ Each row has a recommended answer. The plan uses it until the owner says otherwi
 | D6 | Can a horse be in more than one standing lot? | **No. One standing lot for each horse.** Extra work on the same day (for example the walker in the afternoon) is a separate activity. | Simple rules, a simple board. The schema keeps this cheap to change (7.3). |
 | D8 | Charge owners for some sessions (for example "Schooling £25")? | **Yes, as phase 5, off by default.** A price on the work type. A tick on each rate type: "Includes exercise". A session is charged only when the horse's rate on the date of the work does not include exercise. | Ridden livery yards want it (section 2.7). It must never charge a horse whose livery includes exercise. The rate has dates through the placement; a flag on the horse would not. |
 | D9 | Is the phone signal at the yard good enough for normal pages? | **Test it at the yard before phase 2b.** If it is not, add an offline phase (section 12). | The C-vet offline work shows the cost: a separate app, an API and sync rules. |
+| D12 | Can a Trainer change ownership shares and log arrivals? Both decide who is billed for livery (4.3). | **Yes, for now**, as the owner asked for full access to yard areas. Revisit after the first month. | A Trainer often takes in a horse at the yard. Blocking arrivals would send that work back to the office. |
 | D10 | Drag horses between lots? | **Not in phases 1 to 5.** A **Move to** button on each horse. A drag tool can come later, on wide screens only. | No drag library is in the codebase. `BARNS_AND_STABLES_PLAN.md` chose "no drag tool". Taps work on phones and with a keyboard. |
 
 
 ### 4.3 The Trainer role (D7)
 
-A trainer, or the person who runs the yard's exercise: the lot board and the training records, and read-only horses, locations and health.
+The person who runs the horses day to day: full access to every yard area, and no access to owners, money or administration. Revision 5: the owner widened the role from view-only horses, locations and health to full access on all yard areas.
 
 | Feature | Level | Why |
 |---|---|---|
-| `dashboard` | Full (the feature has no view level) | The board's attention items show on the dashboard (phase 4). |
-| `horses` | View | Opens horse pages and the horse list, where the bulk bar is. |
-| `locations` | View | Sees where each horse lives. Opens the location page and its bulk bar. |
-| `health` | View | Sees conditions and vet visits before a horse goes out. |
+| `dashboard` | Full (the feature has no view level) | The yard figures, the calendar and the attention items. |
+| `horses` | Full | Horse records, photos, documents, moves, arrivals and departures. |
+| `locations` | Full | Fields, barns and stables, placements and moves. |
+| `health` | Full | Vaccinations, farrier, worming, egg counts, conditions and vet visits. |
+| `breeding` | Full | Breeding and foaling records. |
+| `feed` | Full | Feed stock and feeding out. |
 | `training` | Full | Everything in Training. |
-| All other features | Hidden | `owners`, `breeding`, `feed`, `farrier_portal`, `cvet`, `finances`, `invoices`, `costs`, `charges`, `xero`, `settings`, `users`. No owner contact details and no money. |
+| `owners` | Hidden | No owner contact records. |
+| `finances`, `invoices`, `costs`, `charges`, `xero` | Hidden | No money. |
+| `settings`, `users` | Hidden | No business settings, users or roles. |
+| `farrier_portal`, `cvet` | Hidden | These are the visiting farrier's and the vet's own pages, for their own logins. Yard staff use the Health and Farrier pages. |
 
-What follows from these levels:
+What follows from these levels. Check each one with the owner before the build ends:
 
-- The **Record** card on the horse page shows only the **Training** tile. The **Add** menu shows only **Training activity**. The bulk bar offers only **Training**.
-- **Did not work: Lame or sore** shows no "Record a condition" link, because that needs Full on Health. The yard can raise the role to Full on Health.
+- **Costs on health records.** A Trainer records vaccinations, farrier visits and vet visits, but cannot set a cost on them: a cost above 0 needs Full on Charges (`can_set_cost`, `health/views.py:452`). The office adds costs later. The **Other charge** tile and the **Charge** bulk action do not show.
+- **Owner names still show.** The horse page shows the owner's name to every role with Horses access. The link to the owner's record is refused, because Owners is hidden. Contact details stay hidden.
+- **Ownership and arrivals decide who is billed.** Full on Horses includes **Manage ownership** (`manage_ownership_shares`, `core/views/horses.py:2023`). Full on Locations includes **Log arrival** (`log_arrival`, `core/views/locations.py:1048`), which chooses an owner and a rate. Both decide who gets the livery invoice, although the Trainer sees no prices. If the owner does not want this, the Trainer needs View on Horses and Locations, or the build adds a check that these two actions need Full on Owners or Charges. This is a question for the owner (4.2, D12).
+- **Did not work: Lame or sore** shows the "Record a condition" and "Record a vet visit" links, because the role has Full on Health.
 - Phase 5: a Trainer confirms priced lots (D11) but sees no prices or charges.
-- The role is not a system role, so two-step sign-in is not forced (`core/mfa.py`, `is_administrator`).
+- **Two-step sign-in.** The role is not a system role, so two-step sign-in is not forced (`core/mfa.py`, `is_administrator`). With full access to every yard area, the owner may want to ask Trainers to turn it on.
 - The **Viewer** role gets `training` view in the same migration, only if it still has the seeded value `hidden`. Viewer sees every other area read-only, so it should see this one too. This follows `core/migrations/0027_viewer_restore_read_access.py`.
 
 ---
@@ -782,9 +792,10 @@ Definition of done:
 - [ ] With the flag off, `/training/` returns 404, no Training link shows, and the Training guide does not show to an administrator.
 - [ ] A role with `training` hidden sees no Training card, tile, bulk option or timeline rows. A role with view sees the card, the timeline rows and the Log, and no add buttons. POSTs from a view-only role get 403.
 - [ ] After the migrations, a role called "Trainer" exists with exactly the levels in 4.3, and Viewer has `training` view. A yard role already called "Trainer" is not changed. The reverse migration removes the seeded role only when nobody holds it.
-- [ ] A Trainer login sees Dashboard, Horses, Locations, Health and Training in the sidebar and the More sheet, and no Owners or Finance items.
-- [ ] A Trainer sees the **Record** card with only the Training tile, the **Add** button with only **Training activity**, and the bulk bar with only **Training**.
-- [ ] A Trainer can add, change and delete activities and work types. A Trainer gets 403 on a POST to any health, owner or charge form.
+- [ ] A Trainer login sees Dashboard, Horses, Locations, Health, Farrier, Breeding, Feed and Training in the sidebar and the More sheet, and no Owners, Finance or Settings items.
+- [ ] A Trainer sees every tile on the **Record** card except **Other charge**, and every bulk action except **Charge**.
+- [ ] A Trainer can record a vaccination with no cost. A cost above 0 is refused, as for every role without Full on Charges.
+- [ ] A Trainer can add, change and delete activities and work types. A Trainer gets 403 on a POST to any owner, charge, invoice or settings form, and is sent away from the owner page.
 - [ ] An activity dated today is Done by default. One dated tomorrow is Planned by default.
 - [ ] Done with tomorrow's date is refused by the form and by `mark_done`.
 - [ ] Did not work without a reason does not save. A reason with Done does not save.
@@ -1139,3 +1150,4 @@ A separate reviewer read revision 1 against `horse_management/`. Each code fact 
 | O6 | The status line says the plan is ready for phase 1. None of the open decisions blocks phase 1. | Header, 4.2 |
 | R1 | No colour field on a work type or a lot. The palette has one accent, kept for attention, and 5.13 already shows effort as a word. Fewer fields to build. | 7.1, 7.3 |
 | R2 | Phase 1 URLs, names, methods and access in one table, so the build does not have to choose them. | 9.1 |
+| O7 | Revision 5: the Trainer role has full access on dashboard, horses, locations, health, breeding, feed and training, and nothing on owners, money, settings, users, the farrier's page and C-vet. The consequences are listed, and D12 asks about ownership and arrivals. | 4.2, 4.3, 9.1 |
