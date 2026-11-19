@@ -83,8 +83,13 @@
                         <button type="submit" class="btn-ghost btn-xs min-h-[44px] sm:min-h-0">Move to</button>
                     </form>
                     {% endif %}
-                    <form method="post" action="{% url 'training_lot_member' m.pk %}">
+                    <form method="post" action="{% url 'training_lot_member' m.pk %}" class="flex items-center gap-1">
                         {% csrf_token %}
+                        {% if boards_started %}
+                        <label class="inline-flex items-center gap-1 text-xs text-sage min-h-[44px] sm:min-h-0" title="Also take it off boards that already started, today and later">
+                            <input type="checkbox" name="also_boards" class="form-checkbox"> and from boards
+                        </label>
+                        {% endif %}
                         <button type="submit" name="action" value="remove" class="btn-ghost btn-xs min-h-[44px] sm:min-h-0" aria-label="Remove {{ m.horse.name }} from {{ lot.name }}">Remove</button>
                     </form>
                 </span>

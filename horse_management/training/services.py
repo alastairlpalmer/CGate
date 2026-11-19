@@ -14,7 +14,7 @@ from simple_history.utils import bulk_update_with_history
 
 from .models import Activity, HorseTraining, Lot, LotMember
 
-CHANGED_FIELDS = ['status', 'reason', 'updated_by', 'updated_at']
+CHANGED_FIELDS = ['status', 'reason', 'lot_action', 'updated_by', 'updated_at']
 
 
 @dataclass
@@ -58,6 +58,7 @@ def mark_done(activities, *, user, today=None):
         else:
             row.status = Activity.Status.DONE
             row.reason = ''
+            row.lot_action = ''     # the person's own change, not the lot's
             to_change.append(row)
     _save(to_change, user)
     result.changed = len(to_change)
@@ -79,6 +80,27 @@ def mark_not_done(activities, reason, *, user):
         else:
             row.status = Activity.Status.NOT_DONE
             row.reason = reason
+            row.lot_action = ''
+            to_change.append(row)
+    _save(to_change, user)
+    result.changed = len(to_change)
+    return result
+
+
+@transaction.atomic
+def mark_planned(activities, *, user):
+    """Did not work → Planned: the Undo on one horse (5.12)."""
+    ids = _ids(activities)
+    rows = list(Activity.objects.select_for_update().filter(pk__in=ids))
+    result = MarkResult()
+    to_change = []
+    for row in rows:
+        if row.status != Activity.Status.NOT_DONE:
+            result.other += 1
+        else:
+            row.status = Activity.Status.PLANNED
+            row.reason = ''
+            row.lot_action = ''
             to_change.append(row)
     _save(to_change, user)
     result.changed = len(to_change)

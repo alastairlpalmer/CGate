@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+
+{% block title %}Lot board - Cgate{% endblock %}
+
+{% block content %}
+<div class="space-y-2 lg:space-y-3">
+
+    {# On a phone the app bar already says Training: the title is for screen readers only, so more horses fit. #}
+    <div class="page-header max-lg:hidden">
+        <div>
+            <h1 class="page-title">Training</h1>
+        </div>
+    </div>
+    <h1 class="sr-only lg:hidden">Training</h1>
+
+    {% include 'training/_tabs.html' %}
+
+    {# The day: arrows, the date, Today. #}
+    <nav class="flex items-center justify-between gap-2" aria-label="Board date">
+        <a href="{% url 'training_board_day' previous_day.isoformat %}" class="btn-ghost min-h-[44px] min-w-[44px] inline-flex items-center justify-center" aria-label="Previous day">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+        </a>
+        <div class="text-center">
+            <p class="font-semibold text-charcoal">{{ day|date:"D j M Y" }}{% if is_today %} <span class="badge-neutral ml-1">Today</span>{% endif %}</p>
+            {% if lot_days %}<p class="text-xs text-sage max-sm:hidden">{{ lot_days|length }} lot{{ lot_days|length|pluralize }} &middot; {{ horse_count }} horse{{ horse_count|pluralize }} &middot; {{ done_count }} done</p>{% endif %}
+            {% if last_not_confirmed %}
+            <p class="text-xs text-saddle" role="status">
+                {{ last_not_confirmed|date:"D j M" }} is not confirmed.
+                <a href="{% url 'training_board_day' last_not_confirmed.isoformat %}" class="link">Open it</a>
+            </p>
+            {% endif %}
+        </div>
+        <span class="flex items-center gap-1">
+            {% if not is_today %}<a href="{% url 'training_board' %}" class="btn-ghost btn-sm min-h-[44px] inline-flex items-center">Today</a>{% endif %}
+            <a href="{% url 'training_board_day' next_day.isoformat %}" class="btn-ghost min-h-[44px] min-w-[44px] inline-flex items-center justify-center" aria-label="Next day">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+            </a>
+        </span>
+    </nav>
+
+
+    {% if not lot_days %}
+    <div class="card px-4 py-5 space-y-3">
+        <p class="text-sm text-charcoal">No board for {{ day|date:"D j M" }} yet.</p>
+        {% if can_change %}
+        <form method="post" action="{% url 'training_board_start' day.isoformat %}" class="space-y-2">
+            {% csrf_token %}
+            <fieldset>
+                <legend class="text-sm text-sage pb-1">Start from</legend>
+                {% for value, label in sources %}
+                <label class="flex items-center gap-2 min-h-[44px] text-sm cursor-pointer">
+                    <input type="radio" name="source" value="{{ value }}" class="w-4 h-4 accent-forest"{% if value == default_source %} checked{% endif %}>
+                    {% if value == 'copy' %}{% if last_board %}Copy {{ last_board|date:"D j M" }}{% else %}Copy the last board (there is none yet){% endif %}{% else %}{{ label }}{% endif %}
+                </label>
+                {% endfor %}
+            </fieldset>
+            <button type="submit" class="btn-primary">Start the board</button>
+        </form>
+        {% else %}
+        <p class="text-sm text-sage">Someone with full access to Training starts it.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3 items-start">
+        {% for lot_day in lot_days %}
+        <section class="card lot-day" id="lot-day-{{ lot_day.pk }}" aria-labelledby="lot-day-title-{{ lot_day.pk }}">
+            <header class="lot-day-head">
+                <div class="min-w-0">
+                    <h2 id="lot-day-title-{{ lot_day.pk }}" class="flex flex-wrap items-center gap-x-2 font-semibold text-charcoal">
+                        <span class="truncate">{{ lot_day.lot.name }}{% if lot_day.start_time %} <span class="font-normal text-sage">&middot; {{ lot_day.start_time|time:"H:i" }}</span>{% endif %}</span>
+                        {% if lot_day.status == 'done' %}<span class="badge-success">Done{% if lot_day.confirmed_by %} by {{ lot_day.confirmed_by.first_name|default:lot_day.confirmed_by.username }}{% endif %}{% if lot_day.confirmed_at %} at {{ lot_day.confirmed_at|time:"H:i" }}{% endif %}</span>
+                        {% elif lot_day.status == 'cancelled' %}<span class="badge-info">Cancelled</span>
+                        {% elif lot_day.date < today %}<span class="badge-warning">Not confirmed</span>
+                        {% else %}<span class="badge-neutral">Planned</span>{% endif %}
+                    </h2>
+                    <p class="text-sm text-charcoal-light">
+                        {{ lot_day.work_type.name }} <span class="text-sage">&middot; {{ lot_day.rows|length }} horse{{ lot_day.rows|length|pluralize }}</span>
+                    </p>
+                </div>
+                {% if can_change %}
+                <div class="flex items-center gap-1 shrink-0">
+                    {% if lot_day.is_open %}
+                    <a href="{% url 'training_lot_day_change' lot_day.pk %}" hx-get="{% url 'training_lot_day_change' lot_day.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                       data-popup-title="Change {{ lot_day.lot.name }}" aria-label="Change {{ lot_day.lot.name }}" class="btn-ghost btn-sm min-h-[44px] min-w-[44px] inline-flex items-center justify-center">
+                        <svg class="w-4 h-4 sm:hidden" aria-hidden="true"><use href="#i-pencil"/></svg><span class="max-sm:hidden">Change</span>
+                    </a>
+                    {% if lot_day.can_mark_done %}
+                    <form method="post" action="{% url 'training_lot_day_action' lot_day.pk 'done' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-primary btn-sm min-h-[44px] sm:min-h-0">Mark lot done</button>
+                    </form>
+                    {% endif %}
+                    {% else %}
+                    <form method="post" action="{% url 'training_lot_day_action' lot_day.pk 'reopen' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-secondary btn-sm min-h-[44px] sm:min-h-0">Reopen lot</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </header>
+
+            {% if lot_day.notes %}<p class="px-3 pt-2 text-sm text-charcoal-light">{{ lot_day.notes }}</p>{% endif %}
+
+            {% if lot_day.missing %}
+            <form method="post" action="{% url 'training_lot_day_horses' lot_day.pk %}" class="mx-3 mt-2 alert-warning text-sm">
+                {% csrf_token %}
+                {% for horse in lot_day.missing %}<input type="hidden" name="horses" value="{{ horse.pk }}">{% endfor %}
+                <p>{{ lot_day.missing|length }} horse{{ lot_day.missing|length|pluralize }} in {{ lot_day.lot.name }} {{ lot_day.missing|length|pluralize:"is,are" }} not on this board: {% for horse in lot_day.missing %}{{ horse.name }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+                <button type="submit" class="link font-medium min-h-[44px]">Add</button></p>
+            </form>
+            {% endif %}
+
+            {% if lot_day.rows %}
+            <ol class="divide-y divide-light-sage">
+                {% for row in lot_day.rows %}
+                <li class="lot-row">
+                    <span class="w-5 shrink-0 text-right text-sm text-sage">{{ forloop.counter }}</span>
+                    <span class="min-w-0 flex-1">
+                        <span class="flex flex-wrap items-center gap-x-1.5">
+                            {% if can_change %}
+                            <a href="{% url 'training_activity_update' row.pk %}?next={{ board_url|urlencode }}" hx-get="{% url 'training_activity_update' row.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                               data-popup-title="{{ row.horse.name }}, {{ day|date:'D j M' }}" class="font-medium text-charcoal truncate hover:underline min-h-[44px] inline-flex items-center">{{ row.horse.name }}</a>
+                            {% else %}
+                            <a href="{% url 'horse_detail' row.horse.pk %}#training" class="font-medium text-charcoal truncate hover:underline min-h-[44px] inline-flex items-center">{{ row.horse.name }}</a>
+                            {% endif %}
+                            {% if not row.follows_lot %}<span class="badge-neutral" title="This horse's own work for the day">{{ row.work_type.name }} <span aria-hidden="true">&#9998;</span><span class="sr-only">(own work)</span></span>{% endif %}
+                            {% if not row.horse.is_active %}<span class="badge-warning">Left the yard</span>{% endif %}
+                            {% if row.status == 'done' %}<span class="badge-success">Done</span>{% elif row.status == 'not_done' %}<span class="badge-info">{{ row.get_reason_display }}</span>{% endif %}
+                        </span>
+                    </span>
+                    {% if can_change %}
+                    <span class="flex items-center gap-1 shrink-0">
+                        {% if row.status == 'planned' %}
+                        <div class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false">
+                            <button type="button" @click="open = !open" :aria-expanded="open.toString()" class="btn-ghost btn-xs min-h-[44px]">Did not work <span aria-hidden="true">&#9662;</span></button>
+                            <form x-show="open" x-cloak method="post" action="{% url 'training_activity_mark' row.pk %}" class="row-menu">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="not_done">
+                                <input type="hidden" name="next" value="{{ board_url }}#lot-day-{{ lot_day.pk }}">
+                                {% for value, label in reasons %}
+                                <button type="submit" name="reason" value="{{ value }}" class="row-menu-item">{{ label }}</button>
+                                {% endfor %}
+                            </form>
+                        </div>
+                        {% elif row.status == 'not_done' %}
+                        <form method="post" action="{% url 'training_activity_mark' row.pk %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="planned">
+                            <input type="hidden" name="next" value="{{ board_url }}#lot-day-{{ lot_day.pk }}">
+                            <button type="submit" class="btn-ghost btn-xs min-h-[44px]">Undo</button>
+                        </form>
+                        {% endif %}
+                        <div class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false">
+                            <button type="button" @click="open = !open" :aria-expanded="open.toString()" class="btn-ghost btn-xs min-h-[44px] min-w-[44px]" aria-label="More for {{ row.horse.name }}">
+                                <svg class="w-4 h-4" aria-hidden="true"><use href="#i-dots"/></svg>
+                            </button>
+                            <div x-show="open" x-cloak class="row-menu">
+                                {% if row.status == 'not_done' and row.reason == 'unsound' and can_record_health %}
+                                <a href="{% url 'condition_create' %}?horse={{ row.horse.pk }}" hx-get="{% url 'condition_create' %}?horse={{ row.horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Condition for {{ row.horse.name }}" class="row-menu-item">Record a condition</a>
+                                <a href="{% url 'vet_visit_create' %}?horse={{ row.horse.pk }}" hx-get="{% url 'vet_visit_create' %}?horse={{ row.horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Vet visit for {{ row.horse.name }}" class="row-menu-item">Record a vet visit</a>
+                                {% endif %}
+                                {% for other in lot_day.other_days %}
+                                <form method="post" action="{% url 'training_activity_move' row.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="lot_day" value="{{ other.pk }}">
+                                    <input type="hidden" name="next" value="{{ board_url }}#lot-day-{{ other.pk }}">
+                                    <button type="submit" class="row-menu-item">Move to {{ other.lot.name }}</button>
+                                </form>
+                                {% endfor %}
+                                <form method="post" action="{% url 'training_activity_delete' row.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ board_url }}#lot-day-{{ lot_day.pk }}">
+                                    <button type="submit" class="row-menu-item">Remove from this date</button>
+                                </form>
+                            </div>
+                        </div>
+                    </span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ol>
+            {% else %}
+            <p class="px-3 py-3 text-sm text-sage">No horses in this lot today.</p>
+            {% endif %}
+
+            {% if can_change and lot_day.status != 'cancelled' %}
+            <div class="px-3 py-2 border-t border-light-sage">
+                <a href="{% url 'training_lot_day_horses' lot_day.pk %}" hx-get="{% url 'training_lot_day_horses' lot_day.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                   data-popup-title="Add horses to {{ lot_day.lot.name }}, {{ day|date:'D j M' }}" class="link text-sm tap-pad">Add horse</a>
+            </div>
+            {% endif %}
+        </section>
+        {% endfor %}
+    </div>
+
+    {% if lots_without_day and can_change %}
+    <div class="card px-4 py-3 text-sm space-y-1">
+        {% for lot in lots_without_day %}
+        <form method="post" action="{% url 'training_board_add_lot' day.isoformat lot.pk %}" class="flex items-center justify-between gap-2">
+            {% csrf_token %}
+            <span>{{ lot.name }} is not on this board.</span>
+            <button type="submit" class="btn-secondary btn-sm min-h-[44px] sm:min-h-0">Add lot to this board</button>
+        </form>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not_on_board %}
+    <p class="text-sm text-sage">Not on the board: {% for label, count in not_on_board %}{{ count }} {{ label|lower }}{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+    {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% comment %}
+Add horses to one lot day only (8.2). The standing lot does not change.
+{% endcomment %}
+<form method="post" action="{% url 'training_lot_day_horses' lot_day.pk %}"
+      hx-post="{% url 'training_lot_day_horses' lot_day.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+      x-data="{ q: '' }">
+    {% csrf_token %}
+    <div class="px-4 py-3 space-y-2">
+        <p class="text-xs text-sage">For {{ lot_day.date|date:"D j M" }} only. The lot itself does not change.</p>
+        <label for="day-horse-search" class="sr-only">Find a horse</label>
+        <input id="day-horse-search" type="search" x-model="q" placeholder="Find a horse…" class="form-input" autocomplete="off">
+        <ul class="max-h-[50vh] overflow-y-auto divide-y divide-light-sage">
+            {% for c in candidates %}
+            <li x-show="!q || '{{ c.horse.name|lower|escapejs }}'.includes(q.toLowerCase())">
+                <label class="flex items-center justify-between gap-2 min-h-[44px] {% if c.here %}text-sage{% else %}cursor-pointer{% endif %}">
+                    <span class="flex items-center gap-2">
+                        <input type="checkbox" name="horses" value="{{ c.horse.pk }}" class="form-checkbox"{% if c.here %} disabled{% endif %}>
+                        {{ c.horse.name }}
+                    </span>
+                    {% if c.here %}<span class="text-xs">In this lot</span>{% elif c.elsewhere %}<span class="text-xs text-sage">In {{ c.elsewhere }} today</span>{% endif %}
+                </label>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="popup-footer">
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        <button type="submit" class="btn-primary">Add to {{ lot_day.lot.name }}</button>
+    </div>
+</form>

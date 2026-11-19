@@ -25,3 +25,14 @@ urlpatterns += [
     path('lots/members/<int:pk>/', views.lot_member_action, name='training_lot_member'),
     path('horses/<int:horse_pk>/status/', views.horse_training_edit, name='training_horse_edit'),
 ]
+
+urlpatterns += [
+    path('board/', views.training_board, name='training_board'),
+    path('board/<str:day>/', views.training_board, name='training_board_day'),
+    path('board/<str:day>/start/', views.board_start, name='training_board_start'),
+    path('board/<str:day>/add-lot/<int:lot_pk>/', views.board_add_lot, name='training_board_add_lot'),
+    path('lot-days/<int:pk>/change/', views.lot_day_change, name='training_lot_day_change'),
+    path('lot-days/<int:pk>/horses/', views.lot_day_horses, name='training_lot_day_horses'),
+    path('lot-days/<int:pk>/<str:action>/', views.lot_day_action, name='training_lot_day_action'),
+    path('activities/<int:pk>/move/', views.activity_move, name='training_activity_move'),
+]

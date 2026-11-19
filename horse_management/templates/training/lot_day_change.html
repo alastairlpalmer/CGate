@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block title %}Change {{ lot_day.lot.name }} - Cgate{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto space-y-4">
+    <div class="page-header"><div><h1 class="page-title">{{ lot_day.lot.name }}, {{ lot_day.date|date:"D j M" }}</h1></div></div>
+    <div class="card">{% include 'training/partials/lot_day_change.html' %}</div>
+</div>
+{% endblock %}

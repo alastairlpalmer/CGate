@@ -1,10 +1,11 @@
 """Training pages: the Log, Set up, and the pop-up forms (phase 1)."""
 
+from datetime import date, timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
-from django.db.models import Count, Prefetch
-from django.http import HttpResponseBadRequest
+from django.db.models import Count, Prefetch, Q
+from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -18,10 +19,10 @@ from core.permissions import (
 )
 from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_response
 
-from . import services
+from . import board, services
 from .access import TrainingEnabledMixin, training_enabled
-from .forms import ActivityForm, BoardSettingsForm, HorseTrainingForm, LotForm, WorkTypeForm
-from .models import Activity, HorseTraining, Lot, LotMember, TrainingSettings, WorkType
+from .forms import ActivityForm, BoardSettingsForm, HorseTrainingForm, LotDayForm, LotForm, WorkTypeForm
+from .models import Activity, HorseTraining, Lot, LotDay, LotMember, TrainingSettings, WorkType
 
 STATUS_FILTERS = [
     ('done', 'Done'),
@@ -66,8 +67,8 @@ def _report(request, result, done_word):
 @training_enabled
 @feature_required('training', LEVEL_VIEW)
 def training_home(request):
-    """The sidebar's Training link. Phase 1 has no board, so: the Log."""
-    return redirect('training_log')
+    """The sidebar's Training link: today's board (phase 2b)."""
+    return redirect('training_board')
 
 
 class ActivityLogView(TrainingEnabledMixin, FeatureAccessMixin, ListView):
@@ -90,13 +91,16 @@ class ActivityLogView(TrainingEnabledMixin, FeatureAccessMixin, ListView):
         }
 
     def get_queryset(self):
-        queryset = Activity.objects.select_related('horse', 'work_type', 'updated_by')
+        queryset = Activity.objects.select_related('horse', 'work_type', 'updated_by', 'lot_day__lot')
         f = self._filters()
         if f['horse']:
             queryset = queryset.filter(horse_id=f['horse'])
         if f['lot']:
-            # Horses now in the lot. Phase 2b adds the lot of each day.
-            queryset = queryset.filter(horse__lot_members__lot_id=f['lot'])
+            # Work done in the lot on the board; work outside the board
+            # counts for the lot the horse is in now.
+            queryset = queryset.filter(
+                Q(lot_day__lot_id=f['lot']) | Q(lot_day__isnull=True, horse__lot_members__lot_id=f['lot'])
+            )
         if f['work_type']:
             queryset = queryset.filter(work_type_id=f['work_type'])
         if f['status'] == 'not_confirmed':
@@ -223,6 +227,7 @@ class ActivityUpdateView(TrainingEnabledMixin, ActivityFormViewMixin, PopupFormM
 
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
+        board.apply_row_edit(form.instance, set(form.changed_data))
         messages.success(self.request, f"Training record for {form.instance.horse.name} saved.")
         return super().form_valid(form)
 
@@ -260,6 +265,8 @@ def activity_mark(request, pk):
             messages.error(request, "Choose why the horse did not work.")
             return redirect(back)
         _report(request, services.mark_not_done([activity.pk], reason, user=request.user), 'as did not work')
+    elif action == 'planned':
+        _report(request, services.mark_planned([activity.pk], user=request.user), 'as planned again')
     else:
         return HttpResponseBadRequest('Unknown action')
     return redirect(back)
@@ -349,6 +356,7 @@ def training_lots(request):
         'other_lots': Lot.objects.active(),
         'in_work_no_lot': list(in_work_no_lot),
         'can_change': has_feature_access(request.user, 'training', LEVEL_FULL),
+        'boards_started': board.boards_started_from(timezone.localdate()),
         'training_tab': 'lots',
     })
 
@@ -446,7 +454,11 @@ def lot_member_action(request, pk):
         services.move_member(member, action)
     elif action == 'remove':
         services.remove_from_lot(horse)
-        messages.success(request, f"{horse.name} removed from {member.lot.name}.")
+        removed = 0
+        if request.POST.get('also_boards'):
+            removed = board.remove_from_started_boards(horse, member.lot)
+        note = f" Taken off {removed} planned day{'s' if removed != 1 else ''} on the board." if removed else ''
+        messages.success(request, f"{horse.name} removed from {member.lot.name}.{note}")
     elif action == 'move':
         target_id = request.POST.get('lot', '')
         target = Lot.objects.filter(pk=target_id, is_active=True).first() if target_id.isdigit() else None
@@ -490,9 +502,213 @@ def horse_training_edit(request, horse_pk):
                 horse, data['status'], data['status_since'], notes=data['notes'],
                 since=data['status_since'] if 'status_since' in form.changed_data else None,
             )
+        if chose_status and data.get('update_boards'):
+            effect = board.apply_status_to_boards(horse, data['status'], data['status_since'], user=request.user)
+            if effect.not_done or effect.removed:
+                messages.info(request, f"Lot boards changed for {horse.name}: "
+                                       f"{effect.not_done} marked Did not work, {effect.removed} planned day"
+                                       f"{'s' if effect.removed != 1 else ''} removed.")
+            if effect.added_to:
+                messages.info(request, f"{horse.name} is on today's board in {effect.added_to.lot.name}.")
         messages.success(request, f"Training for {horse.name} saved.")
         if is_popup_request(request):
             return popup_saved_response()
         return redirect(reverse('horse_detail', kwargs={'pk': horse.pk}) + '#training')
     template = 'training/partials/horse_training_form.html' if is_popup_request(request) else 'training/horse_training_form.html'
-    return render(request, template, {'horse': horse, 'form': form})
+    return render(request, template, {
+        'horse': horse, 'form': form,
+        'boards_started': board.boards_started_from(timezone.localdate()),
+    })
+
+
+# ─── Phase 2b: the lot board ─────────────────────────────────────────
+
+def _parse_day(value):
+    try:
+        return date.fromisoformat(value)
+    except (TypeError, ValueError):
+        raise Http404("Not a date.")
+
+
+def _board_url(day, anchor=''):
+    if day == timezone.localdate():
+        url = reverse('training_board')
+    else:
+        url = reverse('training_board_day', args=[day.isoformat()])
+    return url + (f'#{anchor}' if anchor else '')
+
+
+@training_enabled
+@feature_required('training', LEVEL_VIEW)
+def training_board(request, day=None):
+    """The lot board for one date (8.2). Showing it never writes it (5.3)."""
+    today = timezone.localdate()
+    day = _parse_day(day) if day else today
+    can_change = has_feature_access(request.user, 'training', LEVEL_FULL)
+    lot_days = board.board_days(day)
+    rows = (
+        Activity.objects.filter(lot_day__in=lot_days)
+        .select_related('horse', 'horse__training', 'work_type')
+        .order_by('position', 'pk')
+    )
+    by_day = {}
+    for row in rows:
+        by_day.setdefault(row.lot_day_id, []).append(row)
+    on_board = board.on_board_horse_ids() if lot_days and can_change else set()
+    taken = board.horses_on_board(day) if lot_days else set()
+    horse_count = 0
+    for lot_day in lot_days:
+        lot_day.rows = by_day.get(lot_day.pk, [])
+        horse_count += len(lot_day.rows)
+        lot_day.missing = (
+            board.missing_members(lot_day, today=today, on_board=on_board, taken=taken) if can_change else []
+        )
+        lot_day.can_mark_done = lot_day.is_open and day <= today
+        lot_day.other_days = [other for other in lot_days if other.pk != lot_day.pk and other.is_open]
+    last_not_confirmed = board.last_not_confirmed_before(today)
+    settings_row = TrainingSettings.load()
+    return render(request, 'training/board.html', {
+        'day': day,
+        'today': today,
+        'is_today': day == today,
+        'is_future': day > today,
+        'previous_day': day - timedelta(days=1),
+        'next_day': day + timedelta(days=1),
+        'lot_days': lot_days,
+        'horse_count': horse_count,
+        'done_count': sum(1 for ld in lot_days if ld.status == LotDay.Status.DONE),
+        'lots_without_day': list(Lot.objects.active().exclude(days__date=day)) if lot_days else [],
+        'not_on_board': board.not_on_board_summary(day) if lot_days else [],
+        'last_not_confirmed': last_not_confirmed if last_not_confirmed != day else None,
+        'sources': [(v, l) for v, l in TrainingSettings.BoardSource.choices if v in TrainingSettings.OFFERED_SOURCES],
+        'default_source': settings_row.board_source,
+        'last_board': board.last_board_before(day),
+        'reasons': Activity.Reason.choices,
+        'can_change': can_change,
+        'can_record_health': has_feature_access(request.user, 'health', LEVEL_FULL),
+        'board_url': request.get_full_path(),
+        'training_tab': 'board',
+    })
+
+
+@training_enabled
+@feature_required('training')
+@require_POST
+def board_start(request, day):
+    day = _parse_day(day)
+    result = board.start_board(day, user=request.user, source=request.POST.get('source') or None)
+    if result.note:
+        messages.info(request, result.note)
+    if result.created:
+        count = Activity.objects.filter(lot_day__in=result.lot_days).count()
+        messages.success(request, f"Board started: {len(result.lot_days)} lots, {count} horses.")
+    return redirect(_board_url(day))
+
+
+@training_enabled
+@feature_required('training')
+@require_POST
+def board_add_lot(request, day, lot_pk):
+    day = _parse_day(day)
+    lot = get_object_or_404(Lot, pk=lot_pk, is_active=True)
+    lot_day = board.add_lot_to_board(lot, day, user=request.user)
+    messages.success(request, f"{lot.name} added to the board.")
+    return redirect(_board_url(day, f'lot-day-{lot_day.pk}'))
+
+
+@training_enabled
+@feature_required('training')
+@require_POST
+def lot_day_action(request, pk, action):
+    """Mark lot done, Reopen lot, or Cancel lot with one reason."""
+    lot_day = get_object_or_404(LotDay.objects.select_related('lot'), pk=pk)
+    try:
+        if action == 'done':
+            result = board.mark_lot_done(lot_day, user=request.user)
+            messages.success(request, f"{lot_day.lot.name} done: {result.changed} horse{'s' if result.changed != 1 else ''}.")
+            if result.left_yard:
+                messages.warning(request, f"Left the yard, so not marked: {', '.join(result.left_yard)}.")
+        elif action == 'reopen':
+            board.reopen_lot(lot_day, user=request.user)
+            messages.success(request, f"{lot_day.lot.name} is open again.")
+        elif action == 'cancel':
+            count = board.cancel_lot(lot_day, request.POST.get('reason', ''), user=request.user)
+            messages.success(request, f"{lot_day.lot.name} cancelled: {count} horse{'s' if count != 1 else ''} did not work.")
+        else:
+            return HttpResponseBadRequest('Unknown action')
+    except board.BoardError as error:
+        messages.error(request, str(error))
+    if is_popup_request(request):
+        return popup_saved_response()
+    return redirect(_board_url(lot_day.date, f'lot-day-{lot_day.pk}'))
+
+
+@training_enabled
+@feature_required('training')
+def lot_day_change(request, pk):
+    """The lot's work, time and notes for this date, and Cancel lot."""
+    lot_day = get_object_or_404(LotDay.objects.select_related('lot', 'work_type'), pk=pk)
+    form = LotDayForm(request.POST or None, instance=lot_day)
+    if request.method == 'POST' and form.is_valid():
+        try:
+            count = board.set_lot_work(
+                lot_day, work_type=form.cleaned_data['work_type'], start_time=form.cleaned_data['start_time'],
+                notes=form.cleaned_data['notes'], user=request.user,
+            )
+            messages.success(request, f"{lot_day.lot.name} saved. {count} horse{'s' if count != 1 else ''} follow the new work.")
+        except board.BoardError as error:
+            messages.error(request, str(error))
+        if is_popup_request(request):
+            return popup_saved_response()
+        return redirect(_board_url(lot_day.date, f'lot-day-{lot_day.pk}'))
+    template = 'training/partials/lot_day_change.html' if is_popup_request(request) else 'training/lot_day_change.html'
+    return render(request, template, {'lot_day': lot_day, 'form': form, 'reasons': Activity.Reason.choices})
+
+
+@training_enabled
+@feature_required('training')
+def lot_day_horses(request, pk):
+    """Add horses to this lot day only. The standing lot does not change."""
+    lot_day = get_object_or_404(LotDay.objects.select_related('lot'), pk=pk)
+    if request.method == 'POST':
+        ids = [i for i in request.POST.getlist('horses') if i.isdigit()]
+        try:
+            result = board.add_horses(lot_day, list(Horse.objects.filter(pk__in=ids).order_by('name')), user=request.user)
+        except board.BoardError as error:
+            messages.error(request, str(error))
+        else:
+            if result.added:
+                messages.success(request, f"On {lot_day.lot.name} for the day: {', '.join(result.added)}.")
+            if result.already:
+                messages.info(request, f"Already in {lot_day.lot.name}: {', '.join(result.already)}.")
+            if result.left:
+                messages.warning(request, f"Not added, as they have left the yard: {', '.join(result.left)}.")
+        if is_popup_request(request):
+            return popup_saved_response()
+        return redirect(_board_url(lot_day.date, f'lot-day-{lot_day.pk}'))
+    here = set(lot_day.activities.values_list('horse_id', flat=True))
+    elsewhere = dict(
+        Activity.objects.filter(date=lot_day.date, lot_day__isnull=False).exclude(lot_day=lot_day)
+        .values_list('horse_id', 'lot_day__lot__name')
+    )
+    candidates = [
+        {'horse': h, 'here': h.pk in here, 'elsewhere': elsewhere.get(h.pk, '')}
+        for h in Horse.objects.filter(is_active=True).order_by('name').only('pk', 'name')
+    ]
+    template = 'training/partials/lot_day_horses.html' if is_popup_request(request) else 'training/lot_day_horses.html'
+    return render(request, template, {'lot_day': lot_day, 'candidates': candidates})
+
+
+@training_enabled
+@feature_required('training')
+@require_POST
+def activity_move(request, pk):
+    """Move one row to another lot on the same date."""
+    activity = get_object_or_404(Activity.objects.select_related('horse'), pk=pk)
+    target = get_object_or_404(LotDay.objects.select_related('lot'), pk=request.POST.get('lot_day') or 0)
+    try:
+        board.move_horse(activity, target, user=request.user)
+        messages.success(request, f"{activity.horse.name} moved to {target.lot.name} for the day.")
+    except board.BoardError as error:
+        messages.error(request, str(error))
+    return redirect(_safe_next(request, _board_url(target.date, f'lot-day-{target.pk}')))

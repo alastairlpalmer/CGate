@@ -2,7 +2,7 @@
 
 **Goal:** Anyone on the yard can see, for each horse, what work it did, when, and what is planned next. A trainer puts horses into lots, gives each lot its work for the day, and confirms it. Staff can also record work for one horse or for many horses in one step. Every piece of work is one record in the database, with its date.
 **Scope:** A new `training` app. A Training section in the sidebar (the "trainer panel"). A Training card on the horse page. No owner login, no offline mode, no drag tool in the first phases (section 12).
-**Status:** Phases 1 and 2a are built, behind `TRAINING_ENABLED` (off by default). Sections 17 and 18 record where the builds departed from this plan. Next: phase 2b, the lot board. The owner decided D1 to D4, D7, D11 and D12 on 2026-11-19 (section 4.1). D5, D6, D8 and D10 use their recommended answers until the owner says otherwise. D9 is a test at the yard before phase 2b (section 4.2).
+**Status:** Phases 1, 2a and 2b are built, behind `TRAINING_ENABLED` (off by default). Sections 17 to 19 record where the builds departed from this plan. Next: the phase 2b gate (one week of the board in daily use, section 13), then phase 3. The owner decided D1 to D4, D7, D11 and D12 on 2026-11-19 (section 4.1). D5, D6, D8 and D10 use their recommended answers until the owner says otherwise. D9 (the phone signal) is still to be tested at the yard (section 4.2).
 **Build estimate:** About 1 to 2 days of build for each of the 6 pull requests, from the speed of the farrier and barns builds. The calendar time is set by the gates: one week of real use after phases 1, 2b and 3 (section 13).
 
 Written for the owner and for an AI coding agent. Read all of it before you write any code.
@@ -22,6 +22,8 @@ Written for the owner and for an AI coding agent. Read all of it before you writ
 **Revision 7.** 2026-11-19. Phase 1 is built. Section 17 records where the build departed from this document and why.
 
 **Revision 8.** 2026-11-19. Phase 2a is built. Section 18 records where the build departed from this document and why.
+
+**Revision 9.** 2026-11-19. Phase 2b is built. Section 19 records where the build departed from this document and why.
 
 ---
 
@@ -875,21 +877,21 @@ Build:
 
 Definition of done:
 
-- [ ] Opening the board for a date with no lot days makes no rows. Two POSTs to start the same date make one board, and the second shows the board, not an error page.
-- [ ] A horse on Box rest is not on the started board and shows in the footer count.
-- [ ] Change the lot work from Canter to Walk. A horse whose own work was "Walker" stays on Walker. The others change to Walk. **Change** is not offered on a lot that is done.
-- [ ] Mark lot done: Planned becomes Done; Did not work stays. Reopen lot, a week later, puts back only those rows to Planned. A horse marked Done on its own before **Mark lot done** stays Done after **Reopen lot**.
-- [ ] One person taps **Mark lot done** while another saves **Did not work** for one horse. The Did not work stays.
-- [ ] Mark lot done is not offered, and is refused, for a date after today. A board for tomorrow can be started and changed.
-- [ ] Cancel lot with the reason Weather: every Planned horse gets Did not work, Weather. A horse already Done stays Done. Reopen lot undoes only the cancel.
-- [ ] Start **Empty**: every active lot has a lot day with no horses. **Add horse** works on it.
-- [ ] Copy the last board on a Monday after a Sunday with no board copies Saturday, with its lot moves.
-- [ ] A horse added to the standing lot after today's board started shows in the "not on this board" hint, and **Add** puts it on. Yesterday's board does not change.
-- [ ] A horse set to Box rest at 07:15 with today's board started: its row today becomes Did not work, "Resting or box rest". Its Planned rows tomorrow are gone. **Mark lot done** leaves it as Did not work.
-- [ ] A horse that departs after today's board started shows "Left the yard". **Mark lot done** leaves its row Planned.
-- [ ] Every lot action leaves a history row with the user who did it.
-- [ ] Only Done and Did not work activities show on the horse timeline. Planned never does.
-- [ ] On a 375 × 667 phone, the first screen of the board shows 6 or more horse rows, **Mark lot done** stays on screen while the lot scrolls, and every button is 44 px or more.
+- [x] Opening the board for a date with no lot days makes no rows. Two POSTs to start the same date make one board, and the second shows the board, not an error page.
+- [x] A horse on Box rest is not on the started board and shows in the footer count.
+- [x] Change the lot work from Canter to Walk. A horse whose own work was "Walker" stays on Walker. The others change to Walk. **Change** is not offered on a lot that is done.
+- [x] Mark lot done: Planned becomes Done; Did not work stays. Reopen lot, a week later, puts back only those rows to Planned. A horse marked Done on its own before **Mark lot done** stays Done after **Reopen lot**.
+- [x] One person taps **Mark lot done** while another saves **Did not work** for one horse. The Did not work stays.
+- [x] Mark lot done is not offered, and is refused, for a date after today. A board for tomorrow can be started and changed.
+- [x] Cancel lot with the reason Weather: every Planned horse gets Did not work, Weather. A horse already Done stays Done. Reopen lot undoes only the cancel.
+- [x] Start **Empty**: every active lot has a lot day with no horses. **Add horse** works on it.
+- [x] Copy the last board on a Monday after a Sunday with no board copies Saturday, with its lot moves.
+- [x] A horse added to the standing lot after today's board started shows in the "not on this board" hint, and **Add** puts it on. Yesterday's board does not change.
+- [x] A horse set to Box rest at 07:15 with today's board started: its row today becomes Did not work, "Resting or box rest". Its Planned rows tomorrow are gone. **Mark lot done** leaves it as Did not work.
+- [x] A horse that departs after today's board started shows "Left the yard". **Mark lot done** leaves its row Planned.
+- [x] Every lot action leaves a history row with the user who did it.
+- [x] Only Done and Did not work activities show on the horse timeline. Planned never does.
+- [x] On a 375 × 667 phone, the first screen of the board shows 6 or more horse rows, **Mark lot done** stays on screen while the lot scrolls, and every button is 44 px or more.
 
 ### 9.4 Phase 3 — Week plan, venues and riders
 
@@ -1221,3 +1223,29 @@ Where the build departed from this document, and why:
 | A8 | Not in the plan. | Up, Down, Move to and Remove post to one URL, `training_lot_member`, with an `action`. | Fewer URLs; one access check. |
 
 Not changed by phase 2a: the sidebar's Training link still opens the Log; phase 2b makes it open today's board. Nothing in `core/services.py` changed (5.5).
+
+---
+
+## 19. What changed in the build of phase 2b
+
+Phase 2b adds `LotDay` and the board fields on `Activity` (migration `training/0005_lot_board.py`), the **Board** tab, its pop-ups, and the **Training** tab on the phone bar. The sidebar's Training link now opens today's board. Every item in the phase 2b definition of done (9.3) has a test in `training/test_board.py` (26 tests). The full suite passes. In Chromium at 375 × 667, the first screen of the board shows 6 horse rows; after a scroll, **Mark lot done** stays at the top of the screen; every button on the board is 44 px or more. The computer view was checked at 1366 × 900. No script errors.
+
+Where the build departed from this document, and why:
+
+| # | The plan said | The build does | Why |
+|---|---|---|---|
+| L1 | **Copy** "does not copy Did not work". | Copy takes every horse of the last board, as **Planned**. The status of the old day is not copied. | Read literally, a day cancelled for weather would copy as an empty board. A horse that is lame should be on Box rest, which keeps it off the board anyway. |
+| L2 | The board rules go in `training/services.py`. | They are in `training/board.py`. `services.py` keeps the rules for records, lots and status. | One file for one subject. Each stays short enough to read. |
+| L3 | `change_horse_work(activity, …)`. | The record form does it. `board.apply_row_edit` holds the rules: new work stops the row following the lot; a new date takes it off the board; a new status is the person's own, not the lot's. | The record form already exists, with its checks. |
+| L4 | **Did not work ▾** on each row. | As planned. The other row actions (Move to, Remove from this date, and for **Lame or sore** the health links) are in a **…** menu. | Each row stays one line, so 6 rows fit on a phone screen. |
+| L5 | The status change "asks one question". | The status pop-up has **Also change the lot boards from this date**, ticked by default, shown when a board for today or later has started. It changes only rows on the board: plans added by hand are not removed. | One control for both directions (off the board and back on). Work planned outside the board is the person's own plan. |
+| L6 | Removing a horse from a lot "offers" to take it off started boards, default no. | The Lots tab shows a box **and from boards**, not ticked, beside **Remove**, when a board for today or later has started. | The same choice, with no second step. |
+| L7 | Not in the plan. | A horse added to a lot that is done is Done with it, and **Reopen lot** changes it back too. Adding to a cancelled lot is refused: reopen it first. **Mark lot done** on a cancelled lot and **Cancel lot** on a done lot are refused in the same way. | Each lot has one clear state. |
+| L8 | Not in the plan. | A horse can be on two lots on one date (for example a ride and the horse walker). The **Add horse** picker shows "In 2nd lot today" beside it. | It is real work. D6 limits standing lots, not days. |
+| L9 | Not in the plan. | On a phone, the page title is for screen readers only (the app bar already says Training), the day's totals are hidden, the "not confirmed" note sits under the date, and the lot's status is on its name line. | Without these, only 2 rows fitted on the first screen. |
+| L10 | Not in the plan. | The More sheet no longer lists Training: the bottom bar tab replaces it. The sidebar keeps its item. | One way to reach Training on a phone. |
+| L11 | Phase 2a's Log filter showed the horses now in a lot. | For work on the board it uses the lot of that day; for other work, the horse's lot now. | The plan said phase 2b adds the lot of each day. |
+| L12 | Not in the plan. | `LotDay` keeps history too. | "Every lot action leaves a history row with the user who did it" covers the lot as well as its horses. |
+| L13 | Not in the plan. | **Copy** with no earlier board starts from the lots and says so. **Add lot to this board** fills the lot from its standing horses that are not on the board yet. | A useful result instead of an empty one. |
+
+Not changed by phase 2b: nothing in `core/services.py` (5.5), no week plan, venues or riders (phase 3), and no workload signals (phase 4).

@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from health.forms import ActiveHorseFormMixin
 
-from .models import Activity, HorseTraining, Lot, TrainingSettings, WorkType
+from .models import Activity, HorseTraining, Lot, LotDay, TrainingSettings, WorkType
 
 DATE_WIDGET = forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'})
 
@@ -200,6 +200,12 @@ class HorseTrainingForm(forms.Form):
     notes = forms.CharField(
         required=False, widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
     )
+    update_boards = forms.BooleanField(
+        required=False, initial=True, label='Also change the lot boards from this date',
+        help_text=('Off the board: the planned work on this date becomes Did not work, '
+                   'and later planned work is removed. Back in work: the horse goes on '
+                   "today's board in its lot."),
+    )
 
     def __init__(self, *args, current_lot=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -222,3 +228,26 @@ class BoardSettingsForm(forms.ModelForm):
         self.fields['board_source'].choices = [
             (value, label) for value, label in TrainingSettings.BoardSource.choices if value in offered
         ]
+
+
+class LotDayForm(forms.ModelForm):
+    """The lot's work, time and notes for one date (the board's Change)."""
+
+    class Meta:
+        model = LotDay
+        fields = ['work_type', 'start_time', 'notes']
+        widgets = {
+            'work_type': forms.Select(attrs={'class': 'form-select'}),
+            'start_time': forms.TimeInput(format='%H:%M', attrs={'class': 'form-input', 'type': 'time'}),
+            'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+        }
+        labels = {'work_type': 'Work', 'start_time': 'Time'}
+        help_texts = {'work_type': "Horses with their own work for the day keep it."}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        work_types = Q(is_active=True)
+        if self.instance.work_type_id:
+            work_types |= Q(pk=self.instance.work_type_id)
+        self.fields['work_type'].queryset = WorkType.objects.filter(work_types)
+        self.fields['work_type'].empty_label = None

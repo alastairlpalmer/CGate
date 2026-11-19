@@ -131,6 +131,16 @@ class Activity(models.Model):
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
     )
     updated_at = models.DateTimeField(auto_now=True)
+    # Phase 2b: the lot board.
+    lot_day = models.ForeignKey(
+        'LotDay', null=True, blank=True, on_delete=models.PROTECT, related_name='activities',
+    )
+    # True until someone changes this horse's work for the day (5.4).
+    follows_lot = models.BooleanField(default=False)
+    # The lot action that set the status: '' | 'done' | 'cancel'. Reopen
+    # changes back only these rows (5.12).
+    lot_action = models.CharField(max_length=8, blank=True)
+    position = models.PositiveSmallIntegerField(default=0)
     history = HistoricalRecords()
 
     objects = ActivityQuerySet.as_manager()
@@ -142,6 +152,10 @@ class Activity(models.Model):
             models.CheckConstraint(
                 condition=(Q(status='not_done') & ~Q(reason='')) | (~Q(status='not_done') & Q(reason='')),
                 name='activity_reason_only_when_not_done',
+            ),
+            models.UniqueConstraint(
+                fields=['lot_day', 'horse'], condition=Q(lot_day__isnull=False),
+                name='activity_one_row_per_horse_per_lot_day',
             ),
         ]
         indexes = [
@@ -296,3 +310,46 @@ class TrainingSettings(models.Model):
     @classmethod
     def load(cls):
         return cls.objects.filter(pk=1).first() or cls(pk=1)
+
+
+
+# ─── Phase 2b: the lot board ─────────────────────────────────────────
+
+class LotDay(models.Model):
+    """One lot on one date: its work, time, notes, and whether it is done."""
+
+    class Status(models.TextChoices):
+        PLANNED = 'planned', 'Planned'
+        DONE = 'done', 'Done'
+        CANCELLED = 'cancelled', 'Cancelled'
+
+    lot = models.ForeignKey(Lot, on_delete=models.PROTECT, related_name='days')
+    date = models.DateField()
+    work_type = models.ForeignKey(WorkType, on_delete=models.PROTECT, related_name='lot_days')
+    start_time = models.TimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PLANNED)
+    confirmed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+    )
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ['date', 'lot__position', 'lot__name']
+        constraints = [
+            models.UniqueConstraint(fields=['lot', 'date'], name='lotday_one_per_lot_per_date'),
+        ]
+        indexes = [models.Index(fields=['date'], name='lotday_date')]
+
+    def __str__(self):
+        return f"{self.lot} · {self.date:%d %b %Y}"
+
+    @property
+    def is_open(self):
+        return self.status == self.Status.PLANNED

@@ -47,6 +47,7 @@ def training_card(user, horse):
         'status_since': status_row.status_since if status_row else None,
         'status_notes': status_row.notes if status_row else '',
         'lot': member.lot if member else None,
+        'today_row': rows.filter(date=today, lot_day__isnull=False).select_related('lot_day__lot').first(),
         'coming_up': list(rows.filter(date__gt=today).order_by('date', 'pk')[:COMING_UP]),
         'recent': list(
             rows.filter(date__lte=today, date__gt=today - timedelta(days=RECENT_DAYS))

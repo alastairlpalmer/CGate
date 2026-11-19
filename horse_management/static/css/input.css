@@ -2692,3 +2692,18 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
 @media (max-width: 1023px) {
     h1.sr-only + * { margin-top: 0 !important; }
 }
+
+/* Training: the lot board (docs/TRAINING_MODULE_PLAN.md, 8.2). The lot
+   header stays under the sticky app bar while its horses scroll, so Mark
+   lot done is always in reach. A row is one line of 48 px or more. */
+@layer components {
+    .lot-day-head {
+        @apply flex items-start justify-between gap-2 px-3 py-2 bg-white border-b border-light-sage rounded-t-card;
+        position: sticky;
+        top: var(--app-bar-h, 0px);
+        z-index: 10;
+    }
+    .lot-row { @apply flex items-center gap-2 px-3 min-h-[48px]; }
+    .row-menu { @apply absolute right-0 top-full mt-1 z-20 min-w-[13rem] bg-white rounded-card border border-light-sage shadow-float py-1; }
+    .row-menu-item { @apply block w-full text-left px-3 py-2 min-h-[44px] text-sm text-charcoal hover:bg-sage-50; }
+}

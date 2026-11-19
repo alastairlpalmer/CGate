@@ -29,6 +29,14 @@ A planned row dated today or earlier can be confirmed here.
            data-popup-title="Training status for {{ horse.name }}" class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Change training status and lot">Change</a>
         {% endif %}
     </div>
+    {% if training_card.today_row %}
+    <p class="px-4 pt-2 text-sm">
+        <span class="text-sage">Today:</span>
+        <a href="{% url 'training_board' %}#lot-day-{{ training_card.today_row.lot_day_id }}" class="link">{{ training_card.today_row.lot_day.lot.name }}</a>,
+        {{ training_card.today_row.work_type.name }}
+        {% include 'training/_status_badge.html' with activity=training_card.today_row %}
+    </p>
+    {% endif %}
     {% if training_card.status_notes %}<p class="px-4 pt-1 text-xs text-charcoal-light">{{ training_card.status_notes }}</p>{% endif %}
 
     {% if training_card.not_confirmed %}

@@ -131,7 +131,7 @@
                         {% endif %}
                         <td data-label="Date" class="whitespace-nowrap">{{ a.date|date:"D j M Y" }}</td>
                         <td data-label="Horse"><a href="{% url 'horse_detail' a.horse.pk %}" class="link tap-pad">{{ a.horse.name }}</a></td>
-                        <td data-label="Work">{{ a.work_type.name }}{% if a.effort_label %} <span class="badge-neutral">{{ a.effort_label }}</span>{% endif %}</td>
+                        <td data-label="Work">{{ a.work_type.name }}{% if a.effort_label %} <span class="badge-neutral">{{ a.effort_label }}</span>{% endif %}{% if a.lot_day %}<span class="block text-xs text-sage">{{ a.lot_day.lot.name }}</span>{% endif %}</td>
                         <td data-label="Minutes" class="text-sage">{{ a.minutes|default:"-" }}</td>
                         <td data-label="Status">{% include 'training/_status_badge.html' with activity=a %}</td>
                         <td data-label="Notes" class="text-sm text-charcoal-light">{{ a.notes|truncatechars:80|default:"" }}</td>
