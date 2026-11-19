@@ -1,6 +1,6 @@
 # Training dashboard (Overview) — plan
 
-**Status:** Phase A is built (section 10). Phases B and C are next. The owner decided T1 to T7 on 2026-11-19 (section 3).
+**Status:** Built. Phases A, B and C are done (section 10). Training stays behind `TRAINING_ENABLED`. The owner decided T1 to T7 on 2026-11-19 (section 3).
 
 **Revision 3.** 2026-11-19. The owner decided T1 to T7. T7 is new: the yard's own **Stable Staff** role gets Full on Training (section 3.1).
 
@@ -234,3 +234,33 @@ Departures from the plan:
 | A2 | Conditions and vet follow-ups in Not in work show only to a user with view on Health. | Health data stays with the Health access level. A Stable Staff role without Health sees the review badges only. |
 | A3 | The lot filter lists the active lots, not only today's lots. | A head lad can filter on a day with no board. |
 | A4 | The test checks that the query count is the same for 30 and for 110 horses, and 40 or fewer. | Section 7 said 15 or fewer. The Not in work card, the health facts and the session and role reads of every page add queries. The count does not grow with the yard. |
+
+### 10.2 Phase B
+
+| Part | Where |
+|---|---|
+| This week: one row for each horse, grouped by today's lot, then the standing lot, then "Not in a lot". The squares are the horse page's squares (one function, `load.day_cell`). | `overview.week_block`, `load.week`, `load.week_fast`, partial `overview_week_row.html` |
+| Large yards: one summary row for each lot ("23/24" for each day), opened with a tap; the first 10 horses, then "Show all". A lot chip shows the whole lot. Today and later days are grey (M6). | `overview.WEEK_OPEN`, `.training-count-*` |
+| Tomorrow: its lots and horse count, or "Not started" with a Start button that uses the yard's board source. | `overview.tomorrow_block` |
+| Riders today: each rider with their horses, most horses first. Folded into one row for a large yard. | `today_block`, partial `overview_rider_row.html` |
+| Faults M1 to M6: the name column has a fixed width and stays in place; the grid scrolls inside its card; whole rows are links. | `static/css/input.css` |
+| Tests: 5 more. | `training/test_overview.py` |
+
+Departure B1: the records are read once for Needs attention and This week, up to Sunday, so the grid shows planned work later in the week. The query count does not grow (the same test as A4).
+
+### 10.3 Phase C
+
+| Part | Where |
+|---|---|
+| First-run checklist in place of the figures: work types, lots, horses in lots, the board source, today's board. It goes when steps 2 to 4 are done. | `overview.setup_steps`, `overview.html` |
+| One header on every tab (C1), with one main button (C2): Overview, Open today's board; Board, Record training; Lots, Add lot; Log, Record training; Set up, none (each card has its own Add). | `templates/training/_header.html` |
+| Set up (C3): the Lot board card first; Add work type in the Work types card. | `setup.html` |
+| Empty states (C4): Lots, Log and Board already said what to do next, with a button. No change. | |
+| Tests: 5 more. | `training/test_overview.py` |
+
+Departures from the plan:
+
+| # | Change | Why |
+|---|---|---|
+| C-1 | Step 4 (the board source) is also done when any board has started. | A yard that used the board before this build never saved Set up. It must not see the checklist again. |
+| C-2 | Set up on a phone scrolled sideways (from phase 3): the hidden "Actions" label of the week plan table was outside its scroll box. Fixed with `relative` on the box. | Found in the browser check. |

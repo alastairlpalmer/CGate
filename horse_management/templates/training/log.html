@@ -5,24 +5,7 @@
 {% block content %}
 <div class="space-y-4">
 
-    <div class="page-header">
-        <div>
-            <h1 class="page-title">Training</h1>
-            <p class="page-subtitle">What each horse did, and what is planned.</p>
-        </div>
-        {% if can_change %}
-        <div class="flex items-center gap-3">
-            <a href="{% url 'training_activity_create' %}"
-               hx-get="{% url 'training_activity_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-               data-popup-title="Record training" class="btn-primary">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                Record training
-            </a>
-        </div>
-        {% endif %}
-    </div>
-
-    {% include 'training/_tabs.html' %}
+    {% include 'training/_header.html' with subtitle="What each horse did, and what is planned." %}
 
     {% if not_confirmed_count and filters.status != 'not_confirmed' %}
     <div class="alert-warning flex flex-wrap items-center justify-between gap-2" role="status">

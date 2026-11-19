@@ -1,0 +1,6 @@
+{# One rider in the Overview's Riders today card. #}
+<li class="px-4 py-2 text-sm">
+    <span class="font-semibold text-charcoal">{{ name }}</span>
+    <span class="text-sage">&middot; {{ horses|length }} horse{{ horses|length|pluralize }}</span>
+    <span class="block text-xs text-sage truncate">{{ horses|join:", " }}</span>
+</li>

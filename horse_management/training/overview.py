@@ -144,7 +144,7 @@ def _behind(rows, today, days_per_week):
     return needed > days_left
 
 
-def needs_attention(today, *, scope=None, lot=None, rest=None):
+def needs_attention(today, *, statuses, history, lot=None, rest=None):
     """The attention groups, in a fixed order. Horse facts use load.py, so
     the Overview, the board and the horse page say the same thing."""
     from .attention import NOT_CONFIRMED_DAYS
@@ -173,11 +173,6 @@ def needs_attention(today, *, scope=None, lot=None, rest=None):
     groups.append(review)
 
     threshold = TrainingSettings.load().no_work_days
-    qs = HorseTraining.objects.filter(status__in=HorseTraining.ON_BOARD, horse__is_active=True)
-    if scope is not None:
-        qs = qs.filter(horse_id__in=scope)
-    statuses = list(qs.select_related('horse').order_by('horse__name'))
-    history = load.rows_for([s.horse_id for s in statuses], today) if statuses else {}
     no_work = Group('no_work', f'No work {threshold}+ days', 'warn')
     fast = Group('fast', 'Fast work 2+ days running', 'info')
     first = Group('first', f'First work after {load.FIRST_WORK_GAP}+ days', 'info')
@@ -226,6 +221,7 @@ def today_block(today, lot_days):
     by_day = {}
     for row in rows:
         by_day.setdefault(row.lot_day_id, []).append(row)
+    lot_names = {ld.pk: ld.lot for ld in lot_days}
     for lot_day in lot_days:
         day_rows = by_day.get(lot_day.pk, [])
         lot_day.total = len(day_rows)
@@ -244,6 +240,12 @@ def today_block(today, lot_days):
         {'name': r.horse.name, 'reason': r.get_reason_display(), 'url': _horse_url(r.horse_id)}
         for r in rows if r.status == Activity.Status.NOT_DONE
     ]
+    riders = {}
+    for r in rows:
+        name = 'The owner' if r.rider_is_owner else (r.rider.name if r.rider_id else '')
+        if name and r.status != Activity.Status.NOT_DONE:
+            riders.setdefault(name, []).append(r.horse.name)
+    rider_list = sorted(riders.items(), key=lambda item: (-len(item[1]), item[0]))
     open_days = [ld for ld in lot_days if ld.is_open]
     timed = [ld for ld in open_days if ld.start_time]
     return {
@@ -251,7 +253,110 @@ def today_block(today, lot_days):
         'not_going': not_going,
         'done_count': sum(1 for ld in lot_days if ld.status == LotDay.Status.DONE),
         'next': timed[0] if timed else (open_days[0] if open_days else None),
+        'riders': rider_list,
+        'lot_of_horse': {r.horse_id: lot_names.get(r.lot_day_id) for r in rows},
     }
+
+
+# ─── This week (phase B) ────────────────────────────────────────────
+
+WEEK_OPEN = 10   # horses shown when a large yard opens a lot
+
+
+def week_block(today, statuses, history, *, lot_of_horse, large, lot=None):
+    """Horses in work, grouped by today's lot, else their standing lot.
+
+    A large yard gets one summary row for each lot (plan 4.3): for each day,
+    horses worked of horses in the lot. Today and later days are grey (M6).
+    """
+    standing = {
+        m.horse_id: m.lot for m in
+        LotMember.objects.filter(horse_id__in=[s.horse_id for s in statuses]).select_related('lot')
+    }
+    monday = today - timedelta(days=today.weekday())
+    days = [monday + timedelta(days=i) for i in range(7)]
+    groups = {}
+    for status in statuses:
+        rows = history.get(status.horse_id, [])
+        group_lot = lot_of_horse.get(status.horse_id) or standing.get(status.horse_id)
+        horse = {
+            'id': status.horse_id, 'name': status.horse.name,
+            'cells': load.week(rows, today),
+            'days': load.week_days_worked(rows, today),
+            'fast': load.week_fast(rows, today),
+        }
+        groups.setdefault(group_lot, []).append(horse)
+    ordered = sorted(groups.items(), key=lambda item: (
+        item[0] is None, item[0].position if item[0] else 0, item[0].name if item[0] else '',
+    ))
+    out = []
+    for group_lot, horses in ordered:
+        n = len(horses)
+        summary = []
+        for i, d in enumerate(days):
+            if d > today:
+                summary.append({'text': '', 'tone': 'later'})
+                continue
+            worked = sum(1 for h in horses if h['cells'][i]['tone'] in ('easy', 'steady', 'fast'))
+            if d == today:
+                tone = 'today'
+            elif worked == n:
+                tone = 'full'
+            elif n - worked >= 3:
+                tone = 'low'
+            else:
+                tone = 'part'
+            summary.append({'text': f'{worked}/{n}', 'tone': tone,
+                            'label': f'{d:%a}: {worked} of {n} horses worked'})
+        out.append({
+            'lot': group_lot,
+            'name': group_lot.name if group_lot else 'Not in a lot',
+            'horses': horses,
+            'shown': horses if (not large or lot is not None) else horses[:WEEK_OPEN],
+            'more': 0 if (not large or lot is not None) else max(0, n - WEEK_OPEN),
+            'summary': summary,
+            'fast': sum(h['fast'] for h in horses),
+        })
+    return {'days': days, 'groups': out, 'summary_rows': large and lot is None}
+
+
+def tomorrow_block(today, *, lot=None):
+    tomorrow = today + timedelta(days=1)
+    qs = (
+        LotDay.objects.filter(date=tomorrow).select_related('lot', 'work_type')
+        .annotate(n=Count('activities')).order_by('lot__position', 'lot__name')
+    )
+    if lot is not None:
+        qs = qs.filter(lot=lot)
+    lot_days = list(qs)
+    return {'date': tomorrow, 'lot_days': lot_days, 'horses': sum(ld.n for ld in lot_days)}
+
+
+# ─── First-run checklist (phase C, plan section 5) ───────────────────
+
+def setup_steps():
+    """The steps a new yard takes, each with a done flag. None when steps 2
+    to 4 are done: the card then goes away. The checks are counts; there is
+    no new model."""
+    from .models import WorkType
+    steps = [
+        {'key': 'work_types', 'label': 'Work types', 'done': WorkType.objects.filter(is_active=True).exists(),
+         'url': reverse('training_setup'), 'action': 'Open Set up'},
+        {'key': 'lots', 'label': 'Make your lots', 'done': Lot.objects.active().exists(),
+         'url': reverse('training_lots'), 'action': 'Add a lot'},
+        {'key': 'horses', 'label': 'Put horses in your lots',
+         'done': LotMember.objects.filter(lot__is_active=True, horse__is_active=True).exists(),
+         'url': reverse('training_lots'), 'action': 'Add horses'},
+        {'key': 'source', 'label': 'Choose how the board starts each day',
+         # A yard that started a board has chosen, even if it never saved Set up.
+         'done': TrainingSettings.objects.exists() or LotDay.objects.exists(),
+         'url': reverse('training_setup'), 'action': 'Choose'},
+        {'key': 'board', 'label': "Start today's board", 'done': LotDay.objects.exists(),
+         'url': reverse('training_board'), 'action': 'Open the board'},
+    ]
+    if all(step['done'] for step in steps[1:4]):
+        return None
+    return steps
 
 
 # ─── The page ────────────────────────────────────────────────────────
@@ -283,7 +388,17 @@ def build(today, *, lot=None, show_health=False):
         lot_days = [ld for ld in lot_days if ld.lot_id == lot.pk]
     today_data = today_block(today, lot_days)
     rest = not_in_work(today, scope=scope, show_health=show_health, large=large)
-    attention = needs_attention(today, scope=scope, lot=lot, rest=rest['action'])
+
+    # One read of the horses in work and their records, for Needs attention
+    # and This week. The rows reach Sunday, so the week shows planned work.
+    status_qs = on_board_qs if scope is None else on_board_qs.filter(horse_id__in=scope)
+    statuses = list(status_qs.select_related('horse').order_by('horse__name'))
+    sunday = today + timedelta(days=6 - today.weekday())
+    history = load.rows_for([st.horse_id for st in statuses], sunday) if statuses else {}
+    attention = needs_attention(today, statuses=statuses, history=history, lot=lot, rest=rest['action'])
+    week = week_block(
+        today, statuses, history, lot_of_horse=today_data['lot_of_horse'], large=large, lot=lot,
+    )
 
     labels = dict(HorseTraining.Status.choices)
     in_work_parts = [
@@ -298,4 +413,8 @@ def build(today, *, lot=None, show_health=False):
         'in_work_parts': in_work_parts,
         'rest': rest,
         'attention': attention,
+        'week': week,
+        'tomorrow': tomorrow_block(today, lot=lot),
+        'riders_folded': large,
+        'setup_steps': setup_steps(),
     }

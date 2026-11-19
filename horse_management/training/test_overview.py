@@ -18,7 +18,7 @@ from core.roles_testutils import assign_role, make_user_with_access
 from health.models import MedicalCondition, VetVisit
 
 from . import attention, board, overview, services
-from .models import Activity, HorseTraining, Lot, WorkType
+from .models import Activity, HorseTraining, Lot, LotDay, TrainingSettings, WorkType
 
 POPUP = {'HTTP_HX_REQUEST': 'true', 'HTTP_HX_TARGET': 'popup-body'}
 stable_staff = importlib.import_module('training.migrations.0009_stable_staff_training')
@@ -32,6 +32,7 @@ class Base(TestCase):
         self.second = Lot.objects.create(name='2nd lot', usual_work_type=self.canter, position=1)
         self.user = make_user_with_access('trainer', training='full', horses='view', health='view')
         self.client.force_login(self.user)
+        TrainingSettings.load().save()   # the yard chose a board source
 
     def horses(self, names, lot=None):
         made = [Horse.objects.create(name=n) for n in names]
@@ -278,3 +279,110 @@ class RestBadgeTests(TestCase):
         self.assertEqual(overview.rest_badge(row, today, today + timedelta(days=1))[1], 'Vet follow-up tomorrow')
         self.assertEqual(overview.rest_badge(row, today, today - timedelta(days=1))[1], 'Vet follow-up overdue')
         self.assertIsNone(overview.rest_badge(row, today, None))
+
+
+class WeekTests(Base):
+    """Phase B: This week, Tomorrow, Riders today."""
+
+    def test_week_cells_match_the_horse_page(self):
+        (ballybrook,) = self.horses(['Ballybrook'])
+        board.start_board(self.today, user=self.user, source='lots')
+        board.mark_lot_done(self.first.days.get(date=self.today), user=self.user, today=self.today)
+        week = self.page().context['week']
+        self.assertFalse(week['summary_rows'])
+        horse = week['groups'][0]['horses'][0]
+        cell = horse['cells'][self.today.weekday()]
+        self.assertEqual(cell['tone'], 'steady')
+        self.assertEqual(horse['days'], 1)
+        from .load import rows_for, strip
+        self.assertEqual(cell, strip(rows_for([ballybrook.pk], self.today)[ballybrook.pk], self.today)[-1])
+
+    def test_groups_follow_lots_and_horses_with_no_lot_come_last(self):
+        self.horses(['Ballybrook'], self.second)
+        self.horses(['Kestrel'], self.first)
+        loose = Horse.objects.create(name='Loose')
+        services.set_status(loose, HorseTraining.Status.IN_WORK, self.today)
+        names = [g['name'] for g in self.page().context['week']['groups']]
+        self.assertEqual(names, ['1st lot', '2nd lot', 'Not in a lot'])
+
+    def test_large_yard_gets_lot_summary_rows(self):
+        made = self.horses([f'A {i:02}' for i in range(30)])
+        board.start_board(self.today - timedelta(days=1), user=self.user, source='lots')
+        Activity.objects.filter(horse__in=made[:5], date=self.today - timedelta(days=1)).update(
+            status=Activity.Status.NOT_DONE, reason=Activity.Reason.WEATHER,
+        )
+        Activity.objects.filter(horse__in=made[5:]).update(status=Activity.Status.DONE)
+        week = self.page().context['week']
+        self.assertTrue(week['summary_rows'])
+        group = week['groups'][0]
+        self.assertEqual(len(group['shown']), 10)
+        self.assertEqual(group['more'], 20)
+        if self.today.weekday() > 0:
+            yesterday = group['summary'][self.today.weekday() - 1]
+            self.assertEqual((yesterday['text'], yesterday['tone']), ('25/30', 'low'))
+        self.assertEqual(group['summary'][self.today.weekday()]['tone'], 'today')
+        # A lot chip opens the whole lot.
+        week = self.page(lot=self.first.pk).context['week']
+        self.assertFalse(week['summary_rows'])
+        self.assertEqual(len(week['groups'][0]['shown']), 30)
+
+    def test_tomorrow_not_started_offers_start(self):
+        self.horses(['Ballybrook'])
+        response = self.page()
+        self.assertContains(response, reverse('training_board_start', args=[(self.today + timedelta(days=1)).isoformat()]))
+        self.assertContains(response, 'Start from the lots')
+        board.start_board(self.today + timedelta(days=1), user=self.user, source='lots')
+        tomorrow = self.page().context['tomorrow']
+        self.assertEqual(tomorrow['horses'], 1)
+
+    def test_riders_today(self):
+        from .models import Rider
+        sam = Rider.objects.create(name='Sam')
+        made = self.horses(['Ballybrook', 'Red Kite', 'Juniper'])
+        board.start_board(self.today, user=self.user, source='lots')
+        Activity.objects.filter(horse__in=made[:2], date=self.today).update(rider=sam)
+        Activity.objects.filter(horse=made[2], date=self.today).update(rider_is_owner=True)
+        riders = self.page().context['today_data']['riders']
+        self.assertEqual(riders, [('Sam', ['Ballybrook', 'Red Kite']), ('The owner', ['Juniper'])])
+
+
+class ChecklistTests(Base):
+    """Phase C: the first-run checklist (plan section 5)."""
+
+    def test_new_yard_sees_the_checklist_in_place_of_the_figures(self):
+        TrainingSettings.objects.all().delete()
+        response = self.page()
+        steps = {step['key']: step['done'] for step in response.context['setup_steps']}
+        self.assertEqual(steps, {'work_types': True, 'lots': True, 'horses': False, 'source': False, 'board': False})
+        self.assertContains(response, 'Set up Training')
+        self.assertNotContains(response, 'metric-strip')
+
+    def test_checklist_goes_when_steps_two_to_four_are_done(self):
+        self.horses(['Ballybrook'])
+        response = self.page()
+        self.assertIsNone(response.context['setup_steps'])
+        self.assertContains(response, 'metric-strip')
+        self.assertFalse(LotDay.objects.exists())
+
+    def test_a_started_board_counts_as_a_chosen_source(self):
+        TrainingSettings.objects.all().delete()
+        self.horses(['Ballybrook'])
+        board.start_board(self.today, user=self.user, source='lots')
+        self.assertIsNone(self.page().context['setup_steps'])
+
+class HeaderTests(Base):
+    """Phase C: one header on every tab, with one main button (C1, C2)."""
+
+    def test_each_tab_has_the_header_and_its_main_button(self):
+        pages = {
+            'training_home': "Start today's board",
+            'training_board': 'Record training',
+            'training_lots': 'Add lot',
+            'training_log': 'Record training',
+            'training_setup': 'Add work type',
+        }
+        for name, button in pages.items():
+            with self.subTest(name):
+                response = self.client.get(reverse(name))
+                self.assertTemplateUsed(response, 'training/_header.html')
+                self.assertContains(response, button)
