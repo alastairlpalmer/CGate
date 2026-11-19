@@ -1,29 +1,47 @@
 {% comment %}
 The form for a general calendar item, in the pop-up sheet
 (core.views.calendar_entries). Context: form, entry (None when adding),
-action_url. Delete is a submit button of the same form with name="delete",
+action_url, on (the day a repeating item was opened from). Delete is a
+submit button of the same form with name="delete",
 so the sheet needs no second form.
 {% endcomment %}
-<form method="post" action="{{ action_url }}"
+<form method="post" action="{{ action_url }}" x-data="{ repeats: {{ form.repeat.value|yesno:'true,false' }} }"
       hx-post="{{ action_url }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false">
     {% csrf_token %}
     <div class="px-4 py-3 space-y-3">
         {% include 'includes/form_errors.html' with form=form intro="This wasn't saved:" %}
+        {% if entry.repeat %}
+        <p class="text-xs text-sage">This item repeats. A change here applies to every day of it.</p>
+        {% endif %}
         <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
             {% include "includes/form_field.html" with field=form.title span="2" %}
             {% include "includes/form_field.html" with field=form.date %}
             {% include "includes/form_field.html" with field=form.time %}
+            {% include "includes/form_field.html" with field=form.repeat %}
+            {# "Until" shows only while Repeat is set (the select sets `repeats`) #}
+            <div x-show="repeats" {% if not form.repeat.value %}x-cloak{% endif %}>
+                {% include "includes/form_field.html" with field=form.repeat_until %}
+            </div>
             {% include "includes/form_field.html" with field=form.location %}
             {% include "includes/form_field.html" with field=form.horse %}
             {% include "includes/form_field.html" with field=form.notes span="2" %}
         </div>
     </div>
     <div class="popup-footer">
-        {% if entry %}
+        {% if entry and on %}
+        {# A repeating item, opened from one of its days #}
+        <div class="mr-auto flex items-center gap-1 text-xs">
+            <span class="text-sage">Delete:</span>
+            <button type="submit" name="delete" value="day" class="btn-ghost btn-xs text-error-red whitespace-nowrap" formnovalidate
+                    onclick="return confirm('Take this item off {{ on|date:'j F' }} only?')">{{ on|date:'j M' }} only</button>
+            <button type="submit" name="delete" value="all" class="btn-ghost btn-xs text-error-red whitespace-nowrap" formnovalidate
+                    onclick="return confirm('Take every day of this item off the calendar?')">All days</button>
+        </div>
+        {% elif entry %}
         <button type="submit" name="delete" value="1" class="btn-ghost mr-auto text-error-red" formnovalidate
                 onclick="return confirm('Take this item off the calendar?')">Delete</button>
         {% endif %}
         <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
-        <button type="submit" class="btn-primary">{% if entry %}Save Changes{% else %}Add to calendar{% endif %}</button>
+        <button type="submit" class="btn-primary whitespace-nowrap">{% if entry %}Save{% else %}Add to calendar{% endif %}</button>
     </div>
 </form>

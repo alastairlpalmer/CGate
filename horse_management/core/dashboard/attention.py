@@ -921,17 +921,24 @@ CALENDAR_LOOKBACK_DAYS = 400
 def _calendar_entries(ctx):
     """General items people put on the calendar (core.models.CalendarEntry).
 
-    One item per entry from a year back to the end of the horizon. An
+    One item per day an entry falls on, from a year back to the end of the
+    horizon: a repeating entry gives one item for each of its days. An
     entry is never overdue: a day that has passed is history, not a job
-    left undone, so a past entry is ``info`` and stays on its calendar
-    day only. On its own day it is due, so it is in the notification
-    centre that day.
+    left undone, so a past day is ``info`` and stays on its calendar day
+    only. On its own day it is due, so it is in the notification centre
+    that day.
     """
+    from django.db.models import Q
+
     from ..models import CalendarEntry
 
     start = ctx.today - timedelta(days=CALENDAR_LOOKBACK_DAYS)
+    end = ctx.horizon
     entries = (
-        CalendarEntry.objects.filter(date__gte=start, date__lte=ctx.horizon)
+        CalendarEntry.objects.filter(
+            Q(repeat='', date__gte=start, date__lte=end)
+            | (~Q(repeat='') & Q(date__lte=end) & (Q(repeat_until__isnull=True) | Q(repeat_until__gte=start)))
+        )
         .select_related('location', 'horse')
     )
     edit = ctx.can('dashboard', LEVEL_FULL)
@@ -946,25 +953,32 @@ def _calendar_entries(ctx):
             parts.append(entry.time.strftime('%H:%M'))
         if entry.horse_id:
             parts.append(entry.horse.name)
+        if entry.repeat:
+            parts.append(entry.get_repeat_display())
         if entry.notes:
             parts.append(entry.notes.splitlines()[0][:80])
-        url = reverse('calendar_entry_edit', args=[entry.pk])
-        actions = []
-        if edit:
-            actions.append(Action(label='Edit', url=url, popup_title='Edit calendar item'))
-        items.append(AttentionItem(
-            kind='calendar',
-            severity='due' if entry.date >= ctx.today else 'info',
-            title=entry.title,
-            detail=' · '.join(parts),
-            url=url,
-            due_date=entry.date,
-            delta=ctx.delta(entry.date),
-            location=location,
-            site=site,
-            actions=actions,
-            key=f'calendar-{entry.pk}',
-        ))
+        detail = ' · '.join(parts)
+        base_url = reverse('calendar_entry_edit', args=[entry.pk])
+        for day in entry.occurrences(start, end):
+            # A repeating item's link names its day, so the form can take
+            # that one day off ("Delete this day only").
+            url = f'{base_url}?on={day:%Y-%m-%d}' if entry.repeat else base_url
+            actions = []
+            if edit:
+                actions.append(Action(label='Edit', url=url, popup_title='Edit calendar item'))
+            items.append(AttentionItem(
+                kind='calendar',
+                severity='due' if day >= ctx.today else 'info',
+                title=entry.title,
+                detail=detail,
+                url=url,
+                due_date=day,
+                delta=ctx.delta(day),
+                location=location,
+                site=site,
+                actions=actions,
+                key=f'calendar-{entry.pk}-{day:%Y%m%d}' if entry.repeat else f'calendar-{entry.pk}',
+            ))
     return items
 
 

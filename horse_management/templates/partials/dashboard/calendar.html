@@ -112,7 +112,12 @@ first two kinds due.
                     </div>
                     <div class="attn-foot">
                         <div class="attn-when">
+                            {% if item.kind == 'calendar' and item.delta < 0 %}
+                            {# A calendar item on a past day happened; it is never overdue #}
+                            <span class="badge-neutral">{{ item.due_date|ago_label }}</span>
+                            {% else %}
                             <span class="{% if item.is_overdue %}badge-danger{% elif item.delta == 0 %}badge-warning{% else %}badge-neutral{% endif %}">{{ item.due_date|due_label }}</span>
+                            {% endif %}
                         </div>
                         {% comment %}A calendar item someone added is changed or deleted
                         with Edit, so it has no Dismiss.{% endcomment %}
