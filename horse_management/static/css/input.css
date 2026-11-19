@@ -1191,14 +1191,11 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
     .location-map.is-full { height: min(70vh, 640px); min-height: 20rem; }
     /* The dashboard card's map. In one column (phones, portrait tablets) it
        is square, capped so it never outgrows the screen. From lg it sits
-       beside the Needs action and Next 14 days column and fills the card,
-       which the grid stretches to that column's height: the map is as
-       tall as the lists beside it, never much taller, so the two sides
-       end together. The floor keeps it a useful size when the column is
-       short. */
+       under the calendar, two thirds of the width, at a height that
+       follows the screen within a floor and a ceiling. */
     .location-map.is-compact { aspect-ratio: 1 / 1; max-height: min(26rem, 70vh); }
     @media (min-width: 1024px) {
-        .location-map.is-compact { aspect-ratio: auto; max-height: 48rem; flex: 1 1 auto; min-height: clamp(20rem, 45vh, 32rem); }
+        .location-map.is-compact { aspect-ratio: auto; height: clamp(22rem, 50vh, 34rem); }
     }
     .location-map .leaflet-container { @apply bg-white font-body; }
     /* The base map (Map button): muted so the parcels stay the picture, and
@@ -1291,6 +1288,25 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
     .milestone-action { @apply shrink-0; }
 
     /* Money */
+    /* The yard's figures across the top (partials/dashboard/metrics.html).
+       Two to a row on a phone, three on a tablet, one row on a wide
+       screen however many figures the role sees. */
+    .metric-strip { @apply grid grid-cols-2 gap-3 sm:grid-cols-3; }
+    @media (min-width: 1024px) { .metric-strip { grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); } }
+    .metric { @apply rounded-card border border-light-sage bg-white flex min-w-0 flex-col items-start px-4 py-3 text-left no-underline transition-colors hover:border-sage; }
+    .metric-label { @apply text-xs text-charcoal-light; }
+    .metric-value { @apply mt-1 font-heading text-2xl font-semibold leading-none tracking-[-0.01em] text-forest tabular-nums; }
+    .metric-meta { @apply mt-1.5 block w-full truncate text-xs text-sage; }
+    .metric.is-alert { @apply border-saddle/40 bg-saddle-50; }
+    .metric.is-alert .metric-value { @apply text-saddle; }
+
+    /* The Timeline's filter chips and its scrolling list. From lg the card
+       is as tall as the calendar and map beside it; the list scrolls. */
+    .timeline-filters { @apply flex flex-wrap gap-1.5 border-b border-light-sage px-4 py-2.5 lg:px-5; }
+    .timeline-chip { @apply inline-flex min-h-[32px] items-center rounded-full border border-light-sage bg-white px-3 text-xs text-charcoal transition-colors hover:border-sage; }
+    .timeline-chip.is-on { @apply border-forest bg-sage-50 text-forest; }
+    @media (min-width: 1024px) { .timeline-scroll { @apply min-h-0 flex-1 overflow-y-auto; } }
+
     .money-grid { @apply grid grid-cols-2 gap-3 p-4 lg:grid-cols-4 lg:p-5; }
     .money-fig { @apply flex flex-col rounded-lg bg-sand-50 px-4 py-3 no-underline transition-colors; }
     a.money-fig:hover { @apply bg-sand-100; }

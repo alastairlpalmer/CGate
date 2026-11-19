@@ -1,4 +1,4 @@
-"""What changed on the yard: one chronological log.
+"""The Timeline: what changed on the yard, as one chronological log.
 
 Each source is a small, ordered, capped query; the results merge by date
 and the newest survive. That is what "recent" means. The old widget took
@@ -437,3 +437,26 @@ def _day_label(day, today):
     if delta < 7:
         return day.strftime('%A'), True
     return day.strftime('%a %-d %b'), False
+
+
+# The Timeline's filter chips, in this order.
+GROUP_LABELS = (
+    ('yard', 'Yard'),
+    ('health', 'Health'),
+    ('money', 'Money'),
+    ('documents', 'Documents'),
+)
+
+
+def groups(days):
+    """The filter chips for these days: only the groups that have a row.
+
+    The rows are already only what the viewer's role may see, so the chips
+    follow the role too. Also sets ``day['groups']`` for the day headings.
+    """
+    present = set()
+    for day in days:
+        day_groups = {event.group for event in day['events']}
+        day['groups'] = sorted(day_groups)
+        present |= day_groups
+    return [{'key': key, 'label': label} for key, label in GROUP_LABELS if key in present]

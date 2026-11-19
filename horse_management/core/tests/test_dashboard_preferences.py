@@ -282,7 +282,7 @@ class DashboardZoneGatingTests(TestCase):
         self.client.force_login(user)
         self._hide(user, 'activity')
         body = self.client.get(reverse('dashboard')).content.decode()
-        self.assertNotIn('What changed', body)
+        self.assertNotIn('timeline-title', body)
         self.assertNotIn(reverse('dashboard_activity'), body)
         # Money still loads lazily.
         self.assertIn(reverse('dashboard_money'), body)

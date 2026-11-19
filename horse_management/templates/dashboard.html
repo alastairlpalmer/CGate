@@ -48,58 +48,44 @@ it does not (partials/dashboard/site_tools.html).{% endcomment %}
     <div class="alert-error">The dashboard could not load its data. The error has been logged; try again in a moment.</div>
     {% endif %}
 
-    {# ── Near you, and the month calendar ── #}
-    {% comment %}
-    The map of the site you are on comes first: on a phone at the top, on
-    a wide screen large on the left with the calendar beside it — half and
-    half on a laptop, seven columns to five from 1728px. The map grows to
-    the calendar's height, so the two sides end together. The card
-    announces whether it shows (near-you:visible); without it the calendar
-    takes the whole row and names what is due in each day.
-    {% endcomment %}
-    {% if 'upcoming' in visible or near_you_card %}
-    <div class="grid grid-cols-1 gap-4 lg:grid-cols-12"
-         x-data="{ hasMap: {{ near_you_card.shows_without_gps|yesno:'true,false' }} }"
-         @near-you:visible="hasMap = $event.detail">
-        {% if near_you_card %}
-        {% include 'partials/dashboard/near_you.html' %}
-        {% endif %}
-        {% if 'upcoming' in visible %}
-        <section class="zone-enter" style="--i:2" aria-labelledby="upcoming-title" :class="hasMap ? 'lg:col-span-6 min-[1728px]:col-span-5' : 'lg:col-span-12'">
-            {% include 'partials/dashboard/calendar.html' %}
-        </section>
-        {% endif %}
-    </div>
-    {% endif %}
-
-    {# ── Seasonal: mares in foal (renders only when there are any) ── #}
-    {% if 'in_foal' in visible and in_foal %}
-    <section class="zone-enter" style="--i:5" aria-labelledby="in-foal-title">
-        {% include 'partials/dashboard/in_foal.html' %}
+    {# ── The yard's figures, across the whole width ── #}
+    {% if 'metrics' in visible and metrics %}
+    <section class="zone-enter" style="--i:1" aria-label="The yard at a glance" data-testid="metrics-zone">
+        {% include 'partials/dashboard/metrics.html' %}
     </section>
     {% endif %}
 
-    {# ── E + F. Money, and what changed: loaded after first paint ── #}
-    {% if 'money' in visible or 'activity' in visible %}
-    <div class="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        {% if 'money' in visible %}
-        <section class="zone-enter {% if 'activity' in visible %}lg:col-span-7{% else %}lg:col-span-12{% endif %}" style="--i:5">
-            <div hx-get="{% url 'dashboard_money' %}" hx-trigger="load" hx-swap="outerHTML" hx-target="this" hx-select="unset" hx-push-url="false">
-                <div class="card overflow-hidden" aria-busy="true">
-                    <div class="section-header"><h2 class="section-title">Money</h2></div>
-                    <div class="grid grid-cols-2 gap-3 p-4 lg:grid-cols-4">
-                        <div class="skeleton-card h-20"></div><div class="skeleton-card h-20"></div>
-                        <div class="skeleton-card h-20"></div><div class="skeleton-card h-20"></div>
-                    </div>
-                </div>
-            </div>
-        </section>
+    {# ── The calendar and the map on the left, the Timeline on the right ── #}
+    {% comment %}
+    From lg the page is three columns: the calendar on top of the Near you
+    map in the left two, and the Timeline in the third. The Timeline does
+    not set the row's height: its card is pinned to the column
+    (lg:absolute inset-0), so it is exactly as tall as the calendar and
+    the map together and scrolls inside. On a phone it is one column:
+    calendar, map, then the Timeline. Without the calendar and the map the
+    Timeline takes the whole width; without the Timeline the left column
+    does.
+    {% endcomment %}
+    {% if 'upcoming' in visible or near_you_card or 'activity' in visible %}
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="main-grid">
+        {% if 'upcoming' in visible or near_you_card %}
+        <div class="flex min-w-0 flex-col gap-4 {% if 'activity' in visible %}lg:col-span-2{% else %}lg:col-span-3{% endif %}" data-testid="main-left">
+            {% if 'upcoming' in visible %}
+            <section class="zone-enter" style="--i:2" aria-labelledby="upcoming-title">
+                {% include 'partials/dashboard/calendar.html' %}
+            </section>
+            {% endif %}
+            {% if near_you_card %}
+            {% include 'partials/dashboard/near_you.html' %}
+            {% endif %}
+        </div>
         {% endif %}
         {% if 'activity' in visible %}
-        <section class="zone-enter {% if 'money' in visible %}lg:col-span-5{% else %}lg:col-span-12{% endif %}" style="--i:6">
-            <div hx-get="{% url 'dashboard_activity' %}" hx-trigger="load" hx-swap="outerHTML" hx-target="this" hx-select="unset" hx-push-url="false">
-                <div class="card overflow-hidden" aria-busy="true">
-                    <div class="section-header"><h2 class="section-title">What changed</h2></div>
+        <section class="zone-enter relative min-h-0 {% if 'upcoming' in visible or near_you_card %}lg:col-span-1{% else %}lg:col-span-3{% endif %}" style="--i:4" aria-labelledby="timeline-title" data-testid="timeline-zone">
+            <div class="h-full {% if 'upcoming' in visible or near_you_card %}lg:absolute lg:inset-0{% endif %}"
+                 hx-get="{% url 'dashboard_activity' %}" hx-trigger="load" hx-swap="innerHTML" hx-target="this" hx-select="unset" hx-push-url="false">
+                <div class="card overflow-hidden h-full" aria-busy="true">
+                    <div class="section-header"><h2 class="section-title" id="timeline-title">Timeline</h2></div>
                     <div class="p-4 space-y-3">
                         <div class="skeleton-text-sm w-1/4"></div>
                         <div class="skeleton-text w-3/4"></div>
@@ -112,6 +98,28 @@ it does not (partials/dashboard/site_tools.html).{% endcomment %}
         </section>
         {% endif %}
     </div>
+    {% endif %}
+
+    {# ── Seasonal: mares in foal (renders only when there are any) ── #}
+    {% if 'in_foal' in visible and in_foal %}
+    <section class="zone-enter" style="--i:5" aria-labelledby="in-foal-title">
+        {% include 'partials/dashboard/in_foal.html' %}
+    </section>
+    {% endif %}
+
+    {# ── Money: loaded after first paint ── #}
+    {% if 'money' in visible %}
+    <section class="zone-enter" style="--i:6">
+        <div hx-get="{% url 'dashboard_money' %}" hx-trigger="load" hx-swap="outerHTML" hx-target="this" hx-select="unset" hx-push-url="false">
+            <div class="card overflow-hidden" aria-busy="true">
+                <div class="section-header"><h2 class="section-title">Money</h2></div>
+                <div class="grid grid-cols-2 gap-3 p-4 lg:grid-cols-4">
+                    <div class="skeleton-card h-20"></div><div class="skeleton-card h-20"></div>
+                    <div class="skeleton-card h-20"></div><div class="skeleton-card h-20"></div>
+                </div>
+            </div>
+        </div>
+    </section>
     {% endif %}
 
     {% if not visible %}

@@ -41,13 +41,13 @@ class InvoiceHorseOrderTests(SimpleTestCase):
 
 
 class ActivityFoldTests(SimpleTestCase):
-    def test_after_eight_events_the_rest_fold(self):
+    def test_after_the_shown_events_the_rest_fold(self):
         days = [
             {'events': [SimpleNamespace() for _ in range(5)]},
             {'events': [SimpleNamespace() for _ in range(5)]},
             {'events': [SimpleNamespace() for _ in range(2)]},
         ]
-        self.assertEqual(_fold_activity(days), 4)
+        self.assertEqual(_fold_activity(days, shown=8), 4)
         self.assertEqual([e.folded for e in days[1]['events']],
                          [False, False, False, True, True])
         self.assertFalse(days[1]['folded'])

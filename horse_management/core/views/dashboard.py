@@ -1,8 +1,8 @@
 """Home dashboard views.
 
-The page is five zones (see ``core.dashboard_widgets``). The first response
-carries the headline, the calendar, the Near you map and the In foal
-block; Money and What changed load afterwards
+The page is six zones (see ``core.dashboard_widgets``). The first response
+carries the headline, the yard's figures, the calendar, the Near you map
+and the In foal block; Money and the Timeline load afterwards
 through their own endpoints so the page paints fast. The data comes from
 ``core.dashboard``; these views only assemble it.
 """
@@ -21,7 +21,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from ..dashboard import activity as activity_data
-from ..dashboard import attention, board, breeding, dismissals
+from ..dashboard import attention, board, breeding, dismissals, metrics
 from ..dashboard import calendar as calendar_data
 from ..dashboard import money as money_data
 from ..dashboard import upcoming as upcoming_data
@@ -170,6 +170,7 @@ def _empty_context(request):
         'summary': {'things': 0, 'overdue': 0, 'today': 0, 'upcoming': 0, 'money': 0, 'health': 0, 'yard': 0},
         'upcoming': None,
         'in_foal': [],
+        'metrics': [],
         'departure_ids': [],
     }
 
@@ -216,6 +217,13 @@ def _dashboard_inner(request):
     if 'in_foal' in visible:
         in_foal = breeding.in_foal(request.user, site=site, today=today)
 
+    yard_metrics = []
+    if 'metrics' in visible:
+        yard_metrics = metrics.build(
+            request.user, site=site, today=today, needs_action=summary['things'],
+            in_foal=in_foal if 'in_foal' in visible else None,
+        )
+
     departure_ids = [
         str(item.horse_id) for item in inbox_items
         if item.kind == 'departure' and item.horse_id is not None
@@ -246,6 +254,7 @@ def _dashboard_inner(request):
         'upcoming': upcoming,
         'calendar': month_calendar,
         'in_foal': in_foal,
+        'metrics': yard_metrics,
         'departure_ids': departure_ids,
         'near_you': near_you,
         'near_you_card': near_you_card_data,
@@ -324,20 +333,26 @@ def dashboard_money(request):
 
 @feature_required('dashboard')
 def dashboard_activity(request):
-    """HTMX partial: what changed, loaded after first paint."""
+    """HTMX partial: the Timeline, loaded after first paint."""
     pref = DashboardPreference.get_for(request.user)
     if 'activity' not in pref.visible_keys():
         return HttpResponse('')
     today = timezone.localdate()
-    days = activity_data.recent(request.user, site=pref.site, today=today)
+    days = activity_data.recent(
+        request.user, site=pref.site, today=today, limit=TIMELINE_ROWS, max_rows=TIMELINE_ROWS)
     return render(request, 'partials/dashboard/activity.html', {
         'days': days,
+        'groups': activity_data.groups(days),
         'folded_count': _fold_activity(days),
         'site': pref.site,
     })
 
 
-ACTIVITY_SHOWN = 8
+# The Timeline is as tall as the calendar and map beside it and scrolls,
+# so it reads further back than the old card. The first ACTIVITY_SHOWN
+# rows show; the rest fold behind "Show N earlier changes".
+TIMELINE_ROWS = 30
+ACTIVITY_SHOWN = 14
 
 
 def _fold_activity(days, shown=ACTIVITY_SHOWN):

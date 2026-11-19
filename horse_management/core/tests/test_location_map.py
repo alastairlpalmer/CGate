@@ -281,38 +281,39 @@ class NearYouCardTests(TestCase):
         self.assertContains(response, 'id="map-data-colgate-compact"')
         self.assertContains(response, 'is-compact', count=2)
 
-    def test_card_is_the_first_zone_on_a_phone_and_a_column_on_a_wide_screen(self):
+    def test_calendar_on_top_map_below_timeline_beside(self):
         response = self.client.get(reverse('dashboard'))
-        # One site: the card shows without GPS, so the grid keeps it a column from first paint.
-        self.assertTrue(response.context['near_you_card']['shows_without_gps'])
-        self.assertContains(response, 'x-data="{ hasMap: true }"')
+        body = response.content
         self.assertContains(response, 'data-testid="near-you-zone"')
-        zone = response.content[response.content.index(b'data-testid="near-you-zone"') - 400:response.content.index(b'data-testid="near-you-zone"')]
-        self.assertIn(b'lg:col-span-6 min-[1728px]:col-span-7', zone)  # half the width beside the calendar; seven of twelve from 1728px
-        self.assertIn(b'x-show="ready"', zone)       # a hidden card takes no grid cell
-        # The map is the first zone: before the month calendar, which keeps
-        # five columns for itself only while the card shows and takes the
-        # whole row when it does not.
-        self.assertLess(response.content.index(b'near-you-title'), response.content.index(b'upcoming-title'))
-        self.assertContains(response, "hasMap ? 'lg:col-span-6 min-[1728px]:col-span-5' : 'lg:col-span-12'")
+        # Left two thirds: the calendar, then the map under it.
+        left = body.index(b'data-testid="main-left"')
+        self.assertLess(left, body.index(b'upcoming-title'))
+        self.assertLess(body.index(b'upcoming-title'), body.index(b'near-you-title'))
+        self.assertIn(b'lg:col-span-2', body[left - 200:left])
+        # Right third: the Timeline, pinned to the column so it is as tall
+        # as the calendar and the map together.
+        timeline = body.index(b'data-testid="timeline-zone"')
+        self.assertLess(body.index(b'near-you-title'), timeline)
+        self.assertIn(b'lg:col-span-1', body[timeline - 300:timeline])
+        self.assertIn(b'lg:absolute lg:inset-0', body[timeline:timeline + 400])
+        zone = body[body.index(b'data-testid="near-you-zone"') - 400:body.index(b'data-testid="near-you-zone"')]
+        self.assertIn(b'x-show="ready"', zone)       # a hidden card takes no room
         # Both maps carry the Map button that shows the base map under the shapes.
         self.assertContains(response, 'class="location-map-tiles"')
         # The compact map carries the names (the highlighted one shows) and the leader-line layer.
         self.assertContains(response, 'location-map-leaders')
         self.assertContains(response, f'data-map-label="{self.a.pk}"')
 
-    def test_card_column_waits_for_gps_when_all_sites_are_chosen(self):
+    def test_card_waits_for_gps_when_all_sites_are_chosen(self):
         Location.objects.create(name='Far', site='Colgate', latitude=Decimal('52'), longitude=Decimal('-1'))
         response = self.client.get(reverse('dashboard'))
-        # Two sites and no chosen one: only GPS can pick a site, so the lists start full width.
+        # Two sites and no chosen one: only GPS can pick a site.
         self.assertFalse(response.context['near_you_card']['shows_without_gps'])
-        self.assertContains(response, 'x-data="{ hasMap: false }"')
         pref = DashboardPreference.get_for(self.user)
         pref.site = 'Somerford'
         pref.save()
         response = self.client.get(reverse('dashboard'))
         self.assertTrue(response.context['near_you_card']['shows_without_gps'])
-        self.assertContains(response, 'x-data="{ hasMap: true }"')
 
     def test_default_site_and_pin(self):
         pref = DashboardPreference.get_for(self.user)

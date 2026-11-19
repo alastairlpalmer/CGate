@@ -1,27 +1,43 @@
 {% load ui_extras %}
 {% comment %}
-Zone F: what changed, newest first, grouped by day. Loaded after first
-paint. Context: days (core.dashboard.activity.recent), site.
+The Timeline: what changed, newest first, grouped by day. Loaded after
+first paint into the right-hand column. Context: days
+(core.dashboard.activity.recent), groups, folded_count, site.
+
+What a viewer sees follows their role: activity.recent only reads the
+sources the role may view (horses, health, charges, invoices, feed), so
+an administrator sees every kind and a groom sees no money. The filter
+chips are the groups that are left; with one group there are no chips.
 
 Each row: a tinted glyph for the kind, the horses (or owner, or location)
 as chips with their coat colour, what happened, and any money on the right.
 A farrier round or a batch of vaccinations is one row naming every horse.
-The first eight rows show; the rest fold behind "Show N earlier changes"
-(core.views.dashboard._fold_activity), so the card stays near the height
-of the cards beside it.
+On a wide screen the card is as tall as the calendar and map beside it and
+its list scrolls and shows every row. On a phone the first rows show and
+the rest fold behind "Show N earlier changes"
+(core.views.dashboard._fold_activity). A filter shows
+every row of its group.
 {% endcomment %}
-<div class="card overflow-hidden h-full">
+<div class="card overflow-hidden h-full flex flex-col" x-data="{ all: window.matchMedia('(min-width: 1024px)').matches, show: 'all' }">
     <div class="section-header">
-        <h2 class="section-title">What changed</h2>
+        <h2 class="section-title" id="timeline-title">Timeline</h2>
         {% if feature_access.horses.view %}<a href="{% url 'horse_list' %}?tab=movements" class="text-xs link tap-pad">Movements &rarr;</a>{% endif %}
     </div>
+    {% if groups|length > 1 %}
+    <div class="timeline-filters" role="group" aria-label="Show">
+        <button type="button" class="timeline-chip" :class="show === 'all' && 'is-on'" :aria-pressed="show === 'all'" @click="show = 'all'">All</button>
+        {% for g in groups %}
+        <button type="button" class="timeline-chip" data-group="{{ g.key }}" :class="show === '{{ g.key }}' && 'is-on'" :aria-pressed="show === '{{ g.key }}'" @click="show = '{{ g.key }}'">{{ g.label }}</button>
+        {% endfor %}
+    </div>
+    {% endif %}
     {% if days %}
-    <div x-data="{ all: false }">
-    <div class="log">
+    <div class="flex min-h-0 flex-1 flex-col">
+    <div class="log timeline-scroll">
         {% for day in days %}
-        <p class="log-day"{% if day.folded %} x-show="all" x-cloak{% endif %}><span>{{ day.label }}{% if day.with_date %} <span class="text-sage/70">&middot; {{ day.date|date:"j M" }}</span>{% endif %}</span></p>
+        <p class="log-day" x-show="show === 'all' ? {% if day.folded %}all{% else %}true{% endif %} : '{{ day.groups|join:" " }}'.split(' ').includes(show)"{% if day.folded %} x-cloak{% endif %}><span>{{ day.label }}{% if day.with_date %} <span class="text-sage/70">&middot; {{ day.date|date:"j M" }}</span>{% endif %}</span></p>
         {% for event in day.events %}
-        <div class="log-event"{% if event.folded %} x-show="all" x-cloak{% endif %}>
+        <div class="log-event" data-group="{{ event.group }}" x-show="show === 'all' ? {% if event.folded %}all{% else %}true{% endif %} : show === '{{ event.group }}'"{% if event.folded %} x-cloak{% endif %}>
             <span class="log-icon log-icon-{{ event.group }}" aria-hidden="true"><svg class="w-4 h-4"><use href="#i-{{ event.kind|kind_icon }}"/></svg></span>
             <div class="log-body">
                 {% for n in event.names %}
@@ -36,7 +52,7 @@ of the cards beside it.
         {% endfor %}
     </div>
     {% if folded_count %}
-    <div class="border-t border-light-sage px-4 py-2.5 text-center">
+    <div x-show="show === 'all'" class="lg:hidden border-t border-light-sage px-4 py-2.5 text-center">
         <button type="button" class="link text-sm tap-pad" @click="all = !all" :aria-expanded="all ? 'true' : 'false'">
             <span x-show="!all">Show {{ folded_count }} earlier change{{ folded_count|pluralize }}</span>
             <span x-show="all" x-cloak>Show fewer</span>
@@ -45,6 +61,6 @@ of the cards beside it.
     {% endif %}
     </div>
     {% else %}
-    <p class="px-4 py-6 text-center text-sm text-sage">Nothing recorded yet{% if site %} at {{ site }}{% endif %}.</p>
+    <p class="px-4 py-6 text-center text-sm text-sage">Nothing on the timeline yet{% if site %} at {{ site }}{% endif %}.</p>
     {% endif %}
 </div>
