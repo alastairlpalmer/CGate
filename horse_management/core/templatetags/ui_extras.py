@@ -21,25 +21,6 @@ def days_until(value):
 
 
 @register.filter
-def ago_label(value):
-    """How long ago a past day was: 'Yesterday', '3 days ago', '2 weeks ago'.
-    For a calendar item on a day that has passed, which is never overdue."""
-    if not value:
-        return ''
-    delta = (timezone.localdate() - value).days
-    if delta <= 0:
-        return 'Today'
-    if delta == 1:
-        return 'Yesterday'
-    if delta < 14:
-        return f'{delta} days ago'
-    if delta < 60:
-        return f'{delta // 7} weeks ago'
-    months = delta // 30
-    return f'{months} month{"s" if months != 1 else ""} ago'
-
-
-@register.filter
 def due_label(value):
     """Return a human-readable label for a due date: 'Today', 'Tomorrow', 'in 5 days', '3 days overdue'."""
     if not value:
