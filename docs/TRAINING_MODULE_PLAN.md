@@ -2,7 +2,7 @@
 
 **Goal:** Anyone on the yard can see, for each horse, what work it did, when, and what is planned next. A trainer puts horses into lots, gives each lot its work for the day, and confirms it. Staff can also record work for one horse or for many horses in one step. Every piece of work is one record in the database, with its date.
 **Scope:** A new `training` app. A Training section in the sidebar (the "trainer panel"). A Training card on the horse page. No owner login, no offline mode, no drag tool in the first phases (section 12).
-**Status:** Plan, ready for phase 1. Nothing is built. The owner decided D1 to D4, D7 and D11 on 2026-11-19 (section 4.1). D5, D6, D8, D10 and D12 use their recommended answers until the owner says otherwise. D9 is a test at the yard before phase 2b (section 4.2).
+**Status:** Plan, ready for phase 1. Nothing is built. The owner decided D1 to D4, D7, D11 and D12 on 2026-11-19 (section 4.1). D5, D6, D8 and D10 use their recommended answers until the owner says otherwise. D9 is a test at the yard before phase 2b (section 4.2).
 **Build estimate:** About 1 to 2 days of build for each of the 6 pull requests, from the speed of the farrier and barns builds. The calendar time is set by the gates: one week of real use after phases 1, 2b and 3 (section 13).
 
 Written for the owner and for an AI coding agent. Read all of it before you write any code.
@@ -16,6 +16,8 @@ Written for the owner and for an AI coding agent. Read all of it before you writ
 **Revision 4.** 2026-11-19. The owner decided D7 (seed a **Trainer** role) and D11 (yes, to confirm before phase 5). Phase 1 now seeds the role (9.1, item 12). Section 16.4 lists the changes.
 
 **Revision 5.** 2026-11-19. The owner widened the Trainer role to full access on every yard area, with owners, money and administration hidden (4.3). New open question D12: ownership and arrivals.
+
+**Revision 6.** 2026-11-19. The owner accepted D12 (allow for now). Section 8.0 says where Training lives in the menus, with its own icon and, from phase 2b, a tab on the phone bottom bar (D13).
 
 ---
 
@@ -214,6 +216,8 @@ The owner's list, then what the research adds.
 | D4 | What happens to a lot that nobody confirms? | **It stays Planned until someone confirms it.** | No automatic confirm. After its date, a Planned activity shows as **Not confirmed**. Staff can confirm it later from the board, the horse page or the Log. The dashboard lists lots that are not confirmed (phase 4). |
 | D7 | Who can use the board? | **A new feature key `training`, and a seeded Trainer role.** | Phase 1 seeds the role with the access in 4.3. The owner can change it in Settings → Users & Roles, as for every role. |
 | D11 | Phase 5: can a user **without** Full on Charges confirm work that makes a charge? | **Yes, probably.** The owner confirms it before phase 5 starts. | Only a user with Full on Charges sets a work type's price. Confirming work is not setting a price. Each charge shows on the Charges page before an invoice uses it. This is different from health records, where the person who types a cost needs Full on Charges (`can_set_cost`, `health/views.py:452`). Riders and trainers confirm lots; without this, a priced lot could not be confirmed. |
+| D12 | Can a Trainer change ownership shares and log arrivals? Both decide who is billed for livery (4.3). | **Yes, for now.** Check again after the first month of use. | No extra rule. Full on Horses and Locations work as they do for every role. |
+| D13 | Where does Training live in the menus? | **Its own item and its own icon** (8.0). On a phone, a tab on the bottom bar from phase 2b. | Proposed in revision 6, accepted with D12. The owner can still say no to the phone tab before phase 2b. |
 
 ### 4.2 Still open
 
@@ -225,7 +229,6 @@ Each row has a recommended answer. The plan uses it until the owner says otherwi
 | D6 | Can a horse be in more than one standing lot? | **No. One standing lot for each horse.** Extra work on the same day (for example the walker in the afternoon) is a separate activity. | Simple rules, a simple board. The schema keeps this cheap to change (7.3). |
 | D8 | Charge owners for some sessions (for example "Schooling £25")? | **Yes, as phase 5, off by default.** A price on the work type. A tick on each rate type: "Includes exercise". A session is charged only when the horse's rate on the date of the work does not include exercise. | Ridden livery yards want it (section 2.7). It must never charge a horse whose livery includes exercise. The rate has dates through the placement; a flag on the horse would not. |
 | D9 | Is the phone signal at the yard good enough for normal pages? | **Test it at the yard before phase 2b.** If it is not, add an offline phase (section 12). | The C-vet offline work shows the cost: a separate app, an API and sync rules. |
-| D12 | Can a Trainer change ownership shares and log arrivals? Both decide who is billed for livery (4.3). | **Yes, for now**, as the owner asked for full access to yard areas. Revisit after the first month. | A Trainer often takes in a horse at the yard. Blocking arrivals would send that work back to the office. |
 | D10 | Drag horses between lots? | **Not in phases 1 to 5.** A **Move to** button on each horse. A drag tool can come later, on wide screens only. | No drag library is in the codebase. `BARNS_AND_STABLES_PLAN.md` chose "no drag tool". Taps work on phones and with a keyboard. |
 
 
@@ -251,7 +254,7 @@ What follows from these levels. Check each one with the owner before the build e
 
 - **Costs on health records.** A Trainer records vaccinations, farrier visits and vet visits, but cannot set a cost on them: a cost above 0 needs Full on Charges (`can_set_cost`, `health/views.py:452`). The office adds costs later. The **Other charge** tile and the **Charge** bulk action do not show.
 - **Owner names still show.** The horse page shows the owner's name to every role with Horses access. The link to the owner's record is refused, because Owners is hidden. Contact details stay hidden.
-- **Ownership and arrivals decide who is billed.** Full on Horses includes **Manage ownership** (`manage_ownership_shares`, `core/views/horses.py:2023`). Full on Locations includes **Log arrival** (`log_arrival`, `core/views/locations.py:1048`), which chooses an owner and a rate. Both decide who gets the livery invoice, although the Trainer sees no prices. If the owner does not want this, the Trainer needs View on Horses and Locations, or the build adds a check that these two actions need Full on Owners or Charges. This is a question for the owner (4.2, D12).
+- **Ownership and arrivals decide who is billed.** Full on Horses includes **Manage ownership** (`manage_ownership_shares`, `core/views/horses.py:2023`). Full on Locations includes **Log arrival** (`log_arrival`, `core/views/locations.py:1048`), which chooses an owner and a rate. Both decide who gets the livery invoice, although the Trainer sees no prices. If the owner does not want this, the Trainer needs View on Horses and Locations, or the build adds a check that these two actions need Full on Owners or Charges. The owner chose to allow both for now (4.1, D12).
 - **Did not work: Lame or sore** shows the "Record a condition" and "Record a vet visit" links, because the role has Full on Health.
 - Phase 5: a Trainer confirms priced lots (D11) but sees no prices or charges.
 - **Two-step sign-in.** The role is not a system role, so two-step sign-in is not forced (`core/mfa.py`, `is_administrator`). With full access to every yard area, the owner may want to ask Trainers to turn it on.
@@ -640,6 +643,22 @@ Read it with `TrainingSettings.load()`, which returns the defaults when no row e
 
 ## 8. Screens
 
+### 8.0 Where Training lives
+
+| Place | What | From |
+|---|---|---|
+| **Sidebar** (computer and tablet) | Its own item, **Training**, with its own icon, in the **Manage** group: Horses · Locations · Health · Farrier · **Training** · Breeding · Feed. It opens the Log in phase 1 and today's board from phase 2b. | Phase 1 |
+| **Phone: More sheet** | The same item, in the same place in the Manage list. | Phase 1 |
+| **Phone: bottom bar** | A **Training** tab, before **More**: Dashboard · Horses · Locations · **Training** · More. It shows only with the flag on and `training` view, so other roles keep 4 tabs. It comes in phase 2b, because the board is the page a trainer opens many times each morning. In phase 1 the item in More is enough. | Phase 2b |
+| **Horse page** | The **Training** card, the **Training** tile in the **Record** card, and training rows on the timeline. | Phase 1 |
+| **Add button** | **Training activity**. | Phase 1 |
+| **Bulk bar** | **Training**, on the horse list, a location page and an owner page. | Phase 1 |
+| **Dashboard** | Training rows on the Timeline and the attention items. | Phase 4 |
+
+**The icon.** The sprite (`templates/includes/_icons.html`) has no icon for training. Add one, `i-stopwatch`: a stopwatch drawn in the same line style and stroke width as `i-horseshoe` and `i-fence`, so it reads as "timed work". It has `aria-hidden="true"` and the text label **Training** next to it, as every sidebar item does. The bottom bar tab uses the same icon.
+
+Tests: `core/tests/test_sidebar.py` checks the item and its place; a new test checks the bottom bar has 5 tabs for a role with `training` view and 4 for a role without it.
+
 ### 8.1 The Training section (the trainer panel)
 
 Sidebar: **Manage → Training**. Four tabs at the top of the section.
@@ -757,7 +776,7 @@ Build:
 7. The **Log** tab with its filters, paging, the **Not confirmed** filter, and **Mark done** and **Did not work** for selected rows. The **Set up** tab with the work type list.
 8. Bulk add (6, "Bulk actions"): the option in the bar and in `popupTitle()`; the dispatch to `training/bulk.py` before the `BULK_FORM_MAP` lookup in both views, after a flag check; its own form template; the skipped horses named.
 9. The horse page: the Training card (**Coming up** and 14 days, 8.4), the **Training** tile, and `training.full` in the **Record** card's condition. `build_horse_timeline(activities=...)` and its pill, with the rows in 6, "Horse page history": 10 on the page, 5 in the preview, none when the flag is off or the role has training hidden.
-10. The sidebar item and the More sheet item (after Farrier), `training.view` in both heading conditions, `training.full` in both **Add** button conditions, the Add menu item, and a new icon.
+10. The sidebar item and the More sheet item (after Farrier), `training.view` in both heading conditions, `training.full` in both **Add** button conditions, the Add menu item, and the new icon `i-stopwatch` (8.0).
 11. The help guide `training` (group "The yard", features `('training',)`), with a flag check on `Guide`. Sections: Record training for one horse, Record training for many horses, Work types, and a `help-faq` list.
 12. `training/migrations/0002_seed_trainer_role.py` (4.3). Follow `core/migrations/0053_seed_farrier_role.py`:
     - Write the access map out in full, with every feature key that exists at build time. Do not import it from `core.features`, so the migration stays frozen.
@@ -847,7 +866,8 @@ Build:
    - The board parts of `set_status` (7.4) and `remove_from_lot` (offer to remove from started boards).
    - `missing_members(lot_day)`: standing members that are not on the lot day (the hint in 8.2).
 3. The **Board** tab (8.2): sticky lot headers, the row menu for Did not work, day arrows with `aria-label`s.
-4. Update the help guide: The lot board, Confirm a lot, Did not work.
+4. The **Training** tab on the phone bottom bar (8.0). The sidebar item now opens today's board.
+5. Update the help guide: The lot board, Confirm a lot, Did not work.
 
 Definition of done:
 
@@ -1027,7 +1047,7 @@ These came from the research. Each needs its own decision and its own plan.
 |---|---|---|
 | 1 | `training/` (models, forms, views, urls, services, bulk, admin, migrations including `0002_seed_trainer_role.py`, tests), `templates/training/`, `templates/help/articles/training.html` | `horse_management/settings.py`, `horse_management/test_settings.py`, `.env.example`, `core/features.py`, `core/context_processors.py`, `core/help.py`, `horse_management/urls.py`, `core/views/horses.py`, `templates/horses/horse_detail.html`, `templates/horses/_quick_actions.html`, `templates/horses/partials/preview.html`, `templates/health/partials/bulk_action_bar.html`, `health/views.py`, `templates/includes/_sidebar.html`, `templates/includes/_app_bar.html`, `templates/base.html`, `templates/includes/_add_menu_items.html`, `templates/includes/_icons.html`, `docs/README.md` |
 | 2a | Lots templates, status pop-up | `training/models.py`, `training/services.py`, horse page Training card |
-| 2b | Board templates | `training/models.py`, `training/services.py`, horse page Training card |
+| 2b | Board templates | `training/models.py`, `training/services.py`, horse page Training card, `templates/base.html` (bottom bar tab), `templates/includes/_sidebar.html` (link to the board) |
 | 3 | Set up templates for venues, riders, week plan | `training/models.py`, `training/services.py` |
 | 4 | `training/load.py`, print and TV templates | `core/dashboard/activity.py`, `core/dashboard/attention.py`, `core/reminders.py`, `docs/DATA_RETENTION.md` (riders) |
 | 5 | `training/charges.py` | `core/models.py` (`RateType.includes_exercise`), `billing/models.py` (charge type), `invoicing/services.py` (line type), `training/models.py` |
@@ -1150,4 +1170,5 @@ A separate reviewer read revision 1 against `horse_management/`. Each code fact 
 | O6 | The status line says the plan is ready for phase 1. None of the open decisions blocks phase 1. | Header, 4.2 |
 | R1 | No colour field on a work type or a lot. The palette has one accent, kept for attention, and 5.13 already shows effort as a word. Fewer fields to build. | 7.1, 7.3 |
 | R2 | Phase 1 URLs, names, methods and access in one table, so the build does not have to choose them. | 9.1 |
+| O8 | Revision 6: D12 decided. Section 8.0: the sidebar place, the More sheet, a bottom bar tab from phase 2b, and the `i-stopwatch` icon. | 4.1, 8.0, 9.1, 9.3 |
 | O7 | Revision 5: the Trainer role has full access on dashboard, horses, locations, health, breeding, feed and training, and nothing on owners, money, settings, users, the farrier's page and C-vet. The consequences are listed, and D12 asks about ownership and arrivals. | 4.2, 4.3, 9.1 |
