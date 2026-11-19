@@ -18,10 +18,10 @@ Prism won Australia with a loop. The yard sends updates to owners. Owners get a 
 | Phase | Goal | Needs multi-tenancy? | Size |
 |---|---|---|---|
 | 0 | Module boundaries: clean lines in the code, per-yard module switches, separate interfaces, editions by yard type ([`MODULES_PLAN.md`](MODULES_PLAN.md)) | No | 6–7 weeks with parallel agents; runs beside phase 1 |
-| 1 | Faster yard office: charge rules, invoice run checks, QR cards, welfare flags | No | 5–6 weeks |
-| 2 | Owner updates and owner portal | No (one yard) | 6–8 weeks |
+| 1 | Faster yard office: charge rules, invoice run checks, QR cards, welfare flags, grazing management, offline mode | No | 9–11 weeks |
+| 2 | Owner updates and owner portal, with WhatsApp and SMS | No (one yard) | 8–10 weeks |
 | 3 | Owner payments | Phases 1–2 of the payments plan: no. Connect fees: yes | 7 weeks, then 3 weeks after P2 |
-| R | Racing yards and owner managers: training fees, trackwork, race entries and results, race reports, syndicates, prize money | Pilot with one trainer: no. To sell: yes | 6–8 weeks with parallel agents |
+| R | Racing yards and owner managers: training fees, trackwork, race entries and results, race reports, syndicates, prize money, medication records | Pilot with one trainer: no. To sell: yes | 7–9 weeks with parallel agents |
 | 4 | SaaS and the growth loop: many yards, free tier, owners across yards, import | Yes ([`MULTI_TENANCY_PLAN.md`](MULTI_TENANCY_PLAN.md)) | 7–10 weeks with parallel agents for multi-tenancy, then 4–6 weeks for the growth-loop features |
 | 5 | Later: staff tasks and rota, yard websites, data feeds, native apps, Australia | Yes | Not sized |
 
@@ -46,9 +46,9 @@ Order with the other plans: steps 0.1–0.3, then multi-tenancy wave 0, then ste
 
 ---
 
-## Phase 1 — Faster yard office (5–6 weeks)
+## Phase 1 — Faster yard office (9–11 weeks)
 
-Goal: the monthly invoice run takes less time and has fewer errors. Yard staff find horses faster.
+Goal: the monthly invoice run takes less time and has fewer errors. Yard staff find horses faster and can work in fields with no signal. Grass livery yards manage their land in C-gate.
 
 | # | Feature | From Prism | C-gate today | Build | Size |
 |---|---|---|---|---|---|
@@ -58,12 +58,14 @@ Goal: the monthly invoice run takes less time and has fewer errors. Yard staff f
 | 1.4 | **QR cards** | Print QR cards for barns, boxes, horses; scan on tablet | Barns and stables. No QR. | Print A4 or label sheets of QR codes per stable, field and horse. Scan with the phone camera to open the record. No app needed. | 1 week |
 | 1.5 | **Find by microchip** | Bluetooth chip scanner; Stud Book lookup | Microchip field on the horse | Search by microchip number. Accept input from a Bluetooth scanner that types as a keyboard. Check the 15-digit format. | 2 days |
 | 1.6 | **Welfare flags** | Welfare flags with escalation | Dashboard attention list | Any staff member flags a horse with a note and a level. The flag shows at the top of the dashboard and on the horse page. Email to the manager for an urgent flag. Clear with a note. Kept in the audit log. | 1 week |
+| 1.7 | **Grazing management** | Agistment and farm management | Field maps, Land App and RPA boundaries, field usage periods, worm egg counts | Field rest and rotation plan. Grass cover. Jobs per field: poo-picking, topping, harrowing, fertiliser, ragwort. Worm egg counts by field. Horses per acre with a warning when a field is over its limit. This is the main reason to choose C-gate for grass livery. | 2–3 weeks |
+| 1.8 | **Offline mode for staff** | Prism Plus tablet app | C-vet works offline (phase 1 of the C-vet plan) | Reuse the C-vet offline pattern for yard staff: horse list, checks, feeds, health records and welfare flags work with no signal and sync later. Show what is waiting to sync. Racing trackwork (R.3) uses the same pattern. | 2 weeks |
 
 Done when: the yard owner runs one month with the checks and the rules, and the invoice error count goes down against the month before.
 
 ---
 
-## Phase 2 — Owner updates and owner portal (6–8 weeks)
+## Phase 2 — Owner updates and owner portal (8–10 weeks)
 
 Goal: owners see their horses and get updates without a phone call. This is the Prism hook.
 
@@ -77,6 +79,7 @@ Depends on: Launch plan P2 item 2 (**per-object access checks**). An owner must 
 | 2.4 | **Owner portal** | Owner portal: notifications, horse, comms | None | One shared address for all owners (for example `my.<domain>`). The owner account sits above yards from the start, so item 4.2 needs no rebuild. Phone-first pages: my horses, where each horse is (site, field, stable), next vaccination, farrier and worming dates, updates feed, invoices and statements, documents (passport, insurance). | 2 weeks |
 | 2.5 | **Notification choices** | Each notification type by web, push or email | Owner email preferences | Per type: update, health due, location change, invoice issued, payment received. Per channel: email, web push (PWA). | 1 week |
 | 2.6 | **Owner requests** | Add horse request to trainer | None | Owner asks for a service from the portal (for example "extra farrier visit", "bring in"). The request goes to the staff task list and can make a charge. | 1 week |
+| 2.7 | **WhatsApp and SMS** | Owner notifications by web, push or email | Email only | Add WhatsApp (WhatsApp Business Platform) and SMS as channels for owner updates, reminders and invoice notices. The owner chooses the channel (2.5). Each message has a link to the owner portal. Check the cost per message and the template approval rules first. | 2 weeks |
 
 Done when: 80% of owners at our yard have signed in once, and phone calls about "where is my horse" go down.
 
@@ -97,7 +100,7 @@ The full design is in [`payments/payments-plan.md`](payments/payments-plan.md). 
 
 ---
 
-## Phase R — Racing yards and owner managers (6–8 weeks)
+## Phase R — Racing yards and owner managers (7–9 weeks)
 
 Goal: sell C-gate to racing trainers and to the people who manage racing syndicates and clubs. This is Prism's home market, so C-gate must match its core and win on owner experience and billing. Scope is in [`MODULES_PLAN.md`](MODULES_PLAN.md) section 6a.
 
@@ -116,6 +119,7 @@ Market: about 600 licensed trainers and 14,555 horses in training in the UK (BHA
 | R.7 | **Prize money and distributions** | Finance module, owner splits | Split charges, credit notes | Record prize money. Take trainer and jockey percentages. Split the rest by share. Cash calls in advance. | 1.5 weeks |
 | R.8 | **Member and owner statements** | Syndicator statements | Invoices, statements | Monthly statement per member: training fees, extras, prize money, cash calls | 1 week |
 | R.9 | **Pilot trainer** | Built with leading trainers | — | One small or mid-size trainer and one syndicate manager. Weekly feedback for three months. | Non-code |
+| R.10 | **Medication records** | Treatments and procedures | Health records: vet visits, conditions, worming | A medication record per horse: drug, dose, route, who gave it, batch number, withdrawal time and the first date the horse can race or compete. Warn when a horse is entered or declared inside a withdrawal time. Export for a racing or competition inspection. Also useful for competition horses at livery yards. | 1.5 weeks |
 
 Not in scope: making entries and declarations inside C-gate. They stay in Weatherbys' own system unless an API allows them. No betting or form tools.
 
