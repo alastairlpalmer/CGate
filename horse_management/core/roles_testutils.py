@@ -11,7 +11,8 @@ from .features import DEFAULT_LEVELS
 from .models import Role, UserRole
 
 # Mirrors core/migrations/0026_seed_roles.py as amended by
-# 0027_viewer_restore_read_access (charges/xero readable again).
+# 0027_viewer_restore_read_access (charges/xero readable again) and
+# training/migrations/0003_seed_trainer_role (training readable).
 VIEWER_ACCESS = {
     "dashboard": "full",
     "horses": "view",
@@ -20,6 +21,7 @@ VIEWER_ACCESS = {
     "health": "full",
     "breeding": "full",
     "feed": "view",
+    "training": "view",
     "finances": "full",
     "invoices": "view",
     "costs": "hidden",

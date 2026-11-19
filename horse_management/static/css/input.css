@@ -1926,6 +1926,7 @@ a.pane-item-title:hover { @apply text-forest; }
 .pane-dot-egg_count { @apply bg-sand; }
 .pane-dot-vet_visit { @apply bg-error-red; }
 .pane-dot-breeding { @apply bg-forest; }
+.pane-dot-training { @apply bg-sage-400; }
 
 /* Parts of a line joined by a middle dot, only between parts that show. */
 .dot-list > span + span::before { content: '·'; margin: 0 0.35em; color: theme(colors.sage.DEFAULT); font-weight: 400; }

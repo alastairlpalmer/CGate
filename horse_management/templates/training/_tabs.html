@@ -1,0 +1,11 @@
+{% comment %}
+The tab bar of the Training section (docs/TRAINING_MODULE_PLAN.md, 8.1).
+Phase 1 has Log and Set up. Phase 2a adds Lots; phase 2b adds Board.
+Usage: {% include 'training/_tabs.html' %} with training_tab in the context.
+{% endcomment %}
+<nav class="finance-tabs" aria-label="Training">
+    <a href="{% url 'training_log' %}" class="{% if training_tab == 'log' %}tab-underline-active{% else %}tab-underline-inactive{% endif %} min-w-[44px] justify-center px-1"{% if training_tab == 'log' %} aria-current="page"{% endif %}>Log</a>
+    {% if feature_access.training.full %}
+    <a href="{% url 'training_setup' %}" class="{% if training_tab == 'setup' %}tab-underline-active{% else %}tab-underline-inactive{% endif %} min-w-[44px] justify-center px-1"{% if training_tab == 'setup' %} aria-current="page"{% endif %}>Set up</a>
+    {% endif %}
+</nav>

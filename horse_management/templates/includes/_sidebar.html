@@ -42,7 +42,7 @@ swaps of #main-content crash htmx (see the stale-target guard in base.html).
     <!-- Search, and Add (the + menu). On a phone both are in the app bar. -->
     <div class="sidebar-tools">
         {% include 'includes/_app_search.html' with search_place='side' %}
-        {% if feature_access.horses.full or feature_access.locations.full or feature_access.owners.full %}
+        {% if feature_access.horses.full or feature_access.locations.full or feature_access.owners.full or training_enabled and feature_access.training.full %}
         <div class="side-add" x-data="{ addOpen: false }" @click.outside="addOpen = false"
              @keydown.escape.window="addOpen = false">
             <button type="button" @click="addOpen = !addOpen" class="side-add-btn"
@@ -73,7 +73,7 @@ swaps of #main-content crash htmx (see the stale-target guard in base.html).
             </a>
             {% endif %}
 
-            {% if feature_access.horses.view or feature_access.locations.view or feature_access.health.view or feature_access.charges.view or feature_access.breeding.view or feature_access.feed.view %}
+            {% if feature_access.horses.view or feature_access.locations.view or feature_access.health.view or feature_access.charges.view or feature_access.breeding.view or feature_access.feed.view or training_enabled and feature_access.training.view %}
             <div class="nav-group-label">Manage</div>
             {% endif %}
             {% if feature_access.horses.view %}
@@ -102,6 +102,13 @@ swaps of #main-content crash htmx (see the stale-target guard in base.html).
                class="{% if '/health/farrier' in request.path %}nav-link-active{% else %}nav-link{% endif %}" title="Farrier">
                 <svg class="w-5 h-5 shrink-0" aria-hidden="true"><use href="#i-horseshoe"/></svg>
                 <span class="sidebar-label">Farrier</span>
+            </a>
+            {% endif %}
+            {% if training_enabled and feature_access.training.view %}
+            <a href="{% url 'training_home' %}" data-nav="training" data-nav-match="/training/"
+               class="{% if '/training/' in request.path %}nav-link-active{% else %}nav-link{% endif %}" title="Training">
+                <svg class="w-5 h-5 shrink-0" aria-hidden="true"><use href="#i-stopwatch"/></svg>
+                <span class="sidebar-label">Training</span>
             </a>
             {% endif %}
             {% if feature_access.breeding.view %}

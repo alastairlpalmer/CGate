@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block title %}Training - Cgate{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Training</h1>
+            <p class="page-subtitle">What each horse did, and what is planned.</p>
+        </div>
+        {% if can_change %}
+        <div class="flex items-center gap-3">
+            <a href="{% url 'training_activity_create' %}"
+               hx-get="{% url 'training_activity_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Record training" class="btn-primary">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                Record training
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    {% include 'training/_tabs.html' %}
+
+    {% if not_confirmed_count and filters.status != 'not_confirmed' %}
+    <div class="alert-warning flex flex-wrap items-center justify-between gap-2" role="status">
+        <span>{{ not_confirmed_count }} planned record{{ not_confirmed_count|pluralize }} from past days {{ not_confirmed_count|pluralize:"is,are" }} not confirmed.</span>
+        <a href="?status=not_confirmed" class="link tap-pad">Show {{ not_confirmed_count|pluralize:"it,them" }}</a>
+    </div>
+    {% endif %}
+
+    <div class="card px-4 py-2" x-data="{ open: false }" x-init="open = Array.from($el.querySelectorAll('select, input:not([type=hidden])')).some(function (field) { return field.value })">
+        <button type="button" class="filter-toggle" @click="open = !open" aria-expanded="false" :aria-expanded="open ? 'true' : 'false'">
+            <svg class="w-3.5 h-3.5 shrink-0 text-sage transition-transform duration-100" :class="open && 'rotate-90'" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+            Filters
+        </button>
+        <form method="get" class="filter-bar" :class="{ 'is-open': open }">
+            <div>
+                <label for="filter-horse" class="dt-label mb-1">Horse</label>
+                <select id="filter-horse" name="horse" class="form-select">
+                    <option value="">All horses</option>
+                    {% for h in horses %}
+                    <option value="{{ h.pk }}" {% if filters.horse == h.pk|stringformat:"s" %}selected{% endif %}>{{ h.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="filter-work" class="dt-label mb-1">Work</label>
+                <select id="filter-work" name="work_type" class="form-select">
+                    <option value="">All work</option>
+                    {% for w in work_types %}
+                    <option value="{{ w.pk }}" {% if filters.work_type == w.pk|stringformat:"s" %}selected{% endif %}>{{ w.name }}{% if not w.is_active %} (archived){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="filter-status" class="dt-label mb-1">Status</label>
+                <select id="filter-status" name="status" class="form-select">
+                    <option value="">All</option>
+                    {% for value, label in status_filters %}
+                    <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="filter-from" class="dt-label mb-1">From</label>
+                <input id="filter-from" type="date" name="date_from" value="{{ filters.date_from }}" class="form-input">
+            </div>
+            <div>
+                <label for="filter-to" class="dt-label mb-1">To</label>
+                <input id="filter-to" type="date" name="date_to" value="{{ filters.date_to }}" class="form-input">
+            </div>
+            <div class="flex items-end gap-2">
+                <button type="submit" class="btn-secondary">Filter</button>
+                <a href="{% url 'training_log' %}" class="btn-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+
+    <form method="post" action="{% url 'training_log_mark' %}" class="card overflow-hidden">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        {% if can_change and activities %}
+        <div class="px-4 py-3 border-b border-light-sage flex flex-wrap items-center gap-2 text-sm">
+            <span class="text-sage">With the ticked rows:</span>
+            <button type="submit" name="action" value="done" class="btn-secondary btn-sm">Mark done</button>
+            <label for="log-reason" class="sr-only">Reason</label>
+            <select id="log-reason" name="reason" class="form-select !mt-0 !w-auto text-sm py-1.5">
+                <option value="">Choose a reason…</option>
+                {% for value, label in reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+            </select>
+            <button type="submit" name="action" value="not_done" class="btn-secondary btn-sm">Did not work</button>
+        </div>
+        {% endif %}
+        <div class="overflow-x-auto">
+            <table class="data-table data-table-cards">
+                <thead>
+                    <tr>
+                        {% if can_change %}<th class="w-10"><span class="sr-only">Tick</span></th>{% endif %}
+                        <th>Date</th>
+                        <th>Horse</th>
+                        <th>Work</th>
+                        <th>Minutes</th>
+                        <th>Status</th>
+                        <th>Notes</th>
+                        {% if can_change %}<th>Actions</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in activities %}
+                    <tr>
+                        {% if can_change %}
+                        <td>
+                            <label class="inline-flex items-center justify-center min-w-[44px] min-h-[44px]">
+                                <input type="checkbox" name="ids" value="{{ a.pk }}" class="form-checkbox" aria-label="Tick {{ a.horse.name }}, {{ a.date|date:'j M' }}">
+                            </label>
+                        </td>
+                        {% endif %}
+                        <td data-label="Date" class="whitespace-nowrap">{{ a.date|date:"D j M Y" }}</td>
+                        <td data-label="Horse"><a href="{% url 'horse_detail' a.horse.pk %}" class="link tap-pad">{{ a.horse.name }}</a></td>
+                        <td data-label="Work">{{ a.work_type.name }}{% if a.effort_label %} <span class="badge-neutral">{{ a.effort_label }}</span>{% endif %}</td>
+                        <td data-label="Minutes" class="text-sage">{{ a.minutes|default:"-" }}</td>
+                        <td data-label="Status">{% include 'training/_status_badge.html' with activity=a %}</td>
+                        <td data-label="Notes" class="text-sm text-charcoal-light">{{ a.notes|truncatechars:80|default:"" }}</td>
+                        {% if can_change %}
+                        <td>
+                            <a href="{% url 'training_activity_update' a.pk %}" hx-get="{% url 'training_activity_update' a.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit training" class="btn-ghost btn-xs">Edit</a>
+                            <a href="{% url 'training_activity_delete' a.pk %}" hx-get="{% url 'training_activity_delete' a.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Delete training record" class="btn-ghost btn-xs">Delete</a>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8">
+                            <div class="py-8 text-center">
+                                <p class="text-sm font-medium text-sage">{% if filter_query %}No training records match these filters.{% else %}No training recorded yet.{% endif %}</p>
+                                {% if can_change and not filter_query %}
+                                <a href="{% url 'training_activity_create' %}" hx-get="{% url 'training_activity_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record training" class="btn-primary mt-4 inline-flex">Record the first training</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+    {% include 'includes/pagination.html' %}
+
+</div>
+{% endblock %}

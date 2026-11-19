@@ -103,6 +103,7 @@ INSTALLED_APPS = [
     'health.apps.HealthConfig',
     'billing.apps.BillingConfig',
     'cvet.apps.CvetConfig',
+    'training.apps.TrainingConfig',
     'notifications.apps.NotificationsConfig',
     'xero_integration.apps.XeroIntegrationConfig',
 ]
@@ -168,6 +169,7 @@ TEMPLATES = [
                 'core.analytics.template_context',
                 'core.context_processors.location_maps',
                 'core.context_processors.barns',
+                'core.context_processors.training',
                 'core.context_processors.google_sign_in',
                 'core.user_photos.context',
             ],
@@ -565,6 +567,11 @@ LOCATION_NEAR_RADIUS_M = env.int('LOCATION_NEAR_RADIUS_M', default=150)
 # off nothing offers a barn; a location that is already a barn keeps
 # working as one. Temporary — to be removed once the feature is in use.
 BARNS_ENABLED = env.bool('BARNS_ENABLED', default=False)
+
+# Training: work types, the training log for each horse and, later, lots and
+# the lot board (docs/TRAINING_MODULE_PLAN.md). With it off no Training link
+# shows and every Training URL answers 404.
+TRAINING_ENABLED = env.bool('TRAINING_ENABLED', default=False)
 
 # Celery Configuration
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379/0')

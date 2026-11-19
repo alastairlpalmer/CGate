@@ -26,7 +26,7 @@ The search itself is includes/_app_search.html.
         <div id="app-bar-slot" class="flex items-center gap-1.5 shrink-0"></div>
 
         <!-- Add -->
-        {% if feature_access.horses.full or feature_access.locations.full or feature_access.owners.full %}
+        {% if feature_access.horses.full or feature_access.locations.full or feature_access.owners.full or training_enabled and feature_access.training.full %}
         <div class="relative shrink-0" x-data="{ addOpen: false }" @click.outside="addOpen = false"
              @keydown.escape.window="addOpen = false">
             {# Icon only: the plus turns 45 degrees into a close cross while the menu is open. #}

@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete training record - Cgate{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto space-y-4">
+    <div class="page-header"><div><h1 class="page-title">Delete training record</h1></div></div>
+    <div class="card">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+            <div class="px-4 py-3 space-y-2 text-sm">
+                <p class="font-medium">{{ activity.horse.name }} · {{ activity.work_type.name }} · {{ activity.date|date:"D j M Y" }}</p>
+                <p class="text-sage">Use this for a record made by mistake. If the horse did not work, edit the record and set Did not work instead.</p>
+            </div>
+            <div class="px-4 py-3 border-t border-light-sage flex justify-end gap-3">
+                <a href="{{ next }}" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-danger">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

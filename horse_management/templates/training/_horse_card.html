@@ -1,0 +1,85 @@
+{% comment %}
+The horse page's Training card (docs/TRAINING_MODULE_PLAN.md, 8.4).
+Context: horse, training_card (training.horse.training_card), feature_access.
+Coming up: planned work after today. Then the last 14 days, newest first.
+A planned row dated today or earlier can be confirmed here.
+{% endcomment %}
+<div class="card" id="training">
+    <div class="section-header flex items-center justify-between gap-2">
+        <h3 class="section-title flex items-center gap-2">
+            <svg class="w-4 h-4 text-sage shrink-0" aria-hidden="true"><use href="#i-stopwatch"/></svg>
+            Training
+        </h3>
+        <span class="flex items-center gap-1">
+            <a href="{% url 'training_log' %}?horse={{ horse.pk }}" class="link text-xs tap-pad">See all</a>
+            {% if training_card.can_change %}
+            <a href="{% url 'training_activity_create' %}?horse={{ horse.pk }}" hx-get="{% url 'training_activity_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Training for {{ horse.name }}" class="btn-secondary btn-sm">Record training</a>
+            {% endif %}
+        </span>
+    </div>
+
+    {% if training_card.not_confirmed %}
+    <p class="px-4 pt-3 text-sm text-saddle">{{ training_card.not_confirmed }} planned record{{ training_card.not_confirmed|pluralize }} from past days {{ training_card.not_confirmed|pluralize:"is,are" }} not confirmed.</p>
+    {% endif %}
+
+    {% if training_card.coming_up %}
+    <div class="px-4 pt-3">
+        <h4 class="dt-label">Coming up</h4>
+        <ul class="mt-1 divide-y divide-light-sage">
+            {% for a in training_card.coming_up %}
+            <li class="py-2 flex items-center justify-between gap-2 text-sm">
+                <span><span class="font-medium">{{ a.work_type.name }}</span> <span class="text-sage">· {{ a.date|date:"D j M" }}</span></span>
+                {% include 'training/_status_badge.html' with activity=a %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="px-4 pt-3 pb-4">
+        <h4 class="dt-label">Last {{ training_card.days }} days</h4>
+        {% if training_card.recent %}
+        <ul class="mt-1 divide-y divide-light-sage">
+            {% for a in training_card.recent %}
+            <li class="py-2 text-sm">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <span>
+                        <span class="font-medium">{{ a.work_type.name }}</span>{% if a.effort_label %} <span class="badge-neutral">{{ a.effort_label }}</span>{% endif %}
+                        <span class="text-sage">· {{ a.date|date:"D j M" }}{% if a.minutes %} · {{ a.minutes }} min{% endif %}</span>
+                    </span>
+                    <span class="flex items-center gap-1">
+                        {% include 'training/_status_badge.html' with activity=a %}
+                        {% if training_card.can_change %}
+                        <a href="{% url 'training_activity_update' a.pk %}?horse={{ horse.pk }}" hx-get="{% url 'training_activity_update' a.pk %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit training" class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ a.work_type.name }}, {{ a.date|date:'j M' }}">Edit</a>
+                        {% endif %}
+                    </span>
+                </div>
+                {% if a.notes %}<p class="text-xs text-charcoal-light mt-0.5">{{ a.notes|truncatechars:140 }}</p>{% endif %}
+                {% if training_card.can_change and a.can_mark_done %}
+                <div class="mt-1.5 flex flex-wrap items-center gap-2">
+                    <form method="post" action="{% url 'training_activity_mark' a.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.path }}#training">
+                        <button type="submit" name="action" value="done" class="btn-secondary btn-sm min-h-[44px] px-3 whitespace-nowrap">Mark done</button>
+                    </form>
+                    <details class="relative">
+                        <summary class="btn-secondary btn-sm min-h-[44px] px-3 whitespace-nowrap inline-flex items-center cursor-pointer list-none">Did not work…</summary>
+                        <form method="post" action="{% url 'training_activity_mark' a.pk %}" class="mt-1 flex flex-wrap gap-1">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.path }}#training">
+                            <input type="hidden" name="action" value="not_done">
+                            {% for value, label in training_card.reasons %}
+                            <button type="submit" name="reason" value="{{ value }}" class="btn-secondary btn-xs min-h-[44px]">{{ label }}</button>
+                            {% endfor %}
+                        </form>
+                    </details>
+                </div>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="mt-1 text-sm text-sage">No training in the last {{ training_card.days }} days.</p>
+        {% endif %}
+    </div>
+</div>

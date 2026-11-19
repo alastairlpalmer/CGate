@@ -24,7 +24,8 @@ title and the accent outline that marks it out from the page behind.
         </div>
         <div class="flex items-center gap-2 sm:gap-3">
             <!-- Options mirror the server-side gates in health.views:
-                 placement actions need horses=full, records need health=full -->
+                 placement actions need horses=full, records need health=full,
+                 training needs training=full (training/bulk.py) -->
             <label for="bulk-action-type" class="sr-only">Action</label>
             <select id="bulk-action-type" x-model="actionType" class="form-select !mt-0 text-sm py-1.5 flex-1 sm:flex-none">
                 <option value="">Choose action...</option>
@@ -41,6 +42,9 @@ title and the accent outline that marks it out from the page behind.
                 {% endif %}
                 {% if feature_access.charges.full %}
                 <option value="charge">Add Charge (transport, other)</option>
+                {% endif %}
+                {% if training_enabled and feature_access.training.full and status != 'departed' %}
+                <option value="training">Record Training</option>
                 {% endif %}
                 {% if feature_access.horses.full %}
                 <option value="move">Move to Location</option>

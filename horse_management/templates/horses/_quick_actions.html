@@ -49,6 +49,12 @@ Context: horse, active_pregnancy, feature_access (from HorseDetailView).
 </a>
 {% endif %}
 {% endif %}
+{% if training_card.can_change %}
+<a href="{% url 'training_activity_create' %}?horse={{ horse.pk }}" hx-get="{% url 'training_activity_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Training for {{ horse.name }}" class="{{ tile }}">
+    <span class="qa-tile-icon"><svg aria-hidden="true"><use href="#i-stopwatch"/></svg></span>
+    <span class="qa-tile-label">Training</span>
+</a>
+{% endif %}
 {% if feature_access.horses.full %}
 <a href="{% url 'horse_photo_add' horse.pk %}" hx-get="{% url 'horse_photo_add' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add photos for {{ horse.name }}" class="{{ tile }}">
     <span class="qa-tile-icon"><svg aria-hidden="true"><use href="#i-camera"/></svg></span>

@@ -2,7 +2,7 @@
 
 **Goal:** Anyone on the yard can see, for each horse, what work it did, when, and what is planned next. A trainer puts horses into lots, gives each lot its work for the day, and confirms it. Staff can also record work for one horse or for many horses in one step. Every piece of work is one record in the database, with its date.
 **Scope:** A new `training` app. A Training section in the sidebar (the "trainer panel"). A Training card on the horse page. No owner login, no offline mode, no drag tool in the first phases (section 12).
-**Status:** Plan, ready for phase 1. Nothing is built. The owner decided D1 to D4, D7, D11 and D12 on 2026-11-19 (section 4.1). D5, D6, D8 and D10 use their recommended answers until the owner says otherwise. D9 is a test at the yard before phase 2b (section 4.2).
+**Status:** Phase 1 is built, behind `TRAINING_ENABLED` (off by default). Section 17 records where the build departed from this plan. Next: the phase 1 gate (section 13), then phase 2a. The owner decided D1 to D4, D7, D11 and D12 on 2026-11-19 (section 4.1). D5, D6, D8 and D10 use their recommended answers until the owner says otherwise. D9 is a test at the yard before phase 2b (section 4.2).
 **Build estimate:** About 1 to 2 days of build for each of the 6 pull requests, from the speed of the farrier and barns builds. The calendar time is set by the gates: one week of real use after phases 1, 2b and 3 (section 13).
 
 Written for the owner and for an AI coding agent. Read all of it before you write any code.
@@ -18,6 +18,8 @@ Written for the owner and for an AI coding agent. Read all of it before you writ
 **Revision 5.** 2026-11-19. The owner widened the Trainer role to full access on every yard area, with owners, money and administration hidden (4.3). New open question D12: ownership and arrivals.
 
 **Revision 6.** 2026-11-19. The owner accepted D12 (allow for now). Section 8.0 says where Training lives in the menus, with its own icon and, from phase 2b, a tab on the phone bottom bar (D13).
+
+**Revision 7.** 2026-11-19. Phase 1 is built. Section 17 records where the build departed from this document and why.
 
 ---
 
@@ -808,23 +810,23 @@ In `core/features.py`, put the `training` entry after `feed`, so the role matrix
 
 Definition of done:
 
-- [ ] With the flag off, `/training/` returns 404, no Training link shows, and the Training guide does not show to an administrator.
-- [ ] A role with `training` hidden sees no Training card, tile, bulk option or timeline rows. A role with view sees the card, the timeline rows and the Log, and no add buttons. POSTs from a view-only role get 403.
-- [ ] After the migrations, a role called "Trainer" exists with exactly the levels in 4.3, and Viewer has `training` view. A yard role already called "Trainer" is not changed. The reverse migration removes the seeded role only when nobody holds it.
-- [ ] A Trainer login sees Dashboard, Horses, Locations, Health, Farrier, Breeding, Feed and Training in the sidebar and the More sheet, and no Owners, Finance or Settings items.
-- [ ] A Trainer sees every tile on the **Record** card except **Other charge**, and every bulk action except **Charge**.
-- [ ] A Trainer can record a vaccination with no cost. A cost above 0 is refused, as for every role without Full on Charges.
-- [ ] A Trainer can add, change and delete activities and work types. A Trainer gets 403 on a POST to any owner, charge, invoice or settings form, and is sent away from the owner page.
-- [ ] An activity dated today is Done by default. One dated tomorrow is Planned by default.
-- [ ] Done with tomorrow's date is refused by the form and by `mark_done`.
-- [ ] Did not work without a reason does not save. A reason with Done does not save.
-- [ ] A Planned activity dated yesterday shows as "Not confirmed" on the horse card and in the Log. **Mark done** on it makes it Done. Two **Mark done** requests at once make one change and no error.
-- [ ] A Planned activity dated tomorrow is in **Coming up** and not on the timeline.
-- [ ] A bulk add for 5 horses, one of them inactive, makes 4 activities in one transaction and names the skipped horse.
-- [ ] An archived work type does not show in the form. Its old activities still show its name.
-- [ ] A work type that an activity uses cannot be deleted.
-- [ ] The horse page timeline shows at most 10 training rows, and the list preview at most 5. A horse with 30 training rows still shows its latest vaccination in the preview.
-- [ ] `core/tests/test_help.py`, `test_htmx_lint.py`, `test_sidebar.py` and `test_vocabulary_and_nav.py` pass.
+- [x] With the flag off, `/training/` returns 404, no Training link shows, and the Training guide does not show to an administrator.
+- [x] A role with `training` hidden sees no Training card, tile, bulk option or timeline rows. A role with view sees the card, the timeline rows and the Log, and no add buttons. POSTs from a view-only role get 403.
+- [x] After the migrations, a role called "Trainer" exists with exactly the levels in 4.3, and Viewer has `training` view. A yard role already called "Trainer" is not changed. The reverse migration removes the seeded role only when nobody holds it.
+- [x] A Trainer login sees Dashboard, Horses, Locations, Health, Farrier, Breeding, Feed and Training in the sidebar and the More sheet, and no Owners, Finance or Settings items.
+- [x] A Trainer sees every tile on the **Record** card except **Other charge**, and every bulk action except **Charge**.
+- [x] A Trainer can record a vaccination with no cost. A cost above 0 is refused, as for every role without Full on Charges.
+- [x] A Trainer can add, change and delete activities and work types. A Trainer gets 403 on a POST to any owner, charge, invoice or settings form, and is sent away from the owner page.
+- [x] An activity dated today is Done by default. One dated tomorrow is Planned by default.
+- [x] Done with tomorrow's date is refused by the form and by `mark_done`.
+- [x] Did not work without a reason does not save. A reason with Done is not saved: the form clears it (section 17, B1).
+- [x] A Planned activity dated yesterday shows as "Not confirmed" on the horse card and in the Log. **Mark done** on it makes it Done. Two **Mark done** requests at once make one change and no error.
+- [x] A Planned activity dated tomorrow is in **Coming up** and not on the timeline.
+- [x] A bulk add for 5 horses, one of them inactive, makes 4 activities in one transaction and names the skipped horse.
+- [x] An archived work type does not show in the form. Its old activities still show its name.
+- [x] A work type that an activity uses cannot be deleted.
+- [x] The horse page timeline shows at most 10 training rows, and the list preview at most 5. A horse with 30 training rows still shows its latest vaccination in the preview.
+- [x] `core/tests/test_help.py`, `test_htmx_lint.py`, `test_sidebar.py` and `test_vocabulary_and_nav.py` pass.
 
 ### 9.2 Phase 2a — Lots and training status
 
@@ -1172,3 +1174,27 @@ A separate reviewer read revision 1 against `horse_management/`. Each code fact 
 | R2 | Phase 1 URLs, names, methods and access in one table, so the build does not have to choose them. | 9.1 |
 | O8 | Revision 6: D12 decided. Section 8.0: the sidebar place, the More sheet, a bottom bar tab from phase 2b, and the `i-stopwatch` icon. | 4.1, 8.0, 9.1, 9.3 |
 | O7 | Revision 5: the Trainer role has full access on dashboard, horses, locations, health, breeding, feed and training, and nothing on owners, money, settings, users, the farrier's page and C-vet. The consequences are listed, and D12 asks about ownership and arrivals. | 4.2, 4.3, 9.1 |
+
+---
+
+## 17. What changed in the build of phase 1
+
+Phase 1 is in the `training` app. Every item in the phase 1 definition of done (9.1) has a test in `training/test_activity.py`, `training/test_access.py` or `training/test_horse_page.py` (38 tests). The full suite, `ruff`, the migration check and the Node tests pass. The pages were checked in Chromium at 1366 × 900 and at iPhone 13 size, with no script errors.
+
+Where the build departed from this document, and why:
+
+| # | The plan said | The build does | Why |
+|---|---|---|---|
+| B1 | A reason with Done does not save. | The form shows the reason only with **Did not work**, and clears a reason left from an earlier choice. The database check still refuses a reason without Did not work. | A hidden reason that refused the form would be an error the person cannot see. |
+| B2 | The Trainer role migration is `0002_seed_trainer_role.py`. | `0002_seed_work_types.py`, then `0003_seed_trainer_role.py`. | Two data migrations; the work types come first. |
+| B3 | The seeded work types (7.1). | The same 18, with no usual minutes. | The yard knows its own times. A guessed number would be shown as a fact. |
+| B4 | The Training card goes "below the health cards". | It is in the left column, above the Timeline. | The horse page has no separate health cards; the Timeline holds them. Above the Timeline, the card is the first record a trainer sees. |
+| B5 | `Activity.Source.HORSE` is labelled "Horse page". | "One horse". | The Log and the **Add** menu also make single records. |
+| B6 | Minutes "fill from `default_minutes` when the work type changes". | A record saved with no minutes takes the work type's usual minutes. The form says so. | No script is needed, and the rule also holds for bulk add. |
+| B7 | `cvet/tests_ownership.py` was not in the plan. | Its guard test now lists `training` as a feature added after the Vet role, which a vet does not see. | The test makes sure each new feature is decided for the Vet role. The decision is recorded, not skipped. |
+| B8 | `core/roles_testutils.py` was not in the plan. | `VIEWER_ACCESS` has `training: view`. | It mirrors the seeded Viewer role, which migration `0003` changes. |
+| B9 | The status of selected Log rows. | **Mark done** and **Did not work** change only Planned rows. Correcting a Done row uses **Edit**. The message counts the rows that did not change and says why. | 5.12: a lot action changes only rows still in the status it changes from. |
+| B10 | The effort list. | Its empty choice reads "Usual for this work". | "Choose…" suggested that an effort is required. |
+| B11 | The Set up list order. | The list is ordered by position, then name, in the view. | A count annotation drops `Meta.ordering`, and the list came out A to Z. |
+
+Not changed by phase 1: no lot, board or status model, nothing in `core/services.py`, and no charge. The bulk bar on a barn's page still reaches only horses in no stable (8.5).

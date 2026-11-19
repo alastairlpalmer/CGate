@@ -21,6 +21,11 @@ def barns(request):
     return {'barns_enabled': settings.BARNS_ENABLED}
 
 
+def training(request):
+    """``training_enabled``: whether to show Training in the menus."""
+    return {'training_enabled': settings.TRAINING_ENABLED}
+
+
 def google_sign_in(request):
     """``google_sign_in_enabled``: whether to show the Google buttons."""
     return {'google_sign_in_enabled': settings.GOOGLE_SIGN_IN_ENABLED}
