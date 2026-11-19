@@ -38,7 +38,7 @@ SEVERITY_ORDER = {'overdue': 0, 'due': 1, 'info': 2}
 
 # Kinds that belong in the inbox whatever their date: they have no natural
 # "day" and would otherwise never surface.
-INBOX_ALWAYS = frozenset({'egg_count', 'document', 'departure', 'feed', 'rate', 'capacity'})
+INBOX_ALWAYS = frozenset({'egg_count', 'document', 'departure', 'feed', 'rate', 'capacity', 'training_no_work'})
 
 # Kinds the health bulk form can record for several horses at once.
 BULK_ACTION_TYPES = {
@@ -82,6 +82,9 @@ KIND_LABELS = {
     'capacity': 'Over capacity',
     'calendar': 'Calendar item',
     'rate': 'Rate to check',
+    'training_board': 'Lot board',
+    'training_unconfirmed': 'Lot not confirmed',
+    'training_no_work': 'No work',
 }
 
 CATEGORY_OF_KIND = {
@@ -93,6 +96,7 @@ CATEGORY_OF_KIND = {
     'feed': 'yard',
     'capacity': 'yard',
     'calendar': 'yard',
+    'training_board': 'yard', 'training_unconfirmed': 'yard', 'training_no_work': 'yard',
     'rate': 'money',
     'document': 'documents',
     'invoice': 'money',
@@ -913,6 +917,14 @@ def _capacity(ctx):
     return items
 
 
+# Training (training/attention.py). Each is empty while the switch is off.
+
+def _training(ctx):
+    """Lot board not started, lots not confirmed, horses with no work."""
+    from training.attention import collect as training_items
+    return training_items(ctx)
+
+
 # How far back the calendar can show a general item: the grid goes a year
 # back (core.dashboard.calendar.MONTHS_BACK), plus the days of a month.
 CALENDAR_LOOKBACK_DAYS = 400
@@ -997,6 +1009,7 @@ COLLECTORS = (
     ('feed', 'feed', _feed),
     ('capacity', 'locations', _capacity),
     ('calendar', 'dashboard', _calendar_entries),
+    ('training', 'training', _training),
 )
 
 

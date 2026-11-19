@@ -73,6 +73,7 @@
             {% for radio in board_form.board_source %}
             <label class="flex items-center gap-2 min-h-[44px] text-sm cursor-pointer">{{ radio.tag }} {{ radio.choice_label }}</label>
             {% endfor %}
+            <div class="mt-2 max-w-xs">{% include "includes/form_field.html" with field=board_form.no_work_days %}</div>
             <p class="text-xs text-sage mt-1">From the week plan: each lot's work and venue for that day of the week. From the lots: each lot's horses and usual work. Copy the last board: the day before, with its changes. Empty: every lot with no horses, to fill by hand.</p>
         </fieldset>
         <div class="px-4 py-3 border-t border-light-sage flex justify-end">

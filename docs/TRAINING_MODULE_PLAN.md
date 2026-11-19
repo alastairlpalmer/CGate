@@ -2,7 +2,7 @@
 
 **Goal:** Anyone on the yard can see, for each horse, what work it did, when, and what is planned next. A trainer puts horses into lots, gives each lot its work for the day, and confirms it. Staff can also record work for one horse or for many horses in one step. Every piece of work is one record in the database, with its date.
 **Scope:** A new `training` app. A Training section in the sidebar (the "trainer panel"). A Training card on the horse page. No owner login, no offline mode, no drag tool in the first phases (section 12).
-**Status:** Phases 1, 2a, 2b and 3 are built, behind `TRAINING_ENABLED` (off by default). Sections 17 to 20 record where the builds departed from this plan. Next: phase 4 (signals, dashboard, print). The owner decided D1 to D4, D7, D11 and D12 on 2026-11-19 (section 4.1). D5, D6, D8 and D10 use their recommended answers until the owner says otherwise. D9 (the phone signal) is still to be tested at the yard (section 4.2).
+**Status:** Phases 1 to 4 are built, behind `TRAINING_ENABLED` (off by default). Sections 17 to 21 record where the builds departed from this plan. Next: phase 5 (charges), only if the owner confirms D8 and D11. D9 (the phone signal) is still to be tested at the yard (section 4.2).
 **Build estimate:** About 1 to 2 days of build for each of the 6 pull requests, from the speed of the farrier and barns builds. The calendar time is set by the gates: one week of real use after phases 1, 2b and 3 (section 13).
 
 Written for the owner and for an AI coding agent. Read all of it before you write any code.
@@ -26,6 +26,8 @@ Written for the owner and for an AI coding agent. Read all of it before you writ
 **Revision 9.** 2026-11-19. Phase 2b is built. Section 19 records where the build departed from this document and why.
 
 **Revision 10.** 2026-11-19. Phase 3 is built. Section 20 records where the build departed from this document and why, and a fault in phase 2b that this build found and fixed.
+
+**Revision 11.** 2026-11-19. Phase 4 is built. Section 21 records where the build departed from this document and why.
 
 ---
 
@@ -936,13 +938,13 @@ Build:
 
 Definition of done:
 
-- [ ] `load.py` has a unit test for each function, including a gap, a rest day, a Did not work, a Planned day in the gap, and a horse with no activities.
-- [ ] A role with `training` hidden sees no training rows or items on the dashboard.
-- [ ] No board started today, with lots that have members: "Board not started" shows. It goes when the board starts.
-- [ ] A lot not confirmed yesterday shows as an attention item. It stays Planned the next day and the day after. It leaves the list when someone confirms it, marks it Did not work, or when it is more than 14 days old (it stays in the Log filter).
-- [ ] A horse with Planned, not confirmed, rows for the last 4 days shows "4 days not confirmed", not "No work for 4 days".
-- [ ] A horse with 5 days a week and 3 Done days by Friday shows "3 of 5 days this week". A Did not work day does not count.
-- [ ] The print view of a 3-lot, 30-horse board fits on one A4 page.
+- [x] `load.py` has a unit test for each function, including a gap, a rest day, a Did not work, a Planned day in the gap, and a horse with no activities.
+- [x] A role with `training` hidden sees no training rows or items on the dashboard.
+- [x] No board started today, with lots that have members: "Board not started" shows. It goes when the board starts.
+- [x] A lot not confirmed yesterday shows as an attention item. It stays Planned the next day and the day after. It leaves the list when someone confirms it, marks it Did not work, or when it is more than 14 days old (it stays in the Log filter).
+- [x] A horse with Planned, not confirmed, rows for the last 4 days shows "4 days not confirmed", not "No work for 4 days".
+- [x] A horse with 5 days a week and 3 Done days by Friday shows "3 of 5 days this week". A Did not work day does not count.
+- [x] The print view of a 3-lot, 30-horse board fits on one A4 page.
 
 ### 9.6 Phase 5 — Charges
 
@@ -1272,3 +1274,23 @@ Where the build departed from this document, and why:
 | W6 | Not in the plan. | A change of venue for one horse on the board stops it following the lot, as a change of work does. | The same rule as 5.4. |
 | W7 | The phase 2b target of 6 rows on the first phone screen. | 6 rows on today's board when the signed-in person is not a rider. With the rider line and the "not confirmed" note, 4 or 5 rows. | The rider line is the first thing a rider needs. Measured, not assumed. |
 | W8 | The board setting offers the week plan from phase 3. | It does, first in the list. Phase 2a's test that it was not offered is updated. | — |
+
+---
+
+## 21. What changed in the build of phase 4
+
+Phase 4 adds `training/load.py` (the workload facts), `training/attention.py` (the dashboard items), the 28-day strip and the facts on the horse card and the board, training rows on the dashboard Timeline, the print and TV views, and the CSV download (migration `training/0007_signals.py`). Every item in the phase 4 definition of done (9.5) has a test in `training/test_load.py` (16 tests). The full suite passes (3,321 tests). Checked in Chromium: the horse card, the dashboard, the board, and a print to PDF of a board, which fits on one A4 page. No script errors.
+
+Where the build departed from this document, and why:
+
+| # | The plan said | The build does | Why |
+|---|---|---|---|
+| S1 | Three attention items, each in `COLLECTORS` with its own switch. | One collector, `training`, gives all three kinds, and one switch, **Training**, in the reminder settings. It first asks one question: is any horse in work? If not, it stops. | The dashboard has a query budget (`core/tests/test_query_counts.py`). Three collectors added 6 queries to every dashboard; this adds 1 for a yard with no horse in work. The budget moved from 33 to 34, with the reason in the test. |
+| S2 | "Board not started" when active lots have members. | The same, and it also needs a horse in work (S1). | A lot whose horses are all on box rest has no board to start. |
+| S3 | `unconfirmed_days` and the other facts. | All are plain functions over a list of records. `rows_for` reads 60 days for many horses in one query, for the board and the dashboard. | One query for the whole board, not one for each horse. |
+| S4 | "First work in N days" after a gap of 14 days or more. | It shows on the day of the work, planned or done, when the previous work is known. A horse with no earlier record gives no chip. | A new horse in the app is not a horse back from a break. |
+| S5 | "No work for N days" for horses on the board. | It counts from the last work, or from the date the status started if there is no work yet. | A horse put in work yesterday is not "No work for 30 days". |
+| S6 | Chips on the board. | Each board row shows its most important fact only, cut short when space is tight. The horse card shows them all. | Rows stay one line on a phone. |
+| S7 | The 28-day strip "coloured by effort". | Two rows of 14 squares, each with a letter (E, S, F, R, ×, ?) and an `aria-label`, and a key under it. | 5.13: colour is never the only signal. |
+| S8 | A threshold "setting". | `TrainingSettings.no_work_days`, on the **Set up** tab with the board setting. | One place for the board's settings. |
+| S9 | Print and TV views. | One page for both, `board/<date>/print/` and `board/<date>/tv/`, with its own small style sheet and no app around it. The TV page reloads each minute. The links show on a computer only. | Nothing on the page can be tapped by mistake on a TV. |

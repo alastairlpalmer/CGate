@@ -13,6 +13,7 @@ Opening it makes no record (principle 5.3).
             {% include "includes/form_field.html" with field=form.lot span="2" %}
             {% include "includes/form_field.html" with field=form.default_who %}
             {% include "includes/form_field.html" with field=form.default_gear %}
+            {% include "includes/form_field.html" with field=form.days_per_week %}
             {% include "includes/form_field.html" with field=form.notes span="2" %}
             {% if boards_started %}
             <div class="sm:col-span-2">{% include "includes/form_field.html" with field=form.update_boards %}</div>

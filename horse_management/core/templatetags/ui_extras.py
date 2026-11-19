@@ -135,6 +135,10 @@ def coat_colour(code):
 
 # Attention item kind → symbol id in templates/includes/_icons.html.
 KIND_ICONS = {
+    'training': 'stopwatch',
+    'training_board': 'stopwatch',
+    'training_unconfirmed': 'stopwatch',
+    'training_no_work': 'stopwatch',
     'vaccination': 'syringe',
     'ehv': 'syringe',
     'farrier': 'horseshoe',

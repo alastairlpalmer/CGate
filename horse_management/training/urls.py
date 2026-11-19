@@ -45,3 +45,7 @@ urlpatterns += [
     path('setup/<str:kind>/<int:pk>/archive/', views.setup_archive, name='training_setup_archive'),
     path('lots/<int:pk>/week/', views.lot_week_plan, name='training_lot_week_plan'),
 ]
+
+urlpatterns += [
+    path('board/<str:day>/<str:mode>/', views.board_sheet, name='training_board_sheet'),
+]

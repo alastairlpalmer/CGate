@@ -19,7 +19,7 @@ from core.permissions import (
 )
 from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_response
 
-from . import board, services
+from . import board, load, services
 from .access import TrainingEnabledMixin, training_enabled
 from .forms import (
     ActivityForm, BoardSettingsForm, HorseTrainingForm, LotDayForm, LotForm, RiderForm, VenueForm,
@@ -75,6 +75,26 @@ def training_home(request):
 
 
 class ActivityLogView(TrainingEnabledMixin, FeatureAccessMixin, ListView):
+    """The Log tab. ``?format=csv`` downloads every row the filters give."""
+
+    def get(self, request, *args, **kwargs):
+        if request.GET.get('format') == 'csv':
+            return self.csv()
+        return super().get(request, *args, **kwargs)
+
+    def csv(self):
+        from core.csv_export import csv_response
+        rows = self.get_queryset().select_related('rider', 'venue').order_by('date', 'horse__name', 'pk')
+        header = ['Date', 'Horse', 'Lot', 'Work', 'Effort', 'Minutes', 'Status', 'Reason',
+                  'Rider', 'Venue', 'Gear', 'Notes']
+        data = (
+            [a.date, a.horse.name, a.lot_day.lot.name if a.lot_day_id else '', a.work_type.name,
+             a.effort_label, a.minutes, a.status_label, a.get_reason_display() if a.reason else '',
+             a.rider_label, a.venue.name if a.venue_id else '', a.gear, a.notes]
+            for a in rows
+        )
+        return csv_response(f'training-log-{timezone.localdate().isoformat()}', header, data)
+
     feature = 'training'
     access_level = LEVEL_VIEW
     model = Activity
@@ -498,6 +518,7 @@ def horse_training_edit(request, horse_pk):
         'notes': row.notes if row else '',
         'default_who': who_value(row.default_rider_id, row.default_rider_is_owner) if row else '',
         'default_gear': row.default_gear if row else '',
+        'days_per_week': row.days_per_week if row else None,
     }
     form = HorseTrainingForm(request.POST or None, initial=initial, current_lot=current_lot)
     if request.method == 'POST' and form.is_valid():
@@ -519,6 +540,8 @@ def horse_training_edit(request, horse_pk):
         if 'default_who' in form.changed_data or 'default_gear' in form.changed_data:
             rider, is_owner = parse_who(data['default_who'])
             services.set_defaults(horse, rider=rider, rider_is_owner=is_owner, gear=data['default_gear'])
+        if 'days_per_week' in form.changed_data:
+            services.set_days_per_week(horse, data['days_per_week'])
         if chose_status and data.get('update_boards'):
             effect = board.apply_status_to_boards(horse, data['status'], data['status_since'], user=request.user)
             if effect.not_done or effect.removed:
@@ -583,6 +606,18 @@ def training_board(request, day=None):
     by_day = {}
     for row in rows:
         by_day.setdefault(row.lot_day_id, []).append(row)
+    # One workload fact on each row: the most important one (plan 9.5).
+    if rows:
+        history = load.rows_for({r.horse_id for r in rows}, day)
+        threshold = TrainingSettings.load().no_work_days
+        for row in rows:
+            status = getattr(row.horse, 'training', None)
+            facts = load.chips(
+                history.get(row.horse_id, []), day, threshold=threshold,
+                days_per_week=status.days_per_week if status else None, on_board=True,
+                since=status.status_since if status else None,
+            )
+            row.fact = facts[0] if facts else None
     on_board = board.on_board_horse_ids() if lot_days and can_change else set()
     taken = board.horses_on_board(day) if lot_days else set()
     horse_count = 0
@@ -811,3 +846,28 @@ def lot_week_plan(request, pk):
         return redirect('training_setup')
     template = 'training/partials/week_plan_form.html' if is_popup_request(request) else 'training/week_plan_form.html'
     return render(request, template, {'lot': lot, 'form': form})
+
+
+# ─── Phase 4: print, TV and CSV ──────────────────────────────────────
+
+@training_enabled
+@feature_required('training', LEVEL_VIEW)
+def board_sheet(request, day, mode):
+    """The board on paper (``print``) or on a tack-room TV (``tv``): no buttons.
+    The TV page reloads itself each minute (8.6)."""
+    if mode not in ('print', 'tv'):
+        raise Http404
+    day = _parse_day(day)
+    lot_days = board.board_days(day)
+    rows = (
+        Activity.objects.filter(lot_day__in=lot_days)
+        .select_related('horse', 'work_type', 'rider', 'venue').order_by('position', 'pk')
+    )
+    by_day = {}
+    for row in rows:
+        by_day.setdefault(row.lot_day_id, []).append(row)
+    for lot_day in lot_days:
+        lot_day.rows = by_day.get(lot_day.pk, [])
+    return render(request, 'training/board_sheet.html', {
+        'day': day, 'lot_days': lot_days, 'mode': mode, 'now': timezone.localtime(),
+    })

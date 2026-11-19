@@ -12,8 +12,9 @@ from django.utils import timezone
 
 from core.permissions import LEVEL_FULL, LEVEL_VIEW, has_feature_access
 
+from . import load
 from .access import training_on
-from .models import Activity, HorseTraining, LotMember
+from .models import Activity, HorseTraining, LotMember, TrainingSettings
 
 RECENT_DAYS = 14
 COMING_UP = 5
@@ -48,6 +49,7 @@ def training_card(user, horse):
         'status_notes': status_row.notes if status_row else '',
         'lot': member.lot if member else None,
         'today_row': rows.filter(date=today, lot_day__isnull=False).select_related('lot_day__lot').first(),
+        **_load_facts(horse, today, status_row),
         'coming_up': list(rows.filter(date__gt=today).order_by('date', 'pk')[:COMING_UP]),
         'recent': list(
             rows.filter(date__lte=today, date__gt=today - timedelta(days=RECENT_DAYS))
@@ -57,4 +59,19 @@ def training_card(user, horse):
         'can_change': has_feature_access(user, 'training', LEVEL_FULL),
         'reasons': Activity.Reason.choices,
         'days': RECENT_DAYS,
+    }
+
+
+def _load_facts(horse, today, status_row):
+    """The workload chips and the 28-day strip (plan 9.5)."""
+    rows = load.rows_for([horse.pk], today)[horse.pk]
+    on_board = bool(status_row and status_row.status in HorseTraining.ON_BOARD)
+    return {
+        'chips': load.chips(
+            rows, today, threshold=TrainingSettings.load().no_work_days,
+            days_per_week=status_row.days_per_week if status_row else None,
+            on_board=on_board, since=status_row.status_since if status_row else None,
+        ),
+        'strip': load.strip(rows, today),
+        'days_per_week': status_row.days_per_week if status_row else None,
     }
