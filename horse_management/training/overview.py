@@ -332,6 +332,33 @@ def tomorrow_block(today, *, lot=None):
     return {'date': tomorrow, 'lot_days': lot_days, 'horses': sum(ld.n for ld in lot_days)}
 
 
+# ─── First-run checklist (phase C, plan section 5) ───────────────────
+
+def setup_steps():
+    """The steps a new yard takes, each with a done flag. None when steps 2
+    to 4 are done: the card then goes away. The checks are counts; there is
+    no new model."""
+    from .models import WorkType
+    steps = [
+        {'key': 'work_types', 'label': 'Work types', 'done': WorkType.objects.filter(is_active=True).exists(),
+         'url': reverse('training_setup'), 'action': 'Open Set up'},
+        {'key': 'lots', 'label': 'Make your lots', 'done': Lot.objects.active().exists(),
+         'url': reverse('training_lots'), 'action': 'Add a lot'},
+        {'key': 'horses', 'label': 'Put horses in your lots',
+         'done': LotMember.objects.filter(lot__is_active=True, horse__is_active=True).exists(),
+         'url': reverse('training_lots'), 'action': 'Add horses'},
+        {'key': 'source', 'label': 'Choose how the board starts each day',
+         # A yard that started a board has chosen, even if it never saved Set up.
+         'done': TrainingSettings.objects.exists() or LotDay.objects.exists(),
+         'url': reverse('training_setup'), 'action': 'Choose'},
+        {'key': 'board', 'label': "Start today's board", 'done': LotDay.objects.exists(),
+         'url': reverse('training_board'), 'action': 'Open the board'},
+    ]
+    if all(step['done'] for step in steps[1:4]):
+        return None
+    return steps
+
+
 # ─── The page ────────────────────────────────────────────────────────
 
 def _scope(lot, today):
@@ -389,4 +416,5 @@ def build(today, *, lot=None, show_health=False):
         'week': week,
         'tomorrow': tomorrow_block(today, lot=lot),
         'riders_folded': large,
+        'setup_steps': setup_steps(),
     }

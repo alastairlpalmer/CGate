@@ -1,6 +1,6 @@
 # Training dashboard (Overview) — plan
 
-**Status:** Phases A and B are built (section 10). Phase C is next. The owner decided T1 to T7 on 2026-11-19 (section 3).
+**Status:** Built. Phases A, B and C are done (section 10). Training stays behind `TRAINING_ENABLED`. The owner decided T1 to T7 on 2026-11-19 (section 3).
 
 **Revision 3.** 2026-11-19. The owner decided T1 to T7. T7 is new: the yard's own **Stable Staff** role gets Full on Training (section 3.1).
 
@@ -247,3 +247,20 @@ Departures from the plan:
 | Tests: 5 more. | `training/test_overview.py` |
 
 Departure B1: the records are read once for Needs attention and This week, up to Sunday, so the grid shows planned work later in the week. The query count does not grow (the same test as A4).
+
+### 10.3 Phase C
+
+| Part | Where |
+|---|---|
+| First-run checklist in place of the figures: work types, lots, horses in lots, the board source, today's board. It goes when steps 2 to 4 are done. | `overview.setup_steps`, `overview.html` |
+| One header on every tab (C1), with one main button (C2): Overview, Open today's board; Board, Record training; Lots, Add lot; Log, Record training; Set up, none (each card has its own Add). | `templates/training/_header.html` |
+| Set up (C3): the Lot board card first; Add work type in the Work types card. | `setup.html` |
+| Empty states (C4): Lots, Log and Board already said what to do next, with a button. No change. | |
+| Tests: 5 more. | `training/test_overview.py` |
+
+Departures from the plan:
+
+| # | Change | Why |
+|---|---|---|
+| C-1 | Step 4 (the board source) is also done when any board has started. | A yard that used the board before this build never saved Set up. It must not see the checklist again. |
+| C-2 | Set up on a phone scrolled sideways (from phase 3): the hidden "Actions" label of the week plan table was outside its scroll box. Fixed with `relative` on the box. | Found in the browser check. |

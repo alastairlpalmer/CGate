@@ -5,15 +5,7 @@
 {% block content %}
 <div class="space-y-2 lg:space-y-3">
 
-    {# On a phone the app bar already says Training: the title is for screen readers only, so more horses fit. #}
-    <div class="page-header max-lg:hidden">
-        <div>
-            <h1 class="page-title">Training</h1>
-        </div>
-    </div>
-    <h1 class="sr-only lg:hidden">Training</h1>
-
-    {% include 'training/_tabs.html' %}
+    {% include 'training/_header.html' with subtitle="" %}
 
     {# The day: arrows, the date, Today. #}
     <nav class="flex items-center justify-between gap-2" aria-label="Board date">

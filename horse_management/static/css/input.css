@@ -2756,3 +2756,9 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     .training-count-low { @apply bg-saddle/15 text-saddle; }
     .training-count-today { @apply bg-white border border-light-sage text-sage; }
 }
+
+/* Training Overview, first-run checklist (phase C). */
+@layer components {
+    .training-step { @apply shrink-0 w-7 h-7 rounded-full border border-light-sage flex items-center justify-center text-xs font-semibold text-sage; }
+    .training-step.is-done { @apply bg-forest border-forest text-white; }
+}

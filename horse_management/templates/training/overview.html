@@ -9,22 +9,7 @@ figures, Today, Needs attention and Not in work. Facts only, and no price.
 {% endcomment %}
 <div class="space-y-3">
 
-    <div class="page-header">
-        <div>
-            <h1 class="page-title">Training</h1>
-            <p class="page-subtitle">{{ today|date:"l j F Y" }}</p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-            <a href="{% url 'training_board' %}" class="btn-primary">{% if today_data.lot_days or not can_change %}Open today's board{% else %}Start today's board{% endif %}</a>
-            {% if can_change %}
-            <a href="{% url 'training_activity_create' %}"
-               hx-get="{% url 'training_activity_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-               data-popup-title="Record training" class="btn-secondary">Record training</a>
-            {% endif %}
-        </div>
-    </div>
-
-    {% include 'training/_tabs.html' %}
+    {% include 'training/_header.html' with subtitle=today|date:"l j F Y" %}
 
     {% if lots %}
     <nav class="training-lot-chips" aria-label="Show one lot">
@@ -35,6 +20,30 @@ figures, Today, Needs attention and Not in work. Facts only, and no price.
     </nav>
     {% endif %}
 
+    {# First-run checklist (phase C, plan section 5): in place of the figures. #}
+    {% if setup_steps %}
+    <section class="card overflow-hidden" aria-labelledby="setup-title">
+        <div class="section-header px-4 pt-3">
+            <h2 id="setup-title" class="section-title">Set up Training</h2>
+        </div>
+        <p class="px-4 pb-2 text-sm text-sage">Do these steps once. Then this page shows today's lots, the horses that need attention and the week.</p>
+        <ol class="divide-y divide-light-sage border-t border-light-sage">
+            {% for step in setup_steps %}
+            <li class="flex items-center gap-3 px-4 py-2.5 min-h-[52px]">
+                {% if step.done %}
+                <span class="training-step is-done" aria-hidden="true">&#10003;</span>
+                <span class="flex-1 text-sm text-sage line-through">{{ step.label }}</span>
+                <span class="sr-only">Done</span>
+                {% else %}
+                <span class="training-step" aria-hidden="true">{{ forloop.counter }}</span>
+                <span class="flex-1 text-sm font-medium text-charcoal">{{ step.label }}</span>
+                {% if can_change %}<a href="{{ step.url }}" class="btn-secondary btn-sm min-h-[44px] sm:min-h-0 inline-flex items-center">{{ step.action }}</a>{% endif %}
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ol>
+    </section>
+    {% else %}
     {# The figures (Q1, Q4, Q9). Each one is a link. #}
     <div class="metric-strip" role="list">
         <a class="metric" role="listitem" href="{% url 'training_board' %}">
@@ -63,6 +72,7 @@ figures, Today, Needs attention and Not in work. Facts only, and no price.
             <span class="metric-meta">{% if attention.unconfirmed_lots %}{{ attention.unconfirmed_lots }} lot{{ attention.unconfirmed_lots|pluralize }} not confirmed{% elif attention.grouped %}in {{ attention.groups|length }} groups{% elif attention.total %}horses to check{% else %}Nothing now{% endif %}</span>
         </a>
     </div>
+    {% endif %}
 
     <div class="grid grid-cols-1 gap-3 lg:grid-cols-5 items-start">
 

@@ -18,7 +18,7 @@ from core.roles_testutils import assign_role, make_user_with_access
 from health.models import MedicalCondition, VetVisit
 
 from . import attention, board, overview, services
-from .models import Activity, HorseTraining, Lot, WorkType
+from .models import Activity, HorseTraining, Lot, LotDay, TrainingSettings, WorkType
 
 POPUP = {'HTTP_HX_REQUEST': 'true', 'HTTP_HX_TARGET': 'popup-body'}
 stable_staff = importlib.import_module('training.migrations.0009_stable_staff_training')
@@ -32,6 +32,7 @@ class Base(TestCase):
         self.second = Lot.objects.create(name='2nd lot', usual_work_type=self.canter, position=1)
         self.user = make_user_with_access('trainer', training='full', horses='view', health='view')
         self.client.force_login(self.user)
+        TrainingSettings.load().save()   # the yard chose a board source
 
     def horses(self, names, lot=None):
         made = [Horse.objects.create(name=n) for n in names]
@@ -343,3 +344,45 @@ class WeekTests(Base):
         Activity.objects.filter(horse=made[2], date=self.today).update(rider_is_owner=True)
         riders = self.page().context['today_data']['riders']
         self.assertEqual(riders, [('Sam', ['Ballybrook', 'Red Kite']), ('The owner', ['Juniper'])])
+
+
+class ChecklistTests(Base):
+    """Phase C: the first-run checklist (plan section 5)."""
+
+    def test_new_yard_sees_the_checklist_in_place_of_the_figures(self):
+        TrainingSettings.objects.all().delete()
+        response = self.page()
+        steps = {step['key']: step['done'] for step in response.context['setup_steps']}
+        self.assertEqual(steps, {'work_types': True, 'lots': True, 'horses': False, 'source': False, 'board': False})
+        self.assertContains(response, 'Set up Training')
+        self.assertNotContains(response, 'metric-strip')
+
+    def test_checklist_goes_when_steps_two_to_four_are_done(self):
+        self.horses(['Ballybrook'])
+        response = self.page()
+        self.assertIsNone(response.context['setup_steps'])
+        self.assertContains(response, 'metric-strip')
+        self.assertFalse(LotDay.objects.exists())
+
+    def test_a_started_board_counts_as_a_chosen_source(self):
+        TrainingSettings.objects.all().delete()
+        self.horses(['Ballybrook'])
+        board.start_board(self.today, user=self.user, source='lots')
+        self.assertIsNone(self.page().context['setup_steps'])
+
+class HeaderTests(Base):
+    """Phase C: one header on every tab, with one main button (C1, C2)."""
+
+    def test_each_tab_has_the_header_and_its_main_button(self):
+        pages = {
+            'training_home': "Start today's board",
+            'training_board': 'Record training',
+            'training_lots': 'Add lot',
+            'training_log': 'Record training',
+            'training_setup': 'Add work type',
+        }
+        for name, button in pages.items():
+            with self.subTest(name):
+                response = self.client.get(reverse(name))
+                self.assertTemplateUsed(response, 'training/_header.html')
+                self.assertContains(response, button)

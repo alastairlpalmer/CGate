@@ -5,23 +5,7 @@
 {% block content %}
 <div class="space-y-4">
 
-    <div class="page-header">
-        <div>
-            <h1 class="page-title">Training</h1>
-            <p class="page-subtitle">A lot is a group of horses that usually work together. The lot board for each day starts from these lots. A change here does not change a board that already started.</p>
-        </div>
-        {% if can_change %}
-        <div class="flex items-center gap-3">
-            <a href="{% url 'training_lot_create' %}" hx-get="{% url 'training_lot_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-               data-popup-title="Add lot" class="btn-primary">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                Add lot
-            </a>
-        </div>
-        {% endif %}
-    </div>
-
-    {% include 'training/_tabs.html' %}
+    {% include 'training/_header.html' with subtitle="A lot is a group of horses that usually work together. The lot board for each day starts from these lots. A change here does not change a board that already started." %}
 
     {% if in_work_no_lot %}
     <div class="alert-warning text-sm" role="status">
