@@ -15,8 +15,8 @@ pop-up edit forms, a spreadsheet import, the foaling flow, and later a
 "read it from the document" step.
 
 **Status:** planned. Nothing in this file is built. §4 is a stress test of
-the first draft; the rest of the file includes its fixes. Decisions 1, 4
-and 5 are agreed (19 Nov 2026, §10).
+the first draft; the rest of the file includes its fixes. Decisions 1, 4,
+5 and 8 are agreed (19 Nov 2026, §10).
 
 ---
 
@@ -630,7 +630,9 @@ browser.
 - For each box at generation k + 1, one path from the middle of its child
   (x 0) to its own middle (x 100), using the fractions above × 100.
 - Curved: `M0 y1 C55 y1 45 y2 100 y2`. Bracket: `M0 y1 H50 V y2 H100`.
-  The prototype has both. Recommendation: curved.
+  The prototype has both. **Agreed: curved** (decision 8). The bracket
+  path stays in the code only if it costs nothing; it is not an option
+  for users.
 - `vector-effect: non-scaling-stroke` keeps the line width the same when
   the SVG stretches.
 - Lines to "Unknown" or "not entered" boxes are dashed.
@@ -759,7 +761,7 @@ Phase 2 adds "Read from passport or PDF".
 | 3 | Generations on the page? | Open. Recommendation: 2 by default, with "Show 3 generations" when the records exist (§8.3; the prototype shows both). Sire, dam, dam's sire are the minimum to enter. |
 | 4 | Racing age? | **Agreed: one rule for all horses** (1 January, or 1 August in the southern hemisphere). Stored ages become estimated foaling years (§6.1). |
 | 5 | Spreadsheet import in phase 1? | **Agreed: yes, and a records editor in the app.** The editor is a list and a form with Save and next, not a spreadsheet grid (§7.5). |
-| 8 | Pedigree lines: curved or bracket? | Open. Recommendation: curved (§8.3). The prototype shows both. |
+| 8 | Pedigree lines: curved or bracket? | **Agreed: curved** (§8.3). |
 | 6 | Embryo transfer for polo? | Open. Recommendation: phase 1 lets the dam differ from the mare that foaled; a donor-mare field on the breeding record later. |
 | 7 | AI document reading (phase 2)? | Open. Recommendation: yes, through the review screen, after the test set passes. |
 
