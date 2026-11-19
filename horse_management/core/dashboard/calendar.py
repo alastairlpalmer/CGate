@@ -25,6 +25,15 @@ MONTHS_BACK = 12
 MONTHS_AHEAD = 12
 
 
+def _label(kind, count, day_items):
+    """A day cell's line for one kind: "Vaccination 3". A general calendar
+    item that is alone on its day shows its own title ("Hay delivery"),
+    which says more than "Calendar item"."""
+    if kind == 'calendar' and count == 1:
+        return next(item.title for item in day_items if item.kind == 'calendar')
+    return f'{KIND_LABELS.get(kind, kind)}{f" {count}" if count > 1 else ""}'
+
+
 def parse_month(value, today):
     """``'2026-11'`` → the first of that month; anything else → this month.
     Kept within MONTHS_BACK and MONTHS_AHEAD of today."""
@@ -98,7 +107,7 @@ def build(items, today, month_first, selected=None):
             'dots': kinds[:3],
             'more': max(0, len(kinds) - 3),
             'labels': [
-                {'kind': k, 'text': f'{KIND_LABELS.get(k, k)}{f" {counts[k]}" if counts[k] > 1 else ""}'}
+                {'kind': k, 'text': _label(k, counts[k], day_items)}
                 for k in kinds[:2]
             ],
             'titles': ', '.join(f'{KIND_LABELS.get(k, k)} {n}' for k, n in counts.most_common()),
