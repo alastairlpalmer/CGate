@@ -263,6 +263,11 @@ class HorseTrainingForm(forms.Form):
         required=False, max_length=120, label='Usual gear',
         widget=forms.TextInput(attrs={'class': 'form-input'}),
     )
+    days_per_week = forms.IntegerField(
+        required=False, min_value=1, max_value=7, label='Exercise days a week',
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'min': 1, 'max': 7}),
+        help_text='For example 5 for a ridden livery. The card shows "3 of 5 days this week".',
+    )
     update_boards = forms.BooleanField(
         required=False, initial=True, label='Also change the lot boards from this date',
         help_text=('Off the board: the planned work on this date becomes Did not work, '
@@ -285,9 +290,12 @@ class HorseTrainingForm(forms.Form):
 class BoardSettingsForm(forms.ModelForm):
     class Meta:
         model = TrainingSettings
-        fields = ['board_source']
-        widgets = {'board_source': forms.RadioSelect}
-        labels = {'board_source': 'Start a new day'}
+        fields = ['board_source', 'no_work_days']
+        widgets = {
+            'board_source': forms.RadioSelect,
+            'no_work_days': forms.NumberInput(attrs={'class': 'form-input w-24', 'min': 1, 'max': 60}),
+        }
+        labels = {'board_source': 'Start a new day', 'no_work_days': '"No work" after (days)'}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

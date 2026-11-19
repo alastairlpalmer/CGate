@@ -265,3 +265,12 @@ def set_defaults(horse, *, rider=None, rider_is_owner=False, gear=''):
     if (row.default_rider_id, row.default_rider_is_owner, row.default_gear) != before:
         row.save()
     return row
+
+
+def set_days_per_week(horse, days):
+    """The exercise days a week the horse's livery includes (D1), or None."""
+    row, created = HorseTraining.objects.get_or_create(horse=horse, defaults={'days_per_week': days})
+    if not created and row.days_per_week != days:
+        row.days_per_week = days
+        row.save()
+    return row

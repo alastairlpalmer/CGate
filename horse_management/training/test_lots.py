@@ -166,7 +166,7 @@ class OtherPageTests(Base):
         response = self.client.get(reverse('training_setup'))
         values = [value for value, _ in response.context['board_form'].fields['board_source'].choices]
         self.assertEqual(values, ['week_plan', 'lots', 'copy', 'empty'])
-        self.client.post(reverse('training_setup'), {'board_source': 'copy'})
+        self.client.post(reverse('training_setup'), {'board_source': 'copy', 'no_work_days': 3})
         self.assertEqual(TrainingSettings.load().board_source, 'copy')
 
     def test_in_work_horses_with_no_lot_are_named(self):

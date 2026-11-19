@@ -1432,6 +1432,7 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
     .log-icon-money { @apply bg-info-blue-50 text-info-blue; }
     .log-icon-yard { @apply bg-sand-100 text-saddle; }
     .log-icon-documents { @apply bg-sand-50 text-charcoal-light; }
+    .log-icon-training { @apply bg-sage-50 text-sage; }
     .log-body { @apply flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pt-0.5; }
     .log-name { @apply inline-flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-charcoal no-underline ring-1 ring-light-sage transition-colors hover:ring-sage hover:text-forest; }
     .log-what { @apply text-sm text-charcoal-light; }
@@ -2712,4 +2713,17 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     .lot-row { @apply flex items-center gap-2 px-3 min-h-[48px]; }
     .row-menu { @apply absolute right-0 top-full mt-1 z-20 min-w-[13rem] bg-white rounded-card border border-light-sage shadow-float py-1; }
     .row-menu-item { @apply block w-full text-left px-3 py-2 min-h-[44px] text-sm text-charcoal hover:bg-sage-50; }
+}
+
+/* Training: the 28-day strip on the horse card (plan 9.5, 5.13). Each day
+   has a letter and an aria-label, so colour is never the only signal. */
+@layer components {
+    .training-strip { @apply grid grid-cols-14 gap-0.5; }
+    .training-day { @apply h-6 rounded-sm flex items-center justify-center text-[10px] font-semibold border border-light-sage bg-white text-charcoal-light; }
+    .training-day-easy { @apply bg-sage-100 text-forest border-sage-100; }
+    .training-day-steady { @apply bg-sage-300 text-charcoal border-sage-300; }
+    .training-day-fast { @apply bg-forest text-white border-forest; }
+    .training-day-rest { @apply bg-sand-100 text-charcoal-light border-sand-100; }
+    .training-day-missed { @apply bg-white text-saddle border-saddle/40; }
+    .training-day-planned { @apply bg-white text-sage border-dashed border-sage-300; }
 }

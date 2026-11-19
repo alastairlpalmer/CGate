@@ -69,6 +69,13 @@
     </div>
     {% endif %}
 
+    {% if lot_days %}
+    <p class="text-xs text-sage flex justify-end gap-3 max-lg:hidden">
+        <a href="{% url 'training_board_sheet' day.isoformat 'print' %}" hx-boost="false" class="link" target="_blank" rel="noopener">Print</a>
+        <a href="{% url 'training_board_sheet' day.isoformat 'tv' %}" hx-boost="false" class="link" target="_blank" rel="noopener">TV view</a>
+    </p>
+    {% endif %}
+
     {% if not lot_days %}
     <div class="card px-4 py-5 space-y-3">
         <p class="text-sm text-charcoal">No board for {{ day|date:"D j M" }} yet.</p>
@@ -157,6 +164,7 @@
                             {% endif %}
                             {% if not row.follows_lot %}<span class="badge-neutral" title="This horse's own work for the day">{{ row.work_type.name }} <span aria-hidden="true">&#9998;</span><span class="sr-only">(own work)</span></span>{% endif %}
                             {% if row.rider_label %}<span class="text-sm text-sage truncate min-w-0" title="{{ row.rider_label }}">{{ row.rider_label }}</span>{% endif %}
+                            {% if row.fact %}<span class="{% if row.fact.tone == 'warn' %}badge-warning{% elif row.fact.tone == 'info' %}badge-info{% else %}badge-neutral{% endif %} truncate min-w-0" title="{{ row.fact.text }}">{{ row.fact.text }}</span>{% endif %}
                             {% if not row.horse.is_active %}<span class="badge-warning">Left the yard</span>{% endif %}
                             {% if row.status == 'done' %}<span class="badge-success">Done</span>{% elif row.status == 'not_done' %}<span class="badge-info">{{ row.get_reason_display }}</span>{% endif %}
                         </span>

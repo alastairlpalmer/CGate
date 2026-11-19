@@ -286,6 +286,10 @@ class HorseTraining(models.Model):
     default_rider = models.ForeignKey('Rider', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     default_rider_is_owner = models.BooleanField(default=False)
     default_gear = models.CharField(max_length=120, blank=True)
+    # Phase 4 (D1): the exercise days a week the horse's livery includes.
+    days_per_week = models.PositiveSmallIntegerField(
+        null=True, blank=True, help_text='Exercise days a week, for example from a ridden livery. Leave empty if none.',
+    )
     history = HistoricalRecords()
 
     class Meta:
@@ -314,6 +318,10 @@ class TrainingSettings(models.Model):
     board_source = models.CharField(
         max_length=10, choices=BoardSource.choices, default=BoardSource.LOTS,
         help_text="How the lot board starts a new day.",
+    )
+    # Phase 4: "No work for N days" shows from this many days.
+    no_work_days = models.PositiveSmallIntegerField(
+        default=3, help_text='Show "No work for N days" for a horse in work after this many days.',
     )
 
     class Meta:

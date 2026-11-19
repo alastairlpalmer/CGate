@@ -86,6 +86,7 @@
             <div class="flex items-end gap-2">
                 <button type="submit" class="btn-secondary">Filter</button>
                 <a href="{% url 'training_log' %}" class="btn-secondary">Clear</a>
+                <a href="{% url 'training_log' %}?{% if filter_query %}{{ filter_query }}&amp;{% endif %}format=csv" hx-boost="false" class="btn-secondary">Download CSV</a>
             </div>
         </form>
     </div>
