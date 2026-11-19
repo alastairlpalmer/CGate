@@ -1,6 +1,8 @@
 # Training dashboard (Overview) — plan
 
-**Status:** Plan. Nothing is built. The owner must decide T1 to T4 (section 3) before the build starts.
+**Status:** Plan. Nothing is built. The owner must decide T1 to T6 (section 3) before the build starts.
+
+**Revision 2.** 2026-11-19. The owner asked how the page works for a yard with lots of 20 to 30 horses, and asked for an area for horses that are not in work. New: section 4.3 (large yards), section 4.4 (Not in work), T5 and T6, and a second mock-up with 120 horses in 5 lots.
 **Date:** 2026-11-19.
 **Parent plan:** [`TRAINING_MODULE_PLAN.md`](TRAINING_MODULE_PLAN.md). Phases 1 to 4 of that plan are built, behind `TRAINING_ENABLED`.
 
@@ -32,6 +34,7 @@ These are the trainer's questions at 06:30, in order. Each answer is one block o
 | Q6 | How has each horse worked this week? | **This week** grid | `load.rows_for`, `load.strip()` (7 days, not 28) |
 | Q7 | Is tomorrow ready? | **Tomorrow** card | `LotDay` rows for tomorrow, `LotWeekPlan` |
 | Q8 | Who rides what today? | **Riders today** card | `Activity.rider`, `HorseTraining` default rider |
+| Q9 | Which horses that are not in work need an action? | **Not in work** card; figure **Not in work** | `HorseTraining` status and `status_since`, `MedicalCondition`, `VetVisit.follow_up_date`, and a new review date (T5) |
 
 The page gives facts. It gives no advice and claims no risk (principle 5.9 of the parent plan).
 
@@ -43,6 +46,8 @@ The page gives facts. It gives no advice and claims no risk (principle 5.9 of th
 | T2 | What does the sidebar **Training** link open? | **Overview.** | It is the summary. "Open today's board" is the first button on it, so the board is one tap away. |
 | T3 | What does the phone bottom-bar Training item open? | **Overview**, the same as the sidebar. | One rule is easier to learn. The large "Open today's board" button is at the top of the phone screen. If riders find the extra tap slow, change this item to Board later. |
 | T4 | Who sees the Overview? | **Everyone with `training` view.** Riders see the same page. | No data on it is private. Prices never show (D11). |
+| T5 | Add a **Review on** date to a horse's training status? | **Yes.** One optional date, set in the status pop-up. | Without a date, the app cannot know when a horse on rest needs a decision. "Review due" is the main action in the Not in work card (4.4). |
+| T6 | Do horses with the status **Not in training** show in the Not in work card? | **No.** Only Resting and Box rest. | Not in training covers broodmares, youngstock and retired horses. They are not part of the training yard's work. They can be 50 % of a large yard. |
 
 ## 4. Layout
 
@@ -89,6 +94,53 @@ On a phone the blocks go in one column, in the order Q1 to Q8. The figures go in
 | M3 | Phone: the This week grid is wider than the screen. | Scroll the grid sideways inside its card, with the name column sticky. The page itself must not scroll sideways. |
 | M4 | Phone: the Horses in work tile text is cut ("2…"). | Show only "18 in work" on the tile; the full split shows on the Lots tab. |
 | M5 | Phone: the Needs attention "Open" link is far from its row text. | Make the whole row the link, with a chevron. |
+| M6 | Large-yard mock-up: today's column shows "0/26" in orange, but those lots are only planned. | Today and later days are grey (4.3). |
+
+### 4.3 Large yards (lots of 20 to 30 horses)
+
+There are **no size tiers to set**. The page changes by itself when a block gets long. One layout and one code path is easier to test, and a yard that grows does not need to change a setting. The second mock-up shows a yard with 120 horses in 5 lots.
+
+| Block | Small yard (up to 25 horses on the board) | Large yard (more than 25) |
+|---|---|---|
+| Lot filter | Not shown. | Chips at the top: **All lots**, then one chip for each of today's lots. A chip filters every block on the page (`?lot=<pk>`). A head lad who runs one lot sees only that lot. |
+| Figures | The same. | The same. The numbers get bigger; the tiles do not. |
+| Today | One row for each lot. | The same. A yard has few lots, so this block does not get long. Each row adds a line: "22 done · 2 did not work", or "26 planned" and the first riders. |
+| Needs attention | One row for each horse, maximum 8. | When there are more than 8 rows: **one row for each kind**, with the count ("No work 4+ days · 7 horses"). Tap a row to show the names. Not confirmed lots stay as one row each. |
+| This week | One row for each horse, grouped by lot. | **One summary row for each lot**: for each day, horses worked ÷ horses in the lot ("23/24"), and the fast sessions in the week. Tap a lot to show its horses (first 10, then "Show all 24 horses"). With a lot chip on, that lot's horses show open. |
+| Not in work | Each horse. | Horses that need action first, each on its own row. The others fold into one row for each status ("Resting · 24 more, review dates set"). |
+| Riders today | Each rider with their horses. | One row: "11 riders · most: Sam 9, Jo 8, Alex 8". Tap to show all. |
+
+Rules for the lot summary row:
+
+- A day before today: dark when every horse worked, orange when 3 or more did not work.
+- Today and later days: grey. Planned work is not a fault (fault M6).
+
+The limit (25) is a constant in the code, not a setting. We can change it after the yard uses the page.
+
+### 4.4 Not in work
+
+The owner's point: a horse that is not in work can still need an action. Today these horses are only on the Lots tab and the horse page.
+
+**Who shows:** horses with the status Resting or Box rest (T6).
+
+**What each row shows:** name, status and days in it ("Box rest 42 days"), an active or monitoring condition from Health, and one action badge. The **Change** button opens the existing status pop-up (`training_horse_edit`), where the trainer can put the horse back in work or set a new review date.
+
+**The action badges** (facts, not advice):
+
+| Badge | When |
+|---|---|
+| Review due today | Review on = today. |
+| Review overdue N days | Review on is before today. |
+| Vet follow-up <day> | A `VetVisit.follow_up_date` in the next 7 days, or overdue. |
+| No review date | Box rest with no review date, or Resting for 28 days or more with no review date. |
+
+A horse with no badge folds into its status group (4.3).
+
+**Data change (T5):** add `HorseTraining.review_on = DateField(null=True, blank=True)` with label "Review on". It is in the status pop-up, under the status. When the status changes to one that goes on the board, the date is cleared. One migration; history records it.
+
+**Link to Needs attention:** "Review due" and "Review overdue" also count in the Needs attention figure, and on the main dashboard through `training/attention.py`.
+
+**Not going out today** stays in the Today card. That list is horses on the board that do not work today. Not in work is horses off the board.
 
 ## 5. First-run checklist
 
@@ -119,7 +171,8 @@ The Overview alone does not fix "it feels basic". These changes give the section
 - One view, `training_overview`, in `training/views.py`, with `TrainingEnabledMixin` and `feature_required('training')`.
 - Read the data once: today's and tomorrow's `LotDay` rows with their activities (`prefetch_related`), the `HorseTraining` rows that are on the board, and one `load.rows_for(horse_ids, today, window=14)` call. All blocks use these lists. No query in a loop.
 - Re-use: `board.py` for the day's rows, `load.chips()` and the fact functions, `attention.collect` for the Needs attention rows (one source for the main dashboard and the Overview).
-- Query budget: a test with 30 horses in 3 lots, and a fixed query count (target 15 or fewer). The main dashboard budget (34) does not change.
+- Query budget: tests with 10 horses and with 150 horses in 5 lots. The query count must be the same for both (target 15 or fewer). The main dashboard budget (34) does not change, because the review date is read in the query that `attention.py` already makes.
+- A large yard: 150 horses × 14 days is about 2,100 rows. That is small. The folded rows are built on the server; there is no extra request when a user opens one.
 - No polling. The page is fresh on each load. A **Refresh** is the browser's own.
 
 ## 8. Phases
@@ -128,8 +181,8 @@ Each phase is one pull request, with tests and the usual checks.
 
 | Phase | Content | Done when |
 |---|---|---|
-| A | The Overview tab and the landing change (T1, T2): header, figures, Today, Needs attention. `_header.html` (C1) and the new tab (C5). | The sidebar link opens the Overview. The four figures and two cards show the right data in tests. Query count test passes. Phone and desktop screenshots checked. |
-| B | This week grid, Tomorrow, Riders today. Faults M1 to M5. | The grid matches the horse page strip for each horse in tests. No page scroll sideways at 375 wide. |
+| A | The Overview tab and the landing change (T1, T2): header, figures, Today, Needs attention, **Not in work** with the review date (4.4, T5). The lot filter and the large-yard folds for these blocks (4.3). `_header.html` (C1) and the new tab (C5). | The sidebar link opens the Overview. The figures and cards show the right data in tests, with 10 horses and with 150 horses in 5 lots. Query count test passes for both. Phone and desktop screenshots checked. |
+| B | This week grid with the lot summary rows (4.3), Tomorrow, Riders today. Faults M1 to M6. | The grid matches the horse page strip for each horse in tests. No page scroll sideways at 375 wide. |
 | C | First-run checklist (section 5), C2 to C4 on the other tabs. | A new yard sees the checklist. Each tab has one primary button and an empty state. |
 
 ## 9. Risks
