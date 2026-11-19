@@ -4,7 +4,7 @@ Single source of truth for widget keys, display names and the feature area
 each one belongs to. Consumed by ``DashboardPreference`` (default layout and
 per-user visibility) and by the dashboard views and template.
 
-The dashboard is six zones, each answering one question; every zone is a
+The dashboard is five zones, each answering one question; every zone is a
 widget a user can switch off in Settings. What needs doing is not a zone:
 it lives in the notification centre (notifications/centre.py), and the
 dashboard's headline counts it and opens it. Zones render in a designed
@@ -15,7 +15,6 @@ is kept for compatibility but not used for placement.
               visits worth booking together (key kept from "Next 14 days")
   near_you    the site you are on, drawn, with the nearest location lit
               (only with LOCATION_MAPS_ENABLED; see ``requires_setting``)
-  yard_board  sites and their locations: occupancy, land use, rest
   in_foal     mares in foal (renders only when there are any)
   money       the month's billing position
   activity    what changed, as a chronological log
@@ -31,7 +30,6 @@ WIDGETS = [
     {"key": "upcoming",   "name": "Calendar",       "group": "main", "feature": "dashboard"},
     {"key": "near_you",   "name": "Near you",       "group": "main", "feature": "locations",
      "requires_setting": "LOCATION_MAPS_ENABLED"},
-    {"key": "yard_board", "name": "Yard board",     "group": "main", "feature": "locations"},
     {"key": "in_foal",    "name": "In foal",        "group": "main", "feature": "breeding"},
     {"key": "money",      "name": "Money",          "group": "main", "feature": "invoices"},
     {"key": "activity",   "name": "What changed",   "group": "main", "feature": "dashboard"},

@@ -27,6 +27,7 @@ REMINDERS = (
     ('departure', 'Departures', 'A horse is due to leave, or has left and needs confirming.', 'horses'),
     ('invoice', 'Invoices', 'An invoice is overdue or waiting to be sent.', 'invoices'),
     ('feed', 'Feed stock', 'Feed is running low.', 'feed'),
+    ('capacity', 'Over capacity', 'A field or barn has more horses on it than its capacity.', 'locations'),
 )
 
 REMINDER_KEYS = frozenset(key for key, *_ in REMINDERS)

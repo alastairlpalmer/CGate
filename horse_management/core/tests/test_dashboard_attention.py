@@ -444,6 +444,43 @@ class BoardTests(DashboardDataTestCase):
         self.assertEqual(board.site_names(), ['Colgate', 'Somerford'])
 
 
+class CapacityTests(DashboardDataTestCase):
+    """A location with more horses than its capacity is a Needs action row."""
+
+    def test_over_capacity_is_listed_and_full_is_not(self):
+        small = Location.objects.create(name='Hawkhill', site='Somerford', capacity=2)
+        for name in ('A', 'B', 'C'):
+            self.horse(name, small)
+        full = Location.objects.create(name='Jones', site='Colgate', capacity=1)
+        self.horse('D', full)
+        items = [i for i in self.collect() if i.kind == 'capacity']
+        self.assertEqual([i.title for i in items], ['Hawkhill · Somerford'])
+        item = items[0]
+        self.assertEqual(item.detail, 'Over capacity · 3 horses, room for 2')
+        self.assertEqual(item.url, reverse('location_detail', args=[small.pk]))
+        self.assertEqual((item.site, item.location), ('Somerford', 'Hawkhill'))
+        # No date, so it waits in the inbox until someone moves a horse.
+        self.assertTrue(attention.is_inbox(item, self.today))
+        # One more horse makes a new key, so a dismissed row comes back.
+        self.assertEqual(item.key, f'capacity-{small.pk}-3')
+
+    def test_ground_without_capacity_or_horses_is_not_listed(self):
+        open_field = Location.objects.create(name='Open', site='Somerford')
+        self.horse('A', open_field)
+        hay = Location.objects.create(name='Hay', site='Somerford', capacity=1, usage=Location.Usage.HAY)
+        self.assertEqual([i for i in self.collect() if i.kind == 'capacity'], [])
+        self.assertIsNotNone(hay)
+
+    def test_needs_locations_access_and_can_be_switched_off(self):
+        small = Location.objects.create(name='Hawkhill', site='Somerford', capacity=1)
+        self.horse('A', small)
+        self.horse('B', small)
+        hidden = make_user_with_access(username='no-locations', dashboard='full', locations='hidden')
+        self.assertEqual([i for i in self.collect(user=hidden) if i.kind == 'capacity'], [])
+        reminders.set_reminder('capacity', False)
+        self.assertEqual([i for i in self.collect() if i.kind == 'capacity'], [])
+
+
 class MoneyTests(DashboardDataTestCase):
     def test_snapshot(self):
         inv = self.invoice('INV1', '100.00', -45)

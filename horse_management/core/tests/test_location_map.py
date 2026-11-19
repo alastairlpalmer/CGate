@@ -120,6 +120,38 @@ class MapLocationsTests(TestCase):
         self.assertEqual((data['total'], data['located']), (0, 0))
 
 
+class RestTagTests(TestCase):
+    """A rested location's badge carries the days it has rested."""
+
+    def test_rested_badge_shows_its_days(self):
+        from datetime import timedelta
+
+        from django.template.loader import render_to_string
+        from django.utils import timezone
+
+        from core.models import LocationUsagePeriod
+        rested = Location.objects.create(
+            name='Hill', site='Somerford', usage='rested',
+            latitude=Decimal('51.55'), longitude=Decimal('-2.06'),
+        )
+        LocationUsagePeriod.objects.create(
+            location=rested, usage='rested',
+            start_date=timezone.localdate() - timedelta(days=140),
+            source=LocationUsagePeriod.Source.MANUAL,
+        )
+        grazed = Location.objects.create(
+            name='Grazed', site='Somerford', capacity=4,
+            latitude=Decimal('51.551'), longitude=Decimal('-2.061'),
+        )
+        place(grazed, 1)
+        html = render_to_string('partials/location_map.html', {
+            'payload': board.map_locations('Somerford'), 'variant': 'compact',
+        })
+        self.assertEqual(html.count('class="location-map-rest"'), 1)
+        self.assertIn('>140d</span>', html)
+        self.assertIn('Hill: Rested for 140 days. Open the location.', html)
+
+
 @override_settings(LOCATION_MAPS_ENABLED=True)
 class SiteBoardTests(TestCase):
     """The map is no longer a tab of its own: it is how the Locations tab
@@ -248,8 +280,6 @@ class NearYouCardTests(TestCase):
         self.assertContains(response, 'id="map-data-somerford-compact"')
         self.assertContains(response, 'id="map-data-colgate-compact"')
         self.assertContains(response, 'is-compact', count=2)
-        # The card sits above the Yard board
-        self.assertLess(response.content.index(b'near-you-title'), response.content.index(b'yard-board-title'))
 
     def test_card_is_the_first_zone_on_a_phone_and_a_column_on_a_wide_screen(self):
         response = self.client.get(reverse('dashboard'))
@@ -265,8 +295,6 @@ class NearYouCardTests(TestCase):
         # whole row when it does not.
         self.assertLess(response.content.index(b'near-you-title'), response.content.index(b'upcoming-title'))
         self.assertContains(response, "hasMap ? 'lg:col-span-6 min-[1728px]:col-span-5' : 'lg:col-span-12'")
-        # The card comes before the Yard board in the page
-        self.assertLess(response.content.index(b'near-you-title'), response.content.index(b'yard-board-title'))
         # Both maps carry the Map button that shows the base map under the shapes.
         self.assertContains(response, 'class="location-map-tiles"')
         # The compact map carries the names (the highlighted one shows) and the leader-line layer.

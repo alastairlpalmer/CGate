@@ -72,13 +72,6 @@ it does not (partials/dashboard/site_tools.html).{% endcomment %}
     </div>
     {% endif %}
 
-    {# ── D. Yard board ── #}
-    {% if 'yard_board' in visible and sites_overview %}
-    <section class="zone-enter" style="--i:4" aria-labelledby="yard-board-title">
-        {% include 'partials/dashboard/board.html' %}
-    </section>
-    {% endif %}
-
     {# ── Seasonal: mares in foal (renders only when there are any) ── #}
     {% if 'in_foal' in visible and in_foal %}
     <section class="zone-enter" style="--i:5" aria-labelledby="in-foal-title">

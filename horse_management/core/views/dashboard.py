@@ -1,8 +1,8 @@
 """Home dashboard views.
 
-The page is six zones (see ``core.dashboard_widgets``). The first response
-carries the headline, the Needs action inbox, the Next 14 days strip, the
-Yard board and the In foal block; Money and What changed load afterwards
+The page is five zones (see ``core.dashboard_widgets``). The first response
+carries the headline, the calendar, the Near you map and the In foal
+block; Money and What changed load afterwards
 through their own endpoints so the page paints fast. The data comes from
 ``core.dashboard``; these views only assemble it.
 """
@@ -169,7 +169,6 @@ def _empty_context(request):
         'rows': [],
         'summary': {'things': 0, 'overdue': 0, 'today': 0, 'upcoming': 0, 'money': 0, 'health': 0, 'yard': 0},
         'upcoming': None,
-        'sites_overview': [],
         'in_foal': [],
         'departure_ids': [],
     }
@@ -213,16 +212,6 @@ def _dashboard_inner(request):
         upcoming = upcoming_data.build(items, request.user, today)
         month_calendar = calendar_data.build(items, today, month)
 
-    sites_overview = []
-    if 'yard_board' in visible:
-        flagged = {}
-        for item in inbox_items:
-            if item.location:
-                what = item.detail.split(' · ', 1)[0] if item.detail else item.kind
-                flagged.setdefault((item.site, item.location), []).append(
-                    f'{item.title}: {what[:1].lower()}{what[1:]}' if item.title else what)
-        sites_overview = board.sites_overview(site=site, today=today, flagged=flagged)
-
     in_foal = []
     if 'in_foal' in visible:
         in_foal = breeding.in_foal(request.user, site=site, today=today)
@@ -256,10 +245,8 @@ def _dashboard_inner(request):
         'summary': summary,
         'upcoming': upcoming,
         'calendar': month_calendar,
-        'sites_overview': sites_overview,
         'in_foal': in_foal,
         'departure_ids': departure_ids,
-        'horse_count': sum(band['horses'] for band in sites_overview) if sites_overview else None,
         'near_you': near_you,
         'near_you_card': near_you_card_data,
         'near_you_maps': near_you_maps,

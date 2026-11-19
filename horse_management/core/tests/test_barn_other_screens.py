@@ -1,6 +1,6 @@
 """Barns and stables on the other screens (docs/BARNS_AND_STABLES_PLAN.md, phase 4).
 
-The last places that had to learn about stables: the Yard board's tile,
+The last places that had to learn about stables: the location's counts,
 the map's marker, the search, the export, the horse's timeline — and the
 plan itself, which now marks the stable of a horse the dashboard is
 asking about.
@@ -66,9 +66,6 @@ class BoardTests(OtherScreensTestCase):
         tile = next(
             t for t in board.sites_overview(site='Manor Farm')[0]['tiles'] if t['is_barn'])
         self.assertEqual((tile['in_stables'], tile['no_stable'], tile['count']), (2, 1, 3))
-        response = self.client.get(reverse('dashboard'))
-        self.assertContains(response, '2 in stables')
-        self.assertContains(response, '1 no stable')
 
     def test_a_barn_with_nobody_in_a_stable_reads_as_before(self):
         self.horse_in(self.barn)
@@ -78,8 +75,10 @@ class BoardTests(OtherScreensTestCase):
     def test_a_field_tile_counts_its_turnout(self):
         TurnoutService.start(self.horse_in(self.barn), self.paddock)
         self.horse_in(self.paddock, 'Resident')
-        response = self.client.get(reverse('dashboard'))
-        self.assertContains(response, '1 out by day')
+        tile = next(
+            t for t in board.sites_overview(site='Manor Farm')[0]['tiles']
+            if t['location'].pk == self.paddock.pk)
+        self.assertEqual((tile['residents'], tile['turnout'], tile['count']), (1, 1, 2))
 
     def test_the_board_costs_the_same_however_many_barns(self):
         from django.db import connection
