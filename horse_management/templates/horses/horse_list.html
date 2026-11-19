@@ -194,6 +194,8 @@
                     :class="selectMode && 'bg-light-sage text-charcoal'"
                     x-text="selectMode ? 'Done' : 'Select'">Select</button>
             {% endif %}
+            {# The Filters button lands here on a computer (includes/_filter_toggle.html). #}
+            <div data-filter-slot class="hidden lg:flex shrink-0"></div>
         </div>
     </div>
 

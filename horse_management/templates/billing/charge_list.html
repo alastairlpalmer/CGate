@@ -40,7 +40,10 @@
          x-data="listFilters({% if request.GET.invoiced or request.GET.type or request.GET.horse or request.GET.owner %}true{% else %}false{% endif %})">
         {% include 'includes/_filter_toggle.html' %}
         <form method="get" class="space-y-3">
-            {% include 'includes/search_bar.html' with placeholder="Filter charges by description, horse, owner or provider…" action_url=request.path %}
+            <div class="flex items-center gap-2">
+                {% include 'includes/search_bar.html' with placeholder="Filter charges by description, horse, owner or provider…" action_url=request.path %}
+                <div data-filter-slot class="hidden lg:flex shrink-0"></div>
+            </div>
             <div x-show="filtersOpen" x-collapse x-cloak>
             <div class="card px-4 py-3 sm:py-4 grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div>

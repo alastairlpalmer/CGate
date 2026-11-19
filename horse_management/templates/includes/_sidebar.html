@@ -39,8 +39,26 @@ swaps of #main-content crash htmx (see the stale-target guard in base.html).
         </button>
     </div>
 
-    <!-- Search -->
-    {% include 'includes/_app_search.html' with search_place='side' %}
+    <!-- Search, and Add (the + menu). On a phone both are in the app bar. -->
+    <div class="sidebar-tools">
+        {% include 'includes/_app_search.html' with search_place='side' %}
+        {% if feature_access.horses.full or feature_access.locations.full or feature_access.owners.full %}
+        <div class="side-add" x-data="{ addOpen: false }" @click.outside="addOpen = false"
+             @keydown.escape.window="addOpen = false">
+            <button type="button" @click="addOpen = !addOpen" class="side-add-btn"
+                    :aria-expanded="addOpen ? 'true' : 'false'" aria-haspopup="true" aria-label="Add" title="Add">
+                <svg class="w-5 h-5 transition-transform duration-200 ease-out" :class="addOpen && 'rotate-45'"
+                     fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                </svg>
+            </button>
+            <div x-show="addOpen" x-cloak x-transition.opacity.duration.100ms class="side-add-menu" role="menu" aria-label="Add"
+                 @click="if ($event.target.closest('a')) addOpen = false">
+                {% include 'includes/_add_menu_items.html' %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
 
         <!-- Nav -->
         <nav id="app-sidebar-nav" class="flex-1 overflow-y-auto px-3 pb-2 space-y-0.5">

@@ -56,6 +56,7 @@ invalid post shows its errors here, a valid one closes the sheet.
                     {% include 'includes/form_field.html' with field=form.email span='2' help='Password reset emails go to this address.' %}
                     {% endif %}
                     {% include 'includes/form_field.html' with field=form.phone span='2' %}
+                    {% include 'includes/form_field.html' with field=form.display_size span='2' %}
                 </div>
                 {% endwith %}
             </div>

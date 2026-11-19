@@ -9,6 +9,9 @@ until the next sign-in or profile save.
 """
 
 SESSION_KEY = '_profile_photo'
+SIZE_KEY = '_display_size'
+SIZES = ('compact', 'medium', 'large')
+DEFAULT_SIZE = 'compact'
 
 
 def remember(request, user):
@@ -17,12 +20,14 @@ def remember(request, user):
     if session is None:
         return
     from .models import UserProfile
-    name = (
+    row = (
         UserProfile.objects.filter(user=user)
-        .values_list('photo', flat=True)
+        .values_list('photo', 'display_size')
         .first()
     )
+    name, size = row if row else ('', DEFAULT_SIZE)
     session[SESSION_KEY] = name or ''
+    session[SIZE_KEY] = size if size in SIZES else DEFAULT_SIZE
 
 
 def photo_url(request):
@@ -34,9 +39,16 @@ def photo_url(request):
     return UserProfile._meta.get_field('photo').storage.url(name)
 
 
+def display_size(request):
+    session = getattr(request, 'session', None)
+    size = session.get(SIZE_KEY, DEFAULT_SIZE) if session is not None else DEFAULT_SIZE
+    return size if size in SIZES else DEFAULT_SIZE
+
+
 def context(request):
-    """Context processor: ``my_photo_url`` for the avatar."""
+    """Context processor: ``my_photo_url`` for the avatar, and
+    ``display_size`` (compact, medium or large) for <html>."""
     user = getattr(request, 'user', None)
     if user is None or not user.is_authenticated:
-        return {}
-    return {'my_photo_url': photo_url(request)}
+        return {'display_size': DEFAULT_SIZE}
+    return {'my_photo_url': photo_url(request), 'display_size': display_size(request)}

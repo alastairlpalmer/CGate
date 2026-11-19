@@ -58,12 +58,17 @@
                         <span class="badge-warning" title="No passport on record">No passport</span>
                         {% endif %}
                     </div>
-                    <p class="mt-1.5 text-sm text-sage">
-                        {% if horse.is_youngster %}<span class="text-charcoal-light font-medium">{{ horse.age_label }}</span> &middot; {% elif horse.calculated_age %}<span class="text-charcoal-light font-medium">{{ horse.calculated_age }}yo</span> &middot; {% endif %}
-                        {{ horse.get_color_display }} &middot;
-                        {{ horse.get_sex_display }}
-                        {% if horse.date_of_birth %}<span class="ml-1 text-sage/80">· {% if horse.is_youngster %}foaled{% else %}born{% endif %} {{ horse.date_of_birth|date:"j M Y" }}</span>{% endif %}
+                    {% comment %}Age, colour, sex and birth date. Each part shows only
+                    when it is known; .dot-list puts the dots between the parts
+                    that show, so a horse with none of them gets no stray "·".{% endcomment %}
+                    {% if horse.is_youngster or horse.calculated_age or horse.color or horse.sex or horse.date_of_birth %}
+                    <p class="mt-1.5 text-sm text-sage dot-list">
+                        {% if horse.is_youngster %}<span class="text-charcoal-light font-medium">{{ horse.age_label }}</span>{% elif horse.calculated_age %}<span class="text-charcoal-light font-medium">{{ horse.calculated_age }}yo</span>{% endif %}
+                        {% if horse.color %}<span>{{ horse.get_color_display }}</span>{% endif %}
+                        {% if horse.sex %}<span>{{ horse.get_sex_display }}</span>{% endif %}
+                        {% if horse.date_of_birth %}<span class="text-sage/80">{% if horse.is_youngster %}foaled{% else %}born{% endif %} {{ horse.date_of_birth|date:"j M Y" }}</span>{% endif %}
                     </p>
+                    {% endif %}
                     {% if horse.current_owner %}
                     <p class="mt-2 text-sm text-charcoal-light flex items-center gap-1.5">
                         <svg class="w-3.5 h-3.5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
