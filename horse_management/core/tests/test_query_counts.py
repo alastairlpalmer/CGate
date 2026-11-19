@@ -116,7 +116,10 @@ class QueryCountTestCase(TestCase):
         # (+1). The figures across the top add a constant 4: open stays
         # (horses and owners read the same rows), the owner count, the
         # locations with occupancy and the open invoices. Measured 32.
-        self.assertMaxQueries(reverse('dashboard'), 33)
+        # +1 for the Training collector's "is Training set up" check
+        # (training/attention.py): a yard with no horse in work pays that
+        # one query and nothing more.
+        self.assertMaxQueries(reverse('dashboard'), 34)
 
     def test_finances_query_count(self):
         # Measured 9 (revenue, costs union, placements, capacity, two

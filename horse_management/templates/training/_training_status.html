@@ -1,0 +1,2 @@
+{# A horse's training status, in words. Usage: include with value=… label=… #}
+{% if value == 'box_rest' %}<span class="badge-warning">{{ label }}</span>{% elif value == 'in_work' %}<span class="badge-success">{{ label }}</span>{% else %}<span class="badge-neutral">{{ label }}</span>{% endif %}

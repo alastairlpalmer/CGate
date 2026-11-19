@@ -1803,6 +1803,118 @@ class BusinessSettings(models.Model):
         return f"{self.credit_note_prefix}{number:05d}"
 
 
+class CalendarEntry(models.Model):
+    """A general item on the dashboard calendar: a hay delivery, a yard
+    meeting, a show. Anything the yard wants on a day that no other record
+    puts there.
+
+    It shows on the calendar on its date, in that day's list, and in the
+    notification centre on the day itself
+    (core.dashboard.attention._calendar_entries). A location or a horse is
+    optional; a location puts it on that site for the site switch.
+    """
+
+    title = models.CharField(max_length=120)
+    date = models.DateField(db_index=True)
+    time = models.TimeField(null=True, blank=True, help_text="Optional.")
+    location = models.ForeignKey(
+        'Location', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='calendar_entries',
+    )
+    horse = models.ForeignKey(
+        'Horse', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='calendar_entries',
+    )
+    notes = models.TextField(blank=True)
+
+    class Repeat(models.TextChoices):
+        NONE = '', 'Does not repeat'
+        DAILY = 'daily', 'Every day'
+        WEEKLY = 'weekly', 'Every week'
+        FORTNIGHTLY = 'fortnightly', 'Every 2 weeks'
+        MONTHLY = 'monthly', 'Every month'
+        YEARLY = 'yearly', 'Every year'
+
+    # A repeating item is one row: ``date`` is the first day, ``repeat``
+    # the rule, ``repeat_until`` the last day it may fall on (blank: no
+    # end). ``skip_dates`` holds the days taken off one at a time
+    # ("Delete this day only"), as ISO strings.
+    repeat = models.CharField(max_length=12, choices=Repeat.choices, blank=True, default='')
+    repeat_until = models.DateField(null=True, blank=True)
+    skip_dates = models.JSONField(default=list, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['date', 'time', 'pk']
+        verbose_name_plural = 'calendar entries'
+
+    def __str__(self):
+        return f'{self.title} ({self.date:%d %b %Y})'
+
+    # A guard, not a limit anyone meets: a daily item over the calendar's
+    # widest window (two years) is about 800 days.
+    MAX_OCCURRENCES = 1000
+
+    def occurrences(self, start, end):
+        """The days in ``start``..``end`` (both included) the item falls on.
+
+        A monthly item on the 31st falls on the last day of a shorter
+        month; a yearly one on 29 February falls on the 28th in other
+        years. Skipped days are left out.
+        """
+        import calendar as stdlib_calendar
+
+        last = end if self.repeat_until is None else min(end, self.repeat_until)
+        skipped = set(self.skip_dates or [])
+        if not self.repeat:
+            days = [self.date] if start <= self.date <= last else []
+            return [d for d in days if d.isoformat() not in skipped]
+
+        def nth(n):
+            if self.repeat == self.Repeat.DAILY:
+                return self.date + timedelta(days=n)
+            if self.repeat == self.Repeat.WEEKLY:
+                return self.date + timedelta(weeks=n)
+            if self.repeat == self.Repeat.FORTNIGHTLY:
+                return self.date + timedelta(weeks=2 * n)
+            months = n if self.repeat == self.Repeat.MONTHLY else 12 * n
+            index = self.date.month - 1 + months
+            year, month = self.date.year + index // 12, index % 12 + 1
+            day = min(self.date.day, stdlib_calendar.monthrange(year, month)[1])
+            return date(year, month, day)
+
+        # Jump close to ``start`` instead of walking from the first day.
+        n = 0
+        if start > self.date:
+            gap = (start - self.date).days
+            n = {
+                self.Repeat.DAILY: gap, self.Repeat.WEEKLY: gap // 7,
+                self.Repeat.FORTNIGHTLY: gap // 14, self.Repeat.MONTHLY: max(0, gap // 31 - 1),
+                self.Repeat.YEARLY: max(0, gap // 366 - 1),
+            }[self.repeat]
+        days = []
+        for _ in range(self.MAX_OCCURRENCES):
+            day = nth(n)
+            if day > last:
+                break
+            if day >= start and day.isoformat() not in skipped:
+                days.append(day)
+            n += 1
+        return days
+
+    @property
+    def repeat_label(self):
+        if not self.repeat:
+            return ''
+        label = self.get_repeat_display()
+        return f'{label} until {self.repeat_until:%-d %b %Y}' if self.repeat_until else label
+
+
 class DashboardPreference(models.Model):
     """Per-user home dashboard layout (widget visibility + order)."""
 

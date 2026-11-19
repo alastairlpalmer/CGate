@@ -1,0 +1,37 @@
+{% comment %}
+The lot's work, time and notes for one date, and Cancel lot (8.2).
+{% endcomment %}
+<div>
+<form method="post" action="{% url 'training_lot_day_change' lot_day.pk %}"
+      hx-post="{% url 'training_lot_day_change' lot_day.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false">
+    {% csrf_token %}
+    <div class="px-4 py-3 space-y-3">
+        {% for error in form.non_field_errors %}<p class="text-sm text-error-red" role="alert">{{ error }}</p>{% endfor %}
+        <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+            {% include "includes/form_field.html" with field=form.work_type %}
+            {% include "includes/form_field.html" with field=form.venue %}
+            {% include "includes/form_field.html" with field=form.start_time %}
+            {% include "includes/form_field.html" with field=form.notes span="2" %}
+        </div>
+    </div>
+    <div class="popup-footer">
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Close</button>
+        <button type="submit" class="btn-primary">Save</button>
+    </div>
+</form>
+<form method="post" action="{% url 'training_lot_day_action' lot_day.pk 'cancel' %}"
+      hx-post="{% url 'training_lot_day_action' lot_day.pk 'cancel' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+      class="px-4 py-3 border-t border-light-sage space-y-2">
+    {% csrf_token %}
+    <p class="text-sm font-medium text-charcoal">Cancel {{ lot_day.lot.name }} for the day</p>
+    <p class="text-xs text-sage">Every planned horse gets Did not work with this reason. Horses already done stay done. Reopen lot undoes it.</p>
+    <div class="flex flex-wrap items-center gap-2">
+        <label for="cancel-reason" class="sr-only">Reason</label>
+        <select id="cancel-reason" name="reason" class="form-select !mt-0 !w-auto" required>
+            <option value="">Choose a reason…</option>
+            {% for value, label in reasons %}<option value="{{ value }}"{% if value == 'weather' %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn-danger">Cancel lot</button>
+    </div>
+</form>
+</div>

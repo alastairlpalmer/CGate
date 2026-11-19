@@ -1,0 +1,77 @@
+{% load static %}<!doctype html>
+<html lang="en-GB">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% if mode == 'tv' %}<meta http-equiv="refresh" content="60">{% endif %}
+    <title>Lot board, {{ day|date:"D j M Y" }} - Cgate</title>
+    <style>
+        /* A sheet with no app around it: the board on paper or on a TV (plan 8.6). */
+        @page { size: A4 portrait; margin: 10mm; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #2C2C2C; background: #fff; }
+        header { display: flex; justify-content: space-between; align-items: baseline; padding: 0 0 6px; border-bottom: 2px solid #3D5A63; margin-bottom: 8px; }
+        h1 { font-size: 16pt; margin: 0; }
+        .meta { font-size: 9pt; color: #56737A; }
+        .lots { columns: 2; column-gap: 8mm; }
+        section { break-inside: avoid; margin: 0 0 6mm; }
+        h2 { font-size: 11pt; margin: 0 0 2px; }
+        h2 small { font-weight: normal; color: #56737A; }
+        table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+        th, td { text-align: left; padding: 2px 4px; border-bottom: 1px solid #DBE4E6; vertical-align: top; }
+        th { font-weight: 600; color: #56737A; font-size: 8pt; }
+        td.n { width: 1.5em; color: #56737A; }
+        td.tick { width: 2.5em; border: 1px solid #9CB2B8; }
+        .own { font-style: italic; }
+        .actions { margin-bottom: 8px; }
+        @media print { .actions { display: none; } }
+        /* TV: large text, readable across the tack room. */
+        body.tv { padding: 2vw; background: #F5F2EA; }
+        body.tv h1 { font-size: 3vw; }
+        body.tv .meta { font-size: 1.4vw; }
+        body.tv .lots { columns: 3; column-gap: 2vw; }
+        body.tv section { background: #fff; padding: 1vw; border-radius: 12px; }
+        body.tv h2 { font-size: 2vw; }
+        body.tv table { font-size: 1.5vw; }
+        body.tv th { font-size: 1.1vw; }
+        body.tv td.tick { display: none; }
+        body.tv th.tick { display: none; }
+    </style>
+</head>
+<body class="{{ mode }}">
+    {% if mode == 'print' %}<p class="actions"><button type="button" onclick="window.print()">Print</button></p>{% endif %}
+    <header>
+        <h1>Lot board, {{ day|date:"l j F Y" }}</h1>
+        <span class="meta">{% if mode == 'tv' %}Updated {{ now|time:"H:i" }}{% else %}Printed {{ now|date:"j M Y H:i" }}{% endif %}</span>
+    </header>
+    {% if lot_days %}
+    <div class="lots">
+        {% for lot_day in lot_days %}
+        <section>
+            <h2>{{ lot_day.lot.name }}{% if lot_day.start_time %} · {{ lot_day.start_time|time:"H:i" }}{% endif %}
+                <small>{{ lot_day.work_type.name }}{% if lot_day.venue %}, {{ lot_day.venue.name }}{% endif %}{% if lot_day.status != 'planned' %} · {{ lot_day.get_status_display }}{% endif %}</small></h2>
+            {% if lot_day.notes %}<p class="meta">{{ lot_day.notes }}</p>{% endif %}
+            <table>
+                <thead><tr><th>#</th><th>Horse</th><th>Rider</th><th>Gear</th><th class="tick">Done</th></tr></thead>
+                <tbody>
+                    {% for row in lot_day.rows %}
+                    <tr>
+                        <td class="n">{{ forloop.counter }}</td>
+                        <td>{{ row.horse.name }}{% if not row.follows_lot %} <span class="own">({{ row.work_type.name }})</span>{% endif %}{% if row.status == 'not_done' %} — {{ row.get_reason_display }}{% endif %}</td>
+                        <td>{{ row.rider_label }}</td>
+                        <td>{{ row.gear }}</td>
+                        <td class="tick">{% if row.status == 'done' %}✓{% endif %}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="meta">No horses.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>No board for this date.</p>
+    {% endif %}
+</body>
+</html>

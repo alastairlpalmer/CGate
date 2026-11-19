@@ -1,0 +1,31 @@
+{% comment %}
+The training record form in the shared pop-up sheet. The same frame as
+includes/popup_form.html, with the inputs laid out by
+training/partials/_activity_fields.html.
+{% endcomment %}
+<form method="post" action="{{ request.get_full_path }}"
+      hx-post="{{ request.get_full_path }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false">
+    {% csrf_token %}
+    <div class="px-4 py-3 space-y-3" x-data="{ status: '{{ initial_status|escapejs }}' }">
+        {% if popup_saved_note %}
+        <div class="rounded-lg border border-sage/20 bg-sage-50 p-3 text-sm text-forest" role="status" data-popup-fresh>{{ popup_saved_note }}</div>
+        {% endif %}
+        {% if form.non_field_errors %}
+        <div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3" role="alert">
+            <p class="text-sm font-medium text-error-red">This wasn't saved:</p>
+            {% for error in form.non_field_errors %}<p class="text-sm text-error-red mt-1">{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+        {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+        {% include "training/partials/_activity_fields.html" %}
+    </div>
+    <div class="popup-footer">
+        <a href="{{ request.get_full_path }}" hx-boost="false"
+           class="hidden sm:inline-flex items-center mr-auto text-xs text-sage hover:text-charcoal-light">Open the full form</a>
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        <button type="submit" class="btn-primary">{{ popup_submit_label }}</button>
+        {% if popup_add_another %}
+        <button type="submit" name="save_and_add" value="1" class="btn-secondary popup-add-another">Save &amp; add another</button>
+        {% endif %}
+    </div>
+</form>

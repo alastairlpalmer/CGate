@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block title %}Add horses to {{ lot.name }} - Cgate{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto space-y-4">
+    <div class="page-header"><div><h1 class="page-title">Add horses to {{ lot.name }}</h1></div></div>
+    <div class="card">{% include 'training/partials/lot_add_horses.html' %}</div>
+</div>
+{% endblock %}

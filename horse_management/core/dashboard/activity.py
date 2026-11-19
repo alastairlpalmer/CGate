@@ -39,6 +39,7 @@ KIND_GROUP = {
     'charge': 'money', 'payment': 'money', 'invoice': 'money',
     'arrival': 'yard', 'move': 'yard', 'departure': 'yard', 'feed': 'yard',
     'document': 'documents',
+    'training': 'training',
 }
 
 
@@ -341,6 +342,21 @@ def recent(user, *, site='', today=None, limit=DEFAULT_LIMIT, max_rows=MAX_ROWS)
                 site=feed.location.site, sort_ts=_ts(feed.created_at),
             ))
 
+    if can('training'):
+        from training.access import training_on
+        if training_on():
+            from training.models import LotDay
+            done = LotDay.objects.filter(status=LotDay.Status.DONE).select_related('lot', 'work_type')
+            for lot_day in done.order_by('-date', '-confirmed_at')[:limit]:
+                count = lot_day.activities.filter(status='done').count()
+                events.append(Event(
+                    date=lot_day.date, kind='training',
+                    what=f"{lot_day.work_type.name} · {count} horse{'s' if count != 1 else ''}",
+                    names=[Name(lot_day.lot.name, reverse('training_board_day', args=[lot_day.date.isoformat()]))],
+                    url=reverse('training_board_day', args=[lot_day.date.isoformat()]),
+                    sort_ts=_ts(lot_day.confirmed_at),
+                ))
+
     if site:
         events = [event for event in events if not event.site or event.site == site]
     events = [event for event in events if event.date <= today]
@@ -445,6 +461,7 @@ GROUP_LABELS = (
     ('health', 'Health'),
     ('money', 'Money'),
     ('documents', 'Documents'),
+    ('training', 'Training'),
 )
 
 

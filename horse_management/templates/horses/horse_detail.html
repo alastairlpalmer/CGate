@@ -551,6 +551,11 @@
             </div>
             {% endif %}
 
+            {% if training_card %}
+            <!-- Training -->
+            {% include 'training/_horse_card.html' %}
+            {% endif %}
+
             <!-- Unified Timeline -->
             <div class="card" x-data="{
                 activeFilter: 'all',
@@ -561,12 +566,13 @@
                     farrier:     '#4A4A4A',
                     vet_visit:   '#4A4A4A',
                     breeding:    '#3D5A63',
-                    worming:     '#E6E1D1'
+                    worming:     '#E6E1D1',
+                    training:    '#56737A'
                 },
                 pillText: {
                     all: '#fff', placement: '#fff', vaccination: '#fff',
                     farrier: '#fff', vet_visit: '#fff', breeding: '#fff',
-                    worming: '#2C2C2C'
+                    worming: '#2C2C2C', training: '#fff'
                 },
                 pillStyle(key) {
                     if (this.activeFilter === key) return `background-color:${this.pillColors[key]};color:${this.pillText[key]}`;
@@ -596,6 +602,10 @@
                     {% endif %}
                     <button @click="activeFilter = 'worming'" :style="pillStyle('worming')"
                         class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">Worming</button>
+                    {% if training_card %}
+                    <button @click="activeFilter = 'training'" :style="pillStyle('training')"
+                        class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">Training</button>
+                    {% endif %}
                 </div>
                 <p class="px-4 text-xs text-sage flex items-center gap-1.5">
                     <span class="inline-block w-2.5 h-2.5 rounded-full bg-saddle" aria-hidden="true"></span>
@@ -657,6 +667,9 @@
                                         {% elif event.type == 'egg_count' %}
                                         <svg class="w-3.5 h-3.5 text-charcoal-light shrink-0" aria-hidden="true"><use href="#i-egg"/></svg>
                                         <span class="text-xs font-semibold uppercase tracking-wider text-charcoal-light">Egg Count</span>
+                                        {% elif event.type == 'training' %}
+                                        <svg class="w-3.5 h-3.5 text-sage shrink-0" aria-hidden="true"><use href="#i-stopwatch"/></svg>
+                                        <span class="text-xs font-semibold uppercase tracking-wider text-sage">Training</span>
                                         {% endif %}
                                     </div>
                                     <span class="flex items-center gap-2 shrink-0">
@@ -678,6 +691,9 @@
                                         {% elif event.type == 'vet_visit' and feature_access.health.full %}
                                         <a href="{% url 'vet_visit_update' event.obj.pk %}" hx-get="{% url 'vet_visit_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vet visit"
                                            class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
+                                        {% elif event.type == 'training' and training_card.can_change %}
+                                        <a href="{% url 'training_activity_update' event.obj.pk %}?horse={{ horse.pk }}" hx-get="{% url 'training_activity_update' event.obj.pk %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit training"
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit training record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% elif event.type == 'breeding' and feature_access.breeding.full %}
                                         <a href="{% url 'breeding_update' event.obj.pk %}" hx-get="{% url 'breeding_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record"
                                            class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
@@ -774,6 +790,9 @@
                                         <span class="{{ event.obj.level_badge_class }} ml-1">{{ event.obj.level_label }}</span>
                                     </p>
                                     <p class="text-sage text-xs mt-0.5">{{ event.obj.get_sample_type_display }}{% if event.obj.cost and feature_access.charges.view %} &middot; {{ event.obj.cost|gbp }}{% endif %}</p>
+                                    {% elif event.type == 'training' %}
+                                    <p class="text-charcoal font-medium">{{ event.obj.work_type.name }}{% if event.obj.effort_label %} <span class="badge-neutral ml-1">{{ event.obj.effort_label }}</span>{% endif %}</p>
+                                    <p class="text-sage text-xs mt-0.5">{% include 'training/_status_badge.html' with activity=event.obj %}{% if event.obj.minutes %} &middot; {{ event.obj.minutes }} min{% endif %}{% if event.obj.notes %} &middot; {{ event.obj.notes|truncatechars:120 }}{% endif %}</p>
                                     {% endif %}
                                 </div>
                             </div>
@@ -792,7 +811,7 @@
 
             {# First in the column: recording is what the page is opened for most. #}
             <!-- Record shortcuts -->
-            {% if feature_access.health.full or feature_access.horses.full or feature_access.charges.full %}
+            {% if feature_access.health.full or feature_access.horses.full or feature_access.charges.full or training_card.can_change %}
             <div class="card" id="quick-actions">
                 <div class="section-header">
                     <h3 class="section-title">Record</h3>

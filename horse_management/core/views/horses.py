@@ -44,6 +44,7 @@ from health.models import (
     current_vaccinations,
     current_worming_treatments,
 )
+from training import horse as training_horse
 
 from ..forms import (
     ArrivalForm,
@@ -1149,7 +1150,7 @@ def _stable_stays(horse, limit):
 def build_horse_timeline(
     *, placements, vaccinations, farrier_visits, worming_treatments,
     egg_counts, vet_visits, breeding_records=(), farrier_notes=(),
-    stable_stays=(),
+    stable_stays=(), activities=(),
 ):
     """One list of dated events, newest first.
 
@@ -1178,6 +1179,10 @@ def build_horse_timeline(
     # placement's: it changes on its own, with no move and no new rate.
     for stay in stable_stays:
         timeline.append({'type': 'stable', 'date': stay.start_date, 'obj': stay})
+    # Training: Done and Did not work only, already filtered and capped by
+    # training.horse.timeline_activities (it checks the role and the switch).
+    for activity in activities:
+        timeline.append({'type': 'training', 'date': activity.date, 'obj': activity})
     timeline.sort(key=lambda e: e['date'], reverse=True)
     # Only the newest record of a kind can be overdue: an old booster's next
     # due date is in the past for ever once the horse has had the next one.
@@ -1298,7 +1303,9 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
             breeding_records=context.get('breeding_records', []) if horse.is_mare else [],
             farrier_notes=list(horse.farrier_notes.select_related('provider')[:20]),
             stable_stays=_stable_stays(horse, 20),
+            activities=training_horse.timeline_activities(self.request.user, horse, 10),
         )
+        context['training_card'] = training_horse.training_card(self.request.user, horse)
 
         return context
 
@@ -1529,6 +1536,8 @@ def horse_preview(request, pk):
         breeding_records=breeding_records,
         farrier_notes=list(horse.farrier_notes.select_related('provider')[:8]),
         stable_stays=_stable_stays(horse, 8),
+        # 5, not 8: daily training must not push the vaccinations out of 12.
+        activities=training_horse.timeline_activities(request.user, horse, 5),
     )
 
     return render(request, 'horses/partials/preview.html', {
@@ -1541,6 +1550,7 @@ def horse_preview(request, pk):
         'credential_rows': horse_credential_rows(horse),
         'documents': list(horse.documents.all()[:6]),
         'timeline_events': timeline[:12],
+        'has_training': training_horse.can_see_training(request.user),
         'today': timezone.localdate(),
     })
 

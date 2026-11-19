@@ -1,0 +1,321 @@
+{% extends 'base.html' %}
+
+{% block title %}Training - Cgate{% endblock %}
+
+{% block content %}
+{% comment %}
+The Training Overview (docs/TRAINING_DASHBOARD_PLAN.md, phase A): the
+figures, Today, Needs attention and Not in work. Facts only, and no price.
+{% endcomment %}
+<div class="space-y-3">
+
+    {% include 'training/_header.html' with subtitle=today|date:"l j F Y" %}
+
+    {% if lots %}
+    <nav class="training-lot-chips" aria-label="Show one lot">
+        <a href="{% url 'training_home' %}" class="training-lot-chip{% if not lot %} is-on{% endif %}"{% if not lot %} aria-current="true"{% endif %}>All lots</a>
+        {% for l in lots %}
+        <a href="{% url 'training_home' %}?lot={{ l.pk }}" class="training-lot-chip{% if lot and lot.pk == l.pk %} is-on{% endif %}"{% if lot and lot.pk == l.pk %} aria-current="true"{% endif %}>{{ l.name }}</a>
+        {% endfor %}
+    </nav>
+    {% endif %}
+
+    {# First-run checklist (phase C, plan section 5): in place of the figures. #}
+    {% if setup_steps %}
+    <section class="card overflow-hidden" aria-labelledby="setup-title">
+        <div class="section-header px-4 pt-3">
+            <h2 id="setup-title" class="section-title">Set up Training</h2>
+        </div>
+        <p class="px-4 pb-2 text-sm text-sage">Do these steps once. Then this page shows today's lots, the horses that need attention and the week.</p>
+        <ol class="divide-y divide-light-sage border-t border-light-sage">
+            {% for step in setup_steps %}
+            <li class="flex items-center gap-3 px-4 py-2.5 min-h-[52px]">
+                {% if step.done %}
+                <span class="training-step is-done" aria-hidden="true">&#10003;</span>
+                <span class="flex-1 text-sm text-sage line-through">{{ step.label }}</span>
+                <span class="sr-only">Done</span>
+                {% else %}
+                <span class="training-step" aria-hidden="true">{{ forloop.counter }}</span>
+                <span class="flex-1 text-sm font-medium text-charcoal">{{ step.label }}</span>
+                {% if can_change %}<a href="{{ step.url }}" class="btn-secondary btn-sm min-h-[44px] sm:min-h-0 inline-flex items-center">{{ step.action }}</a>{% endif %}
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ol>
+    </section>
+    {% else %}
+    {# The figures (Q1, Q4, Q9). Each one is a link. #}
+    <div class="metric-strip" role="list">
+        <a class="metric" role="listitem" href="{% url 'training_board' %}">
+            <span class="metric-label">Today's lots</span>
+            {% if today_data.lot_days %}
+            <span class="metric-value">{{ today_data.done_count }} of {{ today_data.lot_days|length }}</span>
+            <span class="metric-meta">done{% if today_data.next %} &middot; {{ today_data.next.lot.name }}{% if today_data.next.start_time %} at {{ today_data.next.start_time|time:"H:i" }}{% else %} next{% endif %}{% endif %}</span>
+            {% else %}
+            <span class="metric-value">&ndash;</span>
+            <span class="metric-meta">Board not started</span>
+            {% endif %}
+        </a>
+        <a class="metric" role="listitem" href="{% url 'training_lots' %}">
+            <span class="metric-label">Horses in work</span>
+            <span class="metric-value">{{ in_work_total }}</span>
+            <span class="metric-meta truncate">{{ in_work_parts|join:" · "|default:"None yet" }}</span>
+        </a>
+        <a class="metric" role="listitem" href="#not-in-work">
+            <span class="metric-label">Not in work</span>
+            <span class="metric-value">{{ rest.count }}</span>
+            <span class="metric-meta">{% if rest.action %}{{ rest.action|length }} need{{ rest.action|length|pluralize:"s," }} action{% else %}Resting or box rest{% endif %}</span>
+        </a>
+        <a class="metric{% if attention.total %} is-warn{% endif %}" role="listitem" href="#needs-attention">
+            <span class="metric-label">Needs attention</span>
+            <span class="metric-value">{{ attention.total }}</span>
+            <span class="metric-meta">{% if attention.unconfirmed_lots %}{{ attention.unconfirmed_lots }} lot{{ attention.unconfirmed_lots|pluralize }} not confirmed{% elif attention.grouped %}in {{ attention.groups|length }} groups{% elif attention.total %}horses to check{% else %}Nothing now{% endif %}</span>
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 gap-3 lg:grid-cols-5 items-start">
+
+        {# Today (Q1 to Q3). #}
+        <section class="card overflow-hidden lg:col-span-3" aria-labelledby="today-title">
+            <div class="section-header px-4 pt-3 flex items-center justify-between gap-2">
+                <h2 id="today-title" class="section-title">Today</h2>
+                <a href="{% url 'training_board' %}" class="link text-sm tap-pad">Open the board &rsaquo;</a>
+            </div>
+            {% if today_data.lot_days %}
+            <ul class="divide-y divide-light-sage">
+                {% for lot_day in today_data.lot_days %}
+                <li>
+                    <a href="{% url 'training_board' %}#lot-day-{{ lot_day.pk }}" class="flex items-center gap-3 px-4 py-2.5 min-h-[56px] hover:bg-cream/60">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm text-charcoal truncate">
+                                <span class="font-semibold">{{ lot_day.lot.name }}</span>
+                                <span class="text-sage">{% if lot_day.start_time %}&middot; {{ lot_day.start_time|time:"H:i" }} {% endif %}&middot; {{ lot_day.work_type.name }}{% if lot_day.venue %}, {{ lot_day.venue.name }}{% endif %}</span>
+                            </p>
+                            <div class="training-progress" role="img" aria-label="{{ lot_day.percent }}% of the lot confirmed"><span style="width: {{ lot_day.percent }}%"></span></div>
+                            <p class="text-xs text-sage truncate">
+                                {% if lot_day.status == 'done' or lot_day.status == 'cancelled' %}{{ lot_day.done }} done{% if lot_day.not_done %} &middot; {{ lot_day.not_done }} did not work{% endif %}{% else %}{{ lot_day.planned }} planned{% if lot_day.done %} &middot; {{ lot_day.done }} done{% endif %}{% if lot_day.rider_names %} &middot; {{ lot_day.rider_names|join:", " }}{% if lot_day.more_riders %} +{{ lot_day.more_riders }}{% endif %}{% endif %}{% endif %}
+                            </p>
+                        </div>
+                        {% if lot_day.status == 'done' %}<span class="badge-success shrink-0">Done{% if lot_day.confirmed_at %} {{ lot_day.confirmed_at|time:"H:i" }}{% endif %}</span>
+                        {% elif lot_day.status == 'cancelled' %}<span class="badge-info shrink-0">Cancelled</span>
+                        {% else %}<span class="badge-neutral shrink-0">Planned &middot; {{ lot_day.total }}</span>{% endif %}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% if today_data.not_going %}
+            <div class="border-t border-light-sage px-4 py-2.5">
+                <h3 class="text-xs font-semibold text-sage">Not going out today</h3>
+                <ul class="text-sm">
+                    {% for h in today_data.not_going %}
+                    <li class="flex items-baseline gap-2 py-0.5"><a href="{{ h.url }}" class="link font-medium">{{ h.name }}</a><span class="text-sage">{{ h.reason }}</span></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="px-4 py-4 space-y-3">
+                <p class="text-sm text-charcoal">Today's board is not started.</p>
+                {% if can_change %}
+                <form method="post" action="{% url 'training_board_start' today.isoformat %}" class="flex flex-wrap items-center gap-2">
+                    {% csrf_token %}
+                    <label for="overview-source" class="text-sm text-sage">Start from</label>
+                    <select id="overview-source" name="source" class="form-select !mt-0 !w-auto text-sm">
+                        {% for value, label in sources %}
+                        <option value="{{ value }}"{% if value == default_source %} selected{% endif %}>{% if value == 'copy' %}{% if last_board %}Copy {{ last_board|date:"D j M" }}{% else %}Copy the last board{% endif %}{% elif value == 'week_plan' %}The week plan{% else %}{{ label }}{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn-primary btn-sm">Start today's board</button>
+                </form>
+                {% else %}
+                <p class="text-sm text-sage">Someone with full access to Training starts it.</p>
+                {% endif %}
+            </div>
+            {% endif %}
+        </section>
+
+        {# Needs attention (Q4, Q5). #}
+        <section id="needs-attention" class="card overflow-hidden lg:col-span-2 scroll-mt-24" aria-labelledby="attention-title">
+            <div class="section-header px-4 pt-3">
+                <h2 id="attention-title" class="section-title">Needs attention</h2>
+            </div>
+            {% if not attention.groups %}
+            <p class="px-4 pb-3 text-sm text-sage">Nothing needs attention now.</p>
+            {% elif attention.grouped %}
+            <ul class="divide-y divide-light-sage">
+                {% for group in attention.groups %}
+                {% if group.kind == 'unconfirmed' %}
+                {% for entry in group.entries %}
+                <li>{% include 'training/partials/overview_entry.html' with entry=entry tone=group.tone %}</li>
+                {% endfor %}
+                {% else %}
+                <li>
+                    <details class="group/att">
+                        <summary class="flex items-center gap-2 px-4 py-2.5 min-h-[48px] cursor-pointer list-none">
+                            <span class="badge-{% if group.tone == 'warn' %}warning{% elif group.tone == 'info' %}info{% else %}neutral{% endif %}">{{ group.label }}</span>
+                            <span class="flex-1 text-sm text-charcoal">{{ group.entries|length }} horse{{ group.entries|length|pluralize }}</span>
+                            <svg class="w-4 h-4 text-sage transition-transform group-open/att:rotate-90" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                        </summary>
+                        <ul class="pb-2">
+                            {% for entry in group.entries %}
+                            <li><a href="{{ entry.url }}" class="flex items-baseline gap-2 pl-8 pr-4 py-1.5 text-sm hover:bg-cream/60"><span class="font-medium text-charcoal">{{ entry.name }}</span><span class="text-sage">{{ entry.badge }}</span></a></li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+                </li>
+                {% endif %}
+                {% endfor %}
+            </ul>
+            {% else %}
+            <ul class="divide-y divide-light-sage">
+                {% for group in attention.groups %}{% for entry in group.entries %}
+                <li>{% include 'training/partials/overview_entry.html' with entry=entry tone=group.tone %}</li>
+                {% endfor %}{% endfor %}
+            </ul>
+            {% endif %}
+        </section>
+    </div>
+
+    {# This week (Q6, phase B). A large yard sees one row for each lot (4.3). #}
+    {% if week.groups %}
+    <section class="card overflow-hidden" aria-labelledby="week-title">
+        <div class="section-header px-4 pt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <h2 id="week-title" class="section-title">This week</h2>
+            <p class="text-xs text-sage">{% if week.summary_rows %}Horses worked of horses in the lot. Open a lot to see each horse.{% else %}E easy &middot; S steady &middot; F fast &middot; R rest &middot; &times; did not work &middot; ? planned{% endif %}</p>
+        </div>
+        <div class="training-week-wrap">
+            <table class="training-week">
+                <thead>
+                    <tr>
+                        <th scope="col" class="training-week-name"><span class="sr-only">Horse</span></th>
+                        {% for d in week.days %}<th scope="col"{% if d == today %} class="is-today"{% endif %}>{{ d|date:"D" }}</th>{% endfor %}
+                        <th scope="col">Days</th>
+                        <th scope="col">Fast</th>
+                    </tr>
+                </thead>
+                {% for group in week.groups %}
+                {% if week.summary_rows %}
+                <tbody x-data="{ open: false }">
+                    <tr class="training-week-lot">
+                        <th scope="row" class="training-week-name">
+                            <button type="button" class="flex items-center gap-1 text-left min-h-[44px]" @click="open = !open" :aria-expanded="open">
+                                <svg class="w-3.5 h-3.5 text-sage transition-transform" :class="open && 'rotate-90'" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                                <span><span class="font-semibold text-charcoal">{{ group.name }}</span><span class="block text-xs text-sage font-normal">{{ group.horses|length }} horse{{ group.horses|length|pluralize }}</span></span>
+                            </button>
+                        </th>
+                        {% for c in group.summary %}<td{% if forloop.counter0 == today.weekday %} class="is-today"{% endif %}>{% if c.text %}<span class="training-count training-count-{{ c.tone }}" title="{{ c.label }}" aria-label="{{ c.label }}">{{ c.text }}</span>{% endif %}</td>{% endfor %}
+                        <td class="text-sage">&ndash;</td>
+                        <td class="text-sage">{{ group.fast }}</td>
+                    </tr>
+                    {% for h in group.shown %}
+                    <tr x-show="open" x-cloak>{% include 'training/partials/overview_week_row.html' with indent=True %}</tr>
+                    {% endfor %}
+                    {% if group.more %}
+                    <tr x-show="open" x-cloak><td colspan="10" class="text-left pl-9 py-1.5"><a href="{% url 'training_home' %}?lot={{ group.lot.pk }}" class="link text-sm">Show all {{ group.horses|length }} horses &rsaquo;</a></td></tr>
+                    {% endif %}
+                </tbody>
+                {% else %}
+                <tbody>
+                    <tr class="training-week-head"><th colspan="10" scope="colgroup">{{ group.name }}</th></tr>
+                    {% for h in group.shown %}<tr>{% include 'training/partials/overview_week_row.html' %}</tr>{% endfor %}
+                </tbody>
+                {% endif %}
+                {% endfor %}
+            </table>
+        </div>
+    </section>
+    {% endif %}
+
+    {# Not in work (Q9, plan 4.4). #}
+    {% if rest.count %}
+    <section id="not-in-work" class="card overflow-hidden scroll-mt-24" aria-labelledby="rest-title">
+        <div class="section-header px-4 pt-3 flex items-center justify-between gap-2">
+            <h2 id="rest-title" class="section-title">Not in work</h2>
+            <span class="text-xs text-sage">{{ rest.count }} horse{{ rest.count|pluralize }} on rest or box rest</span>
+        </div>
+        {% if rest.action %}
+        <h3 class="px-4 pt-1 pb-1 text-xs font-semibold text-sage">Needs action</h3>
+        <ul class="divide-y divide-light-sage border-t border-light-sage">
+            {% for row in rest.action %}
+            <li>{% include 'training/partials/overview_rest_row.html' %}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% for label, rows in rest.others %}
+        {% if rest.fold %}
+        <details class="border-t border-light-sage group/rest">
+            <summary class="flex items-center gap-2 px-4 py-2.5 min-h-[48px] cursor-pointer list-none">
+                <span class="flex-1 text-sm"><span class="font-semibold text-charcoal">{{ label }}</span> <span class="text-sage">&middot; {{ rows|length }}{% if rest.action %} more{% endif %}, nothing due</span></span>
+                <svg class="w-4 h-4 text-sage transition-transform group-open/rest:rotate-90" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+            </summary>
+            <ul class="divide-y divide-light-sage">
+                {% for row in rows %}<li>{% include 'training/partials/overview_rest_row.html' %}</li>{% endfor %}
+            </ul>
+        </details>
+        {% else %}
+        <h3 class="px-4 pt-2 pb-1 text-xs font-semibold text-sage border-t border-light-sage">{{ label }}</h3>
+        <ul class="divide-y divide-light-sage">
+            {% for row in rows %}<li>{% include 'training/partials/overview_rest_row.html' %}</li>{% endfor %}
+        </ul>
+        {% endif %}
+        {% endfor %}
+    </section>
+    {% endif %}
+    {# Tomorrow (Q7) and Riders today (Q8), phase B. #}
+    <div class="grid grid-cols-1 gap-3 md:grid-cols-2 items-start">
+        <section class="card overflow-hidden" aria-labelledby="tomorrow-title">
+            <div class="section-header px-4 pt-3 flex items-center justify-between gap-2">
+                <h2 id="tomorrow-title" class="section-title">Tomorrow</h2>
+                <a href="{% url 'training_board_day' tomorrow.date.isoformat %}" class="link text-sm tap-pad">{{ tomorrow.date|date:"D j M" }} &rsaquo;</a>
+            </div>
+            {% if tomorrow.lot_days %}
+            <ul class="divide-y divide-light-sage">
+                {% for ld in tomorrow.lot_days %}
+                <li class="flex items-center gap-2 px-4 py-2 text-sm min-h-[44px]">
+                    <span class="flex-1 min-w-0 truncate"><span class="font-semibold text-charcoal">{{ ld.lot.name }}</span> <span class="text-sage">{% if ld.start_time %}&middot; {{ ld.start_time|time:"H:i" }} {% endif %}&middot; {{ ld.work_type.name }}</span></span>
+                    <span class="badge-neutral shrink-0">{{ ld.n }} horse{{ ld.n|pluralize }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="flex flex-wrap items-center gap-2 px-4 py-3">
+                <p class="flex-1 text-sm text-charcoal">Not started.</p>
+                {% if can_change %}
+                <form method="post" action="{% url 'training_board_start' tomorrow.date.isoformat %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="source" value="{{ default_source }}">
+                    <button type="submit" class="btn-secondary btn-sm min-h-[44px] sm:min-h-0">{% if default_source == 'week_plan' %}Start from the week plan{% elif default_source == 'copy' %}Start as a copy of today{% elif default_source == 'lots' %}Start from the lots{% else %}Start an empty board{% endif %}</button>
+                </form>
+                {% endif %}
+            </div>
+            {% endif %}
+        </section>
+
+        <section class="card overflow-hidden" aria-labelledby="riders-title">
+            <div class="section-header px-4 pt-3">
+                <h2 id="riders-title" class="section-title">Riders today</h2>
+            </div>
+            {% if not today_data.riders %}
+            <p class="px-4 py-3 text-sm text-sage">No riders on today's board.</p>
+            {% elif riders_folded %}
+            <details class="group/riders">
+                <summary class="flex items-center gap-2 px-4 py-2.5 min-h-[48px] cursor-pointer list-none text-sm">
+                    <span class="font-semibold text-charcoal">{{ today_data.riders|length }} rider{{ today_data.riders|length|pluralize }}</span>
+                    <span class="flex-1 min-w-0 truncate text-sage">most: {% for name, horses in today_data.riders|slice:":3" %}{{ name }} {{ horses|length }}{% if not forloop.last %} &middot; {% endif %}{% endfor %}</span>
+                    <svg class="w-4 h-4 text-sage transition-transform group-open/riders:rotate-90" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                </summary>
+                <ul class="divide-y divide-light-sage border-t border-light-sage">
+                    {% for name, horses in today_data.riders %}{% include 'training/partials/overview_rider_row.html' %}{% endfor %}
+                </ul>
+            </details>
+            {% else %}
+            <ul class="divide-y divide-light-sage">
+                {% for name, horses in today_data.riders %}{% include 'training/partials/overview_rider_row.html' %}{% endfor %}
+            </ul>
+            {% endif %}
+        </section>
+    </div>
+
+</div>
+{% endblock %}

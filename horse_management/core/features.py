@@ -82,6 +82,13 @@ FEATURES = [
         "description": "Feed stock levels and feeding-out records.",
     },
     {
+        "key": "training",
+        "label": "Training",
+        "group": "Manage",
+        "supports_view": True,
+        "description": "Work types and the training log for each horse.",
+    },
+    {
         "key": "farrier_portal",
         "label": "Farrier visit page",
         "group": "Manage",

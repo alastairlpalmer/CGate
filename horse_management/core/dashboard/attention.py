@@ -38,7 +38,7 @@ SEVERITY_ORDER = {'overdue': 0, 'due': 1, 'info': 2}
 
 # Kinds that belong in the inbox whatever their date: they have no natural
 # "day" and would otherwise never surface.
-INBOX_ALWAYS = frozenset({'egg_count', 'document', 'departure', 'feed', 'rate', 'capacity'})
+INBOX_ALWAYS = frozenset({'egg_count', 'document', 'departure', 'feed', 'rate', 'capacity', 'training_no_work'})
 
 # Kinds the health bulk form can record for several horses at once.
 BULK_ACTION_TYPES = {
@@ -80,7 +80,12 @@ KIND_LABELS = {
     'invoice': 'Invoice',
     'feed': 'Feed stock',
     'capacity': 'Over capacity',
+    'calendar': 'Calendar item',
     'rate': 'Rate to check',
+    'training_board': 'Lot board',
+    'training_unconfirmed': 'Lot not confirmed',
+    'training_no_work': 'No work',
+    'training_review': 'Review due',
 }
 
 CATEGORY_OF_KIND = {
@@ -91,6 +96,9 @@ CATEGORY_OF_KIND = {
     'scan': 'health', 'foal_check': 'health', 'foal_passport': 'documents',
     'feed': 'yard',
     'capacity': 'yard',
+    'calendar': 'yard',
+    'training_board': 'yard', 'training_unconfirmed': 'yard', 'training_no_work': 'yard',
+    'training_review': 'yard',
     'rate': 'money',
     'document': 'documents',
     'invoice': 'money',
@@ -911,6 +919,83 @@ def _capacity(ctx):
     return items
 
 
+# Training (training/attention.py). Each is empty while the switch is off.
+
+def _training(ctx):
+    """Lot board not started, lots not confirmed, horses with no work."""
+    from training.attention import collect as training_items
+    return training_items(ctx)
+
+
+# How far back the calendar can show a general item: the grid goes a year
+# back (core.dashboard.calendar.MONTHS_BACK), plus the days of a month.
+CALENDAR_LOOKBACK_DAYS = 400
+
+
+def _calendar_entries(ctx):
+    """General items people put on the calendar (core.models.CalendarEntry).
+
+    One item per day an entry falls on, from a year back to the end of the
+    horizon: a repeating entry gives one item for each of its days. An
+    entry is never overdue: a day that has passed is history, not a job
+    left undone, so a past day is ``info`` and stays on its calendar day
+    only. On its own day it is due, so it is in the notification centre
+    that day.
+    """
+    from django.db.models import Q
+
+    from ..models import CalendarEntry
+
+    start = ctx.today - timedelta(days=CALENDAR_LOOKBACK_DAYS)
+    end = ctx.horizon
+    entries = (
+        CalendarEntry.objects.filter(
+            Q(repeat='', date__gte=start, date__lte=end)
+            | (~Q(repeat='') & Q(date__lte=end) & (Q(repeat_until__isnull=True) | Q(repeat_until__gte=start)))
+        )
+        .select_related('location', 'horse')
+    )
+    edit = ctx.can('dashboard', LEVEL_FULL)
+    items = []
+    for entry in entries:
+        location = entry.location.name if entry.location_id else ''
+        site = entry.location.site if entry.location_id else ''
+        if entry.horse_id and not entry.location_id:
+            location, site = ctx.where(entry.horse_id)
+        parts = []
+        if entry.time:
+            parts.append(entry.time.strftime('%H:%M'))
+        if entry.horse_id:
+            parts.append(entry.horse.name)
+        if entry.repeat:
+            parts.append(entry.get_repeat_display())
+        if entry.notes:
+            parts.append(entry.notes.splitlines()[0][:80])
+        detail = ' · '.join(parts)
+        base_url = reverse('calendar_entry_edit', args=[entry.pk])
+        for day in entry.occurrences(start, end):
+            # A repeating item's link names its day, so the form can take
+            # that one day off ("Delete this day only").
+            url = f'{base_url}?on={day:%Y-%m-%d}' if entry.repeat else base_url
+            actions = []
+            if edit:
+                actions.append(Action(label='Edit', url=url, popup_title='Edit calendar item'))
+            items.append(AttentionItem(
+                kind='calendar',
+                severity='due' if day >= ctx.today else 'info',
+                title=entry.title,
+                detail=detail,
+                url=url,
+                due_date=day,
+                delta=ctx.delta(day),
+                location=location,
+                site=site,
+                actions=actions,
+                key=f'calendar-{entry.pk}-{day:%Y%m%d}' if entry.repeat else f'calendar-{entry.pk}',
+            ))
+    return items
+
+
 COLLECTORS = (
     ('vaccination', 'health', _vaccinations),
     ('farrier', 'health', _farrier),
@@ -925,6 +1010,8 @@ COLLECTORS = (
     ('invoice', 'invoices', _invoices),
     ('feed', 'feed', _feed),
     ('capacity', 'locations', _capacity),
+    ('calendar', 'dashboard', _calendar_entries),
+    ('training', 'training', _training),
 )
 
 

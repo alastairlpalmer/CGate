@@ -497,6 +497,8 @@ PLACEMENT_BULK_ACTIONS = ('move', 'restore', 'expected_departure', 'actual_depar
 
 
 def _bulk_action_allowed(user, action_type):
+    if action_type == 'training':
+        return has_feature_access(user, 'training', LEVEL_FULL)
     if action_type in PLACEMENT_BULK_ACTIONS:
         return has_feature_access(user, 'horses', LEVEL_FULL)
     if action_type == 'charge':
@@ -532,6 +534,10 @@ def bulk_health_form(request):
     client-side, and lost them on the first error).
     """
     action_type = request.GET.get('action_type', '')
+    if action_type == 'training':
+        # The training app owns its form, rules and save (training/bulk.py).
+        from training.bulk import bulk_form
+        return bulk_form(request)
     form_class = BULK_FORM_MAP.get(action_type)
     if not form_class:
         return HttpResponseBadRequest('Invalid action type')
@@ -581,6 +587,9 @@ def bulk_health_apply(request):
         return HttpResponseBadRequest('POST required')
 
     action_type = request.POST.get('action_type', '')
+    if action_type == 'training':
+        from training.bulk import bulk_apply
+        return bulk_apply(request)
     horse_ids = _bulk_horse_ids(request.POST)
     form_class = BULK_FORM_MAP.get(action_type)
 
