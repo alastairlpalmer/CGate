@@ -1,6 +1,8 @@
 # Training dashboard (Overview) — plan
 
-**Status:** Plan. Nothing is built. The owner must decide T1 to T6 (section 3) before the build starts.
+**Status:** Plan, ready for phase A. Nothing is built. The owner decided T1 to T7 on 2026-11-19 (section 3).
+
+**Revision 3.** 2026-11-19. The owner decided T1 to T7. T7 is new: the yard's own **Stable Staff** role gets Full on Training (section 3.1).
 
 **Revision 2.** 2026-11-19. The owner asked how the page works for a yard with lots of 20 to 30 horses, and asked for an area for horses that are not in work. New: section 4.3 (large yards), section 4.4 (Not in work), T5 and T6, and a second mock-up with 120 horses in 5 lots.
 **Date:** 2026-11-19.
@@ -40,14 +42,30 @@ The page gives facts. It gives no advice and claims no risk (principle 5.9 of th
 
 ## 3. Owner decisions
 
-| # | Question | Recommended | Why |
+All decided on 2026-11-19. Each one is the recommended answer.
+
+| # | Question | Decided | Why |
 |---|---|---|---|
 | T1 | Where does the Overview go? (a) A first tab, **Overview**, that is the Training landing page. (b) A band of figures above the tabs on every Training page. | **(a) A first tab.** | A band pushes the board down. On a phone the board would start below the first screen. The board is the page staff use most during the morning. A tab keeps the board clean. The tab bar and header stay the same on every tab, so the section still feels like one product. |
 | T2 | What does the sidebar **Training** link open? | **Overview.** | It is the summary. "Open today's board" is the first button on it, so the board is one tap away. |
 | T3 | What does the phone bottom-bar Training item open? | **Overview**, the same as the sidebar. | One rule is easier to learn. The large "Open today's board" button is at the top of the phone screen. If riders find the extra tap slow, change this item to Board later. |
-| T4 | Who sees the Overview? | **Everyone with `training` view.** Riders see the same page. | No data on it is private. Prices never show (D11). |
+| T4 | Who sees the Overview? | **Everyone with `training` view.** Riders see the same page. **Stable Staff must see it** (T7). | No data on it is private. **No prices show** on the Overview or on any Training page (D11). A test checks this. |
 | T5 | Add a **Review on** date to a horse's training status? | **Yes.** One optional date, set in the status pop-up. | Without a date, the app cannot know when a horse on rest needs a decision. "Review due" is the main action in the Not in work card (4.4). |
 | T6 | Do horses with the status **Not in training** show in the Not in work card? | **No.** Only Resting and Box rest. | Not in training covers broodmares, youngstock and retired horses. They are not part of the training yard's work. They can be 50 % of a large yard. |
+| T7 | What can the yard's **Stable Staff** role do in Training, and how does it get the access? | **Full on Training** (see and record), set by a **migration that finds the role by name**. | Stable staff ride the lots, so they mark lots done and record training. Section 3.1. |
+
+### 3.1 The Stable Staff role (T7)
+
+"Stable Staff" is not a seeded role. The yard made it in Settings → Users & Roles. The app gives it access in a data migration, `training/migrations/0008_stable_staff_training.py`, in phase A:
+
+- Find roles where the name, with spaces trimmed and in lower case, is `stable staff`, and `is_system` is false.
+- Set `training` to `full` only if its value is absent or `hidden`. A value that an administrator chose stays.
+- Change no other feature. Stable Staff keeps its current access to money, owners and settings. Training shows no prices, so Full on Training shows no money.
+- If no role has that name, the migration does nothing.
+- The reverse migration does nothing, because it cannot know the value before.
+- Tests import the migration module and check: a match, a match with other letter case, a role with `training` already set, and no match.
+
+A yard that names the role differently sets Training in Settings → Users & Roles. The help guide says this.
 
 ## 4. Layout
 
@@ -136,7 +154,7 @@ The owner's point: a horse that is not in work can still need an action. Today t
 
 A horse with no badge folds into its status group (4.3).
 
-**Data change (T5):** add `HorseTraining.review_on = DateField(null=True, blank=True)` with label "Review on". It is in the status pop-up, under the status. When the status changes to one that goes on the board, the date is cleared. One migration; history records it.
+**Data change (T5, decided):** add `HorseTraining.review_on = DateField(null=True, blank=True)` with label "Review on". It is in the status pop-up, under the status. When the status changes to one that goes on the board, the date is cleared. One migration; history records it.
 
 **Link to Needs attention:** "Review due" and "Review overdue" also count in the Needs attention figure, and on the main dashboard through `training/attention.py`.
 
@@ -181,7 +199,7 @@ Each phase is one pull request, with tests and the usual checks.
 
 | Phase | Content | Done when |
 |---|---|---|
-| A | The Overview tab and the landing change (T1, T2): header, figures, Today, Needs attention, **Not in work** with the review date (4.4, T5). The lot filter and the large-yard folds for these blocks (4.3). `_header.html` (C1) and the new tab (C5). | The sidebar link opens the Overview. The figures and cards show the right data in tests, with 10 horses and with 150 horses in 5 lots. Query count test passes for both. Phone and desktop screenshots checked. |
+| A | The Stable Staff migration (3.1). The Overview tab and the landing change (T1, T2): header, figures, Today, Needs attention, **Not in work** with the review date (4.4, T5). The lot filter and the large-yard folds for these blocks (4.3). `_header.html` (C1) and the new tab (C5). | The sidebar link opens the Overview. The figures and cards show the right data in tests, with 10 horses and with 150 horses in 5 lots. Query count test passes for both. No price shows on the page (test). A Stable Staff login opens the Overview and marks a lot done. Phone and desktop screenshots checked. |
 | B | This week grid with the lot summary rows (4.3), Tomorrow, Riders today. Faults M1 to M6. | The grid matches the horse page strip for each horse in tests. No page scroll sideways at 375 wide. |
 | C | First-run checklist (section 5), C2 to C4 on the other tabs. | A new yard sees the checklist. Each tab has one primary button and an empty state. |
 
