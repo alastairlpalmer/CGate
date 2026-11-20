@@ -23,7 +23,10 @@ Possible duplicates and Merge, Download as CSV). Phase 1d is built
 (Import a file: CSV template, upload, a review screen with proposed
 changes, Apply; and the back-fill from breeding notes and yard names).
 In 1d the file must be CSV: Excel files are not read (no spreadsheet
-library in the app), so the page asks for "CSV UTF-8". In 1c,
+library in the app), so the page asks for "CSV UTF-8". Phase 2 (read
+passports with AI, with the side-by-side passport view first) is on the
+roadmap (Notion, CGate → Dev board, "Read passports with AI") and is not
+scheduled. In 1c,
 names up to 9 letters count as possible duplicates when 1 letter apart,
 and longer names when 2 letters apart ("Moonlit Bay" and "Moonlight
 Bay"). Undo works for 10 minutes and only while nobody changed the horse
