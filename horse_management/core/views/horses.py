@@ -1243,16 +1243,43 @@ TIMELINE_FILTERS = (
 TIMELINE_FILTER_OF = {'stable': 'placement', 'egg_count': 'worming', 'farrier_note': 'farrier'}
 
 
+# How many Timeline entries show before "Show older" (UX review A6).
+TIMELINE_PAGE = 10
+
+
 def timeline_filters(events):
-    """Give each event its filter key; return the pills for the kinds the
+    """Give each event its filter key and its place in the list (``pos``
+    among all, ``kpos`` among its kind); return the pills for the kinds the
     horse has, each with its count, and whether anything is overdue."""
     counts = {}
-    for event in events:
+    for pos, event in enumerate(events):
         key = TIMELINE_FILTER_OF.get(event['type'], event['type'])
         event['filter'] = key
+        event['pos'] = pos
+        event['kpos'] = counts.get(key, 0)
         counts[key] = counts.get(key, 0) + 1
     pills = [(key, label, counts[key]) for key, label in TIMELINE_FILTERS if counts.get(key)]
     return pills, any(e.get('attention') for e in events)
+
+
+def _timeline_capped(user, horse, context):
+    """The kinds the Timeline shows only the newest of: a line at the end
+    says so, with a link to the full list where there is one."""
+    health = has_feature_access(user, 'health', LEVEL_VIEW)
+
+    def link(name):
+        return f"{reverse(name)}?horse={horse.pk}" if health and horse.is_active else ''
+
+    caps = (
+        ('placement', context['placements'], 10, 'Showing the last 10 placements.', ''),
+        ('vaccination', context['vaccinations'], 10, 'Showing the last 10 vaccinations.',
+         link('vaccination_list')),
+        ('farrier', context['farrier_visits'], 10, 'Showing the last 10 farrier visits.', ''),
+        ('vet_visit', context['vet_visits'], 10, 'Showing the last 10 vet visits.', link('vet_visit_list')),
+        ('worming', context['worming_treatments'], 10, 'Showing the last 10 wormings.', link('worming_list')),
+    )
+    return [{'filter': key, 'text': text, 'url': url}
+            for key, rows, cap, text, url in caps if len(rows) >= cap]
 
 
 class HorseDetailView(FeatureAccessMixin, DetailView):
@@ -1352,6 +1379,20 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
         )
         context['timeline_filters'], context['timeline_overdue'] = timeline_filters(
             context['timeline_events'])
+        context['timeline_page'] = TIMELINE_PAGE
+        context['timeline_capped'] = _timeline_capped(self.request.user, horse, context)
+        # Due (UX review A1): the same items as the dashboard and the list's
+        # "Needs action" dot, for this horse. Only horses on the yard are due.
+        due_flag = _health_flags(self.request.user).get(horse.pk) if horse.is_active else None
+        for need in (due_flag or {}).get('items', []):
+            # One main (rust) button on the page: the header's (UX review B2).
+            if need['action'] is not None:
+                need['action'].style = 'ghost'
+        context['due_flag'] = due_flag
+        # A departed horse says when and where it left (UX review A5).
+        context['departure'] = None if horse.is_active else (
+            horse.placements.filter(end_date__isnull=False).select_related('location')
+            .order_by('-end_date', '-pk').first())
         context['training_card'] = training_horse.training_card(self.request.user, horse)
 
         return context
@@ -1512,6 +1553,22 @@ def horse_scan_check(request, pk):
     context.update({'scanned': scanned, 'scanned_shown': shown(scanned), 'mismatch': True,
                     'form': ScanCheckForm()})
     return render(request, 'horses/partials/scan_check.html', context)
+
+
+@feature_required('horses', LEVEL_VIEW)
+def horse_record_actions(request, pk):
+    """Every Record tile in the pop-up sheet: the phone row's "All" (UX
+    review A7). A direct visit goes to the horse page's Record card."""
+    horse = get_object_or_404(Horse, pk=pk)
+    if not is_popup_request(request):
+        return redirect(reverse('horse_detail', args=[horse.pk]) + '#quick-actions')
+    active_pregnancy = None
+    if horse.is_mare and has_feature_access(request.user, 'breeding', LEVEL_VIEW):
+        active_pregnancy = horse.breeding_records.filter(status__in=('covered', 'confirmed')).first()
+    return render(request, 'horses/partials/record_actions.html', {
+        'horse': horse, 'active_pregnancy': active_pregnancy,
+        'training_card': training_horse.training_card(request.user, horse),
+    })
 
 
 def _identifier_page(request, horse, form, ident=None):

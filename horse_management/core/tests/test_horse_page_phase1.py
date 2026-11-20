@@ -347,6 +347,7 @@ class SpeedTests(Base):
                                     status='done', rider=Rider.objects.create(name=f'Rider {i}'),
                                     venue=Venue.objects.create(name=f'Gallop {i}'))
         add(1)
+        count()  # the first load creates the yard settings row once
         one = count()
         for i in range(2, 6):
             add(i)

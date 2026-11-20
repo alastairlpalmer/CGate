@@ -190,7 +190,7 @@ class TimelineTests(OtherScreensTestCase):
         self.assertContains(response, 'Stable 7 &middot; Top Barn')
         # And they show under the Placements filter, with the placements.
         self.assertEqual({e['filter'] for e in events}, {'placement'})
-        self.assertContains(response, "activeFilter === 'all' || activeFilter === 'placement'")
+        self.assertContains(response, "activeFilter === 'placement' && 0 < limit")
 
     def test_and_in_the_preview_pane(self):
         response = self.client.get(

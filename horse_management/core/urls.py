@@ -35,6 +35,7 @@ urlpatterns = [
     path('horses/<int:pk>/quick-view/', views.horse_quick_view, name='horse_quick_view'),
     path('horses/<int:pk>/preview/', views.horse_preview, name='horse_preview'),
     path('horses/<int:pk>/scan-check/', views.horse_scan_check, name='horse_scan_check'),
+    path('horses/<int:pk>/record/', views.horse_record_actions, name='horse_record_actions'),
     path('horses/<int:pk>/identifiers/add/', views.horse_identifier_add, name='horse_identifier_add'),
     path('horses/<int:pk>/identifiers/<int:ident_pk>/edit/', views.horse_identifier_edit,
          name='horse_identifier_edit'),
