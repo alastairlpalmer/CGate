@@ -152,7 +152,9 @@ def needs_attention(today, *, statuses, history, lot=None, rest=None):
     unconfirmed = Group('unconfirmed', 'Not confirmed', 'warn')
     days = (
         LotDay.objects.filter(date__lt=today, date__gte=today - timedelta(days=NOT_CONFIRMED_DAYS))
-        .annotate(planned=Count('activities', filter=Q(activities__status=Activity.Status.PLANNED)))
+        .annotate(planned=Count('activities', filter=Q(
+            activities__status=Activity.Status.PLANNED, activities__horse__is_active=True,
+        )))
         .filter(planned__gt=0).select_related('lot').order_by('date', 'lot__position')
     )
     if lot is not None:
@@ -186,7 +188,7 @@ def needs_attention(today, *, statuses, history, lot=None, rest=None):
             first.entries.append(Entry(name, f'First work in {gap} days', url))
         else:
             last = load.last_work_date(rows, today)
-            start = last or status.status_since
+            start = load.idle_start(last, status.status_since)
             idle = (today - start).days if start else 0
             if idle >= threshold and not load.unconfirmed_days(rows, today):
                 no_work.entries.append(Entry(name, f'No work for {idle} days', url))
@@ -394,7 +396,10 @@ def build(today, *, lot=None, show_health=False):
     status_qs = on_board_qs if scope is None else on_board_qs.filter(horse_id__in=scope)
     statuses = list(status_qs.select_related('horse').order_by('horse__name'))
     sunday = today + timedelta(days=6 - today.weekday())
-    history = load.rows_for([st.horse_id for st in statuses], sunday) if statuses else {}
+    history = (
+        load.rows_for([st.horse_id for st in statuses], sunday, window=load.WINDOW_DAYS + (sunday - today).days)
+        if statuses else {}
+    )
     attention = needs_attention(today, statuses=statuses, history=history, lot=lot, rest=rest['action'])
     week = week_block(
         today, statuses, history, lot_of_horse=today_data['lot_of_horse'], large=large, lot=lot,

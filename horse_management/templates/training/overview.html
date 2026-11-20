@@ -285,7 +285,7 @@ figures, Today, Needs attention and Not in work. Facts only, and no price.
                 <form method="post" action="{% url 'training_board_start' tomorrow.date.isoformat %}">
                     {% csrf_token %}
                     <input type="hidden" name="source" value="{{ default_source }}">
-                    <button type="submit" class="btn-secondary btn-sm min-h-[44px] sm:min-h-0">{% if default_source == 'week_plan' %}Start from the week plan{% elif default_source == 'copy' %}Start as a copy of today{% elif default_source == 'lots' %}Start from the lots{% else %}Start an empty board{% endif %}</button>
+                    <button type="submit" class="btn-secondary btn-sm min-h-[44px] sm:min-h-0">{% if default_source == 'week_plan' %}Start from the week plan{% elif default_source == 'copy' %}Start as a copy of the last board{% elif default_source == 'lots' %}Start from the lots{% else %}Start an empty board{% endif %}</button>
                 </form>
                 {% endif %}
             </div>
