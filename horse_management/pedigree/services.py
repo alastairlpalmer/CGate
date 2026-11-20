@@ -225,6 +225,30 @@ def set_parents(horse, boxes: dict, *, source=PedigreeHorse.Source.TYPED) -> Ped
     return record
 
 
+def set_record_parents(record: PedigreeHorse, boxes: dict, *,
+                       source=PedigreeHorse.Source.TYPED) -> PedigreeHorse:
+    """Write the sire and dam of a record that is not on the yard (the
+    Pedigree records tab). ``boxes`` maps 'S' or 'D' to a Resolution."""
+    record = PedigreeHorse.objects.get(pk=record.pk)
+    for code in ('S', 'D'):
+        if code in boxes:
+            value, unknown = apply(boxes[code], POSITION_SEX[code], source)
+            _set_parent(record, 'sire' if code == 'S' else 'dam', value, unknown)
+    record.full_clean(exclude=['name_key'])
+    record.save(update_fields=PARENT_FIELDS)
+    return record
+
+
+def sync_progeny_copies(record: PedigreeHorse) -> int:
+    """After a record's name changes: refresh the sire and dam names
+    copied onto every yard horse it is a parent of."""
+    count = 0
+    for child in record.progeny().filter(horse__isnull=False).select_related('horse', 'sire', 'dam'):
+        sync_horse_copies(child.horse, child)
+        count += 1
+    return count
+
+
 def other_users_of(parent: PedigreeHorse, horse) -> int:
     """How many other records list ``parent`` as their sire or dam."""
     if parent is None:

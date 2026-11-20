@@ -4,6 +4,7 @@ each gap holds the curved lines; the boxes sit in family order, so a
 screen reader reads Sire, Sire's sire, Sire's dam, Dam, … The script
 static/js/pedigree_tree.js only adds the highlight.
 Needs: tree, root, page_horse, is_page_horse; feature_access.
+Without page_horse (Fill in records) the boxes are not buttons.
 {% endcomment %}
 <div class="ped">
     <div class="ped-scroll">
@@ -23,7 +24,14 @@ Needs: tree, root, page_horse, is_page_horse; feature_access.
             </div>
 
             {% for p in tree.placed %}{% with box=p.box rec=p.box.record %}
-            {% if box.state == 'known' %}
+            {% if box.state == 'known' and not page_horse %}
+            <div class="ped-node ped-k{{ box.generation }}{% if box.twin %} is-twin{% endif %}" data-code="{{ box.code }}" data-id="{{ rec.pk }}"
+                 style="grid-column: {{ box.column }}; grid-row: {{ p.row }} / span {{ p.span }}">
+                <span class="ped-rel">{{ box.relation }}</span>
+                <span class="ped-name">{% if rec.horse_id %}<span class="ped-dot" aria-hidden="true"></span>{% endif %}{{ rec.name }}{% if rec.country %} <span class="ped-sfx">({{ rec.country }})</span>{% endif %}</span>
+                <span class="ped-meta">{% if rec.year_of_birth %}{{ rec.year_of_birth }}{% endif %}{% if rec.year_of_birth and rec.colour %} · {% endif %}{{ rec.colour }}</span>
+            </div>
+            {% elif box.state == 'known' %}
             <button type="button" class="ped-node ped-k{{ box.generation }}{% if box.twin %} is-twin{% endif %}"
                     data-code="{{ box.code }}" data-id="{{ rec.pk }}"
                     style="grid-column: {{ box.column }}; grid-row: {{ p.row }} / span {{ p.span }}"

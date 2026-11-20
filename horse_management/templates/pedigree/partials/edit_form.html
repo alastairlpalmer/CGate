@@ -15,42 +15,13 @@ A name that matches a record already on file asks which one (or New).
         {% endif %}
         <p class="text-xs text-sage">Pick a name from the list, or type it as on the passport, for example <span class="font-mono">Copper Ridge (GB) 2004</span>. Type <strong>Unknown</strong> if a parent is not known.</p>
 
-        {% for row in form.rows %}
-        {% if row.code == 'SS' %}
-        <button type="button" class="link text-sm tap-pad" x-show="!more" @click="more = true">More: sire's sire, sire's dam, dam's dam</button>
-        <div x-show="more" x-cloak class="space-y-3">
-        {% endif %}
-        <div{% if row.field.errors %} class="field-invalid"{% endif %}>
-            <label for="{{ row.field.id_for_label }}" class="block text-sm font-medium text-charcoal">{{ row.field.label }}</label>
-            {{ row.field }}
-            {% if row.field.errors %}<p class="form-error mt-1 text-xs text-error-red" role="alert">{{ row.field.errors.0 }}</p>{% endif %}
-            {% if row.choices %}
-            <fieldset class="mt-2 rounded-lg border border-light-sage p-2 space-y-1">
-                <legend class="sr-only">Which record is {{ row.field.label|lower }}?</legend>
-                {% for rec in row.choices %}
-                <label class="flex items-start gap-2 text-sm cursor-pointer min-h-[44px] sm:min-h-0 py-1">
-                    <input type="radio" name="{{ row.code }}_choice" value="{{ rec.pk }}" class="mt-0.5">
-                    <span><span class="font-medium text-charcoal">{{ rec.label }}</span>{% if rec.horse_id %} <span class="text-xs text-forest">on this yard</span>{% endif %}
-                        {% if rec.sire_id or rec.dam_id %}<span class="block text-xs text-sage">by {{ rec.sire.short_label|default:"?" }} out of {{ rec.dam.short_label|default:"?" }}</span>{% endif %}</span>
-                </label>
-                {% endfor %}
-                <label class="flex items-center gap-2 text-sm cursor-pointer min-h-[44px] sm:min-h-0 py-1">
-                    <input type="radio" name="{{ row.code }}_choice" value="new" class="">
-                    <span>New record: a different horse with this name</span>
-                </label>
-            </fieldset>
-            {% endif %}
-            {% if row.shared %}<p class="mt-1 text-xs text-sage">This belongs to the {% if row.code.0 == 'S' %}sire's{% else %}dam's{% endif %} own record. Changing it changes it for {{ row.shared }} other horse{{ row.shared|pluralize }} too.</p>{% endif %}
-        </div>
-        {% if forloop.last %}</div>{% endif %}
-        {% endfor %}
+        {% include 'pedigree/_boxes.html' %}
 
         {% if form.needs_confirm %}
         {% include "includes/form_field.html" with field=form.confirm_checked %}
         {% endif %}
 
-        <datalist id="pedigree-males">{% for text, on_yard in males %}<option value="{{ text }}"{% if on_yard %} label="on this yard"{% endif %}></option>{% endfor %}</datalist>
-        <datalist id="pedigree-females">{% for text, on_yard in females %}<option value="{{ text }}"{% if on_yard %} label="on this yard"{% endif %}></option>{% endfor %}</datalist>
+        {% include 'pedigree/_datalists.html' %}
     </div>
     <div class="popup-footer">
         {% if full_page %}

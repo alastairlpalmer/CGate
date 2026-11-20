@@ -1,0 +1,74 @@
+{% comment %}
+One shared record in the Pedigree records tab. Needs: record, form (None
+for a record on the yard or a view-only role), used_in, progeny, tree,
+merges, list_url, can_edit, males, females.
+{% endcomment %}
+<section class="card" aria-labelledby="record-title">
+    <div class="section-header gap-3">
+        <div class="min-w-0">
+            <h2 id="record-title" class="section-title truncate">{{ record.label }}</h2>
+            <p class="text-xs text-sage">{{ record.get_source_display }}{% if record.checked %} · checked{% endif %} · in {{ used_in }} pedigree{{ used_in|pluralize }} as a parent</p>
+        </div>
+        <a href="{{ list_url }}" class="lg:hidden shrink-0 text-sm text-sage hover:text-forest tap-pad">← List</a>
+    </div>
+
+    <div class="px-4 py-3 space-y-4">
+        {% with root=record page_horse=None is_page_horse=False %}{% include 'pedigree/_tree.html' %}{% endwith %}
+
+        {% if progeny %}
+        <p class="text-sm text-charcoal-light"><span class="mr-1.5 text-xs font-semibold uppercase tracking-wide text-sage">Progeny on file</span>{% for child in progeny %}{% if child.horse_id %}<a href="{% url 'horse_detail' child.horse_id %}" class="link tap-pad">{{ child.short_label }}</a>{% else %}<a href="?record={{ child.pk }}" class="link tap-pad">{{ child.short_label }}</a>{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}{% if used_in > progeny|length %} ({{ used_in }} in all){% endif %}</p>
+        {% endif %}
+
+        {% for merge in merges %}
+        <p class="text-xs text-sage">{{ merge.removed_label }} was merged into this record on {{ merge.merged_at|date:"j M Y" }}.</p>
+        {% endfor %}
+
+        {% if record.horse_id %}
+        <p class="text-sm text-charcoal-light">This is the record of a horse on the system. Change its name on the horse's page, and its parents in the Horses tab.</p>
+        <div class="flex flex-wrap gap-2">
+            <a href="{% url 'horse_detail' record.horse_id %}" class="btn-secondary">Open horse page</a>
+            {% if can_edit %}<a href="{% url 'records_horses' %}?show=all&amp;status=all&amp;horse={{ record.horse_id }}" class="btn-secondary">Fill in this horse</a>{% endif %}
+        </div>
+        {% elif form %}
+        <form method="post" x-data="{ more: false }" class="space-y-3">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            <div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3" role="alert">
+                {% for error in form.non_field_errors %}<p class="text-sm text-error-red">{{ error }}</p>{% endfor %}
+            </div>
+            {% endif %}
+            <div class="grid gap-3 sm:grid-cols-2">
+                {% include "includes/form_field.html" with field=form.name %}
+                {% include "includes/form_field.html" with field=form.country %}
+                {% include "includes/form_field.html" with field=form.year_of_birth %}
+                {% include "includes/form_field.html" with field=form.sex %}
+                {% include "includes/form_field.html" with field=form.colour %}
+                <div class="self-end">{% include "includes/form_field.html" with field=form.checked %}</div>
+            </div>
+            {% include 'pedigree/_boxes.html' %}
+            {% if form.needs_confirm %}
+            {% include "includes/form_field.html" with field=form.confirm_shared %}
+            {% endif %}
+            {% include 'pedigree/_datalists.html' %}
+            {% include 'horses/partials/_identity_datalists.html' %}
+            <div class="flex justify-end">
+                <button type="submit" class="btn-primary">Save</button>
+            </div>
+        </form>
+        {% endif %}
+
+        {% if can_edit %}
+        <form method="get" action="{% url 'records_merge' %}" class="border-t border-light-sage pt-3">
+            <input type="hidden" name="a" value="{{ record.pk }}">
+            <label for="merge-with" class="block text-sm font-medium text-charcoal">Merge with another record</label>
+            <p class="text-xs text-sage">Use this when two records are the same horse. You see both before anything changes.</p>
+            <div class="mt-1 flex gap-2">
+                <input id="merge-with" name="b" class="form-input min-w-0" autocomplete="off" spellcheck="false"
+                       list="{% if record.sex == 'F' %}pedigree-females{% else %}pedigree-males{% endif %}" placeholder="Pick a name from the list">
+                <button type="submit" class="btn-secondary shrink-0">Compare</button>
+            </div>
+            {% if not form %}{% include 'pedigree/_datalists.html' %}{% endif %}
+        </form>
+        {% endif %}
+    </div>
+</section>

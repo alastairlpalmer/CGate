@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}Fill in records - Cgate{% endblock %}
+
+{% block content %}
+{% comment %}
+Fill in records, Horses tab (identity plan 7.5). The list says how many
+of the 9 key details each horse has. Select a horse to fill it in; Save
+and next opens the next horse in the list. On a phone the list and the
+form are separate screens.
+{% endcomment %}
+<div class="space-y-4">
+    {% include 'pedigree/records/_header.html' %}
+
+    {# On a phone the filters fold behind a button, and hide while a horse is open. #}
+    <div x-data="{ open: {{ active_filters|yesno:'true,false' }} }" class="{% if horse %}max-lg:hidden{% endif %}">
+    <button type="button" class="btn-secondary w-full lg:hidden" @click="open = !open" :aria-expanded="open ? 'true' : 'false'" aria-controls="records-filters">
+        Filters{% if active_filters %} · {{ active_filters }} on{% endif %}
+    </button>
+    <form method="get" id="records-filters" class="card px-4 py-3 max-lg:mt-2" :class="open ? '' : 'max-lg:hidden'" aria-label="Filters">
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7 items-end">
+            <div>
+                <label for="f-missing" class="block text-xs font-medium text-sage">Missing</label>
+                <select id="f-missing" name="missing" class="form-select">
+                    <option value="">Any detail</option>
+                    {% for key, label in missing_filters.items %}<option value="{{ key }}"{% if filters.missing == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="f-show" class="block text-xs font-medium text-sage">Show</label>
+                <select id="f-show" name="show" class="form-select">
+                    <option value="">Horses with gaps</option>
+                    <option value="all"{% if filters.show == 'all' %} selected{% endif %}>All horses</option>
+                </select>
+            </div>
+            <div>
+                <label for="f-status" class="block text-xs font-medium text-sage">Horses</label>
+                <select id="f-status" name="status" class="form-select">
+                    <option value="">On the yard now</option>
+                    <option value="all"{% if filters.status == 'all' %} selected{% endif %}>All, with departed</option>
+                </select>
+            </div>
+            <div>
+                <label for="f-location" class="block text-xs font-medium text-sage">Location</label>
+                <select id="f-location" name="location" class="form-select">
+                    <option value="">All locations</option>
+                    {% for loc in locations %}<option value="{{ loc.pk }}"{% if filters.location == loc.pk|stringformat:'d' %} selected{% endif %}>{{ loc.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="f-owner" class="block text-xs font-medium text-sage">Owner</label>
+                <select id="f-owner" name="owner" class="form-select">
+                    <option value="">All owners</option>
+                    {% for owner in owners %}<option value="{{ owner.pk }}"{% if filters.owner == owner.pk|stringformat:'d' %} selected{% endif %}>{{ owner.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="f-breed" class="block text-xs font-medium text-sage">Breed</label>
+                <select id="f-breed" name="breed" class="form-select">
+                    <option value="">All breeds</option>
+                    {% for breed in breeds %}<option value="{{ breed }}"{% if filters.breed|lower == breed|lower %} selected{% endif %}>{{ breed }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-span-2 sm:col-span-3 lg:col-span-1">
+                <label for="f-q" class="block text-xs font-medium text-sage">Name</label>
+                <div class="flex gap-2">
+                    <input id="f-q" type="search" name="q" value="{{ filters.q }}" class="form-input min-w-0" autocomplete="off">
+                    <button type="submit" class="btn-secondary shrink-0">Show</button>
+                </div>
+            </div>
+        </div>
+    </form>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)] items-start">
+        <section class="card overflow-hidden{% if horse %} hidden lg:block{% endif %}" aria-labelledby="records-list-title">
+            <div class="section-header">
+                <h2 id="records-list-title" class="section-title">{{ rows|length }} horse{{ rows|length|pluralize }}{% if filters.show != 'all' %} with gaps{% endif %}</h2>
+            </div>
+            {% if rows %}
+            <ul class="divide-y divide-light-sage max-h-[70vh] overflow-y-auto" data-testid="records-list">
+                {% for row in rows %}
+                <li>
+                    {% if can_edit %}
+                    <a href="?{% if query %}{{ query }}&amp;{% endif %}horse={{ row.horse.pk }}"
+                       class="flex items-start justify-between gap-3 px-4 py-2.5 no-underline hover:bg-forest/[0.04]{% if horse and row.horse.pk == horse.pk %} bg-forest/[0.08]{% endif %}"
+                       {% if horse and row.horse.pk == horse.pk %}aria-current="true"{% endif %}>
+                    {% else %}
+                    <div class="flex items-start justify-between gap-3 px-4 py-2.5">
+                    {% endif %}
+                        <span class="min-w-0">
+                            <span class="block truncate text-sm font-medium text-charcoal">{{ row.horse.name }}</span>
+                            {% if row.horse.show_registered_name %}<span class="block truncate text-xs text-charcoal-light">{{ row.horse.registered_label }}</span>{% endif %}
+                            {% if row.missing %}<span class="block text-xs text-sage">Missing: {{ row.missing|join:", " }}</span>{% endif %}
+                        </span>
+                        <span class="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums {% if row.count == key_count %}bg-forest/10 text-forest{% elif row.count < 4 %}bg-saddle/10 text-saddle{% else %}bg-light-sage text-sage{% endif %}">{{ row.count }} of {{ key_count }}</span>
+                    {% if can_edit %}</a>{% else %}</div>{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="px-4 py-6 text-sm text-sage">{% if filters.show == 'all' %}No horses match these filters.{% else %}No gaps. Every horse in this list has all {{ key_count }} details.{% endif %}</p>
+            {% endif %}
+        </section>
+
+        <div class="min-w-0{% if not horse %} hidden lg:block{% endif %}">
+            {% if horse %}
+            {% include 'pedigree/records/_horse_pane.html' %}
+            {% else %}
+            <div class="card px-4 py-8 text-center text-sm text-sage">
+                {% if can_edit %}
+                <p>Choose a horse in the list to fill in its details.</p>
+                <p class="mt-1">The {{ key_count }} details are: registered name, country, foaling date, microchip, UELN, passport number, sire, dam and dam's sire. "Unknown" counts as filled.</p>
+                {% else %}
+                <p>This list shows the details that are missing. Your role can see it, but cannot change horse records.</p>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

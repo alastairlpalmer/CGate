@@ -133,3 +133,34 @@ class PedigreeHorse(models.Model):
 
     def progeny(self):
         return PedigreeHorse.objects.filter(models.Q(sire=self) | models.Q(dam=self))
+
+
+class PedigreeMerge(models.Model):
+    """One join of two pedigree records, kept so it can be undone.
+
+    ``removed_snapshot`` holds every field of the record that was removed;
+    the id lists say which records pointed to it as sire or dam.
+    """
+
+    kept = models.ForeignKey(PedigreeHorse, on_delete=models.CASCADE, related_name='merges')
+    removed_snapshot = models.JSONField()
+    moved_sire_ids = models.JSONField(default=list)
+    moved_dam_ids = models.JSONField(default=list)
+    filled_fields = models.JSONField(default=list)
+    moved_horse_id = models.PositiveIntegerField(null=True, blank=True)
+    merged_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+    )
+    merged_at = models.DateTimeField(auto_now_add=True)
+    undone_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-merged_at']
+
+    def __str__(self):
+        return f"{self.removed_label} into {self.kept}"
+
+    @property
+    def removed_label(self):
+        snap = self.removed_snapshot or {}
+        return make_label(snap.get('name', ''), snap.get('country', ''), snap.get('year_of_birth'))

@@ -8,7 +8,13 @@ form never moves a shared record by accident.
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
+from core.forms import HorseForm
+from core.identity import normalise_country
+
+from .models import PedigreeHorse
+from .names import is_unknown
 from .services import GRANDPARENTS, POSITION_SEX, other_users_of, resolve
 
 POSITIONS = [
@@ -109,6 +115,135 @@ class PedigreeForm(forms.Form):
         return cleaned
 
     needs_confirm = False
+
+
+class RecordsIdentityForm(HorseForm):
+    """The identity half of the Fill in records pane (plan §7.5).
+
+    A subset of HorseForm, so the rules are the same as on the horse
+    forms: the suffix split, the foaling year, the tidy numbers.
+    """
+
+    height = None  # not in the pane, so never cleared by it
+
+    class Meta(HorseForm.Meta):
+        fields = [
+            'registered_name', 'country_of_birth', 'date_of_birth', 'breed',
+            'microchip', 'ueln', 'passport_number', 'passport_issuer',
+        ]
+
+
+def _box(label, sex, initial):
+    return forms.CharField(
+        required=False, label=label, max_length=220, initial=initial,
+        widget=forms.TextInput(attrs={
+            'class': 'form-input', 'autocomplete': 'off', 'spellcheck': 'false',
+            'list': 'pedigree-males' if sex == 'M' else 'pedigree-females',
+        }),
+    )
+
+
+class RecordEditForm(forms.ModelForm):
+    """A shared record that is not on the yard: its name, suffix, year,
+    sex, colour, and its sire and dam (Pedigree records tab, plan §7.5).
+
+    A record that is in more than one pedigree asks again before a save,
+    because the change shows on every one of them.
+    """
+
+    confirm_shared = forms.BooleanField(
+        required=False, label='Yes, change it in all of them',
+        widget=forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+    )
+
+    class Meta:
+        model = PedigreeHorse
+        fields = ['name', 'country', 'year_of_birth', 'sex', 'colour', 'checked']
+        labels = {'country': 'Suffix (country)', 'year_of_birth': 'Year foaled',
+                  'checked': 'Checked against a passport or a stud book'}
+        help_texts = {'checked': ''}
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-input', 'autocomplete': 'off'}),
+            'country': forms.TextInput(attrs={
+                'class': 'form-input uppercase', 'list': 'country-suggestions', 'maxlength': '5',
+                'autocomplete': 'off'}),
+            'year_of_birth': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
+            'sex': forms.Select(attrs={'class': 'form-select'}),
+            'colour': forms.TextInput(attrs={'class': 'form-input'}),
+            'checked': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        record = self.instance
+        self.fields['S'] = _box('Sire', 'M', _initial_text(record, 'sire'))
+        self.fields['D'] = _box('Dam', 'F', _initial_text(record, 'dam'))
+        for code in ('S', 'D'):
+            self.fields[f'{code}_choice'] = forms.CharField(required=False, widget=forms.HiddenInput)
+        self.used_in = record.progeny().count() if record.pk else 0
+        self.choices = {}
+        self.resolutions = {}
+        self.needs_confirm = False
+
+    def rows(self):
+        return [{'code': code, 'field': self[code], 'choices': self.choices.get(code, []),
+                 'shared': 0, 'first': True} for code in ('S', 'D')]
+
+    def clean_name(self):
+        name = (self.cleaned_data.get('name') or '').strip()
+        if not name or is_unknown(name):
+            raise forms.ValidationError('Type the registered name.')
+        return name
+
+    def clean_country(self):
+        return normalise_country(self.cleaned_data.get('country'))
+
+    def clean_year_of_birth(self):
+        year = self.cleaned_data.get('year_of_birth')
+        if year is not None and not 1700 <= year <= timezone.localdate().year:
+            raise forms.ValidationError('Type a year from 1700 to this year.')
+        return year
+
+    def clean(self):
+        cleaned = super().clean()
+        record = self.instance
+        for code, letter in (('S', 'sire'), ('D', 'dam')):
+            text = (cleaned.get(code) or '').strip()
+            if text == (self.fields[code].initial or '').strip():
+                continue
+            res = resolve(text, POSITION_SEX[code], chosen=cleaned.get(f'{code}_choice') or None,
+                          current=getattr(record, letter))
+            if res.needs_choice:
+                self.choices[code] = res.choices
+                self.add_error(code, f'{text} matches a record already on file. Choose it below, or choose New.')
+                continue
+            if res.record is not None and res.record.pk == record.pk:
+                self.add_error(code, 'A horse cannot be its own parent.')
+                continue
+            self.resolutions[code] = res
+
+        sex = cleaned.get('sex')
+        if record.pk and sex == PedigreeHorse.Sex.FEMALE and record.progeny_as_sire.exists():
+            self.add_error('sex', 'This record is the sire of other horses, so it cannot be female.')
+        if record.pk and sex == PedigreeHorse.Sex.MALE and record.progeny_as_dam.exists():
+            self.add_error('sex', 'This record is the dam of other horses, so it cannot be male.')
+
+        changed = [f for f in self.changed_data if f != 'confirm_shared' and not f.endswith('_choice')]
+        if self.used_in > 1 and changed and not cleaned.get('confirm_shared'):
+            self.needs_confirm = True
+            self.add_error(None, f'This record is in {self.used_in} pedigrees. Tick the box to change it '
+                                 'in all of them.')
+        return cleaned
+
+    def save(self, commit=True, user=None):
+        record = super().save(commit=False)
+        if 'checked' in self.changed_data:
+            record.checked_at = timezone.now() if record.checked else None
+            record.checked_by = (user if record.checked and getattr(user, 'is_authenticated', False)
+                                 else None)
+        if commit:
+            record.save()
+        return record
 
 
 def validation_messages(error: ValidationError):
