@@ -2041,13 +2041,42 @@ def horse_move(request, pk):
 
 @feature_required('horses')
 def new_arrival(request):
-    """Create a new horse and place it at a location in one step."""
+    """Create a new horse and place it at a location in one step.
+
+    A returning horse keeps its old record (core/returning.py): the panel
+    under the chip box offers "Bring it back", which logs the arrival on
+    the old record with the placement typed here. A chip that is already
+    on a horse stops the save once, so a second record is never made by
+    accident; "Make a new record anyway" goes on.
+    """
     from ..forms import NewArrivalForm
+    from ..returning import find_returning
     from ..services import PlacementService
 
+    returning = None
     if request.method == 'POST':
-        form = NewArrivalForm(request.POST)
-        if form.is_valid():
+        data = request.POST
+        back = None
+        if request.POST.get('bring_back', '').isdigit():
+            back = get_object_or_404(Horse, pk=request.POST['bring_back'])
+            data = data.copy()
+            if not data.get('name', '').strip():
+                # Only the chip was scanned: the old record has the name.
+                data['name'] = back.name
+            if not data.get('owner') and back.primary_owner:
+                data['owner'] = back.primary_owner.pk  # as Log Arrival does
+        form = NewArrivalForm(data)
+        if form.is_valid() and back is not None:
+            done = _bring_back(request, form, back)
+            if done is not None:
+                return done
+        elif form.is_valid():
+            returning = find_returning(microchip=form.cleaned_data.get('microchip'))
+            if returning.chip_matches and not request.POST.get('new_record'):
+                return render(request, 'horses/horse_new_arrival.html', {
+                    'form': form, 'returning': returning, 'stopped': True,
+                })
+            returning = None
             chose_stable = form.cleaned_data.get('stable') is not None
             try:
                 # One transaction when a stable was picked: if it turns
@@ -2097,7 +2126,81 @@ def new_arrival(request):
             initial['stable'] = stable_id
         form = NewArrivalForm(initial=initial)
 
-    return render(request, 'horses/horse_new_arrival.html', {'form': form})
+    if request.method == 'POST':
+        # The form came back with an error: keep the panel showing what
+        # the chip and name found, as it did before the save.
+        returning = _returning_from(request.POST)
+    return render(request, 'horses/horse_new_arrival.html', {'form': form, 'returning': returning})
+
+
+def _returning_from(params):
+    """find_returning for the raw chip, name and foaling date in a GET or
+    POST (the boxes may not be valid yet)."""
+    from ..returning import find_returning
+
+    dob = params.get('date_of_birth', '')
+    try:
+        dob = date.fromisoformat(dob) if dob else None
+    except ValueError:
+        dob = None
+    return find_returning(microchip=params.get('microchip', '')[:60],
+                          name=params.get('name', '')[:200], date_of_birth=dob)
+
+
+def _bring_back(request, form, horse):
+    """Log the arrival on the old record of a returning horse. Answers the
+    redirect to its page, or None when the form shows an error instead."""
+    from ..identity import normalise_microchip
+    from ..services import PlacementService
+
+    if horse.placements.filter(end_date__isnull=True).exists():
+        form.add_error(None, f"{horse.name} is on the yard now. Use Move on its page to change where it is.")
+        return None
+    data = form.cleaned_data
+    chip = normalise_microchip(data.get('microchip') or '')
+    try:
+        with transaction.atomic():
+            placement = PlacementService.arrive_horse(
+                horse,
+                owner=data['owner'],
+                location=data['location'],
+                rate_type=data['rate_type'],
+                arrival_date=data['arrival_date'],
+                expected_departure=data.get('expected_departure'),
+                notes=data.get('notes', ''),
+            )
+            _assign_chosen_stable(horse, form, data['arrival_date'])
+            if chip and not horse.microchip:
+                # Matched by name, and the chip was scanned: keep it.
+                horse.microchip = chip
+                horse._change_reason = 'Chip scanned when the horse came back'
+                horse.save(update_fields=['microchip'])
+    except ValidationError as e:
+        form.add_error(None, e)
+        return None
+    except IntegrityError:
+        form.add_error(None, "That change clashed with another update to the same horse. "
+                             "Open its page and check the current placement.")
+        return None
+    messages.success(request, format_html(
+        '{} is back at {}, on the old record with all its history. '
+        '<a href="{}?category=arrival" class="underline font-semibold">Add photos</a>',
+        horse.name, placement.location.name, reverse('horse_photo_add', args=[horse.pk]),
+    ))
+    _warn_wrong_rate(request, horse, placement)
+    _warn_identity(request, horse)
+    return redirect('horse_detail', pk=horse.pk)
+
+
+@feature_required('horses')
+def new_arrival_check(request):
+    """The "Was this horse here before?" panel on New Arrival, while the
+    chip, name and foaling date are typed (htmx, GET). Nothing found: an
+    empty answer, so the panel's box closes (CSS :empty)."""
+    returning = _returning_from(request.GET)
+    if not returning.found:
+        return HttpResponse('')
+    return render(request, 'horses/partials/returning_panel.html', {'returning': returning})
 
 
 @feature_required('horses')

@@ -26,7 +26,11 @@ In 1d the file must be CSV: Excel files are not read (no spreadsheet
 library in the app), so the page asks for "CSV UTF-8". Phase 2 (read
 passports with AI, with the side-by-side passport view first) is on the
 roadmap (Notion, CGate → Dev board, "Read passports with AI") and is not
-scheduled. In 1c,
+scheduled. From phase 3, "Returning horses" is built: New Arrival asks
+for the chip first; a chip on a horse that left offers "Bring it back"
+(the arrival goes on the old record) and stops a second record once;
+with no chip match, same-name horses show as possible matches only
+(`core/returning.py`, using the §6.4 matcher). In 1c,
 names up to 9 letters count as possible duplicates when 1 letter apart,
 and longer names when 2 letters apart ("Moonlit Bay" and "Moonlight
 Bay"). Undo works for 10 minutes and only while nobody changed the horse
@@ -86,7 +90,7 @@ Source: Notion, CGate → Dev board. All cards have the status "ideas".
 | Card | What it asks for | Where this plan covers it |
 |------|------------------|---------------------------|
 | Standard horse identifiers (microchip, UELN, passport) | Fixed internal ID (UUID). A table of identifiers: type, value, issuer, checked yes or no. Microchip: 15 digits, remove spaces. UELN: 15 characters. Warn (do not block) on a duplicate chip. | §6.1, §6.2, §6.6. Phase 1a. |
-| Returning horses: find the old record on arrival | New Arrival asks for the chip first and reuses the old record. | §6.4 matching rules. Phase 3 (it uses the phase 1 data). |
+| Returning horses: find the old record on arrival | New Arrival asks for the chip first and reuses the old record. | §6.4 matching rules. Phase 3 (it uses the phase 1 data). **Built.** |
 | Link C-vet horses to yard horses by microchip | Match `ClientHorse` to `Horse` by chip. | Phase 3. Same matcher. |
 | Horse life timeline with a tamper-evident log | Hash-chained events per horse. | §6.7 adds record history. The hash chain stays separate. |
 | Advanced record keeping | Weight and height over time. | §6.1 adds the current height only. |

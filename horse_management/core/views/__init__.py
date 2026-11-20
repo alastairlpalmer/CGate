@@ -36,6 +36,7 @@ from .horses import (  # noqa: F401
     horse_record_actions,
     manage_ownership_shares,
     new_arrival,
+    new_arrival_check,
 )
 from .locations import (  # noqa: F401
     BarnCreateView,

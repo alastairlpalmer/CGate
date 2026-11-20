@@ -740,10 +740,17 @@ class NewArrivalChipTests(TestCase):
         location = Location.objects.create(name='Top Field', site='Main')
         rate = RateType.objects.create(name='Full', daily_rate=10)
         self.client.force_login(make_admin())
-        response = self.client.post(reverse('horse_new_arrival'), {
+        data = {
             'name': 'Rosie 2', 'owner': owner.pk, 'location': location.pk, 'rate_type': rate.pk,
             'arrival_date': timezone.localdate().isoformat(), 'microchip': 'FDX-B 372 141 000 123 456',
-        }, follow=True)
+        }
+        # The chip is on a horse that was here before: the save stops once
+        # and offers to bring Rosie back (core/returning.py).
+        response = self.client.post(reverse('horse_new_arrival'), data)
+        self.assertContains(response, 'This horse was here before')
+        self.assertFalse(Horse.objects.filter(name='Rosie 2').exists())
+        # "Make a new record anyway" goes on, and the new record says why.
+        response = self.client.post(reverse('horse_new_arrival'), {**data, 'new_record': '1'}, follow=True)
         horse = Horse.objects.get(name='Rosie 2')
         self.assertEqual(horse.microchip, '372141000123456')
         self.assertContains(response, 'is also on Rosie (departed). Is this the same horse?')
