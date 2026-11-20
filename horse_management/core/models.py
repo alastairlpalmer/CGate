@@ -2798,6 +2798,7 @@ class AuditEvent(models.Model):
         OWNER_EXPORTED = 'owner_exported', "Owner's personal data exported"
         OWNER_ERASED = 'owner_erased', "Owner's contact details erased"
         OWNER_ANONYMISED = 'owner_anonymised', 'Owner anonymised'
+        RECORDS_IMPORTED = 'records_imported', 'Horse records imported'
 
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     action = models.CharField(max_length=40, choices=Action.choices)

@@ -164,3 +164,129 @@ class PedigreeMerge(models.Model):
     def removed_label(self):
         snap = self.removed_snapshot or {}
         return make_label(snap.get('name', ''), snap.get('country', ''), snap.get('year_of_birth'))
+
+
+# ---------------------------------------------------------------------------
+# Proposed changes (plan §6.5, phase 1d)
+# ---------------------------------------------------------------------------
+
+class ImportBatch(models.Model):
+    """One file, or one back-fill run: rows of proposed changes that a
+    person reviews. Nothing in it changes a horse before Apply."""
+
+    class Source(models.TextChoices):
+        SPREADSHEET = 'spreadsheet', 'Spreadsheet'
+        BACKFILL = 'backfill', 'Details already on the system'
+
+    class Status(models.TextChoices):
+        OPEN = 'open', 'Waiting for review'
+        APPLIED = 'applied', 'Applied'
+        DISCARDED = 'discarded', 'Discarded'
+
+    source = models.CharField(max_length=20, choices=Source.choices)
+    file_name = models.CharField(max_length=255, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    applied_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+    )
+    applied_at = models.DateTimeField(null=True, blank=True)
+    # Where new horses from the file go. All three, or none (no placement).
+    location = models.ForeignKey('core.Location', null=True, blank=True, on_delete=models.SET_NULL,
+                                 related_name='+')
+    owner = models.ForeignKey('core.Owner', null=True, blank=True, on_delete=models.SET_NULL,
+                              related_name='+')
+    rate_type = models.ForeignKey('core.RateType', null=True, blank=True, on_delete=models.SET_NULL,
+                                  related_name='+')
+    arrival_date = models.DateField(null=True, blank=True)
+    summary = models.CharField(max_length=500, blank=True)
+
+    class Meta:
+        ordering = ['-created_at', '-pk']
+
+    def __str__(self):
+        return f'{self.get_source_display()} {self.created_at:%d %b %Y}'
+
+    @property
+    def title(self):
+        if self.source == self.Source.SPREADSHEET:
+            return self.file_name or 'Spreadsheet'
+        return 'Details already on the system'
+
+    @property
+    def change_reason(self):
+        day = (self.applied_at or self.created_at)
+        when = f'{day:%d %b %Y}' if day else ''
+        if self.source == self.Source.SPREADSHEET:
+            return f'Spreadsheet import {when}'.strip()
+        return f'Back-fill {when}'.strip()
+
+
+class ImportRow(models.Model):
+    """One horse in a batch: a row of the file, or one horse on the system."""
+
+    batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name='rows')
+    number = models.PositiveIntegerField(help_text='The line in the file')
+    values = models.JSONField(default=dict)
+    problems = models.JSONField(default=list)
+    horse = models.ForeignKey('core.Horse', null=True, blank=True, on_delete=models.SET_NULL,
+                              related_name='+')
+    match_how = models.CharField(max_length=20, blank=True)
+    match_note = models.CharField(max_length=300, blank=True)
+    possible_ids = models.JSONField(default=list)
+    create_new = models.BooleanField(default=False)
+    result = models.CharField(max_length=500, blank=True)
+
+    class Meta:
+        ordering = ['number', 'pk']
+
+    def __str__(self):
+        return f'Row {self.number}'
+
+    @property
+    def label(self):
+        if self.horse_id:
+            return self.horse.name
+        return self.values.get('name') or self.values.get('registered_name') or f'Row {self.number}'
+
+    def possible_horses(self):
+        from core.models import Horse
+        return list(Horse.objects.filter(pk__in=self.possible_ids))
+
+
+class ProposedChange(models.Model):
+    """One value to write, with the value it replaces."""
+
+    row = models.ForeignKey(ImportRow, on_delete=models.CASCADE, related_name='changes')
+    target = models.CharField(max_length=40, help_text="For example 'microchip' or 'pedigree.D'")
+    label = models.CharField(max_length=60)
+    current_value = models.CharField(max_length=500, blank=True)
+    current_display = models.CharField(max_length=500, blank=True)
+    proposed_value = models.CharField(max_length=500, blank=True)
+    proposed_display = models.CharField(max_length=500, blank=True)
+    # Pedigree boxes: the chosen record's pk, 'new', 'unknown', or '' when
+    # a person must still choose. ``choice_ids`` are the records to show.
+    choice = models.CharField(max_length=20, blank=True)
+    choice_ids = models.JSONField(default=list)
+    accept = models.BooleanField(default=False)
+    result = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        ordering = ['pk']
+
+    def __str__(self):
+        return f'{self.label}: {self.proposed_display}'
+
+    @property
+    def is_pedigree(self):
+        return self.target.startswith('pedigree.')
+
+    @property
+    def needs_choice(self):
+        return self.is_pedigree and not self.choice
+
+    def choice_records(self):
+        return list(PedigreeHorse.objects.filter(pk__in=self.choice_ids).select_related('sire', 'dam'))

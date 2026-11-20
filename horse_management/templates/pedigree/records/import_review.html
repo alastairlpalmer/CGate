@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block title %}Review import - Cgate{% endblock %}
+
+{% block content %}
+{% comment %}
+Review screen for an import or the back-fill (identity plan 6.5 and 7.6).
+Each row: the horse it matches, its problems, and each proposed change
+with the value it replaces. A change is ticked only when the current
+value is empty. Nothing changes a horse before Apply.
+{% endcomment %}
+<div class="space-y-4">
+    {% include 'pedigree/records/_header.html' %}
+    <a href="{% url 'records_imports' %}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest tap-pad">← Imports</a>
+
+    <div class="card px-4 py-3">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h2 class="section-title">{{ batch.title }}</h2>
+            <span class="rounded-full px-2 py-0.5 text-xs font-semibold {% if is_open %}bg-saddle/10 text-saddle{% else %}bg-light-sage text-sage{% endif %}">{{ batch.get_status_display }}</span>
+        </div>
+        <p class="mt-1 text-sm text-charcoal-light">
+            {% if is_open %}{{ rows|length }} row{{ rows|length|pluralize }}, {{ ticked }} change{{ ticked|pluralize }} ticked. A change is ticked only when the current value is empty. Tick or untick, then select <strong>Apply ticked changes</strong>.
+            {% else %}{% if batch.summary %}{{ batch.summary }}. {% endif %}{% if batch.applied_at %}Applied {{ batch.applied_at|date:"j M Y, H:i" }}{% if batch.applied_by %} by {{ batch.applied_by.get_full_name|default:batch.applied_by.username }}{% endif %}.{% endif %}{% endif %}
+        </p>
+        {% if is_open and batch.location_id %}<p class="mt-1 text-xs text-sage">New horses arrive at {{ batch.location.name }} for {{ batch.owner.name }}, from {{ batch.arrival_date|default:today|date:"j M Y" }}.</p>{% endif %}
+    </div>
+
+    <form method="post" class="space-y-3">
+        {% csrf_token %}
+        {# Enter in the form saves the choices: never Discard or Apply by accident. #}
+        <button type="submit" name="action" value="save" class="hidden" tabindex="-1" aria-hidden="true"></button>
+        {% for row in rows %}
+        <section class="card" aria-labelledby="row-{{ row.pk }}" data-testid="import-row">
+            <div class="section-header gap-3">
+                <h3 id="row-{{ row.pk }}" class="section-title truncate">{% if batch.source == 'spreadsheet' %}Row {{ row.number }} · {% endif %}{{ row.label }}</h3>
+                <span class="shrink-0 text-xs {% if row.horse_id %}text-forest{% else %}text-saddle{% endif %}">
+                    {% if row.result|slice:":8" == "Left out" %}Left out
+                    {% elif row.match_how == 'backfill' %}
+                    {% elif row.horse_id %}{% if row.match_how == 'chosen' %}Chosen: {{ row.horse.name }}{% else %}{{ row.match_note }}{% endif %}
+                    {% elif row.possible_ids %}Possible match
+                    {% else %}New horse{% endif %}
+                </span>
+            </div>
+            <div class="px-4 py-3 space-y-3">
+                {% if row.problems %}
+                <ul class="space-y-0.5 text-sm text-saddle" role="list">
+                    {% for problem in row.problems %}<li>{{ problem }}</li>{% endfor %}
+                </ul>
+                {% endif %}
+                {% if row.result %}<p class="text-sm font-medium {% if row.result|slice:':9' == 'Not saved' or row.result|slice:':9' == 'Not added' %}text-error-red{% else %}text-charcoal{% endif %}" data-testid="row-result">{{ row.result }}</p>{% endif %}
+
+                {% if is_open and row.result|slice:":8" != "Left out" %}
+                {% if row.possible_ids and row.match_how != 'microchip' and row.match_how != 'ueln' and row.match_how != 'registered' %}
+                <div>
+                    <label for="match-{{ row.pk }}" class="block text-sm font-medium text-charcoal">This row is</label>
+                    <select id="match-{{ row.pk }}" name="match_{{ row.pk }}" class="form-select max-w-sm">
+                        <option value="">A new horse</option>
+                        {% for other in row.possible_horses %}<option value="{{ other.pk }}"{% if row.horse_id == other.pk %} selected{% endif %}>{{ other.name }}{% if other.registered_name %} ({{ other.registered_label }}){% endif %}{% if not other.is_active %}, departed{% endif %}</option>{% endfor %}
+                    </select>
+                    <p class="mt-1 text-xs text-sage">{{ row.match_note }} If it is the same horse, choose it here.</p>
+                </div>
+                {% endif %}
+                {% if not row.horse_id %}
+                <label class="inline-flex items-center gap-2 text-sm font-medium cursor-pointer">
+                    <input type="checkbox" name="create_{{ row.pk }}" class="form-checkbox"{% if row.create_new %} checked{% endif %}>
+                    Add as a new horse
+                </label>
+                {% endif %}
+                {% endif %}
+
+                {% with changes=row.changes.all %}
+                {% if changes %}
+                <ul class="divide-y divide-light-sage rounded-lg border border-light-sage" role="list">
+                    {% for change in changes %}
+                    <li class="flex items-start gap-3 px-3 py-2">
+                        {% if is_open %}
+                        <input type="checkbox" name="accept_{{ change.pk }}" id="accept-{{ change.pk }}" class="form-checkbox mt-0.5"{% if change.accept %} checked{% endif %}>
+                        {% endif %}
+                        <div class="min-w-0 flex-1 text-sm">
+                            <label for="accept-{{ change.pk }}" class="font-medium text-charcoal">{{ change.label }}</label>
+                            <p class="text-charcoal-light break-words">
+                                {% if change.current_display %}<span class="line-through decoration-sage/60">{{ change.current_display }}</span> → {% endif %}<span class="text-charcoal">{{ change.proposed_display }}</span>{% if not change.current_display %} <span class="text-xs text-sage">{% if is_open %}(empty now){% else %}(was empty){% endif %}</span>{% endif %}
+                            </p>
+                            {% if change.is_pedigree and change.choice_ids and is_open %}
+                            <fieldset class="mt-1 space-y-1">
+                                <legend class="text-xs text-saddle">{{ change.proposed_value }} matches a record already on file. Which one?</legend>
+                                {% for rec in change.choice_records %}
+                                <label class="flex items-start gap-2 cursor-pointer min-h-[44px] sm:min-h-0 py-0.5">
+                                    <input type="radio" name="choice_{{ change.pk }}" value="{{ rec.pk }}" class="mt-0.5"{% if change.choice == rec.pk|stringformat:'d' %} checked{% endif %}>
+                                    <span><span class="font-medium">{{ rec.label }}</span>{% if rec.horse_id %} <span class="text-xs text-forest">on this yard</span>{% endif %}{% if rec.sire_id or rec.dam_id %}<span class="block text-xs text-sage">by {{ rec.sire.short_label|default:"?" }} out of {{ rec.dam.short_label|default:"?" }}</span>{% endif %}</span>
+                                </label>
+                                {% endfor %}
+                                <label class="flex items-center gap-2 cursor-pointer min-h-[44px] sm:min-h-0 py-0.5">
+                                    <input type="radio" name="choice_{{ change.pk }}" value="new"{% if change.choice == 'new' %} checked{% endif %}>
+                                    <span>New record: a different horse with this name</span>
+                                </label>
+                            </fieldset>
+                            {% elif change.is_pedigree and change.choice == 'new' %}
+                            <p class="text-xs text-sage">A new pedigree record.</p>
+                            {% endif %}
+                            {% if change.result %}<p class="mt-0.5 text-xs {% if change.result == 'Saved' %}text-forest{% else %}text-saddle{% endif %}">{{ change.result }}</p>{% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% elif row.result|slice:":8" != "Left out" %}
+                <p class="text-sm text-sage">{% if row.horse_id %}No changes: the values are the same as on the system.{% else %}Only the name is in the file.{% endif %}</p>
+                {% endif %}
+                {% endwith %}
+            </div>
+        </section>
+        {% endfor %}
+
+        {% if is_open %}
+        <div class="sticky bottom-20 lg:bottom-4 z-20 flex items-center justify-end gap-2 rounded-xl border border-light-sage bg-white/95 px-3 py-2 sm:px-4 sm:py-3 shadow-sm backdrop-blur">
+            <button type="submit" name="action" value="discard" class="btn-ghost mr-auto px-2" onclick="return confirm('Discard this import? Nothing on the system changes.')">Discard</button>
+            <button type="submit" name="action" value="save" class="btn-secondary whitespace-nowrap"><span class="sm:hidden">Save</span><span class="max-sm:hidden">Save my choices</span></button>
+            <button type="submit" name="action" value="apply" class="btn-primary whitespace-nowrap"><span class="sm:hidden">Apply ticked</span><span class="max-sm:hidden">Apply ticked changes</span></button>
+        </div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}
