@@ -1,7 +1,8 @@
 {% comment %}
 Scan to check (pop-up sheet only). The scanner types the number and Enter,
 which sends this form. A match stamps the record; a different number is
-shown beside the stored one, and staff choose what to keep.
+shown beside the stored one, with a box to scan again (Check again) or a
+button to save the scanned number.
 {% endcomment %}
 <form method="post" action="{% url 'horse_scan_check' horse.pk %}"
       hx-post="{% url 'horse_scan_check' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false">
@@ -19,7 +20,13 @@ shown beside the stored one, and staff choose what to keep.
             <p class="text-xs text-charcoal-light">
                 {% if stored %}Scan again to be sure. If the record is wrong, save the scanned number. The old number is kept as an "Old microchip".{% else %}Save the scanned number as this horse's microchip?{% endif %}
             </p>
-            <input type="hidden" name="scanned" value="{{ scanned }}">
+            <input type="hidden" name="last_scanned" value="{{ scanned }}">
+        </div>
+        {# The box to scan again into: Enter (the scanner's last key) checks again. #}
+        <div>
+            <label for="{{ form.scanned.id_for_label }}" class="block text-sm font-medium text-charcoal">Scan again</label>
+            {{ form.scanned }}
+            <p class="mt-1 text-xs text-sage">No scanner? Type the number from the chip.</p>
         </div>
         {% else %}
         <p class="text-sm text-charcoal-light">
@@ -36,7 +43,9 @@ shown beside the stored one, and staff choose what to keep.
     <div class="popup-footer">
         <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
         {% if mismatch %}
-        <button type="submit" name="action" value="save" class="btn-primary">Save the scanned number</button>
+        {# Check again is first in the form, so Enter in the box checks; it shows last, as the main button. #}
+        <button type="submit" name="action" value="check" class="btn-primary order-last">Check again</button>
+        <button type="submit" name="action" value="save" class="btn-secondary" formnovalidate>Save the scanned number</button>
         {% else %}
         <button type="submit" name="action" value="check" class="btn-primary">Check</button>
         {% endif %}

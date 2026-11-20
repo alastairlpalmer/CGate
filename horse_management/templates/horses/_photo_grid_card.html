@@ -5,7 +5,7 @@ photos is a (sliced) queryset of HorsePhoto; photo_count the unsliced total.
 {% endcomment %}
 <div class="card">
     <div class="section-header">
-        <h3 class="section-title">Photos</h3>
+        <h2 class="section-title">Photos</h2>
         {% if feature_access.horses.full %}
         <a href="{% url 'horse_photo_add' horse.pk %}" class="btn-ghost btn-xs"
            hx-get="{% url 'horse_photo_add' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"

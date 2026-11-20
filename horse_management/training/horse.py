@@ -38,7 +38,8 @@ def training_card(user, horse):
     if not can_see_training(user):
         return None
     today = timezone.localdate()
-    rows = horse.activities.select_related('work_type')
+    # Rows show the rider and the venue: join them, not one query a row.
+    rows = horse.activities.select_related('work_type', 'rider', 'venue')
     # Read only: a horse with no row is Not in training (5.3).
     status_row = HorseTraining.objects.filter(horse=horse).first()
     member = LotMember.objects.filter(horse=horse).select_related('lot', 'lot__usual_work_type').first()

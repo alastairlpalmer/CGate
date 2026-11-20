@@ -309,7 +309,7 @@
     .more-menu-panel { @apply absolute right-0 top-full mt-2 z-40 w-max min-w-[13rem] max-w-[calc(100vw-2rem)] py-1 bg-white rounded-lg shadow-lg border border-light-sage text-left; }
     .more-menu-panel.is-left { @apply left-0 right-auto; }
     .more-menu-panel form { @apply contents; }
-    .more-menu-item { @apply flex w-full items-center gap-2.5 px-3.5 py-2 min-h-[44px] sm:min-h-[38px] text-sm text-charcoal text-left whitespace-nowrap cursor-pointer hover:bg-parchment focus:bg-parchment focus:outline-hidden transition-colors duration-100; }
+    .more-menu-item { @apply flex w-full items-center gap-2.5 px-3.5 py-2 min-h-[44px] sm:min-h-[38px] text-sm text-charcoal text-left whitespace-nowrap cursor-pointer hover:bg-parchment focus:bg-parchment focus:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-forest transition-colors duration-100; }
     .more-menu-item svg { @apply w-4 h-4 shrink-0 text-sage; }
     .more-menu-item.is-danger, .more-menu-item.is-danger svg { @apply text-error-red; }
     .more-menu-item.is-danger:hover, .more-menu-item.is-danger:focus { @apply bg-error-red-50; }

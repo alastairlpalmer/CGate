@@ -100,6 +100,7 @@ def horse_photo_add(request, pk):
 
             saved = 0
             first_photo = None
+            passport_marked = False
             for index, upload in enumerate(uploads):
                 upload = normalise_photo(upload)
                 try:
@@ -111,7 +112,7 @@ def horse_photo_add(request, pk):
                     continue
 
                 if category == QUICK_PHOTO_PASSPORT:
-                    Document.objects.create(
+                    passport_doc = Document.objects.create(
                         horse=horse,
                         doc_type=Document.DocType.PASSPORT,
                         title=_passport_title(index, len(uploads)),
@@ -119,6 +120,7 @@ def horse_photo_add(request, pk):
                         notes=caption,
                         uploaded_by=request.user,
                     )
+                    passport_marked = passport_marked or passport_doc.horse_passport_marked
                 else:
                     photo = HorsePhoto.objects.create(
                         horse=horse,
@@ -139,6 +141,8 @@ def horse_photo_add(request, pk):
                 if set_profile and first_photo is not None:
                     _use_as_profile(horse, first_photo)
                     msg += " Profile picture updated."
+                if passport_marked:
+                    msg += f" {horse.name} now shows as having a passport."
                 messages.success(request, msg)
                 if in_popup:
                     return popup_saved_response()

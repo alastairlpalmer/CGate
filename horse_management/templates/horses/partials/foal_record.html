@@ -9,7 +9,7 @@ BreedingRecord), foal_milestones, foal_notes, foal_note_form, today.
 <div class="card" id="foal-record">
     <div class="section-header">
         <div class="flex items-center gap-2.5 min-w-0">
-            <h3 class="section-title">Foal Record</h3>
+            <h2 class="section-title">Foal Record</h2>
             {% if horse.age_label %}<span class="badge-info">{{ horse.age_label }}</span>{% endif %}
             {% if br.is_weaned %}<span class="badge-neutral">Weaned</span>{% else %}<span class="badge-success">At foot</span>{% endif %}
         </div>
@@ -57,7 +57,7 @@ BreedingRecord), foal_milestones, foal_notes, foal_note_form, today.
 
         <!-- Milestones -->
         <div>
-            <h5 class="text-xs font-semibold text-forest uppercase tracking-wider mb-2">First year</h5>
+            <h3 class="text-xs font-semibold text-forest uppercase tracking-wider mb-2">First year</h3>
             <ol class="milestones">
                 {% for key, label, done, when, hint in foal_milestones %}
                 <li class="milestone{% if done %} is-done{% endif %}">

@@ -34,12 +34,12 @@ ownership shares live on the full page, one link away.
                 {% include "includes/form_field.html" with field=form.ueln help="15 characters, from the passport" %}
                 {% include "includes/form_field.html" with field=form.passport_number %}
                 {% include "includes/form_field.html" with field=form.passport_issuer %}
+                <div class="sm:col-span-2 -mt-1">
+                    {% include "includes/form_field.html" with field=form.has_passport help="Ticked by itself when you type a passport number or add a passport scan" %}
+                </div>
                 {% include "includes/form_field.html" with field=form.country_of_birth %}
                 {% include "includes/form_field.html" with field=form.breed %}
                 {% include "includes/form_field.html" with field=form.height %}
-                <div class="flex items-end min-h-[44px]">
-                    {% include "includes/form_field.html" with field=form.has_passport %}
-                </div>
                 {% include "includes/form_field.html" with field=form.markings span="2" %}
             </div>
         </fieldset>

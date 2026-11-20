@@ -14,7 +14,7 @@ patterns fit this page and which do not.
 
 | Phase | State |
 |---|---|
-| 1. Quick fixes | Not started |
+| 1. Quick fixes | Done in this branch: B1, A4, C1, C2, C3, C4, C6, B5, G1, G2 |
 | 2. What the page shows first | Not started |
 | 3. Actions and feedback | Not started |
 | 4. Forms, navigation and history | Not started |

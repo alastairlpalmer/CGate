@@ -24,14 +24,14 @@ opens the horse page instead of the viewer.
 Args:
     horse  – Horse instance (required)
     size   – 'sm' (default: 32px on a phone card, 24px in a table row from md),
-             'md' (40px), 'lg' (96px hero)
+             'md' (40px), 'lg' (96px hero, loaded first: it is above the fold)
 {% endcomment %}
 {% if horse.photo %}
     {% if size == 'lg' %}
     <img src="{% if horse.photo_thumb %}{{ horse.photo_thumb.url }}{% else %}{{ horse.photo.url }}{% endif %}"
          alt="{{ horse.name }}" width="96" height="96"
          class="w-24 h-24 rounded-xl object-cover shrink-0 ring-1 ring-light-sage shadow-xs cursor-zoom-in hover:ring-2 hover:ring-forest transition-shadow"
-         loading="lazy" decoding="async"
+         loading="eager" fetchpriority="high" decoding="async"
          role="button" tabindex="0" title="View photo full screen"
          aria-label="View the photo of {{ horse.name }} full screen"
          data-lightbox-src="{{ horse.photo.url }}"

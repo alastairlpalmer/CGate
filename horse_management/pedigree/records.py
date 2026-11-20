@@ -153,7 +153,7 @@ UNDO_MINUTES = 10
 
 SNAPSHOT_FIELDS = (
     'registered_name', 'country_of_birth', 'date_of_birth', 'dob_precision', 'breed',
-    'microchip', 'ueln', 'passport_number', 'passport_issuer',
+    'microchip', 'ueln', 'passport_number', 'passport_issuer', 'has_passport',
     'identity_checked_at', 'identity_checked_by_id',
 )
 PARENT_VALUES = ('sire_id', 'dam_id', 'sire_unknown', 'dam_unknown')

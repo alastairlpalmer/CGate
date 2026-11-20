@@ -860,6 +860,7 @@ class Horse(models.Model):
             if self._sync_photo_thumb():
                 changed.append('photo_thumb')
         changed += self._age_to_foaling_date()
+        changed += self._number_means_a_passport(update_fields)
         changed += self._clear_stale_identity_check(update_fields)
         if update_fields is not None and changed:
             kwargs['update_fields'] = list(dict.fromkeys(list(update_fields) + changed))
@@ -882,6 +883,22 @@ class Horse(models.Model):
             self.dob_precision = self.DobPrecision.ESTIMATED
         self.age = None
         return ['age', 'date_of_birth', 'dob_precision']
+
+    def _number_means_a_passport(self, update_fields):
+        """A passport number typed in means the horse has a passport.
+
+        Only when the number is new: a person who later unticks "Has
+        passport" beside a number already on file keeps that choice
+        (docs/HORSE_PAGE_UX_REVIEW.md A4).
+        """
+        if self.has_passport or not self.passport_number:
+            return []
+        if update_fields is not None and 'passport_number' not in update_fields:
+            return []
+        if self.pk and Horse.objects.filter(pk=self.pk).exclude(passport_number='').exists():
+            return []
+        self.has_passport = True
+        return ['has_passport']
 
     def _clear_stale_identity_check(self, update_fields):
         """A new microchip, UELN or passport number has not been checked.
@@ -2326,6 +2343,14 @@ class Document(SoftDeleteModel):
             if old != self.expiry_date:
                 self.expiry_reminder_sent = False
         super().save(*args, **kwargs)
+        # A passport on file means the horse has one (UX review A4). The
+        # upload views read this to say so in their message.
+        self.horse_passport_marked = False
+        if (self.doc_type == self.DocType.PASSPORT and self.horse_id and self.deleted_at is None
+                and not self.horse.has_passport):
+            self.horse.has_passport = True
+            self.horse.save(update_fields=['has_passport', 'updated_at'])
+            self.horse_passport_marked = True
 
     @property
     def is_expired(self):

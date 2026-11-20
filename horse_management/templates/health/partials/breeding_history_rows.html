@@ -6,7 +6,7 @@ buttons for reconciliation. Context: br, can_edit.
 {% if coverings or scans %}
 <div class="mt-3 pt-3 border-t border-sand grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs">
     <div>
-        <h5 class="font-semibold text-forest uppercase tracking-wider mb-1.5">Coverings</h5>
+        <h3 class="font-semibold text-forest uppercase tracking-wider mb-1.5">Coverings</h3>
         <ul class="space-y-1">
             {% for c in coverings %}
             <li class="flex items-center justify-between gap-2">
@@ -22,7 +22,7 @@ buttons for reconciliation. Context: br, can_edit.
         </ul>
     </div>
     <div>
-        <h5 class="font-semibold text-forest uppercase tracking-wider mb-1.5">Scans</h5>
+        <h3 class="font-semibold text-forest uppercase tracking-wider mb-1.5">Scans</h3>
         {% if scans %}
         <ul class="space-y-1">
             {% for sc in scans %}
