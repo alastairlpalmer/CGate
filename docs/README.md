@@ -29,6 +29,7 @@
 | [`TRAINING_MODULE_PLAN.md`](TRAINING_MODULE_PLAN.md) | Training module: research, the owner's list checked against it, the owner's decisions, lots and the lot board, recording training for one horse or many, six pull requests (phases 1, 2a, 2b, 3, 4, 5), and two reviews. Phases 1 (record training), 2a (lots and training status), 2b (the lot board), 3 (week plan, riders, venues), 4 (workload facts, dashboard, print) and 5 (charges for sessions) are built, behind `TRAINING_ENABLED`. |
 | [`TRAINING_DASHBOARD_PLAN.md`](TRAINING_DASHBOARD_PLAN.md) | Training Overview: a summary tab that is the Training landing page, the questions it answers, the layout, the first-run checklist, one header for every tab, and three phases (A, B, C). All three are built, behind `TRAINING_ENABLED`. |
 | [`UX_REVIEW_PLAN.md`](UX_REVIEW_PLAN.md) | UX and visual review (Nov 2026): findings and a phased plan for hierarchy, consistency and phone lists. |
+| [`HORSE_PAGE_UX_REVIEW.md`](HORSE_PAGE_UX_REVIEW.md) | UI and UX review of the horse page (20 Nov 2026): what the page shows first (a Due strip, card order, the Timeline), actions, accessibility, forms, navigation and history, checked against the saas-ui-patterns library, with a five-phase plan. |
 | [`UI_AUDIT.md`](UI_AUDIT.md) | Interface audit. |
 
 ## QA history
