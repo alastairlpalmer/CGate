@@ -19,7 +19,11 @@ from core.models import Horse, HorseIdentifier, HorsePhoto, Location, Owner, Pla
 from core.roles_testutils import make_admin, make_user_with_access
 from health.models import BreedingRecord, Covering, MedicalCondition, PregnancyScan
 
-TEMP_MEDIA = tempfile.mkdtemp(prefix='cgate-phase3-tests-')
+# One folder for each class that saves photos: each class deletes its
+# folder when it finishes, and in a parallel run that must not happen
+# during another class's tests.
+UNDO_MEDIA = tempfile.mkdtemp(prefix='cgate-phase3-undo-')
+PHOTO_MEDIA = tempfile.mkdtemp(prefix='cgate-phase3-photos-')
 
 
 def _photo(name='snap.jpg'):
@@ -132,14 +136,14 @@ class NamesTests(Base):
             self.assertNotIn(old, main)
 
 
-@override_settings(MEDIA_ROOT=TEMP_MEDIA)
+@override_settings(MEDIA_ROOT=UNDO_MEDIA)
 class UndoTests(Base):
     """B4: Undo in place of a confirm step, where the item can come back."""
 
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
-        shutil.rmtree(TEMP_MEDIA, ignore_errors=True)
+        shutil.rmtree(UNDO_MEDIA, ignore_errors=True)
 
     def test_number_remove_and_undo(self):
         horse = self.horse()
@@ -336,7 +340,7 @@ class ChargesTests(Base):
         self.assertNotIn('data-testid="charges-card"', _main(self.page(self.h)))
 
 
-@override_settings(MEDIA_ROOT=TEMP_MEDIA)
+@override_settings(MEDIA_ROOT=PHOTO_MEDIA)
 class PhotoActionTests(Base):
     """B8: one actions menu per photo, the profile photo marked, and no
     default category label."""
@@ -344,7 +348,7 @@ class PhotoActionTests(Base):
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
-        shutil.rmtree(TEMP_MEDIA, ignore_errors=True)
+        shutil.rmtree(PHOTO_MEDIA, ignore_errors=True)
 
     def test_menu_mark_and_labels(self):
         horse = self.horse()

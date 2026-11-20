@@ -13,6 +13,10 @@ from core.models import Document, Horse, HorsePhoto
 from core.roles_testutils import make_admin, make_viewer
 
 TEMP_MEDIA = tempfile.mkdtemp(prefix='cgate-photo-tests-')
+# PhotoDeleteTests checks that files stay on disk after a delete, so it
+# has its own folder: the other classes here delete TEMP_MEDIA when they
+# finish, and in a parallel run that can happen during its tests.
+DELETE_MEDIA = tempfile.mkdtemp(prefix='cgate-photo-delete-tests-')
 
 
 def _image_bytes(fmt='JPEG', size=(64, 64), color='red'):
@@ -174,13 +178,13 @@ class QuickAddViewTests(TestCase):
         self.assertContains(resp, 'horse_photos/')
 
 
-@override_settings(MEDIA_ROOT=TEMP_MEDIA)
+@override_settings(MEDIA_ROOT=DELETE_MEDIA)
 class PhotoDeleteTests(TestCase):
 
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
-        shutil.rmtree(TEMP_MEDIA, ignore_errors=True)
+        shutil.rmtree(DELETE_MEDIA, ignore_errors=True)
 
     def setUp(self):
         self.staff = make_admin()
