@@ -12,6 +12,7 @@ from billing.forms import ServicePickerMixin
 from core.forms import MoveHorseForm
 from core.models import Horse
 from core.widgets import MoneyInput
+from pedigree.widgets import stallion_input
 from .models import (
     BreedingRecord,
     Covering,
@@ -590,7 +591,7 @@ class BreedingRecordForm(ActiveHorseFormMixin, forms.ModelForm):
         }
         widgets = {
             'mare': forms.Select(attrs={'class': 'form-select'}),
-            'stallion_name': forms.TextInput(attrs={'class': 'form-input'}),
+            'stallion_name': stallion_input(attrs={'class': 'form-input'}),
             'date_covered': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'date_scanned_14_days': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'date_scanned_heartbeat': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
@@ -854,7 +855,7 @@ class CoveringForm(forms.Form):
     )
     stallion_name = forms.CharField(
         label='Stallion', max_length=200, required=False,
-        widget=forms.TextInput(attrs={'class': 'form-input'}),
+        widget=stallion_input(attrs={'class': 'form-input'}),
         help_text="Leave as is unless a different stallion was used",
     )
     vet = forms.ModelChoiceField(

@@ -1,0 +1,27 @@
+{% comment %}
+Pedigree card on the horse page (plan §8.3). Needs the context from
+pedigree.display.diagram_context as ``pedigree`` (unpacked by the
+{% with %} below) and feature_access.
+{% endcomment %}
+{% with tree=pedigree.tree root=pedigree.root page_horse=pedigree.page_horse is_page_horse=pedigree.is_page_horse back=pedigree.back family=pedigree.family generations=pedigree.generations %}
+<div class="card" id="pedigree" x-data="{ three: false }">
+    <div class="section-header">
+        <h3 class="section-title">Pedigree</h3>
+        <div class="flex items-center gap-2">
+            {% if tree.has_more %}
+            <button type="button" class="btn-ghost btn-xs" x-show="!three" @click="three = true"
+                    hx-get="{% url 'pedigree_tree' root.pk %}?horse={{ horse.pk }}&amp;generations=3" hx-target="#pedigree-diagram" hx-select="unset" hx-swap="innerHTML" hx-push-url="false">Show 3 generations</button>
+            <button type="button" class="btn-ghost btn-xs" x-show="three" x-cloak @click="three = false"
+                    hx-get="{% url 'pedigree_tree' root.pk %}?horse={{ horse.pk }}&amp;generations=2" hx-target="#pedigree-diagram" hx-select="unset" hx-swap="innerHTML" hx-push-url="false">Show 2 generations</button>
+            {% endif %}
+            {% if feature_access.horses.full %}
+            <a href="{% url 'pedigree_edit' horse.pk %}" hx-get="{% url 'pedigree_edit' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Pedigree for {{ horse.name }}" class="btn-ghost btn-xs">Edit</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="p-4" id="pedigree-diagram">
+        {% include 'pedigree/_diagram.html' %}
+    </div>
+</div>
+{% endwith %}

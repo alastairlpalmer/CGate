@@ -1,0 +1,39 @@
+{% comment %}
+Everything inside the Pedigree card that changes when another tree is
+opened: the "Back" line, the diagram and the lines under it. Swapped into
+#pedigree-diagram by pedigree.views.pedigree_tree.
+Needs: tree, root, page_horse, is_page_horse, back, family, generations.
+{% endcomment %}
+{% if not is_page_horse %}
+<div class="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+    <button type="button" class="link tap-pad font-medium"
+            hx-get="{% url 'pedigree_tree' back.pk|default:page_horse.pedigree.pk %}?horse={{ page_horse.pk }}" hx-target="#pedigree-diagram" hx-select="unset" hx-swap="innerHTML" hx-push-url="false">
+        ← Back to {% if back and back.horse_id != page_horse.pk %}{{ back.name }}{% else %}{{ page_horse.name }}{% endif %}
+    </button>
+    {% if root.horse_id %}<a href="{% url 'horse_detail' root.horse_id %}" class="link tap-pad">Open {{ root.horse.name }}'s page</a>{% endif %}
+</div>
+<p class="mb-2 text-sm text-charcoal-light">{% include 'pedigree/_byline.html' %}</p>
+{% endif %}
+
+{% include 'pedigree/_tree.html' %}
+
+<div class="mt-3 space-y-1.5 text-sm text-charcoal-light">
+    {% if family.dam or family.sire or family.full or family.half or family.progeny %}
+    <p><span class="mr-1.5 text-xs font-semibold uppercase tracking-wide text-sage">Family here</span>
+        {% if family.sire %}Sire <a href="{% url 'horse_detail' family.sire.pk %}" class="link tap-pad">{{ family.sire.name }}</a>{% endif %}
+        {% if family.dam %}{% if family.sire %} · {% endif %}Dam <a href="{% url 'horse_detail' family.dam.pk %}" class="link tap-pad">{{ family.dam.name }}</a>{% endif %}
+        {% if family.full %}{% if family.sire or family.dam %} · {% endif %}Full sibling{{ family.full|length|pluralize }} {% for h in family.full %}<a href="{% url 'horse_detail' h.pk %}" class="link tap-pad">{{ h.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}
+        {% if family.half %}{% if family.sire or family.dam or family.full %} · {% endif %}Half sibling{{ family.half|length|pluralize }} {% for h in family.half %}<a href="{% url 'horse_detail' h.pk %}" class="link tap-pad">{{ h.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}
+        {% if family.progeny %}{% if family.sire or family.dam or family.full or family.half %} · {% endif %}Progeny {% for h in family.progeny %}<a href="{% url 'horse_detail' h.pk %}" class="link tap-pad">{{ h.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}{% if family.more %} and {{ family.more }} more{% endif %}{% endif %}
+    </p>
+    {% endif %}
+    {% with twins=tree.inbreeding %}{% if twins %}
+    <p class="text-saddle" data-testid="inbreeding"><span class="mr-1.5 text-xs font-semibold uppercase tracking-wide">Inbreeding</span>{% for rec, gens in twins %}{{ rec.short_label }} {{ gens }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+    {% endif %}{% endwith %}
+    {% if is_page_horse and tree.missing %}
+    <p><span class="mr-1.5 text-xs font-semibold uppercase tracking-wide text-sage">Not entered</span>{% for b in tree.missing %}{{ b.relation|lower }}{% if not forloop.last %}, {% endif %}{% endfor %}.{% if feature_access.horses.full %} <a href="{% url 'pedigree_edit' page_horse.pk %}" hx-get="{% url 'pedigree_edit' page_horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Pedigree for {{ page_horse.name }}" class="link tap-pad">Add</a>{% endif %}</p>
+    {% endif %}
+    {% if root.source != 'typed' %}
+    <p class="text-xs text-sage">{{ root.get_source_display }}.</p>
+    {% endif %}
+</div>

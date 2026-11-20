@@ -104,6 +104,7 @@ INSTALLED_APPS = [
     'billing.apps.BillingConfig',
     'cvet.apps.CvetConfig',
     'training.apps.TrainingConfig',
+    'pedigree.apps.PedigreeConfig',
     'notifications.apps.NotificationsConfig',
     'xero_integration.apps.XeroIntegrationConfig',
 ]
