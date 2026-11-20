@@ -85,10 +85,10 @@ the number without spaces. Phase 1b adds the pedigree beside it.
                 <div class="flex items-center gap-1 shrink-0">
                     <a href="{% url 'horse_identifier_edit' horse.pk ident.pk %}" hx-get="{% url 'horse_identifier_edit' horse.pk ident.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
                        data-popup-title="Edit {{ ident.label }}" class="btn-ghost btn-xs">Edit</a>
-                    <form method="post" action="{% url 'horse_identifier_delete' horse.pk ident.pk %}" x-data="{ sure: false }">
+                    {# One step: the message after the remove has Undo (UX review B4). #}
+                    <form method="post" action="{% url 'horse_identifier_delete' horse.pk ident.pk %}">
                         {% csrf_token %}
-                        <button type="button" class="btn-ghost btn-xs" x-show="!sure" @click="sure = true" aria-label="Remove {{ ident.label }}">Remove</button>
-                        <button type="submit" class="btn-ghost btn-xs text-error-red" x-show="sure" x-cloak>Confirm</button>
+                        <button type="submit" class="btn-ghost btn-xs" aria-label="Remove {{ ident.label }}">Remove</button>
                     </form>
                 </div>
                 {% endif %}
@@ -121,7 +121,7 @@ the number without spaces. Phase 1b adds the pedigree beside it.
             {% endwith %}
             {% if feature_access.horses.full %}
             <a href="{% url 'horse_identifier_add' horse.pk %}" hx-get="{% url 'horse_identifier_add' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-               data-popup-title="Add a number or link for {{ horse.name }}" class="btn-ghost btn-xs">+ Number or link</a>
+               data-popup-title="Add a number or link for {{ horse.name }}" class="btn-ghost btn-xs">Add number or link</a>
             {% endif %}
         </div>
     </div>

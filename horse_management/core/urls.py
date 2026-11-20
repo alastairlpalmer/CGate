@@ -41,6 +41,8 @@ urlpatterns = [
          name='horse_identifier_edit'),
     path('horses/<int:pk>/identifiers/<int:ident_pk>/delete/', views.horse_identifier_delete,
          name='horse_identifier_delete'),
+    path('horses/<int:pk>/identifiers/<int:ident_pk>/restore/', views.horse_identifier_restore,
+         name='horse_identifier_restore'),
     path('horses/<int:pk>/move/', views.horse_move, name='horse_move'),
     path('horses/<int:pk>/arrive/', views.horse_arrive, name='horse_arrive'),
     path('horses/<int:pk>/depart/', views.horse_depart, name='horse_depart'),
@@ -51,6 +53,7 @@ urlpatterns = [
     path('horses/<int:pk>/ownership/', views.manage_ownership_shares, name='horse_ownership'),
     path('horses/<int:pk>/photos/add/', views.horse_photo_add, name='horse_photo_add'),
     path('horses/photos/<int:pk>/delete/', views.horse_photo_delete, name='horse_photo_delete'),
+    path('horses/photos/<int:pk>/restore/', views.horse_photo_restore, name='horse_photo_restore'),
     path('horses/photos/<int:pk>/use-as-profile/', views.horse_photo_set_profile, name='horse_photo_set_profile'),
 
     # Owners

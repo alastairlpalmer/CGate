@@ -931,11 +931,12 @@ class Horse(models.Model):
 
         The gallery (HorsePhoto) may hold the same file: only delete when no
         other row points at it. Before, every replaced photo stayed in
-        storage for good.
+        storage for good. A deleted gallery photo still counts: Undo and
+        Recently Deleted can bring it back until the purge.
         """
         in_use = (
             Horse.objects.filter(photo=name).exclude(pk=self.pk).exists()
-            or HorsePhoto.objects.filter(image=name).exists()
+            or HorsePhoto.all_objects.filter(image=name).exists()
         )
         if not in_use:
             try:
@@ -2452,13 +2453,16 @@ class HorseIdentifier(models.Model):
             raise DjangoValidationError({'url': 'Use a web link that starts with https://'})
 
 
-class HorsePhoto(models.Model):
+class HorsePhoto(SoftDeleteModel):
     """A quick-add photo on a horse's record: condition shots, markings,
     injuries, arrival/check-in snaps.
 
     Passport photos are deliberately not a category here — the quick-add
     flow routes those to Document (doc_type=passport) so the documents card
     and expiry reminders keep working.
+
+    Delete is a soft delete with Undo (UX review B4): the files stay until
+    the nightly purge (core.tasks.purge_soft_deleted), which calls purge().
     """
 
     class Category(models.TextChoices):
@@ -2524,6 +2528,13 @@ class HorsePhoto(models.Model):
                 base = Path(self.image.name).stem if self.image.name else 'photo'
                 self.thumb.save(f"{base}-thumb.jpg", thumb, save=False)
         super().save(*args, **kwargs)
+
+    def purge(self):
+        """Delete for good, with the files (the purge job calls this)."""
+        self.image.delete(save=False)
+        if self.thumb:
+            self.thumb.delete(save=False)
+        self.delete()
 
 
 class Role(models.Model):

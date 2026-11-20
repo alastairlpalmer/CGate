@@ -112,16 +112,17 @@ def purge_soft_deleted():
     holds the row. Documents lose their file here too. Each row goes
     through its own ``purge`` (when it has one) so model rules still run:
     a purged charge zeroes its health record's cost, so the charge is not
-    rebuilt (billing.models.ExtraCharge.purge).
+    rebuilt (billing.models.ExtraCharge.purge), and a photo takes its
+    files with it (core.models.HorsePhoto.purge).
     """
     from datetime import timedelta
 
     from billing.models import ExtraCharge, YardCost
-    from core.models import Document
+    from core.models import Document, HorsePhoto
 
     cutoff = timezone.now() - timedelta(days=settings.SOFT_DELETE_RETENTION_DAYS)
     counts = {}
-    for model in (ExtraCharge, YardCost, Document):
+    for model in (ExtraCharge, YardCost, Document, HorsePhoto):
         purged = 0
         for row in model.all_objects.filter(deleted_at__lt=cutoff).iterator():
             try:

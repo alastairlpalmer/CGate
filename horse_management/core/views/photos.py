@@ -10,8 +10,10 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.formats import date_format
+from django.views.decorators.http import require_POST
 
 from core.permissions import LEVEL_VIEW, FeatureAccessMixin, feature_required
 
@@ -19,6 +21,8 @@ from ..forms import QUICK_PHOTO_PASSPORT, QuickPhotoForm
 from ..images import normalise_photo
 from ..models import Document, Horse, HorsePhoto, validate_file_size
 from ._popup import is_popup_request, popup_saved_response
+from ._next import safe_next
+from ._undo import undo_tag
 
 _image_extension_validator = FileExtensionValidator(
     allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
@@ -168,19 +172,30 @@ def horse_photo_add(request, pk):
 
 @feature_required('horses')
 def horse_photo_delete(request, pk):
-    """Delete a horse photo (POST only, confirmed client-side)."""
+    """Delete a horse photo (POST only). A soft delete with Undo, and no
+    confirm step (UX review B4): the files stay until the nightly purge."""
     photo = get_object_or_404(HorsePhoto, pk=pk)
     horse = photo.horse
 
     if request.method != 'POST':
         return redirect('horse_detail', pk=horse.pk)
 
-    photo.image.delete(save=False)
-    if photo.thumb:
-        photo.thumb.delete(save=False)
-    photo.delete()
-    messages.success(request, "Photo deleted.")
+    photo.soft_delete(request.user)
+    messages.success(
+        request, f"Photo of {horse.name} deleted.",
+        extra_tags=undo_tag(reverse('horse_photo_restore', args=[photo.pk])),
+    )
     return redirect('horse_detail', pk=horse.pk)
+
+
+@feature_required('horses')
+@require_POST
+def horse_photo_restore(request, pk):
+    """Undo a photo delete (the toast's Undo, or Recently Deleted)."""
+    photo = get_object_or_404(HorsePhoto.all_objects.deleted(), pk=pk)
+    photo.restore()
+    messages.success(request, f"Photo of {photo.horse.name} restored.")
+    return redirect(safe_next(request, reverse('horse_detail', args=[photo.horse_id])))
 
 
 @feature_required('horses')

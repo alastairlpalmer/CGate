@@ -319,6 +319,10 @@
     .more-menu-label { @apply px-3.5 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sage; }
     .more-menu-note { @apply px-3.5 pb-2 max-w-[18rem] text-xs text-sage whitespace-normal; }
     .more-menu-item:disabled { @apply cursor-not-allowed text-sage hover:bg-transparent; }
+    /* A photo's actions button: a 44px target in the corner, drawn as a
+       small dark dot so it does not cover the photo (UX review B8). */
+    .photo-menu-btn { @apply flex h-11 w-11 items-start justify-end p-1 cursor-pointer focus:outline-hidden; }
+    .photo-menu-dot { @apply flex h-7 w-7 items-center justify-center rounded-full bg-charcoal/60 text-white transition-colors group-hover/pm:bg-charcoal/85 group-focus-visible/pm:ring-2 group-focus-visible/pm:ring-white group-focus-visible/pm:ring-offset-1 group-focus-visible/pm:ring-offset-forest; }
 
     /* Summary strip: the figures a record page leads with (owner page). */
     .summary-strip { @apply grid grid-cols-2 lg:grid-cols-4 gap-3; }

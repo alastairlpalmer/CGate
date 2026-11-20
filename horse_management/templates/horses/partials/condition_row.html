@@ -1,0 +1,24 @@
+{% comment %}
+One medical condition on the horse page (UX review B6): name, since when,
+its status, and Edit for roles with full Health access. Context: c (a
+MedicalCondition), horse, feature_access.
+{% endcomment %}
+<li class="flex items-center justify-between gap-3 py-1">
+    <div class="min-w-0">
+        <span class="text-sm font-medium text-charcoal">{{ c.name }}</span>
+        {% if c.diagnosed_date %}<span class="text-xs text-sage ml-2">since {{ c.diagnosed_date|date:"j M Y" }}</span>{% endif %}
+    </div>
+    <div class="flex items-center gap-1 shrink-0">
+        {% if c.status == 'active' %}
+        <span class="badge-danger">Active</span>
+        {% elif c.status == 'monitoring' %}
+        <span class="badge-warning">Monitoring</span>
+        {% else %}
+        <span class="badge-success">Resolved</span>
+        {% endif %}
+        {% if feature_access.health.full %}
+        <a href="{% url 'condition_update' c.pk %}" hx-get="{% url 'condition_update' c.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit {{ c.name }}"
+           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit condition, {{ c.name }}">Edit</a>
+        {% endif %}
+    </div>
+</li>

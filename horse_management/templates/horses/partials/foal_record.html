@@ -16,9 +16,9 @@ BreedingRecord), foal_milestones, foal_notes, foal_note_form, today.
         {% if feature_access.breeding.full %}
         <div class="flex items-center gap-2">
             {% if br.can_wean %}
-            <a href="{% url 'breeding_wean' br.pk %}" hx-get="{% url 'breeding_wean' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Wean {{ horse.name }}" class="btn-primary btn-xs">Wean</a>
+            <a href="{% url 'breeding_wean' br.pk %}" hx-get="{% url 'breeding_wean' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Wean {{ horse.name }}" class="btn-secondary btn-xs">Wean</a>
             {% endif %}
-            <a href="{% url 'breeding_foal_edit' br.pk %}" hx-get="{% url 'breeding_foal_edit' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Foal details for {{ horse.name }}" class="btn-ghost btn-xs">Edit details</a>
+            <a href="{% url 'breeding_foal_edit' br.pk %}" hx-get="{% url 'breeding_foal_edit' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit foal details for {{ horse.name }}" class="btn-ghost btn-xs">Edit foal details</a>
         </div>
         {% endif %}
     </div>

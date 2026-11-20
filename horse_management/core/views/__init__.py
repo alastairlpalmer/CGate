@@ -12,7 +12,7 @@ from .calendar_entries import calendar_entry_add, calendar_entry_edit  # noqa: F
 from .boundary_import import boundary_import_match, boundary_import_upload  # noqa: F401
 from .documents import document_create, document_delete, document_restore  # noqa: F401
 from .finances import finances  # noqa: F401
-from .photos import horse_photo_add, horse_photo_delete, horse_photo_set_profile  # noqa: F401
+from .photos import horse_photo_add, horse_photo_delete, horse_photo_restore, horse_photo_set_profile  # noqa: F401
 from .horses import (  # noqa: F401
     HorseCreateView,
     HorseDetailView,
@@ -26,6 +26,7 @@ from .horses import (  # noqa: F401
     horse_move,
     horse_identifier_add,
     horse_identifier_delete,
+    horse_identifier_restore,
     horse_identifier_edit,
     horse_quick_edit,
     horse_preview,

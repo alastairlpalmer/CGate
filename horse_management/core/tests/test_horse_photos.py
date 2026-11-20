@@ -189,13 +189,26 @@ class PhotoDeleteTests(TestCase):
         self.url = reverse('horse_photo_delete', args=[self.photo.pk])
         self.client.login(username='admin', password='pw')
 
-    def test_post_deletes_photo_and_files(self):
+    def test_post_deletes_photo_and_keeps_the_files_for_undo(self):
+        """A soft delete (UX review B4): the photo leaves the page, the files
+        stay so Undo can bring it back, and the purge removes them."""
         storage = self.photo.image.storage
         image_name = self.photo.image.name
         thumb_name = self.photo.thumb.name
         resp = self.client.post(self.url)
         self.assertRedirects(resp, reverse('horse_detail', args=[self.horse.pk]))
         self.assertEqual(HorsePhoto.objects.count(), 0)
+        self.assertTrue(storage.exists(image_name))
+        self.assertTrue(storage.exists(thumb_name))
+        self.assertEqual(HorsePhoto.all_objects.get().deleted_by, self.staff)
+
+    def test_purge_deletes_the_files(self):
+        storage = self.photo.image.storage
+        image_name = self.photo.image.name
+        thumb_name = self.photo.thumb.name
+        self.photo.soft_delete(self.staff)
+        self.photo.purge()
+        self.assertEqual(HorsePhoto.all_objects.count(), 0)
         self.assertFalse(storage.exists(image_name))
         self.assertFalse(storage.exists(thumb_name))
 
