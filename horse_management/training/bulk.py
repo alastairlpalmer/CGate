@@ -70,6 +70,7 @@ def bulk_apply(request):
     data = form.cleaned_data
     defaults = horse_defaults([h.pk for h in active])
     chosen_rider, chosen_owner = parse_who(data.get('who') or '')
+    made = []
     with transaction.atomic():
         for horse in active:
             own = defaults.get(horse.pk, {})
@@ -100,6 +101,9 @@ def bulk_apply(request):
             if activity.minutes is None and activity.status != Activity.Status.NOT_DONE:
                 activity.minutes = activity.work_type.default_minutes
             activity.save()
+            made.append(activity)
+        from . import charges
+        charges.sync(made)      # phase 5: a Done priced session makes a charge
 
     if active:
         count = len(active)

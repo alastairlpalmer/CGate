@@ -12,6 +12,7 @@ from django.db.models import Max
 from django.utils import timezone
 from simple_history.utils import bulk_update_with_history
 
+from . import charges
 from .models import Activity, HorseTraining, Lot, LotMember
 
 CHANGED_FIELDS = ['status', 'reason', 'lot_action', 'updated_by', 'updated_at']
@@ -22,6 +23,7 @@ class MarkResult:
     changed: int = 0
     future: int = 0     # Planned, but dated after today: not changed
     other: int = 0      # Not Planned: not changed
+    charges: dict = field(default_factory=dict)     # phase 5: training.charges.sync counts
 
     @property
     def skipped(self):
@@ -62,6 +64,7 @@ def mark_done(activities, *, user, today=None):
             to_change.append(row)
     _save(to_change, user)
     result.changed = len(to_change)
+    result.charges = charges.sync(to_change)    # phase 5
     return result
 
 

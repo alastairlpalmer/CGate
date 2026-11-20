@@ -21,6 +21,7 @@ from django.db.models import Max
 from django.utils import timezone
 from simple_history.utils import bulk_create_with_history, bulk_update_with_history
 
+from . import charges
 from .models import Activity, HorseTraining, Lot, LotDay, LotMember, LotWeekPlan, TrainingSettings
 
 ROW_FIELDS = ['status', 'reason', 'lot_action', 'work_type', 'venue', 'updated_by', 'updated_at']
@@ -309,6 +310,7 @@ def set_lot_work(lot_day, *, work_type, start_time, notes, user, venue=None):
 class MarkLotResult:
     changed: int = 0
     left_yard: list = field(default_factory=list)   # horse names, rows left Planned
+    charges: dict = field(default_factory=dict)     # phase 5: training.charges.sync counts
 
 
 @transaction.atomic
@@ -333,6 +335,7 @@ def mark_lot_done(lot_day, *, user, today=None):
         to_change.append(row)
     _save_rows(to_change, user)
     result.changed = len(to_change)
+    result.charges = charges.sync(to_change)     # phase 5, in the same transaction
     lot_day.status = LotDay.Status.DONE
     lot_day.confirmed_by = user
     lot_day.confirmed_at = timezone.now()
@@ -365,12 +368,16 @@ def cancel_lot(lot_day, reason, *, user):
 def reopen_lot(lot_day, *, user):
     """Change back only the rows a lot action set. No time limit (5.12)."""
     lot_day = _lock(lot_day)
-    rows = list(lot_day.activities.select_for_update().exclude(lot_action=''))
+    rows = list(lot_day.activities.select_for_update().select_related('horse', 'extra_charge').exclude(lot_action=''))
+    billed = charges.refuse_if_billed(rows)
+    if billed:
+        raise BoardError(charges.billed_message(billed, 'record'))
     for row in rows:
         row.status = Activity.Status.PLANNED
         row.reason = ''
         row.lot_action = ''
     _save_rows(rows, user)
+    charges.sync(rows)      # phase 5: the unbilled charges go
     lot_day.status = LotDay.Status.PLANNED
     lot_day.confirmed_by = None
     lot_day.confirmed_at = None
@@ -424,6 +431,8 @@ def add_horses(lot_day, horses, *, user, today=None):
             continue
         present.add(horse.pk)
         result.added.append(horse.name)
+        if done:
+            charges.sync([row])     # phase 5: Done with a done lot
     return result
 
 

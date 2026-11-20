@@ -412,6 +412,7 @@ class InvoiceLineItem(models.Model):
         FARRIER = 'farrier', 'Farrier'
         VACCINATION = 'vaccination', 'Vaccination'
         FEED = 'feed', 'Feed'
+        TRAINING = 'training', 'Training'
         OTHER = 'other', 'Other'
 
     invoice = models.ForeignKey(

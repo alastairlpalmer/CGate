@@ -707,6 +707,7 @@ class InvoiceService:
                 'equipment': InvoiceLineItem.LineType.OTHER,
                 'dentist': InvoiceLineItem.LineType.OTHER,
                 'physio': InvoiceLineItem.LineType.OTHER,
+                'training': InvoiceLineItem.LineType.TRAINING,
             }
             line_type = line_type_map.get(
                 charge['line_type'],

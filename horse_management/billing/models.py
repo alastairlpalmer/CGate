@@ -80,6 +80,7 @@ class ExtraCharge(SoftDeleteModel):
         EQUIPMENT = 'equipment', 'Equipment'
         DENTIST = 'dentist', 'Dentist'
         PHYSIO = 'physio', 'Physiotherapy'
+        TRAINING = 'training', 'Training'
         OTHER = 'other', 'Other'
 
     horse = models.ForeignKey(
@@ -167,9 +168,11 @@ class ExtraCharge(SoftDeleteModel):
     def __str__(self):
         return f"{self.horse.name} - {self.get_charge_type_display()}: £{self.amount} ({self.date})"
 
+    # The records a charge is made from. Each has ``cost`` and
+    # ``extra_charge``; a training activity (phase 5) follows the same rules.
     HEALTH_RECORD_ACCESSORS = (
         'vaccination', 'farrier_visit', 'worming_treatment', 'vet_visit',
-        'worm_egg_count',
+        'worm_egg_count', 'training_activity',
     )
 
     def linked_health_record(self):
