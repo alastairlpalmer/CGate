@@ -59,7 +59,7 @@ class PopupFormMixin:
 
     def get_popup_submit_label(self):
         obj = getattr(self, 'object', None)
-        return 'Save Changes' if obj is not None and obj.pk else 'Save'
+        return 'Save changes' if obj is not None and obj.pk else 'Save'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

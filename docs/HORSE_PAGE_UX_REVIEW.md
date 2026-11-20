@@ -17,8 +17,8 @@ patterns fit this page and which do not.
 | 1. Quick fixes | Done: B1, A4, C1, C2, C3, C4, C6, B5, G1, G2 |
 | 2. What the page shows first | Done: A1, A2 (not the folded Pedigree card), A5, A6, A7 |
 | 3. Actions and feedback | Done: B2, B3, B4, B6, B7, B8 (see the notes below the table) |
-| 4. Forms, navigation and history | Done in this branch: D1, E1, E2, C5, C8, C9 (see the notes below the table) |
-| 5. Consistency and polish | Not started |
+| 4. Forms, navigation and history | Done: D1, E1, E2, C5, C8, C9 (see the notes below the table) |
+| 5. Consistency and polish | Done in this branch: A3, C7, C10, D2, D3, F1 to F8. G3 is not done (see the notes) |
 
 Phase 3 notes:
 
@@ -72,6 +72,60 @@ Phase 4 notes:
   `.btn-icon` and the Record tiles are at least 44px at any width. The
   foal Dam link and the training Lot and Today links have `tap-pad`;
   "Add note" is 44px on a phone.
+
+Phase 5 notes:
+
+- A3: the header keeps the summary (age, colour, sex, owner). The
+  registered name and the foaling date are only on the Identity card. The
+  "No passport" badge stays in the header: it is a warning, not a second
+  copy of the number. The Foal record drops sex, colour and the chip (it
+  shows "Chip at birth" only when it differs from the horse's chip); Dam
+  and Sire stay, because they add the dam's location and the covering
+  date. The Timeline leaves out training and breeding: the Training, In
+  foal and Breeding history cards show them (the preview pane still has
+  training). The free text "Breeding" is "Lineage notes".
+- C7: the photo label is `text-xs` on `bg-charcoal/80`. The header's pale
+  foaling date went with A3.
+- C10: the phone Record row is `role="group"`; Timeline Edit links read
+  "Edit vet visit record, 3 Mar 2026"; Copy says "Copied" in a status
+  line; the training day letters have hidden text, not `aria-label` on
+  `<li>`; the foaling date, year, height and UELN have `help_text`, so
+  Django links them with `aria-describedby`. Cards as
+  `<section aria-labelledby>` are not changed (the Due and Charges cards
+  already are).
+- D2: no Active box in the quick edit. A horse marked departed with an
+  open stay can still be edited there (the page's banner offers the
+  repair); the full edit page keeps the box.
+- D3: `includes/form_errors.html` uses `.alert-error`, and the quick edit,
+  number, pedigree and scan forms use it (the scan mismatch box is
+  `.alert-warning`).
+- F1: sentence case on the page and its sheets ("Current placement",
+  "Breeding history", "Foal record", "Log arrival", "All horses"), and
+  "Save changes" in every template.
+- F2: the small headings use `.dt-label`; the Timeline kinds lose capitals
+  and letter-spacing.
+- F3: the Timeline rate uses `|gbp`; time on site uses `stay_length`
+  ("1 week 3 days on site", "Arrived today"); the foal milestone says
+  "Due by 6 May 2027"; foal note dates are not in the code font.
+- F4: an active condition is `badge-warning`, Monitoring `badge-info`,
+  Lost `badge-neutral`, and a high egg count's number is rust. The egg
+  count "High" level badge stays red: it is shared with the health pages
+  and keeps High apart from Moderate.
+- F5: the Timeline's breeding line uses the shared badge (breeding is no
+  longer in the horse page Timeline, see A3).
+- F6: the location pin, Depart (`#i-gate`), trash and the condition heart
+  come from the icon sprite (`i-pin` and `i-heart` are new).
+- F7: the banner names More, then Depart…; the key says "Overdue: the next
+  one is past its due date."; "14-day" and "Heartbeat" in full; notes,
+  lineage notes and markings keep their line breaks; the photo empty
+  state names Add photos.
+- F8: Placement, Ownership and the Timeline use `includes/empty_state.html`
+  with one secondary action (the include can now open its secondary
+  action in the pop-up sheet: `extra_popup_title`).
+- G3 (refresh only the changed card after a save) is not done. It needs a
+  change to `popup.js` and to every form that opens in the sheet, for all
+  pages. With the shorter page (A6) the full refresh is fast enough; it
+  stays on the list for later.
 
 ## 1. Summary
 

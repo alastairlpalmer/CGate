@@ -126,7 +126,7 @@ class ListTests(Base):
     def test_no_list_means_all_horses_a_to_z(self):
         response = self.page(self.c)
         self.assertEqual((response.context['previous_horse'], response.context['next_horse']), (self.b, self.d))
-        self.assertContains(response, 'All Horses')
+        self.assertContains(response, 'All horses')
         self.assertNotContains(response, 'data-testid="list-place"')
 
     def test_a_list_the_session_does_not_hold_falls_back_but_keeps_the_way_back(self):

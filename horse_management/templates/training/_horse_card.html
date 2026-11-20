@@ -45,7 +45,7 @@ A planned row dated today or earlier can be confirmed here.
     <div class="px-4 pt-3">
         <h3 class="dt-label">Last 28 days</h3>
         <ol class="training-strip mt-1" aria-label="Training, last 28 days">
-            {% for d in training_card.strip %}<li class="training-day training-day-{{ d.tone }}" title="{{ d.label }}" aria-label="{{ d.label }}"><span aria-hidden="true">{{ d.letter }}</span></li>{% endfor %}
+            {% for d in training_card.strip %}<li class="training-day training-day-{{ d.tone }}" title="{{ d.label }}"><span aria-hidden="true">{{ d.letter }}</span><span class="sr-only">{{ d.label }}</span></li>{% endfor %}
         </ol>
         <p class="mt-1 text-xs text-sage">E easy, S steady, F fast, R rest, &times; did not work, ? planned. Oldest on the left.</p>
     </div>

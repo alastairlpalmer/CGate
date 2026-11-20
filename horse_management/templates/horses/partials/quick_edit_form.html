@@ -10,14 +10,7 @@ ownership shares live on the full page, one link away.
 
     <div class="px-4 py-3 space-y-3">
 
-        {% if form.non_field_errors %}
-        <div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3" role="alert">
-            <p class="text-sm font-medium text-error-red">The horse wasn't saved:</p>
-            {% for error in form.non_field_errors %}
-            <p class="text-sm text-error-red mt-1">{{ error }}</p>
-            {% endfor %}
-        </div>
-        {% endif %}
+        {% include 'includes/form_errors.html' with form=form intro="The horse wasn't saved:" %}
 
         <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
             {% include "includes/form_field.html" with field=form.name %}
@@ -45,15 +38,12 @@ ownership shares live on the full page, one link away.
         </fieldset>
 
         <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 border-t border-light-sage pt-3">
-            {% include "includes/form_field.html" with field=form.notes span="2" help="Special notes (e.g. first winter, lame, needs rug)" %}
-            <div class="sm:col-span-2">
-                {% include "includes/form_field.html" with field=form.is_active help="Untick only if the horse has left for good" %}
-            </div>
+            {% include "includes/form_field.html" with field=form.notes span="2" help="Special notes, for example first winter, lame, needs a rug" %}
         </div>
         {% include "horses/partials/_identity_datalists.html" %}
 
         <p class="text-xs text-sage border-t border-light-sage pt-3">
-            Profile picture, dam and sire, breeding and ownership are on the
+            Profile picture, dam and sire, lineage notes and ownership are on the
             {# hx-boost="false": inside the form this link would otherwise inherit hx-target="#popup-body" and load the page into the sheet #}
             <a href="{% url 'horse_update' horse.pk %}" class="link" hx-boost="false">full edit page</a>.
         </p>
@@ -61,6 +51,6 @@ ownership shares live on the full page, one link away.
 
     <div class="popup-footer">
         <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
-        <button type="submit" class="btn-primary">Save Changes</button>
+        <button type="submit" class="btn-primary">Save changes</button>
     </div>
 </form>

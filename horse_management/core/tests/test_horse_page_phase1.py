@@ -83,7 +83,7 @@ class PermissionTests(Base):
         user = make_user_with_access('nob', horses='view', health='view')
         response = self.page(mare, user)
         body = response.content.decode()
-        self.assertNotIn('Breeding History', body)
+        self.assertNotIn('Breeding history', body)
         self.assertNotIn('Old Flame', body)
         self.assertNotIn('<h2 class="section-title">Foals</h2>', body)
         self.assertIn(foal.name, body)  # the pedigree's "Family here" line is not a breeding record
@@ -91,7 +91,7 @@ class PermissionTests(Base):
         # With breeding access it is all there.
         user = make_user_with_access('yesb', horses='view', health='view', breeding='view')
         body = self.page(mare, user).content.decode()
-        self.assertIn('Breeding History', body)
+        self.assertIn('Breeding history', body)
         self.assertIn('Old Flame', body)
         self.assertIn('<h2 class="section-title">Foals</h2>', body)
 
@@ -249,7 +249,7 @@ class TimelineTests(Base):
         self.assertIn('Overdue', line)
         self.assertIn('<span class="sr-only">Overdue</span>', body)
         self.assertTrue(response.context['timeline_overdue'])
-        self.assertIn('A rust dot marks', body)
+        self.assertIn('Overdue: the next one is past its due date.', body)
 
     def test_no_overdue_legend_when_nothing_is_overdue(self):
         horse = Horse.objects.create(name='Plain')

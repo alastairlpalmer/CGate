@@ -594,13 +594,16 @@ class HorseForm(forms.ModelForm):
     """
 
     # Override date_of_birth to disable localization so HTML5 date input gets YYYY-MM-DD
+    # help_text, not only the template's help=, so the box is linked to its
+    # help line with aria-describedby (UX review C10).
     date_of_birth = forms.DateField(
-        required=False, label='Foaling date',
+        required=False, label='Foaling date', help_text='Age is worked out from this',
         input_formats=['%Y-%m-%d'],
         widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
     )
     foaled_year = forms.IntegerField(
         required=False, label='Or the year only', min_value=1950,
+        help_text='Use this if the exact date is not known',
         widget=forms.NumberInput(attrs={
             'class': 'form-input', 'inputmode': 'numeric', 'placeholder': 'For example 2011',
         }),
@@ -610,7 +613,7 @@ class HorseForm(forms.ModelForm):
         widget=forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
     )
     height = forms.CharField(
-        required=False, label='Height (hands)',
+        required=False, label='Height (hands)', help_text='Hands and inches, for example 16.2',
         widget=forms.TextInput(attrs={
             'class': 'form-input', 'inputmode': 'decimal', 'placeholder': 'For example 16.2',
         }),
@@ -618,7 +621,7 @@ class HorseForm(forms.ModelForm):
     # Longer than the stored 15 characters, so a UELN typed with spaces
     # or dashes reaches clean_ueln, which tidies it and then checks 15.
     ueln = forms.CharField(
-        required=False, max_length=30, label='UELN',
+        required=False, max_length=30, label='UELN', help_text='15 characters, from the passport',
         widget=forms.TextInput(attrs={
             'class': 'form-input font-mono uppercase', 'autocomplete': 'off', 'spellcheck': 'false',
             'autocapitalize': 'characters',
@@ -639,6 +642,9 @@ class HorseForm(forms.ModelForm):
             'registered_name': 'Registered name',
             'country_of_birth': 'Country (suffix)',
             'ueln': 'UELN',
+            # The free text was called "Breeding", like the mare's
+            # Breeding card (UX review A3).
+            'breeding': 'Lineage notes',
         }
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
@@ -749,12 +755,26 @@ class QuickHorseForm(HorseForm):
     """
 
     class Meta(HorseForm.Meta):
+        # No "Active" tick box: a departure goes through Depart, which
+        # closes the stay too (UX review D2). The full edit page keeps it.
         fields = [
             'name', 'registered_name', 'sex', 'color', 'date_of_birth',
             'country_of_birth', 'breed', 'markings',
             'passport_number', 'passport_issuer', 'has_passport',
-            'microchip', 'ueln', 'notes', 'is_active',
+            'microchip', 'ueln', 'notes',
         ]
+
+    def _update_errors(self, errors):
+        # Horse.clean() refuses "not active while a stay is open". This form
+        # does not change Active, so that check is not about this edit: a
+        # horse already in that state (the page's banner offers the repair)
+        # can still have its details changed. Without the box, Django would
+        # raise ValueError for an error on a field the form does not have.
+        if hasattr(errors, 'error_dict'):
+            errors.error_dict.pop('is_active', None)
+            if not errors.error_dict:
+                return
+        super()._update_errors(errors)
 
 
 class ScanCheckForm(forms.Form):

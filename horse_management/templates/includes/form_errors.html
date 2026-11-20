@@ -1,12 +1,16 @@
 {% comment %}
-Non-field error panel shared by the arrival/move/placement forms.
+Non-field error panel shared by the forms in the pop-up sheet and the
+arrival, move and placement pages, in the shared .alert-error style (UI
+audit 3.11, horse page review D3).
 Usage: {% include 'includes/form_errors.html' with form=form intro="The move wasn't saved:" %}
 {% endcomment %}
 {% if form.non_field_errors %}
-<div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3" role="alert">
-    <p class="text-sm font-medium text-error-red">{{ intro|default:"This wasn't saved:" }}</p>
-    {% for error in form.non_field_errors %}
-    <p class="text-sm text-error-red mt-1">{{ error }}</p>
-    {% endfor %}
+<div class="alert-error" role="alert">
+    <div>
+        <p class="font-medium">{{ intro|default:"This wasn't saved:" }}</p>
+        {% for error in form.non_field_errors %}
+        <p class="mt-1">{{ error }}</p>
+        {% endfor %}
+    </div>
 </div>
 {% endif %}

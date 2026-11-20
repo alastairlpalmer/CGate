@@ -400,6 +400,6 @@ class SeasonResultsTests(TestCase):
     def test_mare_page_breeding_history(self):
         ada = Horse.objects.get(name='Ada')
         response = self.client.get(reverse('horse_detail', args=[ada.pk]))
-        self.assertContains(response, 'Breeding History')
+        self.assertContains(response, 'Breeding history')
         self.assertEqual(len(response.context['breeding_history']), 1)  # the born one; open one has its card
         self.assertContains(response, str(self.year))

@@ -44,7 +44,7 @@
             <div class="form-footer">
                 <a href="{% if object %}{% url 'owner_detail' object.pk %}{% else %}{% url 'owner_list' %}{% endif %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
-                    {% if object %}Save Changes{% else %}Add Owner{% endif %}
+                    {% if object %}Save changes{% else %}Add Owner{% endif %}
                 </button>
             </div>
         </form>

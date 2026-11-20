@@ -17,7 +17,7 @@
         <svg class="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
         </svg>
-        {% if list_query %}Back to the list{% else %}All Horses{% endif %}
+        {% if list_query %}Back to the list{% else %}All horses{% endif %}
     </a>
     {% if previous_horse or next_horse %}
     <nav class="flex items-center gap-1 min-w-0 text-sm" aria-label="Previous and next horse" data-testid="horse-stepper">
@@ -56,18 +56,15 @@
                         <span class="badge-warning">No passport</span>
                         {% endif %}
                     </div>
-                    {% comment %}Age, colour, sex and birth date. Each part shows only
-                    when it is known; .dot-list puts the dots between the parts
+                    {% comment %}The summary: age, colour and sex (UX review A3). The
+                    registered name and the foaling date are on the Identity card,
+                    with the numbers. .dot-list puts the dots between the parts
                     that show, so a horse with none of them gets no stray "·".{% endcomment %}
-                    {% if horse.show_registered_name %}
-                    <p class="mt-1 text-sm text-charcoal-light">Registered as <span class="font-medium text-charcoal">{{ horse.registered_label }}</span></p>
-                    {% endif %}
-                    {% if horse.age_label or horse.color or horse.sex or horse.date_of_birth %}
+                    {% if horse.age_label or horse.color or horse.sex %}
                     <p class="mt-1.5 text-sm text-sage dot-list">
                         {% if horse.age_label %}<span class="text-charcoal-light font-medium">{{ horse.age_label }}</span>{% endif %}
                         {% if horse.color %}<span>{{ horse.get_color_display }}</span>{% endif %}
                         {% if horse.sex %}<span>{{ horse.get_sex_display }}</span>{% endif %}
-                        {% if horse.date_of_birth %}<span class="text-sage/80">{{ horse.foaled_display }}</span>{% endif %}
                     </p>
                     {% endif %}
                     {% if horse.current_owner %}
@@ -109,7 +106,7 @@
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                         </svg>
-                        Log Arrival
+                        Log arrival
                     </a>
                     {% endif %}
                     <a href="{% url 'horse_update' horse.pk %}" class="btn-secondary" title="Edit horse details"
@@ -135,9 +132,7 @@
                             <div class="more-menu-sep" role="separator"></div>
                             <button type="button" role="menuitem" class="more-menu-item is-danger"
                                     @click="showDate = true; $nextTick(() => document.getElementById('filter-departure_date')?.focus())">
-                                <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/>
-                                </svg>
+                                <svg aria-hidden="true"><use href="#i-gate"/></svg>
                                 Depart…
                             </button>
                             {% endif %}
@@ -165,7 +160,7 @@
     {% comment %}Below the lg width the three most used records sit here, under
     the header, and "All" opens every Record tile in the pop-up sheet. The
     Record card itself shows from lg only (UX review A7).{% endcomment %}
-    <nav class="qa-strip lg:hidden" aria-label="Record for {{ horse.name }}">
+    <div class="qa-strip lg:hidden" role="group" aria-label="Record for {{ horse.name }}">
         <a href="{% url 'vaccination_create' %}?horse={{ horse.pk }}" hx-get="{% url 'vaccination_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Vaccination for {{ horse.name }}" class="qa-tile">
             <span class="qa-tile-icon"><svg aria-hidden="true"><use href="#i-syringe"/></svg></span>
             <span class="qa-tile-label">Vaccination</span>
@@ -182,7 +177,7 @@
             <span class="qa-tile-icon"><svg class="w-4 h-4" aria-hidden="true"><use href="#i-dots"/></svg></span>
             <span class="qa-tile-label">All</span>
         </a>
-    </nav>
+    </div>
     {% endif %}
 
     {% if feature_access.horses.full and current_placement and not horse.is_active %}
@@ -193,7 +188,7 @@
         </p>
         <p class="text-xs text-charcoal-light mt-1">
             If the placement shown below is correct, mark the horse as active.
-            Otherwise use <strong>Depart</strong> to close the placement (the horse then gets a Log Arrival button),
+            Otherwise select <strong>More</strong>, then <strong>Depart…</strong>, to close the placement (the horse then gets a Log arrival button),
             or <strong>Move</strong> to place it at the right location.
         </p>
         <form method="post" action="{% url 'horse_reactivate' horse.pk %}" class="mt-3">
@@ -239,18 +234,16 @@
             {% include 'horses/partials/foal_record.html' %}
             {% endif %}
 
-            <!-- Current Placement -->
+            <!-- Current placement -->
             <div class="card">
                 <div class="section-header">
                     <h2 class="section-title flex items-center gap-2">
                         <span class="w-2 h-2 rounded-full bg-info-blue"></span>
-                        Current Placement
+                        Current placement
                     </h2>
                     {% if current_placement %}
                     <div class="flex items-center gap-2">
-                        <span class="text-xs text-sage tabular-nums" title="Days since arrival">
-                            {{ current_placement.start_date|timesince|cut:"," }} on site
-                        </span>
+                        {% with stay=current_placement.start_date|stay_length %}<span class="text-xs text-sage tabular-nums">{% if stay == 'Today' %}Arrived today{% elif stay == 'Not yet arrived' %}{{ stay }}{% else %}{{ stay }} on site{% endif %}</span>{% endwith %}
                         {% if feature_access.locations.full %}
                         <a href="{% url 'placement_update' current_placement.pk %}?next={{ request.path|urlencode }}" hx-get="{% url 'placement_update' current_placement.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit placement"
                            class="btn-ghost btn-xs" title="Correct dates or rate">Edit</a>
@@ -263,7 +256,7 @@
                     <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
                         <div>
                             <dt class="dt-label flex items-center gap-1">
-                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+                                <svg class="w-3 h-3" aria-hidden="true"><use href="#i-pin"/></svg>
                                 Location
                             </dt>
                             <dd class="mt-1 text-sm text-charcoal">
@@ -292,26 +285,15 @@
                         </div>
                         {% if current_placement.expected_departure %}
                         <div class="sm:col-span-2 mt-1 pt-3 border-t border-light-sage/70">
-                            <dt class="dt-label">Expected Departure</dt>
+                            <dt class="dt-label">Expected departure</dt>
                             <dd class="mt-1 text-sm text-forest font-medium tabular-nums">{{ current_placement.expected_departure|date:"j M Y" }}</dd>
                         </div>
                         {% endif %}
                     </dl>
                     {% else %}
-                    <div class="text-center py-6">
-                        <div class="mx-auto w-12 h-12 rounded-full bg-light-sage/60 flex items-center justify-center">
-                            <svg class="h-6 w-6 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
-                            </svg>
-                        </div>
-                        {% if not horse.is_active %}
-                        <p class="mt-3 text-sm font-medium text-charcoal" data-testid="departed-line">Departed{% if departure %} {{ departure.end_date|date:"j M Y" }}{% endif %}</p>
-                        {% if departure %}<p class="text-xs text-sage mt-0.5">Left {{ departure.location.name }}.</p>{% endif %}
-                        {% else %}
-                        <p class="mt-3 text-sm font-medium text-charcoal">No current placement</p>
-                        <p class="text-xs text-sage mt-0.5">{{ horse.name }} isn't currently at a location.</p>
-                        {% endif %}
+                    {# The shared empty state (UX review F8); Log arrival is the header's button. #}
+                    <div data-testid="placement-empty">
+                    {% include 'includes/empty_state.html' with title=placement_empty.title body=placement_empty.body icon='fence' compact=True %}
                     </div>
                     {% endif %}
                 </div>
@@ -329,14 +311,14 @@
                     <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
                         {% if horse.breeding %}
                         <div class="sm:col-span-2">
-                            <dt class="dt-label">Breeding</dt>
-                            <dd class="mt-1 text-sm text-charcoal">{{ horse.breeding }}</dd>
+                            <dt class="dt-label">Lineage notes</dt>
+                            <dd class="mt-1 text-sm text-charcoal">{{ horse.breeding|linebreaksbr }}</dd>
                         </div>
                         {% endif %}
                         {% if horse.notes %}
                         <div class="sm:col-span-2">
                             <dt class="dt-label">Notes</dt>
-                            <dd class="mt-1 text-sm text-charcoal">{{ horse.notes }}</dd>
+                            <dd class="mt-1 text-sm text-charcoal">{{ horse.notes|linebreaksbr }}</dd>
                         </div>
                         {% endif %}
                     </dl>
@@ -440,7 +422,7 @@
                         {% with ehv_dates=active_pregnancy.ehv_vaccination_dates %}
                         {% if ehv_dates %}
                         <div class="mt-3 pt-3 border-t border-sand">
-                            <h3 class="text-xs font-semibold text-forest uppercase tracking-wider mb-2">EHV Vaccination Schedule</h3>
+                            <h3 class="dt-label mb-2">EHV vaccination schedule</h3>
                             <div class="grid grid-cols-3 gap-2 text-xs">
                                 {% for month, date in ehv_dates.items %}
                                 <div class="{% if month in active_pregnancy.sent_ehv_months %}bg-sage-50 border-sage/20{% elif date < today %}bg-white border-sand-100 opacity-70{% else %}bg-white border-sand-100{% endif %} border rounded-lg p-2">
@@ -511,7 +493,7 @@
                 {% if timeline_overdue %}
                 <p class="px-4 text-xs text-sage flex items-center gap-1.5">
                     <span class="inline-block w-2.5 h-2.5 rounded-full bg-saddle" aria-hidden="true"></span>
-                    A rust dot marks a record whose next one is overdue.
+                    Overdue: the next one is past its due date.
                 </p>
                 {% endif %}
 
@@ -542,65 +524,62 @@
                                 <div class="flex items-start justify-between gap-2">
                                     <div class="flex items-center gap-2">
                                         {% if event.type == 'placement' %}
-                                        <svg class="w-3.5 h-3.5 text-info-blue shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
-                                        </svg>
-                                        <span class="text-xs font-semibold uppercase tracking-wider text-info-blue">Placement</span>
+                                        <svg class="w-3.5 h-3.5 text-info-blue shrink-0" aria-hidden="true"><use href="#i-pin"/></svg>
+                                        <span class="text-xs font-semibold text-info-blue">Placement</span>
                                         {% elif event.type == 'vaccination' %}
                                         <svg class="w-3.5 h-3.5 text-sage shrink-0" aria-hidden="true"><use href="#i-syringe"/></svg>
-                                        <span class="text-xs font-semibold uppercase tracking-wider text-sage">Vaccination</span>
+                                        <span class="text-xs font-semibold text-sage">Vaccination</span>
                                         {% elif event.type == 'farrier' %}
                                         <svg class="w-3.5 h-3.5 text-charcoal-light shrink-0" aria-hidden="true"><use href="#i-horseshoe"/></svg>
-                                        <span class="text-xs font-semibold uppercase tracking-wider text-charcoal-light">Farrier</span>
+                                        <span class="text-xs font-semibold text-charcoal-light">Farrier</span>
                                         {% elif event.type == 'farrier_note' %}
                                         <svg class="w-3.5 h-3.5 text-saddle shrink-0" aria-hidden="true"><use href="#i-horseshoe"/></svg>
-                                        <span class="text-xs font-semibold uppercase tracking-wider text-saddle">Farrier note</span>
+                                        <span class="text-xs font-semibold text-saddle">Farrier note</span>
                                         {% elif event.type == 'vet_visit' %}
                                         <svg class="w-3.5 h-3.5 text-charcoal-light shrink-0" aria-hidden="true"><use href="#i-stethoscope"/></svg>
-                                        <span class="text-xs font-semibold uppercase tracking-wider text-charcoal-light">Vet Visit</span>
+                                        <span class="text-xs font-semibold text-charcoal-light">Vet visit</span>
                                         {% elif event.type == 'breeding' %}
                                         <svg class="w-3.5 h-3.5 text-forest shrink-0" aria-hidden="true"><use href="#i-foal"/></svg>
-                                        <span class="text-xs font-semibold uppercase tracking-wider text-forest">Breeding</span>
+                                        <span class="text-xs font-semibold text-forest">Breeding</span>
                                         {% elif event.type == 'worming' %}
                                         <svg class="w-3.5 h-3.5 text-charcoal-light shrink-0" aria-hidden="true"><use href="#i-wormer"/></svg>
-                                        <span class="text-xs font-semibold uppercase tracking-wider text-charcoal-light">Worming</span>
+                                        <span class="text-xs font-semibold text-charcoal-light">Worming</span>
                                         {% elif event.type == 'stable' %}
                                         <svg class="w-3.5 h-3.5 text-forest shrink-0" aria-hidden="true"><use href="#i-barn"/></svg>
-                                        <span class="text-xs font-semibold uppercase tracking-wider text-forest">Stable</span>
+                                        <span class="text-xs font-semibold text-forest">Stable</span>
                                         {% elif event.type == 'egg_count' %}
                                         <svg class="w-3.5 h-3.5 text-charcoal-light shrink-0" aria-hidden="true"><use href="#i-egg"/></svg>
-                                        <span class="text-xs font-semibold uppercase tracking-wider text-charcoal-light">Egg Count</span>
+                                        <span class="text-xs font-semibold text-charcoal-light">Egg count</span>
                                         {% elif event.type == 'training' %}
                                         <svg class="w-3.5 h-3.5 text-sage shrink-0" aria-hidden="true"><use href="#i-stopwatch"/></svg>
-                                        <span class="text-xs font-semibold uppercase tracking-wider text-sage">Training</span>
+                                        <span class="text-xs font-semibold text-sage">Training</span>
                                         {% endif %}
                                     </div>
                                     <span class="flex items-center gap-2 shrink-0">
                                         {% if event.type == 'placement' and feature_access.locations.full %}
                                         <a href="{% url 'placement_update' event.obj.pk %}?next={{ request.path|urlencode }}" hx-get="{% url 'placement_update' event.obj.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit placement"
-                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" title="Correct dates or rate" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" title="Correct dates or rate" aria-label="Edit {{ event.label }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% elif event.type == 'vaccination' and feature_access.health.full %}
                                         <a href="{% url 'vaccination_update' event.obj.pk %}" hx-get="{% url 'vaccination_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vaccination"
-                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.label }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% elif event.type == 'farrier' and feature_access.health.full %}
                                         <a href="{% url 'farrier_update' event.obj.pk %}" hx-get="{% url 'farrier_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit farrier visit"
-                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.label }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% elif event.type == 'worming' and feature_access.health.full %}
                                         <a href="{% url 'worming_update' event.obj.pk %}" hx-get="{% url 'worming_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit worming"
-                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.label }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% elif event.type == 'egg_count' and feature_access.health.full %}
                                         <a href="{% url 'egg_count_update' event.obj.pk %}" hx-get="{% url 'egg_count_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit egg count"
-                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.label }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% elif event.type == 'vet_visit' and feature_access.health.full %}
                                         <a href="{% url 'vet_visit_update' event.obj.pk %}" hx-get="{% url 'vet_visit_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vet visit"
-                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.label }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% elif event.type == 'training' and training_card.can_change %}
                                         <a href="{% url 'training_activity_update' event.obj.pk %}?horse={{ horse.pk }}" hx-get="{% url 'training_activity_update' event.obj.pk %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit training"
-                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit training record, {{ event.date|date:'j M Y' }}">Edit</a>
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.label }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% elif event.type == 'breeding' and feature_access.breeding.full %}
                                         <a href="{% url 'breeding_update' event.obj.pk %}" hx-get="{% url 'breeding_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record"
-                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.label }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% endif %}
                                         {# The date itself, not only "3 months ago" in a tooltip (UX review C8). #}
                                         <span class="text-xs text-sage text-right"><time datetime="{{ event.date|date:'Y-m-d' }}">{{ event.date|date:"j M Y" }}</time><span class="hidden sm:inline"> · {{ event.date|ago_label }}</span></span>
@@ -612,7 +591,7 @@
                                     {% if event.type == 'placement' %}
                                     <p class="text-charcoal font-medium">{{ event.obj.location.name }}</p>
                                     <p class="text-sage text-xs mt-0.5">
-                                        {% if horse.current_owner and event.obj.owner_id != horse.current_owner.pk %}Billed to {{ event.obj.owner.name }} &middot; {% endif %}{% if feature_access.charges.view %}&pound;{{ event.obj.rate_type.daily_rate }}/day
+                                        {% if horse.current_owner and event.obj.owner_id != horse.current_owner.pk %}Billed to {{ event.obj.owner.name }} &middot; {% endif %}{% if feature_access.charges.view %}{{ event.obj.rate_type.daily_rate|gbp }}/day
                                         &middot; {% endif %}{{ event.obj.start_date|date:"j M Y" }} &ndash;
                                         {% if event.obj.end_date %}{{ event.obj.end_date|date:"j M Y" }}{% else %}<span class="text-forest font-medium">Present</span>{% endif %}
                                     </p>
@@ -668,16 +647,8 @@
                                     {% elif event.type == 'breeding' %}
                                     <p class="text-charcoal font-medium">{{ event.obj.stallion_name }}</p>
                                     <p class="text-xs mt-0.5 flex items-center gap-1.5 flex-wrap">
-                                        {% if event.obj.date_foal_due %}<span class="text-sage">Due: {{ event.obj.date_foal_due }}</span> &middot; {% endif %}
-                                        {% if event.obj.status == 'confirmed' %}
-                                        <span class="badge-info">{{ event.obj.get_status_display }}</span>
-                                        {% elif event.obj.status == 'born' %}
-                                        <span class="badge-success">{{ event.obj.get_status_display }}</span>
-                                        {% elif event.obj.status == 'lost' %}
-                                        <span class="badge-danger">{{ event.obj.get_status_display }}</span>
-                                        {% else %}
-                                        <span class="badge-neutral">{{ event.obj.get_status_display }}</span>
-                                        {% endif %}
+                                        {% if event.obj.date_foal_due %}<span class="text-sage">Due: {{ event.obj.date_foal_due|date:"j M Y" }}</span> &middot; {% endif %}
+                                        {% include 'health/partials/breeding_status_badge.html' with br=event.obj %}
                                         {% if event.obj.foal %}&middot; <a href="{% url 'horse_detail' event.obj.foal.pk %}" class="link text-xs tap-pad">{{ event.obj.foal.name }}</a>{% endif %}
                                     </p>
 
@@ -691,7 +662,7 @@
                                     </p>
 
                                     {% elif event.type == 'egg_count' %}
-                                    <p class="font-medium {% if event.obj.is_high %}text-error-red{% else %}text-charcoal{% endif %}">
+                                    <p class="font-medium {% if event.obj.is_high %}text-saddle{% else %}text-charcoal{% endif %}">
                                         {{ event.obj.count }} EPG
                                         <span class="{{ event.obj.level_badge_class }} ml-1">{{ event.obj.level_label }}</span>
                                     </p>
@@ -714,7 +685,8 @@
                     </div>
                     <p class="sr-only" aria-live="polite" x-text="'Showing ' + Math.min(limit, total()) + ' of ' + total() + ' records'"></p>
                     {% else %}
-                    <p class="text-sm text-sage py-4">Nothing recorded yet.</p>
+                    {% if feature_access.health.full %}{% url 'horse_record_actions' horse.pk as record_url %}{% endif %}
+                    {% include 'includes/empty_state.html' with title='Nothing recorded yet.' body='Vaccinations, farrier and vet visits, worming and stays show here.' icon='calendar' extra_url=record_url extra_label='Record' extra_popup_title='Record for '|add:horse.name compact=True %}
                     {% endif %}
                 </div>
             </div>
@@ -730,7 +702,7 @@
             <div class="card">
                 <div class="section-header">
                     <div class="flex items-center gap-2.5">
-                        <h2 class="section-title">Breeding History</h2>
+                        <h2 class="section-title">Breeding history</h2>
                         <span class="badge-neutral">{{ breeding_history|length }}</span>
                     </div>
                     <a href="{% url 'breeding_list' %}?horse={{ horse.pk }}" class="text-xs link tap-pad">See all records</a>
@@ -759,8 +731,8 @@
                                     {% endwith %}
                                 </td>
                                 <td class="whitespace-nowrap text-xs">
-                                    14d: {% include 'health/partials/scan_result_label.html' with result=br.scan_14_result %}
-                                    &middot; HB: {% include 'health/partials/scan_result_label.html' with result=br.scan_heartbeat_result %}
+                                    14-day: {% include 'health/partials/scan_result_label.html' with result=br.scan_14_result %}
+                                    &middot; Heartbeat: {% include 'health/partials/scan_result_label.html' with result=br.scan_heartbeat_result %}
                                 </td>
                                 <td>{% include 'health/partials/breeding_status_badge.html' with br=br %}</td>
                                 <td class="whitespace-nowrap">
@@ -871,14 +843,8 @@
                     {% endfor %}
                 </ul>
                 {% else %}
-                <div class="px-4 py-4 text-center">
-                    <p class="text-sm text-sage">No ownership shares set</p>
-                    {% if feature_access.horses.full %}
-                    <a href="{% url 'horse_ownership' horse.pk %}" class="btn-secondary mt-3 inline-flex text-xs">
-                        Manage ownership
-                    </a>
-                    {% endif %}
-                </div>
+                {% if feature_access.horses.full %}{% url 'horse_ownership' horse.pk as ownership_url %}{% endif %}
+                {% include 'includes/empty_state.html' with title='No owners set' body='Set who owns the horse and their shares.' icon='horse' extra_url=ownership_url extra_label='Manage ownership' compact=True %}
                 {% endif %}
             </div>
 

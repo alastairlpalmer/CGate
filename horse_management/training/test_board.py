@@ -12,6 +12,7 @@ from core.roles_testutils import make_user_with_access
 from core.services import PlacementService
 
 from . import board, services
+from .horse import timeline_activities
 from .models import Activity, LotDay, Lot, TrainingSettings, WorkType
 
 POPUP = {'HTTP_HX_REQUEST': 'true', 'HTTP_HX_TARGET': 'popup-body'}
@@ -275,10 +276,10 @@ class RowTests(Base):
     def test_only_done_and_did_not_work_reach_the_timeline(self):
         self.start()
         board.mark_lot_done(self.lot_day(self.first), user=self.user)
-        response = self.client.get(reverse('horse_detail', args=[self.moon.pk]))
-        self.assertFalse([e for e in response.context['timeline_events'] if e['type'] == 'training'])
-        response = self.client.get(reverse('horse_detail', args=[self.h('Red Kite').pk]))
-        self.assertTrue([e for e in response.context['timeline_events'] if e['type'] == 'training'])
+        # The rule behind the timelines (the preview pane's; the horse page
+        # has the Training card instead, horse page review A3).
+        self.assertFalse(timeline_activities(self.user, self.moon, 10))
+        self.assertTrue(timeline_activities(self.user, self.h('Red Kite'), 10))
 
 
 class PageTests(Base):

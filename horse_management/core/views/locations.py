@@ -1180,7 +1180,7 @@ def set_location_usage(request, pk):
         return render(request, 'includes/popup_form.html', {
             'form': form,
             'in_popup': True,
-            'popup_submit_label': 'Save Changes',
+            'popup_submit_label': 'Save changes',
         })
 
     if request.method != 'POST':
@@ -1328,7 +1328,7 @@ def stable_edit(request, pk, stable_pk):
         messages.success(request, f"{what} saved.")
         return _sheet_saved(request, back)
     return _sheet_form(
-        request, form, back=back, submit_label='Save Changes',
+        request, form, back=back, submit_label='Save changes',
         template='locations/partials/stable_form.html', stable=stable,
     )
 

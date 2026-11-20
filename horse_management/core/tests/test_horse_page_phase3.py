@@ -104,7 +104,7 @@ class OnePrimaryButtonTests(Base):
         horse = self.horse(placed=False)
         main = _main(self.page(horse))
         self.assertEqual(main.count('btn-primary'), 1)
-        self.assertEqual(main.count('Log Arrival'), 1)
+        self.assertEqual(main.count('data-popup-title="Log arrival for'), 1)
 
     def test_stranded_horse(self):
         horse = self.horse()

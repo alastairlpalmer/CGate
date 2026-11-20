@@ -9,7 +9,7 @@ button to save the scanned number.
     {% csrf_token %}
     <div class="px-4 py-3 space-y-4">
         {% if mismatch %}
-        <div class="rounded-lg border border-saddle/30 bg-sand-50 p-3 space-y-2" role="alert" data-testid="scan-mismatch">
+        <div class="alert-warning block space-y-2" role="alert" data-testid="scan-mismatch">
             <p class="text-sm font-medium text-charcoal">The scan does not match the record.</p>
             <dl class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
                 <dt class="text-sage">Scanned</dt>

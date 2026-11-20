@@ -9,10 +9,11 @@ MedicalCondition), horse, feature_access.
         {% if c.diagnosed_date %}<span class="text-xs text-sage ml-2">since {{ c.diagnosed_date|date:"j M Y" }}</span>{% endif %}
     </div>
     <div class="flex items-center gap-1 shrink-0">
+        {# Active needs attention; it is not an error (UX review F4). #}
         {% if c.status == 'active' %}
-        <span class="badge-danger">Active</span>
+        <span class="badge-warning">Active</span>
         {% elif c.status == 'monitoring' %}
-        <span class="badge-warning">Monitoring</span>
+        <span class="badge-info">Monitoring</span>
         {% else %}
         <span class="badge-success">Resolved</span>
         {% endif %}

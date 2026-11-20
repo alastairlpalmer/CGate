@@ -41,11 +41,12 @@ class QuickEditFormTests(TestCase):
     def test_quick_form_is_the_day_to_day_subset(self):
         fields = list(QuickHorseForm.base_fields)
         for name in ('name', 'sex', 'color', 'date_of_birth', 'foaled_year',
-                     'passport_number', 'has_passport', 'notes', 'is_active',
+                     'passport_number', 'has_passport', 'notes',
                      'registered_name', 'microchip', 'ueln', 'country_of_birth'):
             self.assertIn(name, fields)
         # A stored age is replaced by a foaling year (one age rule, plan §6.1).
-        for name in ('photo', 'dam_name', 'sire_name', 'breeding', 'age'):
+        # No Active box: a departure goes through Depart (horse page review D2).
+        for name in ('photo', 'dam_name', 'sire_name', 'breeding', 'age', 'is_active'):
             self.assertNotIn(name, fields)
 
 
@@ -113,7 +114,10 @@ class QuickEditPostTests(QuickEditTestCase):
         self.horse.refresh_from_db()
         self.assertEqual(self.horse.name, 'Dobbin')
 
-    def test_active_guard_shows_inline(self):
+    def test_active_is_not_changed_here_and_a_stranded_horse_can_be_edited(self):
+        """The quick form has no Active box (horse page review D2). A horse
+        marked departed while its stay is still open can still have its
+        details changed: Horse.clean's Active guard is not about this edit."""
         owner = Owner.objects.create(name='Jo Bloggs')
         location = Location.objects.create(name='Top Field', site='Main')
         rate = RateType.objects.create(name='Full', daily_rate=10)
@@ -122,12 +126,18 @@ class QuickEditPostTests(QuickEditTestCase):
             start_date=timezone.localdate() - timedelta(days=3),
         )
         data = self._data()
-        data.pop('is_active')
+        data.pop('is_active', None)
         response = self.client.post(self.url, data, **POPUP)
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'still has an open placement')
+        self.assertEqual(response.status_code, 204)
         self.horse.refresh_from_db()
         self.assertTrue(self.horse.is_active)
+        Horse.objects.filter(pk=self.horse.pk).update(is_active=False)
+        data['markings'] = 'Star'
+        response = self.client.post(self.url, data, **POPUP)
+        self.assertEqual(response.status_code, 204)
+        self.horse.refresh_from_db()
+        self.assertEqual(self.horse.markings, 'Star')
+        self.assertFalse(self.horse.is_active)  # the banner on the page offers the repair
 
     def test_post_outside_the_sheet_redirects_without_saving(self):
         response = self.client.post(self.url, self._data(name='Nope'))

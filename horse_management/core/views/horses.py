@@ -1297,14 +1297,25 @@ TIMELINE_PAGE = 10
 CHARGES_ON_PAGE = 5
 
 
+# What a screen reader hears for each kind: "Edit vet visit record, 3 Mar
+# 2026", not "Edit vetvisit record" (UX review C10).
+TIMELINE_LABELS = {
+    'placement': 'placement', 'stable': 'stable', 'vaccination': 'vaccination',
+    'farrier': 'farrier visit', 'farrier_note': 'farrier note', 'vet_visit': 'vet visit',
+    'breeding': 'breeding', 'worming': 'worming', 'egg_count': 'egg count', 'training': 'training',
+}
+
+
 def timeline_filters(events):
-    """Give each event its filter key and its place in the list (``pos``
-    among all, ``kpos`` among its kind); return the pills for the kinds the
-    horse has, each with its count, and whether anything is overdue."""
+    """Give each event its filter key, its readable label and its place in
+    the list (``pos`` among all, ``kpos`` among its kind); return the pills
+    for the kinds the horse has, each with its count, and whether anything
+    is overdue."""
     counts = {}
     for pos, event in enumerate(events):
         key = TIMELINE_FILTER_OF.get(event['type'], event['type'])
         event['filter'] = key
+        event['label'] = TIMELINE_LABELS.get(event['type'], event['type'].replace('_', ' '))
         event['pos'] = pos
         event['kpos'] = counts.get(key, 0)
         counts[key] = counts.get(key, 0) + 1
@@ -1433,6 +1444,11 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
             context['foal_notes'] = list(foal_record.foal_notes.all())
             context['foal_note_form'] = FoalNoteForm(initial={'date': timezone.localdate()})
 
+        # Training and breeding are not in the Timeline: a role that may see
+        # them has their own cards on this page (Training, In foal, Breeding
+        # history), so the Timeline does not show them a second time (UX
+        # review A3). A role that may not see them gets none of them anyway.
+        context['training_card'] = training_horse.training_card(self.request.user, horse)
         context['timeline_events'] = build_horse_timeline(
             placements=context['placements'],
             vaccinations=context['vaccinations'],
@@ -1440,10 +1456,10 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
             worming_treatments=context['worming_treatments'],
             egg_counts=context['egg_counts'],
             vet_visits=context['vet_visits'],
-            breeding_records=context.get('breeding_records', []),
+            breeding_records=[],
             farrier_notes=list(horse.farrier_notes.select_related('provider')[:20]),
             stable_stays=_stable_stays(horse, 20),
-            activities=training_horse.timeline_activities(self.request.user, horse, 10),
+            activities=[],
         )
         context['timeline_filters'], context['timeline_overdue'] = timeline_filters(
             context['timeline_events'])
@@ -1461,7 +1477,7 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
         context['departure'] = None if horse.is_active else (
             horse.placements.filter(end_date__isnull=False).select_related('location')
             .order_by('-end_date', '-pk').first())
-        context['training_card'] = training_horse.training_card(self.request.user, horse)
+        context['placement_empty'] = _placement_empty(horse, context['departure'])
         # History (UX review E2): what changed on the horse, its extra
         # numbers and its pedigree record, who changed it and when. The
         # owner and invoice pages show the same panel.
@@ -1475,6 +1491,19 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
         )
 
         return context
+
+
+def _placement_empty(horse, departure):
+    """The title and line of the Placement card when the horse has no stay
+    open (UX review A5, F8)."""
+    from django.utils.dateformat import format as date_format
+
+    if horse.is_active:
+        return {'title': 'No current placement', 'body': f'{horse.name} is not at a location now.'}
+    if departure is None:
+        return {'title': 'Departed', 'body': ''}
+    return {'title': f'Departed {date_format(departure.end_date, "j M Y")}',
+            'body': f'Left {departure.location.name}.'}
 
 
 class HorseCreateView(FeatureAccessMixin, CreateView):
@@ -2454,7 +2483,7 @@ def horse_reactivate(request, pk):
         else:
             messages.error(
                 request,
-                f"{horse.name} has no current placement — use Log Arrival instead.",
+                f"{horse.name} has no current placement. Use Log arrival instead.",
             )
     return redirect('horse_detail', pk=horse.pk)
 

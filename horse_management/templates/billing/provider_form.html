@@ -93,7 +93,7 @@
             <div class="form-footer">
                 <a href="{% if from_settings %}{% url 'app_settings' %}#{{ settings_group }}{% else %}{% url 'provider_list' %}{% endif %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
-                    {% if object %}Save Changes{% else %}Add Provider{% endif %}
+                    {% if object %}Save changes{% else %}Add Provider{% endif %}
                 </button>
             </div>
         </form>
