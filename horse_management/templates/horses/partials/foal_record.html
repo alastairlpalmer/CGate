@@ -33,7 +33,7 @@ BreedingRecord), foal_milestones, foal_notes, foal_note_form, today.
                 </div>
                 <div>
                     <dt class="text-forest text-xs font-medium">Dam</dt>
-                    <dd class="text-charcoal font-medium"><a href="{% url 'horse_detail' br.mare.pk %}" class="link">{{ br.mare.name }}</a></dd>
+                    <dd class="text-charcoal font-medium"><a href="{% url 'horse_detail' br.mare.pk %}" class="link tap-pad">{{ br.mare.name }}</a></dd>
                     {% if br.mare.current_location %}<dd class="text-xs text-sage">{{ br.mare.current_location.name }}</dd>{% endif %}
                 </div>
                 <div>

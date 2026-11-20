@@ -44,6 +44,9 @@ class PopupFormMixin:
     # the fields it renders itself (skipped by the grid).
     popup_extra_template = ''
     popup_deferred_fields = ()
+    # One line at the top of the sheet: what the form is for, when the
+    # button that opens it is too small to say (UX review C8).
+    popup_intro = ''
 
     @property
     def in_popup(self):
@@ -69,6 +72,7 @@ class PopupFormMixin:
         )
         context['popup_extra_template'] = self.popup_extra_template
         context['popup_deferred_fields'] = list(self.popup_deferred_fields)
+        context['popup_intro'] = self.popup_intro if self.in_popup else ''
         return context
 
     def _is_create(self):

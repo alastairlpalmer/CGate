@@ -46,8 +46,8 @@
             <fieldset class="border-t border-light-sage px-4 py-3 space-y-3">
                 <legend class="text-sm font-semibold text-charcoal mb-2">Identification</legend>
                 <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
-                    {% include "includes/form_field.html" with field=form.microchip help="Type it, or scan it into this box" %}
-                    {% include "includes/form_field.html" with field=form.ueln help="15 characters, from the passport" %}
+                    {% include "includes/form_field.html" with field=form.microchip help="Type it, or scan it into this box" check=True %}
+                    {% include "includes/form_field.html" with field=form.ueln help="15 characters, from the passport" check=True %}
                     {% include "includes/form_field.html" with field=form.passport_number %}
                     {% include "includes/form_field.html" with field=form.passport_issuer %}
                     <div class="sm:col-span-2 -mt-1">

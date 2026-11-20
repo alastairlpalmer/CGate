@@ -7,25 +7,29 @@
 {% block content %}
 <div class="space-y-4">
 
-    <!-- Back link, and the horses either side in the list (name A to Z),
-         so a round of the yard does not go back to the list each time. -->
+    {% comment %}Back link, and the horses either side in the list, so a round
+    of the yard does not go back to the list each time. Opened from a
+    filtered or grouped list (?from=), both stay inside that list (UX review
+    E1); otherwise the whole list, name A to Z. The ← and → keys step too
+    (static/js/horse_step.js).{% endcomment %}
     <div class="flex items-center justify-between gap-3">
-    <a href="{% url 'horse_list' %}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest transition-colors group tap-pad shrink-0">
+    <a href="{% url 'horse_list' %}{% if list_query %}?{{ list_query }}{% endif %}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest transition-colors group tap-pad shrink-0" data-testid="back-to-list">
         <svg class="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
         </svg>
-        All Horses
+        {% if list_query %}Back to the list{% else %}All Horses{% endif %}
     </a>
     {% if previous_horse or next_horse %}
     <nav class="flex items-center gap-1 min-w-0 text-sm" aria-label="Previous and next horse" data-testid="horse-stepper">
         {% if previous_horse %}
-        <a href="{% url 'horse_detail' previous_horse.pk %}" class="horse-step" rel="prev" title="Previous horse: {{ previous_horse.name }}">
+        <a href="{% url 'horse_detail' previous_horse.pk %}{% if list_query %}?from={{ list_query|urlencode }}{% endif %}" class="horse-step" rel="prev" title="Previous horse: {{ previous_horse.name }}">
             <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
             <span class="sr-only">Previous horse: </span><span class="truncate">{{ previous_horse.name }}</span>
         </a>
         {% endif %}
+        {% if list_place %}<span class="text-xs text-sage tabular-nums shrink-0" data-testid="list-place">{{ list_place.0 }} of {{ list_place.1 }}</span>{% endif %}
         {% if next_horse %}
-        <a href="{% url 'horse_detail' next_horse.pk %}" class="horse-step" rel="next" title="Next horse: {{ next_horse.name }}">
+        <a href="{% url 'horse_detail' next_horse.pk %}{% if list_query %}?from={{ list_query|urlencode }}{% endif %}" class="horse-step" rel="next" title="Next horse: {{ next_horse.name }}">
             <span class="sr-only">Next horse: </span><span class="truncate">{{ next_horse.name }}</span>
             <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
         </a>
@@ -46,7 +50,7 @@
                         <span class="badge-neutral" data-testid="departed-badge">Departed{% if departure %} {{ departure.end_date|date:"j M Y" }}{% endif %}</span>
                         {% endif %}
                         {% if horse.is_identity_checked %}
-                        <span class="badge-success" title="Chip scanned and matched the record on {{ horse.identity_checked_at|date:'j M Y' }}">ID checked</span>
+                        <span class="badge-success" title="Chip scanned and matched the record on {{ horse.identity_checked_at|date:'j M Y' }}">ID checked<span class="sr-only"> on {{ horse.identity_checked_at|date:'j M Y' }}</span></span>
                         {% endif %}
                         {% if not horse.has_passport %}
                         <span class="badge-warning">No passport</span>
@@ -598,7 +602,8 @@
                                         <a href="{% url 'breeding_update' event.obj.pk %}" hx-get="{% url 'breeding_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record"
                                            class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.type|cut:'_' }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% endif %}
-                                        <span class="text-xs text-sage" title="{{ event.date|date:"j M Y" }}">{{ event.date|ago_label }}</span>
+                                        {# The date itself, not only "3 months ago" in a tooltip (UX review C8). #}
+                                        <span class="text-xs text-sage text-right"><time datetime="{{ event.date|date:'Y-m-d' }}">{{ event.date|date:"j M Y" }}</time><span class="hidden sm:inline"> · {{ event.date|ago_label }}</span></span>
                                     </span>
                                 </div>
 
@@ -823,6 +828,9 @@
                 </div>
             </div>
             {% endif %}
+
+            <!-- History: who changed the record, and what (UX review E2) -->
+            {% include 'includes/history_panel.html' with heading='h2' %}
 
         </div>
 

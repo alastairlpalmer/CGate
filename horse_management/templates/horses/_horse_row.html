@@ -32,7 +32,7 @@ so it needs no breakpoint of its own.
         </label>
     </td>
     <td data-col="name">
-        <a href="{% url 'horse_detail' horse.pk %}" data-horse-link class="flex items-center gap-3 group/name">
+        <a href="{% url 'horse_detail' horse.pk %}{% if list_query %}?from={{ list_query|urlencode }}{% endif %}" data-horse-link class="flex items-center gap-3 group/name">
             {% include 'horses/_horse_avatar.html' with horse=horse size='sm' %}
             {# From md the name and its details share one line: a 40px row. #}
             <div class="horse-name">
@@ -119,7 +119,7 @@ so it needs no breakpoint of its own.
                         Add photos
                     </a>
                     {% endif %}
-                    <a href="{% url 'horse_detail' horse.pk %}" role="menuitem" class="more-menu-item">
+                    <a href="{% url 'horse_detail' horse.pk %}{% if list_query %}?from={{ list_query|urlencode }}{% endif %}" role="menuitem" class="more-menu-item">
                         <svg aria-hidden="true"><use href="#i-horse"/></svg>
                         Open horse page
                     </a>

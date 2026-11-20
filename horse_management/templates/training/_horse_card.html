@@ -22,7 +22,7 @@ A planned row dated today or earlier can be confirmed here.
         <span class="flex flex-wrap items-center gap-2">
             {% include 'training/_training_status.html' with value=training_card.status_value label=training_card.status %}
             {% if training_card.status_since %}<span class="text-sage">since {{ training_card.status_since|date:"j M Y" }}</span>{% endif %}
-            <span class="text-sage">Lot: {% if training_card.lot %}<a href="{% url 'training_lots' %}#lot-{{ training_card.lot.pk }}" class="link">{{ training_card.lot.name }}</a>{% else %}none{% endif %}</span>
+            <span class="text-sage">Lot: {% if training_card.lot %}<a href="{% url 'training_lots' %}#lot-{{ training_card.lot.pk }}" class="link tap-pad">{{ training_card.lot.name }}</a>{% else %}none{% endif %}</span>
         </span>
         {% if training_card.can_change %}
         <a href="{% url 'training_horse_edit' horse.pk %}" hx-get="{% url 'training_horse_edit' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
@@ -32,7 +32,7 @@ A planned row dated today or earlier can be confirmed here.
     {% if training_card.today_row %}
     <p class="px-4 pt-2 text-sm">
         <span class="text-sage">Today:</span>
-        <a href="{% url 'training_board' %}#lot-day-{{ training_card.today_row.lot_day_id }}" class="link">{{ training_card.today_row.lot_day.lot.name }}</a>,
+        <a href="{% url 'training_board' %}#lot-day-{{ training_card.today_row.lot_day_id }}" class="link tap-pad">{{ training_card.today_row.lot_day.lot.name }}</a>,
         {{ training_card.today_row.work_type.name }}
         {% include 'training/_status_badge.html' with activity=training_card.today_row %}
     </p>

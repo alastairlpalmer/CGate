@@ -6,7 +6,7 @@ Needs: tree, root, page_horse, is_page_horse, back, family, generations.
 {% endcomment %}
 {% if not is_page_horse %}
 <div class="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
-    <button type="button" class="link tap-pad font-medium"
+    <button type="button" class="link tap-pad font-medium" data-focus-after-swap
             hx-get="{% url 'pedigree_tree' back.pk|default:page_horse.pedigree.pk %}?horse={{ page_horse.pk }}" hx-target="#pedigree-diagram" hx-select="unset" hx-swap="innerHTML" hx-push-url="false">
         ← Back to {% if back and back.horse_id != page_horse.pk %}{{ back.name }}{% else %}{{ page_horse.name }}{% endif %}
     </button>

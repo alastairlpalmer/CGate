@@ -1,9 +1,10 @@
 {% comment %}
-Collapsed "History" card for a record page. Pass history_entries.
+Collapsed "History" card for a record page. Pass history_entries, and
+heading='h2' on a page whose card titles are h2 (the horse page).
 {% endcomment %}
-<details class="card group">
+<details class="card group" id="history" data-testid="history-panel">
     <summary class="section-header cursor-pointer list-none">
-        <h3 class="section-title">History</h3>
+        {% if heading == 'h2' %}<h2 class="section-title">History</h2>{% else %}<h3 class="section-title">History</h3>{% endif %}
         <span class="text-xs text-sage">{{ history_entries|length }} change{{ history_entries|length|pluralize }}<span class="group-open:hidden"> · Show</span></span>
     </summary>
     {% include "includes/history_entries.html" with entries=history_entries empty_text="No changes recorded since the audit trail started." %}

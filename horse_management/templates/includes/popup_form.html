@@ -13,6 +13,8 @@ the generic layout leaves out (inline add-a-vet, archive/delete controls).
 
     <div class="px-4 py-3 space-y-3">
 
+        {% if popup_intro %}<p class="text-sm text-charcoal-light">{{ popup_intro }}</p>{% endif %}
+
         {% if popup_saved_note %}
         {# data-popup-fresh: a clean form after "Save & add another", not an edited one #}
         <div class="rounded-lg border border-sage/20 bg-sage-50 p-3 text-sm text-forest flex items-center gap-2" role="status" data-popup-fresh>

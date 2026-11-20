@@ -28,7 +28,7 @@ as it was on the card list this replaced.
                class="form-checkbox rounded">
     </td>
     <td data-col="name">
-        <a href="{% url 'horse_detail' horse.pk %}" data-horse-link class="flex items-center gap-3 group/name">
+        <a href="{% url 'horse_detail' horse.pk %}{% if list_query %}?from={{ list_query|urlencode }}{% endif %}" data-horse-link class="flex items-center gap-3 group/name">
             {% if departed %}<span class="opacity-70">{% include 'horses/_horse_avatar.html' with horse=horse size='sm' %}</span>{% else %}{% include 'horses/_horse_avatar.html' with horse=horse size='sm' %}{% endif %}
             {# From md the name and its details share one line: a 40px row. #}
             <div class="horse-name">
