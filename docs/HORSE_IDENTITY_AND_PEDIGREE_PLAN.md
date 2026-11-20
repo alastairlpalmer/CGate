@@ -19,7 +19,11 @@ numbers and links, one age rule). Phase 1b is built (shared pedigree
 records, the curved-line diagram, the pedigree pop-up, foaling links,
 family on this yard). Phase 1c is built (Fill in records: the list
 with counts, Save and next, versions, Undo, Pedigree records with
-Possible duplicates and Merge, Download as CSV). Phase 1d follows. In 1c,
+Possible duplicates and Merge, Download as CSV). Phase 1d is built
+(Import a file: CSV template, upload, a review screen with proposed
+changes, Apply; and the back-fill from breeding notes and yard names).
+In 1d the file must be CSV: Excel files are not read (no spreadsheet
+library in the app), so the page asks for "CSV UTF-8". In 1c,
 names up to 9 letters count as possible duplicates when 1 letter apart,
 and longer names when 2 letters apart ("Moonlit Bay" and "Moonlight
 Bay"). Undo works for 10 minutes and only while nobody changed the horse
