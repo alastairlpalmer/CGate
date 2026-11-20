@@ -15,7 +15,7 @@ patterns fit this page and which do not.
 | Phase | State |
 |---|---|
 | 1. Quick fixes | Done in this branch: B1, A4, C1, C2, C3, C4, C6, B5, G1, G2 |
-| 2. What the page shows first | Not started |
+| 2. What the page shows first | Done in this branch: A1, A2 (not the folded Pedigree card), A5, A6, A7 |
 | 3. Actions and feedback | Not started |
 | 4. Forms, navigation and history | Not started |
 | 5. Consistency and polish | Not started |

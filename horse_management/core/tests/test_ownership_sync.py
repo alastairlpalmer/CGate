@@ -56,8 +56,9 @@ class OwnershipSyncTests(TestCase):
     def test_horse_page_shows_ownership_once(self):
         OwnershipShare.objects.create(horse=self.horse, owner=self.maite, share_percentage=100, is_primary_contact=True)
         page = self.client.get(reverse('horse_detail', args=[self.horse.pk])).content.decode()
-        # The Identity card follows Current Placement (it replaced Details).
-        placement_card = page[page.index('Current Placement'):page.index('id="identity"')]
+        # The placement card: from its title to the next card's title.
+        start = page.index('Current Placement')
+        placement_card = page[start:page.index('class="section-title', start + 1)]
         self.assertNotIn('Owner', placement_card)
         self.assertNotIn('Milly Hine', placement_card)
         self.assertIn('Maite Marre', page)

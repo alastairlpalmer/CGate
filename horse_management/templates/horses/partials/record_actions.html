@@ -1,0 +1,8 @@
+{% comment %}
+Every Record tile, in the pop-up sheet: the phone row's "All" (UX review
+A7). Each tile loads its form into the same sheet.
+Context: horse, active_pregnancy, training_card; feature_access.
+{% endcomment %}
+<div class="p-3 grid grid-cols-2 gap-2" data-testid="record-actions">
+    {% include 'horses/_quick_actions.html' %}
+</div>
