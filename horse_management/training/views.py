@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
@@ -279,17 +280,25 @@ class ActivityUpdateView(TrainingEnabledMixin, ActivityFormViewMixin, PopupFormM
 
     def form_valid(self, form):
         # Phase 5: a record whose charge is on a live invoice is not changed.
-        billed = charges.refuse_if_billed([Activity.objects.select_related('horse', 'extra_charge').get(pk=self.object.pk)])
-        if billed:
-            form.add_error(None, charges.billed_message(billed))
-            return self.form_invalid(form)
-        form.instance.updated_by = self.request.user
-        board.apply_row_edit(form.instance, set(form.changed_data))
-        if 'work_type' in form.changed_data:
-            charges.reset_cost(form.instance)   # the new work's price
+        # The row is locked from the check to the save, so an invoice made
+        # in between waits (charges.sync locks the same row).
+        with transaction.atomic():
+            locked = (
+                Activity.objects.select_for_update(of=('self',))
+                .select_related('horse', 'extra_charge').get(pk=self.object.pk)
+            )
+            billed = charges.refuse_if_billed([locked])
+            if billed:
+                form.add_error(None, charges.billed_message(billed))
+                return self.form_invalid(form)
+            form.instance.updated_by = self.request.user
+            board.apply_row_edit(form.instance, set(form.changed_data))
+            if 'work_type' in form.changed_data:
+                charges.reset_cost(form.instance)   # the new work's price
+            response = super().form_valid(form)
+            counts = charges.sync([self.object])
         messages.success(self.request, f"Training record for {form.instance.horse.name} saved.")
-        response = super().form_valid(form)
-        _charge_feedback(self.request, charges.sync([self.object]))
+        _charge_feedback(self.request, counts)
         return response
 
 
@@ -578,6 +587,10 @@ def horse_training_edit(request, horse_pk):
     if request.method == 'POST' and form.is_valid():
         data = form.cleaned_data
         chose_status = 'status' in form.changed_data
+        if chose_status and 'status_since' not in form.changed_data:
+            # A new status with the date left as it was starts today. The
+            # old date is when the old status started, not the new one.
+            data['status_since'] = timezone.localdate()
         new_lot = data['lot']
         if new_lot is None and current_lot is not None:
             services.remove_from_lot(horse)
@@ -587,8 +600,11 @@ def horse_training_edit(request, horse_pk):
             else:
                 services.move_to_lot(horse, new_lot, auto_status=not chose_status, day=data['status_since'])
         if chose_status or {'status_since', 'notes', 'review_on'} & set(form.changed_data):
+            # Status not chosen: keep the status the horse has now, which a
+            # move into a lot may have just set to In work.
+            status = data['status'] if chose_status else services.training_status(horse)
             services.set_status(
-                horse, data['status'], data['status_since'], notes=data['notes'],
+                horse, status, data['status_since'], notes=data['notes'],
                 since=data['status_since'] if 'status_since' in form.changed_data else None,
                 review_on=data['review_on'],
             )
@@ -620,9 +636,12 @@ def horse_training_edit(request, horse_pk):
 
 def _parse_day(value):
     try:
-        return date.fromisoformat(value)
+        day = date.fromisoformat(value)
     except (TypeError, ValueError):
         raise Http404("Not a date.")
+    if not 1900 <= day.year <= 2999:    # the pages add and take days: keep clear of the limits
+        raise Http404("Not a date.")
+    return day
 
 
 def _board_url(day, anchor=''):
@@ -832,7 +851,10 @@ def lot_day_horses(request, pk):
 def activity_move(request, pk):
     """Move one row to another lot on the same date."""
     activity = get_object_or_404(Activity.objects.select_related('horse'), pk=pk)
-    target = get_object_or_404(LotDay.objects.select_related('lot'), pk=request.POST.get('lot_day') or 0)
+    lot_day_id = request.POST.get('lot_day', '')
+    if not lot_day_id.isdigit():
+        return HttpResponseBadRequest('Choose a lot')
+    target = get_object_or_404(LotDay.objects.select_related('lot'), pk=int(lot_day_id))
     try:
         board.move_horse(activity, target, user=request.user)
         messages.success(request, f"{activity.horse.name} moved to {target.lot.name} for the day.")

@@ -59,7 +59,11 @@ def not_confirmed(ctx):
     today = ctx.today
     days = (
         LotDay.objects.filter(date__lt=today, date__gte=today - timedelta(days=NOT_CONFIRMED_DAYS))
-        .annotate(planned=Count('activities', filter=Q(activities__status=Activity.Status.PLANNED)))
+        # A horse that left the yard stays Planned on a done lot (mark_lot_done);
+        # it is not work anyone can confirm.
+        .annotate(planned=Count('activities', filter=Q(
+            activities__status=Activity.Status.PLANNED, activities__horse__is_active=True,
+        )))
         .filter(planned__gt=0).select_related('lot').order_by('date', 'lot__position')
     )
     items = []
@@ -91,7 +95,7 @@ def no_work(ctx):
     for row in rows:
         horse_rows = by_horse.get(row.horse_id, [])
         last = load.last_work_date(horse_rows, today)
-        start = last or row.status_since
+        start = load.idle_start(last, row.status_since)
         idle = (today - start).days
         if idle < threshold or load.unconfirmed_days(horse_rows, today):
             continue   # a gap with Planned work is the "not confirmed" item
