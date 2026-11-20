@@ -83,7 +83,7 @@ class OrderTests(Base):
         body = self.page(horse).content.decode()
         main = body.split('<main', 1)[1]
         places = [main.index(marker) for marker in (
-            'data-testid="due-strip"', 'Current Placement', 'Notes &amp; conditions',
+            'data-testid="due-strip"', 'Current placement', 'Notes &amp; conditions',
             '>Timeline</h2>', 'id="identity"', 'id="pedigree"')]
         self.assertEqual(places, sorted(places))
 
