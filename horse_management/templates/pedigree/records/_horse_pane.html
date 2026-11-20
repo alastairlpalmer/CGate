@@ -1,0 +1,75 @@
+{% comment %}
+The form for one horse (identity plan 7.5): identity details, then the
+pedigree boxes. The version stops a save on top of a newer change.
+Needs: horse, id_form, form, version, conflict, count, key_count,
+position, rows, next_horse, list_url, males, females.
+{% endcomment %}
+<section class="card" aria-labelledby="pane-title">
+    <div class="section-header gap-3">
+        <div class="flex min-w-0 items-center gap-3">
+            {% include 'horses/_horse_avatar.html' with horse=horse size='md' %}
+            <div class="min-w-0">
+                <h2 id="pane-title" class="section-title truncate">{{ horse.registered_label|default:horse.name }}</h2>
+                <p class="truncate text-xs text-sage">{% if horse.show_registered_name %}Yard name {{ horse.name }} · {% endif %}{{ count }} of {{ key_count }} details</p>
+            </div>
+        </div>
+        <span class="shrink-0 text-xs text-sage tabular-nums">{% if position %}{{ position }} of {{ rows|length }}{% endif %}</span>
+    </div>
+
+    <div class="px-4 pt-3 lg:hidden">
+        <a href="{{ list_url }}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest tap-pad">← List</a>
+    </div>
+
+    {% if conflict %}
+    <div class="mx-4 mt-3 rounded-lg border border-saddle/30 bg-saddle/5 p-3 text-sm text-charcoal" role="alert" data-testid="conflict">
+        <p class="font-medium">{{ horse.name }} was changed while you had it open{% if conflict.who %}, by {{ conflict.who.get_full_name|default:conflict.who.username }}{% endif %}{% if conflict.when %} at {{ conflict.when|date:"H:i" }}{% endif %}.</p>
+        <p class="mt-1">Your changes were not saved. The form now shows the latest values. Type your changes again, then save.</p>
+    </div>
+    {% endif %}
+
+    <form method="post" x-data="{ more: {% if form.errors %}true{% else %}false{% endif %} }">
+        {% csrf_token %}
+        <input type="hidden" name="version" value="{{ version }}">
+        <div class="px-4 py-3 space-y-4">
+            {% if id_form.non_field_errors or form.non_field_errors %}
+            <div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3" role="alert">
+                {% for error in id_form.non_field_errors %}<p class="text-sm text-error-red">{{ error }}</p>{% endfor %}
+                {% for error in form.non_field_errors %}<p class="text-sm text-error-red">{{ error }}</p>{% endfor %}
+            </div>
+            {% endif %}
+
+            <fieldset>
+                <legend class="mb-2 text-xs font-semibold uppercase tracking-wide text-sage">Identity</legend>
+                <div class="grid gap-3 sm:grid-cols-2">
+                    {% include "includes/form_field.html" with field=id_form.registered_name help="As on the passport. A suffix such as (GB) fills in the country." %}
+                    {% include "includes/form_field.html" with field=id_form.country_of_birth %}
+                    {% with form=id_form %}{% include 'horses/partials/_foaled_fields.html' %}{% endwith %}
+                    {% include "includes/form_field.html" with field=id_form.microchip help="Scan it, or type the 15 digits" %}
+                    {% include "includes/form_field.html" with field=id_form.ueln %}
+                    {% include "includes/form_field.html" with field=id_form.passport_number %}
+                    {% include "includes/form_field.html" with field=id_form.passport_issuer %}
+                    {% include "includes/form_field.html" with field=id_form.breed %}
+                </div>
+            </fieldset>
+
+            <fieldset class="space-y-3">
+                <legend class="mb-2 text-xs font-semibold uppercase tracking-wide text-sage">Pedigree</legend>
+                <p class="text-xs text-sage">Pick a name from the list, or type it as on the passport, for example <span class="font-mono">Copper Ridge (GB) 2004</span>. Type <strong>Unknown</strong> if a parent is not known.</p>
+                {% include 'pedigree/_boxes.html' %}
+                {% if form.needs_confirm %}
+                {% include "includes/form_field.html" with field=form.confirm_checked %}
+                {% endif %}
+            </fieldset>
+
+            {% include 'pedigree/_datalists.html' %}
+            {% include 'horses/partials/_identity_datalists.html' %}
+        </div>
+        <div class="flex flex-wrap items-center gap-2 border-t border-light-sage px-4 py-3">
+            <a href="{% url 'horse_detail' horse.pk %}" class="link tap-pad text-sm">Open horse page</a>
+            <div class="ml-auto flex gap-2">
+                <button type="submit" name="save" class="btn-secondary">Save</button>
+                <button type="submit" name="save_next" class="btn-primary"{% if next_horse %} title="Then open {{ next_horse.name }}"{% endif %}>Save and next →</button>
+            </div>
+        </div>
+    </form>
+</section>

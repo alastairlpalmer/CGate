@@ -1,0 +1,3 @@
+{# Suggestions for the pedigree boxes. Needs males and females from pedigree.views._suggestions. #}
+<datalist id="pedigree-males">{% for text, on_yard in males %}<option value="{{ text }}"{% if on_yard %} label="on this yard"{% endif %}></option>{% endfor %}</datalist>
+<datalist id="pedigree-females">{% for text, on_yard in females %}<option value="{{ text }}"{% if on_yard %} label="on this yard"{% endif %}></option>{% endfor %}</datalist>

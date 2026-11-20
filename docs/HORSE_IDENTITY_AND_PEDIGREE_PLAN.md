@@ -17,7 +17,13 @@ pop-up edit forms, a spreadsheet import, the foaling flow, and later a
 **Status:** phase 1a is built (identity fields, checks, Scan to check,
 numbers and links, one age rule). Phase 1b is built (shared pedigree
 records, the curved-line diagram, the pedigree pop-up, foaling links,
-family on this yard). Phases 1c and 1d follow. §4 is a stress
+family on this yard). Phase 1c is built (Fill in records: the list
+with counts, Save and next, versions, Undo, Pedigree records with
+Possible duplicates and Merge, Download as CSV). Phase 1d follows. In 1c,
+names up to 9 letters count as possible duplicates when 1 letter apart,
+and longer names when 2 letters apart ("Moonlit Bay" and "Moonlight
+Bay"). Undo works for 10 minutes and only while nobody changed the horse
+again. §4 is a stress
 test of the first draft; the rest of the file includes its fixes.
 Decisions 1, 4, 5 and 8 are agreed (19 Nov 2026), and the recommendations
 for 2, 3, 6 and 7 are taken (20 Nov 2026, §10).

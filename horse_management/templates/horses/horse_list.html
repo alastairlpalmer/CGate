@@ -185,12 +185,15 @@
             </a>
             {% endif %}
             {% if not shows_movements %}
+            {# Fill in records (identity plan 7.5): one horse at a time, with the list's location and owner. #}
+            <a href="{% url 'records_horses' %}{% if request.GET.location or request.GET.owner %}?{% if request.GET.location %}location={{ request.GET.location|urlencode }}{% endif %}{% if request.GET.location and request.GET.owner %}&amp;{% endif %}{% if request.GET.owner %}owner={{ request.GET.owner|urlencode }}{% endif %}{% endif %}"
+               class="btn-ghost btn-xs shrink-0 whitespace-nowrap{% if not needs_action_count and not needs_action_only %} ml-auto{% endif %}">Fill in records</a>
             {% comment %}Select turns the tick boxes and the bulk bar on.
             Off by default: a row is for reading, and a click on one opens
             the pane.{% endcomment %}
             <button type="button" @click="toggleSelectMode()"
                     :aria-pressed="selectMode ? 'true' : 'false'"
-                    class="btn-ghost btn-xs shrink-0 whitespace-nowrap{% if not needs_action_count and not needs_action_only %} ml-auto{% endif %}"
+                    class="btn-ghost btn-xs shrink-0 whitespace-nowrap"
                     :class="selectMode && 'bg-light-sage text-charcoal'"
                     x-text="selectMode ? 'Done' : 'Select'">Select</button>
             {% endif %}

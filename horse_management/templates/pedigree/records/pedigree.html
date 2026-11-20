@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Pedigree records - Cgate{% endblock %}
+
+{% block content %}
+{% comment %}
+Fill in records, Pedigree records tab (identity plan 7.5): the shared
+records, a Possible duplicates filter, and one record in the pane. A
+record on the yard is changed from the Horses tab, not here.
+{% endcomment %}
+<div class="space-y-4">
+    {% include 'pedigree/records/_header.html' %}
+
+    <form method="get" class="card flex flex-wrap items-end gap-3 px-4 py-3{% if record %} max-lg:hidden{% endif %}" aria-label="Filters">
+        <div class="min-w-[12rem] flex-1">
+            <label for="r-q" class="block text-xs font-medium text-sage">Name</label>
+            <input id="r-q" type="search" name="q" value="{{ q }}" class="form-input" autocomplete="off">
+        </div>
+        <label class="inline-flex items-center gap-2 py-2 text-sm cursor-pointer">
+            <input type="checkbox" name="dupes" value="1" class="form-checkbox"{% if dupes %} checked{% endif %}>
+            Possible duplicates only
+        </label>
+        <button type="submit" class="btn-secondary">Show</button>
+    </form>
+
+    <div class="grid gap-4 lg:grid-cols-[minmax(16rem,24rem)_minmax(0,1fr)] items-start">
+        <section class="card overflow-hidden{% if record %} hidden lg:block{% endif %}" aria-labelledby="records-title">
+            <div class="section-header">
+                <h2 id="records-title" class="section-title">{% if dupes %}{{ rows|length }} possible duplicate{{ rows|length|pluralize }}{% else %}Records{% endif %}</h2>
+            </div>
+            {% if dupes %}
+            {% if rows %}
+            <ul class="divide-y divide-light-sage max-h-[70vh] overflow-y-auto" data-testid="duplicate-groups">
+                {% for group in rows %}
+                <li class="px-4 py-2.5 space-y-1">
+                    {% for rec in group %}
+                    <a href="?{% if query %}{{ query }}&amp;{% endif %}record={{ rec.pk }}" class="block text-sm link tap-pad{% if record and rec.pk == record.pk %} font-semibold{% endif %}">{{ rec.label }}{% if rec.horse_id %} <span class="text-xs text-forest">on this yard</span>{% endif %}</a>
+                    {% endfor %}
+                    {% if can_edit %}
+                    <div class="flex flex-wrap gap-x-3 gap-y-1">
+                        {% for other in group|slice:"1:" %}
+                        <a href="{% url 'records_merge' %}?a={{ group.0.pk }}&amp;b={{ other.pk }}" class="btn-ghost btn-xs">Compare and merge{% if group|length > 2 %} with {{ other.label }}{% endif %}</a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="px-4 py-6 text-sm text-sage">No possible duplicates found.</p>
+            {% endif %}
+            {% else %}
+            {% if rows %}
+            <ul class="divide-y divide-light-sage max-h-[70vh] overflow-y-auto" data-testid="record-list">
+                {% for rec in rows %}
+                <li>
+                    <a href="?{% if query %}{{ query }}&amp;{% endif %}record={{ rec.pk }}"
+                       class="block px-4 py-2.5 no-underline hover:bg-forest/[0.04]{% if record and rec.pk == record.pk %} bg-forest/[0.08]{% endif %}"
+                       {% if record and rec.pk == record.pk %}aria-current="true"{% endif %}>
+                        <span class="block truncate text-sm font-medium text-charcoal">{{ rec.label }}{% if rec.horse_id %} <span class="text-xs font-normal text-forest">on this yard</span>{% endif %}</span>
+                        <span class="block truncate text-xs text-sage">{% if rec.sire or rec.dam %}by {{ rec.sire.short_label|default:"?" }} out of {{ rec.dam.short_label|default:"?" }}{% else %}{{ rec.get_sex_display|default:"Parents not entered" }}{% endif %}</span>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% if more %}<p class="px-4 py-2 text-xs text-sage">Only the first records are shown. Type a name to find others.</p>{% endif %}
+            {% else %}
+            <p class="px-4 py-6 text-sm text-sage">No records match.</p>
+            {% endif %}
+            {% endif %}
+        </section>
+
+        <div class="min-w-0{% if not record %} hidden lg:block{% endif %}">
+            {% if record %}
+            {% include 'pedigree/records/_record_pane.html' %}
+            {% else %}
+            <div class="card px-4 py-8 text-center text-sm text-sage">
+                <p>Choose a record to see it. Each sire, dam and grandparent has one shared record, so a change here shows in every pedigree it is in.</p>
+                <p class="mt-1">Use <strong>Possible duplicates only</strong> to find two records for one horse, for example a spelling mistake.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

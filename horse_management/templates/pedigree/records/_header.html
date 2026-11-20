@@ -1,0 +1,17 @@
+{% comment %}
+Fill in records: title and the two tabs (identity plan 7.5).
+Needs: tab ('horses' or 'records'); export_query on the Horses tab.
+{% endcomment %}
+<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+    <h1 class="page-title">Fill in records</h1>
+    <div class="segmented-scroll min-w-0">
+        <div class="segmented" x-data="segmented" role="group" aria-label="What to fill in">
+            <span class="segmented-thumb" x-ref="thumb" aria-hidden="true"></span>
+            <a href="{% url 'records_horses' %}" @click="pick($el)" class="segmented-item{% if tab == 'horses' %} is-active{% endif %}"{% if tab == 'horses' %} aria-current="page"{% endif %}>Horses</a>
+            <a href="{% url 'records_pedigree' %}" @click="pick($el)" class="segmented-item{% if tab == 'records' %} is-active{% endif %}"{% if tab == 'records' %} aria-current="page"{% endif %}>Pedigree records</a>
+        </div>
+    </div>
+    {% if tab == 'horses' %}
+    <a href="{% url 'records_export' %}{% if export_query %}?{{ export_query }}{% endif %}" hx-boost="false" class="btn-ghost btn-xs ml-auto whitespace-nowrap">Download as CSV</a>
+    {% endif %}
+</div>

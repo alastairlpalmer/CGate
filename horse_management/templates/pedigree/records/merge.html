@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Merge pedigree records - Cgate{% endblock %}
+
+{% block content %}
+{% comment %}
+Merge two shared records (identity plan 4.4, case 29): both side by side
+with their trees, then a choice of the one to keep. Every link moves to
+the kept record, and the merge can be undone.
+{% endcomment %}
+<div class="space-y-4">
+    {% include 'pedigree/records/_header.html' %}
+    <a href="{% url 'records_pedigree' %}?record={{ a.pk }}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest tap-pad">← Back to {{ a.label }}</a>
+
+    <div class="card px-4 py-3">
+        <h2 class="section-title">Are these the same horse?</h2>
+        <p class="mt-1 text-sm text-charcoal-light">Compare the two records. If they are the same horse, choose the one to keep. Its details stay; empty details are filled from the other record. Every foal and every pedigree that uses the other record then uses the kept one.</p>
+        {% if problem %}
+        <p class="mt-2 rounded-lg border border-error-red/30 bg-error-red-50 p-3 text-sm text-error-red" role="alert" data-testid="merge-problem">{{ problem }}</p>
+        {% endif %}
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="grid gap-4 lg:grid-cols-2">
+            {% for side in sides %}{% with rec=side.record %}
+            <section class="card" aria-labelledby="side-{{ rec.pk }}">
+                <div class="section-header">
+                    <h3 id="side-{{ rec.pk }}" class="section-title truncate">{{ rec.label }}</h3>
+                    {% if not problem %}
+                    {% if not yard_keeps or rec.horse_id %}
+                    <label class="inline-flex items-center gap-2 text-sm font-medium cursor-pointer">
+                        <input type="radio" name="keep" value="{{ rec.pk }}" {% if yard_keeps and rec.horse_id %} checked{% endif %}>
+                        Keep this one
+                    </label>
+                    {% endif %}
+                    {% endif %}
+                </div>
+                <div class="px-4 py-3 space-y-3">
+                    <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+                        <dt class="text-sage">Sex</dt><dd>{{ rec.get_sex_display|default:"Not entered" }}</dd>
+                        <dt class="text-sage">Year foaled</dt><dd>{{ rec.year_of_birth|default:"Not entered" }}</dd>
+                        <dt class="text-sage">Colour</dt><dd>{{ rec.colour|default:"Not entered" }}</dd>
+                        <dt class="text-sage">Source</dt><dd>{{ rec.get_source_display }}{% if rec.checked %}, checked{% endif %}</dd>
+                        <dt class="text-sage">On the system</dt><dd>{% if rec.horse_id %}<a href="{% url 'horse_detail' rec.horse_id %}" class="link">{{ rec.horse.name }}</a>{% else %}No{% endif %}</dd>
+                        <dt class="text-sage">Parent of</dt><dd>{{ side.used_in }} horse{{ side.used_in|pluralize }}{% if side.progeny %}: {% for child in side.progeny %}{{ child.short_label }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if side.used_in > side.progeny|length %} …{% endif %}{% endif %}</dd>
+                    </dl>
+                    {% with tree=side.tree root=rec page_horse=None is_page_horse=False %}{% include 'pedigree/_tree.html' %}{% endwith %}
+                </div>
+            </section>
+            {% endwith %}{% endfor %}
+        </div>
+        {% if not problem %}
+        <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+            {% if yard_keeps %}<p class="mr-auto text-sm text-sage">The record of the horse on the system is kept.</p>{% endif %}
+            <a href="{% url 'records_pedigree' %}?record={{ a.pk }}" class="btn-secondary">Cancel</a>
+            <button type="submit" class="btn-primary">Merge</button>
+        </div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}
