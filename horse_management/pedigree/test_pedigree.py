@@ -145,8 +145,14 @@ class MatchingTests(TestCase):
         self.assertEqual(res.new, names.ParsedName('Highland Star', 'IRE', 2005))
 
     def test_the_other_sex_is_not_offered(self):
-        rec('Rosie', 'F')
-        self.assertIsNotNone(resolve('Rosie', 'M').new)
+        mare = rec('Rosie', 'F')
+        # The mare is never offered as a sire. The name is on file as
+        # female, so a person checks it, or chooses New.
+        res = resolve('Rosie', 'M')
+        self.assertEqual(res.choices, [])
+        self.assertEqual(res.wrong_sex, [mare])
+        self.assertTrue(res.needs_choice)
+        self.assertIsNotNone(resolve('Rosie', 'M', chosen='new').new)
         self.assertTrue(resolve('Rosie', 'F').needs_choice)
 
     def test_two_polo_ponies_called_rosie_stay_apart(self):

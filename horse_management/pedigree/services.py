@@ -95,10 +95,23 @@ class Resolution:
     record: PedigreeHorse | None = None
     new: ParsedName | None = None
     choices: list = field(default_factory=list)
+    # Records with this name on file as the other sex (a mare's name in a
+    # sire box). Never chosen: the person checks the name, or chooses New.
+    wrong_sex: list = field(default_factory=list)
 
     @property
     def needs_choice(self):
-        return bool(self.choices)
+        return bool(self.choices or self.wrong_sex)
+
+    @property
+    def wrong_sex_message(self):
+        """'Starlit Rose (IRE) 2015 is on file as female, so it cannot be a sire. ...'"""
+        if not self.wrong_sex:
+            return ''
+        other = self.wrong_sex[0]
+        as_sex, cannot = ('female', 'a sire') if other.sex == FEMALE else ('male', 'a dam')
+        return (f'{other.label} is on file as {as_sex}, so it cannot be {cannot}. Check the name. '
+                'If this is a different horse with the same name, choose New.')
 
 
 def candidates(parsed: ParsedName, sex: str = ''):
@@ -139,6 +152,13 @@ def resolve(text: str | None, sex: str = '', *, chosen: str | None = None,
         return Resolution(text, record=exact[0])
     if found:
         return Resolution(text, choices=found)
+    if sex in (MALE, FEMALE):
+        # The app knows a record's sex only when it is on file: a horse on
+        # the yard, a record used as a dam or a sire, or one set by hand.
+        other = FEMALE if sex == MALE else MALE
+        opposite = list(candidates(parsed).filter(sex=other))
+        if opposite:
+            return Resolution(text, wrong_sex=opposite)
     return Resolution(text, new=parsed)
 
 

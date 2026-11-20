@@ -8,7 +8,7 @@
     <label for="{{ row.field.id_for_label }}" class="block text-sm font-medium text-charcoal">{{ row.field.label }}</label>
     {{ row.field }}
     {% if row.field.errors %}<p class="form-error mt-1 text-xs text-error-red" role="alert">{{ row.field.errors.0 }}</p>{% endif %}
-    {% if row.choices %}
+    {% if row.choices or row.wrong_sex %}
     <fieldset class="mt-2 rounded-lg border border-light-sage p-2 space-y-1">
         <legend class="sr-only">Which record is {{ row.field.label|lower }}?</legend>
         {% for rec in row.choices %}
