@@ -107,6 +107,7 @@ urlpatterns = [
     # C-vet (docs/C_VET_PLAN.md). The prefix is the service worker's scope.
     path('c-vet/', include('cvet.urls')),
     path('training/', include('training.urls')),
+    path('pedigree/', include('pedigree.urls')),
     path('xero/', include('xero_integration.urls')),
 ]
 

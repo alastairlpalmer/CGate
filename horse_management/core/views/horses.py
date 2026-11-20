@@ -1270,6 +1270,9 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
         context['identity_duplicates'] = horse.identity_duplicates()
         context['identity_checked_by'] = (
             horse.identity_checked_by if horse.identity_checked_by_id else None)
+        # Pedigree card and the "by … out of …" line (plan §8.3).
+        from pedigree.display import diagram_context, record_for_page
+        context['pedigree'] = diagram_context(record_for_page(horse), page_horse=horse)
         # New sections
         context['worming_treatments'] = horse.worming_treatments.all()[:10]
         context['egg_counts'] = horse.worm_egg_counts.all()[:10]

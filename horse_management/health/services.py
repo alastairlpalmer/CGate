@@ -89,6 +89,11 @@ def record_foaling(record, *, foal_dob, foal_sex, foal_colour='', foal_name='',
         record.status = BreedingRecord.Status.BORN
         record.save()
 
+        # The foal's tree (plan §7.4): dam = the mare's pedigree record,
+        # sire = the stallion's. Its grandparents show with no typing.
+        from pedigree.services import link_foal
+        link_foal(foal, mare, record.stallion_name)
+
         # Yard board and billing from the date of birth. Both are opt-in so
         # a back-dated foaling never rewrites placement history by itself.
         mare_placement = mare.current_placement

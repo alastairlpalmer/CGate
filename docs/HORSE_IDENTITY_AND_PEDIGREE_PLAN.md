@@ -15,7 +15,9 @@ pop-up edit forms, a spreadsheet import, the foaling flow, and later a
 "read it from the document" step.
 
 **Status:** phase 1a is built (identity fields, checks, Scan to check,
-numbers and links, one age rule). Phases 1b to 1d follow. §4 is a stress
+numbers and links, one age rule). Phase 1b is built (shared pedigree
+records, the curved-line diagram, the pedigree pop-up, foaling links,
+family on this yard). Phases 1c and 1d follow. §4 is a stress
 test of the first draft; the rest of the file includes its fixes.
 Decisions 1, 4, 5 and 8 are agreed (19 Nov 2026), and the recommendations
 for 2, 3, 6 and 7 are taken (20 Nov 2026, §10).

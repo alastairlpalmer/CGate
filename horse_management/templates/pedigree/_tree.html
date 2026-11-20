@@ -1,0 +1,62 @@
+{% comment %}
+The pedigree diagram (pedigree/tree.py explains the grid). One SVG for
+each gap holds the curved lines; the boxes sit in family order, so a
+screen reader reads Sire, Sire's sire, Sire's dam, Dam, … The script
+static/js/pedigree_tree.js only adds the highlight.
+Needs: tree, root, page_horse, is_page_horse; feature_access.
+{% endcomment %}
+<div class="ped">
+    <div class="ped-scroll">
+        <div class="ped-tree ped-g{{ tree.generations }}" style="grid-template-rows: repeat({{ tree.rows }}, minmax(var(--ped-row), 1fr))"
+             role="group" aria-label="Pedigree of {{ root.label }}, {{ tree.generations }} generations">
+            {% for column, g, lines in tree.gap_list %}
+            <svg class="ped-gap ped-gap{{ g }}" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"
+                 style="grid-column: {{ column }}; grid-row: 1 / span {{ tree.rows }}">
+                {% for line in lines %}<path d="{{ line.path }}" data-code="{{ line.code }}"{% if line.soft %} class="is-soft"{% endif %}/>{% endfor %}
+            </svg>
+            {% endfor %}
+
+            <div class="ped-node is-subject ped-c0" data-code="" style="grid-column: 1; grid-row: 1 / span {{ tree.rows }}">
+                <span class="ped-rel">{% if root.horse_id %}This horse{% else %}Pedigree record{% endif %}</span>
+                <span class="ped-name">{{ root.name }}{% if root.country %} <span class="ped-sfx">({{ root.country }})</span>{% endif %}</span>
+                <span class="ped-meta">{% if root.year_of_birth %}{{ root.year_of_birth }}{% endif %}{% if root.year_of_birth and root.colour %} · {% endif %}{{ root.colour }}</span>
+            </div>
+
+            {% for p in tree.placed %}{% with box=p.box rec=p.box.record %}
+            {% if box.state == 'known' %}
+            <button type="button" class="ped-node ped-k{{ box.generation }}{% if box.twin %} is-twin{% endif %}"
+                    data-code="{{ box.code }}" data-id="{{ rec.pk }}"
+                    style="grid-column: {{ box.column }}; grid-row: {{ p.row }} / span {{ p.span }}"
+                    hx-get="{% url 'pedigree_tree' rec.pk %}?horse={{ page_horse.pk }}&amp;back={{ root.pk }}"
+                    hx-target="#pedigree-diagram" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                    aria-label="{{ box.relation }}: {{ rec.short_label }}{% if rec.year_of_birth %}, foaled {{ rec.year_of_birth }}{% endif %}{% if rec.horse_id %}, on this yard{% endif %}{% if box.twin %}, appears twice{% endif %}. Open its pedigree.">
+                {% if box.twin %}<span class="ped-badge" aria-hidden="true">{{ box.twin }}</span>{% endif %}
+                <span class="ped-rel">{{ box.relation }}</span>
+                <span class="ped-name">{% if rec.horse_id %}<span class="ped-dot" aria-hidden="true"></span>{% endif %}{{ rec.name }}{% if rec.country %} <span class="ped-sfx">({{ rec.country }})</span>{% endif %}</span>
+                <span class="ped-meta">{% if rec.year_of_birth %}{{ rec.year_of_birth }}{% endif %}{% if rec.year_of_birth and rec.colour %} · {% endif %}{{ rec.colour }}</span>
+            </button>
+            {% elif box.state == 'unknown' %}
+            <div class="ped-node ped-k{{ box.generation }} is-dashed" data-code="{{ box.code }}"
+                 style="grid-column: {{ box.column }}; grid-row: {{ p.row }} / span {{ p.span }}">
+                <span class="ped-rel">{{ box.relation }}</span>
+                <span class="ped-name">Unknown</span>
+            </div>
+            {% elif is_page_horse and feature_access.horses.full %}
+            <a href="{% url 'pedigree_edit' page_horse.pk %}" class="ped-node ped-k{{ box.generation }} is-dashed is-add" data-code="{{ box.code }}"
+               style="grid-column: {{ box.column }}; grid-row: {{ p.row }} / span {{ p.span }}"
+               hx-get="{% url 'pedigree_edit' page_horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Pedigree for {{ page_horse.name }}" aria-label="Add {{ box.relation|lower }}">
+                <span class="ped-rel">{{ box.relation }}</span>
+                <span class="ped-name">+ Add</span>
+            </a>
+            {% else %}
+            <div class="ped-node ped-k{{ box.generation }} is-dashed" data-code="{{ box.code }}"
+                 style="grid-column: {{ box.column }}; grid-row: {{ p.row }} / span {{ p.span }}">
+                <span class="ped-rel">{{ box.relation }}</span>
+                <span class="ped-name">Not entered</span>
+            </div>
+            {% endif %}
+            {% endwith %}{% endfor %}
+        </div>
+    </div>
+</div>

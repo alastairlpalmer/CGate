@@ -2762,3 +2762,79 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     .training-step { @apply shrink-0 w-7 h-7 rounded-full border border-light-sage flex items-center justify-center text-xs font-semibold text-sage; }
     .training-step.is-done { @apply bg-forest border-forest text-white; }
 }
+
+/* Pedigree diagram (pedigree/tree.py, templates/pedigree/_tree.html; plan
+   §8.3). A fixed grid: a column for each generation with a gap column
+   between them for the SVG lines, and 2^n equal rows. The diagram reacts
+   to its own width: when narrow, the horse's own box and the first gap go
+   (the page title names the horse), and 3 generations scroll sideways. */
+@layer components {
+    .ped { container-type: inline-size; container-name: ped; }
+    .ped-scroll { overflow-x: auto; padding: 0.25rem 0.125rem 0.375rem; }
+    .ped-tree {
+        display: grid;
+        --ped-row: 3.7rem;
+        grid-template-columns: minmax(7rem, .85fr) 2.25rem minmax(0, 1fr) 2.25rem minmax(0, 1fr);
+    }
+    .ped-tree.ped-g3 {
+        --ped-row: 3.15rem;
+        min-width: 36rem;
+        grid-template-columns: minmax(6.5rem, .8fr) 1.6rem minmax(7.5rem, 1fr) 1.6rem minmax(7.5rem, 1fr) 1.6rem minmax(7.5rem, 1fr);
+    }
+    .ped-gap { display: block; width: 100%; height: 100%; overflow: visible; }
+    .ped-gap path {
+        fill: none; stroke: --theme(--color-sage-300); stroke-width: 1.5;
+        vector-effect: non-scaling-stroke; transition: stroke .15s;
+    }
+    .ped-gap path.is-soft { stroke-dasharray: 4 4; }
+    .ped-gap path.is-hot { stroke: --theme(--color-forest); stroke-width: 2.25; }
+
+    .ped-node {
+        align-self: center; justify-self: stretch; position: relative; display: block;
+        width: 100%; min-width: 0; margin-block: 3px; padding: 6px 10px; text-align: left;
+        border-radius: 8px; border: 1px solid --theme(--color-light-sage);
+        background: --theme(--color-sand-50); color: --theme(--color-charcoal); font: inherit;
+        transition: border-color .15s, box-shadow .15s;
+    }
+    button.ped-node { cursor: pointer; }
+    button.ped-node:hover, a.ped-node:hover { border-color: --theme(--color-forest); }
+    .ped-node:focus-visible { outline: 2px solid --theme(--color-forest); outline-offset: 2px; }
+    .ped-rel {
+        display: block; font-family: --theme(--font-heading); font-size: 10.5px; font-weight: 600;
+        letter-spacing: .06em; text-transform: uppercase; color: --theme(--color-sage);
+    }
+    .ped-name { display: block; font-weight: 600; font-size: .875rem; line-height: 1.25; overflow-wrap: anywhere; }
+    .ped-sfx { font-weight: 500; color: --theme(--color-sage); }
+    .ped-meta { display: block; font-size: .78rem; color: --theme(--color-sage); }
+    .ped-dot {
+        display: inline-block; width: 7px; height: 7px; border-radius: 9999px;
+        background: --theme(--color-meadow); margin-right: 5px; vertical-align: 2px;
+    }
+    .ped-node.is-subject { background: --theme(--color-forest); border-color: --theme(--color-forest); color: #fff; }
+    .ped-node.is-subject .ped-rel, .ped-node.is-subject .ped-meta, .ped-node.is-subject .ped-sfx { color: rgb(255 255 255 / .8); }
+    .ped-node.is-dashed { background: transparent; border-style: dashed; border-color: --theme(--color-sage-300); }
+    .ped-node.is-dashed .ped-name { color: --theme(--color-sage); font-weight: 500; }
+    a.ped-node.is-add .ped-name { color: --theme(--color-forest); font-weight: 600; }
+    .ped-node.is-twin { border-color: --theme(--color-saddle); background: --theme(--color-saddle-50); }
+    .ped-badge {
+        position: absolute; top: -9px; right: 8px; padding: 3px 6px; border-radius: 9999px;
+        background: --theme(--color-saddle); color: #fff;
+        font-family: --theme(--font-mono); font-size: 10.5px; line-height: 1;
+    }
+    .ped-node.is-hot { border-color: --theme(--color-forest); box-shadow: 0 0 0 1px --theme(--color-forest); }
+    .ped-g3 .ped-k3 { padding: 4px 8px; }
+    .ped-g3 .ped-k3 .ped-rel { display: none; }
+    .ped-g3 .ped-k3 .ped-name { font-size: .8125rem; }
+    .ped-g3 .ped-k3 .ped-meta { font-size: .72rem; }
+}
+@container ped (max-width: 30rem) {
+    .ped-tree .ped-c0, .ped-tree .ped-gap0 { display: none; }
+    .ped-tree { grid-template-columns: 0 0 minmax(0, 1fr) 1.5rem minmax(0, 1fr); }
+    .ped-tree.ped-g3 {
+        min-width: 23rem;
+        grid-template-columns: 0 0 minmax(7rem, 1fr) 1.25rem minmax(7rem, 1fr) 1.25rem minmax(7rem, 1fr);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ped-node, .ped-gap path { transition: none; }
+}
