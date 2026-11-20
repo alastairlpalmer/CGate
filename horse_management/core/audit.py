@@ -4,8 +4,9 @@ Two sources, read together:
 
 * **Record history.** django-simple-history keeps a copy of a row each
   time it is saved or deleted, with the user who did it. Tracked:
-  invoices, payments, owners, roles, role assignments and business
-  settings (``TRACKED_MODELS``).
+  invoices, payments, owners, horses (with their extra numbers and
+  links), roles, role assignments and business settings
+  (``TRACKED_MODELS``).
 * **Account events.** ``AuditEvent`` rows for actions that are not a row
   changing: sign-in, two-step sign-in, lockouts, sessions, passwords.
 
@@ -90,6 +91,8 @@ TRACKED_MODELS = [
     ('invoices', 'Invoice', 'invoicing.Invoice'),
     ('payments', 'Payment', 'invoicing.Payment'),
     ('owners', 'Owner', 'core.Owner'),
+    ('horses', 'Horse', 'core.Horse'),
+    ('horses', 'Horse number or link', 'core.HorseIdentifier'),
     ('access', 'Role', 'core.Role'),
     ('access', 'Role assignment', 'core.UserRole'),
     ('settings', 'Business settings', 'core.BusinessSettings'),
@@ -101,6 +104,7 @@ CATEGORIES = [
     ('invoices', 'Invoices'),
     ('payments', 'Payments'),
     ('owners', 'Owners'),
+    ('horses', 'Horses'),
     ('access', 'Roles'),
     ('settings', 'Business settings'),
 ]

@@ -14,9 +14,11 @@ hand.
 pop-up edit forms, a spreadsheet import, the foaling flow, and later a
 "read it from the document" step.
 
-**Status:** planned. Nothing in this file is built. §4 is a stress test of
-the first draft; the rest of the file includes its fixes. Decisions 1, 4,
-5 and 8 are agreed (19 Nov 2026, §10).
+**Status:** phase 1a is built (identity fields, checks, Scan to check,
+numbers and links, one age rule). Phases 1b to 1d follow. §4 is a stress
+test of the first draft; the rest of the file includes its fixes.
+Decisions 1, 4, 5 and 8 are agreed (19 Nov 2026), and the recommendations
+for 2, 3, 6 and 7 are taken (20 Nov 2026, §10).
 
 ---
 
@@ -84,7 +86,7 @@ Source: Notion, CGate → Dev board. All cards have the status "ideas".
 
 | Field | Today | Problem |
 |-------|-------|---------|
-| `microchip` | Text, 50 chars | No format check, no duplicate check. **Not shown on the horse page, the preview or the quick view.** |
+| `microchip` | Text, 50 chars | No format check, no duplicate check. **Not shown on the horse page or the quick view.** (The split-view preview did show it, in its Credentials list.) |
 | `passport_number`, `has_passport` | Text and a tick box | No issuer. |
 | `sire_name`, `dam_name` | Text | Shown in the header only when filled. |
 | `dam` | Link to another `Horse` | Set only by the foaling flow. Not on any form. |

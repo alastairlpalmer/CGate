@@ -50,12 +50,14 @@ class PlacementService:
     @transaction.atomic
     def create_new_arrival(*, name, sex='', color='', date_of_birth=None,
                            sire_name='', passport_number='', has_passport=False,
+                           microchip='',
                            owner, location, rate_type, arrival_date,
                            expected_departure=None, notes=''):
         """Create a new horse and place it at a location in one atomic step.
 
         Returns the created (horse, placement) tuple.
         """
+        from .identity import normalise_microchip
         horse = Horse.objects.create(
             name=name,
             sex=sex,
@@ -64,6 +66,7 @@ class PlacementService:
             sire_name=sire_name,
             passport_number=passport_number,
             has_passport=has_passport,
+            microchip=normalise_microchip(microchip),
             is_active=True,
         )
         OwnershipShare.objects.create(

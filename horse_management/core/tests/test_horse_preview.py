@@ -122,7 +122,8 @@ class PreviewContentTests(PreviewFixture):
         self.assertIn('Not recorded', self.pane())
         self.horse.microchip = '985141000123456'
         self.horse.save(update_fields=['microchip'])
-        self.assertIn('985141000123456', self.pane())
+        # Shown in groups of three, so it can be read out (core/identity.py).
+        self.assertIn('985 141 000 123 456', self.pane())
 
     def test_a_passport_number_shows_instead_of_the_warning(self):
         self.horse.has_passport = True

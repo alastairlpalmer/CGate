@@ -448,8 +448,8 @@ def quick_find(request):
     horses = []
     if has_feature_access(request.user, 'horses'):
         horses = _find(
-            Horse.objects.all(), query, ('name',),
-            ('pk', 'name', 'is_active'),
+            Horse.objects.all(), query, ('name', 'registered_name'),
+            ('pk', 'name', 'is_active', 'registered_name'),
             key=lambda h: not h['is_active'],  # active horses first
         )
 
@@ -480,11 +480,14 @@ def quick_find(request):
         compact = query.replace(' ', '')
         by_number = Horse.objects.filter(
             Q(microchip__icontains=compact) | Q(passport_number__icontains=compact)
-        ).order_by('-is_active', 'name').values('pk', 'name', 'is_active', 'microchip')
+            | Q(ueln__icontains=compact)
+        ).order_by('-is_active', 'name').values('pk', 'name', 'is_active', 'microchip', 'ueln')
         for row in by_number[:QUICK_FIND_PER_GROUP]:
             if row['pk'] in seen or len(horses) >= QUICK_FIND_PER_GROUP:
                 continue
-            row['matched'] = 'Microchip' if compact.lower() in (row.pop('microchip') or '').lower() else 'Passport'
+            chip, ueln = (row.pop('microchip') or '').lower(), (row.pop('ueln') or '').lower()
+            row['matched'] = ('Microchip' if compact.lower() in chip
+                              else 'UELN' if compact.lower() in ueln else 'Passport')
             horses.append(row)
 
     # A horse by where it is stabled: "top barn 7" is how a yard says it.

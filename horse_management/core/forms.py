@@ -2,6 +2,7 @@
 Forms for core app.
 """
 
+from datetime import date
 from decimal import Decimal
 
 from django import forms
@@ -16,8 +17,8 @@ from .geo import coords_from_link, parse_coords_text
 from .images import heic_to_jpeg
 from .widgets import MoneyInput
 from .models import (
-    BusinessSettings, CalendarEntry, Document, Horse, HorsePhoto, Location, Owner,
-    OwnershipShare, Placement, RateType, SiteSettings, Stable, validate_coordinate_pair,
+    BusinessSettings, CalendarEntry, Document, Horse, HorseIdentifier, HorsePhoto, Location,
+    Owner, OwnershipShare, Placement, RateType, SiteSettings, Stable, validate_coordinate_pair,
 )
 
 
@@ -552,24 +553,77 @@ class LocationUsageForm(forms.Form):
 
 
 
+# A chip scanner that types like a keyboard ends with Enter. In the
+# microchip box that must not submit the form half filled.
+MICROCHIP_INPUT_ATTRS = {
+    'class': 'form-input font-mono', 'autocomplete': 'off', 'spellcheck': 'false',
+    'x-data': '', '@keydown.enter.prevent': '',
+}
+
+
 class HorseForm(forms.ModelForm):
+    """The horse's details, with the identity rules of core/identity.py.
+
+    The foaling date is a full date, or a year (possibly a guess). Both
+    end up in ``date_of_birth`` with ``dob_precision`` saying which.
+    """
+
     # Override date_of_birth to disable localization so HTML5 date input gets YYYY-MM-DD
     date_of_birth = forms.DateField(
-        required=False,
+        required=False, label='Foaling date',
         input_formats=['%Y-%m-%d'],
         widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+    )
+    foaled_year = forms.IntegerField(
+        required=False, label='Or the year only', min_value=1950,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-input', 'inputmode': 'numeric', 'placeholder': 'For example 2011',
+        }),
+    )
+    foaled_year_estimated = forms.BooleanField(
+        required=False, label='The year is a guess',
+        widget=forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+    )
+    height = forms.CharField(
+        required=False, label='Height (hands)',
+        widget=forms.TextInput(attrs={
+            'class': 'form-input', 'inputmode': 'decimal', 'placeholder': 'For example 16.2',
+        }),
+    )
+    # Longer than the stored 15 characters, so a UELN typed with spaces
+    # or dashes reaches clean_ueln, which tidies it and then checks 15.
+    ueln = forms.CharField(
+        required=False, max_length=30, label='UELN',
+        widget=forms.TextInput(attrs={
+            'class': 'form-input font-mono uppercase', 'autocomplete': 'off', 'spellcheck': 'false',
+        }),
     )
 
     class Meta:
         model = Horse
         fields = [
-            'name', 'date_of_birth', 'age', 'sex', 'color',
+            'name', 'registered_name', 'date_of_birth', 'sex', 'color',
+            'country_of_birth', 'breed', 'markings', 'breeder',
             'dam_name', 'sire_name', 'breeding', 'photo',
-            'notes', 'passport_number', 'has_passport', 'microchip', 'is_active'
+            'notes', 'passport_number', 'passport_issuer', 'has_passport',
+            'microchip', 'ueln', 'is_active'
         ]
+        labels = {
+            'name': 'Yard name',
+            'registered_name': 'Registered name',
+            'country_of_birth': 'Country (suffix)',
+            'ueln': 'UELN',
+        }
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
-            'age': forms.NumberInput(attrs={'class': 'form-input', 'inputmode': 'numeric'}),
+            'registered_name': forms.TextInput(attrs={'class': 'form-input', 'autocomplete': 'off'}),
+            'country_of_birth': forms.TextInput(attrs={
+                'class': 'form-input uppercase', 'list': 'country-suggestions',
+                'autocomplete': 'off', 'maxlength': '5',
+            }),
+            'breed': forms.TextInput(attrs={'class': 'form-input', 'list': 'breed-suggestions'}),
+            'markings': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+            'breeder': forms.TextInput(attrs={'class': 'form-input'}),
             'sex': forms.Select(attrs={'class': 'form-select'}),
             'color': forms.Select(attrs={'class': 'form-select'}),
             'dam_name': forms.TextInput(attrs={'class': 'form-input'}),
@@ -578,13 +632,81 @@ class HorseForm(forms.ModelForm):
             'photo': forms.ClearableFileInput(attrs={'class': 'form-input'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
             'passport_number': forms.TextInput(attrs={'class': 'form-input'}),
+            'passport_issuer': forms.TextInput(attrs={'class': 'form-input', 'list': 'issuer-suggestions'}),
             'has_passport': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
-            'microchip': forms.TextInput(attrs={'class': 'form-input'}),
+            'microchip': forms.TextInput(attrs=MICROCHIP_INPUT_ATTRS),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        horse = self.instance
+        if horse.pk and horse.date_of_birth and not horse.dob_is_exact:
+            # A year-only date shows as a year, not as 1 January.
+            self.initial['date_of_birth'] = None
+            self.initial['foaled_year'] = horse.date_of_birth.year
+            self.initial['foaled_year_estimated'] = (
+                horse.dob_precision == Horse.DobPrecision.ESTIMATED)
+        if horse.height_inches:
+            self.initial['height'] = horse.height_display.removesuffix(' hh')
+
     def clean_photo(self):
         return heic_to_jpeg(self.cleaned_data.get('photo'))
+
+    def clean_microchip(self):
+        from .identity import normalise_microchip
+        return normalise_microchip(self.cleaned_data.get('microchip'))
+
+    def clean_ueln(self):
+        from .identity import normalise_ueln, validate_ueln
+        ueln = normalise_ueln(self.cleaned_data.get('ueln'))
+        validate_ueln(ueln)
+        if len(ueln) > Horse._meta.get_field('ueln').max_length:
+            raise forms.ValidationError('A UELN has at most 15 characters.')
+        return ueln
+
+    def clean_country_of_birth(self):
+        from .identity import normalise_country
+        return normalise_country(self.cleaned_data.get('country_of_birth'))
+
+    def clean_height(self):
+        from .identity import parse_height
+        return parse_height(self.cleaned_data.get('height'))
+
+    def clean(self):
+        from .identity import normalise_country, split_suffix
+        cleaned = super().clean()
+
+        # "Karma Avicii (GB)" typed as the registered name: keep the name,
+        # and use the suffix as the country when none was typed.
+        if 'registered_name' in self.fields and cleaned.get('registered_name'):
+            name, suffix = split_suffix(cleaned['registered_name'])
+            cleaned['registered_name'] = name
+            if suffix and not cleaned.get('country_of_birth') and 'country_of_birth' in self.fields:
+                cleaned['country_of_birth'] = normalise_country(suffix)
+
+        # The foaling date: a full date wins; else a year, maybe a guess.
+        today = timezone.localdate()
+        dob = cleaned.get('date_of_birth')
+        year = cleaned.get('foaled_year')
+        if dob:
+            if dob > today:
+                self.add_error('date_of_birth', "The foaling date can't be in the future.")
+            precision = Horse.DobPrecision.EXACT
+        elif year:
+            if year > today.year:
+                self.add_error('foaled_year', "The year can't be in the future.")
+            dob = date(year, 1, 1)
+            precision = (Horse.DobPrecision.ESTIMATED if cleaned.get('foaled_year_estimated')
+                         else Horse.DobPrecision.YEAR)
+        else:
+            precision = Horse.DobPrecision.EXACT
+        cleaned['date_of_birth'] = dob
+        self.instance.dob_precision = precision
+
+        if 'height' in self.fields and 'height' not in self.errors:
+            self.instance.height_inches = cleaned.get('height')
+        return cleaned
 
     # The "can't untick Active while a placement is open" guard lives on
     # Horse.clean() so it also covers the Django admin — ModelForm runs it
@@ -601,9 +723,72 @@ class QuickHorseForm(HorseForm):
 
     class Meta(HorseForm.Meta):
         fields = [
-            'name', 'sex', 'color', 'date_of_birth', 'age',
-            'passport_number', 'has_passport', 'microchip', 'notes', 'is_active',
+            'name', 'registered_name', 'sex', 'color', 'date_of_birth',
+            'country_of_birth', 'breed', 'markings',
+            'passport_number', 'passport_issuer', 'has_passport',
+            'microchip', 'ueln', 'notes', 'is_active',
         ]
+
+
+class ScanCheckForm(forms.Form):
+    """One box for "Scan to check": the scanner types the chip number."""
+
+    scanned = forms.CharField(
+        label='Microchip', max_length=60,
+        widget=forms.TextInput(attrs={
+            'class': 'form-input font-mono text-lg', 'autocomplete': 'off',
+            'spellcheck': 'false', 'autofocus': True, 'enterkeyhint': 'done',
+        }),
+    )
+
+    def clean_scanned(self):
+        from .identity import normalise_microchip
+        chip = normalise_microchip(self.cleaned_data['scanned'])
+        if not chip:
+            raise forms.ValidationError('Scan the chip, or type the number.')
+        if len(chip) > Horse._meta.get_field('microchip').max_length:
+            raise forms.ValidationError('That is too long to be a microchip number.')
+        return chip
+
+
+class HorseIdentifierForm(forms.ModelForm):
+    """A stud-book number, a Racing Post link, an old chip, …"""
+
+    class Meta:
+        model = HorseIdentifier
+        fields = ['kind', 'issuer', 'value', 'url', 'checked', 'notes']
+        labels = {'value': 'Number', 'checked': 'Checked against the passport or the issuer'}
+        widgets = {
+            'kind': forms.Select(attrs={'class': 'form-select'}),
+            'issuer': forms.TextInput(attrs={'class': 'form-input', 'list': 'identifier-issuers'}),
+            'value': forms.TextInput(attrs={'class': 'form-input font-mono', 'autocomplete': 'off'}),
+            'url': forms.URLInput(attrs={'class': 'form-input', 'placeholder': 'https://'}),
+            'checked': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+            'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+        }
+
+    def __init__(self, *args, user=None, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_value(self):
+        value = (self.cleaned_data.get('value') or '').strip()
+        if self.cleaned_data.get('kind') == HorseIdentifier.Kind.OLD_MICROCHIP:
+            from .identity import normalise_microchip
+            value = normalise_microchip(value)
+        return value
+
+    def save(self, commit=True):
+        ident = super().save(commit=False)
+        if ident.checked and not ident.checked_at:
+            ident.checked_at = timezone.now()
+            ident.checked_by = self.user if getattr(self.user, 'is_authenticated', False) else None
+        elif not ident.checked:
+            ident.checked_at = None
+            ident.checked_by = None
+        if commit:
+            ident.save()
+        return ident
 
 
 class PlacementForm(forms.ModelForm):
@@ -1027,6 +1212,10 @@ class NewArrivalForm(StablePickerMixin, forms.Form):
     has_passport = forms.BooleanField(
         required=False,
         widget=forms.CheckboxInput(attrs={'class': 'form-checkbox'})
+    )
+    microchip = forms.CharField(
+        max_length=60, required=False,
+        widget=forms.TextInput(attrs=MICROCHIP_INPUT_ATTRS),
     )
 
     # Owner

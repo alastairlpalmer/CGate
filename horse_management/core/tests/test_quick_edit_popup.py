@@ -27,7 +27,6 @@ class QuickEditTestCase(TestCase):
             'sex': 'gelding',
             'color': 'bay',
             'date_of_birth': '',
-            'age': '',
             'passport_number': '',
             'has_passport': 'on',
             'notes': '',
@@ -41,10 +40,12 @@ class QuickEditFormTests(TestCase):
 
     def test_quick_form_is_the_day_to_day_subset(self):
         fields = list(QuickHorseForm.base_fields)
-        for name in ('name', 'sex', 'color', 'date_of_birth', 'age',
-                     'passport_number', 'has_passport', 'notes', 'is_active'):
+        for name in ('name', 'sex', 'color', 'date_of_birth', 'foaled_year',
+                     'passport_number', 'has_passport', 'notes', 'is_active',
+                     'registered_name', 'microchip', 'ueln', 'country_of_birth'):
             self.assertIn(name, fields)
-        for name in ('photo', 'dam_name', 'sire_name', 'breeding'):
+        # A stored age is replaced by a foaling year (one age rule, plan §6.1).
+        for name in ('photo', 'dam_name', 'sire_name', 'breeding', 'age'):
             self.assertNotIn(name, fields)
 
 

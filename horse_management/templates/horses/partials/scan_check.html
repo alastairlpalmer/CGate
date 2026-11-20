@@ -1,0 +1,44 @@
+{% comment %}
+Scan to check (pop-up sheet only). The scanner types the number and Enter,
+which sends this form. A match stamps the record; a different number is
+shown beside the stored one, and staff choose what to keep.
+{% endcomment %}
+<form method="post" action="{% url 'horse_scan_check' horse.pk %}"
+      hx-post="{% url 'horse_scan_check' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false">
+    {% csrf_token %}
+    <div class="px-4 py-3 space-y-4">
+        {% if mismatch %}
+        <div class="rounded-lg border border-saddle/30 bg-sand-50 p-3 space-y-2" role="alert" data-testid="scan-mismatch">
+            <p class="text-sm font-medium text-charcoal">The scan does not match the record.</p>
+            <dl class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
+                <dt class="text-sage">Scanned</dt>
+                <dd class="font-mono text-charcoal">{{ scanned_shown }}</dd>
+                <dt class="text-sage">On record</dt>
+                <dd class="font-mono text-charcoal">{% if stored %}{{ stored_shown }}{% else %}<span class="font-sans text-sage">No microchip on record</span>{% endif %}</dd>
+            </dl>
+            <p class="text-xs text-charcoal-light">
+                {% if stored %}Scan again to be sure. If the record is wrong, save the scanned number. The old number is kept as an "Old microchip".{% else %}Save the scanned number as this horse's microchip?{% endif %}
+            </p>
+            <input type="hidden" name="scanned" value="{{ scanned }}">
+        </div>
+        {% else %}
+        <p class="text-sm text-charcoal-light">
+            {% if stored %}On record: <span class="font-mono text-charcoal">{{ stored_shown }}</span>. Scan the chip now. The scanner types the number for you.{% else %}There is no microchip on record. Scan the chip to save its number.{% endif %}
+        </p>
+        <div{% if form.scanned.errors %} class="field-invalid"{% endif %}>
+            <label for="{{ form.scanned.id_for_label }}" class="block text-sm font-medium text-charcoal">Microchip</label>
+            {{ form.scanned }}
+            {% if form.scanned.errors %}<p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.scanned.errors.0 }}</p>{% endif %}
+            <p class="mt-1 text-xs text-sage">No scanner? Type the number from the chip.</p>
+        </div>
+        {% endif %}
+    </div>
+    <div class="popup-footer">
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        {% if mismatch %}
+        <button type="submit" name="action" value="save" class="btn-primary">Save the scanned number</button>
+        {% else %}
+        <button type="submit" name="action" value="check" class="btn-primary">Check</button>
+        {% endif %}
+    </div>
+</form>

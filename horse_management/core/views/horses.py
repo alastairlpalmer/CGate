@@ -30,6 +30,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.html import format_html
+from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from health.models import (
@@ -63,7 +64,7 @@ from ..permissions import (
     feature_required,
     has_feature_access,
 )
-from ..models import Horse, Location, Owner, OwnershipShare, Placement
+from ..models import Horse, HorseIdentifier, Location, Owner, OwnershipShare, Placement
 from .placements import movement_history
 from .locations import (
     USAGE_COLORS,
@@ -233,27 +234,32 @@ AXES_WITH_USAGE = ('location', 'site')
 def _age_sort_expression():
     """Age in whole years, for database-side ordering.
 
-    Mirrors Horse.calculated_age: from date_of_birth when it is set, else
-    the stored age field. Horses with neither stay NULL, and the callers
-    order them last.
+    Mirrors Horse.calculated_age (core/identity.age_on): one rule for all
+    horses, a year older on 1 January, or on 1 August for a horse foaled
+    in the southern hemisphere. A year-only or estimated date counts from
+    its own year. Horses with no date stay NULL (a stored age is turned
+    into a date on save), and the callers order them last.
     """
+    from ..identity import SOUTHERN_HEMISPHERE, season_year
+
     today = timezone.localdate()
-    had_birthday = Case(
-        When(
-            Q(date_of_birth__month__lt=today.month) |
-            Q(date_of_birth__month=today.month,
-              date_of_birth__day__lte=today.day),
-            then=Value(0),
-        ),
-        default=Value(1),
+    southern = Q(country_of_birth__in=SOUTHERN_HEMISPHERE)
+    exact = Q(dob_precision=Horse.DobPrecision.EXACT)
+    foaled_season = Case(
+        # Southern, exact date before August: the season began the year before.
+        When(southern & exact & Q(date_of_birth__month__lt=8),
+             then=ExtractYear('date_of_birth') - Value(1)),
+        default=ExtractYear('date_of_birth'),
         output_field=IntegerField(),
     )
-    from_dob = ExpressionWrapper(
-        Value(today.year) - ExtractYear('date_of_birth') - had_birthday,
+    this_season = Case(
+        When(southern, then=Value(season_year(today, southern=True))),
+        default=Value(today.year),
         output_field=IntegerField(),
     )
     return Case(
-        When(date_of_birth__isnull=False, then=from_dob),
+        When(date_of_birth__isnull=False,
+             then=ExpressionWrapper(this_season - foaled_season, output_field=IntegerField())),
         default=F('age'),
         output_field=IntegerField(),
     )
@@ -630,10 +636,16 @@ class HorseListView(FeatureAccessMixin, ListView):
             )
             match = (
                 Q(name__icontains=search) |
+                Q(registered_name__icontains=search) |
                 Q(notes__icontains=search) |
                 Q(placements__owner__name__icontains=search) |
                 Q(placements__location__name__icontains=search)
             )
+            # A number read off a chip scanner or a passport finds its horse.
+            compact = re.sub(r'[\s\-]', '', search)
+            if len(compact) >= 4 and any(ch.isdigit() for ch in compact):
+                match |= (Q(microchip__icontains=compact) | Q(ueln__icontains=compact)
+                          | Q(passport_number__icontains=compact))
             # Typo tolerance: "alihnter" should still find ALIHUNTER.
             fuzzy_ids = fuzzy_horse_ids(search)
             if fuzzy_ids:
@@ -1252,6 +1264,12 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
         context['ownership_shares'] = horse.ownership_shares.select_related('owner').all()
         context['photos'] = horse.photos.all()[:12]
         context['photo_count'] = horse.photos.count()
+        # Identity card (plan §8.2): the extra numbers and links, who
+        # checked the chip, and any other horse with the same number.
+        context['identifiers'] = list(horse.identifiers.all())
+        context['identity_duplicates'] = horse.identity_duplicates()
+        context['identity_checked_by'] = (
+            horse.identity_checked_by if horse.identity_checked_by_id else None)
         # New sections
         context['worming_treatments'] = horse.worming_treatments.all()[:10]
         context['egg_counts'] = horse.worm_egg_counts.all()[:10]
@@ -1346,6 +1364,7 @@ class HorseCreateView(FeatureAccessMixin, CreateView):
             PlacementService.sync_placement_owner(self.object)
         _warn_if_incomplete_ownership(self.request, ownership_formset)
         messages.success(self.request, f"Horse '{self.object.name}' created successfully.")
+        _warn_identity(self.request, self.object)
         return redirect(self.get_success_url())
 
 
@@ -1387,7 +1406,136 @@ class HorseUpdateView(FeatureAccessMixin, UpdateView):
             PlacementService.sync_placement_owner(self.object)
         _warn_if_incomplete_ownership(self.request, ownership_formset)
         messages.success(self.request, f"Horse '{self.object.name}' updated successfully.")
+        _warn_identity(self.request, self.object)
         return redirect(self.get_success_url())
+
+
+def _warn_identity(request, horse):
+    """Say what looks wrong with the numbers, after the save.
+
+    A chip that is not 15 digits, or a chip or UELN that is also on
+    another horse. These never block a save: old records can hold
+    mistakes, and a returning horse can have two records.
+    """
+    for warning in horse.identity_warnings():
+        messages.warning(request, warning)
+
+
+@feature_required('horses')
+def horse_scan_check(request, pk):
+    """Scan to check: compare a chip scan with the stored number.
+
+    Pop-up sheet only (a direct visit goes to the horse page). A match
+    stamps the record "ID checked". A different number is shown beside
+    the stored one; staff choose to save the scanned number (the old one
+    is kept as an "Old microchip") or to cancel. With no number on record,
+    the scan can be saved as the microchip.
+    """
+    from ..forms import ScanCheckForm
+    from ..identity import group_digits, is_standard_microchip
+
+    horse = get_object_or_404(Horse, pk=pk)
+    if not is_popup_request(request):
+        return redirect('horse_detail', pk=horse.pk)
+
+    def shown(chip):
+        return group_digits(chip) if is_standard_microchip(chip) else chip
+
+    context = {'horse': horse, 'stored': horse.microchip, 'stored_shown': shown(horse.microchip)}
+    if request.method != 'POST':
+        context['form'] = ScanCheckForm()
+        return render(request, 'horses/partials/scan_check.html', context)
+
+    form = ScanCheckForm(request.POST)
+    context['form'] = form
+    if not form.is_valid():
+        return render(request, 'horses/partials/scan_check.html', context)
+
+    scanned = form.cleaned_data['scanned']
+    action = request.POST.get('action', 'check')
+    stored = horse.microchip
+
+    if scanned == stored:
+        horse.mark_identity_checked(request.user)
+        horse.save(update_fields=['identity_checked_at', 'identity_checked_by', 'updated_at'])
+        messages.success(request, f"The chip matches the record for {horse.name}. Marked as ID checked.")
+        return popup_saved_response()
+
+    if action == 'save':
+        with transaction.atomic():
+            if stored:
+                HorseIdentifier.objects.create(
+                    horse=horse, kind=HorseIdentifier.Kind.OLD_MICROCHIP, value=stored,
+                    notes=f'Replaced by a scan on {timezone.localdate():%d %b %Y}.',
+                )
+            horse.microchip = scanned
+            horse.mark_identity_checked(request.user)
+            horse.save(update_fields=['microchip', 'identity_checked_at', 'identity_checked_by', 'updated_at'])
+        messages.success(request, f"Saved the scanned microchip for {horse.name}. Marked as ID checked.")
+        _warn_identity(request, horse)
+        return popup_saved_response()
+
+    context.update({'scanned': scanned, 'scanned_shown': shown(scanned), 'mismatch': True})
+    return render(request, 'horses/partials/scan_check.html', context)
+
+
+def _identifier_page(request, horse, form, ident=None):
+    template = ('horses/partials/identifier_form.html' if is_popup_request(request)
+                else 'horses/identifier_form.html')
+    return render(request, template, {
+        'horse': horse, 'form': form, 'ident': ident,
+        'issuer_suggestions': HorseIdentifier.ISSUER_SUGGESTIONS,
+    })
+
+
+@feature_required('horses')
+def horse_identifier_add(request, pk):
+    """Add a stud-book number, a Racing Post link, an old chip, …"""
+    from ..forms import HorseIdentifierForm
+
+    horse = get_object_or_404(Horse, pk=pk)
+    ident = HorseIdentifier(horse=horse)
+    if request.method == 'POST':
+        form = HorseIdentifierForm(request.POST, instance=ident, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Added {ident.label} to {horse.name}.")
+            if is_popup_request(request):
+                return popup_saved_response()
+            return redirect('horse_detail', pk=horse.pk)
+    else:
+        form = HorseIdentifierForm(instance=ident, user=request.user)
+    return _identifier_page(request, horse, form)
+
+
+@feature_required('horses')
+def horse_identifier_edit(request, pk, ident_pk):
+    from ..forms import HorseIdentifierForm
+
+    horse = get_object_or_404(Horse, pk=pk)
+    ident = get_object_or_404(HorseIdentifier, pk=ident_pk, horse=horse)
+    if request.method == 'POST':
+        form = HorseIdentifierForm(request.POST, instance=ident, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Updated {ident.label} for {horse.name}.")
+            if is_popup_request(request):
+                return popup_saved_response()
+            return redirect('horse_detail', pk=horse.pk)
+    else:
+        form = HorseIdentifierForm(instance=ident, user=request.user)
+    return _identifier_page(request, horse, form, ident)
+
+
+@feature_required('horses')
+@require_POST
+def horse_identifier_delete(request, pk, ident_pk):
+    horse = get_object_or_404(Horse, pk=pk)
+    ident = get_object_or_404(HorseIdentifier, pk=ident_pk, horse=horse)
+    label = ident.label
+    ident.delete()
+    messages.success(request, f"Removed {label} from {horse.name}.")
+    return redirect('horse_detail', pk=horse.pk)
 
 
 @feature_required('horses')
@@ -1408,6 +1556,7 @@ def horse_quick_edit(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, f"Horse '{horse.name}' updated successfully.")
+            _warn_identity(request, horse)
             return popup_saved_response()
     else:
         form = QuickHorseForm(instance=horse)
@@ -1469,10 +1618,12 @@ def horse_credential_rows(horse):
         },
         {
             'label': 'Microchip',
-            'value': horse.microchip or 'Not recorded',
+            'value': horse.microchip_display or 'Not recorded',
             'tone': 'plain' if horse.microchip else 'muted',
         },
     ]
+    if horse.ueln:
+        rows.append({'label': 'UELN', 'value': horse.ueln_display, 'tone': 'plain'})
 
     for vaccination in current_vaccinations(
         horse.vaccinations.select_related('vaccination_type')
@@ -1779,6 +1930,7 @@ def new_arrival(request):
                         sire_name=form.cleaned_data.get('sire_name') or '',
                         passport_number=form.cleaned_data.get('passport_number') or '',
                         has_passport=form.cleaned_data.get('has_passport', False),
+                        microchip=form.cleaned_data.get('microchip') or '',
                         owner=form.cleaned_data['owner'],
                         location=form.cleaned_data['location'],
                         rate_type=form.cleaned_data['rate_type'],
@@ -1800,6 +1952,7 @@ def new_arrival(request):
                     reverse('horse_photo_add', args=[horse.pk]),
                 ))
                 _warn_wrong_rate(request, horse, placement)
+                _warn_identity(request, horse)
                 return redirect('horse_detail', pk=horse.pk)
     else:
         initial = {'arrival_date': timezone.localdate()}
