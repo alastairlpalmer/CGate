@@ -81,9 +81,9 @@ value is empty. Nothing changes a horse before Apply.
                             <p class="text-charcoal-light break-words">
                                 {% if change.current_display %}<span class="line-through decoration-sage/60">{{ change.current_display }}</span> → {% endif %}<span class="text-charcoal">{{ change.proposed_display }}</span>{% if not change.current_display %} <span class="text-xs text-sage">{% if is_open %}(empty now){% else %}(was empty){% endif %}</span>{% endif %}
                             </p>
-                            {% if change.is_pedigree and change.choice_ids and is_open %}
+                            {% if change.is_pedigree and is_open and change.choice_ids or change.is_pedigree and is_open and change.note %}
                             <fieldset class="mt-1 space-y-1">
-                                <legend class="text-xs text-saddle">{{ change.proposed_value }} matches a record already on file. Which one?</legend>
+                                <legend class="text-xs text-saddle">{% if change.note %}{{ change.note }}{% else %}{{ change.proposed_value }} matches a record already on file. Which one?{% endif %}</legend>
                                 {% for rec in change.choice_records %}
                                 <label class="flex items-start gap-2 cursor-pointer min-h-[44px] sm:min-h-0 py-0.5">
                                     <input type="radio" name="choice_{{ change.pk }}" value="{{ rec.pk }}" class="mt-0.5"{% if change.choice == rec.pk|stringformat:'d' %} checked{% endif %}>

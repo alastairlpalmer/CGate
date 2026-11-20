@@ -63,6 +63,29 @@ class EditFormTests(TestCase):
         self.horse.refresh_from_db()
         self.assertEqual(self.horse.sire_name, 'Copper Ridge (GB)')
 
+    def test_a_mares_name_in_the_sire_box_asks_first(self):
+        mare = rec('Starlit Rose', 'F', 'IRE', 2015)
+        response = self.post(S=mare.label)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Starlit Rose (IRE) 2015 is on file as female, so it cannot be a sire.')
+        self.assertContains(response, 'name="S_choice" value="new"')
+        self.assertIsNone(PedigreeHorse.objects.get(horse=self.horse).sire)
+        self.assertEqual(PedigreeHorse.objects.filter(name_key='starlitrose').count(), 1)
+        # A different horse with the same name: New makes a male record.
+        self.assertEqual(self.post(S=mare.label, S_choice='new').status_code, 204)
+        sire = PedigreeHorse.objects.get(horse=self.horse).sire
+        self.assertEqual((sire.label, sire.sex), ('Starlit Rose (IRE) 2015', 'M'))
+
+    def test_a_name_new_to_the_system_is_not_checked(self):
+        # The app cannot know the sex of a horse it has never seen.
+        self.assertEqual(self.post(S='Starlit Rose (IRE) 2015').status_code, 204)
+        self.assertEqual(PedigreeHorse.objects.get(horse=self.horse).sire.sex, 'M')
+
+    def test_a_stallions_name_in_the_dam_box_asks_first(self):
+        rec('Galileo', 'M', 'IRE', 1998)
+        response = self.post(D='Galileo (IRE) 1998')
+        self.assertContains(response, 'is on file as male, so it cannot be a dam.')
+
     def test_a_picked_suggestion_links_to_the_shared_record(self):
         ridge = rec('Copper Ridge', 'M', 'GB', 2014)
         self.assertEqual(self.post(S=ridge.label).status_code, 204)

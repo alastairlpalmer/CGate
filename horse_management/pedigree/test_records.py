@@ -529,6 +529,15 @@ class RecordsTabTests(TestCase):
             'S': '', 'D': ''})
         self.assertContains(response, 'cannot be female')
 
+    def test_record_tab_checks_the_sex_too(self):
+        mare = rec('Moon River', 'F', 'FR', 1998)
+        response = self.client.post(f'{self.url}?record={self.sire.pk}', {
+            'name': 'Moonlit Bay', 'country': 'FR', 'year_of_birth': '2001', 'sex': 'M', 'colour': '',
+            'S': mare.label, 'D': ''})
+        self.assertContains(response, 'is on file as female, so it cannot be a sire.')
+        self.sire.refresh_from_db()
+        self.assertIsNone(self.sire.sire)
+
     def test_own_parent_refused(self):
         response = self.client.post(f'{self.url}?record={self.sire.pk}', {
             'name': 'Moonlit Bay', 'country': 'FR', 'year_of_birth': '2001', 'sex': 'M', 'colour': '',

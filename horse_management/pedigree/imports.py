@@ -211,6 +211,8 @@ def build_changes(row: ImportRow) -> list[ProposedChange]:
             change.proposed_display = res.record.label
         elif res.choices:
             change.choice_ids = [r.pk for r in res.choices]
+        elif res.wrong_sex:
+            change.note = res.wrong_sex_message[:300]
         else:
             change.choice = 'new'
         change.accept = not current and bool(change.choice)

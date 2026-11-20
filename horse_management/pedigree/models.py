@@ -272,6 +272,7 @@ class ProposedChange(models.Model):
     choice = models.CharField(max_length=20, blank=True)
     choice_ids = models.JSONField(default=list)
     accept = models.BooleanField(default=False)
+    note = models.CharField(max_length=300, blank=True, help_text='Why a person must look at this change')
     result = models.CharField(max_length=300, blank=True)
 
     class Meta:

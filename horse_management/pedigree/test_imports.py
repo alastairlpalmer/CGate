@@ -288,6 +288,18 @@ class ApplyTests(TestCase):
         self.assertIsNone(own(self.rosie).sire)
         self.assertIn('choose the record first', ProposedChange.objects.get().result)
 
+    def test_a_mares_name_as_sire_waits_for_a_person(self):
+        rec('Starlit Rose', 'F', 'IRE', 2015)
+        batch = self.batch('Rosie,,,,,,,Starlit Rose (IRE) 2015,,,826098000777111,,,,,')
+        change = ProposedChange.objects.get(row__batch=batch)
+        self.assertFalse(change.accept)
+        self.assertEqual(change.choice, '')
+        self.assertIn('is on file as female, so it cannot be a sire', change.note)
+        ProposedChange.objects.filter(pk=change.pk).update(accept=True)
+        imports.apply_batch(batch, self.user)
+        self.assertIsNone(own(self.rosie).sire)
+        self.assertIn('choose the record first', ProposedChange.objects.get().result)
+
     def test_dams_sire_needs_a_dam(self):
         batch = self.batch('Rosie,,,,,,,,,Moonlit Bay,826098000777111,,,,,')
         imports.apply_batch(batch, self.user)
@@ -418,6 +430,17 @@ class ScreenTests(TestCase):
         self.assertContains(response, 'Choose the record for 1 pedigree name first')
         self.client.post(review, {'action': 'apply', f'accept_{change.pk}': 'on', f'choice_{change.pk}': str(a.pk)})
         self.assertEqual(own(self.rosie).sire, a)
+
+    def test_choosing_new_for_a_name_on_file_as_the_other_sex(self):
+        rec('Starlit Rose', 'F', 'IRE', 2015)
+        self.upload(csv_bytes('Rosie,,,,,,,Starlit Rose (IRE) 2015,,,826098000777111,,,,,'))
+        batch = ImportBatch.objects.get()
+        change = ProposedChange.objects.get()
+        review = reverse('records_import_review', args=[batch.pk])
+        self.assertContains(self.client.get(review), 'is on file as female')
+        self.client.post(review, {'action': 'apply', f'accept_{change.pk}': 'on', f'choice_{change.pk}': 'new'})
+        sire = own(self.rosie).sire
+        self.assertEqual((sire.label, sire.sex), ('Starlit Rose (IRE) 2015', 'M'))
 
     def test_discard(self):
         self.upload(csv_bytes('Rosie,,,,,,Cob,,,,826098000777111,,,,,'))

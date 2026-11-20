@@ -130,7 +130,7 @@ def _read_decisions(request, batch):
     for change in ProposedChange.objects.filter(row__batch=batch).exclude(row__pk__in=remade):
         accept = f'accept_{change.pk}' in request.POST
         choice = change.choice
-        if change.is_pedigree and change.choice_ids:
+        if change.is_pedigree and (change.choice_ids or change.note):
             wanted = request.POST.get(f'choice_{change.pk}', '')
             if wanted == 'new' or wanted in {str(pk) for pk in change.choice_ids}:
                 choice = wanted

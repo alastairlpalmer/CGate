@@ -34,7 +34,20 @@ def _initial_text(record, letter):
     return 'Unknown' if getattr(record, f'{letter}_unknown') else ''
 
 
-class PedigreeForm(forms.Form):
+class _ChoiceMixin:
+    """A box whose name needs a person: several records, or a record of
+    the other sex. The template shows the records (if any) and New."""
+
+    def _ask(self, code, text, res):
+        if res.wrong_sex:
+            self.wrong_sex[code] = True
+            self.add_error(code, res.wrong_sex_message)
+        else:
+            self.choices[code] = res.choices
+            self.add_error(code, f'{text} matches a record already on file. Choose it below, or choose New.')
+
+
+class PedigreeForm(_ChoiceMixin, forms.Form):
     confirm_checked = forms.BooleanField(
         required=False, label='Yes, change the checked record',
         widget=forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
@@ -65,6 +78,7 @@ class PedigreeForm(forms.Form):
             )
             self.fields[f'{code}_choice'] = forms.CharField(required=False, widget=forms.HiddenInput)
         self.choices = {}
+        self.wrong_sex = {}
         self.resolutions = {}
         # "Changing this changes it for N other horses" under the grandparents.
         self.shared = {
@@ -79,6 +93,7 @@ class PedigreeForm(forms.Form):
             parent = code[0] if len(code) == 2 else ''
             out.append({
                 'code': code, 'field': self[code], 'choices': self.choices.get(code, []),
+                'wrong_sex': code in self.wrong_sex,
                 'shared': self.shared.get(parent, 0) if parent else 0,
                 'first': code in FIRST,
             })
@@ -93,8 +108,7 @@ class PedigreeForm(forms.Form):
             res = resolve(text, POSITION_SEX[code], chosen=cleaned.get(f'{code}_choice') or None,
                           current=self.current[code])
             if res.needs_choice:
-                self.choices[code] = res.choices
-                self.add_error(code, f'{text} matches a record already on file. Choose it below, or choose New.')
+                self._ask(code, text, res)
                 continue
             self.resolutions[code] = res
 
@@ -143,7 +157,7 @@ def _box(label, sex, initial):
     )
 
 
-class RecordEditForm(forms.ModelForm):
+class RecordEditForm(_ChoiceMixin, forms.ModelForm):
     """A shared record that is not on the yard: its name, suffix, year,
     sex, colour, and its sire and dam (Pedigree records tab, plan §7.5).
 
@@ -182,12 +196,13 @@ class RecordEditForm(forms.ModelForm):
             self.fields[f'{code}_choice'] = forms.CharField(required=False, widget=forms.HiddenInput)
         self.used_in = record.progeny().count() if record.pk else 0
         self.choices = {}
+        self.wrong_sex = {}
         self.resolutions = {}
         self.needs_confirm = False
 
     def rows(self):
         return [{'code': code, 'field': self[code], 'choices': self.choices.get(code, []),
-                 'shared': 0, 'first': True} for code in ('S', 'D')]
+                 'wrong_sex': code in self.wrong_sex, 'shared': 0, 'first': True} for code in ('S', 'D')]
 
     def clean_name(self):
         name = (self.cleaned_data.get('name') or '').strip()
@@ -214,8 +229,7 @@ class RecordEditForm(forms.ModelForm):
             res = resolve(text, POSITION_SEX[code], chosen=cleaned.get(f'{code}_choice') or None,
                           current=getattr(record, letter))
             if res.needs_choice:
-                self.choices[code] = res.choices
-                self.add_error(code, f'{text} matches a record already on file. Choose it below, or choose New.')
+                self._ask(code, text, res)
                 continue
             if res.record is not None and res.record.pk == record.pk:
                 self.add_error(code, 'A horse cannot be its own parent.')
