@@ -4,6 +4,7 @@ Core models for horse management system.
 
 import logging
 import os
+import uuid
 from datetime import date, timedelta
 from decimal import Decimal
 from functools import cached_property
@@ -737,8 +738,31 @@ class Horse(models.Model):
         CREAM = 'cream', 'Cream'
         OTHER = 'other', 'Other'
 
+    class DobPrecision(models.TextChoices):
+        EXACT = 'exact', 'Exact date'
+        YEAR = 'year', 'Year only'
+        ESTIMATED = 'estimated', 'Estimated year'
+
+    # A fixed internal ID that never changes (roadmap: "Standard horse
+    # identifiers"). The microchip is not the key: chips fail and get
+    # replaced, and old records can hold a wrong number.
+    uid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     name = models.CharField(max_length=200)
+    registered_name = models.CharField(
+        max_length=200, blank=True,
+        help_text="The name in the passport or stud book, if it is not the yard name",
+    )
+    country_of_birth = models.CharField(
+        max_length=3, blank=True,
+        help_text="Stud-book suffix, for example GB, IRE or FR",
+    )
     date_of_birth = models.DateField(null=True, blank=True, help_text="Date of birth")
+    # A year-only or estimated date is stored as 1 January of that year.
+    dob_precision = models.CharField(
+        max_length=10, choices=DobPrecision.choices, default=DobPrecision.EXACT,
+    )
+    # Kept only so old rows and imports still load: save() turns a typed
+    # age into an estimated foaling date, so the age goes up each year.
     age = models.PositiveIntegerField(null=True, blank=True, help_text="Age in years (used if DOB unknown)")
     color = models.CharField(max_length=20, choices=Color.choices, blank=True)
     sex = models.CharField(max_length=20, choices=Sex.choices, blank=True)
@@ -765,13 +789,40 @@ class Horse(models.Model):
     notes = models.TextField(blank=True, help_text="Special notes (e.g., first winter, lame, needs rug)")
     passport_number = models.CharField(max_length=100, blank=True)
     has_passport = models.BooleanField(default=True)
+    passport_issuer = models.CharField(
+        max_length=100, blank=True,
+        help_text="Who issued the passport, for example Weatherbys",
+    )
     microchip = models.CharField(
-        max_length=50, blank=True,
+        max_length=50, blank=True, db_index=True,
         help_text="Microchip number, if the horse is chipped",
+    )
+    ueln = models.CharField(
+        'UELN', max_length=15, blank=True, db_index=True,
+        help_text="Unique Equine Life Number, from the passport",
+    )
+    breed = models.CharField(max_length=100, blank=True)
+    height_inches = models.PositiveSmallIntegerField(
+        null=True, blank=True, help_text="Height in inches (16.2 hh is 66)",
+    )
+    markings = models.TextField(blank=True, help_text="As in the passport, for example: star, near hind sock")
+    breeder = models.CharField(max_length=200, blank=True)
+    # A person scanned the chip and it matched the record. A change to
+    # the microchip, UELN or passport number clears it (save()).
+    identity_checked_at = models.DateTimeField(null=True, blank=True)
+    identity_checked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='+',
     )
     is_active = models.BooleanField(default=True, db_index=True, help_text="False if horse has left permanently")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # Who changed a chip number, and when (core/audit.py).
+    history = HistoricalRecords(excluded_fields=['photo_thumb', 'updated_at'])
+
+    # The numbers whose change makes the identity check out of date.
+    IDENTITY_NUMBER_FIELDS = ('microchip', 'ueln', 'passport_number')
 
     class Meta:
         ordering = ['name']
@@ -804,10 +855,59 @@ class Horse(models.Model):
 
     def save(self, *args, **kwargs):
         update_fields = kwargs.get('update_fields')
+        changed = []
         if update_fields is None or 'photo' in update_fields:
-            if self._sync_photo_thumb() and update_fields is not None:
-                kwargs['update_fields'] = list(update_fields) + ['photo_thumb']
+            if self._sync_photo_thumb():
+                changed.append('photo_thumb')
+        changed += self._age_to_foaling_date()
+        changed += self._clear_stale_identity_check(update_fields)
+        if update_fields is not None and changed:
+            kwargs['update_fields'] = list(dict.fromkeys(list(update_fields) + changed))
         super().save(*args, **kwargs)
+        self._identity_just_checked = False
+
+    def _age_to_foaling_date(self):
+        """Turn a typed age into an estimated foaling date (plan §6.1).
+
+        A stored age never goes up. A foaling date does: "15" typed in
+        2026 becomes "foaled c. 2011", which is 16 in 2027. Every way in
+        (forms, imports, scripts) passes through here.
+        """
+        if self.age is None:
+            return []
+        if self.date_of_birth is None:
+            from .identity import estimated_dob_from_age, is_southern
+            self.date_of_birth = estimated_dob_from_age(
+                self.age, timezone.localdate(), southern=is_southern(self.country_of_birth))
+            self.dob_precision = self.DobPrecision.ESTIMATED
+        self.age = None
+        return ['age', 'date_of_birth', 'dob_precision']
+
+    def _clear_stale_identity_check(self, update_fields):
+        """A new microchip, UELN or passport number has not been checked.
+
+        The scan-to-check view sets ``_identity_just_checked`` when it
+        saves a new number and the stamp together.
+        """
+        if not self.pk or not self.identity_checked_at:
+            return []
+        if getattr(self, '_identity_just_checked', False):
+            return []
+        fields = self.IDENTITY_NUMBER_FIELDS
+        if update_fields is not None and not set(fields) & set(update_fields):
+            return []
+        stored = Horse.objects.filter(pk=self.pk).values(*fields).first()
+        if stored is None or all(stored[f] == getattr(self, f) for f in fields):
+            return []
+        self.identity_checked_at = None
+        self.identity_checked_by = None
+        return ['identity_checked_at', 'identity_checked_by']
+
+    def mark_identity_checked(self, user):
+        """Stamp the record: a person scanned the chip and it matched."""
+        self.identity_checked_at = timezone.now()
+        self.identity_checked_by = user if getattr(user, 'is_authenticated', False) else None
+        self._identity_just_checked = True
 
     def _delete_unused_photo(self, name):
         """Delete a replaced profile photo's file, unless still in use.
@@ -870,46 +970,172 @@ class Horse(models.Model):
         return True
 
     @property
+    def dob_is_exact(self):
+        return self.dob_precision == self.DobPrecision.EXACT
+
+    @property
+    def is_southern_hemisphere(self):
+        from .identity import is_southern
+        return is_southern(self.country_of_birth)
+
+    @property
     def calculated_age(self):
-        """Return age from DOB if set, else fall back to age field."""
+        """Age in whole years, by one rule for all horses (plan decision 4).
+
+        A year older on 1 January, or on 1 August for a horse foaled in
+        the southern hemisphere. Falls back to a stored age only for a
+        row that has not been saved since save() started converting it.
+        """
         if self.date_of_birth:
-            today = timezone.localdate()
-            return today.year - self.date_of_birth.year - (
-                (today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day)
+            from .identity import age_on
+            return age_on(
+                timezone.localdate(), self.date_of_birth,
+                exact=self.dob_is_exact, southern=self.is_southern_hemisphere,
             )
         return self.age
 
     @property
     def days_old(self):
-        """Whole days since birth, or None without a date of birth."""
-        if not self.date_of_birth:
+        """Whole days since birth, or None without an exact date of birth."""
+        if not self.date_of_birth or not self.dob_is_exact:
             return None
         return (timezone.localdate() - self.date_of_birth).days
 
     @property
     def age_label(self):
         """'3 days old', '6 weeks old', '4 months old' for youngsters;
-        '5yo' once a horse is a year old; '' with no age on record."""
+        '5yo' once a horse is a year old; '' with no age on record.
+
+        A youngster foaled last year is a yearling from 1 January, even
+        at 8 months old, so its label says both.
+        """
         days = self.days_old
         if days is None:
-            return f'{self.age}yo' if self.age is not None else ''
+            age = self.calculated_age
+            if age is None:
+                return ''
+            return 'foal' if age == 0 else f'{age}yo'
         if days < 0:
             return ''
-        if days < 14:
-            return f'{days} day{"s" if days != 1 else ""} old'
-        if days < 90:
-            weeks = days // 7
-            return f'{weeks} week{"s" if weeks != 1 else ""} old'
         if days < 365:
-            months = days // 30
-            return f'{months} month{"s" if months != 1 else ""} old'
+            if days < 14:
+                label = f'{days} day{"s" if days != 1 else ""} old'
+            elif days < 90:
+                weeks = days // 7
+                label = f'{weeks} week{"s" if weeks != 1 else ""} old'
+            else:
+                months = days // 30
+                label = f'{months} month{"s" if months != 1 else ""} old'
+            if (self.calculated_age or 0) >= 1:
+                label += ', yearling'
+            return label
         return f'{self.calculated_age}yo'
 
     @property
     def is_youngster(self):
         """Under a year old: the header shows days/weeks/months, not '0yo'."""
         days = self.days_old
-        return days is not None and 0 <= days < 365
+        if days is None:
+            return self.date_of_birth is not None and self.calculated_age == 0
+        return 0 <= days < 365
+
+    @property
+    def foaled_display(self):
+        """'born 3 May 2011', 'foaled 2011', 'foaled c. 2011' or ''."""
+        dob = self.date_of_birth
+        if not dob:
+            return ''
+        if self.dob_precision == self.DobPrecision.YEAR:
+            return f'foaled {dob.year}'
+        if self.dob_precision == self.DobPrecision.ESTIMATED:
+            return f'foaled c. {dob.year}'
+        verb = 'foaled' if self.is_youngster else 'born'
+        return f'{verb} {dob.day} {dob:%b %Y}'
+
+    @property
+    def registered_label(self):
+        """'Karma Avicii (GB)': the registered name with its suffix."""
+        name = self.registered_name or ''
+        if name and self.country_of_birth:
+            return f'{name} ({self.country_of_birth})'
+        return name
+
+    @property
+    def show_registered_name(self):
+        """True when the registered name says something the yard name does not."""
+        return bool(self.registered_name) and self.registered_name.strip().lower() != self.name.strip().lower()
+
+    @property
+    def microchip_display(self):
+        from .identity import group_digits, is_standard_microchip
+        if is_standard_microchip(self.microchip):
+            return group_digits(self.microchip)
+        return self.microchip
+
+    @property
+    def microchip_hint(self):
+        from .identity import microchip_hint
+        return microchip_hint(self.microchip)
+
+    @property
+    def chip_checker_url(self):
+        from .identity import chip_checker_url
+        return chip_checker_url(self.microchip)
+
+    @property
+    def ueln_display(self):
+        from .identity import format_ueln
+        return format_ueln(self.ueln)
+
+    @property
+    def height_display(self):
+        from .identity import format_height
+        return format_height(self.height_inches)
+
+    @property
+    def is_identity_checked(self):
+        return self.identity_checked_at is not None
+
+    def identity_duplicates(self):
+        """Other horses with the same microchip or UELN.
+
+        A list of (label, value, other horse). It warns and never blocks:
+        old records can hold mistakes, and a returning horse can have two
+        records until they are joined.
+        """
+        found = []
+        for field, label in (('microchip', 'Microchip'), ('ueln', 'UELN')):
+            value = getattr(self, field)
+            if not value:
+                continue
+            others = Horse.objects.filter(**{field: value})
+            if self.pk:
+                others = others.exclude(pk=self.pk)
+            found += [(label, value, other) for other in others.order_by('-is_active', 'name')[:5]]
+        return found
+
+    def identity_warnings(self):
+        """Plain-text warnings to show after a save. Never blocks the save."""
+        from .identity import microchip_warning, ueln_warning
+        warnings = [w for w in (microchip_warning(self.microchip), ueln_warning(self.ueln)) if w]
+        for label, value, other in self.identity_duplicates():
+            state = '' if other.is_active else ' (departed)'
+            warnings.append(f'{label} {value} is also on {other.name}{state}. Is this the same horse?')
+        return warnings
+
+    @property
+    def missing_identity(self):
+        """The key identity fields that are empty, in the words of the card."""
+        missing = []
+        if not self.microchip:
+            missing.append('microchip')
+        if not self.ueln:
+            missing.append('UELN')
+        if not self.passport_number:
+            missing.append('passport number')
+        if not self.date_of_birth:
+            missing.append('foaling date')
+        return missing
 
     @property
     def is_mare(self):
@@ -2131,6 +2357,75 @@ def documents_needing_renewal(queryset, today=None):
     return queryset.filter(
         Q(horse__is_active=True) | Q(horse__isnull=True, owner__is_archived=False)
     ).exclude(Q(expiry_date__lt=today) & Exists(renewed))
+
+
+class HorseIdentifier(models.Model):
+    """A number or link that some horses have and others do not.
+
+    Stud-book and breed-society numbers, a Racing Post profile, an old
+    microchip or passport (docs/HORSE_IDENTITY_AND_PEDIGREE_PLAN.md §6.2).
+    The microchip, UELN and passport number themselves stay on Horse.
+    """
+
+    class Kind(models.TextChoices):
+        STUD_BOOK = 'stud_book', 'Stud book'
+        RACING = 'racing', 'Racing'
+        BREED_SOCIETY = 'breed_society', 'Breed society'
+        COMPETITION = 'competition', 'Competition'
+        OLD_MICROCHIP = 'old_microchip', 'Old microchip'
+        OLD_PASSPORT = 'old_passport', 'Old passport'
+        OTHER = 'other', 'Other'
+
+    # Suggestions for the issuer box. Any text is accepted.
+    ISSUER_SUGGESTIONS = (
+        'Weatherbys GSB', 'Racing Post', 'Stud Book Argentino', 'Tattersalls',
+        'Goffs', 'Hurlingham Polo Association', 'FEI', 'British Eventing',
+        'British Showjumping',
+    )
+
+    horse = models.ForeignKey(Horse, on_delete=models.CASCADE, related_name='identifiers')
+    kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.OTHER)
+    value = models.CharField(max_length=100, blank=True, help_text="The number, if there is one")
+    issuer = models.CharField(max_length=100, blank=True, help_text="For example Weatherbys GSB or Racing Post")
+    url = models.URLField(
+        'Link', max_length=500, blank=True,
+        help_text="A link to the horse's page, for example on Weatherbys or Racing Post",
+    )
+    checked = models.BooleanField(default=False, help_text="Compared with the passport or the issuer's record")
+    checked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='+',
+    )
+    checked_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ['kind', 'created_at']
+
+    def __str__(self):
+        return f'{self.label}: {self.value or self.url}'
+
+    @property
+    def label(self):
+        return self.issuer or self.get_kind_display()
+
+    @property
+    def link_host(self):
+        """'racingpost.com' for the "Open on …" text."""
+        from urllib.parse import urlsplit
+        host = urlsplit(self.url).hostname or ''
+        return host[4:] if host.startswith('www.') else host
+
+    def clean(self):
+        super().clean()
+        if not (self.value or self.url):
+            raise DjangoValidationError('Type a number, a link, or both.')
+        if self.url and not self.url.lower().startswith(('https://', 'http://')):
+            raise DjangoValidationError({'url': 'Use a web link that starts with https://'})
+
 
 class HorsePhoto(models.Model):
     """A quick-add photo on a horse's record: condition shots, markings,

@@ -27,7 +27,7 @@ sheet closes itself once the new page has landed.
                 {% endif %}
             </div>
             <p class="mt-1 text-sm text-sage">
-                {% if horse.calculated_age %}<span class="text-charcoal-light font-medium">{{ horse.calculated_age }}yo</span> &middot; {% endif %}{{ horse.get_color_display|default:"Colour not set" }} &middot; {{ horse.get_sex_display|default:"Sex not set" }}
+                {% if horse.age_label %}<span class="text-charcoal-light font-medium">{{ horse.age_label }}</span> &middot; {% endif %}{{ horse.get_color_display|default:"Colour not set" }} &middot; {{ horse.get_sex_display|default:"Sex not set" }}
             </p>
             {% if owner %}
             <p class="mt-1.5 text-sm text-charcoal-light flex items-center gap-1.5 min-w-0">
@@ -58,7 +58,7 @@ sheet closes itself once the new page has landed.
         <div class="min-w-0">
             <dt class="quick-view-label">Age</dt>
             <dd class="mt-0.5 font-medium text-charcoal">
-                {% if horse.calculated_age %}{{ horse.calculated_age }} years{% if horse.date_of_birth %} <span class="text-sage font-normal">&middot; born {{ horse.date_of_birth|date:"j M Y" }}</span>{% endif %}{% else %}&mdash;{% endif %}
+                {% if horse.is_youngster %}{{ horse.age_label }}{% elif horse.calculated_age %}{{ horse.calculated_age }} years{% endif %}{% if horse.date_of_birth %} <span class="text-sage font-normal">&middot; {{ horse.foaled_display }}</span>{% elif not horse.calculated_age %}&mdash;{% endif %}
             </dd>
         </div>
         <div class="min-w-0">
@@ -70,6 +70,10 @@ sheet closes itself once the new page has landed.
             <dd class="mt-0.5 font-medium text-charcoal">
                 {% if horse.has_passport %}{{ horse.passport_number|default:"Yes" }}{% else %}<span class="text-error-red">None on record</span>{% endif %}
             </dd>
+        </div>
+        <div class="min-w-0 col-span-2">
+            <dt class="quick-view-label">Microchip</dt>
+            <dd class="mt-0.5 font-medium text-charcoal font-mono tabular-nums">{{ horse.microchip_display|default:"&mdash;" }}{% if horse.is_identity_checked %} <span class="font-sans text-xs text-forest">✓ checked</span>{% endif %}</dd>
         </div>
     </dl>
 

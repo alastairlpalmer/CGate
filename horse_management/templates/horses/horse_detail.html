@@ -49,24 +49,31 @@
                         {% else %}
                         <span class="badge-neutral">Inactive</span>
                         {% endif %}
-                        {% if horse.has_passport %}
+                        {% if horse.is_identity_checked %}
+                        <span class="badge-success" title="Chip scanned and matched the record on {{ horse.identity_checked_at|date:'j M Y' }}">ID checked</span>
+                        {% endif %}
+                        {% if horse.has_passport and not horse.is_identity_checked %}
                         <span class="badge-info" title="{% if horse.passport_number %}Passport: {{ horse.passport_number }}{% else %}Has passport{% endif %}">
                             <svg class="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/></svg>
                             Passport
                         </span>
-                        {% else %}
+                        {% endif %}
+                        {% if not horse.has_passport %}
                         <span class="badge-warning" title="No passport on record">No passport</span>
                         {% endif %}
                     </div>
                     {% comment %}Age, colour, sex and birth date. Each part shows only
                     when it is known; .dot-list puts the dots between the parts
                     that show, so a horse with none of them gets no stray "·".{% endcomment %}
-                    {% if horse.is_youngster or horse.calculated_age or horse.color or horse.sex or horse.date_of_birth %}
+                    {% if horse.show_registered_name %}
+                    <p class="mt-1 text-sm text-charcoal-light">Registered as <span class="font-medium text-charcoal">{{ horse.registered_label }}</span></p>
+                    {% endif %}
+                    {% if horse.age_label or horse.color or horse.sex or horse.date_of_birth %}
                     <p class="mt-1.5 text-sm text-sage dot-list">
-                        {% if horse.is_youngster %}<span class="text-charcoal-light font-medium">{{ horse.age_label }}</span>{% elif horse.calculated_age %}<span class="text-charcoal-light font-medium">{{ horse.calculated_age }}yo</span>{% endif %}
+                        {% if horse.age_label %}<span class="text-charcoal-light font-medium">{{ horse.age_label }}</span>{% endif %}
                         {% if horse.color %}<span>{{ horse.get_color_display }}</span>{% endif %}
                         {% if horse.sex %}<span>{{ horse.get_sex_display }}</span>{% endif %}
-                        {% if horse.date_of_birth %}<span class="text-sage/80">{% if horse.is_youngster %}foaled{% else %}born{% endif %} {{ horse.date_of_birth|date:"j M Y" }}</span>{% endif %}
+                        {% if horse.date_of_birth %}<span class="text-sage/80">{{ horse.foaled_display }}</span>{% endif %}
                     </p>
                     {% endif %}
                     {% if horse.current_owner %}
@@ -287,27 +294,23 @@
                 </div>
             </div>
 
-            <!-- Details & Conditions. Passport and status are badges in the
-                 header, so the card only shows what the header does not. -->
-            {% if horse.breeding or horse.notes or horse.passport_number or medical_conditions %}
+            <!-- Identity: microchip, UELN, passport and the other numbers -->
+            {% include 'horses/_identity_card.html' %}
+
+            <!-- Notes & conditions. The numbers are on the Identity card. -->
+            {% if horse.breeding or horse.notes or medical_conditions %}
             <div class="card">
                 <div class="section-header">
-                    <h3 class="section-title">Details</h3>
+                    <h3 class="section-title">Notes &amp; conditions</h3>
                     <a href="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-get="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Condition for {{ horse.name }}" class="btn-ghost btn-xs">+ Condition</a>
                 </div>
                 <div class="p-4">
-                    {% if horse.breeding or horse.notes or horse.passport_number %}
+                    {% if horse.breeding or horse.notes %}
                     <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
                         {% if horse.breeding %}
                         <div class="sm:col-span-2">
                             <dt class="dt-label">Breeding</dt>
                             <dd class="mt-1 text-sm text-charcoal">{{ horse.breeding }}</dd>
-                        </div>
-                        {% endif %}
-                        {% if horse.passport_number %}
-                        <div>
-                            <dt class="dt-label">Passport number</dt>
-                            <dd class="mt-1 text-sm text-charcoal font-mono">{{ horse.passport_number }}</dd>
                         </div>
                         {% endif %}
                         {% if horse.notes %}
@@ -321,7 +324,7 @@
 
                     {% if medical_conditions %}
                     {# The rule only divides: with no details above it there is nothing to divide from. #}
-                    <div{% if horse.breeding or horse.notes or horse.passport_number %} class="mt-5 pt-5 border-t border-light-sage"{% endif %}>
+                    <div{% if horse.breeding or horse.notes %} class="mt-5 pt-5 border-t border-light-sage"{% endif %}>
                         <h4 class="dt-label mb-3">Conditions</h4>
                         <div class="space-y-2">
                             {% for c in medical_conditions %}

@@ -639,7 +639,7 @@
                             </a>
                         </td>
                         <td class="text-sage" data-label="Details">
-                            {% if horse.age %}{{ horse.age }}yo{% endif %}
+                            {{ horse.age_label }}
                             {{ horse.get_color_display }}
                             {{ horse.get_sex_display }}
                         </td>

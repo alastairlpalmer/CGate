@@ -1,0 +1,37 @@
+{% comment %}
+Add or edit a number or link for a horse (pop-up sheet; the full page
+horses/identifier_form.html wraps the same fields). Stud-book numbers,
+a Racing Post profile, an old microchip, … The app only links to these
+pages. It never reads them.
+{% endcomment %}
+{% if ident %}{% url 'horse_identifier_edit' horse.pk ident.pk as action_url %}{% else %}{% url 'horse_identifier_add' horse.pk as action_url %}{% endif %}
+<form method="post" action="{{ action_url }}"
+      {% if not full_page %}hx-post="{{ action_url }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"{% endif %}>
+    {% csrf_token %}
+    <div class="px-4 py-3 space-y-3">
+        {% if form.non_field_errors %}
+        <div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3" role="alert">
+            {% for error in form.non_field_errors %}<p class="text-sm text-error-red">{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+        <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+            {% include "includes/form_field.html" with field=form.kind label="Type" %}
+            {% include "includes/form_field.html" with field=form.issuer label="Issuer" %}
+            {% include "includes/form_field.html" with field=form.value span="2" %}
+            {% include "includes/form_field.html" with field=form.url span="2" %}
+            {% include "includes/form_field.html" with field=form.notes span="2" %}
+            <div class="sm:col-span-2">{% include "includes/form_field.html" with field=form.checked %}</div>
+        </div>
+        <datalist id="identifier-issuers">
+            {% for issuer in issuer_suggestions %}<option value="{{ issuer }}"></option>{% endfor %}
+        </datalist>
+    </div>
+    <div class="popup-footer">
+        {% if full_page %}
+        <a href="{% url 'horse_detail' horse.pk %}" class="btn-secondary">Cancel</a>
+        {% else %}
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        {% endif %}
+        <button type="submit" class="btn-primary">{% if ident %}Save Changes{% else %}Add{% endif %}</button>
+    </div>
+</form>

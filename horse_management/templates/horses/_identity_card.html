@@ -1,0 +1,128 @@
+{% comment %}
+Identity card on the horse page (docs/HORSE_IDENTITY_AND_PEDIGREE_PLAN.md
+§8.2, phase 1a). Only filled rows show; one line lists what is missing.
+Numbers are in mono, in groups of three, with a copy button that copies
+the number without spaces. Phase 1b adds the pedigree beside it.
+{% endcomment %}
+<div class="card" id="identity">
+    <div class="section-header">
+        <h3 class="section-title">Identity</h3>
+        {% if feature_access.horses.full %}
+        <div class="flex items-center gap-2">
+            {% if horse.microchip %}
+            <a href="{% url 'horse_detail' horse.pk %}" hx-get="{% url 'horse_scan_check' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Scan to check {{ horse.name }}" class="btn-ghost btn-xs">Scan to check</a>
+            {% endif %}
+            <a href="{% url 'horse_update' horse.pk %}" hx-get="{% url 'horse_quick_edit' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Edit {{ horse.name }}" class="btn-ghost btn-xs">Edit</a>
+        </div>
+        {% endif %}
+    </div>
+    <div class="p-4 space-y-4">
+        {% if horse.show_registered_name or horse.microchip or horse.ueln or horse.passport_number or horse.breed or horse.date_of_birth or horse.height_inches or horse.markings or horse.breeder or horse.country_of_birth %}
+        <dl class="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-3 gap-y-2.5 text-sm">
+            {% if horse.show_registered_name %}
+            <dt class="text-sage pt-0.5">Registered</dt>
+            <dd class="text-charcoal min-w-0 break-words">{{ horse.registered_label }}</dd>
+            {% endif %}
+            {% if horse.microchip %}
+            <dt class="text-sage self-center">Microchip</dt>
+            <dd class="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span class="font-mono text-charcoal tabular-nums whitespace-nowrap" data-testid="identity-microchip">{{ horse.microchip_display }}</span>
+                {% include 'horses/_copy_button.html' with value=horse.microchip label="Copy microchip" %}
+                {% if horse.microchip_hint %}<span class="text-xs text-sage">{{ horse.microchip_hint }}</span>{% endif %}
+                <a href="{{ horse.chip_checker_url }}" target="_blank" rel="noopener noreferrer" class="link text-xs tap-pad" title="Check this chip on the national checker. Copy the number first.">Chip checker ↗</a>
+            </dd>
+            {% endif %}
+            {% if horse.ueln %}
+            <dt class="text-sage self-center">UELN</dt>
+            <dd class="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span class="font-mono text-charcoal tabular-nums whitespace-nowrap">{{ horse.ueln_display }}</span>
+                {% include 'horses/_copy_button.html' with value=horse.ueln label="Copy UELN" %}
+            </dd>
+            {% endif %}
+            {% if horse.passport_number or horse.passport_issuer %}
+            <dt class="text-sage pt-0.5">Passport</dt>
+            <dd class="text-charcoal min-w-0 break-words">{% if horse.passport_number %}<span class="font-mono">{{ horse.passport_number }}</span>{% endif %}{% if horse.passport_number and horse.passport_issuer %} <span class="text-sage">·</span> {% endif %}{{ horse.passport_issuer }}</dd>
+            {% endif %}
+            {% if horse.breed %}
+            <dt class="text-sage pt-0.5">Breed</dt>
+            <dd class="text-charcoal min-w-0 break-words">{{ horse.breed }}</dd>
+            {% endif %}
+            {% if horse.date_of_birth or horse.country_of_birth %}
+            <dt class="text-sage pt-0.5">Foaled</dt>
+            <dd class="text-charcoal min-w-0">{% if horse.date_of_birth %}{% if horse.dob_is_exact %}{{ horse.date_of_birth|date:"j M Y" }}{% elif horse.dob_precision == 'estimated' %}c. {{ horse.date_of_birth.year }}{% else %}{{ horse.date_of_birth.year }}{% endif %}{% endif %}{% if horse.date_of_birth and horse.country_of_birth %} <span class="text-sage">·</span> {% endif %}{{ horse.country_of_birth }}</dd>
+            {% endif %}
+            {% if horse.height_inches %}
+            <dt class="text-sage pt-0.5">Height</dt>
+            <dd class="text-charcoal tabular-nums">{{ horse.height_display }}</dd>
+            {% endif %}
+            {% if horse.markings %}
+            <dt class="text-sage pt-0.5">Markings</dt>
+            <dd class="text-charcoal min-w-0 break-words">{{ horse.markings }}</dd>
+            {% endif %}
+            {% if horse.breeder %}
+            <dt class="text-sage pt-0.5">Breeder</dt>
+            <dd class="text-charcoal min-w-0 break-words">{{ horse.breeder }}</dd>
+            {% endif %}
+        </dl>
+        {% endif %}
+
+        {% if identifiers %}
+        <ul class="divide-y divide-light-sage border-y border-light-sage" aria-label="Other numbers and links">
+            {% for ident in identifiers %}
+            <li class="py-2 flex items-start justify-between gap-3 text-sm">
+                <div class="min-w-0">
+                    <span class="font-medium text-charcoal">{{ ident.label }}</span>
+                    {% if ident.issuer %}<span class="text-xs text-sage"> · {{ ident.get_kind_display }}</span>{% endif %}
+                    <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        {% if ident.value %}<span class="font-mono text-charcoal break-all">{{ ident.value }}</span>{% endif %}
+                        {% if ident.url %}<a href="{{ ident.url }}" target="_blank" rel="noopener noreferrer" class="link text-xs tap-pad">Open on {{ ident.link_host|default:"the web" }} ↗</a>{% endif %}
+                        {% if ident.checked %}<span class="text-xs text-forest">✓ checked</span>{% endif %}
+                    </div>
+                </div>
+                {% if feature_access.horses.full %}
+                <div class="flex items-center gap-1 shrink-0">
+                    <a href="{% url 'horse_identifier_edit' horse.pk ident.pk %}" hx-get="{% url 'horse_identifier_edit' horse.pk ident.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                       data-popup-title="Edit {{ ident.label }}" class="btn-ghost btn-xs">Edit</a>
+                    <form method="post" action="{% url 'horse_identifier_delete' horse.pk ident.pk %}" x-data="{ sure: false }">
+                        {% csrf_token %}
+                        <button type="button" class="btn-ghost btn-xs" x-show="!sure" @click="sure = true" aria-label="Remove {{ ident.label }}">Remove</button>
+                        <button type="submit" class="btn-ghost btn-xs text-error-red" x-show="sure" x-cloak>Confirm</button>
+                    </form>
+                </div>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% for label, value, other in identity_duplicates %}
+        <p class="text-sm text-saddle flex gap-1.5" role="status">
+            <span aria-hidden="true">⚠</span>
+            <span>{{ label }} also on <a href="{% url 'horse_detail' other.pk %}" class="link tap-pad">{{ other.name }}</a>{% if not other.is_active %} (departed){% endif %}. Is this the same horse?</span>
+        </p>
+        {% endfor %}
+
+        {% if horse.is_identity_checked %}
+        <p class="text-sm text-forest flex gap-1.5" data-testid="identity-checked">
+            <span aria-hidden="true">✓</span>
+            <span>Chip scanned, matches the record · {{ horse.identity_checked_at|date:"j M Y" }}{% if identity_checked_by %} · {{ identity_checked_by.get_full_name|default:identity_checked_by.get_username }}{% endif %}</span>
+        </p>
+        {% elif horse.microchip %}
+        <p class="text-sm text-sage">Chip not checked yet.{% if feature_access.horses.full %} <a href="{% url 'horse_detail' horse.pk %}" hx-get="{% url 'horse_scan_check' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Scan to check {{ horse.name }}" class="link tap-pad">Scan to check</a>{% endif %}</p>
+        {% endif %}
+
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            {% with missing=horse.missing_identity %}
+            {% if missing %}
+            <p class="text-sm text-sage">Missing: {{ missing|join:", " }}.{% if feature_access.horses.full %} <a href="{% url 'horse_update' horse.pk %}" hx-get="{% url 'horse_quick_edit' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit {{ horse.name }}" class="link tap-pad">Add</a>{% endif %}</p>
+            {% else %}<span></span>{% endif %}
+            {% endwith %}
+            {% if feature_access.horses.full %}
+            <a href="{% url 'horse_identifier_add' horse.pk %}" hx-get="{% url 'horse_identifier_add' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Add a number or link for {{ horse.name }}" class="btn-ghost btn-xs">+ Number or link</a>
+            {% endif %}
+        </div>
+    </div>
+</div>

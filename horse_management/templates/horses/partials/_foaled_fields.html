@@ -1,0 +1,10 @@
+{% comment %}
+The foaling date: a full date, or only the year (maybe a guess). Inside a
+two-column form grid. Age is worked out from it, a year older on
+1 January (1 August for a southern-hemisphere country).
+{% endcomment %}
+{% include "includes/form_field.html" with field=form.date_of_birth help="Age is worked out from this" %}
+<div class="space-y-2">
+    {% include "includes/form_field.html" with field=form.foaled_year help="Use this if the exact date is not known" %}
+    {% include "includes/form_field.html" with field=form.foaled_year_estimated %}
+</div>

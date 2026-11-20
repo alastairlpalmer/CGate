@@ -58,7 +58,7 @@ GUIDES = [
     Guide('profile-and-security', 'Your profile and security', 'Your name, email, phone, photo, password and two-step sign-in.',
           'Start here', keywords=('account', 'password', 'two-step', 'mfa', 'authenticator', 'photo', 'email', 'google')),
     Guide('horses', 'Horses', 'Add horses, log arrivals, moves and departures, and keep their records.',
-          'The yard', features=('horses',), keywords=('arrival', 'departure', 'move', 'passport', 'microchip', 'photo')),
+          'The yard', features=('horses',), keywords=('arrival', 'departure', 'move', 'passport', 'microchip', 'ueln', 'scan', 'age', 'photo')),
     Guide('locations', 'Locations and the map', 'Fields, sites and barns, the map, and resting a field.',
           'The yard', features=('locations',), keywords=('field', 'paddock', 'site', 'barn', 'stable', 'map', 'rest', 'capacity')),
     Guide('feed', 'Feed', 'Feed stock, feeding out and low stock.',

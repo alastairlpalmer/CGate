@@ -69,6 +69,7 @@ does from the horse page, so nothing here has to know it is in a pane.
     <div>
         <div class="min-w-0">
             <h2 class="text-xl font-semibold font-heading text-charcoal leading-tight">{{ horse.name }}</h2>
+            {% if horse.show_registered_name %}<p class="text-sm text-charcoal-light">Registered as {{ horse.registered_label }}</p>{% endif %}
             <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
                 {% if horse.is_active %}
                 <span class="badge-success"><span class="w-1.5 h-1.5 rounded-full bg-forest mr-1.5"></span>Active</span>
@@ -78,9 +79,12 @@ does from the horse page, so nothing here has to know it is in a pane.
                 {% if not horse.has_passport %}
                 <span class="badge-warning">No passport</span>
                 {% endif %}
+                {% if horse.is_identity_checked %}
+                <span class="badge-success">ID checked</span>
+                {% endif %}
             </div>
             <p class="mt-2 text-sm text-sage">
-                {% if horse.calculated_age %}<span class="text-charcoal-light font-medium">{{ horse.calculated_age }}yo</span> · {% endif %}{{ horse.get_color_display|default:"Colour not set" }} · {{ horse.get_sex_display|default:"Sex not set" }}{% if horse.date_of_birth %} · born {{ horse.date_of_birth|date:"j M Y" }}{% endif %}
+                {% if horse.age_label %}<span class="text-charcoal-light font-medium">{{ horse.age_label }}</span> · {% endif %}{{ horse.get_color_display|default:"Colour not set" }} · {{ horse.get_sex_display|default:"Sex not set" }}{% if horse.date_of_birth %} · {{ horse.foaled_display }}{% endif %}
             </p>
             {% if ownership_shares %}
             <p class="mt-1 text-sm text-sage">

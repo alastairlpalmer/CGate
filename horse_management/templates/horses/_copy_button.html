@@ -1,0 +1,9 @@
+{% comment %}
+A small Copy button for a number. Copies ``value`` exactly (no spaces).
+Clipboard access can be refused; the button then says to select it.
+Usage: {% include 'horses/_copy_button.html' with value=horse.microchip label="Copy microchip" %}
+{% endcomment %}
+<button type="button" class="btn-ghost btn-xs" aria-label="{{ label }}"
+        x-data="{ done: '' }" data-copy="{{ value }}"
+        @click="navigator.clipboard ? navigator.clipboard.writeText($el.dataset.copy).then(() => { done = 'Copied'; setTimeout(() => done = '', 1500) }, () => { done = 'Select it to copy' }) : (done = 'Select it to copy')"
+        x-text="done || 'Copy'">Copy</button>

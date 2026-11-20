@@ -13,6 +13,7 @@ from .models import (
     BusinessSettings,
     FailedTask,
     Horse,
+    HorseIdentifier,
     Location,
     Owner,
     OwnershipShare,
@@ -169,17 +170,23 @@ class OwnershipShareInline(admin.TabularInline):
     readonly_fields = ['created_at', 'updated_at']
 
 
+class HorseIdentifierInline(admin.TabularInline):
+    model = HorseIdentifier
+    extra = 0
+    fields = ['kind', 'issuer', 'value', 'url', 'checked']
+
+
 @admin.register(Horse)
 class HorseAdmin(admin.ModelAdmin):
     list_display = [
-        'name', 'date_of_birth', 'age', 'sex', 'color', 'current_owner_display',
+        'name', 'date_of_birth', 'dob_precision', 'sex', 'color', 'current_owner_display',
         'current_location_display', 'is_active'
     ]
-    list_filter = ['sex', 'color', 'is_active', 'has_passport']
-    search_fields = ['name', 'passport_number', 'notes', 'sire_name']
-    readonly_fields = ['created_at', 'updated_at']
+    list_filter = ['sex', 'color', 'is_active', 'has_passport', 'dob_precision']
+    search_fields = ['name', 'registered_name', 'passport_number', 'microchip', 'ueln', 'notes', 'sire_name']
+    readonly_fields = ['uid', 'created_at', 'updated_at', 'identity_checked_at', 'identity_checked_by']
     raw_id_fields = ['dam']
-    inlines = [OwnershipShareInline]
+    inlines = [OwnershipShareInline, HorseIdentifierInline]
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
