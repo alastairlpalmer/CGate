@@ -41,6 +41,15 @@
                     <label for="{{ form.description.id_for_label }}" class="text-sm font-medium text-charcoal">Description</label>
                     {{ form.description }}
                 </div>
+                {% if form.includes_exercise %}
+                <div>
+                    <div class="flex items-center gap-2">
+                        {{ form.includes_exercise }}
+                        <label for="{{ form.includes_exercise.id_for_label }}" class="text-sm font-medium text-charcoal">{{ form.includes_exercise.label }}</label>
+                    </div>
+                    <p class="mt-1 text-xs text-sage">{{ form.includes_exercise.help_text }}</p>
+                </div>
+                {% endif %}
                 <div class="flex items-center gap-2">
                     {{ form.is_active }}
                     <label for="{{ form.is_active.id_for_label }}" class="text-sm font-medium text-charcoal">Active</label>

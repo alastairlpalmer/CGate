@@ -19,7 +19,7 @@ from core.permissions import (
 )
 from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_response
 
-from . import board, load, overview, services
+from . import board, charges, load, overview, services
 from .access import TrainingEnabledMixin, training_enabled
 from .forms import (
     ActivityForm, BoardSettingsForm, HorseTrainingForm, LotDayForm, LotForm, RiderForm, VenueForm,
@@ -47,6 +47,15 @@ def _safe_next(request, fallback):
 
 def _date_label(day):
     return f"{day:%a} {day.day} {day:%b %Y}"
+
+
+def _charge_feedback(request, counts):
+    """Phase 5: say when a charge could not be made. Prices are not shown (D11)."""
+    if counts and counts.get('no_owner'):
+        messages.warning(
+            request,
+            "Training recorded, but no charge was made: the horse has no current owner to bill.",
+        )
 
 
 def _report(request, result, done_word):
@@ -257,7 +266,9 @@ class ActivityCreateView(TrainingEnabledMixin, ActivityFormViewMixin, PopupFormM
             f"Recorded {activity.work_type.name} for {activity.horse.name} on {_date_label(activity.date)}"
             f" ({activity.get_status_display().lower()}).",
         )
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        _charge_feedback(self.request, charges.sync([self.object]))
+        return response
 
 
 class ActivityUpdateView(TrainingEnabledMixin, ActivityFormViewMixin, PopupFormMixin,
@@ -267,10 +278,19 @@ class ActivityUpdateView(TrainingEnabledMixin, ActivityFormViewMixin, PopupFormM
         return Activity.objects.select_related('horse', 'work_type')
 
     def form_valid(self, form):
+        # Phase 5: a record whose charge is on a live invoice is not changed.
+        billed = charges.refuse_if_billed([Activity.objects.select_related('horse', 'extra_charge').get(pk=self.object.pk)])
+        if billed:
+            form.add_error(None, charges.billed_message(billed))
+            return self.form_invalid(form)
         form.instance.updated_by = self.request.user
         board.apply_row_edit(form.instance, set(form.changed_data))
+        if 'work_type' in form.changed_data:
+            charges.reset_cost(form.instance)   # the new work's price
         messages.success(self.request, f"Training record for {form.instance.horse.name} saved.")
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        _charge_feedback(self.request, charges.sync([self.object]))
+        return response
 
 
 @training_enabled
@@ -281,6 +301,14 @@ def activity_delete(request, pk):
     back = _safe_next(request, reverse('horse_detail', kwargs={'pk': activity.horse_id}))
     if request.method == 'POST':
         name = activity.horse.name
+        billed = charges.refuse_if_billed([activity])
+        if billed:
+            messages.error(request, charges.billed_message(billed, 'record'))
+            if is_popup_request(request):
+                return popup_saved_response()
+            return redirect(back)
+        if activity.extra_charge_id and not activity.extra_charge.is_deleted:
+            activity.extra_charge.delete()  # phase 5: its unbilled charge goes too
         activity.delete()
         messages.success(request, f"Training record for {name} deleted.")
         if is_popup_request(request):
@@ -333,6 +361,8 @@ def training_setup(request):
         by_day = {p.weekday: p for p in lot.week_plan.all()}
         lot.week = [by_day.get(day) for day in range(7)]
     return render(request, 'training/setup.html', {
+        # Phase 5 (D11): prices show only to roles that can see charges.
+        'show_prices': has_feature_access(request.user, 'charges', LEVEL_VIEW),
         'active_types': [w for w in work_types if w.is_active],
         'archived_types': [w for w in work_types if not w.is_active],
         'board_form': board_form,
@@ -353,6 +383,11 @@ class WorkTypeFormViewMixin:
 
     def get_success_url(self):
         return reverse('training_setup')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['can_set_price'] = has_feature_access(self.request.user, 'charges', LEVEL_FULL)
+        return kwargs
 
 
 class WorkTypeCreateView(TrainingEnabledMixin, WorkTypeFormViewMixin, PopupFormMixin,
@@ -716,6 +751,10 @@ def lot_day_action(request, pk, action):
             messages.success(request, f"{lot_day.lot.name} done: {result.changed} horse{'s' if result.changed != 1 else ''}.")
             if result.left_yard:
                 messages.warning(request, f"Left the yard, so not marked: {', '.join(result.left_yard)}.")
+            missing = result.charges.get('no_owner') if result.charges else 0
+            if missing and has_feature_access(request.user, 'charges', LEVEL_VIEW):
+                messages.warning(request, f"No training charge made for {missing} horse{'s' if missing != 1 else ''}: "
+                                          "no current owner to bill.")
         elif action == 'reopen':
             board.reopen_lot(lot_day, user=request.user)
             messages.success(request, f"{lot_day.lot.name} is open again.")

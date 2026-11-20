@@ -1154,6 +1154,12 @@ class RateType(models.Model):
         validators=[MinValueValidator(Decimal('0.00'))]
     )
     description = models.TextField(blank=True)
+    # Training phase 5 (D8): a livery that includes exercise is never
+    # charged for training sessions (training/charges.py).
+    includes_exercise = models.BooleanField(
+        default=False, verbose_name='Includes exercise',
+        help_text='Tick for a ridden or schooling livery. Training sessions are then never charged on top.',
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
