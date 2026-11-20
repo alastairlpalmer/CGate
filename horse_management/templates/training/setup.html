@@ -39,6 +39,7 @@
                         <th>Kind</th>
                         <th>Effort</th>
                         <th>Usual minutes</th>
+                        {% if show_prices %}<th>Price</th>{% endif %}
                         <th>Records</th>
                         <th>Actions</th>
                     </tr>
@@ -50,6 +51,7 @@
                         <td data-label="Kind">{{ w.get_kind_display }}</td>
                         <td data-label="Effort">{% if w.is_rest %}<span class="text-sage">None</span>{% else %}<span class="badge-neutral">{{ w.get_effort_display }}</span>{% endif %}</td>
                         <td data-label="Usual minutes" class="text-sage">{{ w.default_minutes|default:"-" }}</td>
+                        {% if show_prices %}<td data-label="Price" class="tabular-nums">{% if w.price %}£{{ w.price }}{% else %}<span class="text-sage">No charge</span>{% endif %}</td>{% endif %}
                         <td data-label="Records" class="text-sage">{{ w.uses }}</td>
                         <td>
                             <a href="{% url 'training_work_type_update' w.pk %}" hx-get="{% url 'training_work_type_update' w.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit {{ w.name }}" class="btn-ghost btn-xs">Edit</a>
@@ -60,7 +62,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="6"><p class="py-6 text-center text-sm text-sage">No work types. Add one to start recording training.</p></td></tr>
+                    <tr><td colspan="7"><p class="py-6 text-center text-sm text-sage">No work types. Add one to start recording training.</p></td></tr>
                     {% endfor %}
                 </tbody>
             </table>

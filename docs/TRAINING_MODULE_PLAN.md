@@ -2,7 +2,7 @@
 
 **Goal:** Anyone on the yard can see, for each horse, what work it did, when, and what is planned next. A trainer puts horses into lots, gives each lot its work for the day, and confirms it. Staff can also record work for one horse or for many horses in one step. Every piece of work is one record in the database, with its date.
 **Scope:** A new `training` app. A Training section in the sidebar (the "trainer panel"). A Training card on the horse page. No owner login, no offline mode, no drag tool in the first phases (section 12).
-**Status:** Phases 1 to 4 are built, behind `TRAINING_ENABLED` (off by default). Sections 17 to 21 record where the builds departed from this plan. Next: phase 5 (charges), only if the owner confirms D8 and D11. D9 (the phone signal) is still to be tested at the yard (section 4.2).
+**Status:** Phases 1 to 5 are built, behind `TRAINING_ENABLED` (off by default). The owner confirmed D8 and D11 on 2026-11-20. Sections 17 to 22 record where the builds departed from this plan. Section 23 is the bug and speed review of 2026-11-20. The Training Overview has its own plan, `TRAINING_DASHBOARD_PLAN.md`. D9 (the phone signal) is still to be tested at the yard (section 4.2).
 **Build estimate:** About 1 to 2 days of build for each of the 6 pull requests, from the speed of the farrier and barns builds. The calendar time is set by the gates: one week of real use after phases 1, 2b and 3 (section 13).
 
 Written for the owner and for an AI coding agent. Read all of it before you write any code.
@@ -1294,3 +1294,55 @@ Where the build departed from this document, and why:
 | S7 | The 28-day strip "coloured by effort". | Two rows of 14 squares, each with a letter (E, S, F, R, ×, ?) and an `aria-label`, and a key under it. | 5.13: colour is never the only signal. |
 | S8 | A threshold "setting". | `TrainingSettings.no_work_days`, on the **Set up** tab with the board setting. | One place for the board's settings. |
 | S9 | Print and TV views. | One page for both, `board/<date>/print/` and `board/<date>/tv/`, with its own small style sheet and no app around it. The TV page reloads each minute. The links show on a computer only. | Nothing on the page can be tapped by mistake on a TV. |
+
+## 22. What changed in the build of phase 5
+
+The owner confirmed D8 (charge for some sessions) and D11 (staff without Full on Charges can confirm priced work) on 2026-11-20.
+
+Phase 5 adds `WorkType.price`, `RateType.includes_exercise`, `Activity.cost` and `Activity.extra_charge`, the charge type and invoice line type **Training** (migrations `training/0010`, `core/0066`, `billing/0022`, `invoicing/0015`), and `training/charges.py`. Every item in the phase 5 definition of done (9.6) has a test in `training/test_charges.py` (22 tests). The full suite passes.
+
+Where the build departed from this document, and why:
+
+| # | The plan said | The build does | Why |
+|---|---|---|---|
+| P1 | `sync_activity_charge(activity)`. | `charges.sync(activities)`, for one or many. Mark done, Mark lot done, Reopen lot, a Done row added to a done lot, the record form, delete and the bulk bar call it, inside their own transaction. | The board changes many rows with one bulk update, which sends no signals. One call after each change keeps the rule in one place. |
+| P2 | A charge on a live invoice blocks Reopen, Change and delete. | The same. The message names the invoice when the app can find it; else it says "an invoice". | A charge can be marked invoiced with no invoice line (an old data repair). |
+| P3 | Nothing about the Charges page. | `training_activity` joins `ExtraCharge.HEALTH_RECORD_ACCESSORS`, so a charge edit, a margin, a restore and the purge treat a training charge as they treat a health charge: an amount changed on the Charges page is kept. | One set of rules for every charge that comes from a record. |
+| P4 | The price is taken when the work becomes Done. | The same; and a new work type on a Done record takes the new work type's price. A record that is no longer Done loses its price, so it takes the price of the day when it is Done again. | The price belongs to the work that was done. |
+| P5 | Nothing about horses with no owner. | No charge, and a warning: on the record form, and after **Mark lot done** for users who can see charges. | Staff without charges access must not learn about billing from the board (D11). |
+| P6 | Nothing about the rate form. | The **Includes exercise** tick shows on the rate type form only when Training is on. | A yard without Training does not see a setting it cannot use. |
+| P7 | Prices show only with view on Charges. | The price column on **Set up** shows only with view on Charges. The price input shows only with Full on Charges; without it, a save keeps the price. | D11. |
+
+## 23. Bug and speed review (2026-11-20)
+
+Two separate reviews of the Training code (the rules, and the pages and access), and a speed test with a yard of 120 horses in 5 lots and 7,000 records (60 days). Each bug has a test in `training/test_review_fixes.py`. Each test fails on the old code and passes on the new code.
+
+### 23.1 Bugs fixed
+
+| # | Bug | Fix |
+|---|---|---|
+| B1 | A new status with the date left as it was kept the old start date. The boards then used that old date: Planned rows on every later day, past days included, were deleted. | A new status with an unchanged date starts today. A status change marks Planned rows from its date to today as Did not work, and deletes only rows after today. Rows before its date do not change. |
+| B2 | A horse put back in work from a later date went on today's board, where it could be marked Done (and charged). | It goes on today's board only when the date is today or earlier. |
+| B3 | "No work for N days" counted from the last work even when the status started later. A horse back in work yesterday after 40 days' rest showed "No work for 40 days" (chip, dashboard, Overview). | `load.idle_start`: the later of the last work and the status start. |
+| B4 | A lot marked done stayed "Not confirmed" when one of its horses had left the yard (that row stays Planned). | The not-confirmed counts skip horses that left the yard. |
+| B5 | Copy the last board brought back an archived work type, with its price. | An archived work type is not copied: the lot keeps its usual work. |
+| B6 | The Overview read up to 6 fewer days of history than the dashboard. | Its window reaches 60 days back from today. |
+| B7 | Change lot and type a note in the status pop-up: the horse went back to Not in training. | When the status is not chosen, the horse keeps its status, including the In work that a move into a lot sets. |
+| B8 | `/training/board/0001-01-01/` and `/9999-12-31/` gave a server error. | Dates outside the years 1900 to 2999 give 404. |
+| B9 | Move with a lot that is not a number gave a server error. | 400. |
+| B10 | The record form checked "on an invoice" and saved in two steps. | One locked step. |
+
+Not changed: the reviews found no access or data-leak problem. Every change needs Full on Training; prices and health facts show only with the right access; `TRAINING_ENABLED` is checked on every page.
+
+### 23.2 Speed
+
+The pages read 60 days of records for each horse to work out the facts. With 7,000 records each page made 14,000 objects (each record, and a copy of its work type). `load.rows_for` now reads only the fields the facts use, and shares one object for each work type.
+
+| Page (120 horses, 7,000 records, cached templates) | Before | After |
+|---|---|---|
+| Training Overview | 243 ms | 154 ms |
+| Lot board | 271 ms | 172 ms |
+| Dashboard | 174 ms | 139 ms |
+| Lots, Log, horse page | 30 to 55 ms | no change |
+
+The number of queries does not grow with the yard (the Overview test checks this). The rest of the time is the template for the board, which shows each horse's row in full.

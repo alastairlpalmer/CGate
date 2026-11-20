@@ -1137,8 +1137,9 @@ OwnershipShareFormSet = forms.inlineformset_factory(
 class RateTypeForm(forms.ModelForm):
     class Meta:
         model = RateType
-        fields = ['name', 'daily_rate', 'applies_to', 'description', 'is_active']
+        fields = ['name', 'daily_rate', 'applies_to', 'description', 'includes_exercise', 'is_active']
         widgets = {
+            'includes_exercise': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
             'name': forms.TextInput(attrs={'class': 'form-input'}),
             'applies_to': forms.Select(attrs={'class': 'form-select'}),
             'daily_rate': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
@@ -1148,6 +1149,10 @@ class RateTypeForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        from django.conf import settings
+        if not getattr(settings, 'TRAINING_ENABLED', False):
+            # Training phase 5: the tick matters only with Training on.
+            self.fields.pop('includes_exercise', None)
         if self.instance.pk:
             # An existing rate's price changes from a date (RatePriceForm).
             del self.fields['daily_rate']

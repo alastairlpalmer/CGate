@@ -179,18 +179,23 @@ class BulkActivityForm(ActivityRulesMixin, forms.ModelForm):
 class WorkTypeForm(forms.ModelForm):
     class Meta:
         model = WorkType
-        fields = ['name', 'kind', 'effort', 'default_minutes', 'position']
+        fields = ['name', 'kind', 'effort', 'default_minutes', 'price', 'position']
         widgets = {
+            'price': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'min': 0, 'inputmode': 'decimal'}),
             'name': forms.TextInput(attrs={'class': 'form-input'}),
             'kind': forms.Select(attrs={'class': 'form-select'}),
             'effort': forms.Select(attrs={'class': 'form-select'}),
             'default_minutes': forms.NumberInput(attrs={'class': 'form-input', 'min': 0, 'max': 600}),
             'position': forms.NumberInput(attrs={'class': 'form-input', 'min': 0}),
         }
-        labels = {'default_minutes': 'Usual minutes'}
+        labels = {'default_minutes': 'Usual minutes', 'price': 'Price (£)'}
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, can_set_price=False, **kwargs):
         super().__init__(*args, **kwargs)
+        if not can_set_price:
+            # Phase 5 (D11): only Full on Charges sets a price. Without it the
+            # field is not in the form, so a save keeps the price as it is.
+            self.fields.pop('price')
         self.fields['effort'].choices = [
             (value, 'None (rest only)' if value == WorkType.Effort.NONE else label)
             for value, label in WorkType.Effort.choices

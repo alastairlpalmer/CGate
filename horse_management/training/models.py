@@ -6,7 +6,10 @@ activities, and later the lot board will too. Only Done activities count as
 work (5.2).
 """
 
+from decimal import Decimal
+
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -43,6 +46,13 @@ class WorkType(models.Model):
         help_text="The usual length. A record with no minutes uses this.",
     )
     position = models.PositiveSmallIntegerField(default=0, help_text="Order in the lists. Lower comes first.")
+    # Phase 5 (D8): the charge to the owner for one Done session. Empty: no
+    # charge. Only a user with Full on Charges sets it (D11).
+    price = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal('0.00'))],
+        help_text='Charged to the owner for each Done session, unless the horse\'s livery includes exercise. Leave empty for no charge.',
+    )
     is_active = models.BooleanField(default=True)
 
     objects = WorkTypeQuerySet.as_manager()
@@ -146,6 +156,14 @@ class Activity(models.Model):
     rider = models.ForeignKey('Rider', null=True, blank=True, on_delete=models.PROTECT, related_name='activities')
     rider_is_owner = models.BooleanField(default=False, help_text="The horse's owner rode or handled it.")
     gear = models.CharField(max_length=120, blank=True)
+    # Phase 5 (D8): the price when the work became Done, kept after a price
+    # change. The charge follows it, as health records' cost does
+    # (billing ExtraCharge.linked_health_record).
+    cost = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    extra_charge = models.OneToOneField(
+        'billing.ExtraCharge', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='training_activity',
+    )
     history = HistoricalRecords()
 
     objects = ActivityQuerySet.as_manager()

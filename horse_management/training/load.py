@@ -17,14 +17,32 @@ STRIP_DAYS = 28
 
 # ─── Reading ─────────────────────────────────────────────────────────
 
+# The fields the facts read. A yard of 120 horses has about 7,000 records in
+# the window; reading only these, with one shared copy of each work type,
+# makes the Overview, the board and the dashboard about twice as fast.
+ROW_FIELDS = ('id', 'horse_id', 'date', 'status', 'reason', 'effort', 'minutes', 'work_type_id')
+
+
 def rows_for(horse_ids, day, *, window=WINDOW_DAYS):
-    """``{horse_id: [Activity, ...]}`` for the window up to ``day``."""
-    rows = (
-        Activity.objects.filter(horse_id__in=horse_ids, date__lte=day, date__gt=day - timedelta(days=window))
-        .select_related('work_type').order_by('date', 'pk')
-    )
+    """``{horse_id: [Activity, ...]}`` for the window up to ``day``.
+
+    Only ROW_FIELDS are loaded: reading another field of a row costs one
+    query for that row. Each row's ``work_type`` is the one shared object.
+    """
+    horse_ids = list(horse_ids)
     by_horse = {horse_id: [] for horse_id in horse_ids}
+    if not horse_ids:
+        return by_horse
+    rows = list(
+        Activity.objects.filter(horse_id__in=horse_ids, date__lte=day, date__gt=day - timedelta(days=window))
+        .only(*ROW_FIELDS).order_by('date', 'pk')
+    )
+    if not rows:
+        return by_horse
+    work_types = WorkType.objects.in_bulk({row.work_type_id for row in rows})
+    cache = Activity._meta.get_field('work_type')
     for row in rows:
+        cache.set_cached_value(row, work_types[row.work_type_id])
         by_horse.setdefault(row.horse_id, []).append(row)
     return by_horse
 
@@ -123,6 +141,14 @@ def first_work_gap(rows, day):
     return gap if gap >= FIRST_WORK_GAP else None
 
 
+def idle_start(last, since):
+    """The day the idle count starts: the later of the last work and the day
+    the status started. A horse put back in work yesterday after a long rest
+    is not "No work for 40 days"."""
+    days = [d for d in (last, since) if d]
+    return max(days) if days else None
+
+
 # ─── What the pages show ─────────────────────────────────────────────
 
 def chips(rows, day, *, threshold, days_per_week=None, on_board=True, since=None):
@@ -138,7 +164,7 @@ def chips(rows, day, *, threshold, days_per_week=None, on_board=True, since=None
         out.append({'text': f'First work in {gap} days', 'tone': 'info'})
     elif on_board:
         last = last_work_date(rows, day)
-        start = last or since
+        start = idle_start(last, since)
         idle = (day - start).days if start else None
         if idle is not None and idle >= threshold:
             waiting = unconfirmed_days(rows, day)

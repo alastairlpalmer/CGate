@@ -17,10 +17,11 @@ request. The rules:
 from dataclasses import dataclass, field
 
 from django.db import IntegrityError, transaction
-from django.db.models import Max
+from django.db.models import Max, Prefetch
 from django.utils import timezone
 from simple_history.utils import bulk_create_with_history, bulk_update_with_history
 
+from . import charges
 from .models import Activity, HorseTraining, Lot, LotDay, LotMember, LotWeekPlan, TrainingSettings
 
 ROW_FIELDS = ['status', 'reason', 'lot_action', 'work_type', 'venue', 'updated_by', 'updated_at']
@@ -49,7 +50,9 @@ def last_not_confirmed_before(today=None):
     """The latest past date with Planned rows on its board (D4)."""
     today = today or timezone.localdate()
     return (
-        Activity.objects.filter(lot_day__isnull=False, status=Activity.Status.PLANNED, date__lt=today)
+        Activity.objects.filter(
+            lot_day__isnull=False, status=Activity.Status.PLANNED, date__lt=today, horse__is_active=True,
+        )
         .aggregate(last=Max('date'))['last']
     )
 
@@ -154,14 +157,17 @@ def _rows_from_copy(lot_days, copy_from, on_board, user):
     rows, taken, copied_lots = [], set(), set()
     sources = (
         LotDay.objects.filter(date=copy_from).select_related('work_type')
-        .prefetch_related('activities')
+        .prefetch_related(Prefetch('activities', queryset=Activity.objects.select_related('work_type')))
     )
     for source in sources:
         target = by_lot.get(source.lot_id)
         if target is None:          # the lot is archived now
             continue
         copied_lots.add(source.lot_id)
-        target.work_type = source.work_type
+        # An archived work type is not copied: the lot keeps the work it
+        # started with (its usual work), so no new row uses it or its price.
+        if source.work_type.is_active:
+            target.work_type = source.work_type
         target.venue_id = source.venue_id
         target.start_time = source.start_time
         target.notes = source.notes
@@ -170,7 +176,7 @@ def _rows_from_copy(lot_days, copy_from, on_board, user):
         for old in sorted(source.activities.all(), key=lambda a: (a.position, a.pk)):
             if old.horse_id not in on_board or (target.pk, old.horse_id) in taken:
                 continue
-            own = not old.follows_lot
+            own = not old.follows_lot and old.work_type.is_active
             rows.append(_row(
                 target, old.horse_id, position, user,
                 work_type=old.work_type if own else target.work_type,
@@ -309,6 +315,7 @@ def set_lot_work(lot_day, *, work_type, start_time, notes, user, venue=None):
 class MarkLotResult:
     changed: int = 0
     left_yard: list = field(default_factory=list)   # horse names, rows left Planned
+    charges: dict = field(default_factory=dict)     # phase 5: training.charges.sync counts
 
 
 @transaction.atomic
@@ -333,6 +340,7 @@ def mark_lot_done(lot_day, *, user, today=None):
         to_change.append(row)
     _save_rows(to_change, user)
     result.changed = len(to_change)
+    result.charges = charges.sync(to_change)     # phase 5, in the same transaction
     lot_day.status = LotDay.Status.DONE
     lot_day.confirmed_by = user
     lot_day.confirmed_at = timezone.now()
@@ -365,12 +373,16 @@ def cancel_lot(lot_day, reason, *, user):
 def reopen_lot(lot_day, *, user):
     """Change back only the rows a lot action set. No time limit (5.12)."""
     lot_day = _lock(lot_day)
-    rows = list(lot_day.activities.select_for_update().exclude(lot_action=''))
+    rows = list(lot_day.activities.select_for_update().select_related('horse', 'extra_charge').exclude(lot_action=''))
+    billed = charges.refuse_if_billed(rows)
+    if billed:
+        raise BoardError(charges.billed_message(billed, 'record'))
     for row in rows:
         row.status = Activity.Status.PLANNED
         row.reason = ''
         row.lot_action = ''
     _save_rows(rows, user)
+    charges.sync(rows)      # phase 5: the unbilled charges go
     lot_day.status = LotDay.Status.PLANNED
     lot_day.confirmed_by = None
     lot_day.confirmed_at = None
@@ -424,6 +436,8 @@ def add_horses(lot_day, horses, *, user, today=None):
             continue
         present.add(horse.pk)
         result.added.append(horse.name)
+        if done:
+            charges.sync([row])     # phase 5: Done with a done lot
     return result
 
 
@@ -479,11 +493,13 @@ class StatusBoardResult:
 def apply_status_to_boards(horse, status, day, *, user, today=None):
     """Make the started boards follow a training status change (7.4).
 
-    Off the board (Resting, Box rest, Not in training): the Planned row on
-    ``day`` becomes Did not work, "Resting or box rest" (the true record);
-    Planned board rows after ``day`` are deleted (they are plans).
+    Off the board (Resting, Box rest, Not in training): Planned rows from
+    ``day`` to today (or on ``day``, when it is later) become Did not work,
+    "Resting or box rest" (the true record); Planned rows after that are
+    deleted (they are plans). Rows before ``day`` do not change.
     Back on the board: the horse goes on today's board in its standing lot,
-    if that board has started and the horse is not on it.
+    if that board has started, the horse is not on it, and ``day`` is not
+    after today (a horse back in work next week is not in today's lot).
     """
     today = today or timezone.localdate()
     result = StatusBoardResult()
@@ -491,20 +507,21 @@ def apply_status_to_boards(horse, status, day, *, user, today=None):
         horse=horse, lot_day__isnull=False, status=Activity.Status.PLANNED,
     )
     if status not in HorseTraining.ON_BOARD:
-        rows = list(planned.filter(date=day))
+        last_past = max(day, today)
+        rows = list(planned.filter(date__gte=day, date__lte=last_past))
         for row in rows:
             row.status = Activity.Status.NOT_DONE
             row.reason = Activity.Reason.RESTING
             row.lot_action = ''
         _save_rows(rows, user)
         result.not_done = len(rows)
-        later = planned.filter(date__gt=day)
+        later = planned.filter(date__gt=last_past)
         result.removed = later.count()
         for row in later:
             row.delete()
         return result
     member = LotMember.objects.filter(horse=horse).first()
-    if member is None or not horse.is_active:
+    if member is None or not horse.is_active or day > today:
         return result
     lot_day = LotDay.objects.filter(lot_id=member.lot_id, date=today, status=LotDay.Status.PLANNED).first()
     if lot_day and horse.pk not in horses_on_board(today):
