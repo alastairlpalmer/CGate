@@ -936,6 +936,16 @@ class HorseListView(FeatureAccessMixin, ListView):
             context['horses'] = _sort_horses(horses, self.sort)
             context.update(self._cap_flat(context, 'horses'))
 
+        if not self.shows_movements:
+            # Rows link to the horse page with ?from=<this query>, and the
+            # rows' order goes in the session for its previous / next.
+            context['list_query'] = self.request.GET.urlencode()
+            if 'grouped_horses' in context:
+                shown = [h for group in context['grouped_horses'] for h in group['horses']]
+            else:
+                shown = list(context['horses'])
+            _remember_list_order(self.request, shown)
+
         return context
 
     def _cap_rows(self, groups):
@@ -1214,6 +1224,43 @@ def build_horse_timeline(
     return timeline
 
 
+# The horse list's rows in the order shown, kept in the session for the
+# horse page's back link and previous / next (UX review E1). The list links
+# to a horse with ?from=<the list's query>, and the horse page steps
+# through the same rows while that query matches.
+LIST_ORDER_KEY = 'horse_list_order'
+LIST_ORDER_LIMIT = 500
+
+
+def _remember_list_order(request, horses):
+    ids = list(dict.fromkeys(h.pk for h in horses))[:LIST_ORDER_LIMIT]
+    request.session[LIST_ORDER_KEY] = {'query': request.GET.urlencode(), 'ids': ids}
+
+
+def list_from(request):
+    """The query of the list the horse page was opened from, tidied, or ''."""
+    from django.http import QueryDict
+
+    raw = request.GET.get('from', '')
+    return QueryDict(raw).urlencode() if raw else ''
+
+
+def list_neighbours(request, horse, query):
+    """``(previous, next, (place, total))`` inside the list the user came
+    from, or None when the session does not hold that list (opened in
+    another browser, or the list changed since)."""
+    order = request.session.get(LIST_ORDER_KEY) or {}
+    ids = order.get('ids') or []
+    if not query or order.get('query') != query or horse.pk not in ids:
+        return None
+    i = ids.index(horse.pk)
+    near_ids = [pk for pk in (ids[i - 1] if i else None, ids[i + 1] if i + 1 < len(ids) else None) if pk]
+    near = {h.pk: h for h in Horse.objects.filter(pk__in=near_ids).only('pk', 'name')}
+    previous = near.get(ids[i - 1]) if i else None
+    following = near.get(ids[i + 1]) if i + 1 < len(ids) else None
+    return previous, following, (i + 1, len(ids))
+
+
 def horse_neighbours(horse):
     """``(previous, next)`` in the horse list's default order, name A to Z.
 
@@ -1295,7 +1342,15 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         horse = self.object
-        context['previous_horse'], context['next_horse'] = horse_neighbours(horse)
+        # Back and previous / next stay inside the list the user came from
+        # (UX review E1); without one, the whole list, name A to Z.
+        query = list_from(self.request)
+        context['list_query'] = query
+        in_list = list_neighbours(self.request, horse, query)
+        if in_list:
+            context['previous_horse'], context['next_horse'], context['list_place'] = in_list
+        else:
+            context['previous_horse'], context['next_horse'] = horse_neighbours(horse)
         # Prefetch current placement once to avoid repeated DB hits in template
         context['current_placement'] = horse.placements.filter(
             end_date__isnull=True
@@ -1407,6 +1462,17 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
             horse.placements.filter(end_date__isnull=False).select_related('location')
             .order_by('-end_date', '-pk').first())
         context['training_card'] = training_horse.training_card(self.request.user, horse)
+        # History (UX review E2): what changed on the horse, its extra
+        # numbers and its pedigree record, who changed it and when. The
+        # owner and invoice pages show the same panel.
+        from pedigree.models import PedigreeHorse
+
+        from .. import audit
+        context['history_entries'] = audit.merge(
+            audit.history_for(horse),
+            audit.history_of(HorseIdentifier.history.filter(horse_id=horse.pk), 'Horse number or link'),
+            audit.history_of(PedigreeHorse.history.filter(horse_id=horse.pk), 'Pedigree record'),
+        )
 
         return context
 
@@ -1502,6 +1568,43 @@ def _warn_identity(request, horse):
     """
     for warning in horse.identity_warnings():
         messages.warning(request, warning)
+
+
+@feature_required('horses')
+def horse_identity_check(request):
+    """The line under the microchip or UELN box while it is typed (UX
+    review D1): the number in groups, whether its length is the usual
+    one, and any other horse that has it. htmx GET from HorseForm; the
+    ``horse`` being edited is left out of the "also on" check."""
+    from ..identity import (
+        UELN_LENGTH, format_ueln, group_digits, is_standard_microchip, microchip_hint,
+        normalise_microchip, normalise_ueln,
+    )
+
+    if 'microchip' in request.GET:
+        field, value = 'microchip', normalise_microchip(request.GET['microchip'][:60])
+    elif 'ueln' in request.GET:
+        field, value = 'ueln', normalise_ueln(request.GET['ueln'][:30])
+    else:
+        return HttpResponse('')
+    if not value:
+        return HttpResponse('')
+    if field == 'microchip':
+        ok = is_standard_microchip(value)
+        shown = group_digits(value) if ok else value
+        note = microchip_hint(value) if ok else ''
+    else:
+        ok = len(value) == UELN_LENGTH
+        shown = format_ueln(value)
+        note = ''
+    others = Horse.objects.filter(**{field: value})
+    exclude = request.GET.get('horse', '')
+    if exclude.isdigit():
+        others = others.exclude(pk=exclude)
+    return render(request, 'horses/partials/identity_check.html', {
+        'field': field, 'value': value, 'shown': shown, 'ok': ok, 'note': note,
+        'length': len(value), 'others': list(others.order_by('-is_active', 'name')[:3]),
+    })
 
 
 @feature_required('horses')

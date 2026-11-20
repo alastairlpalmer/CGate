@@ -23,7 +23,7 @@ note_form, can_edit, today.
             {{ note_form.note }}
             {% if note_form.note.errors %}<p class="form-error mt-1 text-xs text-error-red" role="alert">{{ note_form.note.errors.0 }}</p>{% endif %}
         </div>
-        <button type="submit" class="btn-secondary btn-xs min-h-[38px]">Add note</button>
+        <button type="submit" class="btn-secondary btn-xs min-h-[44px] sm:min-h-0">Add note</button>
     </form>
     {% endif %}
     {% if notes %}

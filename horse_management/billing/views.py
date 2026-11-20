@@ -168,6 +168,7 @@ class ExtraChargeCreateView(PopupFormMixin, FeatureAccessMixin, CreateView):
     form_class = ExtraChargeForm
     template_name = 'billing/charge_form.html'
     success_url = reverse_lazy('charge_list')
+    popup_intro = 'Bill something that has no health record, for example transport or feed.'
 
     def get_form_class(self):
         # The pop-up sheet (a horse's Quick Action) is about one horse; the

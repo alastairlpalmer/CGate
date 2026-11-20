@@ -9,7 +9,7 @@ Without page_horse (Fill in records) the boxes are not buttons.
 <div class="ped">
     <div class="ped-scroll">
         <div class="ped-tree ped-g{{ tree.generations }}" style="grid-template-rows: repeat({{ tree.rows }}, minmax(var(--ped-row), 1fr))"
-             role="group" aria-label="Pedigree of {{ root.label }}, {{ tree.generations }} generations">
+             role="group" aria-label="Pedigree of {{ root.label }}, {{ tree.generations }} generations"{% if is_page_horse %} tabindex="-1" data-focus-after-swap{% endif %}>
             {% for column, g, lines in tree.gap_list %}
             <svg class="ped-gap ped-gap{{ g }}" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"
                  style="grid-column: {{ column }}; grid-row: 1 / span {{ tree.rows }}">

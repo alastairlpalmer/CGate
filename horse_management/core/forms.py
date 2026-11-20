@@ -555,10 +555,35 @@ class LocationUsageForm(forms.Form):
 
 # A chip scanner that types like a keyboard ends with Enter. In the
 # microchip box that must not submit the form half filled.
+# A chip is digits, so a phone shows the number pad (UX review D1); a
+# scanner still types into the box as before.
 MICROCHIP_INPUT_ATTRS = {
     'class': 'form-input font-mono', 'autocomplete': 'off', 'spellcheck': 'false',
-    'x-data': '', '@keydown.enter.prevent': '',
+    'inputmode': 'numeric', 'x-data': '', '@keydown.enter.prevent': '',
 }
+
+
+def live_identity_check(form, *names):
+    """Check the microchip and UELN boxes while they are typed (UX review
+    D1): htmx asks core.views.horses.horse_identity_check and puts the
+    answer in the next ``.id-check`` line (includes/form_field.html with
+    check=True). The horse being edited is left out of "Also on …"."""
+    import json
+
+    from django.urls import reverse
+
+    for name in names:
+        if name not in form.fields:
+            continue
+        attrs = form.fields[name].widget.attrs
+        attrs.update({
+            'hx-get': reverse('horse_identity_check'),
+            'hx-trigger': 'input changed delay:500ms, blur',
+            'hx-target': 'next .id-check', 'hx-swap': 'innerHTML',
+            'hx-select': 'unset', 'hx-push-url': 'false', 'hx-sync': 'this:replace',
+        })
+        if getattr(form.instance, 'pk', None):
+            attrs['hx-vals'] = json.dumps({'horse': form.instance.pk})
 
 
 class HorseForm(forms.ModelForm):
@@ -596,6 +621,7 @@ class HorseForm(forms.ModelForm):
         required=False, max_length=30, label='UELN',
         widget=forms.TextInput(attrs={
             'class': 'form-input font-mono uppercase', 'autocomplete': 'off', 'spellcheck': 'false',
+            'autocapitalize': 'characters',
         }),
     )
 
@@ -619,7 +645,7 @@ class HorseForm(forms.ModelForm):
             'registered_name': forms.TextInput(attrs={'class': 'form-input', 'autocomplete': 'off'}),
             'country_of_birth': forms.TextInput(attrs={
                 'class': 'form-input uppercase', 'list': 'country-suggestions',
-                'autocomplete': 'off', 'maxlength': '5',
+                'autocomplete': 'off', 'maxlength': '5', 'autocapitalize': 'characters',
             }),
             'breed': forms.TextInput(attrs={'class': 'form-input', 'list': 'breed-suggestions'}),
             'markings': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
@@ -649,6 +675,7 @@ class HorseForm(forms.ModelForm):
                 horse.dob_precision == Horse.DobPrecision.ESTIMATED)
         if horse.height_inches:
             self.initial['height'] = horse.height_display.removesuffix(' hh')
+        live_identity_check(self, 'microchip', 'ueln')
 
     def clean_photo(self):
         return heic_to_jpeg(self.cleaned_data.get('photo'))

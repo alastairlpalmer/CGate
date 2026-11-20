@@ -66,4 +66,19 @@
         var tree = e.target && e.target.closest ? e.target.closest('.ped-tree') : null;
         if (tree && !tree.contains(e.relatedTarget)) { clear(tree); }
     });
+
+    // A box or "Back to …" replaces the diagram it sits in, so the focus
+    // went with it, to the page (UX review C5). Put it on the new
+    // diagram's first stop: "Back to …" on an ancestor's tree, the tree
+    // itself on the horse's own. The generations button is outside the
+    // diagram and keeps its focus.
+    document.addEventListener('htmx:afterSwap', function (e) {
+        var detail = e.detail || {};
+        var target = detail.target;
+        if (!target || target.id !== 'pedigree-diagram') { return; }
+        var source = detail.requestConfig && detail.requestConfig.elt;
+        if (source && document.body.contains(source)) { return; }
+        var next = target.querySelector('[data-focus-after-swap]');
+        if (next) { next.focus(); }
+    });
 })();

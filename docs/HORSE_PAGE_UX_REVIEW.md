@@ -16,8 +16,8 @@ patterns fit this page and which do not.
 |---|---|
 | 1. Quick fixes | Done: B1, A4, C1, C2, C3, C4, C6, B5, G1, G2 |
 | 2. What the page shows first | Done: A1, A2 (not the folded Pedigree card), A5, A6, A7 |
-| 3. Actions and feedback | Done in this branch: B2, B3, B4, B6, B7, B8 (see the notes below the table) |
-| 4. Forms, navigation and history | Not started |
+| 3. Actions and feedback | Done: B2, B3, B4, B6, B7, B8 (see the notes below the table) |
+| 4. Forms, navigation and history | Done in this branch: D1, E1, E2, C5, C8, C9 (see the notes below the table) |
 | 5. Consistency and polish | Not started |
 
 Phase 3 notes:
@@ -46,6 +46,32 @@ Phase 3 notes:
 - B8: each photo has one actions menu (44px target): Use as profile
   picture, Delete photo. The profile photo has a "Profile" mark. The
   category shows only when it is not "Condition".
+
+Phase 4 notes:
+
+- D1: the microchip and UELN boxes (quick edit, full edit, Fill in
+  records) are checked while they are typed: the number in groups,
+  "15 digits" or "N characters, not the usual 15", the chip's country, and
+  "Also on <horse>" (the horse being edited is left out). It informs and
+  never blocks. The chip box opens the number pad on a phone
+  (`inputmode="numeric"`); UELN and country type capitals.
+- E1: the horse list links to a horse with `?from=<the list's query>` and
+  keeps the order of its rows in the session. The horse page then says
+  "Back to the list" (to the same filters), steps through the same rows,
+  and shows "2 of 3". Without `from` it is "All Horses" and A to Z, as
+  before. The ← and → keys step too (`static/js/horse_step.js`).
+- E2: a collapsed History card at the foot of the left column: changes to
+  the horse, its extra numbers and its pedigree record, with who and when.
+- C5: one "Show 3 generations" toggle with `aria-pressed`. After a box or
+  "Back to …" swaps the diagram, the focus goes to "Back to …" or to the
+  horse's own tree. (The identifier Remove was fixed in phase 3.)
+- C8: each Timeline entry shows its date ("12 Mar 2026 · 3 months ago",
+  the "ago" part from 640px). "ID checked" gives its date to screen
+  readers. The Other charge sheet says what it is for (`popup_intro`).
+- C9: on a touch screen (`pointer: coarse`) `.btn-xs`, `.btn-sm`,
+  `.btn-icon` and the Record tiles are at least 44px at any width. The
+  foal Dam link and the training Lot and Today links have `tap-pad`;
+  "Add note" is 44px on a phone.
 
 ## 1. Summary
 

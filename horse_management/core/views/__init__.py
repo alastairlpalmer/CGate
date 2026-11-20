@@ -27,6 +27,7 @@ from .horses import (  # noqa: F401
     horse_identifier_add,
     horse_identifier_delete,
     horse_identifier_restore,
+    horse_identity_check,
     horse_identifier_edit,
     horse_quick_edit,
     horse_preview,

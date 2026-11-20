@@ -44,8 +44,8 @@ position, rows, next_horse, list_url, males, females.
                     {% include "includes/form_field.html" with field=id_form.registered_name help="As on the passport. A suffix such as (GB) fills in the country." %}
                     {% include "includes/form_field.html" with field=id_form.country_of_birth %}
                     {% with form=id_form %}{% include 'horses/partials/_foaled_fields.html' %}{% endwith %}
-                    {% include "includes/form_field.html" with field=id_form.microchip help="Scan it, or type the 15 digits" %}
-                    {% include "includes/form_field.html" with field=id_form.ueln %}
+                    {% include "includes/form_field.html" with field=id_form.microchip help="Scan it, or type the 15 digits" check=True %}
+                    {% include "includes/form_field.html" with field=id_form.ueln check=True %}
                     {% include "includes/form_field.html" with field=id_form.passport_number %}
                     {% include "includes/form_field.html" with field=id_form.passport_issuer %}
                     {% include "includes/form_field.html" with field=id_form.breed %}

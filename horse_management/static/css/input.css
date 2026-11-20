@@ -139,6 +139,14 @@
     /* Icon-only action button — 44px touch target on mobile, compact on desktop */
     .btn-icon, .btn-icon-danger { @apply inline-flex items-center justify-center w-11 h-11 sm:w-8 sm:h-8 shrink-0 rounded-btn text-sage hover:text-charcoal hover:bg-light-sage active:bg-light-sage/70 transition-colors duration-100 touch-manipulation; }
     .btn-icon-danger { @apply text-error-red/70 hover:text-error-red hover:bg-error-red-50 active:bg-error-red-50; }
+    /* A tablet is wider than a phone but is still used with a finger: the
+       small buttons go back to a 44px target where the pointer is coarse
+       (UX review C9). A mouse keeps the compact size. */
+    @media (pointer: coarse) {
+        .btn-xs, .btn-sm { min-height: 44px; }
+        .btn-icon, .btn-icon-danger { width: 44px; height: 44px; }
+        #quick-actions .qa-tile { min-height: 44px; }
+    }
 
     /* App bar icon buttons — square, the same height as the search input, so
        search + filter + add read as one control strip. */

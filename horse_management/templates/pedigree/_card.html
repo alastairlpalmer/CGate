@@ -4,15 +4,22 @@ pedigree.display.diagram_context as ``pedigree`` (unpacked by the
 {% with %} below) and feature_access.
 {% endcomment %}
 {% with tree=pedigree.tree root=pedigree.root page_horse=pedigree.page_horse is_page_horse=pedigree.is_page_horse back=pedigree.back family=pedigree.family generations=pedigree.generations %}
-<div class="card" id="pedigree" x-data="{ three: false }">
+<div class="card" id="pedigree" x-data="{ three: false }"
+     @htmx:after-swap="three = !!$el.querySelector('#pedigree-diagram .ped-tree.ped-g3')">
     <div class="section-header">
         <h2 class="section-title">Pedigree</h2>
         <div class="flex items-center gap-2">
             {% if tree.has_more %}
-            <button type="button" class="btn-ghost btn-xs" x-show="!three" @click="three = true"
-                    hx-get="{% url 'pedigree_tree' root.pk %}?horse={{ horse.pk }}&amp;generations=3" hx-target="#pedigree-diagram" hx-select="unset" hx-swap="innerHTML" hx-push-url="false">Show 3 generations</button>
-            <button type="button" class="btn-ghost btn-xs" x-show="three" x-cloak @click="three = false"
-                    hx-get="{% url 'pedigree_tree' root.pk %}?horse={{ horse.pk }}&amp;generations=2" hx-target="#pedigree-diagram" hx-select="unset" hx-swap="innerHTML" hx-push-url="false">Show 2 generations</button>
+            {% comment %}One toggle button (UX review C5). Two buttons that swapped
+            places dropped the keyboard focus on the page. The button stays;
+            aria-pressed says which tree shows. htmx.ajax sends the request,
+            because the address changes with the state; hx-select and
+            hx-push-url here stop the page-wide settings applying to it.{% endcomment %}
+            <button type="button" class="btn-ghost btn-xs" aria-pressed="false" :aria-pressed="three.toString()"
+                    hx-select="unset" hx-push-url="false" data-testid="pedigree-generations"
+                    @click="three = !three; htmx.ajax('GET', '{% url 'pedigree_tree' root.pk %}?horse={{ horse.pk }}&generations=' + (three ? 3 : 2), {source: $el, target: '#pedigree-diagram', swap: 'innerHTML'})">
+                <span x-show="three" x-cloak aria-hidden="true">✓</span> Show 3 generations
+            </button>
             {% endif %}
             {% if feature_access.horses.full %}
             <a href="{% url 'pedigree_edit' horse.pk %}" hx-get="{% url 'pedigree_edit' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"

@@ -12,6 +12,8 @@ Parameters:
   help      - Optional. Override or add help text below the field
   span      - Optional. Column span: 2 = "sm:col-span-2" (full width in 2-col grid)
   required  - Optional. Show asterisk. Auto-detected from field if not set.
+  check     - Optional. An empty line under the box that a live check fills
+              (core.forms.live_identity_check, the microchip and UELN).
 {% endcomment %}
 
 <div class="{% if span == "2" %}sm:col-span-2{% endif %}{% if field.errors %} field-invalid{% endif %}">
@@ -20,6 +22,7 @@ Parameters:
             {{ label|default:field.label }}{% if required or field.field.required %} *{% endif %}
         </label>
         {{ field }}
+        {% if check %}<p id="{{ field.auto_id }}_check" class="id-check mt-1 text-xs empty:hidden" aria-live="polite"></p>{% endif %}
         {% if field.errors %}
         <p id="{{ field.auto_id }}_error" class="form-error mt-1 text-xs text-error-red" role="alert">{{ field.errors.0 }}</p>
         {% endif %}

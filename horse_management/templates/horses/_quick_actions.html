@@ -62,7 +62,7 @@ Context: horse, active_pregnancy, feature_access (from HorseDetailView).
 </a>
 {% endif %}
 {% if feature_access.charges.full %}
-<a href="{% url 'charge_create' %}?horse={{ horse.pk }}" hx-get="{% url 'charge_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Other charge for {{ horse.name }}" title="Bill something that has no health record, e.g. transport or feed" class="{{ tile }}">
+<a href="{% url 'charge_create' %}?horse={{ horse.pk }}" hx-get="{% url 'charge_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Other charge for {{ horse.name }}" class="{{ tile }}">
     <span class="qa-tile-icon"><svg aria-hidden="true"><use href="#i-pound"/></svg></span>
     <span class="qa-tile-label">Other charge</span>
 </a>

@@ -1,0 +1,16 @@
+{% comment %}
+The line under the microchip or UELN box while it is typed (UX review D1),
+from core.views.horses.horse_identity_check. It informs and never blocks:
+old records can hold mistakes, and the save says the same again.
+Context: field, shown, ok, note, length, others.
+{% endcomment %}
+{% if ok %}
+<span class="text-forest"><span aria-hidden="true">✓</span> <span class="font-mono">{{ shown }}</span> · {% if field == 'microchip' %}15 digits{% else %}15 characters{% endif %}{% if note %} · {{ note }}{% endif %}</span>
+{% elif field == 'microchip' %}
+<span class="text-saddle">{{ length }} character{{ length|pluralize }}, not the usual 15. Check the number. Old chips can have 9 or 10.</span>
+{% else %}
+<span class="text-saddle">{{ length }} character{{ length|pluralize }}, not the usual 15. Check it against the passport.</span>
+{% endif %}
+{% for other in others %}
+<span class="block text-saddle">Also on <a href="{% url 'horse_detail' other.pk %}" class="link tap-pad" target="_blank" rel="noopener">{{ other.name }}</a>{% if not other.is_active %} (departed){% endif %}. Is this the same horse?</span>
+{% endfor %}
