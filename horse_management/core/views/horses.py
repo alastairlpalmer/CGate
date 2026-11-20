@@ -1233,6 +1233,28 @@ def horse_neighbours(horse):
     return previous, following
 
 
+# Timeline filter pills: (key, label). A record of a kind not listed here
+# filters with the kind in TIMELINE_FILTER_OF (a stable stay is a placement).
+TIMELINE_FILTERS = (
+    ('placement', 'Placements'), ('vaccination', 'Vaccinations'), ('farrier', 'Farrier'),
+    ('vet_visit', 'Vet visits'), ('breeding', 'Breeding'), ('worming', 'Worming'),
+    ('training', 'Training'),
+)
+TIMELINE_FILTER_OF = {'stable': 'placement', 'egg_count': 'worming', 'farrier_note': 'farrier'}
+
+
+def timeline_filters(events):
+    """Give each event its filter key; return the pills for the kinds the
+    horse has, each with its count, and whether anything is overdue."""
+    counts = {}
+    for event in events:
+        key = TIMELINE_FILTER_OF.get(event['type'], event['type'])
+        event['filter'] = key
+        counts[key] = counts.get(key, 0) + 1
+    pills = [(key, label, counts[key]) for key, label in TIMELINE_FILTERS if counts.get(key)]
+    return pills, any(e.get('attention') for e in events)
+
+
 class HorseDetailView(FeatureAccessMixin, DetailView):
     feature = 'horses'
     access_level = LEVEL_VIEW
@@ -1278,8 +1300,10 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
         context['egg_counts'] = horse.worm_egg_counts.all()[:10]
         context['medical_conditions'] = horse.medical_conditions.all()
         context['vet_visits'] = horse.vet_visits.select_related('vet').all()[:10]
-        # Breeding (mare only) — single query, filter active in Python
-        if horse.is_mare:
+        # Breeding (mare only) — single query, filter active in Python. A
+        # role without Breeding access sees none of it, timeline included.
+        can_breeding = has_feature_access(self.request.user, 'breeding', LEVEL_VIEW)
+        if horse.is_mare and can_breeding:
             breeding_records = list(
                 horse.breeding_records.select_related('foal')
                 .prefetch_related('coverings', 'scans', 'coverings__vet', 'scans__vet').all()
@@ -1305,7 +1329,7 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
         foal_record = (
             horse.birth_record.select_related('mare', 'foal')
             .prefetch_related('foal_notes').first()
-        )
+        ) if can_breeding else None
         context['foal_record'] = foal_record
         if foal_record is not None:
             from health.forms import FoalNoteForm
@@ -1321,11 +1345,13 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
             worming_treatments=context['worming_treatments'],
             egg_counts=context['egg_counts'],
             vet_visits=context['vet_visits'],
-            breeding_records=context.get('breeding_records', []) if horse.is_mare else [],
+            breeding_records=context.get('breeding_records', []),
             farrier_notes=list(horse.farrier_notes.select_related('provider')[:20]),
             stable_stays=_stable_stays(horse, 20),
             activities=training_horse.timeline_activities(self.request.user, horse, 10),
         )
+        context['timeline_filters'], context['timeline_overdue'] = timeline_filters(
+            context['timeline_events'])
         context['training_card'] = training_horse.training_card(self.request.user, horse)
 
         return context
@@ -1449,13 +1475,18 @@ def horse_scan_check(request, pk):
         context['form'] = ScanCheckForm()
         return render(request, 'horses/partials/scan_check.html', context)
 
-    form = ScanCheckForm(request.POST)
+    action = request.POST.get('action', 'check')
+    if action == 'save' and request.POST.get('last_scanned'):
+        # Save the number shown as "Scanned", not what is in the box to
+        # scan again (that box is for Check again).
+        form = ScanCheckForm({'scanned': request.POST['last_scanned']})
+    else:
+        form = ScanCheckForm(request.POST)
     context['form'] = form
     if not form.is_valid():
         return render(request, 'horses/partials/scan_check.html', context)
 
     scanned = form.cleaned_data['scanned']
-    action = request.POST.get('action', 'check')
     stored = horse.microchip
 
     if scanned == stored:
@@ -1478,7 +1509,8 @@ def horse_scan_check(request, pk):
         _warn_identity(request, horse)
         return popup_saved_response()
 
-    context.update({'scanned': scanned, 'scanned_shown': shown(scanned), 'mismatch': True})
+    context.update({'scanned': scanned, 'scanned_shown': shown(scanned), 'mismatch': True,
+                    'form': ScanCheckForm()})
     return render(request, 'horses/partials/scan_check.html', context)
 
 
@@ -1677,7 +1709,8 @@ def horse_preview(request, pk):
     egg_counts = list(horse.worm_egg_counts.all()[:8])
     vet_visits = list(horse.vet_visits.select_related('vet')[:8])
     breeding_records = (
-        list(horse.breeding_records.all()[:8]) if horse.is_mare else []
+        list(horse.breeding_records.all()[:8])
+        if horse.is_mare and has_feature_access(request.user, 'breeding', LEVEL_VIEW) else []
     )
 
     timeline = build_horse_timeline(

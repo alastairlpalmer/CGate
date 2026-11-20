@@ -5,7 +5,7 @@ note_form, can_edit, today.
 {% endcomment %}
 <div id="foal-notes-{{ record.pk }}">
     <div class="flex items-center justify-between gap-2 mb-2">
-        <h5 class="text-xs font-semibold text-forest uppercase tracking-wider">Notes</h5>
+        <h3 class="text-xs font-semibold text-forest uppercase tracking-wider">Notes</h3>
         <span class="text-xs text-sage">{{ notes|length }} note{{ notes|length|pluralize }}</span>
     </div>
     {% if can_edit %}

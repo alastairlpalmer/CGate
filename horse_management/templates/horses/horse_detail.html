@@ -52,14 +52,8 @@
                         {% if horse.is_identity_checked %}
                         <span class="badge-success" title="Chip scanned and matched the record on {{ horse.identity_checked_at|date:'j M Y' }}">ID checked</span>
                         {% endif %}
-                        {% if horse.has_passport and not horse.is_identity_checked %}
-                        <span class="badge-info" title="{% if horse.passport_number %}Passport: {{ horse.passport_number }}{% else %}Has passport{% endif %}">
-                            <svg class="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/></svg>
-                            Passport
-                        </span>
-                        {% endif %}
                         {% if not horse.has_passport %}
-                        <span class="badge-warning" title="No passport on record">No passport</span>
+                        <span class="badge-warning">No passport</span>
                         {% endif %}
                     </div>
                     {% comment %}Age, colour, sex and birth date. Each part shows only
@@ -77,9 +71,12 @@
                     </p>
                     {% endif %}
                     {% if horse.current_owner %}
-                    <p class="mt-2 text-sm text-charcoal-light flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                    {# With no ownership shares the name comes from the stay: say so, so it does not contradict the Ownership card. #}
+                    <p class="mt-2 text-sm text-charcoal-light flex items-center gap-1.5" data-testid="header-owner">
+                        <svg class="w-3.5 h-3.5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                        {% if not horse.primary_owner %}<span>Billed to</span>{% endif %}
                         <a href="{% url 'owner_detail' horse.current_owner.pk %}" class="link tap-pad">{{ horse.current_owner.name }}</a>
+                        {% if not horse.primary_owner %}<span class="text-sage">(from the stay)</span>{% endif %}
                     </p>
                     {% endif %}
                     {% if pedigree.tree.sire_box.state != 'missing' or pedigree.tree.dam_box.state != 'missing' %}
@@ -206,17 +203,17 @@
         <!-- Left Column -->
         <div class="lg:col-span-2 space-y-4">
 
-            {% if foal_record %}
+            {% if foal_record and feature_access.breeding.view %}
             {% include 'horses/partials/foal_record.html' %}
             {% endif %}
 
             <!-- Current Placement -->
             <div class="card">
                 <div class="section-header">
-                    <h3 class="section-title flex items-center gap-2">
+                    <h2 class="section-title flex items-center gap-2">
                         <span class="w-2 h-2 rounded-full bg-info-blue"></span>
                         Current Placement
-                    </h3>
+                    </h2>
                     {% if current_placement %}
                     <div class="flex items-center gap-2">
                         <span class="text-xs text-sage tabular-nums" title="Days since arrival">
@@ -278,12 +275,14 @@
                         </div>
                         <p class="mt-3 text-sm font-medium text-charcoal">No current placement</p>
                         <p class="text-xs text-sage mt-0.5">{{ horse.name }} isn't currently at a location.</p>
+                        {% if feature_access.horses.full %}
                         <a href="{% url 'horse_arrive' horse.pk %}" hx-get="{% url 'horse_arrive' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Log arrival for {{ horse.name }}" class="btn-primary mt-4 inline-flex">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                             </svg>
                             Log Arrival
                         </a>
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>
@@ -299,8 +298,8 @@
             {% if horse.breeding or horse.notes or medical_conditions %}
             <div class="card">
                 <div class="section-header">
-                    <h3 class="section-title">Notes &amp; conditions</h3>
-                    <a href="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-get="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Condition for {{ horse.name }}" class="btn-ghost btn-xs">+ Condition</a>
+                    <h2 class="section-title">Notes &amp; conditions</h2>
+                    {% if feature_access.health.full %}<a href="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-get="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Condition for {{ horse.name }}" class="btn-ghost btn-xs">+ Condition</a>{% endif %}
                 </div>
                 <div class="p-4">
                     {% if horse.breeding or horse.notes %}
@@ -323,7 +322,7 @@
                     {% if medical_conditions %}
                     {# The rule only divides: with no details above it there is nothing to divide from. #}
                     <div{% if horse.breeding or horse.notes %} class="mt-5 pt-5 border-t border-light-sage"{% endif %}>
-                        <h4 class="dt-label mb-3">Conditions</h4>
+                        <h3 class="dt-label mb-3">Conditions</h3>
                         <div class="space-y-2">
                             {% for c in medical_conditions %}
                             <div class="flex items-center justify-between py-1">
@@ -353,7 +352,7 @@
             <div class="card">
                 <div class="section-header">
                     <div class="flex items-center gap-2.5">
-                        <h3 class="section-title">{% if active_pregnancy.status == 'confirmed' %}In Foal{% else %}Covered{% endif %}</h3>
+                        <h2 class="section-title">{% if active_pregnancy.status == 'confirmed' %}In Foal{% else %}Covered{% endif %}</h2>
                         {% include 'health/partials/breeding_status_badge.html' with br=active_pregnancy %}
                     </div>
                     {% if feature_access.breeding.full %}
@@ -410,7 +409,7 @@
                         {% with ehv_dates=active_pregnancy.ehv_vaccination_dates %}
                         {% if ehv_dates %}
                         <div class="mt-3 pt-3 border-t border-sand">
-                            <h5 class="text-xs font-semibold text-forest uppercase tracking-wider mb-2">EHV Vaccination Schedule</h5>
+                            <h3 class="text-xs font-semibold text-forest uppercase tracking-wider mb-2">EHV Vaccination Schedule</h3>
                             <div class="grid grid-cols-3 gap-2 text-xs">
                                 {% for month, date in ehv_dates.items %}
                                 <div class="{% if month in active_pregnancy.sent_ehv_months %}bg-sage-50 border-sage/20{% elif date < today %}bg-white border-sand-100 opacity-70{% else %}bg-white border-sand-100{% endif %} border rounded-lg p-2">
@@ -430,7 +429,7 @@
             <!-- Breeding: no open pregnancy -->
             <div class="card">
                 <div class="section-header">
-                    <h3 class="section-title">Breeding</h3>
+                    <h2 class="section-title">Breeding</h2>
                     {% if feature_access.breeding.full %}
                     <a href="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-get="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record a covering for {{ horse.name }}" class="btn-ghost btn-xs">+ Covering</a>
                     {% endif %}
@@ -448,12 +447,12 @@
             {% endif %}
             {% endif %}
 
-            {% if horse.is_mare and breeding_history %}
+            {% if horse.is_mare and breeding_history and feature_access.breeding.view %}
             <!-- Breeding history -->
             <div class="card">
                 <div class="section-header">
                     <div class="flex items-center gap-2.5">
-                        <h3 class="section-title">Breeding History</h3>
+                        <h2 class="section-title">Breeding History</h2>
                         <span class="badge-neutral">{{ breeding_history|length }}</span>
                     </div>
                     <a href="{% url 'breeding_list' %}?horse={{ horse.pk }}" class="text-xs link tap-pad">All records &rarr;</a>
@@ -506,11 +505,11 @@
             </div>
             {% endif %}
 
-            {% if horse.is_mare and foals %}
+            {% if horse.is_mare and foals and feature_access.breeding.view %}
             <!-- Foals -->
             <div class="card">
                 <div class="section-header">
-                    <h3 class="section-title">Foals</h3>
+                    <h2 class="section-title">Foals</h2>
                 </div>
                 <div class="p-4">
                     <div class="overflow-x-auto">
@@ -558,60 +557,31 @@
             {% endif %}
 
             <!-- Unified Timeline -->
-            <div class="card" x-data="{
-                activeFilter: 'all',
-                pillColors: {
-                    all:         '#3D5A63',
-                    placement:   '#2E86AB',
-                    vaccination: '#6A8990',
-                    farrier:     '#4A4A4A',
-                    vet_visit:   '#4A4A4A',
-                    breeding:    '#3D5A63',
-                    worming:     '#E6E1D1',
-                    training:    '#56737A'
-                },
-                pillText: {
-                    all: '#fff', placement: '#fff', vaccination: '#fff',
-                    farrier: '#fff', vet_visit: '#fff', breeding: '#fff',
-                    worming: '#2C2C2C', training: '#fff'
-                },
-                pillStyle(key) {
-                    if (this.activeFilter === key) return `background-color:${this.pillColors[key]};color:${this.pillText[key]}`;
-                    return 'background-color:#E4EAEB;color:#2C2C2C';
-                }
-            }">
+            {% comment %}Filter pills come from the view (timeline_filters): only the
+            kinds this horse has, each with its count. The selected pill is
+            outlined in forest (the app's chip style) and says so with aria-pressed.{% endcomment %}
+            <div class="card" x-data="{ activeFilter: 'all' }">
                 <div class="section-header">
-                    <h3 class="section-title">Timeline</h3>
+                    <h2 class="section-title">Timeline</h2>
                     {# Recording is the Record card's job (right column, first): one set of buttons, not two. #}
                 </div>
 
-                <!-- Filter Pills -->
-                <div class="px-4 pt-4 pb-2 flex flex-wrap gap-2">
-                    <button @click="activeFilter = 'all'" :style="pillStyle('all')"
-                        class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">All</button>
-                    <button @click="activeFilter = 'placement'" :style="pillStyle('placement')"
-                        class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">Placements</button>
-                    <button @click="activeFilter = 'vaccination'" :style="pillStyle('vaccination')"
-                        class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">Vaccinations</button>
-                    <button @click="activeFilter = 'farrier'" :style="pillStyle('farrier')"
-                        class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">Farrier</button>
-                    <button @click="activeFilter = 'vet_visit'" :style="pillStyle('vet_visit')"
-                        class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">Vet Visits</button>
-                    {% if horse.is_mare %}
-                    <button @click="activeFilter = 'breeding'" :style="pillStyle('breeding')"
-                        class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">Breeding</button>
-                    {% endif %}
-                    <button @click="activeFilter = 'worming'" :style="pillStyle('worming')"
-                        class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">Worming</button>
-                    {% if training_card %}
-                    <button @click="activeFilter = 'training'" :style="pillStyle('training')"
-                        class="px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs font-medium rounded-full transition-colors duration-150">Training</button>
-                    {% endif %}
+                {% if timeline_filters %}
+                <div class="px-4 pt-4 pb-2 flex flex-wrap gap-2" role="group" aria-label="Show in the timeline" data-testid="timeline-filters">
+                    <button type="button" @click="activeFilter = 'all'" aria-pressed="true" :aria-pressed="(activeFilter === 'all').toString()"
+                            class="chip-count" :class="activeFilter === 'all' ? 'is-active' : ''">All <b>{{ timeline_events|length }}</b></button>
+                    {% for key, label, count in timeline_filters %}
+                    <button type="button" @click="activeFilter = '{{ key }}'" aria-pressed="false" :aria-pressed="(activeFilter === '{{ key }}').toString()"
+                            class="chip-count" :class="activeFilter === '{{ key }}' ? 'is-active' : ''">{{ label }} <b>{{ count }}</b></button>
+                    {% endfor %}
                 </div>
+                {% endif %}
+                {% if timeline_overdue %}
                 <p class="px-4 text-xs text-sage flex items-center gap-1.5">
                     <span class="inline-block w-2.5 h-2.5 rounded-full bg-saddle" aria-hidden="true"></span>
-                    Rust dot: the next one is overdue.
+                    A rust dot marks a record whose next one is overdue.
                 </p>
+                {% endif %}
 
                 <!-- Timeline Entries -->
                 <div class="px-4 pb-5 pt-2">
@@ -620,7 +590,7 @@
                         <div class="absolute left-[9px] top-2 bottom-2 w-px bg-sand/60"></div>
 
                         {% for event in timeline_events %}
-                        <div x-show="activeFilter === 'all' || activeFilter === '{{ event.type }}'{% if event.type == 'stable' %} || activeFilter === 'placement'{% endif %}{% if event.type == 'egg_count' %} || activeFilter === 'worming'{% endif %}{% if event.type == 'farrier_note' %} || activeFilter === 'farrier'{% endif %}"
+                        <div x-show="activeFilter === 'all' || activeFilter === '{{ event.filter }}'"
                              x-transition:enter="transition ease-out duration-200"
                              x-transition:enter-start="opacity-0 -translate-y-1"
                              x-transition:enter-end="opacity-100 translate-y-0"
@@ -629,8 +599,7 @@
                             <!-- Dot -->
                             {# Rust is the "needs attention" colour: only an overdue record gets it #}
                             <div class="absolute left-0 top-1.5 w-[19px] h-[19px] rounded-full border-2 border-white shadow-xs
-                                {% if event.attention %}bg-saddle{% else %}bg-sage-300{% endif %}"
-                                {% if event.attention %}title="Overdue"{% endif %}></div>
+                                {% if event.attention %}bg-saddle{% else %}bg-sage-300{% endif %}">{% if event.attention %}<span class="sr-only">Overdue</span>{% endif %}</div>
 
                             <!-- Event Card -->
                             <div class="rounded-lg border p-3 hover:shadow-xs transition-shadow duration-150
@@ -779,10 +748,11 @@
 
                                     {% elif event.type == 'worming' %}
                                     <p class="text-charcoal font-medium">{{ event.obj.product_name }}</p>
-                                    <p class="text-sage text-xs mt-0.5">
-                                        {{ event.obj.active_ingredient|default:"" }}
-                                        {% if event.obj.administered_by %}{% if event.obj.active_ingredient %}&middot; {% endif %}By: {{ event.obj.administered_by }}{% endif %}
-                                        {% if event.obj.cost and feature_access.charges.view %}{% if event.obj.active_ingredient or event.obj.administered_by %}&middot; {% endif %}{{ event.obj.cost|gbp }}{% endif %}
+                                    <p class="text-sage text-xs mt-0.5 dot-list" data-testid="worming-line">
+                                        {% if event.obj.active_ingredient %}<span>{{ event.obj.active_ingredient }}</span>{% endif %}
+                                        {% if event.obj.administered_by %}<span>By: {{ event.obj.administered_by }}</span>{% endif %}
+                                        {% if event.obj.cost and feature_access.charges.view %}<span>{{ event.obj.cost|gbp }}</span>{% endif %}
+                                        {% if event.obj.next_due_date %}<span class="{% if event.attention %}text-saddle font-medium{% elif event.obj.is_due_soon %}text-forest font-medium{% endif %}">Next due: {{ event.obj.next_due_date|date:"j M Y" }}{% if event.attention %} &middot; Overdue{% endif %}</span>{% endif %}
                                     </p>
 
                                     {% elif event.type == 'egg_count' %}
@@ -815,7 +785,7 @@
             {% if feature_access.health.full or feature_access.horses.full or feature_access.charges.full or training_card.can_change %}
             <div class="card" id="quick-actions">
                 <div class="section-header">
-                    <h3 class="section-title">Record</h3>
+                    <h2 class="section-title">Record</h2>
                 </div>
                 <div class="p-3 grid grid-cols-2 gap-2">
                     {% include 'horses/_quick_actions.html' %}
@@ -826,8 +796,8 @@
             <!-- Ownership Shares -->
             <div class="card">
                 <div class="section-header">
-                    <h3 class="section-title">Ownership</h3>
-                    <a href="{% url 'horse_ownership' horse.pk %}" class="btn-ghost btn-xs">Manage</a>
+                    <h2 class="section-title">Ownership</h2>
+                    {% if feature_access.horses.full %}<a href="{% url 'horse_ownership' horse.pk %}" class="btn-ghost btn-xs">Manage</a>{% endif %}
                 </div>
                 {% if ownership_shares %}
                 <ul class="divide-y divide-light-sage">
@@ -846,15 +816,17 @@
                 {% else %}
                 <div class="px-4 py-4 text-center">
                     <p class="text-sm text-sage">No ownership shares set</p>
+                    {% if feature_access.horses.full %}
                     <a href="{% url 'horse_ownership' horse.pk %}" class="btn-primary mt-3 inline-flex text-xs">
                         Set Ownership
                     </a>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
 
             <!-- Documents -->
-            {% include 'documents/_documents_card.html' with documents=horse.documents.all horse=horse %}
+            {% include 'documents/_documents_card.html' with documents=horse.documents.all horse=horse heading='h2' %}
 
             <!-- Photos -->
             {% include 'horses/_photo_grid_card.html' with photos=photos photo_count=photo_count horse=horse %}

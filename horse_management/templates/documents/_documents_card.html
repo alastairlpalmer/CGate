@@ -5,7 +5,7 @@ and documents=<queryset>:
 {% endcomment %}
 <div class="card">
     <div class="section-header">
-        <h3 class="section-title">Documents</h3>
+        {% firstof heading 'h3' as heading_tag %}<{{ heading_tag }} class="section-title">Documents</{{ heading_tag }}>
         {% if horse and feature_access.horses.full or not horse and feature_access.owners.full %}
         <a href="{% url 'document_create' %}?{% if horse %}horse={{ horse.pk }}{% else %}owner={{ owner.pk }}{% endif %}" hx-get="{% url 'document_create' %}?{% if horse %}horse={{ horse.pk }}{% else %}owner={{ owner.pk }}{% endif %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add document"
            class="btn-ghost btn-xs">+ Add</a>

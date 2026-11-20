@@ -61,9 +61,11 @@ def document_create(request):
         form = DocumentForm(request.POST, request.FILES, instance=document)
         if form.is_valid():
             document = form.save()
+            note = (f" {horse.name} now shows as having a passport."
+                    if getattr(document, 'horse_passport_marked', False) else "")
             messages.success(
                 request,
-                f"{document.get_doc_type_display()} “{document.title}” uploaded."
+                f"{document.get_doc_type_display()} “{document.title}” uploaded.{note}"
             )
             if in_popup:
                 return popup_saved_response()

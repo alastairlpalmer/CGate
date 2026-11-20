@@ -6,7 +6,7 @@ pedigree.display.diagram_context as ``pedigree`` (unpacked by the
 {% with tree=pedigree.tree root=pedigree.root page_horse=pedigree.page_horse is_page_horse=pedigree.is_page_horse back=pedigree.back family=pedigree.family generations=pedigree.generations %}
 <div class="card" id="pedigree" x-data="{ three: false }">
     <div class="section-header">
-        <h3 class="section-title">Pedigree</h3>
+        <h2 class="section-title">Pedigree</h2>
         <div class="flex items-center gap-2">
             {% if tree.has_more %}
             <button type="button" class="btn-ghost btn-xs" x-show="!three" @click="three = true"

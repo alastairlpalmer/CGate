@@ -188,8 +188,9 @@ class TimelineTests(OtherScreensTestCase):
         self.assertEqual([e['obj'].stable.label for e in events], ['9', '7'])
         self.assertContains(response, 'Stable 9 &middot; Top Barn')
         self.assertContains(response, 'Stable 7 &middot; Top Barn')
-        # And they show under the Moves filter, with the placements.
-        self.assertContains(response, "activeFilter === 'stable' || activeFilter === 'placement'")
+        # And they show under the Placements filter, with the placements.
+        self.assertEqual({e['filter'] for e in events}, {'placement'})
+        self.assertContains(response, "activeFilter === 'all' || activeFilter === 'placement'")
 
     def test_and_in_the_preview_pane(self):
         response = self.client.get(
