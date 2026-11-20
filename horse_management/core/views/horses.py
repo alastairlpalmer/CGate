@@ -25,7 +25,7 @@ from django.db.models import (
     When,
 )
 from django.db.models.functions import ExtractYear
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -74,6 +74,7 @@ from .locations import (
 from ..search import fuzzy_horse_ids
 from ._next import safe_next
 from ._popup import is_popup_request, popup_saved_response
+from ._undo import undo_tag
 
 
 def _warn_if_incomplete_ownership(request, formset):
@@ -1245,6 +1246,8 @@ TIMELINE_FILTER_OF = {'stable': 'placement', 'egg_count': 'worming', 'farrier_no
 
 # How many Timeline entries show before "Show older" (UX review A6).
 TIMELINE_PAGE = 10
+# The Charges card shows this many, newest first, then "See all records".
+CHARGES_ON_PAGE = 5
 
 
 def timeline_filters(events):
@@ -1307,12 +1310,18 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
         context['farrier_visits'] = horse.farrier_visits.select_related(
             'service_provider'
         ).all()[:10]
-        context['extra_charges'] = horse.extra_charges.select_related(
-            'owner'
-        ).all()[:10]
+        # Charges card (UX review B7): the latest few, for roles that see money.
+        if has_feature_access(self.request.user, 'charges', LEVEL_VIEW):
+            context['extra_charges'] = list(
+                horse.extra_charges.order_by('-date', '-pk')[:CHARGES_ON_PAGE])
+            context['extra_charge_count'] = horse.extra_charges.count()
         context['ownership_shares'] = horse.ownership_shares.select_related('owner').all()
-        context['photos'] = horse.photos.all()[:12]
+        context['photos'] = list(horse.photos.all()[:12])
         context['photo_count'] = horse.photos.count()
+        # The photo the profile picture was made from gets a "Profile" mark
+        # and no "Use as profile picture" (UX review B8).
+        source = _profile_source(horse.photo.name if horse.photo else '', context['photos'])
+        context['profile_photo_pk'] = source.pk if source else None
         # Identity card (plan §8.2): the extra numbers and links, who
         # checked the chip, and any other horse with the same number.
         context['identifiers'] = list(horse.identifiers.all())
@@ -1325,7 +1334,11 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
         # New sections
         context['worming_treatments'] = horse.worming_treatments.all()[:10]
         context['egg_counts'] = horse.worm_egg_counts.all()[:10]
-        context['medical_conditions'] = horse.medical_conditions.all()
+        # Open conditions first; resolved ones fold away (UX review B6).
+        conditions = list(horse.medical_conditions.all())
+        context['medical_conditions'] = sorted(
+            (c for c in conditions if c.status != 'resolved'), key=lambda c: c.status != 'active')
+        context['resolved_conditions'] = [c for c in conditions if c.status == 'resolved']
         context['vet_visits'] = horse.vet_visits.select_related('vet').all()[:10]
         # Breeding (mare only) — single query, filter active in Python. A
         # role without Breeding access sees none of it, timeline included.
@@ -1622,12 +1635,38 @@ def horse_identifier_edit(request, pk, ident_pk):
 @feature_required('horses')
 @require_POST
 def horse_identifier_delete(request, pk, ident_pk):
+    """Remove a number at once, with Undo on the message (UX review B4)."""
     horse = get_object_or_404(Horse, pk=pk)
     ident = get_object_or_404(HorseIdentifier, pk=ident_pk, horse=horse)
     label = ident.label
     ident.delete()
-    messages.success(request, f"Removed {label} from {horse.name}.")
+    messages.success(
+        request, f"Removed {label} from {horse.name}.",
+        extra_tags=undo_tag(reverse('horse_identifier_restore', args=[horse.pk, ident_pk])),
+    )
     return redirect('horse_detail', pk=horse.pk)
+
+
+@feature_required('horses')
+@require_POST
+def horse_identifier_restore(request, pk, ident_pk):
+    """Undo a remove. The history table keeps the removed row, so it comes
+    back as it was: same id, same "checked" stamp, same added date."""
+    horse = get_object_or_404(Horse, pk=pk)
+    back = safe_next(request, reverse('horse_detail', args=[horse.pk]))
+    if HorseIdentifier.objects.filter(pk=ident_pk).exists():
+        return redirect(back)  # a second click on Undo: it is back already
+    last = (HorseIdentifier.history.filter(id=ident_pk, horse_id=horse.pk)
+            .order_by('-history_date', '-history_id').first())
+    if last is None or last.history_type != '-':
+        raise Http404
+    ident = last.instance
+    ident._change_reason = 'Undo remove'
+    ident.save(force_insert=True)
+    # auto_now_add stamped the restore time: put back when it was added.
+    HorseIdentifier.objects.filter(pk=ident.pk).update(created_at=last.created_at)
+    messages.success(request, f"{ident.label} is back on {horse.name}.")
+    return redirect(back)
 
 
 @feature_required('horses')
@@ -2002,13 +2041,42 @@ def horse_move(request, pk):
 
 @feature_required('horses')
 def new_arrival(request):
-    """Create a new horse and place it at a location in one step."""
+    """Create a new horse and place it at a location in one step.
+
+    A returning horse keeps its old record (core/returning.py): the panel
+    under the chip box offers "Bring it back", which logs the arrival on
+    the old record with the placement typed here. A chip that is already
+    on a horse stops the save once, so a second record is never made by
+    accident; "Make a new record anyway" goes on.
+    """
     from ..forms import NewArrivalForm
+    from ..returning import find_returning
     from ..services import PlacementService
 
+    returning = None
     if request.method == 'POST':
-        form = NewArrivalForm(request.POST)
-        if form.is_valid():
+        data = request.POST
+        back = None
+        if request.POST.get('bring_back', '').isdigit():
+            back = get_object_or_404(Horse, pk=request.POST['bring_back'])
+            data = data.copy()
+            if not data.get('name', '').strip():
+                # Only the chip was scanned: the old record has the name.
+                data['name'] = back.name
+            if not data.get('owner') and back.primary_owner:
+                data['owner'] = back.primary_owner.pk  # as Log Arrival does
+        form = NewArrivalForm(data)
+        if form.is_valid() and back is not None:
+            done = _bring_back(request, form, back)
+            if done is not None:
+                return done
+        elif form.is_valid():
+            returning = find_returning(microchip=form.cleaned_data.get('microchip'))
+            if returning.chip_matches and not request.POST.get('new_record'):
+                return render(request, 'horses/horse_new_arrival.html', {
+                    'form': form, 'returning': returning, 'stopped': True,
+                })
+            returning = None
             chose_stable = form.cleaned_data.get('stable') is not None
             try:
                 # One transaction when a stable was picked: if it turns
@@ -2058,7 +2126,81 @@ def new_arrival(request):
             initial['stable'] = stable_id
         form = NewArrivalForm(initial=initial)
 
-    return render(request, 'horses/horse_new_arrival.html', {'form': form})
+    if request.method == 'POST':
+        # The form came back with an error: keep the panel showing what
+        # the chip and name found, as it did before the save.
+        returning = _returning_from(request.POST)
+    return render(request, 'horses/horse_new_arrival.html', {'form': form, 'returning': returning})
+
+
+def _returning_from(params):
+    """find_returning for the raw chip, name and foaling date in a GET or
+    POST (the boxes may not be valid yet)."""
+    from ..returning import find_returning
+
+    dob = params.get('date_of_birth', '')
+    try:
+        dob = date.fromisoformat(dob) if dob else None
+    except ValueError:
+        dob = None
+    return find_returning(microchip=params.get('microchip', '')[:60],
+                          name=params.get('name', '')[:200], date_of_birth=dob)
+
+
+def _bring_back(request, form, horse):
+    """Log the arrival on the old record of a returning horse. Answers the
+    redirect to its page, or None when the form shows an error instead."""
+    from ..identity import normalise_microchip
+    from ..services import PlacementService
+
+    if horse.placements.filter(end_date__isnull=True).exists():
+        form.add_error(None, f"{horse.name} is on the yard now. Use Move on its page to change where it is.")
+        return None
+    data = form.cleaned_data
+    chip = normalise_microchip(data.get('microchip') or '')
+    try:
+        with transaction.atomic():
+            placement = PlacementService.arrive_horse(
+                horse,
+                owner=data['owner'],
+                location=data['location'],
+                rate_type=data['rate_type'],
+                arrival_date=data['arrival_date'],
+                expected_departure=data.get('expected_departure'),
+                notes=data.get('notes', ''),
+            )
+            _assign_chosen_stable(horse, form, data['arrival_date'])
+            if chip and not horse.microchip:
+                # Matched by name, and the chip was scanned: keep it.
+                horse.microchip = chip
+                horse._change_reason = 'Chip scanned when the horse came back'
+                horse.save(update_fields=['microchip'])
+    except ValidationError as e:
+        form.add_error(None, e)
+        return None
+    except IntegrityError:
+        form.add_error(None, "That change clashed with another update to the same horse. "
+                             "Open its page and check the current placement.")
+        return None
+    messages.success(request, format_html(
+        '{} is back at {}, on the old record with all its history. '
+        '<a href="{}?category=arrival" class="underline font-semibold">Add photos</a>',
+        horse.name, placement.location.name, reverse('horse_photo_add', args=[horse.pk]),
+    ))
+    _warn_wrong_rate(request, horse, placement)
+    _warn_identity(request, horse)
+    return redirect('horse_detail', pk=horse.pk)
+
+
+@feature_required('horses')
+def new_arrival_check(request):
+    """The "Was this horse here before?" panel on New Arrival, while the
+    chip, name and foaling date are typed (htmx, GET). Nothing found: an
+    empty answer, so the panel's box closes (CSS :empty)."""
+    returning = _returning_from(request.GET)
+    if not returning.found:
+        return HttpResponse('')
+    return render(request, 'horses/partials/returning_panel.html', {'returning': returning})
 
 
 @feature_required('horses')
@@ -2170,7 +2312,12 @@ def horse_depart(request, pk):
                     f"on the day to close the placement.",
                 )
             else:
-                messages.success(request, f"{horse.name} departed from {placement.location.name}.")
+                # Undo re-opens the stay (UX review B4): a slip of the
+                # finger costs one tap, not a new arrival.
+                messages.success(
+                    request, f"{horse.name} departed from {placement.location.name}.",
+                    extra_tags=undo_tag(reverse('cancel_departure', args=[horse.pk])),
+                )
         except ValidationError as e:
             messages.error(request, str(e))
         except IntegrityError:
@@ -2247,7 +2394,8 @@ def cancel_departure(request, pk):
         # re-renders from the database. Swapping an empty body used to
         # delete the row even when the action was refused.
         return HttpResponse(status=204, headers={'HX-Trigger': 'popup:saved'})
-    return redirect('dashboard')
+    # The Undo on a "departed" message sends the page it was on.
+    return redirect(safe_next(request, reverse('dashboard')))
 
 
 @feature_required('horses')

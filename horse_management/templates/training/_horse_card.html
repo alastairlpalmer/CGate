@@ -11,9 +11,9 @@ A planned row dated today or earlier can be confirmed here.
             Training
         </h2>
         <span class="flex items-center gap-1">
-            <a href="{% url 'training_log' %}?horse={{ horse.pk }}" class="link text-xs tap-pad">See all</a>
+            <a href="{% url 'training_log' %}?horse={{ horse.pk }}" class="link text-xs tap-pad">See all records</a>
             {% if training_card.can_change %}
-            <a href="{% url 'training_activity_create' %}?horse={{ horse.pk }}" hx-get="{% url 'training_activity_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Training for {{ horse.name }}" class="btn-secondary btn-sm">Record training</a>
+            <a href="{% url 'training_activity_create' %}?horse={{ horse.pk }}" hx-get="{% url 'training_activity_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Training for {{ horse.name }}" class="btn-ghost btn-xs">Record training</a>
             {% endif %}
         </span>
     </div>

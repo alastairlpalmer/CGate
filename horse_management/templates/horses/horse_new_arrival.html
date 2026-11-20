@@ -31,11 +31,22 @@
             <fieldset class="px-4 py-3 space-y-3">
                 <legend class="section-title">Horse</legend>
                 <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 mt-3">
+                    {% comment %}Chip first (Returning horses, core/returning.py): a horse
+                    that was here before is found by its chip, or shown as a
+                    possible match by its name, before a second record is made.{% endcomment %}
+                    <div class="sm:col-span-2">
+                        <label for="id_microchip" class="block text-sm font-medium text-charcoal">Microchip</label>
+                        {{ form.microchip }}
+                        <p class="mt-1 text-xs text-sage">Scan or type it first. If the horse was here before, its old record shows here.</p>
+                    </div>
                     <div class="sm:col-span-2">
                         <label for="id_name" class="block text-sm font-medium text-charcoal">Name *</label>
                         {{ form.name }}
                         {% if form.name.errors %}<p id="{{ form.name.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.name.errors.0 }}</p>{% endif %}
                     </div>
+                    <div class="sm:col-span-2 empty:hidden" id="returning-panel" aria-live="polite" data-testid="returning-panel"
+                         hx-get="{% url 'horse_new_arrival_check' %}" hx-trigger="input changed delay:500ms from:#id_microchip, input changed delay:500ms from:#id_name, change from:#id_date_of_birth"
+                         hx-include="#id_microchip, #id_name, #id_date_of_birth" hx-target="this" hx-swap="innerHTML" hx-select="unset" hx-push-url="false" hx-sync="this:replace">{% if returning.found %}{% include 'horses/partials/returning_panel.html' %}{% endif %}</div>
                     <div>
                         <label for="id_sex" class="block text-sm font-medium text-charcoal">Sex</label>
                         {{ form.sex }}
@@ -51,11 +62,6 @@
                     <div>
                         <label for="id_sire_name" class="block text-sm font-medium text-charcoal">Sire</label>
                         {{ form.sire_name }}
-                    </div>
-                    <div>
-                        <label for="id_microchip" class="block text-sm font-medium text-charcoal">Microchip</label>
-                        {{ form.microchip }}
-                        <p class="mt-1 text-xs text-sage">Type it, or scan it into this box. If the chip is on a horse that was here before, the next page says so.</p>
                     </div>
                     <div>
                         <label for="id_passport_number" class="block text-sm font-medium text-charcoal">Passport Number</label>

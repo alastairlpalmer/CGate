@@ -1200,6 +1200,10 @@ class MedicalConditionUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView)
     form_class = MedicalConditionForm
     template_name = 'health/condition_form.html'
 
+    def form_valid(self, form):
+        messages.success(self.request, f"{form.instance.name} updated.")
+        return super().form_valid(form)
+
     def get_success_url(self):
         return reverse('health_dashboard') + '?type=conditions'
 

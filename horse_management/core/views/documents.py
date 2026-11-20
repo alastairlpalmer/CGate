@@ -85,7 +85,7 @@ def document_create(request):
 
 @login_required
 def document_delete(request, pk):
-    """Delete a document (POST only, confirmed client-side)."""
+    """Delete a document (POST only). A soft delete with Undo, so no confirm."""
     document = get_object_or_404(Document, pk=pk)
     horse, owner = document.horse, document.owner
     if not _may_change(request, horse, owner):

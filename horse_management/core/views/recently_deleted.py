@@ -16,7 +16,7 @@ from core.templatetags.ui_extras import gbp
 def recently_deleted(request):
     from billing.models import ExtraCharge, YardCost
 
-    from ..models import Document
+    from ..models import Document, HorsePhoto
 
     sections = []
     if has_feature_access(request.user, 'charges', LEVEL_FULL):
@@ -44,6 +44,14 @@ def recently_deleted(request):
             'rows': [
                 (d, f"{d.title} ({d.get_doc_type_display()}, {d.horse or d.owner})")
                 for d in Document.all_objects.deleted().select_related('horse', 'owner', 'deleted_by').order_by('-deleted_at')
+            ],
+        })
+        sections.append({
+            'title': 'Photos',
+            'restore_url': 'horse_photo_restore',
+            'rows': [
+                (p, f"{p.get_category_display()} photo of {p.horse.name} ({p.uploaded_at:%d %b %Y})")
+                for p in HorsePhoto.all_objects.deleted().select_related('horse', 'deleted_by').order_by('-deleted_at')
             ],
         })
     return render(request, 'settings/recently_deleted.html', {

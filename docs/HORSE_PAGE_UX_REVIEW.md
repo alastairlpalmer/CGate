@@ -14,11 +14,38 @@ patterns fit this page and which do not.
 
 | Phase | State |
 |---|---|
-| 1. Quick fixes | Done in this branch: B1, A4, C1, C2, C3, C4, C6, B5, G1, G2 |
-| 2. What the page shows first | Done in this branch: A1, A2 (not the folded Pedigree card), A5, A6, A7 |
-| 3. Actions and feedback | Not started |
+| 1. Quick fixes | Done: B1, A4, C1, C2, C3, C4, C6, B5, G1, G2 |
+| 2. What the page shows first | Done: A1, A2 (not the folded Pedigree card), A5, A6, A7 |
+| 3. Actions and feedback | Done in this branch: B2, B3, B4, B6, B7, B8 (see the notes below the table) |
 | 4. Forms, navigation and history | Not started |
 | 5. Consistency and polish | Not started |
+
+Phase 3 notes:
+
+- B2: the header's Move or Log Arrival is the only rust button. The
+  second Log Arrival in the empty Placement card is gone. In cards, the
+  next step is a secondary button and the rest are ghost buttons.
+- B3: Record covering, Record foaling, Edit foal details, Manage
+  ownership, See all records, Add condition, Add photos, Add document,
+  Add number or link. "Scan result" stays, because the Due card and the
+  dashboard use that name. The Record tiles keep short nouns under the
+  "Record" heading. Every card header button is ghost `btn-xs`.
+- B4: photos are a soft delete with Undo (migration `core.0070`), shown
+  in Settings, Recently Deleted, and purged with their files after the
+  retention period. A removed number comes back from its history row
+  (same id, same "checked" stamp). Documents lose their confirm step (they
+  had Undo already). Depart has Undo, which re-opens the stay; a
+  departure with a future date has no Undo, because nothing closed.
+  Coverings and scans keep a confirm, because a remove changes the
+  record's dates and status, but it is now the app's styled dialog.
+- B6: each condition has Edit; open ones come first; resolved ones fold
+  under "N resolved". An edit says "<name> updated."
+- B7: a Charges card in the right column (roles with `charges.view`):
+  the latest 5, Invoiced or Not invoiced yet, Edit for a charge not yet
+  invoiced, and "See all records". No card until there is a charge.
+- B8: each photo has one actions menu (44px target): Use as profile
+  picture, Delete photo. The profile photo has a "Profile" mark. The
+  category shows only when it is not "Condition".
 
 ## 1. Summary
 
@@ -709,10 +736,10 @@ Each phase is one PR, with tests and phone and desktop screenshots.
 |---|---|---|
 | UX_REVIEW_PLAN | A2 item 3: phone "More" opens the Record tiles in the sheet | Part done: "All" jumps to the foot (A7) |
 | UX_REVIEW_PLAN | A2 item 2: one way to add a photo | Not done: Record tile, Photos "+ Add", foal milestone |
-| UX_REVIEW_PLAN | A5: verb and noun on every button | Not done here (B3) |
+| UX_REVIEW_PLAN | A5: verb and noun on every button | Done on this page (B3, phase 3) |
 | UX_REVIEW_PLAN | C1, C2 item 3, C3: money filter, date filter, code font only for codes | Not done here (F3) |
 | UX_REVIEW_PLAN | D1, D2: red only for overdue and errors; one icon set | Not done here (F4, F6) |
-| UX_REVIEW_PLAN | Section 5 step 6: one primary button | Not met (B2) |
+| UX_REVIEW_PLAN | Section 5 step 6: one primary button | Met (B2, phase 3) |
 | UI_AUDIT | 3.6: header strip with location and days on site | Not done (section 5 layout) |
 | UI_AUDIT | 3.8, 3.11, 3.12: shared empty state, alert classes, quieter table actions | Not done here (F8, D3, B3) |
 | MOBILE_QA_REPORT | T2.2: card layout for wide tables | Not done for Breeding History and Foals (7 columns; Actions off screen) |

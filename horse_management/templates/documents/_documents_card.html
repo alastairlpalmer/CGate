@@ -8,7 +8,7 @@ and documents=<queryset>:
         {% firstof heading 'h3' as heading_tag %}<{{ heading_tag }} class="section-title">Documents</{{ heading_tag }}>
         {% if horse and feature_access.horses.full or not horse and feature_access.owners.full %}
         <a href="{% url 'document_create' %}?{% if horse %}horse={{ horse.pk }}{% else %}owner={{ owner.pk }}{% endif %}" hx-get="{% url 'document_create' %}?{% if horse %}horse={{ horse.pk }}{% else %}owner={{ owner.pk }}{% endif %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add document"
-           class="btn-ghost btn-xs">+ Add</a>
+           class="btn-ghost btn-xs">Add document</a>
         {% endif %}
     </div>
     {% if documents %}
@@ -31,8 +31,8 @@ and documents=<queryset>:
                 </p>
             </div>
             {% if horse and feature_access.horses.full or not horse and feature_access.owners.full %}
-            <form method="post" action="{% url 'document_delete' doc.pk %}" class="inline shrink-0"
-                  hx-confirm="Delete “{{ doc.title }}”?">
+            {# No confirm step: the message after the delete has Undo (UX review B4). #}
+            <form method="post" action="{% url 'document_delete' doc.pk %}" class="inline shrink-0">
                 {% csrf_token %}
                 <button type="submit" class="btn-icon text-error-red hover:text-error-red hover:bg-error-red-50"
                         title="Delete document" aria-label="Delete {{ doc.title }}">

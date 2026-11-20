@@ -1,0 +1,58 @@
+{% comment %}
+"Was this horse here before?" on New Arrival (core/returning.py). Loaded
+by htmx while the chip, name and foaling date are typed, and rendered with
+the page after a save that stopped. It sits inside the New Arrival form,
+so its buttons send the whole form:
+
+- bring_back=<pk>: log the arrival on that old record, with the placement
+  typed on this page (formnovalidate: the name can stay empty).
+- new_record=1: make a new record although the chip is on another horse.
+
+Context: returning (core.returning.Returning or None), stopped (the save
+stopped because the chip is on a horse already).
+{% endcomment %}
+{% if returning.by_chip %}{% with h=returning.by_chip %}
+<div class="rounded-card border border-saddle/40 bg-sand-50 p-3 text-sm" data-testid="returning-chip"{% if stopped %} role="alert"{% endif %}>
+    {% if stopped %}<p class="text-xs font-semibold text-saddle mb-1">Not saved yet</p>{% endif %}
+    {% if h.here %}
+    <p class="font-medium text-charcoal">This microchip is on <a href="{% url 'horse_detail' h.pk %}" class="link">{{ h.name }}</a>, on the yard now.</p>
+    <p>{% include 'horses/partials/returning_facts.html' %}</p>
+    <p class="mt-1 text-xs text-charcoal-light">Check the chip. To change where {{ h.name }} is, use Move on its page.</p>
+    {% else %}
+    <p class="font-medium text-charcoal">This horse was here before: <a href="{% url 'horse_detail' h.pk %}" class="link">{{ h.name }}</a>.</p>
+    <p>{% include 'horses/partials/returning_facts.html' %}</p>
+    <div class="mt-2 flex flex-wrap items-center gap-2">
+        <button type="submit" name="bring_back" value="{{ h.pk }}" formnovalidate class="btn-secondary btn-sm" data-testid="bring-back">Bring {{ h.name }} back</button>
+    </div>
+    <p class="mt-1 text-xs text-charcoal-light">This uses the old record, with all its history, and the owner and placement on this page.</p>
+    {% endif %}
+    <p class="mt-2 text-xs text-sage">Not the same horse? <button type="submit" name="new_record" value="1" class="link tap-pad">Make a new record anyway</button></p>
+</div>
+{% endwith %}{% elif returning.chip_many %}
+<div class="rounded-card border border-saddle/40 bg-sand-50 p-3 text-sm" data-testid="returning-chip-many"{% if stopped %} role="alert"{% endif %}>
+    {% if stopped %}<p class="text-xs font-semibold text-saddle mb-1">Not saved yet</p>{% endif %}
+    <p class="font-medium text-charcoal">This microchip is on more than one horse. Check the records first.</p>
+    <ul class="mt-1 divide-y divide-light-sage">
+        {% for h in returning.chip_many %}
+        <li class="py-2 flex items-center justify-between gap-3">
+            <div class="min-w-0"><a href="{% url 'horse_detail' h.pk %}" class="link font-medium">{{ h.name }}</a><br>{% include 'horses/partials/returning_facts.html' %}</div>
+            {% if not h.here %}<button type="submit" name="bring_back" value="{{ h.pk }}" formnovalidate class="btn-ghost btn-xs shrink-0">Bring back</button>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    <p class="mt-2 text-xs text-sage">None of these? <button type="submit" name="new_record" value="1" class="link tap-pad">Make a new record anyway</button></p>
+</div>
+{% elif returning.possible %}
+<div class="rounded-card border border-light-sage bg-white p-3 text-sm" data-testid="returning-possible">
+    <p class="font-medium text-charcoal">Possible match{{ returning.possible|length|pluralize:"es" }}</p>
+    <p class="text-xs text-charcoal-light">Same name only. Check the chip or the passport before you bring a horse back.</p>
+    <ul class="mt-1 divide-y divide-light-sage">
+        {% for h in returning.possible %}
+        <li class="py-2 flex items-center justify-between gap-3">
+            <div class="min-w-0"><a href="{% url 'horse_detail' h.pk %}" class="link font-medium">{{ h.name }}</a>{% if h.registered_name and h.registered_name|lower != h.name|lower %} <span class="text-xs text-sage">({{ h.registered_name }})</span>{% endif %}<br>{% include 'horses/partials/returning_facts.html' %}</div>
+            {% if not h.here %}<button type="submit" name="bring_back" value="{{ h.pk }}" formnovalidate class="btn-ghost btn-xs shrink-0">Bring back</button>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}

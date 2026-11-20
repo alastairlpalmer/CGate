@@ -138,7 +138,7 @@
                     <div class="mt-1.5 flex items-center gap-2 flex-wrap">
                         {% include 'health/partials/breeding_status_badge.html' with br=br %}
                         {% if can_edit and br.can_add_covering %}
-                        <a href="{% url 'breeding_covering_add' br.pk %}" hx-get="{% url 'breeding_covering_add' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add covering for {{ br.mare.name }}" class="relative z-10 btn-ghost btn-xs">+ Covering</a>
+                        <a href="{% url 'breeding_covering_add' br.pk %}" hx-get="{% url 'breeding_covering_add' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add covering for {{ br.mare.name }}" class="relative z-10 btn-ghost btn-xs">Record covering</a>
                         {% endif %}
                         {% if can_edit and br.next_scan %}
                         <a href="{% url 'breeding_scan' br.pk %}" hx-get="{% url 'breeding_scan' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Scan result for {{ br.mare.name }}" class="relative z-10 btn-ghost btn-xs">Scan</a>
@@ -236,7 +236,7 @@
                         {% if can_edit %}
                         <td class="text-right whitespace-nowrap">
                             {% if br.can_add_covering %}
-                            <a href="{% url 'breeding_covering_add' br.pk %}" hx-get="{% url 'breeding_covering_add' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add covering for {{ br.mare.name }}" class="btn-ghost btn-xs">+ Covering</a>
+                            <a href="{% url 'breeding_covering_add' br.pk %}" hx-get="{% url 'breeding_covering_add' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add covering for {{ br.mare.name }}" class="btn-ghost btn-xs">Record covering</a>
                             {% endif %}
                             {% if br.next_scan %}
                             <a href="{% url 'breeding_scan' br.pk %}" hx-get="{% url 'breeding_scan' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Scan result for {{ br.mare.name }}" class="{% if br.status == 'covered' %}btn-secondary{% else %}btn-ghost{% endif %} btn-xs">Scan</a>

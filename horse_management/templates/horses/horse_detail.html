@@ -194,7 +194,7 @@
         </p>
         <form method="post" action="{% url 'horse_reactivate' horse.pk %}" class="mt-3">
             {% csrf_token %}
-            <button type="submit" class="btn-primary text-xs">Mark as active</button>
+            <button type="submit" class="btn-secondary text-xs">Mark as active</button>
         </form>
     </div>
     {% endif %}
@@ -308,25 +308,17 @@
                         <p class="mt-3 text-sm font-medium text-charcoal">No current placement</p>
                         <p class="text-xs text-sage mt-0.5">{{ horse.name }} isn't currently at a location.</p>
                         {% endif %}
-                        {% if feature_access.horses.full %}
-                        <a href="{% url 'horse_arrive' horse.pk %}" hx-get="{% url 'horse_arrive' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Log arrival for {{ horse.name }}" class="btn-primary mt-4 inline-flex">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                            </svg>
-                            Log Arrival
-                        </a>
-                        {% endif %}
                     </div>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Notes & conditions. The numbers are on the Identity card. -->
-            {% if horse.breeding or horse.notes or medical_conditions %}
+            {% if horse.breeding or horse.notes or medical_conditions or resolved_conditions %}
             <div class="card">
                 <div class="section-header">
                     <h2 class="section-title">Notes &amp; conditions</h2>
-                    {% if feature_access.health.full %}<a href="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-get="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Condition for {{ horse.name }}" class="btn-ghost btn-xs">+ Condition</a>{% endif %}
+                    {% if feature_access.health.full %}<a href="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-get="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add condition for {{ horse.name }}" class="btn-ghost btn-xs">Add condition</a>{% endif %}
                 </div>
                 <div class="p-4">
                     {% if horse.breeding or horse.notes %}
@@ -346,27 +338,35 @@
                     </dl>
                     {% endif %}
 
-                    {% if medical_conditions %}
+                    {% if medical_conditions or resolved_conditions %}
                     {# The rule only divides: with no details above it there is nothing to divide from. #}
-                    <div{% if horse.breeding or horse.notes %} class="mt-5 pt-5 border-t border-light-sage"{% endif %}>
+                    {% comment %}Open conditions first, each with Edit (to change its
+                    status or close it). Resolved ones fold away under a count
+                    (UX review B6).{% endcomment %}
+                    <div{% if horse.breeding or horse.notes %} class="mt-5 pt-5 border-t border-light-sage"{% endif %} data-testid="conditions">
                         <h3 class="dt-label mb-3">Conditions</h3>
-                        <div class="space-y-2">
+                        {% if medical_conditions %}
+                        <ul class="space-y-1">
                             {% for c in medical_conditions %}
-                            <div class="flex items-center justify-between py-1">
-                                <div>
-                                    <span class="text-sm font-medium text-charcoal">{{ c.name }}</span>
-                                    {% if c.diagnosed_date %}<span class="text-xs text-sage ml-2">since {{ c.diagnosed_date|date:"j M Y" }}</span>{% endif %}
-                                </div>
-                                {% if c.status == 'active' %}
-                                <span class="badge-danger">Active</span>
-                                {% elif c.status == 'monitoring' %}
-                                <span class="badge-warning">Monitoring</span>
-                                {% else %}
-                                <span class="badge-success">Resolved</span>
-                                {% endif %}
-                            </div>
+                            {% include 'horses/partials/condition_row.html' %}
                             {% endfor %}
-                        </div>
+                        </ul>
+                        {% else %}
+                        <p class="text-sm text-sage">No open conditions.</p>
+                        {% endif %}
+                        {% if resolved_conditions %}
+                        <details class="mt-2 group" data-testid="resolved-conditions">
+                            <summary class="text-xs text-sage cursor-pointer tap-pad inline-flex items-center gap-1 list-none">
+                                <svg class="w-3 h-3 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                                {{ resolved_conditions|length }} resolved
+                            </summary>
+                            <ul class="mt-1 space-y-1">
+                                {% for c in resolved_conditions %}
+                                {% include 'horses/partials/condition_row.html' %}
+                                {% endfor %}
+                            </ul>
+                        </details>
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>
@@ -385,12 +385,12 @@
                     {% if feature_access.breeding.full %}
                     <div class="flex items-center gap-2">
                         {% if active_pregnancy.can_add_covering %}
-                        <a href="{% url 'breeding_covering_add' active_pregnancy.pk %}" hx-get="{% url 'breeding_covering_add' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add covering for {{ horse.name }}" class="btn-ghost btn-xs">+ Covering</a>
+                        <a href="{% url 'breeding_covering_add' active_pregnancy.pk %}" hx-get="{% url 'breeding_covering_add' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record covering for {{ horse.name }}" class="btn-ghost btn-xs">Record covering</a>
                         {% endif %}
                         {% if active_pregnancy.next_scan %}
-                        <a href="{% url 'breeding_scan' active_pregnancy.pk %}" hx-get="{% url 'breeding_scan' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Scan result for {{ horse.name }}" class="{% if active_pregnancy.status == 'covered' %}btn-primary{% else %}btn-secondary{% endif %} btn-xs">Scan result</a>
+                        <a href="{% url 'breeding_scan' active_pregnancy.pk %}" hx-get="{% url 'breeding_scan' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Scan result for {{ horse.name }}" class="{% if active_pregnancy.status == 'covered' %}btn-secondary{% else %}btn-ghost{% endif %} btn-xs">Scan result</a>
                         {% endif %}
-                        <a href="{% url 'breeding_foaling' active_pregnancy.pk %}" hx-get="{% url 'breeding_foaling' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ horse.name }}" class="{% if active_pregnancy.status == 'covered' %}btn-secondary{% else %}btn-primary{% endif %} btn-xs">Record foaling</a>
+                        <a href="{% url 'breeding_foaling' active_pregnancy.pk %}" hx-get="{% url 'breeding_foaling' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ horse.name }}" class="{% if active_pregnancy.status == 'covered' %}btn-ghost{% else %}btn-secondary{% endif %} btn-xs">Record foaling</a>
                         <a href="{% url 'breeding_update' active_pregnancy.pk %}" hx-get="{% url 'breeding_update' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record" class="btn-ghost btn-xs">Edit</a>
                     </div>
                     {% endif %}
@@ -458,7 +458,7 @@
                 <div class="section-header">
                     <h2 class="section-title">Breeding</h2>
                     {% if feature_access.breeding.full %}
-                    <a href="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-get="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record a covering for {{ horse.name }}" class="btn-ghost btn-xs">+ Covering</a>
+                    <a href="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-get="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record covering for {{ horse.name }}" class="btn-ghost btn-xs">Record covering</a>
                     {% endif %}
                 </div>
                 <div class="p-4 text-sm">
@@ -704,7 +704,7 @@
                     <div class="mt-3 flex flex-col items-start gap-2 pl-8">
                         <button type="button" class="btn-secondary btn-sm" x-show="total() > limit" x-cloak @click="limit += {{ timeline_page }}" data-testid="timeline-more">Show older</button>
                         {% for note in timeline_capped %}
-                        <p class="text-xs text-sage" x-show="limit >= total() && (activeFilter === 'all' || activeFilter === '{{ note.filter }}')" x-cloak>{{ note.text }}{% if note.url %} <a href="{{ note.url }}" class="link tap-pad">See all</a>{% endif %}</p>
+                        <p class="text-xs text-sage" x-show="limit >= total() && (activeFilter === 'all' || activeFilter === '{{ note.filter }}')" x-cloak>{{ note.text }}{% if note.url %} <a href="{{ note.url }}" class="link tap-pad">See all records</a>{% endif %}</p>
                         {% endfor %}
                     </div>
                     <p class="sr-only" aria-live="polite" x-text="'Showing ' + Math.min(limit, total()) + ' of ' + total() + ' records'"></p>
@@ -728,7 +728,7 @@
                         <h2 class="section-title">Breeding History</h2>
                         <span class="badge-neutral">{{ breeding_history|length }}</span>
                     </div>
-                    <a href="{% url 'breeding_list' %}?horse={{ horse.pk }}" class="text-xs link tap-pad">All records &rarr;</a>
+                    <a href="{% url 'breeding_list' %}?horse={{ horse.pk }}" class="text-xs link tap-pad">See all records</a>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="data-table">
@@ -765,8 +765,8 @@
                                 </td>
                                 {% if feature_access.breeding.full %}
                                 <td class="text-right whitespace-nowrap">
-                                    {% if br.can_add_covering %}<a href="{% url 'breeding_covering_add' br.pk %}" hx-get="{% url 'breeding_covering_add' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add covering for {{ horse.name }}" class="btn-ghost btn-xs">+ Covering</a>{% endif %}
-                                    {% if br.can_record_foaling %}<a href="{% url 'breeding_foaling' br.pk %}" hx-get="{% url 'breeding_foaling' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ horse.name }}" class="btn-ghost btn-xs">Foaling</a>{% endif %}
+                                    {% if br.can_add_covering %}<a href="{% url 'breeding_covering_add' br.pk %}" hx-get="{% url 'breeding_covering_add' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record covering for {{ horse.name }}" class="btn-ghost btn-xs">Record covering</a>{% endif %}
+                                    {% if br.can_record_foaling %}<a href="{% url 'breeding_foaling' br.pk %}" hx-get="{% url 'breeding_foaling' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ horse.name }}" class="btn-ghost btn-xs">Record foaling</a>{% endif %}
                                     <a href="{% url 'breeding_update' br.pk %}" hx-get="{% url 'breeding_update' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record" class="btn-ghost btn-xs">Edit</a>
                                 </td>
                                 {% endif %}
@@ -810,8 +810,8 @@
                                     <td>{% if fr %}{% if fr.is_weaned %}<span class="badge-neutral">Weaned {{ fr.weaned_date|date:"j M Y" }}</span>{% else %}<span class="badge-success">At foot</span>{% endif %}{% else %}<span class="text-sage">-</span>{% endif %}</td>
                                     {% if feature_access.breeding.full %}
                                     <td class="text-right whitespace-nowrap">
-                                        {% if fr.can_wean %}<a href="{% url 'breeding_wean' fr.pk %}" hx-get="{% url 'breeding_wean' fr.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Wean {{ foal.name }}" class="btn-secondary btn-xs">Wean</a>{% endif %}
-                                        {% if fr %}<a href="{% url 'breeding_foal_edit' fr.pk %}" hx-get="{% url 'breeding_foal_edit' fr.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Foal details for {{ foal.name }}" class="btn-ghost btn-xs">Details</a>{% endif %}
+                                        {% if fr.can_wean %}<a href="{% url 'breeding_wean' fr.pk %}" hx-get="{% url 'breeding_wean' fr.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Wean {{ foal.name }}" class="btn-ghost btn-xs">Wean</a>{% endif %}
+                                        {% if fr %}<a href="{% url 'breeding_foal_edit' fr.pk %}" hx-get="{% url 'breeding_foal_edit' fr.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit foal details for {{ foal.name }}" class="btn-ghost btn-xs">Edit foal details</a>{% endif %}
                                     </td>
                                     {% endif %}
                                 </tr>
@@ -846,7 +846,7 @@
             <div class="card">
                 <div class="section-header">
                     <h2 class="section-title">Ownership</h2>
-                    {% if feature_access.horses.full %}<a href="{% url 'horse_ownership' horse.pk %}" class="btn-ghost btn-xs">Manage</a>{% endif %}
+                    {% if feature_access.horses.full %}<a href="{% url 'horse_ownership' horse.pk %}" class="btn-ghost btn-xs">Manage ownership</a>{% endif %}
                 </div>
                 {% if ownership_shares %}
                 <ul class="divide-y divide-light-sage">
@@ -866,13 +866,47 @@
                 <div class="px-4 py-4 text-center">
                     <p class="text-sm text-sage">No ownership shares set</p>
                     {% if feature_access.horses.full %}
-                    <a href="{% url 'horse_ownership' horse.pk %}" class="btn-primary mt-3 inline-flex text-xs">
-                        Set Ownership
+                    <a href="{% url 'horse_ownership' horse.pk %}" class="btn-secondary mt-3 inline-flex text-xs">
+                        Manage ownership
                     </a>
                     {% endif %}
                 </div>
                 {% endif %}
             </div>
+
+            {% comment %}Charges (UX review B7): the extra charges billed for this
+            horse, newest first, so an "Other charge" does not vanish after its
+            save. Roles that see money only; no card until there is a charge.{% endcomment %}
+            {% if extra_charges %}
+            <section class="card" aria-labelledby="charges-title" data-testid="charges-card">
+                <div class="section-header">
+                    <h2 id="charges-title" class="section-title">Charges</h2>
+                    <a href="{% url 'charge_list' %}?horse={{ horse.pk }}" class="link text-xs tap-pad">See all records</a>
+                </div>
+                <ul class="divide-y divide-light-sage">
+                    {% for charge in extra_charges %}
+                    <li class="px-4 py-2.5 flex items-start justify-between gap-3 text-sm">
+                        <div class="min-w-0">
+                            <p class="text-charcoal truncate">{{ charge.description|default:charge.get_charge_type_display }}</p>
+                            <p class="text-xs text-sage">{{ charge.date|date:"j M Y" }} &middot; {% if charge.invoiced or charge.invoice_id %}Invoiced{% else %}Not invoiced yet{% endif %}</p>
+                        </div>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <span class="tabular-nums text-charcoal">{{ charge.amount|gbp }}</span>
+                            {% if feature_access.charges.full and not charge.invoiced and not charge.invoice_id %}
+                            <a href="{% url 'charge_update' charge.pk %}" hx-get="{% url 'charge_update' charge.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit charge"
+                               class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit charge, {{ charge.description|default:charge.get_charge_type_display }}, {{ charge.date|date:'j M Y' }}">Edit</a>
+                            {% elif feature_access.charges.full %}
+                            <span class="min-w-[44px]" aria-hidden="true"></span>{# keeps the amounts in line #}
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% if extra_charge_count > extra_charges|length %}
+                <p class="px-4 py-2 text-xs text-sage border-t border-light-sage">Showing the latest {{ extra_charges|length }} of {{ extra_charge_count }}.</p>
+                {% endif %}
+            </section>
+            {% endif %}
 
             <!-- Documents -->
             {% include 'documents/_documents_card.html' with documents=horse.documents.all horse=horse heading='h2' %}
