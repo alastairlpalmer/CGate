@@ -390,6 +390,7 @@ Dashboard:
 ### P2 — Before selling to more than one yard (about 4–6 months)
 
 This is the multi-tenancy rebuild that the market document estimates.
+The detailed design, build waves and run plan are in [`MULTI_TENANCY_PLAN.md`](MULTI_TENANCY_PLAN.md).
 
 1. Organisation model; every query scoped by organisation; tests that try to read across tenants.
 2. Per-object access checks, ready for the owner portal.
