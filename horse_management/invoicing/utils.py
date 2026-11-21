@@ -270,7 +270,9 @@ def invoice_to_xero_rows(invoice, account_code='200'):
             row['POAddressLine4'] = address_lines[3]
             row['Total'] = str(invoice.total)
 
-        row['*Description'] = item.description
+        # With the horse's name: Xero lists the lines without the horse
+        # headings the invoice PDF has.
+        row['*Description'] = item.description_with_horse
         # Xero derives each line's amount as Quantity x UnitAmount. For livery
         # lines, quantity/unit_price are days/full-daily-rate, whose product is
         # the FULL charge — not this owner's (possibly fractional) share. The

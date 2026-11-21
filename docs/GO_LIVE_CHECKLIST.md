@@ -378,6 +378,10 @@ and anyone can spoof your address.
   - [ ] **SPF** — says which servers may send as you
   - [ ] **DKIM** — signs your mail so it cannot be forged
   - [ ] **DMARC** — tells receivers what to do with mail that fails
+- [ ] Set `EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend` on
+      **web and worker**. Without it the app uses the console backend: an
+      invoice "sent" only goes into the logs. Send now refuses that and
+      says "Email is not set up on this server".
 - [ ] Update `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` and
       `DEFAULT_FROM_EMAIL` on **web and worker**
 - [ ] Send yourself a test invoice and confirm it lands in the inbox, not

@@ -482,6 +482,18 @@ class InvoiceLineItem(models.Model):
     def __str__(self):
         return f"{self.description}: £{self.line_total}"
 
+    @property
+    def description_with_horse(self):
+        """The line's text with the horse's name in front: "Avicii: Farrier -
+        Full Set". The invoice PDF and page put the lines under each horse's
+        name, so their text leaves it out. Xero shows a flat list, where five
+        "Grass livery … 31 days" lines could not be told apart (Dev board,
+        "Horse name on Xero invoice")."""
+        horse = self.horse if self.horse_id else None
+        if horse is None or self.description.startswith(horse.name):
+            return self.description
+        return f'{horse.name}: {self.description}'
+
     def save(self, *args, **kwargs):
         # Auto-calculate line total unless explicitly provided
         if self.line_total is None:

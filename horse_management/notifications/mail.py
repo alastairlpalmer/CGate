@@ -60,6 +60,25 @@ def message(subject, html_body, to, *, unsubscribe_url=None) -> EmailMultiAltern
     return msg
 
 
+# Backends that "send" without delivering anything. Fine on a developer's
+# machine; on a live server they mean nobody gets the email.
+NON_DELIVERING_BACKENDS = frozenset({
+    'django.core.mail.backends.console.EmailBackend',
+    'django.core.mail.backends.dummy.EmailBackend',
+})
+EMAIL_NOT_SET_UP = (
+    'Email is not set up on this server, so nothing was sent. An administrator '
+    'sets EMAIL_BACKEND and EMAIL_HOST (go-live checklist, step 5.2).'
+)
+
+
+def email_is_set_up() -> bool:
+    """Whether an email sent now reaches someone (Dev board, "Send button on
+    Invoices does not work"). On a live server the console backend printed
+    the invoice into the logs and the invoice was marked sent."""
+    return settings.DEBUG or settings.EMAIL_BACKEND not in NON_DELIVERING_BACKENDS
+
+
 def can_email(owner) -> bool:
     """An address to send to that is not known to bounce."""
     return bool(owner and owner.email and not owner.email_bounced_at)

@@ -172,7 +172,8 @@ def resolve_usage_window(request, default='year'):
         start, end = date(year, 1, 1), date(year, 12, 31)
     return {
         'range': 'year', 'year': year,
-        'start': start, 'end': end, 'label': str(year),
+        # "year 2026", not "2026": the pages say "for the …" and "over the …".
+        'start': start, 'end': end, 'label': f'year {year}',
         'days': 366 if calendar.isleap(year) else 365, 'is_year': True,
     }
 
