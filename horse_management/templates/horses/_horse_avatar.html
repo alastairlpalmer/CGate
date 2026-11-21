@@ -24,13 +24,15 @@ opens the horse page instead of the viewer.
 Args:
     horse  – Horse instance (required)
     size   – 'sm' (default: 32px on a phone card, 24px in a table row from md),
-             'md' (40px), 'lg' (96px hero, loaded first: it is above the fold)
+             'md' (40px), 'lg' (96px), 'xl' (the horse page's banner: 7rem on a
+             phone, up to 14rem on a wide screen, filling its banner area).
+             lg and xl load first: they are above the fold.
 {% endcomment %}
 {% if horse.photo %}
-    {% if size == 'lg' %}
+    {% if size == 'lg' or size == 'xl' %}
     <img src="{% if horse.photo_thumb %}{{ horse.photo_thumb.url }}{% else %}{{ horse.photo.url }}{% endif %}"
-         alt="{{ horse.name }}" width="96" height="96"
-         class="w-24 h-24 rounded-xl object-cover shrink-0 ring-1 ring-light-sage shadow-xs cursor-zoom-in hover:ring-2 hover:ring-forest transition-shadow"
+         alt="{{ horse.name }}" width="{% if size == 'xl' %}224{% else %}96{% endif %}" height="{% if size == 'xl' %}224{% else %}96{% endif %}"
+         class="{% if size == 'xl' %}horse-hero-img{% else %}w-24 h-24{% endif %} rounded-xl object-cover shrink-0 ring-1 ring-light-sage shadow-xs cursor-zoom-in hover:ring-2 hover:ring-forest transition-shadow"
          loading="eager" fetchpriority="high" decoding="async"
          role="button" tabindex="0" title="View photo full screen"
          aria-label="View the photo of {{ horse.name }} full screen"
@@ -52,10 +54,10 @@ Args:
     {% endif %}
 {% else %}
     {% with coat=horse.color|coat_colour %}
-    {% if size == 'lg' %}
-    <div class="w-24 h-24 rounded-xl flex items-center justify-center shrink-0 shadow-xs ring-1 ring-black/10"
+    {% if size == 'lg' or size == 'xl' %}
+    <div class="{% if size == 'xl' %}horse-hero-img{% else %}w-24 h-24{% endif %} rounded-xl flex items-center justify-center shrink-0 shadow-xs ring-1 ring-black/10"
          style="background:{{ coat.0 }};color:{{ coat.1 }}" title="{{ horse.get_color_display }}">
-        <svg class="w-12 h-12 opacity-90" aria-hidden="true"><use href="#i-horse"/></svg>
+        <svg class="{% if size == 'xl' %}w-1/2 h-1/2{% else %}w-12 h-12{% endif %} opacity-90" aria-hidden="true"><use href="#i-horse"/></svg>
     </div>
     {% elif size == 'md' %}
     <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ring-1 ring-black/10"

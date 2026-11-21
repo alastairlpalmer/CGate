@@ -211,13 +211,16 @@ class HorsePageTests(TestCase):
                                           'D': Resolution('x', record=self.mare.pedigree)})
         self.url = reverse('horse_detail', args=[self.horse.pk])
 
-    def test_the_card_and_the_byline(self):
+    def test_the_tree_in_the_banner(self):
         response = self.client.get(self.url)
-        self.assertContains(response, 'id="pedigree"')
-        self.assertContains(response, 'data-testid="pedigree-byline"')
         page = response.content.decode()
-        self.assertIn('by <span class="font-medium text-charcoal">Copper Ridge (GB)</span>', page)
-        self.assertIn(f'href="{reverse("horse_detail", args=[self.mare.pk])}" class="link tap-pad font-medium">Starlit Rose (IRE)</a>, by Moonlit Bay (FR)', page)
+        banner = page.split('data-testid="horse-hero"', 1)[1].split('id="identity"', 1)[0]
+        self.assertIn('id="pedigree"', banner)
+        # The tree is in the banner, so the "by … out of …" line under the
+        # name is gone: the parents show once (21 Nov 2026 layout).
+        self.assertNotIn('data-testid="pedigree-byline"', page)
+        self.assertIn('Copper Ridge', banner)
+        self.assertIn('Starlit Rose', banner)
         self.assertContains(response, 'class="ped-gap ped-gap0"')
         self.assertContains(response, 'Show 3 generations')
         self.assertContains(response, 'Family here')
@@ -234,7 +237,6 @@ class HorsePageTests(TestCase):
         response = self.client.get(reverse('horse_detail', args=[bare.pk]))
         self.assertContains(response, '+ Add')
         self.assertContains(response, 'Not entered')
-        self.assertNotContains(response, 'data-testid="pedigree-byline"')
         self.client.force_login(make_viewer())
         response = self.client.get(reverse('horse_detail', args=[bare.pk]))
         self.assertNotContains(response, '+ Add')

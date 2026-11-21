@@ -777,6 +777,42 @@ Pedigree
 Ownership · Documents · Photos
 ```
 
+### 5.1 Layout of 21 Nov 2026 (replaces the diagrams above)
+
+The owner asked for these changes after Phase 5:
+
+1. A deeper banner with a larger photo.
+2. The pedigree tree in the banner, in the space beside the photo.
+3. The current placement in the banner too.
+4. Ownership and identity in one band of their own.
+5. The Timeline directly under that band.
+6. The Training card only when the Timeline has a training record (done or
+   did not work). Planned work alone does not show the card; Record
+   training stays in the Record card.
+
+Desktop, 1280 px and wider:
+
+```
+┌ [photo   ] Avicii · 7yo bay gelding · owner ☎     [Move] [Edit] [More] ┐
+│ [  large ] ─────────────────────────────┬───────────────────────────── │
+│ [        ] Current placement            │ Pedigree (tree)              │
+│ [        ] Location · Rate · Arrived    │                              │
+└─────────────────────────────────────────┴──────────────────────────────┘
+Due (only when something is due)
+┌ Ownership and identity ─────────────────────────────────────────────────┐
+│ Ownership (shares)   │ Identity (numbers, links, chip check)           │
+└──────────────────────┴──────────────────────────────────────────────────┘
+Timeline · foal record · Notes & conditions │ Record
+In foal / Breeding · Training (with records)│ Charges
+Breeding history · Foals · History          │ Documents · Photos
+```
+
+From 640 px to 1279 px the photo spans the name and the placement, and the
+tree goes full width under them. On a phone the photo sits beside the
+name; the placement and the tree go full width under it. The "by … out
+of …" line under the name is gone: the tree in the banner shows the
+parents (A3, one place for each fact).
+
 ## 6. How the SaaS UI patterns fit this page
 
 | Pattern | Fit | Where |
@@ -820,7 +856,7 @@ Each phase is one PR, with tests and phone and desktop screenshots.
 | UX_REVIEW_PLAN | C1, C2 item 3, C3: money filter, date filter, code font only for codes | Not done here (F3) |
 | UX_REVIEW_PLAN | D1, D2: red only for overdue and errors; one icon set | Not done here (F4, F6) |
 | UX_REVIEW_PLAN | Section 5 step 6: one primary button | Met (B2, phase 3) |
-| UI_AUDIT | 3.6: header strip with location and days on site | Not done (section 5 layout) |
+| UI_AUDIT | 3.6: header strip with location and days on site | Done: the placement is in the banner (section 5.1) |
 | UI_AUDIT | 3.8, 3.11, 3.12: shared empty state, alert classes, quieter table actions | Not done here (F8, D3, B3) |
 | MOBILE_QA_REPORT | T2.2: card layout for wide tables | Not done for Breeding History and Foals (7 columns; Actions off screen) |
 | MOBILE_QA_REPORT | T1.1, T3.2: 44px controls on a phone | Not met in places (C9) |

@@ -1,13 +1,15 @@
 {% comment %}
-Pedigree card on the horse page (plan §8.3). Needs the context from
+Pedigree on the horse page (plan §8.3). Needs the context from
 pedigree.display.diagram_context as ``pedigree`` (unpacked by the
-{% with %} below) and feature_access.
+{% with %} below) and feature_access. With in_hero=True it sits in the
+page's banner, beside the placement, without a card frame (the "breeding
+map" of the 21 Nov 2026 layout).
 {% endcomment %}
 {% with tree=pedigree.tree root=pedigree.root page_horse=pedigree.page_horse is_page_horse=pedigree.is_page_horse back=pedigree.back family=pedigree.family generations=pedigree.generations %}
-<div class="card" id="pedigree" x-data="{ three: false }"
+<section class="{% if in_hero %}horse-hero-ped min-w-0{% else %}card{% endif %}" id="pedigree" aria-labelledby="pedigree-title" x-data="{ three: false }"
      @htmx:after-swap="three = !!$el.querySelector('#pedigree-diagram .ped-tree.ped-g3')">
-    <div class="section-header">
-        <h2 class="section-title">Pedigree</h2>
+    <div class="{% if in_hero %}flex items-center justify-between gap-2{% else %}section-header{% endif %}">
+        <h2 id="pedigree-title" class="{% if in_hero %}hero-section-title{% else %}section-title{% endif %}">Pedigree</h2>
         <div class="flex items-center gap-2">
             {% if tree.has_more %}
             {% comment %}One toggle button (UX review C5). Two buttons that swapped
@@ -27,8 +29,8 @@ pedigree.display.diagram_context as ``pedigree`` (unpacked by the
             {% endif %}
         </div>
     </div>
-    <div class="p-4" id="pedigree-diagram">
+    <div class="{% if in_hero %}mt-2{% else %}p-4{% endif %}" id="pedigree-diagram">
         {% include 'pedigree/_diagram.html' %}
     </div>
-</div>
+</section>
 {% endwith %}

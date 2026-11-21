@@ -82,9 +82,11 @@ class OrderTests(Base):
         self.overdue_flu(horse)
         body = self.page(horse).content.decode()
         main = body.split('<main', 1)[1]
+        # 21 Nov 2026 layout: the banner holds the placement and the tree;
+        # then Due, the Ownership and identity band, and the Timeline.
         places = [main.index(marker) for marker in (
-            'data-testid="due-strip"', 'Current placement', 'Notes &amp; conditions',
-            '>Timeline</h2>', 'id="identity"', 'id="pedigree"')]
+            'data-testid="horse-hero"', 'Current placement', 'id="pedigree"', 'data-testid="due-strip"',
+            'id="identity"', '>Timeline</h2>', 'Notes &amp; conditions')]
         self.assertEqual(places, sorted(places))
 
 

@@ -1,24 +1,53 @@
 {% comment %}
-Identity card on the horse page (docs/HORSE_IDENTITY_AND_PEDIGREE_PLAN.md
-§8.2, phase 1a). Only filled rows show; one line lists what is missing.
-Numbers are in mono, in groups of three, with a copy button that copies
-the number without spaces. Phase 1b adds the pedigree beside it.
+Ownership and identity on the horse page, one band under the banner (the
+21 Nov 2026 layout): who owns the horse, and its numbers
+(docs/HORSE_IDENTITY_AND_PEDIGREE_PLAN.md §8.2). Only filled rows show;
+one line lists what is missing. Numbers are in mono, in groups of three,
+with a copy button that copies the number without spaces.
+Context: horse, ownership_shares, identifiers, identity_duplicates,
+identity_checked_by, feature_access.
 {% endcomment %}
-<div class="card" id="identity">
+<section class="card" id="identity" aria-labelledby="identity-title" data-testid="ownership-identity">
     <div class="section-header">
-        <h2 class="section-title">Identity</h2>
-        {% if feature_access.horses.full %}
-        <div class="flex items-center gap-2">
-            {% if horse.microchip %}
-            <a href="{% url 'horse_detail' horse.pk %}" hx-get="{% url 'horse_scan_check' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-               data-popup-title="Scan to check {{ horse.name }}" class="btn-ghost btn-xs">Scan to check</a>
-            {% endif %}
-            <a href="{% url 'horse_update' horse.pk %}" hx-get="{% url 'horse_quick_edit' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
-               data-popup-title="Edit {{ horse.name }}" class="btn-ghost btn-xs">Edit</a>
+        <h2 id="identity-title" class="section-title">Ownership and identity</h2>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 divide-y divide-light-sage lg:divide-y-0 lg:divide-x">
+    <div class="p-4" id="ownership">
+        <div class="flex items-center justify-between gap-2 mb-2">
+            <h3 class="text-xs font-semibold text-charcoal-light">Ownership</h3>
+            {% if feature_access.horses.full %}<a href="{% url 'horse_ownership' horse.pk %}" class="btn-ghost btn-xs">Manage ownership</a>{% endif %}
         </div>
+        {% if ownership_shares %}
+        <ul class="divide-y divide-light-sage">
+            {% for share in ownership_shares %}
+            <li class="py-2 flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <a href="{% url 'owner_detail' share.owner.pk %}" class="link text-sm tap-pad">{{ share.owner.name }}</a>
+                    {% if share.is_primary_contact %}<span class="ml-1 text-xs text-forest font-medium">Primary</span>{% endif %}
+                </div>
+                <span class="badge-info shrink-0">{{ share.share_percentage|floatformat:0 }}%</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        {% if feature_access.horses.full %}{% url 'horse_ownership' horse.pk as ownership_url %}{% endif %}
+        {% include 'includes/empty_state.html' with title='No owners set' body='Set who owns the horse and their shares.' icon='horse' extra_url=ownership_url extra_label='Manage ownership' compact=True %}
         {% endif %}
     </div>
-    <div class="p-4 space-y-4">
+    <div class="p-4 space-y-4 lg:col-span-2 min-w-0">
+        <div class="flex items-center justify-between gap-2 -mb-1">
+            <h3 class="text-xs font-semibold text-charcoal-light">Identity</h3>
+            {% if feature_access.horses.full %}
+            <div class="flex items-center gap-2">
+                {% if horse.microchip %}
+                <a href="{% url 'horse_detail' horse.pk %}" hx-get="{% url 'horse_scan_check' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                   data-popup-title="Scan to check {{ horse.name }}" class="btn-ghost btn-xs">Scan to check</a>
+                {% endif %}
+                <a href="{% url 'horse_update' horse.pk %}" hx-get="{% url 'horse_quick_edit' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                   data-popup-title="Edit {{ horse.name }}" class="btn-ghost btn-xs" aria-label="Edit the identity of {{ horse.name }}">Edit</a>
+            </div>
+            {% endif %}
+        </div>
         {% if horse.show_registered_name or horse.microchip or horse.ueln or horse.passport_number or horse.breed or horse.date_of_birth or horse.height_inches or horse.markings or horse.breeder or horse.country_of_birth %}
         <dl class="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-3 gap-y-2.5 text-sm">
             {% if horse.show_registered_name %}
@@ -125,4 +154,5 @@ the number without spaces. Phase 1b adds the pedigree beside it.
             {% endif %}
         </div>
     </div>
-</div>
+    </div>
+</section>
