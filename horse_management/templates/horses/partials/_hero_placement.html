@@ -1,0 +1,65 @@
+{% load ui_extras %}
+{% comment %}
+The current placement inside the horse page's banner: where the horse is,
+on what rate, since when and for how long. No owner here: the Ownership
+and identity band is the one place ownership is shown, and the stay's
+owner follows it (core.services.PlacementService.sync_placement_owner).
+No stay open: the shared empty state (departed, or not at a location);
+Log arrival is the banner's main button.
+Context: horse, current_placement, placement_empty, feature_access, request.
+{% endcomment %}
+<section class="horse-hero-place min-w-0" aria-labelledby="placement-title" data-testid="hero-placement">
+    <div class="flex items-center justify-between gap-2">
+        <h2 id="placement-title" class="hero-section-title">
+            <span class="w-2 h-2 rounded-full bg-info-blue" aria-hidden="true"></span>
+            Current placement
+        </h2>
+        {% if current_placement %}
+        <div class="flex items-center gap-2">
+            {% with stay=current_placement.start_date|stay_length %}<span class="text-xs text-sage tabular-nums">{% if stay == 'Today' %}Arrived today{% elif stay == 'Not yet arrived' %}{{ stay }}{% else %}{{ stay }} on site{% endif %}</span>{% endwith %}
+            {% if feature_access.locations.full %}
+            <a href="{% url 'placement_update' current_placement.pk %}?next={{ request.path|urlencode }}" hx-get="{% url 'placement_update' current_placement.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit placement"
+               class="btn-ghost btn-xs" title="Correct dates or rate">Edit</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% if current_placement %}
+    <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
+        <div class="col-span-2">
+            <dt class="hero-label flex items-center gap-1">
+                <svg class="w-3 h-3" aria-hidden="true"><use href="#i-pin"/></svg>
+                Location
+            </dt>
+            <dd class="mt-0.5 text-sm text-charcoal">
+                <a href="{% url 'location_detail' current_placement.location.pk %}" class="link tap-pad font-medium">{{ current_placement.location.name }}</a>{% stable_line horse placement=current_placement %}
+                {% turnout_line horse placement=current_placement %}
+            </dd>
+        </div>
+        <div>
+            <dt class="hero-label">Rate</dt>
+            <dd class="mt-0.5 text-sm text-charcoal">
+                {{ current_placement.rate_type.name }}
+                {% if feature_access.charges.view %}
+                <span class="text-sage">·</span>
+                <span class="tabular-nums text-charcoal-light">{{ current_placement.rate_type.daily_rate|gbp }}/day</span>
+                {% endif %}
+            </dd>
+        </div>
+        <div>
+            <dt class="hero-label">Arrived</dt>
+            <dd class="mt-0.5 text-sm text-charcoal tabular-nums">{{ current_placement.start_date|date:"j M Y" }}</dd>
+        </div>
+        {% if current_placement.expected_departure %}
+        <div class="col-span-2">
+            <dt class="hero-label">Expected departure</dt>
+            <dd class="mt-0.5 text-sm text-forest font-medium tabular-nums">{{ current_placement.expected_departure|date:"j M Y" }}</dd>
+        </div>
+        {% endif %}
+    </dl>
+    {% else %}
+    <div class="mt-2" data-testid="placement-empty">
+        {% include 'includes/empty_state.html' with title=placement_empty.title body=placement_empty.body icon='fence' compact=True %}
+    </div>
+    {% endif %}
+</section>

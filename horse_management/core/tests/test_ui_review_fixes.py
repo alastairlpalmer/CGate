@@ -165,7 +165,7 @@ class HorsePageRecordTests(TestCase):
         horse = Horse.objects.create(name='Apollo')
         body = self.client.get(reverse('horse_detail', args=[horse.pk])).content.decode()
         self.assertEqual(body.count('id="quick-actions"'), 1)
-        self.assertLess(body.index('id="quick-actions"'), body.index('Ownership Shares'))
+        self.assertLess(body.index('id="quick-actions"'), body.index('<!-- Documents -->'))
         # The Timeline header no longer repeats four of them.
         self.assertNotIn('+ Vaccination', body)
 

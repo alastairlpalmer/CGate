@@ -1449,6 +1449,13 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
         # history), so the Timeline does not show them a second time (UX
         # review A3). A role that may not see them gets none of them anyway.
         context['training_card'] = training_horse.training_card(self.request.user, horse)
+        # The Training card shows only once the horse has a training record
+        # (done or did not work, today or earlier): the rows the Timeline
+        # would list. A horse that has never trained gets no empty 28-day
+        # strip; Record training stays in the Record card (21 Nov 2026).
+        context['show_training_card'] = bool(
+            context['training_card'] and training_horse.timeline_activities(self.request.user, horse, 1)
+        )
         context['timeline_events'] = build_horse_timeline(
             placements=context['placements'],
             vaccinations=context['vaccinations'],

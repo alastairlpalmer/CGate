@@ -38,61 +38,62 @@
     {% endif %}
     </div>
 
-    <!-- Hero Header -->
-    <div class="panel relative overflow-hidden">
-        <div class="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div class="flex items-start gap-4 min-w-0">
-                {% include 'horses/_horse_avatar.html' with horse=horse size='lg' %}
-                <div class="min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <h1 class="page-title">{{ horse.name }}</h1>
-                        {% if not horse.is_active %}
-                        <span class="badge-neutral" data-testid="departed-badge">Departed{% if departure %} {{ departure.end_date|date:"j M Y" }}{% endif %}</span>
-                        {% endif %}
-                        {% if horse.is_identity_checked %}
-                        <span class="badge-success" title="Chip scanned and matched the record on {{ horse.identity_checked_at|date:'j M Y' }}">ID checked<span class="sr-only"> on {{ horse.identity_checked_at|date:'j M Y' }}</span></span>
-                        {% endif %}
-                        {% if not horse.has_passport %}
-                        <span class="badge-warning">No passport</span>
-                        {% endif %}
-                    </div>
-                    {% comment %}The summary: age, colour and sex (UX review A3). The
-                    registered name and the foaling date are on the Identity card,
-                    with the numbers. .dot-list puts the dots between the parts
-                    that show, so a horse with none of them gets no stray "·".{% endcomment %}
-                    {% if horse.age_label or horse.color or horse.sex %}
-                    <p class="mt-1.5 text-sm text-sage dot-list">
-                        {% if horse.age_label %}<span class="text-charcoal-light font-medium">{{ horse.age_label }}</span>{% endif %}
-                        {% if horse.color %}<span>{{ horse.get_color_display }}</span>{% endif %}
-                        {% if horse.sex %}<span>{{ horse.get_sex_display }}</span>{% endif %}
-                    </p>
+    {% comment %}The banner (21 Nov 2026 layout): the photo, large; the name,
+    summary and main buttons; then the current placement and the pedigree
+    tree side by side in the space beside the photo. The areas are in
+    static/css/input.css (.horse-hero): on a phone the photo sits beside the
+    name and the placement and tree go full width under it.{% endcomment %}
+    <div class="panel horse-hero" data-testid="horse-hero">
+        <div class="horse-hero-photo">
+            {% include 'horses/_horse_avatar.html' with horse=horse size='xl' %}
+        </div>
+        <div class="horse-hero-head flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+            <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <h1 class="page-title">{{ horse.name }}</h1>
+                    {% if not horse.is_active %}
+                    <span class="badge-neutral" data-testid="departed-badge">Departed{% if departure %} {{ departure.end_date|date:"j M Y" }}{% endif %}</span>
                     {% endif %}
-                    {% if horse.current_owner %}
-                    {# With no ownership shares the name comes from the stay: say so, so it does not contradict the Ownership card. #}
-                    <p class="mt-2 text-sm text-charcoal-light flex items-center gap-1.5" data-testid="header-owner">
-                        <svg class="w-3.5 h-3.5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
-                        {% if not horse.primary_owner %}<span>Billed to</span>{% endif %}
-                        <a href="{% url 'owner_detail' horse.current_owner.pk %}" class="link tap-pad">{{ horse.current_owner.name }}</a>
-                        {% if not horse.primary_owner %}<span class="text-sage">(from the stay)</span>{% endif %}
-                        {% if horse.current_owner.phone and feature_access.owners.view %}
-                        <a href="tel:{{ horse.current_owner.phone|cut:' ' }}" class="link tap-pad inline-flex items-center gap-1 ml-1" data-testid="owner-call" aria-label="Call {{ horse.current_owner.name }}, {{ horse.current_owner.phone }}">
-                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
-                            Call
-                        </a>
-                        {% endif %}
-                    </p>
+                    {% if horse.is_identity_checked %}
+                    <span class="badge-success" title="Chip scanned and matched the record on {{ horse.identity_checked_at|date:'j M Y' }}">ID checked<span class="sr-only"> on {{ horse.identity_checked_at|date:'j M Y' }}</span></span>
                     {% endif %}
-                    {% if pedigree.tree.sire_box.state != 'missing' or pedigree.tree.dam_box.state != 'missing' %}
-                    <p class="mt-1 text-sm text-sage" data-testid="pedigree-byline">{% with tree=pedigree.tree %}{% include 'pedigree/_byline.html' %}{% endwith %}</p>
+                    {% if not horse.has_passport %}
+                    <span class="badge-warning">No passport</span>
                     {% endif %}
                 </div>
+                {% comment %}The summary: age, colour and sex (UX review A3). The
+                registered name and the foaling date are on the Identity card,
+                with the numbers. .dot-list puts the dots between the parts
+                that show, so a horse with none of them gets no stray "·".{% endcomment %}
+                {% if horse.age_label or horse.color or horse.sex %}
+                <p class="mt-1.5 text-sm text-sage dot-list">
+                    {% if horse.age_label %}<span class="text-charcoal-light font-medium">{{ horse.age_label }}</span>{% endif %}
+                    {% if horse.color %}<span>{{ horse.get_color_display }}</span>{% endif %}
+                    {% if horse.sex %}<span>{{ horse.get_sex_display }}</span>{% endif %}
+                </p>
+                {% endif %}
+                {% if horse.current_owner %}
+                {# With no ownership shares the name comes from the stay: say so, so it does not contradict the Ownership card. #}
+                <p class="mt-2 text-sm text-charcoal-light flex items-center gap-1.5" data-testid="header-owner">
+                    <svg class="w-3.5 h-3.5 text-sage" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                    {% if not horse.primary_owner %}<span>Billed to</span>{% endif %}
+                    <a href="{% url 'owner_detail' horse.current_owner.pk %}" class="link tap-pad">{{ horse.current_owner.name }}</a>
+                    {% if not horse.primary_owner %}<span class="text-sage">(from the stay)</span>{% endif %}
+                    {% if horse.current_owner.phone and feature_access.owners.view %}
+                    <a href="tel:{{ horse.current_owner.phone|cut:' ' }}" class="link tap-pad inline-flex items-center gap-1 ml-1" data-testid="owner-call" aria-label="Call {{ horse.current_owner.name }}, {{ horse.current_owner.phone }}">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+                        Call
+                    </a>
+                    {% endif %}
+                </p>
+                {% endif %}
             </div>
             {% if feature_access.horses.full %}
             {% comment %}One main button: Move while the horse is here, Log
             arrival when it is not. Edit beside it. Depart is rare and final,
             so it is in More, last, in red (docs/UX_REVIEW_PLAN.md A2). The
             depart date form opens in place under the buttons.{% endcomment %}
-            <div x-data="{ showDate: false }" class="flex flex-col items-start sm:items-end gap-2 shrink-0">
+            <div x-data="{ showDate: false }" class="flex flex-col items-start md:items-end gap-2 shrink-0">
                 <div class="flex items-center gap-2 flex-wrap">
                     {% if current_placement %}
                     <a href="{% url 'horse_move' horse.pk %}?next={{ request.path|urlencode }}" title="Move to a different location"
@@ -154,6 +155,8 @@
             </div>
             {% endif %}
         </div>
+        {% include 'horses/partials/_hero_placement.html' %}
+        {% include 'pedigree/_card.html' with in_hero=True %}
     </div>
 
     {% if feature_access.health.full %}
@@ -187,7 +190,7 @@
             {{ horse.name }} is marked as departed but still has an open placement at {{ current_placement.location.name }}.
         </p>
         <p class="text-xs text-charcoal-light mt-1">
-            If the placement shown below is correct, mark the horse as active.
+            If the placement shown in the banner is correct, mark the horse as active.
             Otherwise select <strong>More</strong>, then <strong>Depart…</strong>, to close the placement (the horse then gets a Log arrival button),
             or <strong>Move</strong> to place it at the right location.
         </p>
@@ -198,272 +201,41 @@
     </div>
     {% endif %}
 
+    {% comment %}Due (UX review A1): what is overdue or due in the next 14
+    days, from the same collectors as the dashboard and the list's
+    "Needs action", each with its Record button. Nothing due: no card.{% endcomment %}
+    {% if due_flag %}
+    <section class="card border-saddle/40" aria-labelledby="due-title" data-testid="due-strip">
+        <div class="section-header">
+            <h2 id="due-title" class="section-title">Due</h2>
+            <span class="text-xs text-sage">Overdue and the next 14 days</span>
+        </div>
+        <ul class="needs-list px-4 py-3">
+            {% for need in due_flag.items %}
+            <li class="needs-item">
+                <span class="health-dot is-{{ need.severity }}" aria-hidden="true"></span>
+                <span class="needs-body">
+                    <span class="needs-text">
+                        <span class="text-charcoal">{{ need.detail }}</span>
+                        <span class="{% if need.severity == 'overdue' %}text-error-red font-medium{% else %}text-saddle{% endif %} whitespace-nowrap">{{ need.due_date|due_label }}</span>
+                    </span>
+                    {% if need.action %}{% include 'partials/dashboard/_action.html' with action=need.action %}{% endif %}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    {% comment %}Ownership and identity: one band, full width, under the
+    banner. The Timeline comes straight after it.{% endcomment %}
+    {% include 'horses/_identity_card.html' %}
+
     <!-- Grid Layout -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         <!-- Left Column -->
         <div class="lg:col-span-2 space-y-4">
-
-            {% comment %}Due (UX review A1): what is overdue or due in the next 14
-            days, from the same collectors as the dashboard and the list's
-            "Needs action", each with its Record button. Nothing due: no card.{% endcomment %}
-            {% if due_flag %}
-            <section class="card border-saddle/40" aria-labelledby="due-title" data-testid="due-strip">
-                <div class="section-header">
-                    <h2 id="due-title" class="section-title">Due</h2>
-                    <span class="text-xs text-sage">Overdue and the next 14 days</span>
-                </div>
-                <ul class="needs-list px-4 py-3">
-                    {% for need in due_flag.items %}
-                    <li class="needs-item">
-                        <span class="health-dot is-{{ need.severity }}" aria-hidden="true"></span>
-                        <span class="needs-body">
-                            <span class="needs-text">
-                                <span class="text-charcoal">{{ need.detail }}</span>
-                                <span class="{% if need.severity == 'overdue' %}text-error-red font-medium{% else %}text-saddle{% endif %} whitespace-nowrap">{{ need.due_date|due_label }}</span>
-                            </span>
-                            {% if need.action %}{% include 'partials/dashboard/_action.html' with action=need.action %}{% endif %}
-                        </span>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </section>
-            {% endif %}
-
-            {% if foal_record and feature_access.breeding.view %}
-            {% include 'horses/partials/foal_record.html' %}
-            {% endif %}
-
-            <!-- Current placement -->
-            <div class="card">
-                <div class="section-header">
-                    <h2 class="section-title flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-info-blue"></span>
-                        Current placement
-                    </h2>
-                    {% if current_placement %}
-                    <div class="flex items-center gap-2">
-                        {% with stay=current_placement.start_date|stay_length %}<span class="text-xs text-sage tabular-nums">{% if stay == 'Today' %}Arrived today{% elif stay == 'Not yet arrived' %}{{ stay }}{% else %}{{ stay }} on site{% endif %}</span>{% endwith %}
-                        {% if feature_access.locations.full %}
-                        <a href="{% url 'placement_update' current_placement.pk %}?next={{ request.path|urlencode }}" hx-get="{% url 'placement_update' current_placement.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit placement"
-                           class="btn-ghost btn-xs" title="Correct dates or rate">Edit</a>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="p-4">
-                    {% if current_placement %}
-                    <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
-                        <div>
-                            <dt class="dt-label flex items-center gap-1">
-                                <svg class="w-3 h-3" aria-hidden="true"><use href="#i-pin"/></svg>
-                                Location
-                            </dt>
-                            <dd class="mt-1 text-sm text-charcoal">
-                                <a href="{% url 'location_detail' current_placement.location.pk %}" class="link tap-pad">{{ current_placement.location.name }}</a>{% stable_line horse placement=current_placement %}
-                                {% turnout_line horse placement=current_placement %}
-                            </dd>
-                        </div>
-                        {% comment %}
-                        No Owner here: the Ownership card is the one place
-                        ownership is shown, and the stay's owner follows it
-                        (core.services.PlacementService.sync_placement_owner).
-                        {% endcomment %}
-                        <div>
-                            <dt class="dt-label">Rate</dt>
-                            <dd class="mt-1 text-sm text-charcoal">
-                                {{ current_placement.rate_type.name }}
-                                {% if feature_access.charges.view %}
-                                <span class="text-sage">·</span>
-                                <span class="tabular-nums text-charcoal-light">{{ current_placement.rate_type.daily_rate|gbp }}/day</span>
-                                {% endif %}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt class="dt-label">Arrived</dt>
-                            <dd class="mt-1 text-sm text-charcoal tabular-nums">{{ current_placement.start_date|date:"j M Y" }}</dd>
-                        </div>
-                        {% if current_placement.expected_departure %}
-                        <div class="sm:col-span-2 mt-1 pt-3 border-t border-light-sage/70">
-                            <dt class="dt-label">Expected departure</dt>
-                            <dd class="mt-1 text-sm text-forest font-medium tabular-nums">{{ current_placement.expected_departure|date:"j M Y" }}</dd>
-                        </div>
-                        {% endif %}
-                    </dl>
-                    {% else %}
-                    {# The shared empty state (UX review F8); Log arrival is the header's button. #}
-                    <div data-testid="placement-empty">
-                    {% include 'includes/empty_state.html' with title=placement_empty.title body=placement_empty.body icon='fence' compact=True %}
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Notes & conditions. The numbers are on the Identity card. -->
-            {% if horse.breeding or horse.notes or medical_conditions or resolved_conditions %}
-            <div class="card">
-                <div class="section-header">
-                    <h2 class="section-title">Notes &amp; conditions</h2>
-                    {% if feature_access.health.full %}<a href="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-get="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add condition for {{ horse.name }}" class="btn-ghost btn-xs">Add condition</a>{% endif %}
-                </div>
-                <div class="p-4">
-                    {% if horse.breeding or horse.notes %}
-                    <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
-                        {% if horse.breeding %}
-                        <div class="sm:col-span-2">
-                            <dt class="dt-label">Lineage notes</dt>
-                            <dd class="mt-1 text-sm text-charcoal">{{ horse.breeding|linebreaksbr }}</dd>
-                        </div>
-                        {% endif %}
-                        {% if horse.notes %}
-                        <div class="sm:col-span-2">
-                            <dt class="dt-label">Notes</dt>
-                            <dd class="mt-1 text-sm text-charcoal">{{ horse.notes|linebreaksbr }}</dd>
-                        </div>
-                        {% endif %}
-                    </dl>
-                    {% endif %}
-
-                    {% if medical_conditions or resolved_conditions %}
-                    {# The rule only divides: with no details above it there is nothing to divide from. #}
-                    {% comment %}Open conditions first, each with Edit (to change its
-                    status or close it). Resolved ones fold away under a count
-                    (UX review B6).{% endcomment %}
-                    <div{% if horse.breeding or horse.notes %} class="mt-5 pt-5 border-t border-light-sage"{% endif %} data-testid="conditions">
-                        <h3 class="dt-label mb-3">Conditions</h3>
-                        {% if medical_conditions %}
-                        <ul class="space-y-1">
-                            {% for c in medical_conditions %}
-                            {% include 'horses/partials/condition_row.html' %}
-                            {% endfor %}
-                        </ul>
-                        {% else %}
-                        <p class="text-sm text-sage">No open conditions.</p>
-                        {% endif %}
-                        {% if resolved_conditions %}
-                        <details class="mt-2 group" data-testid="resolved-conditions">
-                            <summary class="text-xs text-sage cursor-pointer tap-pad inline-flex items-center gap-1 list-none">
-                                <svg class="w-3 h-3 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
-                                {{ resolved_conditions|length }} resolved
-                            </summary>
-                            <ul class="mt-1 space-y-1">
-                                {% for c in resolved_conditions %}
-                                {% include 'horses/partials/condition_row.html' %}
-                                {% endfor %}
-                            </ul>
-                        </details>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-            {% endif %}
-
-            {% if horse.is_mare and feature_access.breeding.view %}
-            {% if active_pregnancy %}
-            <!-- Active Pregnancy -->
-            <div class="card">
-                <div class="section-header">
-                    <div class="flex items-center gap-2.5">
-                        <h2 class="section-title">{% if active_pregnancy.status == 'confirmed' %}In Foal{% else %}Covered{% endif %}</h2>
-                        {% include 'health/partials/breeding_status_badge.html' with br=active_pregnancy %}
-                    </div>
-                    {% if feature_access.breeding.full %}
-                    <div class="flex items-center gap-2">
-                        {% if active_pregnancy.can_add_covering %}
-                        <a href="{% url 'breeding_covering_add' active_pregnancy.pk %}" hx-get="{% url 'breeding_covering_add' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record covering for {{ horse.name }}" class="btn-ghost btn-xs">Record covering</a>
-                        {% endif %}
-                        {% if active_pregnancy.next_scan %}
-                        <a href="{% url 'breeding_scan' active_pregnancy.pk %}" hx-get="{% url 'breeding_scan' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Scan result for {{ horse.name }}" class="{% if active_pregnancy.status == 'covered' %}btn-secondary{% else %}btn-ghost{% endif %} btn-xs">Scan result</a>
-                        {% endif %}
-                        <a href="{% url 'breeding_foaling' active_pregnancy.pk %}" hx-get="{% url 'breeding_foaling' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ horse.name }}" class="{% if active_pregnancy.status == 'covered' %}btn-ghost{% else %}btn-secondary{% endif %} btn-xs">Record foaling</a>
-                        <a href="{% url 'breeding_update' active_pregnancy.pk %}" hx-get="{% url 'breeding_update' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record" class="btn-ghost btn-xs">Edit</a>
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="p-4">
-                    <div class="bg-light-sage/50 rounded-lg p-4">
-                        <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                            <div>
-                                <dt class="text-forest text-xs font-medium">Stallion</dt>
-                                <dd class="text-charcoal font-medium">{{ active_pregnancy.stallion_name }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-forest text-xs font-medium">Date covered</dt>
-                                <dd class="text-charcoal">{{ active_pregnancy.date_covered|date:"j M Y" }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-forest text-xs font-medium">Foal due</dt>
-                                <dd class="{% if active_pregnancy.is_past_due %}text-error-red{% else %}text-charcoal{% endif %} font-medium">
-                                    {% if active_pregnancy.date_foal_due %}{{ active_pregnancy.date_foal_due|date:"j M Y" }}{% else %}-{% endif %}
-                                </dd>
-                                {% if active_pregnancy.date_foal_due %}
-                                <dd class="text-xs {% if active_pregnancy.is_past_due %}text-error-red{% else %}text-sage{% endif %}">{% if active_pregnancy.is_past_due %}Due date passed{% else %}{{ active_pregnancy.date_foal_due|due_label }}{% endif %}</dd>
-                                {% endif %}
-                            </div>
-                            <div>
-                                <dt class="text-forest text-xs font-medium">Scans</dt>
-                                <dd class="text-charcoal text-xs">
-                                    14-day: {% if active_pregnancy.date_scanned_14_days %}{{ active_pregnancy.date_scanned_14_days|date:"j M Y" }}{% else %}<span class="text-sage">not yet</span>{% endif %}<br>
-                                    Heartbeat: {% if active_pregnancy.date_scanned_heartbeat %}{{ active_pregnancy.date_scanned_heartbeat|date:"j M Y" }}{% else %}<span class="text-sage">not yet</span>{% endif %}
-                                </dd>
-                            </div>
-                        </dl>
-                        {% if active_pregnancy.day_of_gestation is not None %}
-                        <div class="foal-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ active_pregnancy.gestation_progress }}" aria-label="Gestation progress">
-                            <i style="width: {{ active_pregnancy.gestation_progress }}%"></i>
-                        </div>
-                        <p class="mt-1.5 text-xs text-sage">Day {{ active_pregnancy.day_of_gestation }} of 340</p>
-                        {% endif %}
-                        {% include 'health/partials/breeding_history_rows.html' with br=active_pregnancy can_edit=feature_access.breeding.full %}
-                        {% if active_pregnancy.status == 'covered' %}
-                        <p class="mt-3 text-xs text-charcoal-light">Awaiting the 14-day scan. Use <strong>Scan result</strong> to confirm the pregnancy (EHV reminders start from there) or close the record if the mare did not hold.</p>
-                        {% endif %}
-                        {% with ehv_dates=active_pregnancy.ehv_vaccination_dates %}
-                        {% if ehv_dates %}
-                        <div class="mt-3 pt-3 border-t border-sand">
-                            <h3 class="dt-label mb-2">EHV vaccination schedule</h3>
-                            <div class="grid grid-cols-3 gap-2 text-xs">
-                                {% for month, date in ehv_dates.items %}
-                                <div class="{% if month in active_pregnancy.sent_ehv_months %}bg-sage-50 border-sage/20{% elif date < today %}bg-white border-sand-100 opacity-70{% else %}bg-white border-sand-100{% endif %} border rounded-lg p-2">
-                                    <span class="font-medium text-charcoal">Month {{ month }}</span><br>
-                                    <span class="text-sage">{{ date|date:"j M Y" }}</span><br>
-                                    <span class="text-sage">{% if month in active_pregnancy.sent_ehv_months %}reminder sent{% elif date < today %}passed{% else %}{{ date|due_label }}{% endif %}</span>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% endwith %}
-                    </div>
-                </div>
-            </div>
-            {% else %}
-            <!-- Breeding: no open pregnancy -->
-            <div class="card">
-                <div class="section-header">
-                    <h2 class="section-title">Breeding</h2>
-                    {% if feature_access.breeding.full %}
-                    <a href="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-get="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record covering for {{ horse.name }}" class="btn-ghost btn-xs">Record covering</a>
-                    {% endif %}
-                </div>
-                <div class="p-4 text-sm">
-                    {% with last=breeding_records.0 %}
-                    {% if last %}
-                    <p class="text-charcoal">Not in foal. Last record: {{ last.stallion_name }}, covered {{ last.date_covered|date:"j M Y" }} &middot; {% include 'health/partials/breeding_status_badge.html' with br=last %}</p>
-                    {% else %}
-                    <p class="text-sage">No breeding records yet.{% if feature_access.breeding.full %} Record a covering to start tracking scans, EHV doses and the foal due date.{% endif %}</p>
-                    {% endif %}
-                    {% endwith %}
-                </div>
-            </div>
-            {% endif %}
-            {% endif %}
-
-            {% if training_card %}
-            <!-- Training -->
-            {% include 'training/_horse_card.html' %}
-            {% endif %}
 
             <!-- Unified Timeline -->
             {% comment %}Filter pills come from the view (timeline_filters): only the
@@ -691,11 +463,175 @@
                 </div>
             </div>
 
-            <!-- Identity: microchip, UELN, passport and the other numbers -->
-            {% include 'horses/_identity_card.html' %}
+            {% if foal_record and feature_access.breeding.view %}
+            {% include 'horses/partials/foal_record.html' %}
+            {% endif %}
 
-            <!-- Pedigree: the parents and grandparents, drawn as a tree -->
-            {% include 'pedigree/_card.html' %}
+            <!-- Notes & conditions. The numbers are on the Identity card. -->
+            {% if horse.breeding or horse.notes or medical_conditions or resolved_conditions %}
+            <div class="card">
+                <div class="section-header">
+                    <h2 class="section-title">Notes &amp; conditions</h2>
+                    {% if feature_access.health.full %}<a href="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-get="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add condition for {{ horse.name }}" class="btn-ghost btn-xs">Add condition</a>{% endif %}
+                </div>
+                <div class="p-4">
+                    {% if horse.breeding or horse.notes %}
+                    <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                        {% if horse.breeding %}
+                        <div class="sm:col-span-2">
+                            <dt class="dt-label">Lineage notes</dt>
+                            <dd class="mt-1 text-sm text-charcoal">{{ horse.breeding|linebreaksbr }}</dd>
+                        </div>
+                        {% endif %}
+                        {% if horse.notes %}
+                        <div class="sm:col-span-2">
+                            <dt class="dt-label">Notes</dt>
+                            <dd class="mt-1 text-sm text-charcoal">{{ horse.notes|linebreaksbr }}</dd>
+                        </div>
+                        {% endif %}
+                    </dl>
+                    {% endif %}
+
+                    {% if medical_conditions or resolved_conditions %}
+                    {# The rule only divides: with no details above it there is nothing to divide from. #}
+                    {% comment %}Open conditions first, each with Edit (to change its
+                    status or close it). Resolved ones fold away under a count
+                    (UX review B6).{% endcomment %}
+                    <div{% if horse.breeding or horse.notes %} class="mt-5 pt-5 border-t border-light-sage"{% endif %} data-testid="conditions">
+                        <h3 class="dt-label mb-3">Conditions</h3>
+                        {% if medical_conditions %}
+                        <ul class="space-y-1">
+                            {% for c in medical_conditions %}
+                            {% include 'horses/partials/condition_row.html' %}
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="text-sm text-sage">No open conditions.</p>
+                        {% endif %}
+                        {% if resolved_conditions %}
+                        <details class="mt-2 group" data-testid="resolved-conditions">
+                            <summary class="text-xs text-sage cursor-pointer tap-pad inline-flex items-center gap-1 list-none">
+                                <svg class="w-3 h-3 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                                {{ resolved_conditions|length }} resolved
+                            </summary>
+                            <ul class="mt-1 space-y-1">
+                                {% for c in resolved_conditions %}
+                                {% include 'horses/partials/condition_row.html' %}
+                                {% endfor %}
+                            </ul>
+                        </details>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if horse.is_mare and feature_access.breeding.view %}
+            {% if active_pregnancy %}
+            <!-- Active Pregnancy -->
+            <div class="card">
+                <div class="section-header">
+                    <div class="flex items-center gap-2.5">
+                        <h2 class="section-title">{% if active_pregnancy.status == 'confirmed' %}In Foal{% else %}Covered{% endif %}</h2>
+                        {% include 'health/partials/breeding_status_badge.html' with br=active_pregnancy %}
+                    </div>
+                    {% if feature_access.breeding.full %}
+                    <div class="flex items-center gap-2">
+                        {% if active_pregnancy.can_add_covering %}
+                        <a href="{% url 'breeding_covering_add' active_pregnancy.pk %}" hx-get="{% url 'breeding_covering_add' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record covering for {{ horse.name }}" class="btn-ghost btn-xs">Record covering</a>
+                        {% endif %}
+                        {% if active_pregnancy.next_scan %}
+                        <a href="{% url 'breeding_scan' active_pregnancy.pk %}" hx-get="{% url 'breeding_scan' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Scan result for {{ horse.name }}" class="{% if active_pregnancy.status == 'covered' %}btn-secondary{% else %}btn-ghost{% endif %} btn-xs">Scan result</a>
+                        {% endif %}
+                        <a href="{% url 'breeding_foaling' active_pregnancy.pk %}" hx-get="{% url 'breeding_foaling' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ horse.name }}" class="{% if active_pregnancy.status == 'covered' %}btn-ghost{% else %}btn-secondary{% endif %} btn-xs">Record foaling</a>
+                        <a href="{% url 'breeding_update' active_pregnancy.pk %}" hx-get="{% url 'breeding_update' active_pregnancy.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record" class="btn-ghost btn-xs">Edit</a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="p-4">
+                    <div class="bg-light-sage/50 rounded-lg p-4">
+                        <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                            <div>
+                                <dt class="text-forest text-xs font-medium">Stallion</dt>
+                                <dd class="text-charcoal font-medium">{{ active_pregnancy.stallion_name }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-forest text-xs font-medium">Date covered</dt>
+                                <dd class="text-charcoal">{{ active_pregnancy.date_covered|date:"j M Y" }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-forest text-xs font-medium">Foal due</dt>
+                                <dd class="{% if active_pregnancy.is_past_due %}text-error-red{% else %}text-charcoal{% endif %} font-medium">
+                                    {% if active_pregnancy.date_foal_due %}{{ active_pregnancy.date_foal_due|date:"j M Y" }}{% else %}-{% endif %}
+                                </dd>
+                                {% if active_pregnancy.date_foal_due %}
+                                <dd class="text-xs {% if active_pregnancy.is_past_due %}text-error-red{% else %}text-sage{% endif %}">{% if active_pregnancy.is_past_due %}Due date passed{% else %}{{ active_pregnancy.date_foal_due|due_label }}{% endif %}</dd>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <dt class="text-forest text-xs font-medium">Scans</dt>
+                                <dd class="text-charcoal text-xs">
+                                    14-day: {% if active_pregnancy.date_scanned_14_days %}{{ active_pregnancy.date_scanned_14_days|date:"j M Y" }}{% else %}<span class="text-sage">not yet</span>{% endif %}<br>
+                                    Heartbeat: {% if active_pregnancy.date_scanned_heartbeat %}{{ active_pregnancy.date_scanned_heartbeat|date:"j M Y" }}{% else %}<span class="text-sage">not yet</span>{% endif %}
+                                </dd>
+                            </div>
+                        </dl>
+                        {% if active_pregnancy.day_of_gestation is not None %}
+                        <div class="foal-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ active_pregnancy.gestation_progress }}" aria-label="Gestation progress">
+                            <i style="width: {{ active_pregnancy.gestation_progress }}%"></i>
+                        </div>
+                        <p class="mt-1.5 text-xs text-sage">Day {{ active_pregnancy.day_of_gestation }} of 340</p>
+                        {% endif %}
+                        {% include 'health/partials/breeding_history_rows.html' with br=active_pregnancy can_edit=feature_access.breeding.full %}
+                        {% if active_pregnancy.status == 'covered' %}
+                        <p class="mt-3 text-xs text-charcoal-light">Awaiting the 14-day scan. Use <strong>Scan result</strong> to confirm the pregnancy (EHV reminders start from there) or close the record if the mare did not hold.</p>
+                        {% endif %}
+                        {% with ehv_dates=active_pregnancy.ehv_vaccination_dates %}
+                        {% if ehv_dates %}
+                        <div class="mt-3 pt-3 border-t border-sand">
+                            <h3 class="dt-label mb-2">EHV vaccination schedule</h3>
+                            <div class="grid grid-cols-3 gap-2 text-xs">
+                                {% for month, date in ehv_dates.items %}
+                                <div class="{% if month in active_pregnancy.sent_ehv_months %}bg-sage-50 border-sage/20{% elif date < today %}bg-white border-sand-100 opacity-70{% else %}bg-white border-sand-100{% endif %} border rounded-lg p-2">
+                                    <span class="font-medium text-charcoal">Month {{ month }}</span><br>
+                                    <span class="text-sage">{{ date|date:"j M Y" }}</span><br>
+                                    <span class="text-sage">{% if month in active_pregnancy.sent_ehv_months %}reminder sent{% elif date < today %}passed{% else %}{{ date|due_label }}{% endif %}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <!-- Breeding: no open pregnancy -->
+            <div class="card">
+                <div class="section-header">
+                    <h2 class="section-title">Breeding</h2>
+                    {% if feature_access.breeding.full %}
+                    <a href="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-get="{% url 'breeding_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record covering for {{ horse.name }}" class="btn-ghost btn-xs">Record covering</a>
+                    {% endif %}
+                </div>
+                <div class="p-4 text-sm">
+                    {% with last=breeding_records.0 %}
+                    {% if last %}
+                    <p class="text-charcoal">Not in foal. Last record: {{ last.stallion_name }}, covered {{ last.date_covered|date:"j M Y" }} &middot; {% include 'health/partials/breeding_status_badge.html' with br=last %}</p>
+                    {% else %}
+                    <p class="text-sage">No breeding records yet.{% if feature_access.breeding.full %} Record a covering to start tracking scans, EHV doses and the foal due date.{% endif %}</p>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
+
+            {% if show_training_card %}
+            {# Training: only once the Timeline has a training record (done or did not work). #}
+            {% include 'training/_horse_card.html' %}
+            {% endif %}
 
             {% if horse.is_mare and breeding_history and feature_access.breeding.view %}
             <!-- Breeding history -->
@@ -821,32 +757,6 @@
                 </div>
             </div>
             {% endif %}
-
-            <!-- Ownership Shares -->
-            <div class="card">
-                <div class="section-header">
-                    <h2 class="section-title">Ownership</h2>
-                    {% if feature_access.horses.full %}<a href="{% url 'horse_ownership' horse.pk %}" class="btn-ghost btn-xs">Manage ownership</a>{% endif %}
-                </div>
-                {% if ownership_shares %}
-                <ul class="divide-y divide-light-sage">
-                    {% for share in ownership_shares %}
-                    <li class="px-4 py-3 flex items-center justify-between">
-                        <div>
-                            <a href="{% url 'owner_detail' share.owner.pk %}" class="link text-sm tap-pad">{{ share.owner.name }}</a>
-                            {% if share.is_primary_contact %}
-                            <span class="ml-1 text-xs text-forest font-medium">Primary</span>
-                            {% endif %}
-                        </div>
-                        <span class="badge-info">{{ share.share_percentage|floatformat:0 }}%</span>
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% else %}
-                {% if feature_access.horses.full %}{% url 'horse_ownership' horse.pk as ownership_url %}{% endif %}
-                {% include 'includes/empty_state.html' with title='No owners set' body='Set who owns the horse and their shares.' icon='horse' extra_url=ownership_url extra_label='Manage ownership' compact=True %}
-                {% endif %}
-            </div>
 
             {% comment %}Charges (UX review B7): the extra charges billed for this
             horse, newest first, so an "Other charge" does not vanish after its

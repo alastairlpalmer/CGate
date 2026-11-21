@@ -148,6 +148,8 @@ class StatusPopupTests(Base):
 
     def test_the_horse_card_shows_status_and_lot(self):
         services.add_to_lot(self.first, [self.bally])
+        # The card shows once the horse has a training record (21 Nov 2026).
+        Activity.objects.create(horse=self.bally, date=self.today, work_type=self.canter, status='done')
         response = self.client.get(reverse('horse_detail', args=[self.bally.pk]))
         card = response.context['training_card']
         self.assertEqual((card['status'], card['lot']), ('In work', self.first))

@@ -2850,3 +2850,40 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
 @media (prefers-reduced-motion: reduce) {
     .ped-node, .ped-gap path { transition: none; }
 }
+
+/* Horse page banner (templates/horses/horse_detail.html, 21 Nov 2026): the
+   photo, the name and buttons, the current placement and the pedigree.
+   Phone: the photo beside the name, then the placement and the tree full
+   width. From sm the photo spans the name and the placement, and the tree
+   goes under them; from xl the tree takes the space beside the placement. */
+@layer components {
+    .horse-hero {
+        display: grid;
+        gap: 1rem 1.5rem;
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-areas: "photo head" "place place" "ped ped";
+        align-items: start;
+        padding: 1.25rem;
+    }
+    .horse-hero-photo { grid-area: photo; }
+    .horse-hero-head { grid-area: head; min-width: 0; }
+    .horse-hero-place { grid-area: place; }
+    .horse-hero-ped { grid-area: ped; }
+    .horse-hero-place, .horse-hero-ped { @apply border-t border-light-sage pt-4; }
+    .horse-hero-img { width: 7rem; height: 7rem; }
+    .hero-section-title { @apply flex items-center gap-2 text-sm font-semibold text-forest font-heading; }
+    .hero-label { @apply block text-xs font-medium text-sage; }
+    /* The banner is cream, like a tree box: white boxes stand out on it. */
+    .horse-hero-ped .ped-node:not(.is-subject, .is-dashed, .is-twin) { background: #fff; }
+}
+@media (min-width: 40rem) {
+    .horse-hero { grid-template-areas: "photo head" "photo place" "ped ped"; }
+    .horse-hero-img { width: 11rem; height: 11rem; }
+}
+@media (min-width: 80rem) {
+    .horse-hero {
+        grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.35fr);
+        grid-template-areas: "photo head head" "photo place ped";
+    }
+    .horse-hero-img { width: 14rem; height: 14rem; }
+}
