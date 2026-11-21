@@ -4,6 +4,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from core.models import BusinessSettings
+from core.roles_testutils import make_user_with_access
 
 
 class PrivacyPageTests(TestCase):
@@ -30,4 +31,10 @@ class PrivacyPageTests(TestCase):
 
     def test_the_sign_in_page_links_to_it(self):
         response = self.client.get(reverse('login'))
+        self.assertContains(response, f'href="{reverse("privacy_policy")}"')
+
+    def test_the_settings_page_links_to_it_for_any_signed_in_user(self):
+        self.client.force_login(make_user_with_access('basic', horses='view'))
+        response = self.client.get(reverse('app_settings'))
+        self.assertEqual(response.status_code, 200)
         self.assertContains(response, f'href="{reverse("privacy_policy")}"')
