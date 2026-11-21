@@ -46,7 +46,7 @@ django-csp~=4.0
 cryptography~=50.0
 
 # WSGI server (Railway / any always-on host; not used by Vercel)
-gunicorn~=26.2
+gunicorn~=27.0
 
 # Database
 psycopg2-binary~=2.9.11
