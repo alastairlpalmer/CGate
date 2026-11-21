@@ -166,7 +166,9 @@ class XeroCsvInjectionTests(TestCase):
         )
         loc = Location.objects.create(site="Colgate", name="Field")
         rate = RateType.objects.create(name="@SUM(A1:A9)", daily_rate=Decimal("5.00"))
-        horse = Horse.objects.create(name="Ghost")
+        # The line text starts with the horse's name now (Xero lists lines
+        # without the horse headings), so that is where a formula would go.
+        horse = Horse.objects.create(name="@SUM(A1:A9)")
         Placement.objects.create(
             horse=horse, owner=owner, location=loc, rate_type=rate,
             start_date=date(2026, 1, 1),
