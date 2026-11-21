@@ -19,10 +19,10 @@ whitenoise~=6.12.0
 
 # Monitoring
 # Error reporting. Inert unless SENTRY_DSN is set (see core/monitoring.py).
-sentry-sdk[django]~=2.74
+sentry-sdk[django]~=2.75
 
 # Off-site backups: upload to any S3-compatible store (core/backup/).
-boto3~=1.43
+boto3~=1.44
 
 # Uploads held in an S3-compatible bucket rather than a local disk, so
 # every service can read them (settings.STORAGES / MEDIA_S3_*).
@@ -93,4 +93,4 @@ shapely~=2.1
 
 # Product analytics (server-side sign in / sign out events).
 # The browser half loads posthog-js from the PostHog CDN.
-posthog~=7.86
+posthog~=7.91

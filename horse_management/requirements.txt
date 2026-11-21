@@ -23,13 +23,13 @@ billiard==4.3.2 \
     --hash=sha256:37735a7b4117aafa73532b3b493db4c02fb85c0e69d5f3447f113fd30ff27872 \
     --hash=sha256:9eb83c99b1cf7acb1fed86c1dfd477157000a1a2c0108005c1e5837b55d2acba
     # via celery
-boto3==1.43.126 \
-    --hash=sha256:5fda4a3dd2782c134a01d1678911962c2860dd8de8cd10bef168ba1507b371a9 \
-    --hash=sha256:dd701a973b02a73930e546a6a15d13edbfbedc3180bb3d55b0a88678c284ccd6
+boto3==1.44.2 \
+    --hash=sha256:70c02826640da17c15067033af01667059dde5e86057c2d1227cd8523c2f24dd \
+    --hash=sha256:d62ff8a9eb06cab9f0b4242d7a2907a8fff9cca630e27ef736660f9d53e5b18e
     # via -r requirements.in
-botocore==1.43.127 \
-    --hash=sha256:93bae360fb3a6f1b8e36593faa8bbbfa05b19866f7a37e9606a98f13394156f8 \
-    --hash=sha256:aa0e3188679a2164a2098a14ea9b59520520cb573aaee9999d852480691e134a
+botocore==1.44.3 \
+    --hash=sha256:44d86fff55ce2d014bd72183ebc164b21b36598253b8234d4f59e8600e09b8b3 \
+    --hash=sha256:793eac2a7ca167e9376b136cf000e1675e9ffe8d7ec609160cc1ee00b93ace28
     # via
     #   boto3
     #   s3transfer
@@ -741,9 +741,9 @@ pillow-heif==1.8.1 \
     --hash=sha256:fc8f3b859611cb0397d79c91d4b0c27c4288026c381d6302b53c2b4da61aaee1 \
     --hash=sha256:fd17029b8d7583011b1c16d932407145f26639b015878d5c4ee1093444530452
     # via -r requirements.in
-posthog==7.86.3 \
-    --hash=sha256:3752f30405cc461123558dee554b4d3d58a0a46df7ee57ee988bb0a95073635d \
-    --hash=sha256:ca3b940ec8cf542b1625c8db45a284bee9461d01f24e655ed1ac3d6f3111a810
+posthog==7.91.0 \
+    --hash=sha256:8197f913d6207c552aba46a0a9aa0b423cab24958b25acbfd722a6ded7e68ea4 \
+    --hash=sha256:b1f2e6a062dd8734da563eb7b3c36b8535386e4423661f36f0b683bb0926c5f7
     # via -r requirements.in
 prompt-toolkit==3.0.53 \
     --hash=sha256:01c0891d7f9237d5e339f7d3e42cdae80b7534abb1c7c0e3352efba6231492f2 \
@@ -854,9 +854,9 @@ s3transfer==0.19.3 \
     --hash=sha256:24eb7535804306355e31c952a90022bf5b2f9d760f9a11062c7493a217c08553 \
     --hash=sha256:8326acc3d056d7f7b8a37110c7d2aea41f67e83f6ae79cd3b5fbcca34c726406
     # via boto3
-sentry-sdk==2.74.0 \
-    --hash=sha256:40b205af015649df3ec9986e057ce24ce85956bee3fb75efa72c93aa7036bdff \
-    --hash=sha256:dd91d75aacaef636006b579ac3ddb2fdbc9dce35f00f4b353b6b1b110c6b256a
+sentry-sdk==2.75.0 \
+    --hash=sha256:9a10e97de2cbd42ad7e4a6e02a0d5af19de9811eb02445077d41ba14c08e170c \
+    --hash=sha256:c38ac2d4b2435c11da821e173bb9d9088c98f41ae92f559ce0e424170a8e1a29
     # via -r requirements.in
 shapely==2.2.0 \
     --hash=sha256:000c0ce2a3ba49427e6288b7add9de5d8525d4e65d6ebc8840103040d4d57b86 \
