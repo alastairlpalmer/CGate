@@ -97,7 +97,7 @@ def send_invoice_email_task(self, invoice_pk, already_sent=False):
     from core.jobs import RETRYABLE_ERRORS
     from invoicing.models import Invoice
     from notifications.emails import send_invoice_email
-    from notifications.mail import can_email
+    from notifications.mail import EMAIL_NOT_SET_UP, can_email, email_is_set_up
 
     if already_sent:
         # A retry after the email went out but recording it failed: record
@@ -123,6 +123,12 @@ def send_invoice_email_task(self, invoice_pk, already_sent=False):
             invoice.send_error = 'Owner has no email address.'
             invoice.save(update_fields=['send_queued_at', 'send_error'])
             return 'skipped'
+
+    if not email_is_set_up():
+        # No mail server: the console backend "sent" it into the logs and the
+        # invoice was marked sent. Say so and keep it a draft.
+        Invoice.objects.filter(pk=invoice.pk).update(send_queued_at=None, send_error=EMAIL_NOT_SET_UP)
+        return 'failed'
 
     if not can_email(invoice.owner):
         # Bounced before: trying again sends nothing (notifications/mail.py).

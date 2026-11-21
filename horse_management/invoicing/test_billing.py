@@ -89,7 +89,7 @@ class XeroExportShareTests(TestCase):
         self.assertEqual(livery.line_total, Decimal("126.00"))
 
         rows = invoice_to_xero_rows(invoice)
-        livery_row = next(r for r in rows if r["*Description"].startswith("Premium"))
+        livery_row = next(r for r in rows if "Premium" in r["*Description"])
         # Xero computes amount = Quantity x UnitAmount; it must equal £126.00,
         # NOT 30 x 7 = £210.
         qty = Decimal(livery_row["*Quantity"])

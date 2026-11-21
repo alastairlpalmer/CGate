@@ -135,7 +135,7 @@ def build_xero_invoice_payload(invoice, xero_contact_id):
         if line_total is None:
             line_total = (item.quantity * item.unit_price).quantize(Decimal('0.01'))
         line_items.append({
-            'Description': item.description,
+            'Description': item.description_with_horse,
             'Quantity': '1',
             'UnitAmount': str(line_total),
             'AccountCode': account_code,

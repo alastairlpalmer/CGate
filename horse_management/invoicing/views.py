@@ -508,6 +508,11 @@ def invoice_send(request, pk):
         messages.error(request, "Owner doesn't have an email address.")
         return redirect(back)
 
+    from notifications.mail import EMAIL_NOT_SET_UP, email_is_set_up
+    if not email_is_set_up():
+        messages.error(request, EMAIL_NOT_SET_UP)
+        return redirect(back)
+
     # Claim the invoice first, as the bulk send does: a double-click, or a
     # click while a bulk send of it is queued, used to email the owner twice.
     from notifications.emails import send_invoice_email
