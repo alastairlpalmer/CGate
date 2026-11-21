@@ -155,7 +155,7 @@
             <div class="form-footer">
                 <a href="{% if object %}{% url 'horse_detail' object.pk %}{% else %}{% url 'horse_list' %}{% endif %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
-                    {% if object %}Save Changes{% else %}Add Horse{% endif %}
+                    {% if object %}Save changes{% else %}Add Horse{% endif %}
                 </button>
             </div>
         </form>

@@ -8,7 +8,7 @@ record's dates and status, so it asks first, in the app's own dialog
 {% if coverings or scans %}
 <div class="mt-3 pt-3 border-t border-sand grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs">
     <div>
-        <h3 class="font-semibold text-forest uppercase tracking-wider mb-1.5">Coverings</h3>
+        <h3 class="dt-label mb-1.5">Coverings</h3>
         <ul class="space-y-1">
             {% for c in coverings %}
             <li class="flex items-center justify-between gap-2">
@@ -24,7 +24,7 @@ record's dates and status, so it asks first, in the app's own dialog
         </ul>
     </div>
     <div>
-        <h3 class="font-semibold text-forest uppercase tracking-wider mb-1.5">Scans</h3>
+        <h3 class="dt-label mb-1.5">Scans</h3>
         {% if scans %}
         <ul class="space-y-1">
             {% for sc in scans %}

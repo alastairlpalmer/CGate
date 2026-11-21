@@ -65,7 +65,7 @@ class FoalRecordTestCase(TestCase):
     def test_foal_page_shows_the_record(self):
         response = self.client.get(reverse('horse_detail', args=[self.foal.pk]))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Foal Record')
+        self.assertContains(response, 'Foal record')
         self.assertContains(response, '12 days old')
         self.assertContains(response, 'At foot')
         self.assertContains(response, 'Quick and easy')
@@ -212,7 +212,7 @@ class FoalRecordTestCase(TestCase):
         self.record.refresh_from_db()
         self.assertFalse(self.record.is_weaned)
         response = self.client.get(reverse('horse_detail', args=[self.foal.pk]))
-        self.assertContains(response, 'Foal Record')
+        self.assertContains(response, 'Foal record')
         self.assertNotContains(response, reverse('breeding_wean', args=[self.record.pk]))
 
     def test_list_and_calendar_show_foal_age(self):

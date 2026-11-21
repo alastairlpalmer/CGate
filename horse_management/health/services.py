@@ -348,8 +348,10 @@ def foal_milestones(record):
     milestones.append(('vet_check', 'Newborn vet check', vet is not None, vet,
                        'IgG and first examination, within a day of birth'))
     passport_done = bool(foal.has_passport)
+    passport_due = Vaccination._add_months(dob, 6)
+    # "6 May 2027", as the page writes "Done 6 May 2027" (UX review F3).
     milestones.append(('passport', 'Passport & microchip', passport_done,
-                       None, f'Due by {Vaccination._add_months(dob, 6):%d %b %Y}'))
+                       None, f'Due by {passport_due.day} {passport_due:%b %Y}'))
     farrier = first(FarrierVisit.objects.filter(horse=foal, date__gte=dob), 'date')
     milestones.append(('farrier', 'First farrier visit', farrier is not None, farrier,
                        'Feet trimmed from about four to six weeks'))

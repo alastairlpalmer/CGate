@@ -8,11 +8,7 @@ A name that matches a record already on file asks which one (or New).
       x-data="{ more: {% if form.errors %}true{% else %}false{% endif %} }">
     {% csrf_token %}
     <div class="px-4 py-3 space-y-3">
-        {% if form.non_field_errors %}
-        <div class="rounded-lg border border-error-red/30 bg-error-red-50 p-3" role="alert">
-            {% for error in form.non_field_errors %}<p class="text-sm text-error-red">{{ error }}</p>{% endfor %}
-        </div>
-        {% endif %}
+        {% include 'includes/form_errors.html' with form=form %}
         <p class="text-xs text-sage">Pick a name from the list, or type it as on the passport, for example <span class="font-mono">Copper Ridge (GB) 2004</span>. Type <strong>Unknown</strong> if a parent is not known.</p>
 
         {% include 'pedigree/_boxes.html' %}

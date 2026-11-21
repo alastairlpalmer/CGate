@@ -65,7 +65,7 @@
             <div class="form-footer">
                 <a href="{% if from_settings %}{% url 'app_settings' %}#{{ settings_group }}{% elif object %}{% url 'location_detail' object.pk %}{% else %}{% url 'location_list' %}{% endif %}" class="btn-secondary">Cancel</a>
                 <button type="submit" class="btn-primary">
-                    {% if object %}Save Changes{% elif adding_barn %}Add Barn{% else %}Add Location{% endif %}
+                    {% if object %}Save changes{% elif adding_barn %}Add Barn{% else %}Add Location{% endif %}
                 </button>
             </div>
         </form>

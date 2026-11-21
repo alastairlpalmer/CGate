@@ -59,7 +59,7 @@ the number without spaces. Phase 1b adds the pedigree beside it.
             {% endif %}
             {% if horse.markings %}
             <dt class="text-sage pt-0.5">Markings</dt>
-            <dd class="text-charcoal min-w-0 break-words">{{ horse.markings }}</dd>
+            <dd class="text-charcoal min-w-0 break-words">{{ horse.markings|linebreaksbr }}</dd>
             {% endif %}
             {% if horse.breeder %}
             <dt class="text-sage pt-0.5">Breeder</dt>

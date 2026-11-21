@@ -11,6 +11,7 @@ from core.models import Horse
 from core.roles_testutils import make_user_with_access
 from health.models import Vaccination, VaccinationType
 
+from .horse import timeline_activities
 from .models import Activity, WorkType
 
 POPUP = {'HTTP_HX_REQUEST': 'true', 'HTTP_HX_TARGET': 'popup-body'}
@@ -37,9 +38,11 @@ class HorsePageTests(TestCase):
         jab = VaccinationType.objects.create(name='Flu', interval_months=12)
         Vaccination.objects.create(horse=self.horse, vaccination_type=jab,
                                    date_given=self.today - timedelta(days=200))
+        # The horse page has the Training card, so its Timeline does not
+        # repeat the rows (horse page review A3); the rule still holds 10.
         response = self.client.get(reverse('horse_detail', args=[self.horse.pk]))
-        rows = [e for e in response.context['timeline_events'] if e['type'] == 'training']
-        self.assertEqual(len(rows), 10)
+        self.assertFalse([e for e in response.context['timeline_events'] if e['type'] == 'training'])
+        self.assertEqual(len(timeline_activities(response.wsgi_request.user, self.horse, 10)), 10)
         response = self.client.get(reverse('horse_preview', args=[self.horse.pk]),
                                    HTTP_HX_REQUEST='true', HTTP_HX_TARGET='horse-preview-body')
         events = response.context['timeline_events']
@@ -51,10 +54,11 @@ class HorsePageTests(TestCase):
                                 work_type=self.canter, status='planned')
         Activity.objects.create(horse=self.horse, date=self.today - timedelta(days=2),
                                 work_type=self.canter, status='not_done', reason='weather')
-        response = self.client.get(reverse('horse_detail', args=[self.horse.pk]))
+        response = self.client.get(reverse('horse_preview', args=[self.horse.pk]),
+                                   HTTP_HX_REQUEST='true', HTTP_HX_TARGET='horse-preview-body')
         statuses = [e['obj'].status for e in response.context['timeline_events'] if e['type'] == 'training']
         self.assertEqual(statuses, ['not_done'])
-        self.assertContains(response, 'Not confirmed')
+        self.assertContains(self.client.get(reverse('horse_detail', args=[self.horse.pk])), 'Not confirmed')
 
 
 class BulkTests(TestCase):

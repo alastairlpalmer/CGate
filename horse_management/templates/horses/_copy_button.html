@@ -3,7 +3,7 @@ A small Copy button for a number. Copies ``value`` exactly (no spaces).
 Clipboard access can be refused; the button then says to select it.
 Usage: {% include 'horses/_copy_button.html' with value=horse.microchip label="Copy microchip" %}
 {% endcomment %}
-<button type="button" class="btn-ghost btn-xs" aria-label="{{ label }}"
-        x-data="{ done: '' }" data-copy="{{ value }}"
+{# The button keeps its name; the status line says "Copied" to a screen reader too (UX review C10). #}
+<span class="inline-flex" x-data="{ done: '' }"><button type="button" class="btn-ghost btn-xs" aria-label="{{ label }}" data-copy="{{ value }}"
         @click="navigator.clipboard ? navigator.clipboard.writeText($el.dataset.copy).then(() => { done = 'Copied'; setTimeout(() => done = '', 1500) }, () => { done = 'Select it to copy' }) : (done = 'Select it to copy')"
-        x-text="done || 'Copy'">Copy</button>
+        x-text="done || 'Copy'">Copy</button><span class="sr-only" role="status" x-text="done"></span></span>

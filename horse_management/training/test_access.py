@@ -68,7 +68,8 @@ class LevelTests(TestCase):
         response = self.client.get(reverse('horse_detail', args=[self.horse.pk]))
         self.assertIsNotNone(response.context['training_card'])
         self.assertFalse(response.context['training_card']['can_change'])
-        self.assertTrue([e for e in response.context['timeline_events'] if e['type'] == 'training'])
+        # The card shows the rows; the Timeline does not repeat them (horse page review A3).
+        self.assertFalse([e for e in response.context['timeline_events'] if e['type'] == 'training'])
         self.assertNotContains(response, 'Record training')
         self.assertEqual(self.client.get(reverse('training_log')).status_code, 200)
         response = self.client.post(reverse('training_activity_mark', args=[self.row.pk]), {'action': 'done'})

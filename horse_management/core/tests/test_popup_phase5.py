@@ -253,7 +253,7 @@ class RecordEditAndCreateSheetTests(Phase5TestCase):
         url = reverse('vaccination_update', args=[vax.pk])
         response = self.client.get(url, **POPUP)
         self.assertTemplateUsed(response, 'includes/popup_form.html')
-        self.assertContains(response, 'Save Changes')
+        self.assertContains(response, 'Save changes')
         response = self.client.post(url, {
             'horse': self.horse.pk, 'vaccination_type': vax_type.pk,
             'date_given': self.today.isoformat(), 'batch_number': 'B-1',

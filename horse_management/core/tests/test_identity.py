@@ -624,7 +624,11 @@ class HorsePageIdentityTests(TestCase):
     def test_the_identity_card(self):
         self.client.force_login(self.admin)
         response = self.client.get(self.url)
-        self.assertContains(response, 'Registered as <span class="font-medium text-charcoal">Karma Avicii (GB)</span>', html=False)
+        # The registered name is on the Identity card, not in the header too
+        # (horse page review A3).
+        card = response.content.decode().split('id="identity"', 1)[1]
+        self.assertIn('Karma Avicii (GB)', card)
+        self.assertNotContains(response, 'Registered as <span', html=False)
         self.assertContains(response, '372 141 000 123 456')
         self.assertContains(response, 'data-copy="372141000123456"')
         self.assertContains(response, 'Irish chip')
@@ -633,7 +637,7 @@ class HorsePageIdentityTests(TestCase):
         self.assertContains(response, 'Weatherbys')
         self.assertContains(response, '16.2 hh')
         self.assertContains(response, 'Star, near hind sock')
-        self.assertContains(response, 'foaled c. 2011')
+        self.assertIn('c. 2011', card)  # the foaling year, on the card (horse page review A3)
         self.assertContains(response, 'Open on racingpost.com')
         self.assertContains(response, 'Chip not checked yet.')
         self.assertContains(response, reverse('horse_scan_check', args=[self.horse.pk]))

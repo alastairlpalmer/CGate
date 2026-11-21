@@ -83,7 +83,7 @@ class OrderTests(Base):
         body = self.page(horse).content.decode()
         main = body.split('<main', 1)[1]
         places = [main.index(marker) for marker in (
-            'data-testid="due-strip"', 'Current Placement', 'Notes &amp; conditions',
+            'data-testid="due-strip"', 'Current placement', 'Notes &amp; conditions',
             '>Timeline</h2>', 'id="identity"', 'id="pedigree"')]
         self.assertEqual(places, sorted(places))
 
@@ -163,7 +163,7 @@ class DepartedTests(Base):
         left = (self.today - timedelta(days=10))
         stamp = f'{left.day} {left:%b %Y}'
         self.assertIn(f'Departed {stamp}', body.split('data-testid="departed-badge"', 1)[1].split('</span>', 1)[0])
-        line = body.split('data-testid="departed-line"', 1)[1].split('</div>', 1)[0]
+        line = body.split('data-testid="placement-empty"', 1)[1].split('<!-- Notes', 1)[0]
         self.assertIn(f'Departed {stamp}', line)
         self.assertIn('Left Top Field.', line)
         self.assertNotIn('Inactive', body)
