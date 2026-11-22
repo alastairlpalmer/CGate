@@ -44,15 +44,16 @@ def _panel_context(request):
 
     can_dismiss = dismissals.can_dismiss(user)
     # Horses that left and wait to be confirmed: one button for all of
-    # them, as the dashboard's Needs action card had.
+    # them, as the dashboard's Needs action card had. On every tab: the
+    # panel opens on New, and a bulk move makes several rows at once
+    # (Dev board, 21 Nov 2026).
     departure_ids = []
-    if tab == 'action':
-        from core.permissions import has_feature_access
-        if has_feature_access(user, 'horses', 'full'):
-            departure_ids = [
-                str(n.data.get('horse_id')) for n in rows
-                if n.kind == 'departure' and n.resolved_at is None and n.data.get('horse_id')
-            ]
+    from core.permissions import has_feature_access
+    if has_feature_access(user, 'horses', 'full'):
+        departure_ids = list(dict.fromkeys(
+            str(n.data.get('horse_id')) for n in rows
+            if n.kind == 'departure' and n.resolved_at is None and n.data.get('horse_id')
+        ))
     from django.utils import timezone
     return {
         'today': timezone.localdate(),

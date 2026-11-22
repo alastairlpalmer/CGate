@@ -43,7 +43,7 @@ urgent first), All (the last 90 days, done jobs included).
       hx-confirm="Confirm all {{ departure_ids|length }} horses as departed? They'll move to the Departed list.">
     {% csrf_token %}
     {% for id in departure_ids %}<input type="hidden" name="horse_ids" value="{{ id }}">{% endfor %}
-    <input type="hidden" name="next" value="{% url 'notification_panel' %}?tab=action&amp;fresh=1">
+    <input type="hidden" name="next" value="{% url 'notification_panel' %}?tab={{ tab }}&amp;fresh=1">
     <button type="submit" class="btn-secondary btn-xs">Confirm all {{ departure_ids|length }} departures</button>
 </form>
 {% endif %}

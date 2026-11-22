@@ -113,6 +113,8 @@ urlpatterns = [
     path('placements/add/', views.PlacementCreateView.as_view(), name='placement_create'),
     path('placements/<int:pk>/edit/', views.PlacementUpdateView.as_view(), name='placement_update'),
     path('placements/<int:pk>/delete/', views.placement_delete, name='placement_delete'),
+    path('placements/<int:pk>/left/', views.expected_departure_left, name='expected_departure_left'),
+    path('placements/<int:pk>/stays/', views.expected_departure_stays, name='expected_departure_stays'),
 
     # Documents (passport scans, insurance certs, …)
     path('documents/add/', views.document_create, name='document_create'),

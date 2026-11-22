@@ -17,70 +17,12 @@
     <div class="card">
         <form method="post">
             {% csrf_token %}
-            {{ formset.management_form }}
-
-            {% if formset.non_form_errors %}
-            <div class="p-4 bg-error-red-50 border-b border-error-red/20">
-                {% for error in formset.non_form_errors %}
-                <p class="text-sm text-error-red">{{ error }}</p>
-                {% endfor %}
-            </div>
-            {% endif %}
-
             <div class="px-4 py-3 space-y-3">
                 <p class="text-sm text-sage">
-                    Assign ownership percentages to each owner. Shares must total 100% or less.
-                    Livery and extra charges will be split according to these percentages.
+                    Add a row for each owner. Shares must add up to 100%.
+                    Livery and extra charges are split by these shares.
                 </p>
-
-                <div id="ownership-forms" class="space-y-4">
-                    {% for form in formset %}
-                    <div class="ownership-row border border-light-sage rounded-lg p-4 {% if form.instance.pk %}bg-white{% else %}bg-parchment{% endif %}">
-                        {% for hidden in form.hidden_fields %}
-                            {{ hidden }}
-                        {% endfor %}
-
-                        {% if form.errors %}
-                        <div class="mb-3 p-2 bg-error-red-50 rounded text-sm text-error-red">
-                            {% for field, errors in form.errors.items %}
-                                {% for error in errors %}
-                                <p>{{ error }}</p>
-                                {% endfor %}
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-
-                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                            <div class="sm:col-span-4">
-                                <label for="{{ form.owner.id_for_label }}" class="block text-xs font-medium text-charcoal-light mb-1">Owner</label>
-                                {{ form.owner }}
-                            </div>
-                            <div class="sm:col-span-2">
-                                <label for="{{ form.share_percentage.id_for_label }}" class="block text-xs font-medium text-charcoal-light mb-1">Share %</label>
-                                {{ form.share_percentage }}
-                            </div>
-                            <label class="sm:col-span-2 flex items-center gap-2 pt-4 min-h-[44px] sm:min-h-0 cursor-pointer">
-                                {{ form.is_primary_contact }}
-                                <span class="text-xs text-charcoal-light">Primary</span>
-                            </label>
-                            <div class="sm:col-span-3">
-                                <label for="{{ form.notes.id_for_label }}" class="block text-xs font-medium text-charcoal-light mb-1">Notes</label>
-                                {{ form.notes }}
-                            </div>
-                            {% if form.instance.pk %}
-                            <div class="sm:col-span-1 flex items-center pt-4">
-                                <label class="text-xs text-error-red cursor-pointer flex items-center gap-1 min-h-[44px] sm:min-h-0" title="Remove">
-                                    {{ form.DELETE }}
-                                    <svg class="w-4 h-4 text-error-red" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
-                                    </svg>
-                                </label>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
+                {% include 'horses/partials/_ownership_rows.html' with formset=formset %}
             </div>
 
             <!-- Footer -->

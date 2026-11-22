@@ -2851,6 +2851,21 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     .ped-node, .ped-gap path { transition: none; }
 }
 
+/* Yesterday / Today / Tomorrow under a date box (static/js/date_quick.js). */
+@layer components {
+    .date-quick { @apply flex flex-wrap gap-1.5 mt-1.5; }
+    .date-quick-btn {
+        @apply text-xs leading-5 px-2 rounded-full border border-light-sage bg-white text-charcoal-light
+               hover:border-forest hover:text-forest transition-colors cursor-pointer
+               focus-visible:outline-2 focus-visible:outline-forest focus-visible:outline-offset-1
+               disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-light-sage disabled:hover:text-charcoal-light;
+    }
+    .date-quick-btn[aria-pressed="true"] { @apply border-forest text-forest bg-forest/5 font-medium; }
+}
+@media (pointer: coarse) {
+    .date-quick-btn { min-height: 2.25rem; padding-inline: 0.75rem; }
+}
+
 /* Horse page banner (templates/horses/horse_detail.html, 21 Nov 2026): the
    photo, the name and buttons, the current placement and the pedigree.
    Phone: the photo beside the name, then the placement and the tree full

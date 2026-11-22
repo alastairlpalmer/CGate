@@ -364,7 +364,9 @@ class YardCostForm(forms.ModelForm):
             'description': forms.TextInput(attrs={'class': 'form-input'}),
             'amount': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'vat_amount': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
-            'is_recurring': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+            # x-model: the box and the Recurrence fields stay in step,
+            # whether the box or its label is clicked.
+            'is_recurring': forms.CheckboxInput(attrs={'class': 'form-checkbox', 'x-model': 'isRecurring'}),
             'recurrence_interval': forms.Select(attrs={'class': 'form-select'}),
             'recurrence_end_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'receipt_image': forms.FileInput(attrs={'class': 'form-input'}),
@@ -373,6 +375,16 @@ class YardCostForm(forms.ModelForm):
 
     def clean_receipt_image(self):
         return heic_to_jpeg(self.cleaned_data.get('receipt_image'))
+
+    def clean(self):
+        data = super().clean()
+        if data.get('is_recurring'):
+            if not data.get('recurrence_interval'):
+                self.add_error('recurrence_interval', 'Choose how often the cost repeats.')
+            end, start = data.get('recurrence_end_date'), data.get('date')
+            if end and start and end < start:
+                self.add_error('recurrence_end_date', 'The end date cannot be before the date of the cost.')
+        return data
 
 
 class FeedOutForm(forms.ModelForm):

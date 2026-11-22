@@ -1270,6 +1270,15 @@ class NewArrivalForm(StablePickerMixin, forms.Form):
         queryset=Owner.objects.active(),
         widget=forms.Select(attrs={'class': 'form-select'})
     )
+    # The main owner's share when other owners are added (CoOwnerFormSet).
+    # With no other owners it is 100, whatever the box says.
+    owner_share = forms.DecimalField(
+        required=False, max_digits=5, decimal_places=2,
+        min_value=Decimal('0.01'), max_value=Decimal('100'), initial=Decimal('100'),
+        widget=forms.NumberInput(attrs={
+            'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0.01', 'max': '100',
+        }),
+    )
 
     # Placement fields
     location = forms.ModelChoiceField(
@@ -1314,6 +1323,77 @@ class DepartureForm(forms.Form):
         required=False,
         widget=forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2})
     )
+
+
+class CoOwnerForm(forms.Form):
+    """One other owner on the new arrival page: who, and their share."""
+    owner = forms.ModelChoiceField(
+        queryset=Owner.objects.active(), required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    share_percentage = forms.DecimalField(
+        required=False, max_digits=5, decimal_places=2,
+        min_value=Decimal('0.01'), max_value=Decimal('99.99'),
+        widget=forms.NumberInput(attrs={
+            'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0.01', 'max': '99.99',
+        }),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['owner'].queryset = Owner.objects.active()
+
+    def clean(self):
+        data = super().clean()
+        owner, share = data.get('owner'), data.get('share_percentage')
+        if owner and share is None and 'share_percentage' not in self.errors:
+            self.add_error('share_percentage', 'Enter this owner\'s share.')
+        if share is not None and not owner:
+            self.add_error('owner', 'Choose the owner for this share.')
+        return data
+
+
+class BaseCoOwnerFormSet(forms.BaseFormSet):
+    """The other owners on the new arrival page (Dev board, 21 Nov 2026:
+    "When adding a new horse, don't get ownership split").
+
+    shares(main_owner, main_share) checks them against the main owner and
+    answers the full list of (owner, share, is_primary), or None after it
+    adds the error. Rows left empty are skipped.
+    """
+
+    def rows(self):
+        out = []
+        for form in self.forms:
+            data = getattr(form, 'cleaned_data', None) or {}
+            if data.get('owner') and data.get('share_percentage') is not None:
+                out.append((data['owner'], data['share_percentage']))
+        return out
+
+    def shares(self, main_owner, main_share):
+        others = self.rows()
+        if not others:
+            return [(main_owner, Decimal('100'), True)]
+        seen = {main_owner.pk}
+        for owner, _share in others:
+            if owner.pk in seen:
+                self._non_form_errors = self.error_class(
+                    [f'{owner.name} is on the list twice. Give each owner one row.'])
+                return None
+            seen.add(owner.pk)
+        if main_share is None:
+            self._non_form_errors = self.error_class(
+                ['Enter the main owner\'s share, so the shares add up to 100%.'])
+            return None
+        total = main_share + sum(share for _owner, share in others)
+        if total != Decimal('100'):
+            self._non_form_errors = self.error_class(
+                [f'The shares must add up to 100%. They add up to {total.normalize():f}% now.'])
+            return None
+        return [(main_owner, main_share, True)] + [(owner, share, False) for owner, share in others]
+
+
+CoOwnerFormSet = forms.formset_factory(CoOwnerForm, formset=BaseCoOwnerFormSet, extra=0, max_num=10)
 
 
 class OwnershipShareForm(forms.ModelForm):

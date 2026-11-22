@@ -684,6 +684,12 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'invoicing.tasks.generate_monthly_draft_invoices',
         'schedule': crontab(day_of_month='1', hour=MONTHLY_INVOICE_HOUR, minute=30),
     },
+    # Recurring yard costs: make the copies due today (billing/recurring.py).
+    # Early, so the morning's cost list and finance pages include them.
+    'create-recurring-yard-costs': {
+        'task': 'billing.tasks.create_recurring_yard_costs',
+        'schedule': crontab(hour=0, minute=40),
+    },
     # C-vet: the vet practice's monthly bill to the yard, for a practice
     # that bills once a month (docs/C_VET_PLAN.md, section 7e). Before the yard's own
     # invoices above are sent, so the yard has the vet's bill first.

@@ -74,15 +74,36 @@
                 </div>
             </fieldset>
 
-            <!-- Owner -->
-            <fieldset class="px-4 py-3 space-y-3">
+            <!-- Owner, and other owners when the horse is split -->
+            <fieldset class="px-4 py-3 space-y-3" x-data="formsetRows('co')" data-testid="new-arrival-owners">
                 <legend class="section-title">Owner</legend>
-                <div class="mt-3">
-                    <label for="id_owner" class="block text-sm font-medium text-charcoal">Owner *</label>
-                    {{ form.owner }}
-                    {% if form.owner.errors %}<p id="{{ form.owner.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.owner.errors.0 }}</p>{% endif %}
-                    <p class="mt-1 text-xs text-sage">This owner will be assigned 100% ownership</p>
+                <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-12 items-start">
+                    <div class="sm:col-span-8">
+                        <label for="id_owner" class="block text-sm font-medium text-charcoal">Owner *</label>
+                        {{ form.owner }}
+                        {% if form.owner.errors %}<p id="{{ form.owner.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.owner.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="sm:col-span-4" x-show="count > 0" x-cloak>
+                        <label for="id_owner_share" class="block text-sm font-medium text-charcoal">Share %</label>
+                        {{ form.owner_share }}
+                        {% if form.owner_share.errors %}<p class="mt-1 text-sm text-error-red" role="alert">{{ form.owner_share.errors.0 }}</p>{% endif %}
+                    </div>
                 </div>
+                <p class="text-xs text-sage" x-show="count === 0">This owner gets 100% ownership. They are the primary contact, and the stay is billed to them.</p>
+                <p class="text-xs text-sage" x-show="count > 0" x-cloak>The first owner is the primary contact, and the stay is billed to them. The shares must add up to 100%.</p>
+                {% if co_owners.non_form_errors %}
+                <div class="alert-error" role="alert">{% for error in co_owners.non_form_errors %}<p>{{ error }}</p>{% endfor %}</div>
+                {% endif %}
+                {# Not straight after the legend: "legend + *" clears the floated legend. #}
+                {{ co_owners.management_form }}
+                <div x-ref="rows" class="space-y-3">
+                    {% for f in co_owners %}{% include 'horses/partials/_co_owner_row.html' %}{% endfor %}
+                </div>
+                <template x-ref="blank">{% with f=co_owners.empty_form %}{% include 'horses/partials/_co_owner_row.html' %}{% endwith %}</template>
+                <button type="button" class="btn-secondary btn-sm" @click="add()" data-testid="add-co-owner">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                    Add another owner
+                </button>
             </fieldset>
 
             <!-- Placement -->

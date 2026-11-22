@@ -310,6 +310,16 @@ class YardCost(SoftDeleteModel):
         null=True, blank=True,
         help_text="Leave blank if the recurring cost has no end date"
     )
+    # A copy made by billing/recurring.py points at the recurring cost it
+    # repeats. A deleted copy stays in the bin, so it is not made again.
+    recurrence_source = models.ForeignKey(
+        'self', null=True, blank=True, editable=False,
+        on_delete=models.SET_NULL, related_name='repeats',
+    )
+    # On a recurring cost: the last day a copy was made for. Copies are
+    # only made after it, so a copy deleted for good (the bin is emptied
+    # after SOFT_DELETE_RETENTION_DAYS) is not made again.
+    recurrence_made_until = models.DateField(null=True, blank=True, editable=False)
     receipt_image = models.ImageField(
         upload_to='receipts/yard/%Y/%m/', blank=True, null=True,
         validators=[
@@ -326,6 +336,12 @@ class YardCost(SoftDeleteModel):
         constraints = [
             models.CheckConstraint(condition=Q(amount__gte=0), name='yardcost_amount_not_negative'),
             models.CheckConstraint(condition=Q(vat_amount__gte=0), name='yardcost_vat_not_negative'),
+            # One copy of a recurring cost a day, however often the job runs.
+            models.UniqueConstraint(
+                fields=['recurrence_source', 'date'],
+                condition=Q(recurrence_source__isnull=False),
+                name='yardcost_one_repeat_a_day',
+            ),
         ]
         ordering = ['-date']
         indexes = [
