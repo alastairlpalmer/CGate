@@ -1,0 +1,16 @@
+{% comment %}One other owner on the new arrival page (core.forms.CoOwnerForm). Context: f.{% endcomment %}
+<div data-formset-row class="grid grid-cols-1 gap-3 sm:grid-cols-12 items-start rounded-lg border border-light-sage bg-parchment p-3">
+    <div class="sm:col-span-7">
+        <label for="{{ f.owner.id_for_label }}" class="block text-xs font-medium text-charcoal-light">Other owner</label>
+        {{ f.owner }}
+        {% if f.owner.errors %}<p class="mt-1 text-sm text-error-red" role="alert">{{ f.owner.errors.0 }}</p>{% endif %}
+    </div>
+    <div class="sm:col-span-3">
+        <label for="{{ f.share_percentage.id_for_label }}" class="block text-xs font-medium text-charcoal-light">Share %</label>
+        {{ f.share_percentage }}
+        {% if f.share_percentage.errors %}<p class="mt-1 text-sm text-error-red" role="alert">{{ f.share_percentage.errors.0 }}</p>{% endif %}
+    </div>
+    <div class="sm:col-span-2 sm:pt-5">
+        <button type="button" class="link text-xs text-error-red tap-pad" @click="remove($el)">Remove</button>
+    </div>
+</div>

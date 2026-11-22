@@ -711,23 +711,47 @@ def _departures_to_confirm(ctx):
 
 
 def _expected_departures(ctx):
+    """Stays with an expected departure date in the horizon, and stays
+    whose expected date has passed with the horse still on the yard.
+
+    A passed date asks "Did it leave?" (Dev board, 21 Nov 2026): Yes, it
+    left closes the stay on that date; Still here clears the date; Change
+    date opens the stay. Before, the row went quiet the day after, and the
+    horse stayed on the yard and on the bill.
+    """
     from ..models import Placement
 
     qs = Placement.objects.filter(
         expected_departure__isnull=False,
-        expected_departure__gte=ctx.today,
         expected_departure__lte=ctx.horizon,
         end_date__isnull=True,
         horse__is_active=True,
     ).select_related('horse', 'owner', 'location').order_by('expected_departure')
+    full = ctx.can('horses', LEVEL_FULL)
     items = []
     for placement in qs:
         owner = placement.owner.name if placement.owner_id else ''
+        passed = placement.expected_departure < ctx.today
+        actions = []
+        if passed and full:
+            actions = [
+                Action(label='Yes, it left', url=reverse('expected_departure_left', args=[placement.pk]),
+                       method='post', style='primary'),
+                Action(label='Still here', url=reverse('expected_departure_stays', args=[placement.pk]),
+                       method='post'),
+                Action(label='Change date', url=reverse('placement_update', args=[placement.pk]),
+                       popup_title=f'Edit the stay of {placement.horse.name}'),
+            ]
+        if passed:
+            detail = (f'Was due to leave {placement.location.name} on '
+                      f'{placement.expected_departure:%-d %b}. Did it leave?')
+        else:
+            detail = f'Expected to leave {placement.location.name}'
         items.append(AttentionItem(
             kind='departure_expected',
-            severity='due',
+            severity='overdue' if passed else 'due',
             title=placement.horse.name,
-            detail=f'Expected to leave {placement.location.name}' + (f' · {owner}' if owner else ''),
+            detail=detail + (f' · {owner}' if owner else ''),
             url=reverse('horse_detail', args=[placement.horse_id]),
             due_date=placement.expected_departure,
             delta=ctx.delta(placement.expected_departure),
@@ -735,6 +759,7 @@ def _expected_departures(ctx):
             horse_id=placement.horse_id,
             location=placement.location.name,
             site=placement.location.site,
+            actions=actions,
             key=f'expected-{placement.pk}',
         ))
     return items

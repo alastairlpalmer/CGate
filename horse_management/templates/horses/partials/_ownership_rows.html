@@ -1,0 +1,22 @@
+{% comment %}
+The ownership formset, on the new-horse form and on Manage ownership. One
+row per owner; "Add owner" adds a row in the browser (static/js/
+formset_rows.js), so a horse can be split between owners in one save.
+Context: formset (OwnershipShareFormSet).
+{% endcomment %}
+<div x-data="formsetRows('{{ formset.prefix }}')" data-testid="ownership-rows">
+    {{ formset.management_form }}
+    {% if formset.non_form_errors %}
+    <div class="alert-error mb-3" role="alert">
+        {% for error in formset.non_form_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+    {% endif %}
+    <div x-ref="rows" class="space-y-3">
+        {% for f in formset %}{% include 'horses/partials/_ownership_row.html' %}{% endfor %}
+    </div>
+    <template x-ref="blank">{% with f=formset.empty_form %}{% include 'horses/partials/_ownership_row.html' %}{% endwith %}</template>
+    <button type="button" class="btn-secondary btn-sm mt-3" @click="add()" data-testid="add-owner">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        Add owner
+    </button>
+</div>

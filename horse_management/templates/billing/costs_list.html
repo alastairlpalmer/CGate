@@ -183,6 +183,8 @@
                                 <span class="badge-neutral">Yard</span>
                                 {% if cost.is_recurring %}
                                 <span class="badge-info">Recurring</span>
+                                {% elif cost.is_repeat %}
+                                <span class="badge-info" title="Made from a recurring cost">Repeat</span>
                                 {% endif %}
                             {% endif %}
                         </td>

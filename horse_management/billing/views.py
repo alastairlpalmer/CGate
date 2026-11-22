@@ -501,6 +501,7 @@ class CostsListView(FeatureAccessMixin, ListView):
                 'horse_pk': None,
                 'invoiced': False,
                 'is_recurring': y.is_recurring,
+                'is_repeat': y.recurrence_source_id is not None,
                 'pk': y.pk,
                 'edit_url': f'/billing/costs/yard/{y.pk}/edit/',
                 'delete_url': f'/billing/costs/yard/{y.pk}/delete/',
@@ -578,8 +579,9 @@ class YardCostCreateView(FeatureAccessMixin, CreateView):
         return initial
 
     def form_valid(self, form):
-        messages.success(self.request, "Yard cost added.")
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        messages.success(self.request, "Yard cost added." + _repeats_made(self.object))
+        return response
 
 
 class YardCostUpdateView(FeatureAccessMixin, UpdateView):
@@ -590,8 +592,19 @@ class YardCostUpdateView(FeatureAccessMixin, UpdateView):
     success_url = reverse_lazy('costs_list')
 
     def form_valid(self, form):
-        messages.success(self.request, "Yard cost updated.")
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        messages.success(self.request, "Yard cost updated." + _repeats_made(self.object))
+        return response
+
+
+def _repeats_made(cost):
+    """Make the copies of a recurring cost that are due by today, at once
+    rather than at the night's job, and say how many (billing/recurring.py)."""
+    from .recurring import create_repeats
+    made = create_repeats(costs=[cost]) if cost.is_recurring and not cost.recurrence_source_id else 0
+    if not made:
+        return ''
+    return f" {made} repeat{'s' if made != 1 else ''} added, up to today."
 
 
 class YardCostDeleteView(FeatureAccessMixin, DeleteView):
@@ -622,7 +635,8 @@ def yard_cost_restore(request, pk):
 @feature_required('costs')
 @require_POST
 def yard_cost_duplicate(request, pk):
-    """Duplicate a yard cost with today's date."""
+    """Duplicate a yard cost with today's date. The copy is a one-off: a
+    second recurring cost would repeat the same cost twice."""
     original = get_object_or_404(YardCost, pk=pk)
     YardCost.objects.create(
         category=original.category,
@@ -631,9 +645,6 @@ def yard_cost_duplicate(request, pk):
         description=original.description,
         amount=original.amount,
         vat_amount=original.vat_amount,
-        is_recurring=original.is_recurring,
-        recurrence_interval=original.recurrence_interval,
-        recurrence_end_date=original.recurrence_end_date,
         notes=original.notes,
     )
     messages.success(request, f"Duplicated '{original.description}' with today's date.")

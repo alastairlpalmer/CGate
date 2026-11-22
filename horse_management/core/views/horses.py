@@ -2188,11 +2188,15 @@ def new_arrival(request):
     on a horse stops the save once, so a second record is never made by
     accident; "Make a new record anyway" goes on.
     """
-    from ..forms import NewArrivalForm
+    from ..forms import CoOwnerFormSet, NewArrivalForm
     from ..returning import find_returning
     from ..services import PlacementService
 
     returning = None
+    # Other owners, when the horse is split (Dev board, 21 Nov 2026).
+    # A post without the rows' count (an older page, a script) has none.
+    co_data = request.POST if request.method == 'POST' and 'co-TOTAL_FORMS' in request.POST else None
+    co_owners = CoOwnerFormSet(co_data, prefix='co')
     if request.method == 'POST':
         data = request.POST
         back = None
@@ -2209,13 +2213,14 @@ def new_arrival(request):
             done = _bring_back(request, form, back)
             if done is not None:
                 return done
-        elif form.is_valid():
+        elif form.is_valid() and _co_owner_shares(form, co_owners) is not None:
             returning = find_returning(microchip=form.cleaned_data.get('microchip'))
             if returning.chip_matches and not request.POST.get('new_record'):
                 return render(request, 'horses/horse_new_arrival.html', {
-                    'form': form, 'returning': returning, 'stopped': True,
+                    'form': form, 'co_owners': co_owners, 'returning': returning, 'stopped': True,
                 })
             returning = None
+            shares = _co_owner_shares(form, co_owners)
             chose_stable = form.cleaned_data.get('stable') is not None
             try:
                 # One transaction when a stable was picked: if it turns
@@ -2237,6 +2242,7 @@ def new_arrival(request):
                         arrival_date=form.cleaned_data['arrival_date'],
                         expected_departure=form.cleaned_data.get('expected_departure'),
                         notes=form.cleaned_data.get('notes', ''),
+                        shares=shares,
                     )
                     _assign_chosen_stable(horse, form, form.cleaned_data['arrival_date'])
             except ValidationError as e:
@@ -2269,7 +2275,18 @@ def new_arrival(request):
         # The form came back with an error: keep the panel showing what
         # the chip and name found, as it did before the save.
         returning = _returning_from(request.POST)
-    return render(request, 'horses/horse_new_arrival.html', {'form': form, 'returning': returning})
+    return render(request, 'horses/horse_new_arrival.html', {
+        'form': form, 'co_owners': co_owners, 'returning': returning,
+    })
+
+
+def _co_owner_shares(form, co_owners):
+    """The ownership rows for a new arrival: the main owner and any other
+    owners with their shares, or None when the other owners have an error
+    (the formset holds it)."""
+    if co_owners.is_bound and not co_owners.is_valid():
+        return None
+    return co_owners.shares(form.cleaned_data['owner'], form.cleaned_data.get('owner_share'))
 
 
 def _returning_from(params):
@@ -2534,6 +2551,50 @@ def cancel_departure(request, pk):
         # delete the row even when the action was refused.
         return HttpResponse(status=204, headers={'HX-Trigger': 'popup:saved'})
     # The Undo on a "departed" message sends the page it was on.
+    return redirect(safe_next(request, reverse('dashboard')))
+
+
+@feature_required('horses')
+@require_POST
+def expected_departure_left(request, pk):
+    """"Yes, it left" on a passed expected departure: the stay closes on
+    the expected date and the horse is marked departed."""
+    from django.utils.dateformat import format as date_format
+
+    from ..services import PlacementService
+
+    placement = get_object_or_404(Placement.objects.select_related('horse', 'location'), pk=pk)
+    horse = placement.horse
+    if placement.end_date is None and placement.expected_departure and placement.expected_departure <= timezone.localdate():
+        try:
+            PlacementService.depart_horse(horse, placement.expected_departure)
+        except ValidationError as e:
+            messages.error(request, ' '.join(e.messages))
+        else:
+            messages.success(request, format_html(
+                '{} left {} on {}. <a href="{}" class="underline font-semibold">Open {}</a>',
+                horse.name, placement.location.name, date_format(placement.expected_departure, 'j M Y'),
+                reverse('horse_detail', args=[horse.pk]), horse.name))
+    return _departure_answer(request)
+
+
+@feature_required('horses')
+@require_POST
+def expected_departure_stays(request, pk):
+    """"Still here" on a passed expected departure: the date is cleared,
+    so the question stops. Change date sets a new one instead."""
+    placement = get_object_or_404(Placement.objects.select_related('horse'), pk=pk)
+    if placement.end_date is None and placement.expected_departure:
+        placement.expected_departure = None
+        placement.save()
+        messages.success(request, f"{placement.horse.name} is still here. The expected departure date is cleared.")
+    return _departure_answer(request)
+
+
+def _departure_answer(request):
+    if request.headers.get('HX-Request'):
+        # As confirm_departure: nothing is swapped, and the page refreshes.
+        return HttpResponse(status=204, headers={'HX-Trigger': 'popup:saved'})
     return redirect(safe_next(request, reverse('dashboard')))
 
 

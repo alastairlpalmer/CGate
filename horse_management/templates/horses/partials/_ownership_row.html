@@ -1,0 +1,42 @@
+{% comment %}
+One row of the ownership formset (_ownership_rows.html). A saved row has
+the Remove tick box (the formset deletes it on save); a new row has a
+Remove button that takes it off the page before the save.
+Context: f (the form).
+{% endcomment %}
+<div data-formset-row class="ownership-row border border-light-sage rounded-lg p-4 {% if f.instance.pk %}bg-white{% else %}bg-parchment{% endif %}">
+    {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+    {% if f.errors %}
+    <div class="mb-3 p-2 bg-error-red-50 rounded text-sm text-error-red" role="alert">
+        {% for field, errors in f.errors.items %}{% for error in errors %}<p>{{ error }}</p>{% endfor %}{% endfor %}
+    </div>
+    {% endif %}
+    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+        <div class="sm:col-span-4">
+            <label for="{{ f.owner.id_for_label }}" class="block text-xs font-medium text-charcoal-light mb-1">Owner</label>
+            {{ f.owner }}
+        </div>
+        <div class="sm:col-span-2">
+            <label for="{{ f.share_percentage.id_for_label }}" class="block text-xs font-medium text-charcoal-light mb-1">Share %</label>
+            {{ f.share_percentage }}
+        </div>
+        <label class="sm:col-span-2 flex items-center gap-2 pt-4 min-h-[44px] sm:min-h-0 cursor-pointer">
+            {{ f.is_primary_contact }}
+            <span class="text-xs text-charcoal-light">Primary</span>
+        </label>
+        <div class="sm:col-span-3">
+            <label for="{{ f.notes.id_for_label }}" class="block text-xs font-medium text-charcoal-light mb-1">Notes</label>
+            {{ f.notes }}
+        </div>
+        <div class="sm:col-span-1 flex items-center pt-4">
+            {% if f.instance.pk %}
+            <label class="text-xs text-error-red cursor-pointer flex items-center gap-1 min-h-[44px] sm:min-h-0" title="Remove this owner when you save">
+                {{ f.DELETE }}
+                <span>Remove</span>
+            </label>
+            {% else %}
+            <button type="button" class="link text-xs text-error-red tap-pad" @click="remove($el)">Remove</button>
+            {% endif %}
+        </div>
+    </div>
+</div>

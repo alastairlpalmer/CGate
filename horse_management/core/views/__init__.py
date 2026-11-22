@@ -21,6 +21,8 @@ from .horses import (  # noqa: F401
     cancel_departure,
     confirm_departure,
     confirm_departures_bulk,
+    expected_departure_left,
+    expected_departure_stays,
     horse_arrive,
     horse_depart,
     horse_move,

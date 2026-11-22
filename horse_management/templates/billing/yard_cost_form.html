@@ -13,7 +13,7 @@
     </div>
 
     <div class="card">
-        <form method="post" enctype="multipart/form-data" class="divide-y divide-light-sage" x-data="{ isRecurring: {{ object.is_recurring|yesno:'true,false'|default:'false' }} }">
+        <form method="post" enctype="multipart/form-data" class="divide-y divide-light-sage" x-data="{ isRecurring: {% if form.is_recurring.value %}true{% else %}false{% endif %} }">
             {% csrf_token %}
 
             {% if form.non_field_errors %}
@@ -93,10 +93,8 @@
                 <legend class="section-title">Options</legend>
                 <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 mt-3">
                     <div class="sm:col-span-2 flex items-center gap-3">
-                        <div @click="isRecurring = !isRecurring">
-                            {{ form.is_recurring }}
-                        </div>
-                        <label for="id_is_recurring" class="text-sm font-medium text-charcoal cursor-pointer" @click="isRecurring = !isRecurring">
+                        {{ form.is_recurring }}
+                        <label for="id_is_recurring" class="text-sm font-medium text-charcoal cursor-pointer">
                             This is a recurring cost
                         </label>
                     </div>
@@ -106,9 +104,10 @@
                         {% if form.recurrence_interval.errors %}
                           <p id="{{ form.recurrence_interval.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.recurrence_interval.errors.0 }}</p>
                         {% endif %}
+                        <p class="mt-1 text-xs text-sage">A copy is added on each due day, up to the end date. Copies show as Repeat in the list.</p>
                     </div>
                     <div x-show="isRecurring" x-transition x-cloak>
-                        <label for="id_recurrence_end_date" class="block text-sm font-medium text-charcoal">End Date</label>
+                        <label for="id_recurrence_end_date" class="block text-sm font-medium text-charcoal">End date</label>
                         {{ form.recurrence_end_date }}
                         {% if form.recurrence_end_date.errors %}
                           <p id="{{ form.recurrence_end_date.auto_id }}_error" class="mt-1 text-sm text-error-red" role="alert">{{ form.recurrence_end_date.errors.0 }}</p>

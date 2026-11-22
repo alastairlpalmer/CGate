@@ -52,8 +52,12 @@ class PlacementService:
                            sire_name='', passport_number='', has_passport=False,
                            microchip='',
                            owner, location, rate_type, arrival_date,
-                           expected_departure=None, notes=''):
+                           expected_departure=None, notes='', shares=None):
         """Create a new horse and place it at a location in one atomic step.
+
+        ``shares`` is a list of (owner, percentage, is_primary) when the
+        horse has more than one owner (core.forms.BaseCoOwnerFormSet);
+        without it ``owner`` gets 100%. The stay is billed to ``owner``.
 
         Returns the created (horse, placement) tuple.
         """
@@ -69,12 +73,15 @@ class PlacementService:
             microchip=normalise_microchip(microchip),
             is_active=True,
         )
-        OwnershipShare.objects.create(
-            horse=horse,
-            owner=owner,
-            share_percentage=100,
-            is_primary_contact=True,
-        )
+        for share_owner, percentage, is_primary in shares or [(owner, 100, True)]:
+            share = OwnershipShare(
+                horse=horse, owner=share_owner,
+                share_percentage=percentage, is_primary_contact=is_primary,
+            )
+            # The form checked the total of all the rows; the model's own
+            # check would add each row to the rows saved before it.
+            share._total_checked_by_formset = True
+            share.save()
         _refuse_future_date(arrival_date, 'An arrival')
         placement = Placement(
             horse=horse,
