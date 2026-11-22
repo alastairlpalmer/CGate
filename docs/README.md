@@ -31,6 +31,7 @@
 | [`UX_REVIEW_PLAN.md`](UX_REVIEW_PLAN.md) | UX and visual review (Nov 2026): findings and a phased plan for hierarchy, consistency and phone lists. |
 | [`HORSE_PAGE_UX_REVIEW.md`](HORSE_PAGE_UX_REVIEW.md) | UI and UX review of the horse page (20 Nov 2026): what the page shows first (a Due strip, card order, the Timeline), actions, accessibility, forms, navigation and history, checked against the saas-ui-patterns library, with a five-phase plan. |
 | [`UI_AUDIT.md`](UI_AUDIT.md) | Interface audit. |
+| [`MOBILE_APP_PLAN.md`](MOBILE_APP_PLAN.md) | The main app on a phone (22 Nov 2026): how it is used, what was measured, findings for reliability, speed and the layout of key information, the route to an installed app and to the app stores, and a six-phase plan. |
 
 ## QA history
 
