@@ -15,7 +15,7 @@ it ready to launch as an app.
 |---|---|
 | 1. Nothing breaks, nothing is lost | Done in this branch: A1 to A7 (see the notes below the table) |
 | 2. Faster taps | Done in this branch: B1, B2, B7, B8, and part of B5 and B6. Not done: B3, B4 (see the notes below the table) |
-| 3. Key information first | Not started |
+| 3. Key information first | Done in this branch: C1 to C12, and B4 from phase 2 (see the notes below the table) |
 | 4. Installed app | Not started |
 | 5. Push notifications | Not started |
 | 6. App stores | Later: the installed web app comes first (section 9, decision 6) |
@@ -77,10 +77,11 @@ Phase 2 notes:
   answer on the tap needs the browser to keep the page for some seconds,
   and a page that was just changed would then show its old data. The
   gain is about 0.1 seconds.
-- **B4 is moved to phase 3.** 60% of a row is its actions menu (2.8 KB
-  of 4.6 KB). Item C5 makes a new phone row for each list; to change the
-  row two times is waste. Paging is not done: the preview's "35 of 60"
-  and its Next and Previous need all the rows in the page.
+- **B4 was moved to phase 3 and is done there.** 60% of a row was its
+  actions menu (2.8 KB of 4.6 KB). Item C5 made a new phone row for each
+  list; to change the row two times was waste. Paging is not done: the
+  preview's "35 of 60" and its Next and Previous need all the rows in
+  the page.
 - B5: a test holds a limit on what each page loads
   (`SizeBudgetTests`): 45 KB for `styles.css` and 120 KB for the scripts,
   as gzip sends them. They are 39 KB and 107 KB. **Not done:** the map
@@ -100,6 +101,82 @@ Phase 2 notes:
   went as 1 MB; before, the server refused it. A PNG and a small photo go
   as they are. The form shows the percent sent, and Save waits until the
   photos are ready.
+
+Phase 3 notes:
+
+- C1: one top bar on a phone: the bell, the search box, the page's own
+  buttons and Add. The name bar is gone. A list page shows its title on
+  the page. The bars are 134 px (187 px before).
+- C2: with no Training tab (the feature is off, or the role has no
+  Training), Health is the fourth tab. With a Training tab, Health stays
+  in More. Farrier and Breeding stay in More.
+- C3: on a phone the dashboard's calendar card opens as a list of today
+  and the next 7 days. A line is one job with its button; a job for two
+  or more horses is one line that opens to their names and has "Record
+  for N". "Month" opens the grid, and the grid stays open while a day or
+  a month is chosen. Only the figures that need a look are tiles; the
+  others are a line of links under the list. A Timeline row for more
+  than 3 horses is one line; its count opens the names. The dashboard is
+  3.5 screens (4.3 before). Health is 5 screens (9.8 before) and
+  Vaccinations 4.4 (10.8 before).
+- C4: a horse page on a phone has a line under the name for what is due
+  and a line for conditions and notes. Each goes to its card. Move, Edit
+  and More are one row. Notes and conditions come first in their column.
+  An empty pedigree is one line; "Show tree" opens it. The order of the
+  cards did not change more than that: the Record row and the Due card
+  were already above the fold after the pedigree folded.
+- C5: one short row (`.data-table-compact`: the name, a second line, one
+  action) on Health, Vaccinations and a location page. The horse list
+  row is two lines and 64 px (85 px before): 7 horses on the first
+  screen, not 5. **The target was 8.** The page title, the view tabs and
+  the "Needs action" line take 265 px above the first row; to remove one
+  of them is a decision, not a layout change. Owners have Call and Email
+  in the phone card. The farrier chip was not changed (its own plan).
+- C6: Health groups Action Required by job. A job for two or more horses
+  has "Record for all", which opens the bulk form with those horses.
+- C7: below 640 px no text class is under 12 px. Small grey text is
+  `charcoal-light`. A list card's title is 16 px and its second line
+  14 px. The profile has "Text size on a phone": Standard or Large
+  (everything one eighth bigger below 1024 px). Text of 12 px or smaller
+  is 3% to 25% on the main lists. It is 40% on the dashboard and 52% on a
+  horse page: labels, the words on small buttons, dates and tab names.
+  **Not done:** 14 px words on the small buttons (`btn-xs`). The short
+  rows keep a fixed width for their buttons, so each list needs a check.
+- C8: a Record sheet shows the fields a usual record needs and puts the
+  rest under "More details" (`PopupFormMixin.popup_main_fields`).
+  Vaccination: type and date. Farrier: service, date, work, cost.
+  Worming: date and product. Egg count: date, count, sample. Vet visit:
+  service, date, reason, cost. A field that must be filled in is never
+  under "More details". The footer is Cancel and Save; "Save & add
+  another" is under "More details". A next due date has "+6 months" and
+  "+12 months" (vaccination), "+6 weeks" and "+8 weeks" (farrier),
+  "+3 months" and "+6 months" (worming); a vet follow-up has "+1 week"
+  and "+2 weeks". **Check these with the yard:** the farrier, worming
+  and follow-up choices are an assumption.
+- C9: the horse preview sheet, for a horse with no photo, shows the
+  small picture beside the name (a tap adds a photo), not a large empty
+  block. Under the name: the first thing overdue or due in 14 days.
+  The owner's line has Call. The due line is built from data the preview
+  has loaded: the preview's limit of 30 queries holds.
+- C10: 44 px for the bell, the month arrows and a tick box on a location
+  page. A Timeline name is 32 px high with 8 px between rows (20 px
+  before); 44 px for each of 18 names made the card too long. Header
+  buttons and view tabs stay 40 px: that is now the rule for a button in
+  a page header.
+- C11: open "over capacity" notices are one row, "5 locations over
+  capacity", with "See locations". The row opens to the places. The
+  "when" badge is on the title's line. On the test data the Needs action
+  tab is 8 rows and 1,095 px (12 rows and 1,860 px before). Other kinds
+  were already grouped by visit ("Record for 23").
+- C12: `orientation` is out of the manifest. "Press /" does not show on
+  a touch screen. There is no name bar to hide on a phone on its side.
+- B4 (from phase 2): the horse list has one More menu for all its rows
+  (`rowMenu` in `static/js/more_menu.js`). A row is 2.6 KB (4.6 KB
+  before). The page for 60 horses is 294 KB of HTML before compression
+  and 2,372 elements (408 KB and 3,205 before). A fault that was there
+  before is corrected with
+  it: each More menu kept its scroll listener on the page's outer scope,
+  so one menu removed the listener of another.
 
 Not part of the plan, done with phase 2: **"Remember this device"** for
 two-step sign-in. After a correct code a device is remembered for
@@ -668,19 +745,23 @@ customer asks for it. Store rules change: read them again at that time.
 
 ## 6. Targets
 
-| Item | At the review | After phase 2 | Target |
-|---|---|---|---|
-| First sign after a tap | After the response | At once (the tab is marked) | Under 100 ms |
-| A tab tap, good signal | 0.2 to 0.4 s (local) | Not measured again | Under 0.3 s |
-| A tab tap, weak signal (400 kbit/s, 400 ms) | 1.1 to 1.4 s | 0.6 to 0.9 s | Under 1 s |
-| Download for one tap | 24 to 38 KB | 1 to 15 KB | Under 15 KB, long lists excepted |
-| Open the installed app to the first screen | Not measured | Not measured | Under 2 s on 4G |
-| Fixed bars | 187 px | 187 px (phase 3) | 135 px or less |
-| Horses on the first screen (390 x 844) | 5 | 5 (phase 3) | 8 or more |
-| Text of 12 px or smaller | 39% to 83% on the main lists | The same (phase 3) | Under 25% |
-| Longest list page | 10.8 screens | The same (phase 3) | 4 screens for 50 items |
-| Queries for one page | Up to 48 | Up to 40 | 25 or fewer |
-| Checks in `phone_review.js` | 0 of 8 pass | 8 of 8 pass | 8 of 8 pass |
+| Item | At the review | After phase 2 | After phase 3 | Target |
+|---|---|---|---|---|
+| First sign after a tap | After the response | At once (the tab is marked) | The same | Under 100 ms |
+| A tab tap, good signal | 0.2 to 0.4 s (local) | Not measured again | Not measured again | Under 0.3 s |
+| A tab tap, weak signal (400 kbit/s, 400 ms) | 1.1 to 1.4 s | 0.6 to 0.9 s | Not measured again | Under 1 s |
+| Download for one tap | 24 to 38 KB | 1 to 15 KB | The same or less (a lighter horse row) | Under 15 KB, long lists excepted |
+| Open the installed app to the first screen | Not measured | Not measured | Not measured (phase 4) | Under 2 s on 4G |
+| Fixed bars | 187 px | 187 px | **134 px** | 135 px or less |
+| Horses on the first screen (390 x 844) | 5 | 5 | **7** (target not met) | 8 or more |
+| Text of 12 px or smaller | 39% to 83% on the main lists | The same | **3% to 25%** on the main lists; 40% on the dashboard | Under 25% |
+| Text under 12 px | Not measured | Not measured | **0% to 2%** | None |
+| Longest list page | 10.8 screens (Vaccinations) | The same | **5.5 screens** (Horses, 60 rows); Vaccinations is 4.4 | 4 screens for 50 items |
+| Queries for one page | Up to 48 | Up to 40 | Up to 40 | 25 or fewer |
+| Checks in `phone_review.js` | 0 of 8 pass | 8 of 8 pass | 8 of 8 pass | 8 of 8 pass |
+
+The farrier page is 7.6 screens on a phone. It has its own plan and is
+not in these figures.
 
 ## 7. Order of work
 

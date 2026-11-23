@@ -101,7 +101,8 @@ class CalendarViewTests(TestCase):
     def test_dashboard_draws_this_month(self):
         response = self.client.get(reverse('dashboard'))
         self.assertContains(response, 'id="dash-calendar"')
-        self.assertContains(response, f'>{self.today:%B %Y}</h2>')
+        # The title also holds "Next 7 days", which a phone shows in its place.
+        self.assertContains(response, f'<span class="cal-in-month">{self.today:%B %Y}</span></h2>')
         self.assertContains(response, 'aria-current="date"')
         # Today is chosen, so its list shows the expected departure.
         self.assertContains(response, 'class="attn-title">Ida</a>')
@@ -115,7 +116,7 @@ class CalendarViewTests(TestCase):
     def test_partial_for_another_month(self):
         later = (self.today.replace(day=1) + timedelta(days=40)).replace(day=1)
         response = self.client.get(reverse('dashboard_calendar'), {'month': f'{later:%Y-%m}'})
-        self.assertContains(response, f'>{later:%B %Y}</h2>')
+        self.assertContains(response, f'<span class="cal-in-month">{later:%B %Y}</span></h2>')
         self.assertContains(response, '>Today</button>')
         self.assertNotContains(response, '<html')
 

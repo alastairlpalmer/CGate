@@ -149,12 +149,20 @@ class QuickEditPostTests(QuickEditTestCase):
 class QuickEditTriggerTests(QuickEditTestCase):
 
     def test_edit_triggers_open_the_sheet_and_keep_the_full_page_href(self):
-        for name, args in (('horse_list', []), ('horse_detail', [self.horse.pk])):
-            with self.subTest(page=name):
-                response = self.client.get(reverse(name, args=args))
-                self.assertContains(response, 'data-popup-title="Edit Dobbin"')
-                self.assertContains(response, f'hx-get="{self.url}"')
-                self.assertContains(response, f'href="{self.full_url}"')
+        response = self.client.get(reverse('horse_detail', args=[self.horse.pk]))
+        self.assertContains(response, 'data-popup-title="Edit Dobbin"')
+        self.assertContains(response, f'hx-get="{self.url}"')
+        self.assertContains(response, f'href="{self.full_url}"')
+
+    def test_the_horse_list_has_edit_once_in_the_menu_its_rows_share(self):
+        # horses/_row_menu.html: static/js/more_menu.js puts the row's
+        # number in place of the 0 and the name in place of {name}.
+        response = self.client.get(reverse('horse_list'))
+        sheet = reverse('horse_quick_edit', args=[0])
+        page = reverse('horse_update', args=[0])
+        self.assertContains(
+            response, f'data-row-href="{page}" data-row-get="{sheet}" data-row-title="Edit {{name}}"', count=1)
+        self.assertContains(response, f'data-row-menu="{self.horse.pk}" data-name="Dobbin"')
 
     def test_full_edit_page_is_unchanged(self):
         response = self.client.get(self.full_url)

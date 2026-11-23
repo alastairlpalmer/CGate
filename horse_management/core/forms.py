@@ -1935,7 +1935,19 @@ class ProfileDetailsForm(forms.Form):
             ('large', 'Large'),
         ],
         initial='compact',
-        help_text='How big text and buttons are on a computer. Phones do not change.',
+        help_text='How big text and buttons are on a computer. A phone has its own size, below.',
+    )
+    # Not required: a form sent without it (a page that was open before
+    # this setting existed) keeps the size the profile has.
+    phone_text_size = forms.ChoiceField(
+        label='Text size on a phone',
+        required=False,
+        choices=[
+            ('standard', 'Standard'),
+            ('large', 'Large (easier to read outdoors)'),
+        ],
+        initial='standard',
+        help_text='How big text and buttons are on a phone or a tablet.',
     )
 
     def __init__(self, *args, user=None, **kwargs):

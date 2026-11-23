@@ -2886,6 +2886,17 @@ class UserProfile(models.Model):
     display_size = models.CharField(
         max_length=10, choices=DisplaySize.choices, default=DisplaySize.COMPACT,
     )
+
+    class PhoneTextSize(models.TextChoices):
+        # The size of everything on a phone or a tablet (below lg). Large
+        # is for a phone read outdoors or at arm's length
+        # (docs/MOBILE_APP_PLAN.md, C7).
+        STANDARD = 'standard', 'Standard'
+        LARGE = 'large', 'Large'
+
+    phone_text_size = models.CharField(
+        max_length=10, choices=PhoneTextSize.choices, default=PhoneTextSize.STANDARD,
+    )
     # "Remember this device" for two-step sign-in (core.mfa). A device that
     # was remembered before this time is not remembered any more. Set by
     # "sign out everywhere", so a lost phone asks for a code again.

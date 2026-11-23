@@ -89,7 +89,7 @@ the site selector can share the row (static/css/input.css).{% endcomment %}
            @keydown.arrow-down.prevent="$refs.results.querySelector('a:not([tabindex])')?.focus()">
     {# Shortcut hint: press / anywhere to jump here (base.html). Hidden once the box is in use. #}
     <span x-show="!q && !focused" x-cloak
-          class="absolute right-3.5 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-1.5 pointer-events-none text-[11px] text-sage"
+          class="search-key-hint absolute right-3.5 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-1.5 pointer-events-none text-[11px] text-sage"
           aria-hidden="true">
         Press <kbd class="app-search-kbd">/</kbd>
     </span>

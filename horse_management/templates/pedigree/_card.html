@@ -6,11 +6,16 @@ page's banner, beside the placement, without a card frame (the "breeding
 map" of the 21 Nov 2026 layout).
 {% endcomment %}
 {% with tree=pedigree.tree root=pedigree.root page_horse=pedigree.page_horse is_page_horse=pedigree.is_page_horse back=pedigree.back family=pedigree.family generations=pedigree.generations %}
-<section class="{% if in_hero %}horse-hero-ped min-w-0{% else %}card{% endif %}" id="pedigree" aria-labelledby="pedigree-title" x-data="{ three: false }"
+<section class="{% if in_hero %}horse-hero-ped min-w-0{% else %}card{% endif %}" id="pedigree" aria-labelledby="pedigree-title" x-data="{ three: false, open: false }" :class="open && 'is-open'"
      @htmx:after-swap="three = !!$el.querySelector('#pedigree-diagram .ped-tree.ped-g3')">
     <div class="{% if in_hero %}flex items-center justify-between gap-2{% else %}section-header{% endif %}">
-        <h2 id="pedigree-title" class="{% if in_hero %}hero-section-title{% else %}section-title{% endif %}">Pedigree</h2>
+        <h2 id="pedigree-title" class="{% if in_hero %}hero-section-title{% else %}section-title{% endif %}">Pedigree{% if in_hero and tree.sire_box.state != 'known' and tree.dam_box.state != 'known' %}<span class="sm:hidden font-normal text-sage" data-testid="pedigree-empty">· not entered</span>{% endif %}</h2>
         <div class="flex items-center gap-2">
+            {% if in_hero %}
+            {# A phone: the tree is folded until this is tapped (item C4). #}
+            <button type="button" class="btn-ghost btn-xs sm:hidden" @click="open = !open" :aria-expanded="open.toString()" aria-controls="pedigree-diagram"
+                    x-text="open ? 'Hide tree' : 'Show tree'" data-testid="pedigree-toggle">Show tree</button>
+            {% endif %}
             {% if tree.has_more %}
             {% comment %}One toggle button (UX review C5). Two buttons that swapped
             places dropped the keyboard focus on the page. The button stays;
@@ -29,7 +34,17 @@ map" of the 21 Nov 2026 layout).
             {% endif %}
         </div>
     </div>
-    <div class="{% if in_hero %}mt-2{% else %}p-4{% endif %}" id="pedigree-diagram">
+    {% if in_hero %}
+    {% comment %}On a phone the tree is folded to one line (item C4): an
+    empty tree was 300px of "+ Add" boxes above the Due card. With parents
+    on record the line is the trade's "by … out of …"; with none, the
+    heading says "not entered". From 640px the tree shows as before and
+    this line is hidden (static/css/input.css).{% endcomment %}
+    {% if tree.sire_box.state == 'known' or tree.dam_box.state == 'known' %}
+    <p class="hero-ped-line" data-testid="pedigree-line">{% include 'pedigree/_byline.html' %}</p>
+    {% endif %}
+    {% endif %}
+    <div class="{% if in_hero %}hero-ped-body mt-2{% else %}p-4{% endif %}" id="pedigree-diagram">
         {% include 'pedigree/_diagram.html' %}
     </div>
 </section>

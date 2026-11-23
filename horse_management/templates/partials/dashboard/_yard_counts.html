@@ -1,0 +1,12 @@
+{% comment %}
+On a phone, the figures that need no action ("Horses 74", "Owners 9"):
+one line of links under the list of the week. The first screen keeps the
+figures that need a look (docs/MOBILE_APP_PLAN.md, C3). Context: metrics.
+{% endcomment %}
+{% if 'metrics' in visible and metrics %}
+<nav class="yard-counts sm:hidden" aria-label="The yard in numbers" data-testid="yard-counts">
+    {% for m in metrics %}{% if not m.tone and m.key != 'action' %}
+    <a href="{{ m.url }}" class="yard-count" data-metric="{{ m.key }}"><b>{{ m.value }}</b> {{ m.label }}</a>
+    {% endif %}{% endfor %}
+</nav>
+{% endif %}

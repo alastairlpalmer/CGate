@@ -51,6 +51,54 @@ urgent first), All (the last 90 days, done jobs included).
 {% if notifications %}
 <ul class="notif-list">
     {% for n in notifications %}
+    {% if n.group %}
+    {% comment %}Several open notices of one kind (centre_views.group_rows):
+    one row, one button to the page where the job is done. The row opens
+    to list them, each with its own link and its Dismiss.{% endcomment %}
+    <li class="notif-row notif-group{% if n.is_unread %} is-unread{% endif %}" data-testid="notif-group" x-data="{ open: false }">
+        <div class="notif-icon" aria-hidden="true"><svg class="h-[18px] w-[18px]"><use href="#i-{{ n.kind|kind_icon }}"/></svg></div>
+        <div class="notif-text">
+            <p class="notif-title">{{ n.title }}</p>
+            <p class="notif-body">{{ n.summary }}</p>
+            <div class="notif-meta">
+                <button type="button" class="link tap-pad" @click="open = !open" :aria-expanded="open ? 'true' : 'false'">
+                    <span x-show="!open">Show all {{ n.items|length }}</span><span x-show="open" x-cloak>Hide</span>
+                </button>
+            </div>
+            <div class="notif-actions">
+                <a href="{{ n.url }}" hx-get="{{ n.url }}" hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML show:window:top" hx-push-url="true"
+                   @click="$store.notif.close()" class="btn-secondary btn-xs">{{ n.button }}</a>
+            </div>
+            <ul class="notif-group-items" x-show="open" x-cloak>
+                {% for item in n.items %}
+                <li>
+                    <a href="{% url 'notification_open' item.pk %}" class="notif-group-name"
+                       hx-get="{% url 'notification_open' item.pk %}" hx-target="#main-content" hx-select="#main-content"
+                       hx-swap="outerHTML show:window:top" hx-push-url="{{ item.url|default:'/' }}"
+                       @click="$store.notif.close()">{{ item.title }}</a>
+                    {% if item.body %}<span class="notif-group-detail">{{ item.body }}</span>{% endif %}
+                    {% if can_dismiss and item.data.dismiss %}
+                    <form method="post" action="{% url 'notification_dismiss' %}" hx-post="{% url 'notification_dismiss' %}" hx-push-url="false" class="ml-auto shrink-0">
+                        {% csrf_token %}
+                        <input type="hidden" name="tab" value="{{ tab }}"><input type="hidden" name="chip" value="{{ chip }}">
+                        {% for token in item.data.dismiss %}<input type="hidden" name="item" value="{{ token }}">{% endfor %}
+                        <button type="submit" class="btn-ghost btn-xs" title="Take this off for everyone. It stays on its own page.">Dismiss</button>
+                    </form>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% if n.is_unread %}
+        <form method="post" action="{% url 'notification_read' %}" hx-post="{% url 'notification_read' %}" hx-push-url="false" class="shrink-0">
+            {% csrf_token %}
+            {% for id in n.ids %}<input type="hidden" name="id" value="{{ id }}">{% endfor %}
+            <input type="hidden" name="tab" value="{{ tab }}"><input type="hidden" name="chip" value="{{ chip }}">
+            <button type="submit" class="notif-unread-dot" title="Mark as read" aria-label="Mark “{{ n.title }}” as read"></button>
+        </form>
+        {% endif %}
+    </li>
+    {% else %}
     <li class="notif-row{% if n.is_unread %} is-unread{% endif %}{% if n.resolved_at %} is-done{% endif %}{% if n.severity %} is-{{ n.severity }}{% endif %}">
         <div class="notif-icon notif-icon-{% if n.category == 'action' %}{{ n.severity|default:'due' }}{% else %}{{ n.category }}{% endif %}" aria-hidden="true">
             {% if n.category == 'action' %}<svg class="h-[18px] w-[18px]"><use href="#i-{{ n.kind|kind_icon }}"/></svg>
@@ -71,7 +119,7 @@ urgent first), All (the last 90 days, done jobs included).
                 {% elif n.category == 'action' %}
                 <span class="badge-neutral">No date</span>
                 {% endif %}
-                <span>{% if n.category == 'action' %}{{ n.get_category_display }}{% else %}{{ n.created_at|timesince }} ago{% endif %}</span>
+                {% if n.category != 'action' %}<span>{{ n.created_at|timesince }} ago</span>{% elif tab != 'action' %}<span>{{ n.get_category_display }}</span>{% endif %}
             </div>
             {% if n.is_open_action %}
             {% with data=n.data %}
@@ -103,6 +151,7 @@ urgent first), All (the last 90 days, done jobs included).
         </form>
         {% endif %}
     </li>
+    {% endif %}
     {% endfor %}
 </ul>
 {% else %}

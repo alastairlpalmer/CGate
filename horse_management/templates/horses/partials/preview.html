@@ -65,11 +65,37 @@ does from the horse page, so nothing here has to know it is in a pane.
     {% endwith %}
     {% endif %}
 
-    <!-- ── Who ── -->
+    <!-- ── Who ──
+         On a phone the sheet opens a third of the way up, so the first
+         lines are what someone in the yard asks: which horse, what is
+         due, where it is, whose it is and how to call them
+         (docs/MOBILE_APP_PLAN.md, C9). -->
     <div>
         <div class="min-w-0">
-            <h2 class="text-xl font-semibold font-heading text-charcoal leading-tight">{{ horse.name }}</h2>
+            <div class="flex items-center gap-3">
+                {% if not gallery %}
+                {# No photo: the small picture, here. The large empty block is for the side pane only. A tap adds a photo. #}
+                <span class="shrink-0 lg:hidden" data-testid="preview-avatar">
+                    {% if feature_access.horses.full %}
+                    <a href="{% url 'horse_photo_add' horse.pk %}" class="block rounded-full"
+                       hx-get="{% url 'horse_photo_add' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                       data-popup-title="Add photos for {{ horse.name }}" aria-label="Add a photo of {{ horse.name }}">{% include 'horses/_horse_avatar.html' with horse=horse size='md' %}</a>
+                    {% else %}
+                    {% include 'horses/_horse_avatar.html' with horse=horse size='md' %}
+                    {% endif %}
+                </span>
+                {% endif %}
+                <h2 class="min-w-0 text-xl font-semibold font-heading text-charcoal leading-tight">{{ horse.name }}</h2>
+            </div>
             {% if horse.show_registered_name %}<p class="text-sm text-charcoal-light">Registered as {{ horse.registered_label }}</p>{% endif %}
+            {% if due_line %}
+            <p class="mt-1.5 flex items-start gap-2 text-sm" data-testid="preview-due">
+                <span class="health-dot is-{{ due_line.severity }} shrink-0 mt-1.5 !ml-0" aria-hidden="true"></span>
+                <span class="min-w-0"><span class="text-charcoal">{{ due_line.label }}</span>
+                    <span class="{% if due_line.severity == 'overdue' %}text-error-red font-medium{% else %}text-saddle{% endif %} whitespace-nowrap">{{ due_line.due_date|due_label }}</span>{% if due_line.more %}
+                    <a href="{% url 'horse_detail' horse.pk %}#due" class="link whitespace-nowrap">+{{ due_line.more }} more</a>{% endif %}</span>
+            </p>
+            {% endif %}
             <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
                 {% if horse.is_active %}
                 <span class="badge-success"><span class="w-1.5 h-1.5 rounded-full bg-forest mr-1.5"></span>Active</span>
@@ -88,11 +114,12 @@ does from the horse page, so nothing here has to know it is in a pane.
             </p>
             {% if ownership_shares %}
             <p class="mt-1 text-sm text-sage">
-                {% for share in ownership_shares %}{% if not forloop.first %} · {% endif %}{% if feature_access.owners.view %}<a href="{% url 'owner_detail' share.owner.pk %}" class="link">{{ share.owner.name }}</a>{% else %}<span class="text-charcoal-light">{{ share.owner.name }}</span>{% endif %}{% if share.is_primary_contact %} · Primary{% endif %} · {{ share.share_percentage|floatformat:"-2" }}%{% endfor %}
+                {% for share in ownership_shares %}{% if not forloop.first %} · {% endif %}{% if feature_access.owners.view %}<a href="{% url 'owner_detail' share.owner.pk %}" class="link">{{ share.owner.name }}</a>{% else %}<span class="text-charcoal-light">{{ share.owner.name }}</span>{% endif %}{% if share.is_primary_contact %} · Primary{% endif %} · {{ share.share_percentage|floatformat:"-2" }}%{% if share.is_primary_contact and share.owner.phone and feature_access.owners.view %} <a href="tel:{{ share.owner.phone|cut:' ' }}" class="link tap-pad inline-flex items-center gap-1 ml-1" data-testid="preview-call" aria-label="Call {{ share.owner.name }}, {{ share.owner.phone }}"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg> Call</a>{% endif %}{% endfor %}
             </p>
             {% elif owner %}
             <p class="mt-1 text-sm text-sage">
                 {% if feature_access.owners.view %}<a href="{% url 'owner_detail' owner.pk %}" class="link">{{ owner.name }}</a>{% else %}<span class="text-charcoal-light">{{ owner.name }}</span>{% endif %}
+                {% if owner.phone and feature_access.owners.view %}<a href="tel:{{ owner.phone|cut:' ' }}" class="link tap-pad inline-flex items-center gap-1 ml-1" data-testid="preview-call" aria-label="Call {{ owner.name }}, {{ owner.phone }}"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg> Call</a>{% endif %}
             </p>
             {% endif %}
         </div>

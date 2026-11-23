@@ -24,7 +24,7 @@
     {% endcomment %}
     {% include 'includes/_finance_tabs.html' with finance_tab='invoices' %}
     <div class="page-header">
-        <h1 class="sr-only lg:not-sr-only page-title">Invoices</h1>
+        <h1 class="page-title page-title-list">Invoices</h1>
         <div class="flex flex-wrap items-center gap-2 sm:gap-3">
             {# Who owes what, by how late. It was reachable only from the Overview tab. #}
             <a href="{% url 'aged_debtors' %}" class="btn-secondary">Aged debtors</a>

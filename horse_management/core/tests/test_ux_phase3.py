@@ -36,17 +36,19 @@ class PhaseThreeTestCase(TestCase):
 
 
 class ListTitleTests(PhaseThreeTestCase):
-    def test_list_pages_show_their_title_on_a_wide_screen(self):
+    def test_list_pages_show_their_title_at_every_width(self):
+        # A phone showed the section's name in a bar of its own, so the
+        # title was for a wide screen only. That bar is gone
+        # (docs/MOBILE_APP_PLAN.md, C1): the title is now on the page.
         for name, title in (
             ('horse_list', 'Horses'), ('invoice_list', 'Invoices'),
             ('charge_list', 'Extra Charges'), ('location_list', 'Locations'),
             ('health_dashboard', 'Health'),
         ):
             with self.subTest(page=name):
-                self.assertIn(
-                    f'<h1 class="sr-only lg:not-sr-only page-title">{title}</h1>',
-                    self.body(name),
-                )
+                body = self.body(name)
+                self.assertIn(f'<h1 class="page-title page-title-list">{title}</h1>', body)
+                self.assertNotIn('<h1 class="sr-only', body)
 
 
 class FilterWordingTests(PhaseThreeTestCase):

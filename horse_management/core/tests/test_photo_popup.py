@@ -206,7 +206,6 @@ class PhotoTriggerTests(PhotoPopupTestCase):
 
     def test_photo_triggers_open_the_sheet(self):
         for name, args in (
-            ('horse_list', []),
             ('horse_detail', [self.horse.pk]),
             ('location_detail', [self.location.pk]),
         ):
@@ -215,6 +214,17 @@ class PhotoTriggerTests(PhotoPopupTestCase):
                 self.assertContains(response, 'data-popup-title="Add photos for Dobbin"')
                 self.assertContains(response, f'hx-get="{self.url}')
                 self.assertContains(response, f'href="{self.url}')
+
+    def test_the_horse_list_opens_the_sheet_from_its_one_row_menu(self):
+        # The list has one More menu for all its rows
+        # (horses/_row_menu.html). static/js/more_menu.js puts the row's
+        # number and the horse's name in when a row's button is used.
+        response = self.client.get(reverse('horse_list'))
+        photos = reverse('horse_photo_add', args=[0])
+        self.assertContains(
+            response,
+            f'data-row-href="{photos}" data-row-get="{photos}" data-row-title="Add photos for {{name}}"')
+        self.assertContains(response, f'data-row-menu="{self.horse.pk}" data-name="Dobbin"')
 
     def test_horse_detail_has_two_photo_entry_points(self):
         # Photos card "+ Add" and the Record card tile. The header no longer

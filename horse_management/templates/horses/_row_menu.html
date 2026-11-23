@@ -1,0 +1,41 @@
+{% comment %}
+The More menu of a row in the horse list: one menu for all the rows
+(static/js/more_menu.js, `rowMenu`). A row has only its button. When the
+button is used, the script puts the row's number in place of the 0 in each
+address here, and the horse's name in place of {name}.
+
+"Open horse page" takes its address from the row's own link, which knows
+the list to go back to.
+{% endcomment %}
+{# A block with no height: an empty inline box would add a blank line to the page. #}
+<div class="more-menu block h-0" x-data="rowMenu" data-testid="row-menu">
+    <div class="more-menu-panel" x-ref="panel" x-show="open" x-cloak
+         role="menu" aria-label="More actions"
+         @keydown="onPanelKey($event)" @click="close(false)">
+        {# On a phone the row has room for one button, so Move is here too. #}
+        <a href="#" data-row-href="{% url 'horse_move' 0 %}" data-row-get="{% url 'horse_move' 0 %}" data-row-title="Move {name}"
+           hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="" role="menuitem" class="more-menu-item md:hidden">
+            <svg aria-hidden="true"><use href="#i-arrows-lr"/></svg>
+            Move
+        </a>
+        <a href="#" data-row-href="{% url 'horse_update' 0 %}" data-row-get="{% url 'horse_quick_edit' 0 %}" data-row-title="Edit {name}"
+           hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="" role="menuitem" class="more-menu-item">
+            <svg aria-hidden="true"><use href="#i-pencil"/></svg>
+            Edit
+        </a>
+        {% if feature_access.horses.full %}
+        <a href="#" data-row-href="{% url 'horse_photo_add' 0 %}" data-row-get="{% url 'horse_photo_add' 0 %}" data-row-title="Add photos for {name}"
+           hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="" role="menuitem" class="more-menu-item">
+            <svg aria-hidden="true"><use href="#i-camera"/></svg>
+            Add photos
+        </a>
+        {% endif %}
+        <a href="#" data-row-page role="menuitem" class="more-menu-item">
+            <svg aria-hidden="true"><use href="#i-horse"/></svg>
+            Open horse page
+        </a>
+    </div>
+</div>
