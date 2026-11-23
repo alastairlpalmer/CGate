@@ -43,6 +43,7 @@ from .horses import (  # noqa: F401
 )
 from .locations import (  # noqa: F401
     BarnCreateView,
+    group_move_undo,
     LocationCreateView,
     LocationDetailView,
     LocationListView,

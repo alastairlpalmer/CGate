@@ -164,6 +164,9 @@ class PlacementService:
 
         # Views surface this so a trimmed departure is never silent.
         new_placement.superseded_trim = trimmed
+        # The stay this move closed, or None for a horse that had none:
+        # only a move from a stay can be undone (undo_move_group).
+        new_placement.previous_placement = current_placement
         _tell('arrived' if current_placement is None else 'moved', [horse], new_location, move_date)
         return new_placement
 
@@ -209,6 +212,88 @@ class PlacementService:
                 # Another request moved the same horse a moment ago.
                 failed.append((horse, 'another change to this horse was saved at the same time.'))
         return moved, failed
+
+    @staticmethod
+    @transaction.atomic
+    def undo_move_group(placement_ids, *, destination_id, move_date):
+        """Put the horses of a group move back where they came from.
+
+        ``placement_ids``: the stays ``move_group`` made, each one for a
+        horse that came from another stay. For each horse the new stay is
+        deleted and the stay before it is opened again, so the history
+        reads as if the move did not happen. Placement's own delete and
+        save hooks put the usage of both locations, the horse's stable
+        and its turnout back.
+
+        A horse is put back only if nothing changed after the move: the
+        new stay is still open, still in ``destination_id`` from
+        ``move_date``, not on an invoice, and the stay before it still
+        ends the day before. Any other horse is named with the reason
+        and left as it is. Each horse is in its own savepoint.
+
+        Returns ``(restored, failed, gone)``: the stays that are open
+        again, ``[(horse, reason)]``, and how many of the new stays are
+        not there any more (the move was undone already).
+        """
+        restored, failed = [], []
+        # Locked, so a second tap on Undo waits and then finds nothing.
+        # Only the stays: the horse and the location are read, not held.
+        found = {
+            placement.pk: placement
+            for placement in Placement.objects.select_for_update(of=('self',)).filter(
+                pk__in=placement_ids
+            ).select_related('horse', 'location')
+        }
+        gone = len(set(placement_ids)) - len(found)
+        for pk in placement_ids:
+            new = found.pop(pk, None)
+            if new is None:
+                continue
+            horse, where = new.horse, new.location.name
+            if new.end_date is not None:
+                failed.append((horse, f'it left {where} after the move.'))
+                continue
+            if new.location_id != destination_id or new.start_date != move_date:
+                failed.append((horse, 'its stay was changed after the move.'))
+                continue
+            if new.invoice_items.exists():
+                failed.append((horse, f'its stay in {where} is on an invoice.'))
+                continue
+            previous = (
+                Placement.objects.filter(
+                    horse=horse, end_date=new.start_date - timedelta(days=1),
+                ).select_related('location').first()
+            )
+            if previous is None:
+                failed.append((horse, 'the stay before the move was changed.'))
+                continue
+            try:
+                with transaction.atomic():
+                    # The new stay goes first: two open stays for one
+                    # horse overlap, and the save below would refuse.
+                    new.delete()
+                    previous.end_date = None
+                    previous.save()
+            except ValidationError as e:
+                failed.append((horse, '; '.join(e.messages)))
+            except IntegrityError:
+                failed.append((horse, 'another change to this horse was saved at the same time.'))
+            else:
+                restored.append(previous)
+        if restored:
+            from notifications import centre
+            centre.after_commit(
+                centre.move_undone, [p.horse for p in restored],
+                moved_to_id=destination_id, day=move_date,
+                back_in=PlacementService.one_location(restored),
+            )
+        return restored, failed, gone
+
+    @staticmethod
+    def one_location(placements):
+        """The location of these stays if it is the same for all, else None."""
+        locations = {placement.location_id: placement.location for placement in placements}
+        return next(iter(locations.values())) if len(locations) == 1 else None
 
     @staticmethod
     def _supersede_recorded_departure(horse, arrival_date, destination=None):
