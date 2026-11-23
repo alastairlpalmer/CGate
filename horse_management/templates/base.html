@@ -51,6 +51,8 @@
     <script defer src="{% static_v 'js/popup.js' %}"></script>
     {# A failed request, no signal, a long time in the background, a new version. #}
     <script defer src="{% static_v 'js/connection.js' %}"></script>
+    {# A tap shows at once: the tab is marked, and a slow page dims. #}
+    <script defer src="{% static_v 'js/tap_feedback.js' %}"></script>
     {# notifications.js registers the drawer's Alpine store on alpine:init #}
     <script defer src="{% static_v 'js/notifications.js' %}"></script>
     {# lightbox.js registers an Alpine store on alpine:init, so it must run before Alpine starts #}
@@ -569,54 +571,14 @@
         }
     };
 
-    // ── Progress bar ──
-    document.body.addEventListener('htmx:beforeRequest', function (e) {
-        if (!e.detail.boosted) return;
-        clearTimeout(barTimer);
-        bar.style.transition = 'none';
-        bar.style.width = '0%';
-        bar.style.opacity = '1';
-        requestAnimationFrame(function () {
-            bar.style.transition = 'width 1.5s cubic-bezier(0.1, 0.05, 0, 1)';
-            bar.style.width = '70%';
-        });
-    });
-
-    document.body.addEventListener('htmx:afterRequest', function (e) {
-        if (!e.detail.boosted) return;
-        bar.style.transition = 'width 0.15s ease-out';
-        bar.style.width = '100%';
-        barTimer = setTimeout(function () {
-            bar.style.transition = 'opacity 0.25s ease-in';
-            bar.style.opacity = '0';
-            setTimeout(function () {
-                bar.style.transition = 'none';
-                bar.style.width = '0%';
-            }, 250);
-        }, 150);
-    });
-
-    // ── Page entrance animation + scroll to top + nav highlight ──
-    document.body.addEventListener('htmx:afterSwap', function (e) {
-        // Only run full-page logic on boosted navigation, not partial loads
-        if (!e.detail.boosted) return;
-
-        window.scrollTo({ top: 0, behavior: 'instant' });
-        var main = document.getElementById('main-content');
-        if (!main) return;
-        // Browsers with view transitions already animate the change
-        // (hx-swap "transition:true" on <body>, styled in input.css), so the
-        // entrance animation runs only where they are not supported.
-        if (!document.startViewTransition) {
-            main.classList.remove('page-enter');
-            void main.offsetWidth;
-            main.classList.add('page-enter');
-        }
-        // Update nav active states based on current path.
+    // ── The current section, in the sidebar, the tab bar and the More sheet ──
+    // After each page change, and at once on a tap on one of those links
+    // (static/js/tap_feedback.js), which passes the path it is going to.
+    window.Yardway.syncNav = function (forPath) {
         // Only the link with the longest matching href prefix is active, so
         // nested routes (e.g. /health/breeding/ under /health/) highlight one
         // item, not both.
-        var path = window.location.pathname;
+        var path = forPath || window.location.pathname;
         function pickActive(links) {
             var best = null;
             links.forEach(function(a) {
@@ -666,6 +628,53 @@
             a.className = (a === sheetActive) ? 'sheet-nav-item-active' : 'sheet-nav-item';
         });
         window.Yardway.syncMoreTab();
+    };
+
+    // ── Progress bar ──
+    document.body.addEventListener('htmx:beforeRequest', function (e) {
+        if (!e.detail.boosted) return;
+        clearTimeout(barTimer);
+        bar.style.transition = 'none';
+        bar.style.width = '0%';
+        bar.style.opacity = '1';
+        requestAnimationFrame(function () {
+            bar.style.transition = 'width 1.5s cubic-bezier(0.1, 0.05, 0, 1)';
+            bar.style.width = '70%';
+        });
+    });
+
+    document.body.addEventListener('htmx:afterRequest', function (e) {
+        if (!e.detail.boosted) return;
+        bar.style.transition = 'width 0.15s ease-out';
+        bar.style.width = '100%';
+        barTimer = setTimeout(function () {
+            bar.style.transition = 'opacity 0.25s ease-in';
+            bar.style.opacity = '0';
+            setTimeout(function () {
+                bar.style.transition = 'none';
+                bar.style.width = '0%';
+            }, 250);
+        }, 150);
+    });
+
+    // ── Page entrance animation + scroll to top + nav highlight ──
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+        // Only run full-page logic on boosted navigation, not partial loads
+        if (!e.detail.boosted) return;
+
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        var main = document.getElementById('main-content');
+        if (!main) return;
+        // Browsers with view transitions already animate the change
+        // (hx-swap "transition:true" on <body>, styled in input.css), so the
+        // entrance animation runs only where they are not supported.
+        if (!document.startViewTransition) {
+            main.classList.remove('page-enter');
+            void main.offsetWidth;
+            main.classList.add('page-enter');
+        }
+        // The current section, in the sidebar, the tab bar and the More sheet.
+        window.Yardway.syncNav();
         // Page title, toasts, Alpine, inline scripts
         var responseText = e.detail.xhr && e.detail.xhr.responseText;
         window.Yardway.afterMainSwap(main, responseText);
@@ -685,6 +694,8 @@
     document.body.addEventListener('htmx:historyRestore', function () {
         var slot = document.getElementById('app-bar-slot');
         if (slot) slot.innerHTML = '';
+        // The copy holds the bars as they were when the page was left.
+        window.Yardway.syncNav();
     });
 
     // ── Stale-target guard for overlapping boosted navigations ──
