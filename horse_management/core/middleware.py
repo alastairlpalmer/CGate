@@ -121,6 +121,10 @@ class MFAMiddleware:
         if mfa.session_enrolled(request):
             if user.is_verified() or path == verify_url:
                 return None
+            # "Remember this device": a code was given on this device in
+            # the last MFA_REMEMBER_DAYS, so the password was enough.
+            if mfa.pass_remembered_device(request):
+                return None
             return verify_url
         if mfa.mfa_required(user) and path != setup_url:
             return setup_url

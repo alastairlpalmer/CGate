@@ -56,8 +56,16 @@ def sign_out_everywhere(user, keep_session_key: str | None = None) -> int:
     ``keep_session_key`` spares the session the request came from, so a
     user who signs out their other devices stays signed in here.
 
+    It also forgets every device that was remembered for two-step sign-in
+    (``core.mfa``): a lost phone must not get in with the password alone.
+    The session that is kept stays signed in; its device asks for a code
+    at its next sign-in.
+
     Returns the number of sessions ended.
     """
+    from . import mfa
+
+    mfa.forget_remembered_devices(user)
     ended = 0
     live = Session.objects.filter(expire_date__gt=timezone.now())
     for session in live.iterator():

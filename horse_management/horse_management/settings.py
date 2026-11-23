@@ -921,6 +921,12 @@ RESEND_WEBHOOK_SECRET = env('RESEND_WEBHOOK_SECRET', default='')
 # reaches every record and every other account. Set to False only to get a
 # yard back in during an emergency, and set it back afterwards.
 MFA_REQUIRED_FOR_ADMINS = env.bool('MFA_REQUIRED_FOR_ADMINS', default=True)
+# After a correct code, a device can be remembered: for this many days the
+# next sign-in on it asks for the password only (core.mfa, "Remember this
+# device"). A change of password, a new or removed authenticator, and
+# "sign out everywhere" all end it sooner. 0 turns it off: each sign-in
+# then asks for a code.
+MFA_REMEMBER_DAYS = env.int('MFA_REMEMBER_DAYS', default=14)
 # The name authenticator apps show next to the six-digit code.
 OTP_TOTP_ISSUER = env('OTP_TOTP_ISSUER', default='Cgate')
 

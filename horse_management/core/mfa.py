@@ -15,11 +15,16 @@ yard's rules on top:
 
 ``core.middleware.MFAMiddleware`` sends a signed-in user to the code
 page until they pass it, and an administrator without it to set-up.
+
+A device can be remembered after a correct code ("Remember this device",
+the last part of this module): the next sign-in on it then asks for the
+password only, for ``MFA_REMEMBER_DAYS``.
 """
 
 from __future__ import annotations
 
 import io
+import time
 
 from django.conf import settings
 from django.db import transaction
@@ -144,6 +149,7 @@ def mfa_status(user) -> dict:
         'required': mfa_required(user),
         'exempt': is_exempt(user),
         'recovery_codes_left': recovery_codes_left(user),
+        'remember_days': remember_days(),
     }
 
 
@@ -249,3 +255,138 @@ def verify(user, token):
 def _clean(token) -> str:
     """Codes are often typed with spaces ('123 456') or in capitals."""
     return ''.join(str(token or '').split()).lower()
+
+
+# ── Remember this device ─────────────────────────────────────────────────────
+#
+# After a correct code the person can have the device remembered. The app
+# then puts a signed cookie on it. At the next sign-in, with the right
+# password, a valid cookie stands in for the code.
+#
+# The cookie holds the user's id, the time it was made and a fingerprint.
+# It is signed with SECRET_KEY, so it cannot be made or changed outside the
+# app. It stops working:
+#
+#   * after MFA_REMEMBER_DAYS (the signature is checked against its age,
+#     so a cookie that a browser keeps too long is still refused);
+#   * when the password changes, or the authenticator is replaced or
+#     removed: both are part of the fingerprint;
+#   * when the account is signed out everywhere: the profile then holds
+#     a time, and a cookie made before it is refused. That is the answer
+#     to a lost or stolen device.
+#
+# The cookie alone does nothing: the password is still needed. It is
+# HttpOnly, so a script in a page cannot read it.
+
+REMEMBER_COOKIE = 'two_step_remembered'
+REMEMBER_SALT = 'core.mfa.remember'
+
+
+def remember_days() -> int:
+    """How long a device is remembered. 0 means the feature is off."""
+    return max(0, int(getattr(settings, 'MFA_REMEMBER_DAYS', 14) or 0))
+
+
+def _authenticator(user):
+    return _totp_model().objects.filter(user=user, confirmed=True).first()
+
+
+def _fingerprint(user, device) -> str:
+    """Changes when the password or the authenticator changes."""
+    from django.utils.crypto import salted_hmac
+
+    return salted_hmac(
+        REMEMBER_SALT, f'{user.pk}|{user.password}|{device.pk}|{device.key}', algorithm='sha256',
+    ).hexdigest()
+
+
+def remember_device(response, user) -> bool:
+    """Put the cookie on ``response``. False when there is nothing to remember."""
+    from django.core import signing
+
+    days = remember_days()
+    device = _authenticator(user)
+    if not days or device is None:
+        return False
+    value = signing.dumps(
+        {'u': user.pk, 't': time.time(), 'f': _fingerprint(user, device)}, salt=REMEMBER_SALT,
+    )
+    response.set_cookie(
+        REMEMBER_COOKIE, value,
+        max_age=days * 24 * 60 * 60,
+        secure=settings.SESSION_COOKIE_SECURE,
+        httponly=True,
+        samesite='Lax',
+    )
+    return True
+
+
+def forget_this_device(response) -> None:
+    """Take the cookie off this device."""
+    response.delete_cookie(REMEMBER_COOKIE, samesite='Lax')
+
+
+def forget_remembered_devices(user) -> None:
+    """Make every device ask for a code again at its next sign-in."""
+    from django.utils import timezone
+
+    from .models import UserProfile
+
+    if not getattr(user, 'pk', None):
+        return
+    UserProfile.objects.update_or_create(user=user, defaults={'two_step_remembered_from': timezone.now()})
+
+
+def remembered_authenticator(request):
+    """The user's authenticator, when this device is remembered for them.
+
+    ``None`` when there is no cookie, or it is for someone else, too old,
+    changed, or made before the last "sign out everywhere".
+    """
+    from django.core import signing
+    from django.utils.crypto import constant_time_compare
+
+    from .models import UserProfile
+
+    days = remember_days()
+    value = request.COOKIES.get(REMEMBER_COOKIE)
+    user = getattr(request, 'user', None)
+    if not days or not value or user is None or not user.is_authenticated:
+        return None
+    try:
+        data = signing.loads(value, salt=REMEMBER_SALT, max_age=days * 24 * 60 * 60)
+        made = float(data['t'])
+        fingerprint = str(data['f'])
+        if int(data['u']) != user.pk:
+            return None
+    except (signing.BadSignature, KeyError, TypeError, ValueError):
+        return None
+    device = _authenticator(user)
+    if device is None or not constant_time_compare(fingerprint, _fingerprint(user, device)):
+        return None
+    forgotten = (
+        UserProfile.objects.filter(user=user).values_list('two_step_remembered_from', flat=True).first()
+    )
+    if forgotten is not None and made <= forgotten.timestamp():
+        return None
+    return device
+
+
+def pass_remembered_device(request) -> bool:
+    """Let this session through without a code when the device is remembered.
+
+    Called for a session that has signed in with a password and has not
+    given a code yet. Marks the session as verified, exactly as a correct
+    code does, and writes the fact to the account events.
+    """
+    device = remembered_authenticator(request)
+    if device is None:
+        return False
+    from django_otp import login as otp_login
+
+    from . import audit
+    from .models import AuditEvent
+
+    otp_login(request, device)
+    audit.record(AuditEvent.Action.MFA_CODE_SKIPPED, request=request, target=request.user)
+    return True
