@@ -192,7 +192,7 @@
                 target: '#loc-rail-detail',
                 select: '#loc-sheet-content',
                 swap: 'innerHTML'
-            });
+            }).catch(function () { /* said by js/connection.js */ });
         }
         markRows();
         window.dispatchEvent(new CustomEvent('yardway:map-focus', {

@@ -373,3 +373,119 @@ class InstallHelpTests(TestCase):
     def test_getting_started_points_to_it(self):
         html = self.client.get(reverse('help_article', args=['getting-started'])).content.decode()
         self.assertIn(f'href="{reverse("help_article", args=["install-the-app"])}"', html)
+
+
+class SharePdfTests(TestCase):
+    """D6: on a phone an invoice's PDF goes to the share sheet."""
+
+    def setUp(self):
+        from datetime import date
+        from decimal import Decimal
+
+        from core.models import Owner
+        from invoicing.models import Invoice
+
+        self.client.force_login(make_admin('boss'))
+        self.owner = Owner.objects.create(name='Helen Marsh', email='helen@example.com')
+        self.invoice = Invoice.objects.create(
+            owner=self.owner, invoice_number='INV00042',
+            period_start=date(2026, 10, 1), period_end=date(2026, 10, 31),
+            subtotal=Decimal('186.00'), total=Decimal('186.00'), status=Invoice.Status.SENT,
+        )
+        self.pdf = reverse('invoice_pdf', args=[self.invoice.pk])
+        self.marks = 'data-share-file="INV00042.pdf" data-share-title="Invoice INV00042"'
+
+    def links(self, html):
+        """Each <a> to this invoice's PDF, as its opening tag."""
+        return re.findall(r'<a href="%s[^"]*"[^>]*>' % re.escape(self.pdf), html)
+
+    def test_the_invoice_page_marks_its_pdf_link(self):
+        html = self.client.get(reverse('invoice_detail', args=[self.invoice.pk])).content.decode()
+        links = self.links(html)
+        self.assertGreaterEqual(len(links), 1)
+        self.assertTrue(all(self.marks in link for link in links), links)
+
+    def test_the_invoice_list_marks_its_pdf_links(self):
+        html = self.client.get(reverse('invoice_list')).content.decode()
+        links = self.links(html)
+        self.assertGreaterEqual(len(links), 1)
+        self.assertTrue(all(self.marks in link for link in links), links)
+
+    def test_the_preview_marks_download_and_leaves_open_in_a_new_tab(self):
+        pane = {'HTTP_HX_REQUEST': 'true', 'HTTP_HX_TARGET': 'invoice-preview-body'}
+        html = self.client.get(reverse('invoice_pane', args=[self.invoice.pk]), {'view': 'pdf'}, **pane).content.decode()
+        links = self.links(html)
+        self.assertGreaterEqual(len(links), 2)
+        for link in links:
+            with self.subTest(link=link[:70]):
+                if '?inline=1' in link:
+                    # A new tab has its own way back.
+                    self.assertNotIn('data-share-file', link)
+                else:
+                    self.assertIn(self.marks, link)
+
+    def test_the_statement_marks_its_pdf_link(self):
+        html = self.client.get(reverse('owner_statement', args=[self.owner.pk])).content.decode()
+        link = html.split(f'href="{reverse("owner_statement_pdf", args=[self.owner.pk])}"', 1)[1].split('>', 1)[0]
+        self.assertIn('data-share-file="Statement - Helen Marsh.pdf"', link)
+        self.assertIn('data-share-title="Statement for Helen Marsh"', link)
+
+    def test_the_link_still_works_with_no_script(self):
+        # The marks add to the link; its address and hx-boost="false" stay.
+        html = self.client.get(reverse('invoice_detail', args=[self.invoice.pk])).content.decode()
+        link = self.links(html)[0]
+        self.assertIn('hx-boost="false"', link)
+        response = self.client.get(self.pdf)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+
+    def test_every_page_loads_the_script(self):
+        html = self.client.get(reverse('dashboard')).content.decode()
+        self.assertRegex(html, r'<script defer src="/static/js/share_file\.js\?v=[^"]+"></script>')
+
+
+@override_settings(POSTHOG_API_KEY='phc_test', POSTHOG_SEND_USERNAMES=False)
+class PhoneEventTests(TestCase):
+    """D7: the usage figures can tell the installed app from a browser tab."""
+
+    def setUp(self):
+        from unittest.mock import MagicMock, patch
+
+        from core import analytics
+
+        analytics._client = None
+        patcher = patch.object(analytics, 'get_client', return_value=MagicMock())
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.addCleanup(lambda: setattr(analytics, '_client', None))
+        self.client.force_login(make_admin('boss'))
+
+    def test_each_event_says_installed_or_browser(self):
+        html = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn("ph.register({ app_display: standalone ? 'installed' : 'browser' });", html)
+
+    def test_the_events_are_named_in_the_scripts(self):
+        connection = (STATIC / 'js' / 'connection.js').read_text()
+        for name in ('app request failed', 'app slow tap', 'app no signal'):
+            with self.subTest(event=name):
+                self.assertIn(f"Yardway.track('{name}'", connection)
+        self.assertIn("track('app installed'", (STATIC / 'js' / 'app_install.js').read_text())
+
+    def test_an_event_takes_its_address_through_the_pattern(self):
+        # No event may hold the number of a horse or an owner.
+        connection = (STATIC / 'js' / 'connection.js').read_text()
+        self.assertEqual(connection.count('path: pathPattern(config.path)'), 2)
+        self.assertNotIn('path: config.path', connection)
+
+
+class FailedBackgroundRequestTests(TestCase):
+    """Found with the events: a preview that failed was also an unhandled error."""
+
+    def test_each_htmx_ajax_call_handles_its_failure(self):
+        for name in ('split_view.js', 'locations_board.js', 'locations_mobile.js', 'notifications.js'):
+            with self.subTest(script=name):
+                source = (STATIC / 'js' / name).read_text()
+                calls = re.findall(r'htmx\.ajax\(', source.split('*/', 1)[-1])
+                code_calls = [m for m in re.finditer(r"^\s*(?:window\.)?htmx\.ajax\('GET'", source, re.M)]
+                self.assertGreaterEqual(len(code_calls), 1, calls)
+                self.assertEqual(source.count('.catch(function () { /* said by js/connection.js */ })'), len(code_calls))

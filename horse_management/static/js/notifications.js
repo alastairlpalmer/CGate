@@ -18,7 +18,7 @@
         if (fresh) { query.push('fresh=1'); }
         if (tab) { query.push('tab=' + encodeURIComponent(tab)); }
         var url = el.getAttribute('data-src') + (query.length ? '?' + query.join('&') : '');
-        window.htmx.ajax('GET', url, { source: el, target: el, swap: 'innerHTML' });
+        window.htmx.ajax('GET', url, { source: el, target: el, swap: 'innerHTML' }).catch(function () { /* said by js/connection.js */ });
     }
 
     document.addEventListener('alpine:init', function () {

@@ -247,7 +247,7 @@
                 target: '#loc-sheet-detail',
                 select: '#loc-sheet-content',
                 swap: 'innerHTML'
-            });
+            }).catch(function () { /* said by js/connection.js */ });
         }
         if (state.snap === 'peek') { setSnap('half'); }
         markRows();

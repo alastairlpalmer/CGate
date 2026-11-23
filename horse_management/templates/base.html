@@ -63,6 +63,8 @@
     <script defer src="{% static_v 'js/tap_feedback.js' %}"></script>
     {# The installed app: registers the service worker, and helps a phone to install the app. #}
     <script defer src="{% static_v 'js/app_install.js' %}"></script>
+    {# On a phone a PDF goes to the share sheet, so the page stays where it is. #}
+    <script defer src="{% static_v 'js/share_file.js' %}"></script>
     {# notifications.js registers the drawer's Alpine store on alpine:init #}
     <script defer src="{% static_v 'js/notifications.js' %}"></script>
     {# lightbox.js registers an Alpine store on alpine:init, so it must run before Alpine starts #}

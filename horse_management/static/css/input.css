@@ -1250,6 +1250,9 @@ html.page-pending #main-content { opacity: 0.5; transition: opacity 0.15s ease-o
     .week-action { @apply shrink-0; }
     .week-empty { @apply px-4 pb-3 text-sm text-charcoal-light; }
 
+    /* A PDF on its way to the phone's share sheet (static/js/share_file.js). */
+    a[data-share-file][aria-busy="true"] { @apply opacity-60 cursor-progress; }
+
     /* "Use Cgate as an app" on the dashboard (partials/dashboard/_install_card.html). */
     .install-card { @apply flex items-start gap-3 rounded-card border border-forest/20 bg-white p-4 shadow-xs; }
     /* `flex` above would beat the browser's own rule for [hidden]. */
