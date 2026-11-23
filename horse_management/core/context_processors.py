@@ -26,6 +26,18 @@ def training(request):
     return {'training_enabled': settings.TRAINING_ENABLED}
 
 
+def page_frame(request):
+    """``slim_page``: make the page without its frame.
+
+    True for a tap on a link or a form that htmx sends itself (hx-boost):
+    htmx then uses only the title, the messages and ``#main-content`` of
+    the answer, and the browser already has the rest (base.html). A page
+    load, a Back that htmx fetches again, and a part of a page all get the
+    whole page, as before.
+    """
+    return {'slim_page': request.headers.get('HX-Boosted') == 'true'}
+
+
 def google_sign_in(request):
     """``google_sign_in_enabled``: whether to show the Google buttons."""
     return {'google_sign_in_enabled': settings.GOOGLE_SIGN_IN_ENABLED}

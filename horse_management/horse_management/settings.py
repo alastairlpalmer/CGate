@@ -151,6 +151,9 @@ MIDDLEWARE = [
     'core.middleware.SignInRedirectMiddleware',
     # Tells an open page which version the server runs (X-App-Version).
     'core.middleware.AppVersionMiddleware',
+    # A tap gets the page without its frame (base.html, slim_page). This
+    # keeps a browser from showing that short page for a page load.
+    'core.middleware.SlimPageCacheMiddleware',
     # Content-Security-Policy. Report-only for now (see CSP settings below),
     # so it adds a header and never blocks a response.
     'csp.middleware.CSPMiddleware',
@@ -177,6 +180,7 @@ TEMPLATES = [
                 'core.context_processors.barns',
                 'core.context_processors.training',
                 'core.context_processors.google_sign_in',
+                'core.context_processors.page_frame',
                 'core.user_photos.context',
             ],
             'loaders': [

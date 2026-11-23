@@ -253,6 +253,34 @@ class AppVersionMiddleware:
         return response
 
 
+class SlimPageCacheMiddleware:
+    """Keep the short answer to a tap out of the way of a page load.
+
+    A tap on a link (``HX-Boosted``) gets the page without its frame
+    (``core.context_processors.page_frame``). The address is the same as
+    for a page load. A browser that kept the short answer could show it
+    for a later page load of that address, most likely on Back after a
+    full load of another page: a page with no styles and no scripts.
+
+    Two headers prevent that. ``Vary: HX-Boosted`` on every page says the
+    answer depends on that header. ``Cache-Control: no-store`` on the short
+    answer says it is not to be kept at all.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from django.utils.cache import patch_vary_headers
+
+        response = self.get_response(request)
+        if response.get('Content-Type', '').startswith('text/html'):
+            patch_vary_headers(response, ['HX-Boosted'])
+            if request.headers.get('HX-Boosted') == 'true':
+                response.headers.setdefault('Cache-Control', 'no-store')
+        return response
+
+
 class ProviderPortalMiddleware:
     """Keep a visiting professional's login on their own page.
 
