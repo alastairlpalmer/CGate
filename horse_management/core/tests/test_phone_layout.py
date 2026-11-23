@@ -5,6 +5,7 @@ test_ui_review_fixes.PhoneTopBarTests.
 """
 
 import json
+import re
 from pathlib import Path
 
 from django.conf import settings
@@ -1009,3 +1010,51 @@ class NotificationRowTests(TestCase):
         css = (Path(settings.BASE_DIR) / 'static' / 'css' / 'input.css').read_text()
         self.assertIn('.notif-text > .notif-title { order: 1; flex: 1 1 8rem; min-width: 0; }', css)
         self.assertIn('.notif-text > .notif-meta { order: 2; flex: 0 0 auto;', css)
+
+
+class FirstScreenTests(TestCase):
+    """8 horses on the first phone screen of the horse list.
+
+    The target of docs/MOBILE_APP_PLAN.md, section 6. With the title row
+    the first screen (390 x 844) showed 7. The title is the one line with
+    no job on a phone: the tab bar names the section, and the list has its
+    own heading. It stays for a screen reader, and for a wider screen.
+    (The count itself is measured in a browser: tools/qa/phone_review.js.)
+    """
+
+    def setUp(self):
+        self.client.force_login(make_admin('boss'))
+
+    def test_the_horse_list_title_is_for_a_screen_reader_on_a_phone(self):
+        body = self.client.get(reverse('horse_list')).content.decode()
+        self.assertIn(
+            '<h1 class="page-title page-title-list max-sm:sr-only" data-testid="horse-list-title">Horses</h1>',
+            body)
+        # One title, and it is a real heading: not hidden from a screen reader.
+        self.assertEqual(body.count('<h1'), 1)
+        self.assertNotIn('aria-hidden="true" data-testid="horse-list-title"', body)
+
+    def test_no_empty_gap_is_left_where_the_title_was(self):
+        # Each block of the page gets 16 px above it. With the title out
+        # of the flow, that was an empty gap above the first block.
+        body = self.client.get(reverse('horse_list')).content.decode()
+        self.assertIn('<div @change="countFilters()" class="max-sm:!mt-0"', body)
+        self.assertIn('<div class="split-view max-sm:!mt-0"', body)
+        # The open filter panel brings its own 16 px on a phone.
+        self.assertIn('<div class="max-sm:pb-4">', body)
+        css = (Path(settings.BASE_DIR) / 'static' / 'css' / 'styles.css').read_text()
+        self.assertIn('.max-sm\\:\\!mt-0{margin-top:0!important}', css)
+
+    def test_the_stylesheet_hides_it_below_the_sm_width_only(self):
+        css = (Path(settings.BASE_DIR) / 'static' / 'css' / 'styles.css').read_text()
+        rule = re.search(r'@media([^{]*)\{\.max-sm\\:sr-only\{([^}]*)\}', css)
+        self.assertIsNotNone(rule)
+        # Below 40rem (640 px): a phone. Not a tablet, not a computer.
+        self.assertIn('40rem', rule.group(1))
+        self.assertIn('position:absolute', rule.group(2))
+
+    def test_the_other_lists_keep_their_title_on_a_phone(self):
+        for name, title in (('owner_list', 'Owners'), ('location_list', 'Locations')):
+            with self.subTest(page=name):
+                body = self.client.get(reverse(name)).content.decode()
+                self.assertIn(f'<h1 class="page-title page-title-list">{title}</h1>', body)

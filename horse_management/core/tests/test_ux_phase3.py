@@ -40,8 +40,9 @@ class ListTitleTests(PhaseThreeTestCase):
         # A phone showed the section's name in a bar of its own, so the
         # title was for a wide screen only. That bar is gone
         # (docs/MOBILE_APP_PLAN.md, C1): the title is now on the page.
+        # The horse list is not here: see test_phone_layout.FirstScreenTests.
         for name, title in (
-            ('horse_list', 'Horses'), ('invoice_list', 'Invoices'),
+            ('invoice_list', 'Invoices'),
             ('charge_list', 'Extra Charges'), ('location_list', 'Locations'),
             ('health_dashboard', 'Health'),
         ):
