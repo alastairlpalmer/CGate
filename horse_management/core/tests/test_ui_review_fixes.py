@@ -202,7 +202,9 @@ class PhoneTopBarTests(TestCase):
         self.assertEqual(body.count('id="notif-count-phone"'), 1)
 
     def test_a_list_page_shows_its_title_on_a_phone(self):
-        for name, title in (('horse_list', 'Horses'), ('owner_list', 'Owners'), ('health_dashboard', 'Health')):
+        # Not the horse list: its title gave its line to an eighth horse
+        # (test_phone_layout.FirstScreenTests).
+        for name, title in (('owner_list', 'Owners'), ('health_dashboard', 'Health')):
             with self.subTest(page=name):
                 body = self.body(reverse(name))
                 self.assertRegex(body, r'<h1 class="page-title page-title-list">\s*' + title)

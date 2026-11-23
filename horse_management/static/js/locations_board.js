@@ -103,11 +103,17 @@
         var loose = b.querySelector('[data-loc-unmapped]');
         if (loose) {
             var seen = 0;
-            rowsIn(loose).forEach(function (r) {
+            var looseRows = rowsIn(loose);
+            looseRows.forEach(function (r) {
                 var on = matchesQuery(r.name.toLowerCase(), state.query);
                 r.el.hidden = !on;
                 if (on) { seen++; }
             });
+            // The block stays at the end, and the sort applies inside it:
+            // on a site with no map it is the whole list. The rows come
+            // after the block's heading, so an append in order sorts them.
+            looseRows.sort(function (a, b2) { return compareRows(state.sort, a, b2); });
+            looseRows.forEach(function (r) { loose.appendChild(r.el); });
             loose.hidden = seen === 0;
             var count = loose.querySelector('[data-loc-unmapped-count]');
             if (count) { count.textContent = String(seen); }

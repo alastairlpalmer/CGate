@@ -132,6 +132,14 @@ Phase 3 notes:
   the "Needs action" line take 265 px above the first row; to remove one
   of them is a decision, not a layout change. Owners have Call and Email
   in the phone card. The farrier chip was not changed (its own plan).
+  **Decided 23 November 2026: the title goes.** On a phone the title of
+  the horse list is for a screen reader only (the tab bar names the
+  section, and the list has its own heading), and an empty 16 px gap
+  above the list is closed. The first screen shows **8 horses** at
+  390 x 844 in the test browser, with 2 px to spare. A real phone has
+  its own status bar and home bar, so it can show 1 or 2 fewer: test 1
+  of section 8 will show the number. The other list pages keep their
+  title.
 - C6: Health groups Action Required by job. A job for two or more horses
   has "Record for all", which opens the bulk form with those horses.
 - C7: below 640 px no text class is under 12 px. Small grey text is
@@ -801,7 +809,7 @@ customer asks for it. Store rules change: read them again at that time.
 | Download for one tap | 24 to 38 KB | 1 to 15 KB | The same or less (a lighter horse row) | Under 15 KB, long lists excepted |
 | Open the installed app to the first screen | Not measured | Not measured | Phase 4: 0.3 to 0.8 s in a browser (see the note under the table) | Under 2 s on 4G |
 | Fixed bars | 187 px | 187 px | **134 px** | 135 px or less |
-| Horses on the first screen (390 x 844) | 5 | 5 | **7** (target not met) | 8 or more |
+| Horses on the first screen (390 x 844) | 5 | 5 | 7 after phase 3; **8** after the title of the horse list went (23 Nov 2026) | 8 or more |
 | Text of 12 px or smaller | 39% to 83% on the main lists | The same | **3% to 25%** on the main lists; 40% on the dashboard | Under 25% |
 | Text under 12 px | Not measured | Not measured | **0% to 2%** | None |
 | Longest list page | 10.8 screens (Vaccinations) | The same | **5.5 screens** (Horses, 60 rows); Vaccinations is 4.4 | 4 screens for 50 items |

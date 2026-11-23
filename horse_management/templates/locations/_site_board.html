@@ -186,7 +186,8 @@ buttons are the ones it has always had.
                             data-state="{{ loc.rest_state }}" data-name="{{ loc.name }}" data-unmapped>
                         <span class="min-w-0 flex-1 text-left">
                             <span class="loc-card-name">{{ loc.name }}</span>
-                            <span class="loc-card-sub">{{ loc.rest_label }}</span>
+                            {# The days, as a mapped card has: "Longest rested" sorts by them. #}
+                            <span class="loc-card-sub">{{ loc.rest_label }}{% if loc.rest_days is not None %} <span class="text-sage/50">&middot;</span> rested {{ loc.rest_days }} day{{ loc.rest_days|pluralize }}{% elif loc.count and not loc.is_barn %} <span class="text-sage/50">&middot;</span> in use{% endif %}</span>
                         </span>
                         <span class="loc-card-count{% if not loc.count %} is-quiet{% endif %}">{{ loc.count }}{% if loc.capacity %}/{{ loc.capacity }}{% endif %}</span>
                     </button>

@@ -5,11 +5,14 @@
 {% block content %}
 <div class="space-y-4" x-data="bulkActions">
 
-    {% comment %}The <h1> shows from `lg` only. On a phone the tab bar names the
-    section, so a title row would cost a screen line for nothing; on a wide
-    screen the page needs a title to say where you are (UX plan B1).
-    {% endcomment %}
-    <h1 class="page-title page-title-list">Horses</h1>
+    {% comment %}On a phone the title is for a screen reader only. The tab
+    bar names the section and the list's own heading says "All Horses", so
+    a title row cost a line of the screen: 7 horses showed on the first
+    screen and the target is 8 (docs/MOBILE_APP_PLAN.md, section 6; decided
+    23 November 2026). From `sm` up there is room, and the page needs a
+    title to say where you are. The other list pages keep their title on a
+    phone.{% endcomment %}
+    <h1 class="page-title page-title-list max-sm:sr-only" data-testid="horse-list-title">Horses</h1>
     {% if remember_location %}
     {# One location's list: remembered for the dashboard's "Back to …" chip #}
     <span hidden data-remember-location="{{ remember_location.pk }}" data-remember-name="{{ remember_location.name }}"></span>
@@ -20,7 +23,12 @@
     it opens stays here, at the top of the list it filters. base.html empties
     the slot before each boosted swap, so the button never outlives its page.
     {% endcomment %}
-    <div @change="countFilters()"
+    {% comment %}max-sm:!mt-0, here and on the split view below: on a phone
+    the title is out of the page's flow, so the 16 px that each block gets
+    above it became an empty gap at the top of the screen. The open filter
+    panel brings its own 16 px (max-sm:pb-4). From `sm` up nothing
+    changes: the gap is the one under the title.{% endcomment %}
+    <div @change="countFilters()" class="max-sm:!mt-0"
          x-data="listFilters({% if request.GET.location or request.GET.owner %}true{% else %}false{% endif %})">
         {% include 'includes/_filter_toggle.html' %}
 
@@ -37,6 +45,7 @@
             owners and locations from every page. What is left is filtering
             the list you are looking at.{% endcomment %}
             <div x-show="filtersOpen" x-collapse x-cloak>
+                <div class="max-sm:pb-4">
                 <div class="card px-4 py-3">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
@@ -74,6 +83,7 @@
                            class="btn-ghost text-xs">Clear filters</a>
                     </div>
                 </div>
+                </div>
             </div>
         </form>
     </div>
@@ -83,7 +93,7 @@
     so a filter change never takes the record you are reading with it.
     The preview URL carries a 0 where the horse's key goes —
     static/js/split_view.js puts the real one in.{% endcomment %}
-    <div class="split-view" data-split-view data-preview-url="{% url 'horse_preview' 0 %}"
+    <div class="split-view max-sm:!mt-0" data-split-view data-preview-url="{% url 'horse_preview' 0 %}"
          data-resize-host="horse-list" data-resize-var="--split-pane-w"
          data-resize-panel="#horse-preview" data-resize-side="right"
          data-resize-min="336" data-resize-min-other="448" data-resize-gap="16"

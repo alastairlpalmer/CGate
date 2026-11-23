@@ -357,6 +357,10 @@ class LocationListView(FeatureAccessMixin, ListView):
             )
             loc['bar_height'] = _rest_bar_height(loc['rest_days'])
             (mapped if loc['kind'] else unmapped).append(loc)
+        # "Most horses" is the sort that is on when the page opens. The
+        # script sorts the mapped rows; the block with no boundary gets
+        # the same order here, so it is right before the script runs.
+        unmapped.sort(key=lambda loc: (-loc['count'], loc['name'].lower()))
 
         from ..models import DashboardPreference
         pinned = DashboardPreference.objects.filter(
@@ -1252,8 +1256,9 @@ def location_move_horses(request, pk):
 @feature_required('horses')
 @require_POST
 def group_move_undo(request):
-    """The Undo on the message of a group move: "Move horses" on a
-    location, and "Move to Location" for ticked horses on the horse list.
+    """The Undo on the message of a move: "Move horses" on a location,
+    "Move to Location" for ticked horses on the horse list, and the move
+    of one horse (core.views.horses.horse_move).
 
     The link names the stays that the move made (core.views._undo). Each
     horse goes back only if nothing changed after the move; any other
@@ -1274,6 +1279,7 @@ def group_move_undo(request):
         asked['placement_ids'],
         destination_id=asked['destination_id'],
         move_date=asked['move_date'],
+        share_owner_id=asked['share_owner_id'],
     )
     if restored:
         source = PlacementService.one_location(restored)
