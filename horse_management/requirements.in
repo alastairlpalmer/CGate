@@ -34,7 +34,7 @@ django-storages~=1.14
 
 # Security
 # Brute-force protection on sign-in (lockout after repeated failures).
-django-axes~=8.3
+django-axes~=9.0
 # Two-step sign-in: TOTP authenticator apps and single-use recovery codes
 # (core/mfa.py). qrcode draws the set-up QR code as SVG.
 django-otp~=1.7
