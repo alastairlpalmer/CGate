@@ -53,6 +53,7 @@ from .locations import (  # noqa: F401
     location_delete,
     location_parse_link,
     location_restore,
+    location_move_horses,
     log_arrival,
     log_departure,
     set_location_usage,

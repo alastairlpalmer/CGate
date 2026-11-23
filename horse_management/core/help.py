@@ -62,7 +62,7 @@ GUIDES = [
     Guide('horses', 'Horses', 'Add horses, log arrivals, moves and departures, and keep their records.',
           'The yard', features=('horses',), keywords=('arrival', 'departure', 'move', 'passport', 'microchip', 'ueln', 'scan', 'age', 'pedigree', 'sire', 'dam', 'fill in', 'merge', 'duplicate', 'import', 'spreadsheet', 'csv', 'photo')),
     Guide('locations', 'Locations and the map', 'Fields, sites and barns, the map, and resting a field.',
-          'The yard', features=('locations',), keywords=('field', 'paddock', 'site', 'barn', 'stable', 'map', 'rest', 'capacity')),
+          'The yard', features=('locations',), keywords=('field', 'paddock', 'site', 'barn', 'stable', 'map', 'rest', 'capacity', 'move horses', 'group')),
     Guide('feed', 'Feed', 'Feed stock, feeding out and low stock.',
           'The yard', features=('feed',), keywords=('hay', 'haylage', 'stock', 'feed out')),
     Guide('training', 'Training', 'Work types and what each horse did, for one horse or many.',

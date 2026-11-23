@@ -953,6 +953,19 @@ html.page-pending #main-content { opacity: 0.5; transition: opacity 0.15s ease-o
     .confirm-footer > button { flex: 1 1 0%; }
 }
 
+/* "Move horses" on a location: the tick list of the horses that live
+   there (locations/partials/move_horses_form.html). A row is one 44px
+   target: the whole row ticks the box. */
+.move-pick-list { @apply mt-2 divide-y divide-light-sage rounded-lg border border-light-sage bg-white; max-height: 16.5rem; overflow-y: auto; overscroll-behavior: contain; }
+.move-pick { @apply flex items-center gap-3 px-3 py-2 min-h-[44px] cursor-pointer; }
+.move-pick .coat-dot { @apply shrink-0; }
+.move-pick-name { @apply block text-base font-medium text-charcoal; overflow-wrap: anywhere; }
+.move-pick-sub { @apply block text-sm text-charcoal-light; }
+.move-pick-note { @apply block text-sm text-saddle; }
+/* A horse that arrived here today: shown, and it cannot be ticked. */
+.move-pick.is-stuck { @apply cursor-default bg-sand-50; }
+.move-pick.is-stuck .move-pick-name { @apply text-charcoal-light; }
+
 /* Choice chips — a small set of mutually exclusive quick picks (e.g. Move
    date: Today / Pick a date). Pair with aria-pressed; add .chip-on to the
    selected one. 44px tall on touch layouts. */

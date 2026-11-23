@@ -168,6 +168,49 @@ class PlacementService:
         return new_placement
 
     @staticmethod
+    @transaction.atomic
+    def move_group(horses, *, new_location, move_date, new_rate_type=None,
+                   notes='', from_location=None):
+        """Move several horses to one location, each as ``move_horse`` does.
+
+        Every horse keeps its own owner, and its own rate unless
+        ``new_rate_type`` is given. A horse that cannot move is named with
+        the reason, and the others still go: each move is in its own
+        savepoint.
+
+        ``from_location``: the move is "the horses of this location". A
+        horse that is not there any more (someone moved it a moment ago)
+        is left where it is.
+
+        Returns ``(moved, failed)``: the new placements, and
+        ``[(horse, reason)]`` for the horses that stayed.
+        """
+        moved, failed = [], []
+        for horse in horses:
+            current = horse.current_placement
+            if from_location is not None and (
+                current is None or current.location_id != from_location.pk
+            ):
+                failed.append((horse, f'it is not in {from_location.name} any more.'))
+                continue
+            if current is not None and current.location_id == new_location.pk:
+                failed.append((horse, f'it is in {new_location.name} already.'))
+                continue
+            try:
+                # move_horse is atomic, so inside this transaction it is a
+                # savepoint: a refused move leaves nothing half done.
+                moved.append(PlacementService.move_horse(
+                    horse, new_location=new_location, move_date=move_date,
+                    new_rate_type=new_rate_type, notes=notes,
+                ))
+            except ValidationError as e:
+                failed.append((horse, '; '.join(e.messages)))
+            except IntegrityError:
+                # Another request moved the same horse a moment ago.
+                failed.append((horse, 'another change to this horse was saved at the same time.'))
+        return moved, failed
+
+    @staticmethod
     def _supersede_recorded_departure(horse, arrival_date, destination=None):
         """Let a departed horse arrive back on or before its recorded departure.
 

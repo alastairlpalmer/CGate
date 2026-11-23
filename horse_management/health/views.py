@@ -659,25 +659,24 @@ def bulk_health_apply(request):
                         f"Not restored — {horse.name}: {'; '.join(e.messages)}"
                     )
         elif action_type == 'move':
-            for horse in horses:
-                try:
-                    moved = PlacementService.move_horse(
-                        horse,
-                        new_location=form.cleaned_data['new_location'],
-                        move_date=form.cleaned_data['move_date'],
-                        new_rate_type=form.cleaned_data.get('new_rate_type'),
-                        notes=form.cleaned_data.get('notes', ''),
-                    )
-                    count += 1
-                    # One rate for the whole batch cannot suit a batch
-                    # that came off different rates: name the ones left
-                    # on a rate that belongs elsewhere (core/rates.py).
-                    if rate_mismatch(moved.rate_type, moved.location):
-                        wrong_rate.append((horse.name, moved.rate_type.name))
-                except ValidationError as e:
-                    action_errors.append(
-                        f"Not moved — {horse.name}: {'; '.join(e.messages)}"
-                    )
+            # The same code as "Move horses" on a location
+            # (core.views.locations.location_move_horses).
+            moved, failed = PlacementService.move_group(
+                horses,
+                new_location=form.cleaned_data['new_location'],
+                move_date=form.cleaned_data['move_date'],
+                new_rate_type=form.cleaned_data.get('new_rate_type'),
+                notes=form.cleaned_data.get('notes', ''),
+            )
+            count = len(moved)
+            # One rate for the whole batch cannot suit a batch that came
+            # off different rates: name the ones left on a rate that
+            # belongs elsewhere (core/rates.py).
+            wrong_rate = [
+                (placement.horse.name, placement.rate_type.name) for placement in moved
+                if rate_mismatch(placement.rate_type, placement.location)
+            ]
+            action_errors += [f"Not moved — {horse.name}: {reason}" for horse, reason in failed]
         # Departure date actions update placements, not health records.
         # Placement saves re-validate dates (e.g. departure before arrival),
         # so each horse gets its own savepoint and failures are reported by
