@@ -51,6 +51,8 @@ GROUPS = ('Start here', 'The yard', 'Health', 'Money', 'Administration')
 GUIDES = [
     Guide('getting-started', 'Getting started', 'The sidebar, the dashboard and its calendar, and the Add button.',
           'Start here', keywords=('dashboard', 'calendar', 'sidebar', 'menu', 'add', 'phone', 'collapse')),
+    Guide('install-the-app', 'Install Cgate on your phone', 'Open Cgate from an icon on your phone or tablet, like an app.',
+          'Start here', keywords=('app', 'install', 'home screen', 'iphone', 'ipad', 'android', 'icon', 'no signal', 'offline', 'phone')),
     Guide('search', 'Search', 'Find a horse, owner, location, invoice or health record from any page.',
           'Start here', keywords=('find', 'look up', 'microchip', 'passport number', 'shortcut')),
     Guide('notifications', 'Notifications', 'What needs doing, horse movements and money, in one place.',
@@ -60,7 +62,7 @@ GUIDES = [
     Guide('horses', 'Horses', 'Add horses, log arrivals, moves and departures, and keep their records.',
           'The yard', features=('horses',), keywords=('arrival', 'departure', 'move', 'passport', 'microchip', 'ueln', 'scan', 'age', 'pedigree', 'sire', 'dam', 'fill in', 'merge', 'duplicate', 'import', 'spreadsheet', 'csv', 'photo')),
     Guide('locations', 'Locations and the map', 'Fields, sites and barns, the map, and resting a field.',
-          'The yard', features=('locations',), keywords=('field', 'paddock', 'site', 'barn', 'stable', 'map', 'rest', 'capacity')),
+          'The yard', features=('locations',), keywords=('field', 'paddock', 'site', 'barn', 'stable', 'map', 'rest', 'capacity', 'move horses', 'group')),
     Guide('feed', 'Feed', 'Feed stock, feeding out and low stock.',
           'The yard', features=('feed',), keywords=('hay', 'haylage', 'stock', 'feed out')),
     Guide('training', 'Training', 'Work types and what each horse did, for one horse or many.',

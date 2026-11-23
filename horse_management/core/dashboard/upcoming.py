@@ -30,6 +30,10 @@ VISIT_KINDS = ('farrier', 'vaccination', 'vet', 'worming')
 
 MAX_VISITS = 8
 
+# The phone's list in place of the month grid: today and the next 7 days
+# (docs/MOBILE_APP_PLAN.md, item C3).
+WEEK_DAYS = 8
+
 
 def build(items, user, today, days=HORIZON_DAYS):
     """``{'days': [...], 'visits': [...], 'total': n, 'legend': [...]}``.
@@ -102,6 +106,7 @@ def build(items, user, today, days=HORIZON_DAYS):
 
     return {
         'days': day_list,
+        'week': week(by_day, user, today),
         'visits': visits[:MAX_VISITS],
         'more_visits': max(0, len(visits) - MAX_VISITS),
         'visit_count': len(visits),
@@ -110,3 +115,74 @@ def build(items, user, today, days=HORIZON_DAYS):
         'start': today,
         'end': horizon,
     }
+
+
+def _day_label(day, today):
+    offset = (day - today).days
+    if offset == 0:
+        return 'Today'
+    if offset == 1:
+        return 'Tomorrow'
+    return day.strftime('%A')
+
+
+def week(by_day, user, today, days=WEEK_DAYS):
+    """Today and the next 7 days as a list of jobs, for a phone.
+
+    ``[{'date', 'label', 'lines': [...]}]``. Today is always in the list;
+    another day is in it only when something is due. A line is one job:
+
+    - one horse: ``title`` is its name, ``sub`` says what is due and where;
+    - the same job for two or more horses that day (a farrier's morning, a
+      vaccination round): ``title`` says what is due, ``horses`` are named
+      when the line is opened, and ``action`` records for all of them;
+    - anything else dated (an invoice, a calendar item): its own title.
+
+    ``action`` is the one button of the line, or None.
+    """
+    result = []
+    for offset in range(days):
+        day = today + timedelta(days=offset)
+        day_items = sorted(by_day.get(day, []), key=lambda item: item.sort_key)
+        if not day_items and offset:
+            continue
+        lines, jobs = [], {}
+        for item in day_items:
+            if item.kind in VISIT_KINDS and item.horse is not None:
+                key = (item.kind, item.detail)
+                if key not in jobs:
+                    jobs[key] = {'kind': item.kind, 'title': item.detail, 'items': [], 'horses': []}
+                    lines.append(jobs[key])
+                job = jobs[key]
+                job['items'].append(item)
+                if item.horse not in job['horses']:
+                    job['horses'].append(item.horse)
+            else:
+                lines.append({
+                    'kind': item.kind, 'title': item.title, 'url': item.url,
+                    'sub': ' · '.join(part for part in (item.detail, item.location) if part),
+                    'horses': [], 'count': 1,
+                    'action': item.actions[0] if item.actions else None,
+                })
+        for job in jobs.values():
+            items = job.pop('items')
+            job['count'] = len(job['horses'])
+            if job['count'] == 1:
+                first = items[0]
+                job.update({
+                    'title': first.title, 'url': first.url, 'horses': [],
+                    'sub': ' · '.join(part for part in (first.detail, first.location) if part),
+                    'action': first.actions[0] if first.actions else None,
+                })
+            else:
+                job.update({
+                    'url': '', 'sub': f"{job['count']} horses",
+                    'action': _bulk_action(job['kind'], job['horses'], user),
+                })
+        result.append({
+            'date': day,
+            'label': _day_label(day, today),
+            'is_today': offset == 0,
+            'lines': lines,
+        })
+    return result

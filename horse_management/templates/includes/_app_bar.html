@@ -13,8 +13,16 @@ next page does not open with the old search still in it.
 The search itself is includes/_app_search.html.
 {% endcomment %}
 {% if user.is_authenticated %}
-<div class="app-bar sticky top-11 z-40 bg-parchment/90 backdrop-blur border-b border-light-sage lg:hidden">
-    <div class="relative max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 sm:gap-3">
+<div class="app-bar sticky top-0 z-40 bg-parchment/90 backdrop-blur border-b border-light-sage lg:hidden">
+    <div class="relative max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-2 flex items-center gap-2 sm:gap-3">
+
+        {# The notification centre, on a phone (the sidebar has it on a computer). #}
+        <button type="button" class="phone-bell" @click="$store.notif.toggle()"
+                :aria-expanded="$store.notif.open ? 'true' : 'false'" aria-controls="notif-drawer"
+                aria-label="Notifications" title="Notifications">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+            <span id="notif-count-phone" class="notif-count notif-count-dot hidden"></span>
+        </button>
 
         <!-- Search: here on a phone or tablet; in the sidebar on a computer -->
         {% include 'includes/_app_search.html' with search_place='bar' %}

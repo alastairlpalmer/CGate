@@ -160,12 +160,182 @@ class PlacementService:
         # reminders and extra-charge defaults follow the horse. Only singly
         # owned horses are auto-adjusted; genuine fractional co-ownership must
         # be edited explicitly on the ownership screen.
-        PlacementService._sync_single_owner_share(horse, new_owner)
+        share_owner_was = PlacementService._sync_single_owner_share(horse, new_owner)
 
         # Views surface this so a trimmed departure is never silent.
         new_placement.superseded_trim = trimmed
+        # For the Undo of a move (undo_move_group). The stay this move
+        # closed, or None for a horse that had none: only a move from a
+        # stay can be undone. And the owner the horse's one share had, if
+        # the move gave the horse to another owner.
+        new_placement.previous_placement = current_placement
+        new_placement.share_owner_was = share_owner_was
         _tell('arrived' if current_placement is None else 'moved', [horse], new_location, move_date)
         return new_placement
+
+    @staticmethod
+    @transaction.atomic
+    def move_group(horses, *, new_location, move_date, new_rate_type=None,
+                   notes='', from_location=None):
+        """Move several horses to one location, each as ``move_horse`` does.
+
+        Every horse keeps its own owner, and its own rate unless
+        ``new_rate_type`` is given. A horse that cannot move is named with
+        the reason, and the others still go: each move is in its own
+        savepoint.
+
+        ``from_location``: the move is "the horses of this location". A
+        horse that is not there any more (someone moved it a moment ago)
+        is left where it is.
+
+        Returns ``(moved, failed)``: the new placements, and
+        ``[(horse, reason)]`` for the horses that stayed.
+        """
+        moved, failed = [], []
+        for horse in horses:
+            current = horse.current_placement
+            if from_location is not None and (
+                current is None or current.location_id != from_location.pk
+            ):
+                failed.append((horse, f'it is not in {from_location.name} any more.'))
+                continue
+            if current is not None and current.location_id == new_location.pk:
+                failed.append((horse, f'it is in {new_location.name} already.'))
+                continue
+            try:
+                # move_horse is atomic, so inside this transaction it is a
+                # savepoint: a refused move leaves nothing half done.
+                moved.append(PlacementService.move_horse(
+                    horse, new_location=new_location, move_date=move_date,
+                    new_rate_type=new_rate_type, notes=notes,
+                    # The group form has no box for this date. A move
+                    # inside the yard does not change the day the horse
+                    # leaves it: before, the date was lost with the move.
+                    expected_departure=PlacementService.kept_departure(current, move_date),
+                ))
+            except ValidationError as e:
+                failed.append((horse, '; '.join(e.messages)))
+            except IntegrityError:
+                # Another request moved the same horse a moment ago.
+                failed.append((horse, 'another change to this horse was saved at the same time.'))
+        return moved, failed
+
+    @staticmethod
+    def kept_departure(placement, move_date):
+        """The expected departure date that a move takes to the new stay.
+
+        The date of the stay the horse is in, when it is on or after the
+        move. A date that passed is out of date (the horse is still here),
+        and a stay cannot be closed on a day before it began, so that date
+        is not taken.
+        """
+        expected = getattr(placement, 'expected_departure', None)
+        return expected if expected and expected >= move_date else None
+
+    @staticmethod
+    @transaction.atomic
+    def undo_move_group(placement_ids, *, destination_id, move_date, share_owner_id=None):
+        """Put the horses of a move back where they came from: a group
+        move, or the move of one horse.
+
+        ``placement_ids``: the stays the move made, each one for a horse
+        that came from another stay. For each horse the new stay is
+        deleted and the stay before it is opened again, so the history
+        reads as if the move did not happen. Placement's own delete and
+        save hooks put the usage of both locations, the horse's stable
+        and its turnout back.
+
+        A horse is put back only if nothing changed after the move: the
+        new stay is still open, still in ``destination_id`` from
+        ``move_date``, not on an invoice, and the stay before it still
+        ends the day before. Any other horse is named with the reason
+        and left as it is. Each horse is in its own savepoint.
+
+        ``share_owner_id``: the move of one horse gave it to another
+        owner, and this owner had its one share before. The share goes
+        back also, if it is still as the move left it.
+
+        Returns ``(restored, failed, gone)``: the stays that are open
+        again, ``[(horse, reason)]``, and how many of the new stays are
+        not there any more (the move was undone already).
+        """
+        restored, failed = [], []
+        # Locked, so a second tap on Undo waits and then finds nothing.
+        # Only the stays: the horse and the location are read, not held.
+        found = {
+            placement.pk: placement
+            for placement in Placement.objects.select_for_update(of=('self',)).filter(
+                pk__in=placement_ids
+            ).select_related('horse', 'location')
+        }
+        gone = len(set(placement_ids)) - len(found)
+        for pk in placement_ids:
+            new = found.pop(pk, None)
+            if new is None:
+                continue
+            horse, where = new.horse, new.location.name
+            if new.end_date is not None:
+                failed.append((horse, f'it left {where} after the move.'))
+                continue
+            if new.location_id != destination_id or new.start_date != move_date:
+                failed.append((horse, 'its stay was changed after the move.'))
+                continue
+            if new.invoice_items.exists():
+                failed.append((horse, f'its stay in {where} is on an invoice.'))
+                continue
+            previous = (
+                Placement.objects.filter(
+                    horse=horse, end_date=new.start_date - timedelta(days=1),
+                ).select_related('location').first()
+            )
+            if previous is None:
+                failed.append((horse, 'the stay before the move was changed.'))
+                continue
+            moved_owner_id = new.owner_id
+            try:
+                with transaction.atomic():
+                    # The new stay goes first: two open stays for one
+                    # horse overlap, and the save below would refuse.
+                    new.delete()
+                    previous.end_date = None
+                    previous.save()
+                    if share_owner_id:
+                        PlacementService._give_share_back(horse, moved_owner_id, share_owner_id)
+            except ValidationError as e:
+                failed.append((horse, '; '.join(e.messages)))
+            except IntegrityError:
+                failed.append((horse, 'another change to this horse was saved at the same time.'))
+            else:
+                restored.append(previous)
+        if restored:
+            from notifications import centre
+            centre.after_commit(
+                centre.move_undone, [p.horse for p in restored],
+                moved_to_id=destination_id, day=move_date,
+                back_in=PlacementService.one_location(restored),
+            )
+        return restored, failed, gone
+
+    @staticmethod
+    def _give_share_back(horse, from_owner_id, to_owner_id):
+        """Undo what ``_sync_single_owner_share`` did in a move: the
+        horse's one share goes back to the owner it had. Only if the share
+        is still as the move left it, and that owner is still on file."""
+        from .models import Owner
+
+        shares = list(horse.ownership_shares.all())
+        if (
+            len(shares) == 1 and shares[0].owner_id == from_owner_id
+            and Owner.objects.filter(pk=to_owner_id).exists()
+        ):
+            shares[0].owner_id = to_owner_id
+            shares[0].save()
+
+    @staticmethod
+    def one_location(placements):
+        """The location of these stays if it is the same for all, else None."""
+        locations = {placement.location_id: placement.location for placement in placements}
+        return next(iter(locations.values())) if len(locations) == 1 else None
 
     @staticmethod
     def _supersede_recorded_departure(horse, arrival_date, destination=None):
@@ -273,12 +443,17 @@ class PlacementService:
         No-op for horses with fractional co-ownership (2+ shares), horses with
         no shares at all (billing falls back to the placement owner), or when
         the single share already matches.
+
+        Returns the owner the share had before, or None if nothing changed.
         """
-        shares = list(horse.ownership_shares.all())
+        shares = list(horse.ownership_shares.select_related('owner'))
         if len(shares) == 1 and shares[0].owner_id != owner.id:
             share = shares[0]
+            before = share.owner
             share.owner = owner
             share.save()
+            return before
+        return None
 
     @staticmethod
     def _place(horse, *, owner, location, rate_type, arrival_date,

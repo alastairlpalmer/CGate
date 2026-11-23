@@ -1,0 +1,36 @@
+{% load static cache_bust %}<!DOCTYPE html>
+{% comment %}
+The page for no signal (core.views.app_shell.offline, docs/MOBILE_APP_PLAN.md
+item D4). The service worker (static/js/app_worker.js) stores one copy and
+shows it, at the address that was asked for, when a page cannot load.
+
+It is one copy for everyone who uses the phone: nothing about the person
+or the yard may be in it. It can use only what the worker stores with it
+(core.views.app_shell.OFFLINE_STYLES and OFFLINE_FILES).
+
+"Try again" is a link to this same address, so it works with no script.
+{% endcomment %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>No signal - Cgate</title>
+    <meta name="theme-color" content="#3D5A63">
+    <meta name="robots" content="noindex">
+    <link rel="stylesheet" href="{% static_v 'css/styles.css' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/favicon-32.png' %}">
+</head>
+<body class="min-h-screen bg-parchment flex items-center justify-center p-6">
+    <main class="card w-full max-w-sm p-6 text-center" data-testid="offline-page">
+        <img src="{% static 'icons/icon-192.png' %}" alt="" width="64" height="64" class="mx-auto h-16 w-16 rounded-2xl">
+        <h1 class="page-title mt-4">No signal</h1>
+        <p class="mt-2 text-base text-charcoal-light">This page did not load. The phone has no signal, or the signal is too weak.</p>
+        <a href="" class="btn-primary mt-5 w-full" data-testid="offline-retry">Try again</a>
+        <p class="mt-3 text-sm text-charcoal-light" aria-live="polite" data-testid="offline-state">The page loads by itself when the signal is back.</p>
+    </main>
+    <script>
+        // When the phone says the signal is back, ask for the page again.
+        window.addEventListener('online', function () { window.location.reload(); });
+    </script>
+</body>
+</html>

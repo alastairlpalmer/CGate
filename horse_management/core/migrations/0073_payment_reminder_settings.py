@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("core", "0070_horse_photo_soft_delete"),
+        ("core", "0072_phone_text_size"),
     ]
 
     operations = [

@@ -10,6 +10,7 @@ the two things the detail panel gained for a wide screen — the area of
 the ground and the nearest ground that is ready to take horses.
 """
 
+import re
 from datetime import timedelta
 from decimal import Decimal
 
@@ -445,23 +446,34 @@ class DetailActionTests(BoardFixture):
     Logging an arrival is a page of its own — locations/location_arrive.html
     extends base.html — so asking for it in the pop-up put the whole
     application, app bar and sidebar included, inside the sheet.
+
+    "Move horses" was that link until 23 November 2026: it went to the
+    arrival page, which lists only horses with no location, so it could
+    not move the horses that are here. It now opens the group move
+    (core/tests/test_location_move_horses.py), which has a partial.
     """
 
     def setUp(self):
         self.client.force_login(make_admin())
 
-    def detail(self):
-        url = reverse('location_preview', args=[self.grazing.pk])
+    def detail(self, location=None):
+        url = reverse('location_preview', args=[(location or self.grazing).pk])
         return self.client.get(url, **RAIL).content.decode()
 
-    def test_moving_horses_is_an_ordinary_link(self):
-        body = self.detail()
-        move = body[body.index('Move horses') - 400:body.index('Move horses')]
-        self.assertNotIn('popup-body', move.split('<a ')[-1])
+    def test_logging_an_arrival_is_an_ordinary_link(self):
+        for body in (self.detail(), self.detail(self.near_ready)):
+            for link in re.findall(r'<a [^>]*href="/locations/\d+/arrive/"[^>]*>', body):
+                with self.subTest(link=link[:80]):
+                    self.assertNotIn('popup-body', link)
+        # Both are there: a link under the horses, and the first button
+        # of a location with no horses.
+        self.assertIn('data-testid="loc-arrival-link"', self.detail())
+        self.assertIn('data-testid="loc-log-arrival"', self.detail(self.near_ready))
 
     def test_the_actions_that_do_open_the_popup_have_a_partial_to_show(self):
         """Each of these views answers a pop-up request with a form only."""
         for name, args in (
+            ('location_move_horses', {'pk': self.grazing.pk}),
             ('feed_out_create', {'location_pk': self.grazing.pk}),
             ('location_set_usage', {'pk': self.grazing.pk}),
             ('location_update', {'pk': self.grazing.pk}),
@@ -474,3 +486,36 @@ class DetailActionTests(BoardFixture):
                 )
                 self.assertEqual(response.status_code, 200)
                 self.assertNotContains(response, 'data-app-search')
+
+
+@override_settings(LOCATION_MAPS_ENABLED=True)
+class MoveHorsesNearGroundTests(BoardFixture):
+    """"Move horses" offers the nearest ready ground as one-tap choices
+    (core/tests/test_location_move_horses.py has the move itself)."""
+
+    def setUp(self):
+        self.client.force_login(make_admin())
+
+    def sheet(self, location):
+        url = reverse('location_move_horses', args=[location.pk])
+        return self.client.get(url, HTTP_HX_REQUEST='true', HTTP_HX_TARGET='popup-body').content.decode()
+
+    def test_the_nearest_empty_rested_ground_is_a_button_each_nearest_first(self):
+        sheet = self.sheet(self.grazing)
+        near = sheet.split('data-testid="move-near"', 1)[1].split('</div>', 1)[0]
+        names = re.findall(r'@click="dest = \'(\d+)\'">\s*([^<]+?)\s*<span', near)
+        self.assertEqual(names, [(str(self.near_ready.pk), 'Hawkhill'), (str(self.far_ready.pk), 'Hill-Whitakers')])
+        # Ground that has not rested long enough is not offered as a button.
+        self.assertNotIn('Caravan Field', near)
+
+    def test_each_button_is_also_a_choice_in_the_list(self):
+        sheet = self.sheet(self.grazing)
+        options = sheet.split('name="new_location"', 1)[1].split('</select>', 1)[0]
+        for location in (self.near_ready, self.far_ready):
+            with self.subTest(location=location.name):
+                self.assertIn(f'<option value="{location.pk}">', options)
+
+    def test_a_location_with_no_point_on_the_map_has_the_list_only(self):
+        sheet = self.sheet(self.unmapped)
+        self.assertNotIn('data-testid="move-near"', sheet)
+        self.assertIn('name="new_location"', sheet)

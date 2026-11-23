@@ -146,6 +146,14 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
+    # An htmx request that is sent to the sign-in page loads that page in
+    # full; before, it left an empty screen. After HtmxMiddleware.
+    'core.middleware.SignInRedirectMiddleware',
+    # Tells an open page which version the server runs (X-App-Version).
+    'core.middleware.AppVersionMiddleware',
+    # A tap gets the page without its frame (base.html, slim_page). This
+    # keeps a browser from showing that short page for a page load.
+    'core.middleware.SlimPageCacheMiddleware',
     # Content-Security-Policy. Report-only for now (see CSP settings below),
     # so it adds a header and never blocks a response.
     'csp.middleware.CSPMiddleware',
@@ -172,6 +180,7 @@ TEMPLATES = [
                 'core.context_processors.barns',
                 'core.context_processors.training',
                 'core.context_processors.google_sign_in',
+                'core.context_processors.page_frame',
                 'core.user_photos.context',
             ],
             'loaders': [
@@ -916,8 +925,21 @@ RESEND_WEBHOOK_SECRET = env('RESEND_WEBHOOK_SECRET', default='')
 # reaches every record and every other account. Set to False only to get a
 # yard back in during an emergency, and set it back afterwards.
 MFA_REQUIRED_FOR_ADMINS = env.bool('MFA_REQUIRED_FOR_ADMINS', default=True)
+# After a correct code, a device can be remembered: for this many days the
+# next sign-in on it asks for the password only (core.mfa, "Remember this
+# device"). A change of password, a new or removed authenticator, and
+# "sign out everywhere" all end it sooner. 0 turns it off: each sign-in
+# then asks for a code.
+MFA_REMEMBER_DAYS = env.int('MFA_REMEMBER_DAYS', default=14)
 # The name authenticator apps show next to the six-digit code.
 OTP_TOTP_ISSUER = env('OTP_TOTP_ISSUER', default='Cgate')
+
+# The main app's service worker (core.views.app_shell): it keeps the
+# styles, scripts, fonts and icons on the phone and shows a "No signal"
+# page. False is the way out if it gives trouble: pages stop registering
+# it, and /sw.js becomes a worker that removes itself and its store from
+# each phone the next time that phone asks for it.
+APP_WORKER_ENABLED = env.bool('APP_WORKER_ENABLED', default=True)
 
 # CSRF cookie
 CSRF_COOKIE_HTTPONLY = True

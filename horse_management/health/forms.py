@@ -9,7 +9,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from billing.forms import ServicePickerMixin
-from core.forms import MoveHorseForm
+from core.forms import GroupMoveForm
 from core.models import Horse
 from core.widgets import MoneyInput
 from pedigree.widgets import stallion_input
@@ -80,6 +80,19 @@ class ActiveHorseFormMixin:
         self.order_fields([name for name in ('horse', 'mare') if name in self.fields])
 
 
+def quick_dates(spec, base):
+    """Attributes for a date box whose date is weeks or months away.
+
+    static/js/date_quick.js puts Yesterday, Today and Tomorrow under a
+    date box. Those do not fit a next due date. With these attributes the
+    box gets the buttons named in ``spec`` ("+6m +12m": "+6 months" and
+    "+12 months"), counted from the date in the box named ``base`` (the
+    day of the record), or from today when that box is empty
+    (docs/MOBILE_APP_PLAN.md, C8).
+    """
+    return {'data-date-quick': spec, 'data-date-quick-from': base}
+
+
 class VaccinationForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFormMixin, forms.ModelForm):
     service_category = 'vaccination'
     service_fill = (('vaccination_type', 'vaccination_type'),)
@@ -95,7 +108,7 @@ class VaccinationForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFormMixi
             'vaccination_type': forms.Select(attrs={'class': 'form-select'}),
             'course_stage': forms.Select(attrs={'class': 'form-select'}),
             'date_given': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
-            'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date', **quick_dates('+6m +12m', 'date_given')}),
             'vet': forms.Select(attrs={'class': 'form-select'}),
             'batch_number': forms.TextInput(attrs={'class': 'form-input'}),
             'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
@@ -248,7 +261,7 @@ class FarrierVisitForm(FarrierProviderMixin, ServicePickerMixin, ActiveHorseForm
             'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'service_provider': forms.Select(attrs={'class': 'form-select'}),
             'work_done': forms.Select(attrs={'class': 'form-select'}),
-            'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date', **quick_dates('+6w +8w', 'date')}),
             'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
@@ -311,7 +324,7 @@ class WormingTreatmentForm(ServicePickerMixin, OptionalCostMixin, ActiveHorseFor
             'active_ingredient': forms.TextInput(attrs={'class': 'form-input'}),
             'dose': forms.TextInput(attrs={'class': 'form-input'}),
             'administered_by': forms.TextInput(attrs={'class': 'form-input'}),
-            'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date', **quick_dates('+3m +6m', 'date')}),
             'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
@@ -443,7 +456,7 @@ class VetVisitForm(ServicePickerMixin, ActiveHorseFormMixin, forms.ModelForm):
             'reason': forms.TextInput(attrs={'class': 'form-input'}),
             'diagnosis': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'treatment': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
-            'follow_up_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'follow_up_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date', **quick_dates('+1w +2w', 'date')}),
             'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
@@ -471,7 +484,7 @@ class BulkVaccinationForm(ServicePickerMixin, OptionalCostMixin, forms.ModelForm
         widgets = {
             'vaccination_type': forms.Select(attrs={'class': 'form-select'}),
             'date_given': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
-            'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date', **quick_dates('+6m +12m', 'date_given')}),
             'vet': forms.Select(attrs={'class': 'form-select'}),
             'batch_number': forms.TextInput(attrs={'class': 'form-input'}),
             'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal', 'min': '0'}),
@@ -504,7 +517,7 @@ class BulkFarrierVisitForm(FarrierProviderMixin, ServicePickerMixin, forms.Model
             'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'service_provider': forms.Select(attrs={'class': 'form-select'}),
             'work_done': forms.Select(attrs={'class': 'form-select'}),
-            'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'next_due_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date', **quick_dates('+6w +8w', 'date')}),
             'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
@@ -567,7 +580,7 @@ class BulkVetVisitForm(ServicePickerMixin, forms.ModelForm):
             'reason': forms.TextInput(attrs={'class': 'form-input'}),
             'diagnosis': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
             'treatment': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
-            'follow_up_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'follow_up_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date', **quick_dates('+1w +2w', 'date')}),
             'cost': MoneyInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
@@ -589,22 +602,9 @@ class BulkActualDepartureForm(forms.Form):
     )
 
 
-class BulkMoveForm(MoveHorseForm):
-    """Bulk action: move the selected horses to a new location.
-
-    The single-horse move form minus the per-horse fields: every horse
-    keeps its own owner, and the rate applies to all of them (left empty,
-    each keeps its current rate). Subclassing keeps single and bulk move
-    semantics from drifting apart.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        del self.fields['new_owner']
-        del self.fields['expected_departure']
-        self.fields['new_rate_type'].help_text = (
-            "Leave empty to keep each horse's current rate"
-        )
+class BulkMoveForm(GroupMoveForm):
+    """Bulk action: move the selected horses to a new location. The form
+    is core.forms.GroupMoveForm; "Move horses" on a location uses it too."""
 
 
 class BulkRestoreForm(forms.Form):

@@ -36,6 +36,7 @@ from billing.forms import BulkChargeForm
 from billing.models import ExtraCharge
 from core.models import Horse, Placement
 from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_response
+from core.views._undo import group_move_undo_url, undo_tag
 
 from .forms import (
     hide_cost,
@@ -179,6 +180,10 @@ def health_dashboard(request):
 
         context.update({
             'action_required': action_required,
+            # The same entries, under one heading for each job.
+            'action_groups': attention.group_health_entries(
+                action_required, can_record=has_feature_access(request.user, 'health', LEVEL_FULL),
+            ),
             'coming_up': coming_up,
             'high_egg_counts': high_egg_counts,
             'active_conditions': active_conditions,
@@ -659,25 +664,24 @@ def bulk_health_apply(request):
                         f"Not restored — {horse.name}: {'; '.join(e.messages)}"
                     )
         elif action_type == 'move':
-            for horse in horses:
-                try:
-                    moved = PlacementService.move_horse(
-                        horse,
-                        new_location=form.cleaned_data['new_location'],
-                        move_date=form.cleaned_data['move_date'],
-                        new_rate_type=form.cleaned_data.get('new_rate_type'),
-                        notes=form.cleaned_data.get('notes', ''),
-                    )
-                    count += 1
-                    # One rate for the whole batch cannot suit a batch
-                    # that came off different rates: name the ones left
-                    # on a rate that belongs elsewhere (core/rates.py).
-                    if rate_mismatch(moved.rate_type, moved.location):
-                        wrong_rate.append((horse.name, moved.rate_type.name))
-                except ValidationError as e:
-                    action_errors.append(
-                        f"Not moved — {horse.name}: {'; '.join(e.messages)}"
-                    )
+            # The same code as "Move horses" on a location
+            # (core.views.locations.location_move_horses).
+            moved, failed = PlacementService.move_group(
+                horses,
+                new_location=form.cleaned_data['new_location'],
+                move_date=form.cleaned_data['move_date'],
+                new_rate_type=form.cleaned_data.get('new_rate_type'),
+                notes=form.cleaned_data.get('notes', ''),
+            )
+            count = len(moved)
+            # One rate for the whole batch cannot suit a batch that came
+            # off different rates: name the ones left on a rate that
+            # belongs elsewhere (core/rates.py).
+            wrong_rate = [
+                (placement.horse.name, placement.rate_type.name) for placement in moved
+                if rate_mismatch(placement.rate_type, placement.location)
+            ]
+            action_errors += [f"Not moved — {horse.name}: {reason}" for horse, reason in failed]
         # Departure date actions update placements, not health records.
         # Placement saves re-validate dates (e.g. departure before arrival),
         # so each horse gets its own savepoint and failures are reported by
@@ -771,7 +775,10 @@ def bulk_health_apply(request):
     else:
         success_msg = f"{label} recorded for {count} horse{plural}."
     if count or not (action_errors or restore_skipped):
-        messages.success(request, success_msg)
+        # A move can be undone, as "Move horses" on a location can
+        # (core.views.locations.group_move_undo).
+        undo = group_move_undo_url(request.user, moved) if action_type == 'move' else ''
+        messages.success(request, success_msg, extra_tags=undo_tag(undo) if undo else '')
     for err in action_errors:
         messages.error(request, err)
     if wrong_rate:
@@ -882,6 +889,8 @@ class HealthRecordSuccessUrlMixin:
 
 
 class VaccinationCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'vaccination_type', 'date_given')
     feature = 'health'
     model = Vaccination
     form_class = VaccinationForm
@@ -907,6 +916,8 @@ class VaccinationCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordS
 
 
 class VaccinationUpdateView(CostNeedsChargesMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'vaccination_type', 'date_given')
     feature = 'health'
     model = Vaccination
     form_class = VaccinationForm
@@ -972,6 +983,8 @@ class VaccinationTypeUpdateView(SettingsReturnMixin, FeatureAccessMixin, UpdateV
 # ─── Farrier Views ───────────────────────────────────────────────────
 
 class FarrierCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'service_item', 'date', 'work_done', 'cost')
     feature = 'health'
     model = FarrierVisit
     form_class = FarrierVisitForm
@@ -997,6 +1010,8 @@ class FarrierCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSucce
 
 
 class FarrierUpdateView(CostNeedsChargesMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'service_item', 'date', 'work_done', 'cost')
     feature = 'health'
     model = FarrierVisit
     form_class = FarrierVisitForm
@@ -1041,6 +1056,8 @@ class WormingListView(FeatureAccessMixin, ListView):
 
 
 class WormingCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'date', 'product_name')
     feature = 'health'
     model = WormingTreatment
     form_class = WormingTreatmentForm
@@ -1066,6 +1083,8 @@ class WormingCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSucce
 
 
 class WormingUpdateView(CostNeedsChargesMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'date', 'product_name')
     feature = 'health'
     model = WormingTreatment
     form_class = WormingTreatmentForm
@@ -1109,6 +1128,8 @@ class WormEggCountListView(FeatureAccessMixin, ListView):
 
 
 class WormEggCountCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'date', 'count', 'sample_type')
     feature = 'health'
     model = WormEggCount
     form_class = WormEggCountForm
@@ -1134,6 +1155,8 @@ class WormEggCountCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecord
 
 
 class WormEggCountUpdateView(CostNeedsChargesMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'date', 'count', 'sample_type')
     feature = 'health'
     model = WormEggCount
     form_class = WormEggCountForm
@@ -1307,6 +1330,8 @@ class VetVisitListView(FeatureAccessMixin, ListView):
 
 
 class VetVisitCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'service_item', 'date', 'reason', 'cost')
     feature = 'health'
     model = VetVisit
     form_class = VetVisitForm
@@ -1332,6 +1357,8 @@ class VetVisitCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSucc
 
 
 class VetVisitUpdateView(CostNeedsChargesMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'service_item', 'date', 'reason', 'cost')
     feature = 'health'
     model = VetVisit
     form_class = VetVisitForm

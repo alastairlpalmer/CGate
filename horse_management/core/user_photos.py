@@ -12,6 +12,10 @@ SESSION_KEY = '_profile_photo'
 SIZE_KEY = '_display_size'
 SIZES = ('compact', 'medium', 'large')
 DEFAULT_SIZE = 'compact'
+# The size of everything on a phone or a tablet, kept the same way.
+PHONE_KEY = '_phone_text_size'
+PHONE_SIZES = ('standard', 'large')
+DEFAULT_PHONE_SIZE = 'standard'
 
 
 def remember(request, user):
@@ -22,12 +26,13 @@ def remember(request, user):
     from .models import UserProfile
     row = (
         UserProfile.objects.filter(user=user)
-        .values_list('photo', 'display_size')
+        .values_list('photo', 'display_size', 'phone_text_size')
         .first()
     )
-    name, size = row if row else ('', DEFAULT_SIZE)
+    name, size, phone = row if row else ('', DEFAULT_SIZE, DEFAULT_PHONE_SIZE)
     session[SESSION_KEY] = name or ''
     session[SIZE_KEY] = size if size in SIZES else DEFAULT_SIZE
+    session[PHONE_KEY] = phone if phone in PHONE_SIZES else DEFAULT_PHONE_SIZE
 
 
 def photo_url(request):
@@ -45,10 +50,21 @@ def display_size(request):
     return size if size in SIZES else DEFAULT_SIZE
 
 
+def phone_text_size(request):
+    session = getattr(request, 'session', None)
+    size = session.get(PHONE_KEY, DEFAULT_PHONE_SIZE) if session is not None else DEFAULT_PHONE_SIZE
+    return size if size in PHONE_SIZES else DEFAULT_PHONE_SIZE
+
+
 def context(request):
-    """Context processor: ``my_photo_url`` for the avatar, and
-    ``display_size`` (compact, medium or large) for <html>."""
+    """Context processor: ``my_photo_url`` for the avatar, and for <html>
+    ``display_size`` (compact, medium or large, on a computer) and
+    ``phone_text_size`` (standard or large, on a phone)."""
     user = getattr(request, 'user', None)
     if user is None or not user.is_authenticated:
-        return {'display_size': DEFAULT_SIZE}
-    return {'my_photo_url': photo_url(request), 'display_size': display_size(request)}
+        return {'display_size': DEFAULT_SIZE, 'phone_text_size': DEFAULT_PHONE_SIZE}
+    return {
+        'my_photo_url': photo_url(request),
+        'display_size': display_size(request),
+        'phone_text_size': phone_text_size(request),
+    }

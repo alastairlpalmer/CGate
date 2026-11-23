@@ -47,6 +47,12 @@ class PopupFormMixin:
     # One line at the top of the sheet: what the form is for, when the
     # button that opens it is too small to say (UX review C8).
     popup_intro = ''
+    # The fields the sheet shows first. When it is set, a new record's
+    # other fields wait under "More details", with "Save & add another":
+    # the usual record needs two or three answers, and a sheet of ten
+    # fields hid them (docs/MOBILE_APP_PLAN.md, C8). A field that must be
+    # filled in is never put there. Empty: every field shows, as before.
+    popup_main_fields = ()
 
     @property
     def in_popup(self):
@@ -73,7 +79,30 @@ class PopupFormMixin:
         context['popup_extra_template'] = self.popup_extra_template
         context['popup_deferred_fields'] = list(self.popup_deferred_fields)
         context['popup_intro'] = self.popup_intro if self.in_popup else ''
+        context.update(self._popup_more(context.get('form')))
         return context
+
+    def _popup_more(self, form):
+        """Which fields wait under "More details", and is it open."""
+        nothing = {'popup_more_fields': [], 'popup_more_open': False, 'popup_more_hint': ''}
+        if not (self.in_popup and self.popup_main_fields and form is not None):
+            return nothing
+        more = [
+            field for field in form.visible_fields()
+            if field.name not in self.popup_main_fields
+            and field.name not in self.popup_deferred_fields
+            and not field.field.required
+        ]
+        if not more:
+            return nothing
+        labels = [str(field.label).lower() for field in more]
+        return {
+            'popup_more_fields': [field.name for field in more],
+            # Open when someone came to change a saved record, and when a
+            # field in it has an error to show.
+            'popup_more_open': not self._is_create() or any(field.errors for field in more),
+            'popup_more_hint': ', '.join(labels[:4]) + (' and more' if len(labels) > 4 else ''),
+        }
 
     def _is_create(self):
         obj = getattr(self, 'object', None)

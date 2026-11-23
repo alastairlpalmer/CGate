@@ -1,0 +1,185 @@
+{% comment %}
+"Move horses" on a location: the horses that live there go to another
+location as a group (core.views.locations.location_move_horses).
+
+Shared by the pop-up sheet and the full page (locations/
+location_move_horses.html), as the single move form is. `in_popup` is True
+when the sheet asked for it: the form then posts back into the sheet.
+
+What someone does at a gate is two choices: which horses, and where to.
+So those lead. The date is today unless they say so; the rate and a note
+wait behind "More options".
+
+  rows         one for each horse that lives here: horse, owner, since,
+               can_move, ticked
+  ticked_json, movable_json, room_json
+               for the form's script: the horses that are ticked, the
+               horses that can be ticked ("Tick all"), and the spaces
+               left in each location that has a limit
+  neighbours   empty, rested ground on this site, nearest first
+
+Without JavaScript the form still works: the boxes are ticked by the
+server, the select and the date box are ordinary fields, and the button
+says "Move horses".
+{% endcomment %}
+<form method="post" action="{% url 'location_move_horses' location.pk %}"
+      {% if in_popup %}hx-post="{% url 'location_move_horses' location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"{% endif %}
+      data-testid="move-horses-form"
+      x-data="{
+          picked: {{ ticked_json }},
+          movable: {{ movable_json }},
+          dest: '{{ form.new_location.value|default_if_none:''|stringformat:'s' }}',
+          room: {{ room_json }},
+          over() { var spaces = this.room[this.dest]; return spaces === undefined ? 0 : Math.max(0, this.picked.length - spaces); },
+          pickDate: {% if form.move_date.value and form.move_date.value|stringformat:'s' != today|date:'Y-m-d' %}true{% else %}false{% endif %},
+          label() { return 'Move ' + this.picked.length + ' horse' + (this.picked.length === 1 ? '' : 's'); }
+      }">
+    {% csrf_token %}
+
+    <div class="px-4 py-3 space-y-4">
+
+        {% include 'includes/form_errors.html' with form=form intro="No horse was moved:" %}
+
+        {# ── Which horses ── #}
+        <fieldset>
+            <legend class="flex w-full items-baseline justify-between gap-3">
+                <span class="text-sm font-medium text-charcoal">Horses in {{ location.name }}</span>
+                {% if rows %}
+                <span class="text-sm text-charcoal-light" aria-live="polite" data-testid="move-count"
+                      x-text="picked.length + ' of {{ rows|length }} to move'">{{ ticked_count }} of {{ rows|length }} to move</span>
+                {% endif %}
+            </legend>
+            {% if rows %}
+            <p class="mt-0.5 text-sm text-charcoal-light">Untick a horse that stays.</p>
+            <ul class="move-pick-list" data-testid="move-pick-list">
+                {% for row in rows %}
+                <li>
+                    <label class="move-pick{% if not row.can_move %} is-stuck{% endif %}">
+                        <input type="checkbox" name="horse_ids" value="{{ row.horse.pk }}" class="form-checkbox rounded"
+                               x-model="picked"{% if row.ticked %} checked{% endif %}{% if not row.can_move %} disabled{% endif %}>
+                        {% include 'horses/_coat_dot.html' with horse=row.horse %}
+                        <span class="min-w-0 flex-1">
+                            <span class="move-pick-name">{{ row.horse.name }}</span>
+                            <span class="move-pick-sub">{% if row.owner %}{{ row.owner.name }} · {% endif %}here since {{ row.since|date:"j M" }}</span>
+                            {% if not row.can_move %}
+                            <span class="move-pick-note" data-testid="move-stuck">Arrived here today. You can move it tomorrow, or change the dates of its stay on its page.</span>
+                            {% endif %}
+                        </span>
+                    </label>
+                </li>
+                {% endfor %}
+            </ul>
+            {% if movable_count > 3 %}
+            <p class="mt-1 flex gap-4 text-sm">
+                <button type="button" class="link tap-pad" @click="picked = movable.slice()">Tick all</button>
+                <button type="button" class="link tap-pad" @click="picked = []">Untick all</button>
+            </p>
+            {% endif %}
+            {% else %}
+            <p class="mt-1 text-sm text-charcoal-light" data-testid="move-empty">No horses live in {{ location.name }} now.</p>
+            {% endif %}
+        </fieldset>
+
+        {# ── Where to ── #}
+        <div{% if form.new_location.errors %} class="field-invalid"{% endif %}>
+            <label for="{{ form.new_location.id_for_label }}" class="block text-sm font-medium text-charcoal">Move to *</label>
+            {% if neighbours %}
+            {% comment %}The same list as "Nearest ready ground" on the
+            location's sheet: one tap in place of a search through every
+            location of the yard.{% endcomment %}
+            <div class="mt-1 flex flex-wrap gap-2" role="group" aria-label="Nearest ready ground" data-testid="move-near">
+                {% for near in neighbours %}
+                <button type="button" class="chip" :class="dest === '{{ near.pk }}' && 'chip-on'"
+                        :aria-pressed="dest === '{{ near.pk }}' ? 'true' : 'false'" @click="dest = '{{ near.pk }}'">
+                    {{ near.name }} <span class="font-normal opacity-80">· {{ near.metres|floatformat:"0" }} m</span>
+                </button>
+                {% endfor %}
+            </div>
+            <p class="mt-1 text-xs text-charcoal-light">Nearest ready ground: empty and rested. Or choose from every location:</p>
+            {% endif %}
+            {# x-model is here and not in the form class: only this sheet has the buttons above. #}
+            {% with chosen=form.new_location.value|default_if_none:''|stringformat:'s' %}
+            <select name="new_location" id="{{ form.new_location.id_for_label }}" class="form-select" required x-model="dest">
+                {% for value, label in form.new_location.field.choices %}
+                {% if value == '' %}
+                <option value="">{{ label }}</option>
+                {% else %}
+                <optgroup label="{{ value }}">
+                    {% for pk, name in label %}
+                    <option value="{{ pk }}"{% if chosen == pk|stringformat:'s' %} selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </optgroup>
+                {% endif %}
+                {% endfor %}
+            </select>
+            {% endwith %}
+            {% if form.new_location.errors %}
+            <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.new_location.errors.0 }}</p>
+            {% endif %}
+            {# Said before the save, and it does not stop the save: a yard may put a group over a limit on purpose. #}
+            <p class="mt-1 text-sm text-saddle" role="status" x-show="over() > 0" x-cloak data-testid="move-over"
+               x-text="'This location has room for ' + room[dest] + ' more. This move puts it ' + over() + ' over its limit.'"></p>
+        </div>
+
+        {# ── When ── #}
+        <div{% if form.move_date.errors %} class="field-invalid"{% endif %} data-date-quick="off">
+            <span class="block text-sm font-medium text-charcoal" id="group-move-date-label">Move date *</span>
+            <div class="mt-1 flex flex-wrap items-center gap-2" role="group" aria-labelledby="group-move-date-label">
+                <button type="button" class="chip" :class="!pickDate && 'chip-on'" :aria-pressed="!pickDate"
+                        @click="pickDate = false; $refs.moveDate.value = '{{ today|date:'Y-m-d' }}'">Today</button>
+                <button type="button" class="chip" :class="pickDate && 'chip-on'" :aria-pressed="pickDate"
+                        @click="pickDate = true; $nextTick(() => $refs.moveDate.focus())">Pick a date</button>
+            </div>
+            {# Always in the form so the value is sent; shown only when a date is picked. #}
+            <div x-show="pickDate" x-cloak class="mt-2">
+                <label for="id_group_move_date" class="sr-only">Move date</label>
+                <input type="date" name="move_date" id="id_group_move_date" required x-ref="moveDate" max="{{ today|date:'Y-m-d' }}"
+                       class="form-input !mt-0" value="{{ form.move_date.value|date:'Y-m-d'|default:form.move_date.value|default_if_none:'' }}">
+                <p class="mt-1 text-xs text-charcoal-light">Today or a day before today.</p>
+            </div>
+            {% if form.move_date.errors %}
+            <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.move_date.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <details class="group"{% if form.new_rate_type.value or form.notes.value or form.new_rate_type.errors or form.notes.errors %} open{% endif %}>
+            <summary class="inline-flex items-center gap-1.5 min-h-[44px] sm:min-h-0 text-sm font-medium text-forest cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                <svg class="w-4 h-4 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                </svg>
+                More options
+                <span class="font-normal text-charcoal-light">· rate, notes</span>
+            </summary>
+            <div class="mt-3 space-y-3">
+                <div{% if form.new_rate_type.errors %} class="field-invalid"{% endif %}>
+                    <label for="{{ form.new_rate_type.id_for_label }}" class="block text-sm font-medium text-charcoal">New rate</label>
+                    {{ form.new_rate_type }}
+                    {% if form.new_rate_type.errors %}
+                    <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.new_rate_type.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-charcoal-light">Leave empty and each horse keeps its rate. Each horse keeps its owner and its expected departure date.</p>
+                </div>
+                <div{% if form.notes.errors %} class="field-invalid"{% endif %}>
+                    <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-charcoal">Notes</label>
+                    {{ form.notes }}
+                    {% if form.notes.errors %}
+                    <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.notes.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </details>
+    </div>
+
+    <div class="{% if in_popup %}popup-footer{% else %}form-footer{% endif %}">
+        {% if in_popup %}
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        {% else %}
+        <a href="{% url 'location_detail' location.pk %}" class="btn-secondary">Cancel</a>
+        {% endif %}
+        <button type="submit" class="btn-primary" data-testid="move-submit"{% if not rows %} disabled{% endif %}
+                :disabled="!picked.length" :class="!picked.length && 'opacity-50 cursor-not-allowed'">
+            <svg class="w-4 h-4" aria-hidden="true"><use href="#i-arrows-lr"/></svg>
+            <span x-text="label()">Move horses</span>
+        </button>
+    </div>
+</form>

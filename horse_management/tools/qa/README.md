@@ -36,6 +36,31 @@ node tools/qa/farrier_phone_qa.js http://127.0.0.1:8765 /tmp/farrier-qa
 The report lists, per phone and screen, overflow and tap targets under
 44 px. Screenshots go in the same folder.
 
+## The phone review
+
+`phone_yard_seed.py` and `phone_review.js` are kept on purpose: they are
+the check for each phase of `docs/MOBILE_APP_PLAN.md`. Run them against a
+throwaway database, with the features on that the phone shows:
+
+```bash
+export DATABASE_URL=sqlite:////tmp/phone-qa.sqlite3 DEBUG=True QA_NO_TOOLBAR=1 MFA_REQUIRED_FOR_ADMINS=False AXES_ENABLED=False
+export TRAINING_ENABLED=True LOCATION_MAPS_ENABLED=True
+python manage.py migrate
+python manage.py shell < tools/qa/seed_qa.py
+python manage.py shell < tools/qa/mobile_seed.py
+python manage.py shell < tools/qa/phone_yard_seed.py
+python manage.py runserver 127.0.0.1:8765 --noreload
+mkdir -p /tmp/phone-qa && node tools/qa/phone_review.js http://127.0.0.1:8765 /tmp/phone-qa
+```
+
+Part 1 prints one line for each page: its height in screens, the fixed
+bars, the share of text that is 12 px or smaller, and the size of the
+HTML. Part 2 prints PASS or FAIL for the behaviour items of the plan (a
+tap with no signal, a save with no signal, an ended sign-in, the Back
+button, page copies after sign-out, the download for one tap).
+Screenshots go in the same folder. It is Chromium, not a phone: the test
+on real phones is section 8 of the plan.
+
 ## The C-vet offline check
 
 `cvet_offline_qa.js` is kept on purpose: it is the browser check of the
@@ -74,3 +99,17 @@ nothing goes into the yard's records. To check the real path, set
 `CVET_TEST_MODE=False` for the server and for the script, on a fresh
 throwaway database. The script then prints the yard records to look for:
 vaccination records, a vet visit record, charges and a cost.
+
+## The pictures in the app's manifest
+
+`app_shots_seed.py` and `app_shots.js` are kept on purpose: they make the
+three pictures that `static/manifest.json` names
+(`docs/MOBILE_APP_PLAN.md`, item D3). Android shows them when it offers
+to install the app. The seed is a small yard with made-up names, so no
+real horse or owner is in a picture. Run them again after a change to the
+dashboard, the horse list or a horse page on a phone. The steps are at
+the top of `app_shots_seed.py`.
+
+`tools/make_start_images.py` draws the pictures an iPhone shows while
+the installed app starts (`static/start/`). Run it again when the icon
+changes or a new screen size is added to `core/start_images.py`.

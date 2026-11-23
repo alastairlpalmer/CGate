@@ -16,6 +16,18 @@
  *   - a disabled or read-only box
  *
  * "Today" is the device's date, as the date box itself uses.
+ *
+ * A date that is weeks or months away (the next due date of a
+ * vaccination) gets its own buttons in place of the three days
+ * (docs/MOBILE_APP_PLAN.md, C8). The box names them:
+ *
+ *   data-date-quick="+6m +12m"       "+6 months", "+12 months"
+ *   data-date-quick="+6w +8w"        "+6 weeks", "+8 weeks"
+ *   data-date-quick-from="date_given"
+ *
+ * They count from the date in the box named by data-date-quick-from (the
+ * date the vaccination was given), or from today when that box is empty
+ * or not named.
  */
 (function () {
     'use strict';
@@ -31,6 +43,54 @@
     function isoDay(now, offset) {
         var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset, 12);
         return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    }
+
+    var UNITS = { d: ['day', 'days'], w: ['week', 'weeks'], m: ['month', 'months'] };
+
+    // "+6m +12m" → [{ amount: 6, unit: 'm', label: '+6 months' }, …].
+    // Anything that is not such a list gives [].
+    function parseSpec(spec) {
+        var out = [];
+        String(spec || '').split(/[\s,]+/).forEach(function (token) {
+            var m = /^\+(\d{1,3})([dwm])$/.exec(token);
+            if (!m) return;
+            var amount = parseInt(m[1], 10);
+            out.push({ amount: amount, unit: m[2], label: '+' + amount + ' ' + UNITS[m[2]][amount === 1 ? 0 : 1] });
+        });
+        return out;
+    }
+
+    // The ISO date `amount` days, weeks or months after the ISO date
+    // `from`. A month that is too short gives its last day: 31 August
+    // + 6 months is 28 February.
+    function shift(from, amount, unit) {
+        var parts = String(from).split('-');
+        var y = parseInt(parts[0], 10), mo = parseInt(parts[1], 10) - 1, d = parseInt(parts[2], 10);
+        var out;
+        if (unit === 'm') {
+            var last = new Date(y, mo + amount + 1, 0, 12).getDate();
+            out = new Date(y, mo + amount, Math.min(d, last), 12);
+        } else {
+            out = new Date(y, mo, d + amount * (unit === 'w' ? 7 : 1), 12);
+        }
+        return out.getFullYear() + '-' + pad(out.getMonth() + 1) + '-' + pad(out.getDate());
+    }
+
+    // The box the buttons count from, or null.
+    function fromBox(box) {
+        var name = box.dataset ? box.dataset.dateQuickFrom : '';
+        if (!name || !box.form || !box.form.querySelector) return null;
+        return box.form.querySelector('input[name$="' + name + '"]');
+    }
+
+    // The day a button stands for, today.
+    function dayOf(box, b) {
+        if (b.dataset.unit) {
+            var from = fromBox(box);
+            var start = from && /^\d{4}-\d{2}-\d{2}$/.test(from.value) ? from.value : isoDay(new Date(), 0);
+            return shift(start, parseInt(b.dataset.amount, 10), b.dataset.unit);
+        }
+        return isoDay(new Date(), parseInt(b.dataset.offset, 10));
     }
 
     // True when a box should get no buttons. `box` needs only name,
@@ -59,7 +119,7 @@
         var buttons = bar.querySelectorAll('button');
         for (var i = 0; i < buttons.length; i++) {
             var b = buttons[i];
-            var day = isoDay(new Date(), parseInt(b.dataset.offset, 10));
+            var day = dayOf(box, b);
             b.disabled = !allowed(day, box.min, box.max);
             b.setAttribute('aria-pressed', box.value === day ? 'true' : 'false');
         }
@@ -72,14 +132,18 @@
         bar.className = 'date-quick';
         bar.setAttribute('role', 'group');
         bar.setAttribute('aria-label', 'Quick dates for ' + labelFor(box));
-        DAYS.forEach(function (pair) {
+        var later = parseSpec(box.dataset.dateQuick);
+        var choices = later.length
+            ? later.map(function (c) { return { label: c.label, set: { amount: String(c.amount), unit: c.unit } }; })
+            : DAYS.map(function (pair) { return { label: pair[0], set: { offset: String(pair[1]) } }; });
+        choices.forEach(function (choice) {
             var b = document.createElement('button');
             b.type = 'button';
             b.className = 'date-quick-btn';
-            b.textContent = pair[0];
-            b.dataset.offset = String(pair[1]);
+            b.textContent = choice.label;
+            Object.keys(choice.set).forEach(function (key) { b.dataset[key] = choice.set[key]; });
             b.addEventListener('click', function () {
-                box.value = isoDay(new Date(), pair[1]);
+                box.value = dayOf(box, b);
                 box.dispatchEvent(new Event('input', { bubbles: true }));
                 box.dispatchEvent(new Event('change', { bubbles: true }));
                 refresh(box, bar);
@@ -87,6 +151,13 @@
             bar.appendChild(b);
         });
         box.insertAdjacentElement('afterend', bar);
+        // "+6 months" counts from another box: when that date changes,
+        // the button that is pressed can change too.
+        var from = later.length ? fromBox(box) : null;
+        if (from) {
+            from.addEventListener('input', function () { refresh(box, bar); });
+            from.addEventListener('change', function () { refresh(box, bar); });
+        }
         box.addEventListener('input', function () { refresh(box, bar); });
         box.addEventListener('change', function () { refresh(box, bar); });
         refresh(box, bar);
@@ -100,7 +171,7 @@
     }
 
     if (typeof module !== 'undefined' && module.exports) {
-        module.exports = { isoDay: isoDay, skip: skip, allowed: allowed };
+        module.exports = { isoDay: isoDay, skip: skip, allowed: allowed, parseSpec: parseSpec, shift: shift };
     }
     if (typeof document !== 'undefined') {
         document.addEventListener('htmx:load', function (e) { enhanceAll(e.target); });

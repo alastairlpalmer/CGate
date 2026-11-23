@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-ui-size="{{ display_size|default:'compact' }}">
+<html lang="en" data-ui-size="{{ display_size|default:'compact' }}" data-phone-text="{{ phone_text_size|default:'standard' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -7,6 +7,18 @@
     {% load static %}
     {% load cache_bust %}
     {% load ui_extras %}
+    {% load app_shell %}
+    {% comment %}
+    A tap on a link replaces #main-content only (hx-boost on <body>). It
+    reads three things from the response: the title, the messages and
+    #main-content. So for such a request (slim_page, set by
+    core.context_processors.page_frame) the page is made without its
+    frame: no head assets, sidebar, bars, sheets or scripts. That frame is
+    about 106 KB of each page, and the phone already has it
+    (docs/MOBILE_APP_PLAN.md, item B1). Each "if not slim_page" below
+    takes out one part of the frame.
+    {% endcomment %}
+    {% if not slim_page %}
     <!-- PWA: installable, branded home-screen app -->
     <meta name="theme-color" content="#3D5A63">
     <link rel="manifest" href="{% static_v 'manifest.json' %}">
@@ -14,6 +26,15 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{% static 'icons/favicon-16.png' %}">
     <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
     <meta name="apple-mobile-web-app-title" content="Cgate">
+    {# An iPhone opens the installed app with no browser bars, and shows a picture while it starts (not a white screen). #}
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    {% start_image_links %}
+    {# The version that made this page. A tap compares it with the server's (js/connection.js). #}
+    <meta name="app-version" content="{% app_version %}">
+    {# The service worker: files kept on the phone, and a page for no signal (js/app_install.js). Empty: switched off. #}
+    <meta name="app-worker" content="{{ app_worker_url }}">
     <!-- Brand fonts are self-hosted (static/fonts, declared in css/input.css).
          Preload the two text faces so the first paint uses them; JetBrains
          Mono is only for figures and can arrive with the stylesheet. -->
@@ -32,8 +53,18 @@
     <!-- Tailwind CSS (compiled) -->
     <link rel="stylesheet" href="{% static_v 'css/styles.css' %}">
     <!-- Alpine.js + Collapse plugin (vendored locally — no CDN round trip) -->
+    {# The phone's Back button closes a sheet or a drawer. The scripts below call it. #}
+    <script defer src="{% static_v 'js/overlay_back.js' %}"></script>
     {# popup.js registers an Alpine store on alpine:init, so it must run before Alpine starts #}
     <script defer src="{% static_v 'js/popup.js' %}"></script>
+    {# A failed request, no signal, a long time in the background, a new version. #}
+    <script defer src="{% static_v 'js/connection.js' %}"></script>
+    {# A tap shows at once: the tab is marked, and a slow page dims. #}
+    <script defer src="{% static_v 'js/tap_feedback.js' %}"></script>
+    {# The installed app: registers the service worker, and helps a phone to install the app. #}
+    <script defer src="{% static_v 'js/app_install.js' %}"></script>
+    {# On a phone a PDF goes to the share sheet, so the page stays where it is. #}
+    <script defer src="{% static_v 'js/share_file.js' %}"></script>
     {# notifications.js registers the drawer's Alpine store on alpine:init #}
     <script defer src="{% static_v 'js/notifications.js' %}"></script>
     {# lightbox.js registers an Alpine store on alpine:init, so it must run before Alpine starts #}
@@ -115,11 +146,15 @@
     </script>
     {% include 'includes/posthog.html' %}
     {% block extra_head %}{% endblock %}
+    {% endif %}
 </head>
+{# x-init: the phone's Back button closes the More sheet (js/overlay_back.js). #}
 <body class="bg-parchment font-body antialiased text-charcoal" x-data="{ moreSheetOpen: false }"
+      x-init="$watch('moreSheetOpen', open => window.Yardway && Yardway.overlay && Yardway.overlay.sync('more', open, () => { moreSheetOpen = false }, () => moreSheetOpen))"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
       hx-boost="true" hx-swap="outerHTML show:window:top transition:true" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
 
+    {% if not slim_page %}
     <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-btn focus:bg-white focus:text-charcoal focus:ring-2 focus:ring-forest">Skip to content</a>
 
     <!-- ── Progress Bar ── -->
@@ -133,48 +168,27 @@
     <!-- ── Sidebar (desktop only) ── -->
     {% include 'includes/_sidebar.html' %}
     {% include 'includes/_notification_drawer.html' %}
+    {% endif %}
 
     <!-- ── Main Wrapper ── -->
     <div class="app-shell lg:pl-64 min-h-[100dvh] flex flex-col">
 
-        <!-- Top bar (mobile — slim bar that names the section you are in) -->
-        {% comment %}List pages hide their <h1> on a phone to save a row, which
-        left the small tab label as the only sign of where you are. This bar
-        was spending 44px on the product's name, so it now says the section:
-        "Horses" on the horse list and on a horse's page, "Invoices" under
-        More. The dashboard, and a page in no section, keep the name.
-        syncMoreTab() fills it from the same active nav item the More tab
-        reads; the two tab sections are also set here so a full load does
-        not show the name first.{% endcomment %}
-        {# data-mobile-brand: the phone Locations page hides this row — the #}
-        {# site selector on it already names the yard (static/css/input.css). #}
-        <header data-mobile-brand class="sticky top-0 z-30 bg-parchment/80 backdrop-blur border-b border-light-sage lg:hidden">
-            <div class="relative flex items-center justify-center h-11 px-4">
-                {% if user.is_authenticated %}
-                {# The notification centre, on a phone (the sidebar has it on a computer). #}
-                <button type="button" class="phone-bell" @click="$store.notif.toggle()"
-                        :aria-expanded="$store.notif.open ? 'true' : 'false'" aria-controls="notif-drawer"
-                        aria-label="Notifications" title="Notifications">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
-                    <span id="notif-count-phone" class="notif-count notif-count-dot hidden"></span>
-                </button>
-                {% endif %}
-                <div class="flex items-center gap-1.5">
-                    <svg class="w-5 h-5 text-forest" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M22 16c0 5.523-3.134 10-7 10s-7-4.477-7-10S11.134 6 15 6s7 4.477 7 10z" stroke="currentColor" stroke-width="2.2" fill="none"/>
-                        <line x1="15" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        <line x1="15" y1="16" x2="21" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        <line x1="15" y1="20" x2="21" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                    <span class="text-base font-semibold text-charcoal font-heading truncate" data-brand-label data-brand="Cgate">{% if '/horses/' in request.path %}Horses{% elif '/locations/' in request.path or '/placements/' in request.path %}Locations{% else %}Cgate{% endif %}</span>
-                </div>
-            </div>
-        </header>
-
+        {% if not slim_page %}
+        {% comment %}One bar at the top of a phone (docs/MOBILE_APP_PLAN.md,
+        item C1). There were two: a 44px bar with the section's name, and
+        the bar with the search. The name bar is gone: the tab bar names the
+        section, and each page shows its own title as a heading.{% endcomment %}
         {% comment %}The app bar sits outside #main-content on purpose:
         hx-boost only swaps that element, so search and Add survive every
         navigation.{% endcomment %}
         {% include 'includes/_app_bar.html' %}
+
+        {# Shows while the browser reports no connection (js/connection.js). #}
+        <div id="offline-mark" class="offline-mark" role="status" hidden>
+            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856a9.72 9.72 0 012.52-1.84m3.106-1.02a9.75 9.75 0 018.162 2.86M1.924 8.674a14.2 14.2 0 013.2-2.37m3.42-1.32c4.74-1.18 9.98.05 13.532 3.69M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z"/></svg>
+            No signal
+        </div>
+        {% endif %}
 
         <!-- Toast Messages — always rendered (with a stable id) so boosted
              navigations can lift fresh toasts out of the full response;
@@ -208,7 +222,8 @@
                 <form method="post" action="{{ restore_url }}" class="shrink-0">
                     {% csrf_token %}
                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                    <button type="submit" class="font-semibold underline underline-offset-2">Undo</button>
+                    {# toast-action: a thumb-size tap box. A slip is put right on a phone, at a gate. #}
+                    <button type="submit" class="toast-action" data-testid="toast-undo">Undo</button>
                 </form>
                 {% endif %}{% endwith %}
                 <button @click="show = false" class="shrink-0 -m-2 p-2 text-current opacity-50 hover:opacity-100" aria-label="Dismiss">
@@ -226,14 +241,17 @@
             {% block content %}{% endblock %}
         </main>
 
+        {% if not slim_page %}
         <!-- Footer (hidden on mobile — tab bar replaces it) -->
         <footer class="border-t border-light-sage mt-auto hidden lg:block">
             <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
                 <p class="text-center text-sage text-xs">Cgate &mdash; Equine livery management</p>
             </div>
         </footer>
+        {% endif %}
     </div>
 
+    {% if not slim_page %}
     <!-- ── Mobile Bottom Tab Bar ── -->
     {% if user.is_authenticated %}
     <nav class="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-light-sage lg:hidden tab-bar-safe"
@@ -273,6 +291,19 @@
                     <svg class="w-6 h-6" aria-hidden="true"><use href="#i-stopwatch"/></svg>
                 </span>
                 <span class="tab-bar-label">Training</span>
+            </a>
+            {% elif feature_access.health.view %}
+            {% comment %}With no Training tab the bar has a free place, and
+            health records are a daily job on a phone: Health takes it and
+            leaves the More sheet (item C2). Farrier and Breeding stay in
+            More and their addresses start with /health/ too, so
+            data-nav-skip keeps this tab from marking itself for them.{% endcomment %}
+            <a href="{% url 'health_dashboard' %}" id="tab-health" data-nav-skip="/health/farrier /health/breeding/"
+               class="tab-bar-item {% if '/health/' in request.path and '/health/breeding/' not in request.path and '/health/farrier' not in request.path %}active{% endif %}">
+                <span class="tab-bar-icon">
+                    <svg class="w-6 h-6" aria-hidden="true"><use href="#i-stethoscope"/></svg>
+                </span>
+                <span class="tab-bar-label">Health</span>
             </a>
             {% endif %}
             {% comment %}The pages behind this button have no tab of their own,
@@ -318,7 +349,8 @@
                 {% if feature_access.health.view or feature_access.charges.view or feature_access.breeding.view or feature_access.feed.view %}
                 <p class="text-xs font-semibold text-sage uppercase tracking-widest px-3 pt-3 pb-2">Manage</p>
                 {% endif %}
-                {% if feature_access.health.view %}
+                {# Health is here only when Training has its place on the tab bar (see the bar). #}
+                {% if feature_access.health.view and training_enabled and feature_access.training.view %}
                 <a href="{% url 'health_dashboard' %}" class="sheet-nav-item {% if '/health/' in request.path and '/health/breeding/' not in request.path and '/health/farrier' not in request.path %}sheet-nav-item-active{% endif %}">
                     <svg class="w-5 h-5 shrink-0" aria-hidden="true"><use href="#i-stethoscope"/></svg>
                     Health
@@ -522,18 +554,69 @@
             if (label) label.textContent = 'More';
             tab.classList.remove('active');
         }
-        // The phone's top bar names the section too (see the bar's comment):
-        // the current More item, or else the current tab. The dashboard is
-        // home, so it keeps the product's name, as does a page in no section.
-        var brand = document.querySelector('[data-brand-label]');
-        if (brand) {
-            var section = active ? active.textContent.trim() : '';
-            if (!section) {
-                var current = document.querySelector('#mobile-tab-bar a.tab-bar-item.active .tab-bar-label');
-                section = current ? current.textContent.trim() : '';
-            }
-            brand.textContent = (section && section !== 'Dashboard') ? section : brand.getAttribute('data-brand');
+    };
+
+    // ── The current section, in the sidebar, the tab bar and the More sheet ──
+    // After each page change, and at once on a tap on one of those links
+    // (static/js/tap_feedback.js), which passes the path it is going to.
+    window.Yardway.syncNav = function (forPath) {
+        // Only the link with the longest matching href prefix is active, so
+        // nested routes (e.g. /health/breeding/ under /health/) highlight one
+        // item, not both.
+        var path = forPath || window.location.pathname;
+        function pickActive(links) {
+            var best = null;
+            links.forEach(function(a) {
+                var href = a.getAttribute('href');
+                if (!href || href === '#') return;
+                // data-nav-skip takes addresses out of a link's section:
+                // the Health tab is not the place for /health/farrier/.
+                var skips = (a.getAttribute('data-nav-skip') || '').split(/\s+/);
+                if (skips.some(function (p) { return p && path.startsWith(p); })) return;
+                // data-nav-match widens a link to a section: the Farrier
+                // link also covers /health/farrier-visits/..., and the
+                // Finances link covers all four of its tabs. It may hold
+                // several prefixes, separated by spaces; the longest
+                // prefix that matches wins.
+                var prefixes = (a.getAttribute('data-nav-match') || href).split(/\s+/);
+                var prefix = '';
+                prefixes.forEach(function (p) {
+                    if (p && path.startsWith(p) && p.length > prefix.length) prefix = p;
+                });
+                var matches = (href === '/' && path === '/') || (href !== '/' && prefix !== '');
+                if (matches && (!best || prefix.length > best._navPrefix.length)) { best = a; best._navPrefix = prefix; }
+            });
+            return best;
         }
+        // Desktop sidebar
+        var sidebarLinks = Array.prototype.slice.call(document.querySelectorAll('aside nav a[href]'));
+        var sidebarActive = pickActive(sidebarLinks);
+        sidebarLinks.forEach(function(a) {
+            var href = a.getAttribute('href');
+            if (!href || href === '#') return;
+            a.className = (a === sidebarActive) ? 'nav-link-active' : 'nav-link';
+        });
+        // Mobile tab bar
+        var tabBar = document.getElementById('mobile-tab-bar');
+        if (tabBar) {
+            var tabLinks = Array.prototype.slice.call(tabBar.querySelectorAll('a[href]'));
+            var tabActive = pickActive(tabLinks);
+            tabLinks.forEach(function(a) {
+                var href = a.getAttribute('href');
+                if (!href || href === '#') return;
+                if (a === tabActive) { a.classList.add('active'); } else { a.classList.remove('active'); }
+            });
+        }
+        // More sheet items
+        var sheetLinks = Array.prototype.slice.call(document.querySelectorAll('.sheet-nav-item, .sheet-nav-item-active'))
+            .filter(function(a) { return !a.classList.contains('text-error-red'); });
+        var sheetActive = pickActive(sheetLinks);
+        sheetLinks.forEach(function(a) {
+            var href = a.getAttribute('href');
+            if (!href || href === '#') return;
+            a.className = (a === sheetActive) ? 'sheet-nav-item-active' : 'sheet-nav-item';
+        });
+        window.Yardway.syncMoreTab();
     };
 
     // ── Progress bar ──
@@ -579,60 +662,8 @@
             void main.offsetWidth;
             main.classList.add('page-enter');
         }
-        // Update nav active states based on current path.
-        // Only the link with the longest matching href prefix is active, so
-        // nested routes (e.g. /health/breeding/ under /health/) highlight one
-        // item, not both.
-        var path = window.location.pathname;
-        function pickActive(links) {
-            var best = null;
-            links.forEach(function(a) {
-                var href = a.getAttribute('href');
-                if (!href || href === '#') return;
-                // data-nav-match widens a link to a section: the Farrier
-                // link also covers /health/farrier-visits/..., and the
-                // Finances link covers all four of its tabs. It may hold
-                // several prefixes, separated by spaces; the longest
-                // prefix that matches wins.
-                var prefixes = (a.getAttribute('data-nav-match') || href).split(/\s+/);
-                var prefix = '';
-                prefixes.forEach(function (p) {
-                    if (p && path.startsWith(p) && p.length > prefix.length) prefix = p;
-                });
-                var matches = (href === '/' && path === '/') || (href !== '/' && prefix !== '');
-                if (matches && (!best || prefix.length > best._navPrefix.length)) { best = a; best._navPrefix = prefix; }
-            });
-            return best;
-        }
-        // Desktop sidebar
-        var sidebarLinks = Array.prototype.slice.call(document.querySelectorAll('aside nav a[href]'));
-        var sidebarActive = pickActive(sidebarLinks);
-        sidebarLinks.forEach(function(a) {
-            var href = a.getAttribute('href');
-            if (!href || href === '#') return;
-            a.className = (a === sidebarActive) ? 'nav-link-active' : 'nav-link';
-        });
-        // Mobile tab bar
-        var tabBar = document.getElementById('mobile-tab-bar');
-        if (tabBar) {
-            var tabLinks = Array.prototype.slice.call(tabBar.querySelectorAll('a[href]'));
-            var tabActive = pickActive(tabLinks);
-            tabLinks.forEach(function(a) {
-                var href = a.getAttribute('href');
-                if (!href || href === '#') return;
-                if (a === tabActive) { a.classList.add('active'); } else { a.classList.remove('active'); }
-            });
-        }
-        // More sheet items
-        var sheetLinks = Array.prototype.slice.call(document.querySelectorAll('.sheet-nav-item, .sheet-nav-item-active'))
-            .filter(function(a) { return !a.classList.contains('text-error-red'); });
-        var sheetActive = pickActive(sheetLinks);
-        sheetLinks.forEach(function(a) {
-            var href = a.getAttribute('href');
-            if (!href || href === '#') return;
-            a.className = (a === sheetActive) ? 'sheet-nav-item-active' : 'sheet-nav-item';
-        });
-        window.Yardway.syncMoreTab();
+        // The current section, in the sidebar, the tab bar and the More sheet.
+        window.Yardway.syncNav();
         // Page title, toasts, Alpine, inline scripts
         var responseText = e.detail.xhr && e.detail.xhr.responseText;
         window.Yardway.afterMainSwap(main, responseText);
@@ -652,6 +683,8 @@
     document.body.addEventListener('htmx:historyRestore', function () {
         var slot = document.getElementById('app-bar-slot');
         if (slot) slot.innerHTML = '';
+        // The copy holds the bars as they were when the page was left.
+        window.Yardway.syncNav();
     });
 
     // ── Stale-target guard for overlapping boosted navigations ──
@@ -975,6 +1008,7 @@ document.addEventListener('alpine:init', function() {
     });
 });
 </script>
+{% endif %}
 
 </body>
 </html>

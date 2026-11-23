@@ -7,6 +7,18 @@
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">
     {% include "account/_code_input.html" with label="Code from your app, or a recovery code" inputmode="text" %}
+    {% if remember_days %}
+    <div>
+        <label class="flex items-center gap-3 min-h-[44px] text-sm text-charcoal cursor-pointer">
+            <input type="checkbox" name="remember" value="1" class="form-checkbox shrink-0"{% if remember %} checked{% endif %}>
+            <span>Remember this device for {{ remember_days }} day{{ remember_days|pluralize }}</span>
+        </label>
+        <p class="text-xs text-sage">
+            Sign-in on this device then asks for your password only.
+            Do not tick this on a device that other people use.
+        </p>
+    </div>
+    {% endif %}
     <button type="submit" class="btn-primary w-full min-h-[44px]">Continue</button>
 </form>
 <p class="text-sm text-sage">

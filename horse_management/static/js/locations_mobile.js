@@ -185,7 +185,9 @@
 
     // The block of locations with no boundary. It keeps its place at the
     // end of the list — sorting it beside the mapped ones would suggest a
-    // position it does not have — but the filter still applies.
+    // position it does not have — but the filter and the sort still apply
+    // inside it. On a site with no map this block is the whole list, and
+    // until November 2026 the two sort buttons did nothing there.
     function applyUnmapped() {
         var box = document.querySelector('[data-loc-unmapped]');
         if (!box) { return 0; }
@@ -196,6 +198,10 @@
             r.el.hidden = !on;
             if (on) { shown++; }
         });
+        // The rows come after the block's heading, so an append in order
+        // sorts them and leaves the heading first.
+        rows.sort(function (a, b) { return compareRows(state.sort, a, b); });
+        rows.forEach(function (r) { box.appendChild(r.el); });
         box.hidden = shown === 0;
         var count = box.querySelector('[data-loc-unmapped-count]');
         if (count) { count.textContent = String(shown); }
@@ -230,6 +236,10 @@
         state.pk = String(pk);
         detail.hidden = false;
         if (list) { list.hidden = true; }
+        // The phone's Back button goes back to the list (overlay_back.js).
+        if (window.Yardway && Yardway.overlay) {
+            Yardway.overlay.opened('location', clearSelection, function () { return state.pk !== null && !!page(); });
+        }
         if (changed && window.htmx) {
             // `select` is named because htmx.ajax with no source element
             // falls back to <body>, whose hx-select is #main-content for
@@ -243,7 +253,7 @@
                 target: '#loc-sheet-detail',
                 select: '#loc-sheet-content',
                 swap: 'innerHTML'
-            });
+            }).catch(function () { /* said by js/connection.js */ });
         }
         if (state.snap === 'peek') { setSnap('half'); }
         markRows();
@@ -258,6 +268,7 @@
         var detail = document.getElementById('loc-sheet-detail');
         var list = document.querySelector('[data-loc-list]');
         state.pk = null;
+        if (window.Yardway && Yardway.overlay) { Yardway.overlay.closed('location'); }
         if (detail) { detail.hidden = true; }
         if (list) { list.hidden = false; }
         markRows();

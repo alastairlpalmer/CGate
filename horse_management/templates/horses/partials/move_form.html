@@ -77,13 +77,14 @@ owner, rate and expected departure sit behind "More options".
         </div>
 
         <details class="group" x-ref="more"
-                 {% if form.new_owner.value or form.new_rate_type.value or form.expected_departure.value or form.new_owner.errors or form.new_rate_type.errors or form.expected_departure.errors %}open{% endif %}>
+                 {% comment %}The date the form starts with is the one of the stay now: it is kept, and it does not open the block. A date the person sent does.{% endcomment %}
+                 {% if form.new_owner.value or form.new_rate_type.value or form.is_bound and form.expected_departure.value or form.new_owner.errors or form.new_rate_type.errors or form.expected_departure.errors %}open{% endif %}>
             <summary class="inline-flex items-center gap-1.5 min-h-[44px] sm:min-h-0 text-sm font-medium text-forest cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
                 <svg class="w-4 h-4 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
                 </svg>
                 More options
-                <span class="font-normal text-sage">· owner, rate, expected departure</span>
+                <span class="font-normal text-sage">· owner, rate, expected departure{% if not form.is_bound and form.expected_departure.value %} <span data-testid="move-keeps-departure">({{ form.expected_departure.value|date:"j M" }})</span>{% endif %}</span>
             </summary>
 
             <div class="mt-3 space-y-3">
@@ -113,7 +114,7 @@ owner, rate and expected departure sit behind "More options".
                     {% if form.expected_departure.errors %}
                     <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.expected_departure.errors.0 }}</p>
                     {% endif %}
-                    <p class="mt-1 text-xs text-sage">When is this horse expected to leave?</p>
+                    <p class="mt-1 text-xs text-sage">The day the horse leaves the yard. A move keeps the date of the stay now. Change it if the plan changed.</p>
                 </div>
             </div>
         </details>

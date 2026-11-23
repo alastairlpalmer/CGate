@@ -198,6 +198,8 @@ def mfa_verify(request):
 
     if request.user.is_verified() or mfa.passed_by_google(request):
         return redirect(_safe_next(request))
+    if request.method == 'GET' and mfa.pass_remembered_device(request):
+        return redirect(_safe_next(request))
     if not mfa.remember_enrolment(request):
         # Turned off since this session signed in (for example by the user
         # on another device). Nothing to verify.
@@ -219,7 +221,17 @@ def mfa_verify(request):
                     f"You used a recovery code. {left} left. "
                     "Make new codes, or set up your app again, on your Account security page.",
                 )
-            return redirect(_safe_next(request))
+            response = redirect(_safe_next(request))
+            # "Remember this device": the box is ticked when the page opens.
+            if request.POST.get('remember') and mfa.remember_device(response, request.user):
+                audit.record(
+                    AuditEvent.Action.MFA_DEVICE_REMEMBERED, request=request, target=request.user,
+                    detail=f'{mfa.remember_days()} days',
+                )
+            else:
+                # Not ticked: a device that was remembered before is not now.
+                mfa.forget_this_device(response)
+            return response
         error = (
             "That code did not work. Check that the time on your phone is set "
             "automatically, wait for a new code, and try again. "
@@ -228,6 +240,9 @@ def mfa_verify(request):
     return render(request, 'account/mfa_verify.html', {
         'error': error,
         'next': request.POST.get('next') or request.GET.get('next', ''),
+        'remember_days': mfa.remember_days(),
+        # Ticked at first. After a wrong code, as the person left it.
+        'remember': request.method != 'POST' or bool(request.POST.get('remember')),
     })
 
 

@@ -265,6 +265,8 @@ def _dashboard_inner(request):
         'calendar': month_calendar,
         'in_foal': in_foal,
         'metrics': yard_metrics,
+        # No figure needs a look: a phone then shows no strip of figures.
+        'metrics_quiet': not any(m['tone'] for m in yard_metrics),
         'departure_ids': departure_ids,
         'near_you': near_you,
         'near_you_card': near_you_card_data,
@@ -325,6 +327,9 @@ def dashboard_calendar(request):
         'upcoming': upcoming_data.build(items, request.user, today),
         'can_dismiss': dismissals.can_dismiss(request.user),
         'today': today,
+        # A phone opens the card as a list of the next 7 days. Someone who
+        # chose a day or a month is using the grid, so it stays open.
+        'grid_open': 'month' in request.GET or 'day' in request.GET,
     })
 
 

@@ -55,6 +55,9 @@ it does not (partials/dashboard/site_tools.html).{% endcomment %}
     <div class="alert-error">The dashboard could not load its data. The error has been logged; try again in a moment.</div>
     {% endif %}
 
+    {# ── Help to install the app: a phone's browser only (js/app_install.js) ── #}
+    {% include 'partials/dashboard/_install_card.html' %}
+
     {# ── The yard's figures, across the whole width ── #}
     {% if 'metrics' in visible and metrics %}
     <section class="zone-enter" style="--i:1" aria-label="The yard at a glance" data-testid="metrics-zone">
@@ -73,6 +76,9 @@ it does not (partials/dashboard/site_tools.html).{% endcomment %}
     Timeline takes the whole width; without the Timeline the left column
     does.
     {% endcomment %}
+    {% if not 'upcoming' in visible and not near_you_card %}
+    {% include 'partials/dashboard/_yard_counts.html' %}
+    {% endif %}
     {% if 'upcoming' in visible or near_you_card or 'activity' in visible %}
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="main-grid">
         {% if 'upcoming' in visible or near_you_card %}
@@ -82,6 +88,7 @@ it does not (partials/dashboard/site_tools.html).{% endcomment %}
                 {% include 'partials/dashboard/calendar.html' %}
             </section>
             {% endif %}
+            {% include 'partials/dashboard/_yard_counts.html' %}
             {% if near_you_card %}
             {% include 'partials/dashboard/near_you.html' %}
             {% endif %}

@@ -1155,6 +1155,93 @@ class MoveHorseForm(StablePickerMixin, forms.Form):
     )
 
 
+def move_destinations(exclude_pk=None):
+    """Where a group can move to: ``(choices, room)``.
+
+    ``choices`` are the active locations grouped by site, each with how
+    full it is: "Top Field (4 of 8)". Someone who moves a group must see
+    if the group fits. ``room`` is ``{pk: spaces left}`` for the
+    locations that have a limit (0 when full or over), so the form can
+    say before the save that a group does not fit. ``exclude_pk`` leaves
+    out the location the horses are in.
+    """
+    from django.db.models import Count
+
+    counts = dict(
+        Placement.objects.filter(end_date__isnull=True, horse__is_active=True)
+        .values_list('location').annotate(n=Count('pk'))
+    )
+    locations = Location.objects.active().order_by('site', 'name')
+    if exclude_pk:
+        locations = locations.exclude(pk=exclude_pk)
+    choices = [('', 'Choose a location…')]
+    groups, room = {}, {}
+    for loc in locations:
+        here = counts.get(loc.pk, 0)
+        # The limit counts whatever the land is used for today: rested
+        # ground is where a group goes next, and it holds horses again
+        # from the moment they arrive.
+        if loc.capacity:
+            room[loc.pk] = max(0, loc.capacity - here)
+            fill = f'{here} of {loc.capacity}' if here else f'empty, room for {loc.capacity}'
+        elif here:
+            fill = f"{here} horse{'s' if here != 1 else ''}"
+        else:
+            fill = 'empty'
+        # A location with no site still needs a group with a name: an
+        # empty one would read as the "Choose a location…" line.
+        groups.setdefault(loc.site or 'No site', []).append((loc.pk, f'{loc.name} ({fill})'))
+    choices += list(groups.items())
+    return choices, room
+
+
+class GroupMoveForm(MoveHorseForm):
+    """Move several horses to one location.
+
+    The single-horse move form minus the per-horse fields: every horse
+    keeps its own owner, and the rate applies to all of them (left empty,
+    each keeps its current rate). Subclassing keeps single and group move
+    semantics from drifting apart.
+
+    Used by the bulk action "Move to Location" (health.forms.BulkMoveForm)
+    and by "Move horses" on a location (LocationMoveForm).
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        del self.fields['new_owner']
+        del self.fields['expected_departure']
+        # A stable is one horse's. A group goes into the barn, and each
+        # horse gets its stable on the barn's page. The single form's
+        # location select fetches a stable picker and a rate hint for one
+        # horse; a group form has no place to show them.
+        for name in ('stable', 'share_stable'):
+            self.fields.pop(name, None)
+        location = self.fields['new_location'].widget.attrs
+        for key in [key for key in location if key.startswith('hx-')]:
+            del location[key]
+        rate = self.fields['new_rate_type']
+        for key in ('x-ref', '@change'):
+            rate.widget.attrs.pop(key, None)
+        rate.help_text = "Leave empty to keep each horse's current rate"
+        # A move is recorded on the day (PlacementService), so the date
+        # box offers no day after today.
+        self.fields['move_date'].widget.attrs['max'] = timezone.localdate().isoformat()
+
+
+class LocationMoveForm(GroupMoveForm):
+    """Move the horses of one location (``source``) to another
+    (core.views.locations.location_move_horses)."""
+
+    def __init__(self, *args, source, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.source = source
+        field = self.fields['new_location']
+        field.label = 'Move to'
+        field.queryset = Location.objects.active().exclude(pk=source.pk)
+        field.choices, self.room = move_destinations(exclude_pk=source.pk)
+
+
 class ArrivalForm(forms.Form):
     """Form for logging horse arrivals at a location (supports multiple horses)."""
     horses = forms.ModelMultipleChoiceField(
@@ -1947,7 +2034,19 @@ class ProfileDetailsForm(forms.Form):
             ('large', 'Large'),
         ],
         initial='compact',
-        help_text='How big text and buttons are on a computer. Phones do not change.',
+        help_text='How big text and buttons are on a computer. A phone has its own size, below.',
+    )
+    # Not required: a form sent without it (a page that was open before
+    # this setting existed) keeps the size the profile has.
+    phone_text_size = forms.ChoiceField(
+        label='Text size on a phone',
+        required=False,
+        choices=[
+            ('standard', 'Standard'),
+            ('large', 'Large (easier to read outdoors)'),
+        ],
+        initial='standard',
+        help_text='How big text and buttons are on a phone or a tablet.',
     )
 
     def __init__(self, *args, user=None, **kwargs):

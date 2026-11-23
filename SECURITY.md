@@ -53,6 +53,14 @@ no cross-customer isolation boundary to get wrong.
   wait. Setting it up signs out every other session. Only an Administrator
   can turn it off for another user, and that signs the user out
   everywhere. From a shell: `python manage.py mfa_reset <email>`.
+- "Remember this device": after a correct code, a device can be
+  remembered for `MFA_REMEMBER_DAYS` (14). The next sign-in on it asks for
+  the password only. The device holds a signed, HttpOnly cookie. It stops
+  working after the 14 days, when the password changes, when the
+  authenticator is replaced or removed, and when the account is signed out
+  everywhere (the answer to a lost device). The box is ticked when the code
+  page opens; a person on a shared device must clear it. Each use is in the
+  account events. `MFA_REMEMBER_DAYS=0` turns it off.
 - Password reset links expire after 1 hour and work once. Reset requests
   are limited per address and per IP address (`core/ratelimit.py`).
 - Sign in with Google is optional (`core/google_oidc.py`, off until
@@ -101,6 +109,26 @@ no cross-customer isolation boundary to get wrong.
 - Content-Security-Policy in **report-only** mode (see Known gaps).
 - `Referrer-Policy: strict-origin-when-cross-origin`, so record IDs in URLs
   do not leak to third parties.
+- The app keeps copies of the last 10 pages in the browser's
+  `localStorage`, so the Back button is fast (htmx's history store). They
+  hold what the pages showed: names, phone numbers, amounts. They are
+  deleted at sign-out, and each time the sign-in page loads, which covers
+  a sign-in that ended by itself (`static/js/connection.js`,
+  `templates/registration/login.html`). While a person is signed in, the
+  copies stay on the device.
+- The main app has a service worker (`/sw.js`, `static/js/app_worker.js`).
+  It stores the app's own files on the device: styles, scripts, fonts,
+  icons and one page that says "No signal". It stores no page of the app
+  and no answer from it, so it holds no personal data and there is
+  nothing to delete at sign-out. A page load always goes to the network.
+  `APP_WORKER_ENABLED=False` removes the worker and its store from each
+  device the next time that device asks for `/sw.js`. C-vet has its own
+  worker, with its own rules (`docs/C_VET_PLAN.md`).
+- The usage figures (PostHog, when a key is set) get four events from a
+  phone: a request that failed, time with no signal, a slow tap, and
+  "app installed". An event holds no name and no text of a record. Its
+  address has the numbers and keys taken out (`/horses/:id/edit/`), and
+  no query string (`static/js/connection.js`, `pathPattern`).
 - `Permissions-Policy` on every response: location and camera for this
   site only (maps, photo uploads); microphone, payment, USB and the rest off
   (`core/middleware.py`). One exception: the C-vet page

@@ -99,6 +99,25 @@ class TrainingCardTests(Base):
     def test_no_records_no_card(self):
         self.assertEqual(self.shown(), (False, False))
 
+    def test_no_records_the_card_is_not_built(self):
+        # The page then keeps one answer: may this role change training
+        # (the Record card and the Timeline ask). The card itself costs
+        # eight queries (docs/MOBILE_APP_PLAN.md, item B6).
+        self.assertEqual(set(self.page().context['training_card']), {'can_change'})
+
+    def test_a_horse_with_no_training_record_costs_fewer_queries(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        self.page()  # the first load fills caches that both counts share
+        with CaptureQueriesContext(connection) as without:
+            self.page()
+        Activity.objects.create(horse=self.horse, date=self.today - timedelta(days=3),
+                                work_type=self.canter, status='done')
+        with CaptureQueriesContext(connection) as with_card:
+            self.page()
+        self.assertGreaterEqual(len(with_card) - len(without), 6)
+
     def test_planned_work_alone_is_not_a_record(self):
         Activity.objects.create(horse=self.horse, date=self.today + timedelta(days=2),
                                 work_type=self.canter, status='planned')
@@ -123,10 +142,10 @@ class BannerAreasTests(Base):
     def test_buttons_have_their_own_area(self):
         self.place()
         banner = self.banner(main(self.page()))
-        head = banner.split('class="horse-hero-head"', 1)[1].split('class="horse-hero-actions"', 1)[0]
+        head = banner.split('class="horse-hero-head"', 1)[1].split('class="horse-hero-actions', 1)[0]
         self.assertIn('<h1', head)
         self.assertNotIn('Move', head)
-        actions = banner.split('class="horse-hero-actions"', 1)[1].split('data-testid="hero-placement"', 1)[0]
+        actions = banner.split('class="horse-hero-actions', 1)[1].split('data-testid="hero-placement"', 1)[0]
         self.assertIn('Move', actions)
         self.assertIn('class="ped is-page-horse"', banner)
 

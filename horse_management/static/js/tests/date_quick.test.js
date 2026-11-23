@@ -37,3 +37,40 @@ test('allowed respects min and max', () => {
     assert.equal(allowed('2026-11-23', '', '2026-11-22'), false);
     assert.equal(allowed('2026-11-22', '2026-11-22', '2026-11-22'), true);
 });
+
+// ── A date that is weeks or months away (C8) ──
+
+const { parseSpec, shift } = require('../date_quick.js');
+
+test('parseSpec reads "+6m +12m" as two buttons with their words', () => {
+    assert.deepEqual(parseSpec('+6m +12m'), [
+        { amount: 6, unit: 'm', label: '+6 months' },
+        { amount: 12, unit: 'm', label: '+12 months' },
+    ]);
+    assert.deepEqual(parseSpec('+6w,+8w').map((c) => c.label), ['+6 weeks', '+8 weeks']);
+    assert.deepEqual(parseSpec('+1w +1d +1m').map((c) => c.label), ['+1 week', '+1 day', '+1 month']);
+});
+
+test('parseSpec gives nothing for "off", for no value and for other words', () => {
+    assert.deepEqual(parseSpec('off'), []);
+    assert.deepEqual(parseSpec(undefined), []);
+    assert.deepEqual(parseSpec('6m -2w +3y'), []);
+});
+
+test('shift adds months, and a short month gives its last day', () => {
+    assert.equal(shift('2026-11-23', 6, 'm'), '2027-05-23');
+    assert.equal(shift('2026-11-23', 12, 'm'), '2027-11-23');
+    assert.equal(shift('2026-08-31', 6, 'm'), '2027-02-28');
+    assert.equal(shift('2024-02-29', 12, 'm'), '2025-02-28');
+    assert.equal(shift('2027-08-31', 6, 'm'), '2028-02-29');
+});
+
+test('shift adds weeks and days across a month and a year', () => {
+    assert.equal(shift('2026-11-23', 6, 'w'), '2027-01-04');
+    assert.equal(shift('2026-11-23', 8, 'w'), '2027-01-18');
+    assert.equal(shift('2026-12-31', 2, 'd'), '2027-01-02');
+});
+
+test('a box with its own buttons is not skipped', () => {
+    assert.equal(skip(box({ dataset: { dateQuick: '+6m +12m', dateQuickFrom: 'date_given' } })), false);
+});

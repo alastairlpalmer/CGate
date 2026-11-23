@@ -1,0 +1,15 @@
+{% comment %}
+One field of the pop-up form (includes/popup_form.html). Context: field,
+popup_horse_id.
+{% endcomment %}
+{% if field.name == 'horse' and popup_horse_id %}
+    <input type="hidden" name="horse" value="{{ popup_horse_id }}">
+{% elif field.field.widget.input_type == 'checkbox' %}
+    <div class="sm:col-span-2 flex items-center min-h-[44px]">
+        {% include "includes/form_field.html" with field=field %}
+    </div>
+{% elif field.name == 'horse' or field.name == 'description' or field.field.widget.template_name == 'django/forms/widgets/textarea.html' %}
+    {% include "includes/form_field.html" with field=field span="2" %}
+{% else %}
+    {% include "includes/form_field.html" with field=field %}
+{% endif %}

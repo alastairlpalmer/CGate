@@ -69,11 +69,15 @@ in the batch could be saved. Behaviour lives in static/js/photo_quick_add.js.
         <p id="{{ form.images.auto_id }}_error" class="text-xs text-error-red" role="alert">{{ form.images.errors.0 }}</p>
         {% endif %}
 
+        {# A photo is made smaller on the phone before it is sent (js/photo_quick_add.js). #}
+        <p x-show="preparing > 0" x-cloak class="text-sm text-sage" role="status"
+           x-text="preparing === 1 ? 'Getting 1 photo ready…' : 'Getting ' + preparing + ' photos ready…'"></p>
+
         <!-- Pending photos -->
         <div x-show="items.length" x-cloak>
             <div class="flex items-baseline justify-between mb-2">
                 <span class="text-sm font-medium text-charcoal" x-text="items.length + (items.length === 1 ? ' photo ready' : ' photos ready')"></span>
-                <span class="text-xs text-sage" x-text="totalMB.toFixed(1) + ' MB'"></span>
+                <span class="text-xs text-sage" x-text="totalLabel"></span>
             </div>
             <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 <template x-for="(item, index) in items" :key="item.key">
@@ -90,6 +94,16 @@ in the batch could be saved. Behaviour lives in static/js/photo_quick_add.js.
             <p x-show="totalMB > 20" x-cloak class="mt-2 text-xs text-saddle">
                 Large upload — this may take a minute on yard signal.
             </p>
+            {# How much of the upload has gone. On a weak signal this is the only sign of work. #}
+            <div x-show="progress > 0" x-cloak class="mt-3" role="status">
+                <div class="flex items-baseline justify-between text-xs text-sage mb-1">
+                    <span>Sending…</span>
+                    <span x-text="progress + '%'"></span>
+                </div>
+                <div class="h-1.5 rounded-full bg-light-sage overflow-hidden">
+                    <div class="h-full bg-forest transition-all duration-200" :style="'width:' + progress + '%'"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Caption -->
@@ -120,8 +134,8 @@ in the batch could be saved. Behaviour lives in static/js/photo_quick_add.js.
         {% else %}
         <a href="{% url 'horse_detail' horse.pk %}" class="btn-secondary">Cancel</a>
         {% endif %}
-        <button type="submit" class="btn-primary" :disabled="items.length === 0"
-                :class="{ 'opacity-50 cursor-not-allowed': items.length === 0 }">
+        <button type="submit" class="btn-primary" :disabled="items.length === 0 || preparing > 0"
+                :class="{ 'opacity-50 cursor-not-allowed': items.length === 0 || preparing > 0 }">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
             </svg>

@@ -224,6 +224,10 @@
        The sidebar and the phone's top bar already say where the reader is. */
     .page-header { @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between; }
     .page-title { @apply text-xl font-semibold text-charcoal tracking-[-0.01em] font-heading; }
+    /* A list page's title on a phone. It was hidden there, and a bar at
+       the top said the section; that bar is gone (item C1). It is a plain
+       heading, so it scrolls away with the page. */
+    .page-title-list { @apply text-lg lg:text-xl; }
     .page-subtitle { @apply mt-0.5 text-sm text-sage; }
 
     /* Detail / filter labels — sentence case, 13px. Uppercase tracking is
@@ -359,6 +363,23 @@
     .toast-error { @apply bg-error-red-50 border-error-red/20 text-error-red; }
     .toast-info { @apply bg-info-blue-50 border-info-blue/20 text-info-blue; }
     .toast-warning { @apply bg-sand-50 border-sand/40 text-saddle; }
+    /* A message built in the browser when a request fails
+       (static/js/connection.js). Its button is a 44px target: the person
+       may be in a field, with gloves on. */
+    .toast-words { @apply flex-1 min-w-0; }
+    .toast-action { @apply shrink-0 -my-2 px-2 min-h-[44px] inline-flex items-center font-semibold underline underline-offset-2 cursor-pointer whitespace-nowrap; }
+    .toast-dismiss { @apply shrink-0 -my-2 -mr-2 w-11 min-h-[44px] inline-flex items-center justify-center text-xl leading-none opacity-60 cursor-pointer hover:opacity-100; }
+
+    /* "No signal": shows while the browser reports no connection. The
+       script sets `top` to just under the phone's bars. Under the sheets
+       (z-50), over the page. */
+    .offline-mark { @apply fixed left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-1.5 rounded-full bg-charcoal px-3 py-1.5 text-xs font-semibold text-white shadow-lg whitespace-nowrap; top: 0.75rem; }
+    .offline-mark[hidden] { display: none; }
+
+    /* A save from the pop-up sheet that failed: the reason, above the form
+       that is still there (static/js/popup.js). */
+    .popup-save-error { @apply mx-5 mt-4; }
+    .popup-save-error:focus { @apply outline-hidden; }
 
     /* Link styling — hover warms to Saddle for a touch of personality */
     .link { @apply text-forest hover:text-saddle font-medium transition-colors duration-100 relative; }
@@ -737,6 +758,18 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
 }
 .page-enter { animation: page-in 0.2s ease-out both; }
 
+/* A page is on its way and the answer is slow (static/js/tap_feedback.js
+   sets the class after 150 ms). The content dims, so the person can see
+   that the tap was taken. On a touch screen the line at the top is
+   thicker, to show in daylight. */
+html.page-pending #main-content { opacity: 0.5; transition: opacity 0.15s ease-out; }
+@media (pointer: coarse) {
+    #htmx-progress { height: 3px; }
+    /* A row under a finger. The tap highlight is off for these rows
+       (see the split view), so this is the only sign before the answer. */
+    tr[data-horse-row]:active, [data-split-row]:active { background-color: var(--color-sand-100, #F2EEE4); }
+}
+
 /* A list reloading after a filter or search change (base.html). The
    delay keeps fast reloads from flickering. */
 #list-results { transition: opacity 0.15s ease-out; }
@@ -770,10 +803,9 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
 
 /* Page changes (boosted navigation, hx-swap "transition:true" on <body>).
    The old page fades out quickly and the new one fades in with a small
-   rise. The sidebar, the phone header and the phone tab bar have names
-   of their own, so they stay still instead of fading with the page. */
+   rise. The sidebar and the phone tab bar have names of their own, so
+   they stay still instead of fading with the page. */
 .app-sidebar { view-transition-name: app-sidebar; }
-[data-mobile-brand] { view-transition-name: mobile-brand; }
 #mobile-tab-bar { view-transition-name: mobile-tab-bar; }
 ::view-transition-old(root) { animation: 90ms ease-in both vt-fade-out; }
 ::view-transition-new(root) { animation: 200ms cubic-bezier(0.22, 1, 0.36, 1) both vt-rise-in; }
@@ -921,6 +953,19 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
     .confirm-footer > button { flex: 1 1 0%; }
 }
 
+/* "Move horses" on a location: the tick list of the horses that live
+   there (locations/partials/move_horses_form.html). A row is one 44px
+   target: the whole row ticks the box. */
+.move-pick-list { @apply mt-2 divide-y divide-light-sage rounded-lg border border-light-sage bg-white; max-height: 16.5rem; overflow-y: auto; overscroll-behavior: contain; }
+.move-pick { @apply flex items-center gap-3 px-3 py-2 min-h-[44px] cursor-pointer; }
+.move-pick .coat-dot { @apply shrink-0; }
+.move-pick-name { @apply block text-base font-medium text-charcoal; overflow-wrap: anywhere; }
+.move-pick-sub { @apply block text-sm text-charcoal-light; }
+.move-pick-note { @apply block text-sm text-saddle; }
+/* A horse that arrived here today: shown, and it cannot be ticked. */
+.move-pick.is-stuck { @apply cursor-default bg-sand-50; }
+.move-pick.is-stuck .move-pick-name { @apply text-charcoal-light; }
+
 /* Choice chips — a small set of mutually exclusive quick picks (e.g. Move
    date: Today / Pick a date). Pair with aria-pressed; add .chip-on to the
    selected one. 44px tall on touch layouts. */
@@ -961,6 +1006,54 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
     .data-table-cards :is(tbody, tfoot) td:is([data-label="Horse"], [data-label="Name"], [data-label="Owner"], [data-label="Mare"], [data-label=""]):first-child { grid-column: 1 / -1; font-weight: 600; }
     .data-table-cards :is(tbody, tfoot) td:is([data-label="Horse"], [data-label="Name"], [data-label="Owner"], [data-label="Mare"], [data-label=""]):first-child::before { display: none; }
     .data-table-cards tfoot tr { border-top: 2px solid var(--color-light-sage, #E3E8E6); }
+}
+
+/* One compact row for each record on a phone (docs/MOBILE_APP_PLAN.md,
+   item C5): add `data-table-compact` to a `.data-table`. Each row is two
+   lines, 64px or so:
+
+       Avicii                         [Record]
+       Equine Influenza · 16 days overdue
+
+   A cell says what it is with data-slot: "name" (line 1), "meta" (line 2,
+   joined with dots), "action" (the one button, at the right), "hide" (not
+   on a phone: the group heading or the page says it already). The labelled
+   card of .data-table-cards is right for a record with six facts; for a
+   list of horses it made 27 items 9.8 screens long. */
+.data-table .group-row th { @apply bg-sand-50 text-left text-sm font-normal normal-case tracking-normal px-4 py-2 border-b border-light-sage; }
+.data-table .group-row-inner { @apply flex items-center justify-between gap-3; }
+@media (max-width: 639px) {
+    .data-table-compact, .data-table-compact tbody { display: block; width: 100%; }
+    .data-table-compact thead { display: none; }
+    .data-table-compact tbody tr {
+        position: relative; display: block; min-height: 3.75rem;
+        /* --row-actions: the room for the buttons at the right; set it on
+           the table when a row has more than one. */
+        padding: 0.5rem var(--row-actions, 6rem) 0.5rem 1rem; border-bottom: 1px solid var(--color-light-sage, #E4EAEB);
+    }
+    /* A tick box at the left of the row, as a 44px target. */
+    .data-table-compact tbody tr:has(td[data-slot="check"]) { padding-left: 3rem; }
+    .data-table-compact tbody td[data-slot="check"] { position: absolute; left: 0.125rem; top: 50%; transform: translateY(-50%); }
+    .check-hit { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; cursor: pointer; }
+    .data-table-compact tbody tr:last-child { border-bottom: 0; }
+    .data-table-compact tbody td { display: inline; border: 0; padding: 0 !important; text-align: left; }
+    .data-table-compact tbody td[data-slot="hide"], .data-table-compact tbody td:empty { display: none; }
+    .data-table-compact tbody td[data-slot="name"] { display: block; font-size: 1rem; line-height: 1.5rem; overflow-wrap: anywhere; }
+    .data-table-compact tbody td[data-slot="meta"] { font-size: 0.875rem; line-height: 1.25rem; color: var(--color-charcoal-light, #4A4A4A); }
+    .data-table-compact tbody td[data-slot="meta"] ~ td[data-slot="meta"]::before { content: " · "; color: var(--color-sage, #56737A); }
+    /* A cell's own blocks run on in the line; a second line in a cell (the
+       date under "16 days overdue") is for a wide table. */
+    .data-table-compact tbody td[data-slot="meta"] > div { display: inline; }
+    .data-table-compact tbody td[data-slot="meta"] p { display: none; }
+    .data-table-compact tbody td[data-slot="action"] { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); }
+    /* `data-actions="top"`: the buttons stand beside the name, and the
+       second line has the width of the row. For a list whose second line
+       is long ("Equine Influenza · overdue since 18 Oct 2026"). */
+    .data-table-compact[data-actions="top"] tbody tr { padding-right: 1rem; }
+    .data-table-compact[data-actions="top"] tbody td[data-slot="name"] { padding-right: var(--row-actions, 6rem) !important; }
+    .data-table-compact[data-actions="top"] tbody td[data-slot="action"] { top: -0.125rem; transform: none; }
+    .data-table-compact tbody tr.group-row { min-height: 0; padding: 0; }
+    .data-table-compact tbody tr.group-row th { display: block; }
 }
 
 /* Inline-link tap target: on touch layouts, pad the link's hit box out to
@@ -1143,6 +1236,51 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
         @apply inline-flex items-center justify-center w-8 h-8 rounded-btn text-sage hover:text-forest hover:bg-light-sage
                disabled:opacity-40 disabled:pointer-events-none transition-colors;
     }
+    /* A phone opens the card as a list of today and the next 7 days
+       (`is-week` on #dash-calendar); "Month" changes it to the grid
+       (docs/MOBILE_APP_PLAN.md, C3). From `sm` the card is always the
+       month, and what belongs to the list is not shown. */
+    .cal-in-week, .cal-phone { display: none; }
+    @media (max-width: 639px) {
+        .cal-phone { display: inline-flex; }
+        #dash-calendar.is-week .cal-in-week { display: revert; }
+        #dash-calendar.is-week .cal-in-month { display: none !important; }
+        /* 44px, the app's rule for a target (C10). They were 32px. */
+        .cal-nav { @apply w-11 h-11; }
+    }
+    .week-day + .week-day { @apply border-t border-light-sage; }
+    .week-day-head { @apply flex items-center justify-between gap-2 px-4 pt-3 pb-1 min-h-[2.75rem]; }
+    .week-day-head h3 { @apply text-sm font-semibold text-charcoal; }
+    .week-day-head h3 span { @apply ml-1 font-normal text-charcoal-light; }
+    .week-line { @apply flex items-center gap-3 px-4 py-2 min-h-[3.75rem]; }
+    .week-line + .week-line { @apply border-t border-light-sage/60; }
+    .week-line > .strip-dot { @apply shrink-0; }
+    .week-text { @apply min-w-0 flex-1; }
+    .week-main { @apply block w-full text-left no-underline; }
+    .week-title { @apply block text-base font-medium text-charcoal; overflow-wrap: anywhere; }
+    .week-sub { @apply block text-sm text-charcoal-light; }
+    .week-names { @apply mt-2 mb-1 flex flex-wrap gap-2; }
+    .week-action { @apply shrink-0; }
+    .week-empty { @apply px-4 pb-3 text-sm text-charcoal-light; }
+
+    /* A PDF on its way to the phone's share sheet (static/js/share_file.js). */
+    a[data-share-file][aria-busy="true"] { @apply opacity-60 cursor-progress; }
+
+    /* "Use Cgate as an app" on the dashboard (partials/dashboard/_install_card.html). */
+    .install-card { @apply flex items-start gap-3 rounded-card border border-forest/20 bg-white p-4 shadow-xs; }
+    /* `flex` above would beat the browser's own rule for [hidden]. */
+    .install-card[hidden] { display: none; }
+    .install-steps { @apply mt-3 space-y-2 text-sm text-charcoal; }
+    .install-steps li { @apply flex items-start gap-2; }
+    .install-step-num { @apply inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-forest text-xs font-semibold text-white; }
+    .install-step-icon { @apply inline-block h-5 w-5 align-text-bottom text-info-blue; }
+
+    /* The figures that need no action, as one line of links on a phone
+       (partials/dashboard/_yard_counts.html). */
+    .yard-counts { @apply flex flex-wrap gap-2; }
+    .yard-count { @apply inline-flex items-center gap-1.5 min-h-[2.75rem] rounded-full border border-light-sage bg-white px-4 text-sm text-charcoal-light no-underline; }
+    .yard-count b { @apply font-semibold text-charcoal tabular-nums; }
+
     .cal-day-list { @apply border-t border-light-sage mt-1; }
     .cal-day-head { @apply flex items-center justify-between gap-2 pr-3 lg:pr-4; }
     .cal-day-title { @apply flex items-center gap-2 px-4 pt-3 pb-2 text-sm font-semibold text-charcoal lg:px-5; }
@@ -1318,6 +1456,12 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
     .metric-value { @apply mt-1 font-heading text-2xl font-semibold leading-none tracking-[-0.01em] text-forest tabular-nums; }
     .metric-meta { @apply mt-1.5 block w-full truncate text-xs text-sage; }
     .metric.is-alert { @apply border-saddle/40 bg-saddle-50; }
+    /* A phone's first screen is for what needs a look: the other figures
+       are a line of links lower down (C3). One figure takes the width. */
+    @media (max-width: 639px) {
+        .metric-strip { grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+        .metric-strip .metric:not(.is-alert), .metric-strip.is-quiet { display: none; }
+    }
     .metric.is-alert .metric-value { @apply text-saddle; }
 
     /* The Timeline's filter (a funnel opening the app's menu) and its
@@ -1449,6 +1593,18 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
     .log-name { @apply inline-flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-charcoal no-underline ring-1 ring-light-sage transition-colors hover:ring-sage hover:text-forest; }
     .log-what { @apply text-sm text-charcoal-light; }
     .log-count { @apply text-xs text-sage; }
+    /* A row for many horses (a farrier's morning for 18): on a phone it is
+       one line, "Farrier · Trim Only · 18 horses", and the count opens
+       the names (C3). On a wider screen the names always show. */
+    .log-more { @apply hidden; }
+    @media (max-width: 639px) {
+        .log-body.is-many:not(.show-names) .log-name { display: none; }
+        .log-body.is-many .log-count { display: none; }
+        .log-more { @apply inline-flex items-center min-h-[2.75rem] -my-2.5 text-sm text-forest underline decoration-forest/30 underline-offset-2; }
+        /* A name is a target: 32px high and 8px apart (C10). It was 20px. */
+        .log-name { @apply min-h-[2rem] px-2.5 text-sm; }
+        .log-body { @apply gap-y-2; }
+    }
     .log-amount { @apply pt-1 text-xs text-sage tabular-nums; }
 }
 
@@ -1561,8 +1717,20 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
            nothing: its track collapses and its gap goes with it, because
            the gaps are margins on the cells rather than a column-gap. */
         grid-template-columns: auto minmax(0, auto) minmax(0, 1fr) auto;
+        /* Two lines, named, so the tick box and the menu button can stand
+           the height of both (`1 / -1` counts only rows that are named).
+           With this padding a row is 64px: seven horses on a first screen
+           that used to show five (docs/MOBILE_APP_PLAN.md, C5). */
+        grid-template-rows: auto auto;
         align-items: center;
-        padding: 0.75rem 1rem;
+        padding: 0.625rem 0.5rem 0.625rem 1rem;
+    }
+    /* The picture stands beside both lines. Its box is only as high as
+       the name's line, so it does not make the first line taller. */
+    .horse-rows tbody td[data-col="name"] a[data-horse-link] { align-items: flex-start; }
+    .horse-rows tbody td[data-col="name"] a[data-horse-link] > :first-child {
+        margin-top: 0.375rem;
+        margin-bottom: -1.625rem;
     }
     .horse-rows tbody tr[data-horse-row] > td {
         min-width: 0;
@@ -1592,12 +1760,27 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
     /* The Needs cell ("Needs action" view): its own line under the meta
        line, and above the name's tap overlay so its buttons can be used. */
     .horse-rows tbody tr[data-horse-row] > td[data-col="needs"] {
-        grid-column: 2 / 4;
+        grid-column: 2 / 5;
         grid-row: 3;
         padding-left: 2.75rem;
-        margin-top: 0.5rem;
+        padding-right: 0.5rem;
+        margin-top: 0.375rem;
         position: relative;
         z-index: 10;
+    }
+    /* What is needed on the left, its button on the right: one block of
+       two lines, where the button used to take a line of its own. */
+    .horse-rows .needs-body { flex-wrap: nowrap; justify-content: space-between; }
+    .horse-rows .needs-text { flex: 1 1 auto; }
+    .horse-rows .needs-body > :is(a, form) { flex-shrink: 0; }
+    /* The name and its details share the first line when there is room
+       for both. A long name pushes the details to a line of their own,
+       as before. */
+    .horse-rows tbody td[data-col="name"] .horse-name {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        column-gap: 0.5rem;
     }
     /* A long name gets two lines, then an ellipsis, so one horse never
        takes the height of four. */
@@ -1606,7 +1789,9 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
         -webkit-box-orient: vertical;
         -webkit-line-clamp: 2;
         overflow: hidden;
+        @apply text-base;
     }
+    .horse-rows tbody td[data-col="name"] .horse-name-detail { @apply text-charcoal-light; }
     .horse-rows tbody td[data-col="owner"] { grid-column: 2; grid-row: 2; }
     .horse-rows tbody td[data-col="location"] { grid-column: 3; grid-row: 2; }
     /* The meta line starts where the name does, clear of the avatar
@@ -1628,7 +1813,7 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
-        @apply text-xs text-sage;
+        @apply text-sm text-charcoal-light;
     }
     /* Everything in the two meta cells, not only their links: the
        separator is a span, and a span that swallowed the tap would leave
@@ -1792,6 +1977,12 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
     @apply flex flex-col items-center justify-center gap-3 cursor-default ring-black/10;
 }
 .preview-hero.is-empty:hover { @apply ring-1; }
+/* Below lg the preview is a sheet that opens a third of the way up. An
+   empty photo block filled that third; the name's line has the small
+   picture in its place (C9). */
+@media (max-width: 1023px) {
+    .preview-hero.is-empty { display: none; }
+}
 .preview-hero-count {
     @apply absolute right-2 bottom-2 rounded-full bg-charcoal/75 px-2 py-0.5
            text-[11px] font-medium text-white tabular-nums;
@@ -1953,6 +2144,13 @@ a.pane-item-title:hover { @apply text-forest; }
     html[data-ui-size="compact"] { font-size: 75%; }
     html[data-ui-size="medium"] { font-size: 87.5%; }
 }
+/* ── Text size on a phone (the same tab; docs/MOBILE_APP_PLAN.md, C7) ──
+   Large makes everything set in rem one eighth bigger below lg: 16px text
+   is 18px, a 44px button is 49.5px. A phone of 390px then lays out as one
+   of 347px does, which the app already fits. */
+@media (max-width: 63.99rem) {
+    html[data-phone-text="large"] { font-size: 112.5%; }
+}
 
 /* ── Sidebar (includes/_sidebar.html) ─────────────────────────────────
    Dark Brim teal, cream icons. Top to bottom: logo row, search, nav, then
@@ -2046,8 +2244,16 @@ a.pane-item-title:hover { @apply text-forest; }
 .notif-count-dot {
     @apply absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-saddle text-white ring-2 ring-parchment text-[10px];
 }
+/* "Press /" in the search box is for a keyboard. A tablet shows the box
+   at this width too, and has none (item C12). */
+@media (pointer: coarse) {
+    .search-key-hint { display: none !important; }
+}
+
+/* The bell in the phone's top bar: a 44px target (it was 40px in the
+   name bar that is gone). */
 .phone-bell {
-    @apply absolute left-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-10 h-10 rounded-btn
+    @apply relative shrink-0 inline-flex items-center justify-center w-11 h-11 -ml-1 rounded-btn
            text-forest hover:bg-light-sage transition-colors;
 }
 .nav-link-open { @apply text-white bg-white/[0.08] ring-white/[0.12]; }
@@ -2082,6 +2288,24 @@ a.pane-item-title:hover { @apply text-forest; }
 .notif-body { @apply mt-0.5 text-sm text-charcoal-light; }
 .notif-meta { @apply mt-1.5 flex flex-wrap items-center gap-2 text-xs text-sage; }
 .notif-actions { @apply mt-2 flex flex-wrap items-center gap-1.5; }
+/* A row was five lines: title, two of text, when, buttons. Now "when" is
+   at the end of the title's line, where the eye looks for it, and goes
+   under the title only when the two do not fit (docs/MOBILE_APP_PLAN.md,
+   C11). A group keeps "Show all" and its button on one line. */
+.notif-text { display: flex; flex-wrap: wrap; align-items: center; column-gap: 0.5rem; }
+.notif-text > .notif-title { order: 1; flex: 1 1 8rem; min-width: 0; }
+.notif-text > .notif-meta { order: 2; flex: 0 0 auto; @apply mt-0; }
+.notif-text > .notif-body { order: 3; flex: 0 0 100%; min-width: 0; }
+.notif-text > .notif-actions { order: 4; flex: 0 0 100%; }
+.notif-text > .notif-group-items { order: 5; flex: 0 0 100%; min-width: 0; }
+.notif-group .notif-text > .notif-title { flex: 0 0 100%; }
+.notif-group .notif-text > .notif-meta { order: 4; flex: 1 1 auto; @apply mt-1.5; }
+.notif-group .notif-text > .notif-actions { order: 4; flex: 0 1 auto; @apply mt-1.5; }
+/* The notices of a group, shown when the row is opened. */
+.notif-group-items { @apply mt-2 divide-y divide-light-sage/70 border-t border-light-sage/70; }
+.notif-group-items > li { @apply flex flex-wrap items-center gap-x-2 py-1.5 min-h-[44px] text-sm; }
+.notif-group-name { @apply font-medium text-charcoal no-underline hover:text-forest; }
+.notif-group-detail { @apply text-charcoal-light; }
 .notif-unread-dot {
     @apply mt-1.5 w-2.5 h-2.5 rounded-full bg-saddle hover:ring-4 hover:ring-saddle/20 transition-shadow;
 }
@@ -2232,11 +2456,6 @@ a.pane-item-title:hover { @apply text-forest; }
         display: flex;
         flex-direction: column;
     }
-    /* The site selector names the yard, so the brand bar above it would
-       say it twice — and cost 44px of map to do it. */
-    body:has([data-phone-map]) [data-mobile-brand] { display: none; }
-    body:has([data-phone-map]) .app-bar { top: 0; }
-
     /* One row of chrome, not two. The site selector is teleported into
        the app bar's page-action slot, so the slot has to give it the
        room and the search box has to stand aside — down to its icon
@@ -2716,11 +2935,10 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
         top: 0;
         z-index: 10;
     }
-    /* On a phone two bars stick at the top: the title bar (2.75rem, the
-       app bar's own top-11) and the search bar (--app-bar-h). The lot
-       header stops under both, or Mark lot done hides behind them. */
+    /* On a phone the search bar sticks at the top (--app-bar-h). The lot
+       header stops under it, or Mark lot done hides behind it. */
     @media (max-width: 1023px) {
-        .lot-day-head { top: calc(2.75rem + var(--app-bar-h, 0px)); }
+        .lot-day-head { top: var(--app-bar-h, 0px); }
     }
     .lot-row { @apply flex items-center gap-2 px-3 min-h-[48px]; }
     .row-menu { @apply absolute right-0 top-full mt-1 z-20 min-w-[13rem] bg-white rounded-card border border-light-sage shadow-float py-1; }
@@ -2893,6 +3111,16 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
 
 /* Yesterday / Today / Tomorrow under a date box (static/js/date_quick.js). */
 @layer components {
+    /* "More details" in a pop-up form (includes/popup_form.html): the
+       fields a usual record does not need (C8). */
+    .popup-more { @apply border-t border-light-sage pt-1; }
+    .popup-more > summary { @apply flex items-center gap-2 min-h-[44px] cursor-pointer select-none text-sm list-none; }
+    .popup-more > summary::-webkit-details-marker { display: none; }
+    .popup-more-chevron { @apply text-forest transition-transform duration-150; }
+    .popup-more[open] .popup-more-chevron { transform: rotate(90deg); }
+    .popup-more-hint { @apply min-w-0 truncate text-charcoal-light; }
+    .popup-more[open] .popup-more-hint { display: none; }
+
     .date-quick { @apply flex flex-wrap gap-1.5 mt-1.5; }
     .date-quick-btn {
         @apply text-xs leading-5 px-2 rounded-full border border-light-sage bg-white text-charcoal-light
@@ -2936,12 +3164,31 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     /* The banner is cream, like a tree box: white boxes stand out on it. */
     .horse-hero-ped .ped-node:not(.is-subject, .is-dashed, .is-twin) { background: #fff; }
 }
+/* A phone (docs/MOBILE_APP_PLAN.md, item C4). The name and the buttons
+   are two parts of the head: the name stays beside the photo, and the
+   buttons go under both in one row of three, where a thumb reaches them.
+   Beside a 7rem photo they wrapped to two or three rows. The tree is one
+   line until it is opened. */
+@media (max-width: 39.99rem) {
+    .horse-hero { grid-template-areas: "photo head" "flags flags" "actions actions" "place place" "ped ped"; }
+    .horse-hero-head { display: contents; }
+    .horse-hero-name { grid-area: head; }
+    .horse-hero-flags { grid-area: flags; @apply -my-1.5; }
+    .hero-flag { @apply flex items-center gap-2 min-h-[44px] text-sm; }
+    .horse-hero-actions { grid-area: actions; align-items: stretch; }
+    .horse-hero-actions > div:first-child { flex-wrap: nowrap; }
+    .horse-hero-actions > div:first-child > * { flex: 1 1 0; min-width: 0; }
+    .horse-hero-actions .more-menu > button { width: 100%; }
+    .horse-hero-ped:not(.is-open) .hero-ped-body { display: none; }
+    .hero-ped-line { @apply mt-1 text-sm text-charcoal-light; }
+}
 @media (min-width: 40rem) {
     .horse-hero {
         grid-template-columns: auto minmax(0, 1fr) auto;
         grid-template-areas: "photo head actions" "photo place place" "ped ped ped";
     }
     .horse-hero-img { width: 11rem; height: 11rem; }
+    .hero-ped-line { display: none; }
 }
 @media (min-width: 80rem) {
     .horse-hero {
@@ -2954,4 +3201,35 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     .horse-hero-photo { align-self: stretch; }
     .horse-hero-img { width: 14rem; height: 100%; min-height: 14rem; }
     .horse-hero-ped { @apply border-t-0 pt-0 border-l pl-6; align-self: stretch; }
+}
+
+
+/* ── Text on a phone (docs/MOBILE_APP_PLAN.md, C7) ────────────────────
+   A phone is read in a yard, in the sun, at arm's length. So below `sm`:
+   no text is under 12px, a name is 16px and its second line 14px, and
+   small grey text is charcoal-light (9:1 on white) where it was sage
+   (5:1). A count inside a round badge keeps its size: it is a number in
+   a 16px circle, not a line to read.
+
+   This block is the last in the file and in no layer, so it has the
+   last word over the classes it names. */
+@media (max-width: 639px) {
+    .text-\[9px\], .text-\[10px\], .text-\[11px\],
+    .tab-bar-label, .quick-find-group-label, .more-menu-label, .settings-subhead-title, .quick-view-label,
+    .strip-day-name, .strip-legend, .cal-dow, .cal-label, .visit-date-name, .log-day,
+    .loc-sheet-label, .loc-row-pin, .loc-sheet-count-label, .loc-card-unit,
+    .barn-cell-state, .stable-chip, .turnout-chip, .segmented-count, .show-chip-count,
+    .data-table-cards :is(tbody, tfoot) td[data-label]::before {
+        font-size: 0.75rem;
+        line-height: 1rem;
+    }
+    .list-card-title { font-size: 1rem; line-height: 1.375rem; }
+    .list-card-meta { font-size: 0.875rem; line-height: 1.25rem; }
+    .text-xs.text-sage, .text-\[11px\].text-sage, .text-\[10px\].text-sage,
+    .list-card-meta, .page-subtitle, .metric-meta, .attn-sub, .strip-legend, .cal-dow, .log-day, .log-count,
+    .loc-sheet-label, .loc-sheet-count-label, .quick-view-label, .settings-subhead-title, .more-menu-label,
+    .quick-find-group-label,
+    .data-table-cards :is(tbody, tfoot) td[data-label]::before {
+        color: var(--color-charcoal-light, #4A4A4A);
+    }
 }

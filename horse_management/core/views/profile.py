@@ -36,6 +36,7 @@ def _initial_details(user, profile):
         'email': user.email,
         'phone': profile.phone,
         'display_size': profile.display_size,
+        'phone_text_size': profile.phone_text_size,
     }
 
 
@@ -50,6 +51,7 @@ def _save_details(request, form, profile):
 
     profile.phone = data['phone']
     profile.display_size = data['display_size']
+    profile.phone_text_size = data.get('phone_text_size') or profile.phone_text_size
     upload = data.get('photo')
     if upload or data.get('remove_photo'):
         if profile.photo:

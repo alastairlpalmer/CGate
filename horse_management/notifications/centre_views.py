@@ -18,6 +18,56 @@ TABS = ('new', 'action', 'all')
 CHIPS = ('all', 'overdue', 'health', 'yard', 'money', 'movement')
 PANEL_LIMIT = 100
 
+# Kinds where several open notices are one thing to look at: five fields
+# over capacity are one visit to the Locations page, not five rows
+# (docs/MOBILE_APP_PLAN.md, C11). kind: (one, many, the page, its button).
+GROUPED_KINDS = {
+    'capacity': ('location over capacity', 'locations over capacity', 'location_list', 'See locations'),
+}
+GROUP_NAMES = 3
+
+
+def group_rows(rows):
+    """The panel's rows, with the open notices of a grouped kind as one row.
+
+    A group stands where its first notice stood. It is a dict:
+    ``{'group': True, 'kind', 'title', 'summary', 'items', 'url',
+    'button', 'is_unread', 'ids'}``. One notice of a kind stays as it is.
+    """
+    from django.urls import reverse
+
+    members = {}
+    for row in rows:
+        if row.kind in GROUPED_KINDS and row.resolved_at is None:
+            members.setdefault(row.kind, []).append(row)
+    out, done = [], set()
+    for row in rows:
+        items = members.get(row.kind, []) if row.resolved_at is None else []
+        if len(items) < 2:
+            out.append(row)
+            continue
+        if row.kind in done:
+            continue
+        done.add(row.kind)
+        one, many, url_name, button = GROUPED_KINDS[row.kind]
+        # "Bottom Field · Colgate" is the notice's title: the place's name is its first part.
+        names = [item.title.split(' · ')[0] for item in items]
+        summary = ', '.join(names[:GROUP_NAMES])
+        if len(names) > GROUP_NAMES:
+            summary += f' and {len(names) - GROUP_NAMES} more'
+        out.append({
+            'group': True,
+            'kind': row.kind,
+            'title': f'{len(items)} {many}',
+            'summary': summary,
+            'items': items,
+            'url': reverse(url_name),
+            'button': button,
+            'is_unread': any(item.is_unread for item in items),
+            'ids': [item.pk for item in items],
+        })
+    return out
+
 
 def _panel_context(request):
     from core.dashboard import dismissals
@@ -61,7 +111,7 @@ def _panel_context(request):
         'chip': chip,
         'chips': [c for c in CHIPS if c != 'movement' or 'movement' in centre.enabled_categories(user)],
         'counts': counts,
-        'notifications': rows,
+        'notifications': group_rows(rows),
         'can_dismiss': can_dismiss,
         'departure_ids': departure_ids,
         'dismissed_count': AttentionDismissal.objects.count() if can_dismiss else 0,

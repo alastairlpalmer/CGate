@@ -51,7 +51,7 @@ class DisplaySizeTests(TestCase):
 
     def _size(self):
         html = self.client.get(reverse('dashboard')).content.decode()
-        return re.search(r'<html lang="en" data-ui-size="([a-z]+)">', html).group(1)
+        return re.search(r'<html lang="en" data-ui-size="([a-z]+)"', html).group(1)
 
     def test_compact_is_the_default(self):
         self.assertEqual(self._size(), 'compact')

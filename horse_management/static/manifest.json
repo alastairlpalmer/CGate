@@ -1,13 +1,19 @@
 {
+    "id": "/",
     "name": "Cgate",
     "short_name": "Cgate",
     "description": "Horse livery management: horses, placements, health records and invoicing.",
+    "lang": "en-GB",
+    "dir": "ltr",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",
-    "orientation": "portrait",
     "theme_color": "#3D5A63",
     "background_color": "#F5F2EA",
+    "categories": [
+        "business",
+        "productivity"
+    ],
     "icons": [
         {
             "src": "/static/icons/icon-192.png",
@@ -34,21 +40,68 @@
             "purpose": "maskable"
         }
     ],
+    "screenshots": [
+        {
+            "src": "/static/screenshots/dashboard.jpg",
+            "sizes": "780x1688",
+            "type": "image/jpeg",
+            "form_factor": "narrow",
+            "label": "Today and the next 7 days"
+        },
+        {
+            "src": "/static/screenshots/horses.jpg",
+            "sizes": "780x1688",
+            "type": "image/jpeg",
+            "form_factor": "narrow",
+            "label": "Every horse, with what is due"
+        },
+        {
+            "src": "/static/screenshots/horse.jpg",
+            "sizes": "780x1688",
+            "type": "image/jpeg",
+            "form_factor": "narrow",
+            "label": "One horse: where it is, whose it is, what is due"
+        }
+    ],
     "shortcuts": [
         {
-            "name": "New Arrival",
+            "name": "Find a horse",
+            "short_name": "Horses",
+            "description": "The horse list",
+            "url": "/horses/",
+            "icons": [
+                {
+                    "src": "/static/icons/icon-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
+        },
+        {
+            "name": "Log arrival",
+            "short_name": "Arrival",
+            "description": "A horse arrives at the yard",
             "url": "/horses/new-arrival/",
-            "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+            "icons": [
+                {
+                    "src": "/static/icons/icon-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
         },
         {
-            "name": "Health Dashboard",
+            "name": "Health",
+            "short_name": "Health",
+            "description": "What is overdue and what is due",
             "url": "/health/",
-            "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
-        },
-        {
-            "name": "Invoices",
-            "url": "/invoicing/",
-            "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+            "icons": [
+                {
+                    "src": "/static/icons/icon-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
         }
     ]
 }

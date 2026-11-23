@@ -98,7 +98,7 @@ and the pane another.
                hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
                data-popup-title="Record payment for {{ invoice.invoice_number }}" class="btn-primary">Record payment</a>
             {% endif %}
-            <a href="{% url 'invoice_pdf' invoice.pk %}" hx-boost="false" class="btn-secondary">Download PDF</a>
+            <a href="{% url 'invoice_pdf' invoice.pk %}" hx-boost="false" class="btn-secondary" {% include 'invoicing/partials/_share_pdf.html' %}>Download PDF</a>
             {% if can_edit and invoice.status != 'cancelled' and invoice.status != 'paid' %}
             <a href="{% url 'invoice_update' invoice.pk %}" class="btn-secondary">Edit</a>
             {% endif %}
@@ -258,7 +258,7 @@ and the pane another.
                 <p class="text-sm text-sage">{{ invoice.invoice_number }}.pdf · as the owner gets it</p>
                 <div class="flex items-center gap-2">
                     <a href="{% url 'invoice_pdf' invoice.pk %}?inline=1" target="_blank" rel="noopener" hx-boost="false" class="btn-secondary btn-xs">Open in a new tab</a>
-                    <a href="{% url 'invoice_pdf' invoice.pk %}" hx-boost="false" class="btn-secondary btn-xs">Download</a>
+                    <a href="{% url 'invoice_pdf' invoice.pk %}" hx-boost="false" class="btn-secondary btn-xs" {% include 'invoicing/partials/_share_pdf.html' %}>Download</a>
                 </div>
             </div>
             <template x-if="tab === 'pdf'">

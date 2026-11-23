@@ -74,7 +74,7 @@
                 {% endif %}
                 {% endwith %}
             {% endif %}
-            <a href="{% url 'invoice_pdf' invoice.pk %}" class="{% if invoice.status == 'paid' or invoice.status == 'cancelled' %}btn-primary{% else %}btn-secondary{% endif %}" hx-boost="false">
+            <a href="{% url 'invoice_pdf' invoice.pk %}" class="{% if invoice.status == 'paid' or invoice.status == 'cancelled' %}btn-primary{% else %}btn-secondary{% endif %}" hx-boost="false" {% include 'invoicing/partials/_share_pdf.html' %}>
                 <svg class="w-4 h-4" aria-hidden="true"><use href="#i-download"/></svg>
                 Download PDF
             </a>

@@ -1289,6 +1289,51 @@ def health_lists(user, *, today=None):
     return action_required, coming_up
 
 
+# The bulk form (health.views.bulk_health_form) that records one kind of
+# entry for many horses in one step.
+BULK_ACTION_FOR_TYPE = {'Vaccination': 'vaccination', 'Vet Follow-up': 'vet_visit'}
+BULK_TITLE_FOR_TYPE = {'Vaccination': 'Record Vaccination', 'Vet Follow-up': 'Record Vet Visit'}
+
+
+def group_health_entries(entries, *, can_record):
+    """``health_lists`` entries in groups of the same job.
+
+    The usual job is one job for many horses: the vet gave twelve flu
+    vaccinations today. So the entries with the same type and detail go
+    under one heading, and a group of two or more horses gets one "Record
+    for all" that opens the bulk form with those horses
+    (docs/MOBILE_APP_PLAN.md, item C6). The order of the groups is the
+    order of their first entry, so the most overdue job stays first.
+
+    ``can_record``: the role may record health (Health: full).
+    """
+    from urllib.parse import urlencode
+
+    from django.urls import reverse
+
+    groups = {}
+    for entry in entries:
+        key = (entry['type'], entry['detail'])
+        groups.setdefault(key, []).append(entry)
+    result = []
+    for (kind, detail), items in groups.items():
+        horse_ids = list(dict.fromkeys(item['horse'].pk for item in items))
+        action = BULK_ACTION_FOR_TYPE.get(kind)
+        bulk_url = ''
+        if can_record and action and len(horse_ids) > 1:
+            query = urlencode([('action_type', action)] + [('horse_ids', pk) for pk in horse_ids])
+            bulk_url = f"{reverse('bulk_health_form')}?{query}"
+        result.append({
+            'type': kind,
+            'detail': '' if detail == '-' else detail,
+            'items': items,
+            'horse_count': len(horse_ids),
+            'bulk_url': bulk_url,
+            'bulk_title': f"{BULK_TITLE_FOR_TYPE.get(kind, 'Record')} ({len(horse_ids)} horses)",
+        })
+    return result
+
+
 def farrier_due(user, *, today=None):
     """The Farrier page's "Due" box: overdue and due in the next 14 days.
 

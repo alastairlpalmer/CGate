@@ -16,6 +16,10 @@
 Django~=5.2.19
 django-environ~=0.14.0
 whitenoise~=6.12.0
+# With this installed, collectstatic also makes a .br copy of each static
+# file, and WhiteNoise sends it to a browser that accepts Brotli: styles
+# and scripts are about 15% smaller than with gzip.
+brotli~=1.2
 
 # Monitoring
 # Error reporting. Inert unless SENTRY_DSN is set (see core/monitoring.py).

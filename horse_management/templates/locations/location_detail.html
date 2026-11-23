@@ -65,6 +65,15 @@
             {% endif %}
         </div>
         <div class="flex items-center gap-2">
+            {% if horses and feature_access.horses.full %}
+            {# The horses that live here go to another location as a group. #}
+            <a href="{% url 'location_move_horses' location.pk %}"
+               hx-get="{% url 'location_move_horses' location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Move horses from {{ location.name }}" class="btn-secondary" data-testid="location-move-horses">
+                <svg class="w-4 h-4" aria-hidden="true"><use href="#i-arrows-lr"/></svg>
+                Move horses
+            </a>
+            {% endif %}
             {% if not location.is_archived %}
             <a href="{% url 'feed_out_create' location_pk=location.pk %}" hx-get="{% url 'feed_out_create' location_pk=location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Feed out at {{ location.name }}" class="btn-secondary">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -610,7 +619,8 @@
         </div>
         {% endif %}
         <div class="overflow-x-auto">
-            <table class="data-table data-table-cards">
+            {# On a phone: one compact row a horse, with a 44px tick box (items C5, C10). #}
+            <table class="data-table data-table-compact" style="--row-actions: 7.75rem">
                 <thead>
                     <tr>
                         <th class="w-10">
@@ -625,25 +635,28 @@
                 <tbody>
                     {% for horse in table_horses %}
                     <tr>
-                        <td>
-                            <input type="checkbox"
-                                   data-horse-checkbox aria-label="Select {{ horse.name }}"
-                                   value="{{ horse.pk }}"
-                                   @change="toggleHorse({{ horse.pk }})"
-                                   :checked="isSelected({{ horse.pk }})"
-                                   class="form-checkbox rounded">
+                        <td data-slot="check">
+                            {# The label is the target: 44px on a phone, where the box alone was 20px. #}
+                            <label class="check-hit">
+                                <input type="checkbox"
+                                       data-horse-checkbox aria-label="Select {{ horse.name }}"
+                                       value="{{ horse.pk }}"
+                                       @change="toggleHorse({{ horse.pk }})"
+                                       :checked="isSelected({{ horse.pk }})"
+                                       class="form-checkbox rounded">
+                            </label>
                         </td>
-                        <td data-label="Name">
+                        <td data-label="Name" data-slot="name">
                             <a href="{% url 'horse_detail' horse.pk %}" class="link font-medium tap-pad">
                                 {{ horse.name }}
                             </a>
                         </td>
-                        <td class="text-sage" data-label="Details">
+                        <td class="text-sage" data-label="Details" data-slot="meta">
                             {{ horse.age_label }}
                             {{ horse.get_color_display }}
                             {{ horse.get_sex_display }}
                         </td>
-                        <td data-label="Owner">
+                        <td data-label="Owner" data-slot="meta">
                             {% with placement=horse.active_placements.0 %}
                             {% if placement %}
                             <a href="{% url 'owner_detail' placement.owner.pk %}" class="link tap-pad">
@@ -652,7 +665,7 @@
                             {% endif %}
                             {% endwith %}
                         </td>
-                        <td>
+                        <td data-slot="action">
                             <div class="flex items-center gap-1">
                                 {% if barn_tray and feature_access.horses.full %}
                                 <a href="{% url 'horse_stable' horse.pk %}?next={{ request.path|urlencode }}" hx-get="{% url 'horse_stable' horse.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"

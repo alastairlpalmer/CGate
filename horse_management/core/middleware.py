@@ -121,6 +121,10 @@ class MFAMiddleware:
         if mfa.session_enrolled(request):
             if user.is_verified() or path == verify_url:
                 return None
+            # "Remember this device": a code was given on this device in
+            # the last MFA_REMEMBER_DAYS, so the password was enough.
+            if mfa.pass_remembered_device(request):
+                return None
             return verify_url
         if mfa.mfa_required(user) and path != setup_url:
             return setup_url
@@ -165,6 +169,115 @@ class PermissionsPolicyMiddleware:
         response = self.get_response(request)
         if self.value:
             response.headers.setdefault('Permissions-Policy', self.value)
+        return response
+
+
+class SignInRedirectMiddleware:
+    """Send an htmx request to the sign-in page as a whole page load.
+
+    A sign-in ends after SESSION_COOKIE_AGE with no use, or after
+    SESSION_ABSOLUTE_AGE. The next request gets a redirect to the sign-in
+    page. A browser follows that for a page load. For an htmx request the
+    answer was read as the page that was asked for: htmx looked in the
+    sign-in page for ``#main-content``, found nothing, and left the person
+    with the bars and an empty screen. ``HX-Redirect`` makes the browser
+    load the sign-in page itself. ``MFAMiddleware`` does the same for the
+    code page.
+
+    ``next`` is where to go after sign-in. For a tap on a link it is the
+    page that was asked for. For a part of a page (a sheet, a count), or
+    for a save, it is the page the person is on: the part alone is not a
+    page, and a save cannot be sent again by a redirect.
+
+    Must come after HtmxMiddleware, which reads the htmx headers.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if response.status_code not in (301, 302):
+            return response
+        if request.headers.get('HX-Request') != 'true':
+            return response
+
+        from urllib.parse import urlencode, urlsplit
+
+        from django.conf import settings
+        from django.shortcuts import resolve_url
+        from django_htmx.http import HttpResponseClientRedirect
+
+        sign_in = resolve_url(settings.LOGIN_URL)
+        if urlsplit(response.get('Location', '')).path != sign_in:
+            return response
+        if request.path == sign_in:
+            return response
+
+        htmx = getattr(request, 'htmx', None)
+        whole_page = request.method == 'GET' and (
+            request.headers.get('HX-Boosted') == 'true'
+            or request.headers.get('HX-History-Restore-Request') == 'true'
+        )
+        if whole_page:
+            back_to = request.get_full_path()
+        else:
+            back_to = (htmx.current_url_abs_path if htmx else None) or ''
+        url = f'{sign_in}?{urlencode({"next": back_to})}' if back_to else sign_in
+        return HttpResponseClientRedirect(url)
+
+
+class AppVersionMiddleware:
+    """Say which version of the app made this response.
+
+    A tap replaces the content of a page; the scripts and styles in its
+    head stay as they were first loaded. A page that stays open across a
+    deploy would then run new HTML with old scripts. The page carries its
+    own version (``{% app_version %}`` in base.html) and compares it with
+    this header; when they differ, the next tap loads the page in full
+    (static/js/connection.js).
+    """
+
+    HEADER = 'X-App-Version'
+
+    def __init__(self, get_response):
+        from core.templatetags.cache_bust import app_version
+
+        self.get_response = get_response
+        self.version = app_version()
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if response.get('Content-Type', '').startswith('text/html'):
+            response.headers.setdefault(self.HEADER, self.version)
+        return response
+
+
+class SlimPageCacheMiddleware:
+    """Keep the short answer to a tap out of the way of a page load.
+
+    A tap on a link (``HX-Boosted``) gets the page without its frame
+    (``core.context_processors.page_frame``). The address is the same as
+    for a page load. A browser that kept the short answer could show it
+    for a later page load of that address, most likely on Back after a
+    full load of another page: a page with no styles and no scripts.
+
+    Two headers prevent that. ``Vary: HX-Boosted`` on every page says the
+    answer depends on that header. ``Cache-Control: no-store`` on the short
+    answer says it is not to be kept at all.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from django.utils.cache import patch_vary_headers
+
+        response = self.get_response(request)
+        if response.get('Content-Type', '').startswith('text/html'):
+            patch_vary_headers(response, ['HX-Boosted'])
+            if request.headers.get('HX-Boosted') == 'true':
+                response.headers.setdefault('Cache-Control', 'no-store')
         return response
 
 

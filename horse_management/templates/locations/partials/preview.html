@@ -70,13 +70,23 @@ to know which shell it is being shown in.
     muscle memory is worth more than fitting the buttons to the state.
     {% endcomment %}
     <div class="loc-sheet-actions">
-        {% if feature_access.locations.full %}
-        {% comment %}An ordinary link, as this action is everywhere else in
-        the app. Logging an arrival is a page of its own — it has no partial
-        to serve a pop-up — so asking for one put the whole application,
-        app bar and sidebar included, inside the sheet.
-        {% endcomment %}
-        <a href="{% url 'location_arrive' location.pk %}" class="loc-action is-primary">Move horses</a>
+        {% comment %}"Move horses" moves the horses that live here to another
+        location, as a group (core.views.locations.location_move_horses).
+        Until 23 November 2026 this button went to the Log Arrival page,
+        which lists only horses with no location: it could not move the
+        horses of this location.
+
+        A location with no horses has nothing to move, so its first button
+        is the arrival, under its own name. That one is an ordinary link:
+        logging an arrival is a page of its own, with no partial to serve
+        a pop-up.{% endcomment %}
+        {% if placements and feature_access.horses.full %}
+        <a href="{% url 'location_move_horses' location.pk %}"
+           hx-get="{% url 'location_move_horses' location.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Move horses from {{ location.name }}"
+           class="loc-action is-primary" data-testid="loc-move-horses">Move horses</a>
+        {% elif feature_access.locations.full and not location.is_archived %}
+        <a href="{% url 'location_arrive' location.pk %}" class="loc-action is-primary" data-testid="loc-log-arrival">Log arrival</a>
         {% else %}
         <a href="{% url 'horse_list' %}?group_by=location&amp;location={{ location.pk }}" class="loc-action is-primary">View horses</a>
         {% endif %}
@@ -184,6 +194,10 @@ to know which shell it is being shown in.
         </ul>
         {% endif %}
 
+        {% if placements and feature_access.locations.full and not location.is_archived %}
+        {# With horses here the first button is "Move horses", so the arrival is a link. #}
+        <a href="{% url 'location_arrive' location.pk %}" class="loc-sheet-more" data-testid="loc-arrival-link">Log an arrival here &rarr;</a>
+        {% endif %}
         <a href="{% url 'location_detail' location.pk %}" class="loc-sheet-more">Open the location page &rarr;</a>
     </div>
 </div>

@@ -18,7 +18,7 @@
         if (fresh) { query.push('fresh=1'); }
         if (tab) { query.push('tab=' + encodeURIComponent(tab)); }
         var url = el.getAttribute('data-src') + (query.length ? '?' + query.join('&') : '');
-        window.htmx.ajax('GET', url, { source: el, target: el, swap: 'innerHTML' });
+        window.htmx.ajax('GET', url, { source: el, target: el, swap: 'innerHTML' }).catch(function () { /* said by js/connection.js */ });
     }
 
     document.addEventListener('alpine:init', function () {
@@ -32,8 +32,13 @@
 
             // ``tab``: open on that tab ('new', 'action' or 'all').
             show: function (tab) {
+                var self = this;
                 this._returnTo = document.activeElement;
                 this.open = true;
+                // The phone's Back button closes the drawer (overlay_back.js).
+                if (window.Yardway && Yardway.overlay) {
+                    Yardway.overlay.opened('notif', function () { self.close(); }, function () { return self.open; });
+                }
                 load(false, tab);
                 Alpine.nextTick(function () {
                     var drawer = document.getElementById('notif-drawer');
@@ -44,6 +49,9 @@
             close: function () {
                 if (!this.open) { return; }
                 this.open = false;
+                // Before the badges ask for their counts: a request in
+                // flight makes the entry wait (overlay_back.js, rule 1).
+                if (window.Yardway && Yardway.overlay) { Yardway.overlay.closed('notif'); }
                 if (window.htmx) { window.htmx.trigger(document.body, 'notif:changed'); }
                 var back = this._returnTo;
                 this._returnTo = null;

@@ -4,8 +4,12 @@ The yard's figures across the top of the dashboard. Context: metrics
 area there, so the strip is as long as the role's view of the yard. The
 Needs action figure opens the notification centre; the others open their
 page.
+
+On a phone the strip shows only the figures that need a look (`is-alert`);
+the others are a line of links lower down (_yard_counts.html). With none
+that need a look, the strip takes no room there (`is-quiet`).
 {% endcomment %}
-<div class="metric-strip" role="list">
+<div class="metric-strip{% if metrics_quiet %} is-quiet{% endif %}" role="list">
     {% for m in metrics %}
     {% if m.key == 'action' %}
     <button type="button" role="listitem" class="metric{% if m.tone %} is-{{ m.tone }}{% endif %}"

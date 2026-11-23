@@ -1,0 +1,32 @@
+{% load static %}
+{% comment %}
+"Use Cgate as an app": help to install it (docs/MOBILE_APP_PLAN.md, item D2).
+
+The card is hidden in the page. static/js/app_install.js shows it in a
+phone's browser, and shows one of its two parts:
+  button  Android: the browser can install the app, so there is one button.
+  steps   iPhone and iPad: the person does it, with Share and then
+          "Add to Home Screen". The two pictures are the signs Safari uses.
+It never shows in the installed app, on a computer, or after the person
+closed it. The same steps are in Help (help/articles/install-the-app.html).
+{% endcomment %}
+<section class="install-card" data-install-card hidden aria-labelledby="install-title" data-testid="install-card">
+    <img src="{% static 'icons/icon-192.png' %}" alt="" width="44" height="44" class="h-11 w-11 shrink-0 rounded-xl">
+    <div class="min-w-0 flex-1">
+        <h2 id="install-title" class="text-base font-semibold text-charcoal">Use Cgate as an app</h2>
+        <p class="text-sm text-charcoal-light">It opens from an icon on your phone, on the full screen.</p>
+        <div data-install-part="button" hidden>
+            <button type="button" class="btn-primary mt-3" data-install-now>Install the app</button>
+        </div>
+        <div data-install-part="steps" hidden>
+            <ol class="install-steps">
+                <li><span class="install-step-num">1</span><span>Tap <svg class="install-step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4M7 11H6a1 1 0 00-1 1v8a1 1 0 001 1h12a1 1 0 001-1v-8a1 1 0 00-1-1h-1"/></svg> <strong>Share</strong> in the browser's bar.</span></li>
+                <li><span class="install-step-num">2</span><span>Tap <svg class="install-step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8.5v7M8.5 12h7"/></svg> <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</span></li>
+            </ol>
+        </div>
+        <p class="mt-2 text-xs text-charcoal-light">You can find these steps again in <a href="{% url 'help_article' 'install-the-app' %}" class="link">Help</a>.</p>
+    </div>
+    <button type="button" class="btn-icon -mr-2 -mt-2 shrink-0" data-install-close aria-label="Close. The steps are in Help.">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+</section>

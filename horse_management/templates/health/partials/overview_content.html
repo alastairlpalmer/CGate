@@ -40,6 +40,11 @@
 <div class="space-y-4 mt-4">
 
     <!-- Action Required -->
+    {% comment %}One heading for each job (docs/MOBILE_APP_PLAN.md, item C6):
+    the same vaccination for many horses is one visit by the vet, so the
+    group has one "Record for all". On a phone each horse is one compact
+    row of two lines (item C5, .data-table-compact in input.css); before,
+    each was a card 190px high, and 27 items were 9.8 screens.{% endcomment %}
     {% if action_required %}
     <div class="card overflow-hidden">
         <div class="section-header">
@@ -50,7 +55,7 @@
             <span class="badge-danger">{{ action_required|length }}</span>
         </div>
         <div class="overflow-x-auto">
-            <table class="data-table data-table-cards">
+            <table class="data-table data-table-compact">
                 <thead>
                     <tr>
                         <th>Horse</th>
@@ -60,28 +65,45 @@
                         <th><span class="sr-only">Action</span></th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for item in action_required %}
+                {% for group in action_groups %}
+                <tbody data-testid="action-group">
+                    <tr class="group-row">
+                        <th colspan="5" scope="rowgroup">
+                            <span class="group-row-inner">
+                                {# Two parts with a gap, not a dot: a dot at the start of a wrapped line reads as a mistake. #}
+                                <span class="min-w-0 flex flex-wrap items-baseline gap-x-2">
+                                    <span class="font-semibold text-charcoal">{{ group.type }}{% if group.detail %} · {{ group.detail }}{% endif %}</span>
+                                    <span class="text-charcoal-light font-normal whitespace-nowrap" data-testid="group-count">{{ group.horse_count }} horse{{ group.horse_count|pluralize }}</span>
+                                </span>
+                                {% if group.bulk_url %}
+                                <a href="{{ group.bulk_url }}" hx-get="{{ group.bulk_url }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                                   data-popup-title="{{ group.bulk_title }}" data-popup-accent class="btn-secondary btn-xs shrink-0" data-testid="record-for-all">Record for all</a>
+                                {% endif %}
+                            </span>
+                        </th>
+                    </tr>
+                    {% for item in group.items %}
                     <tr>
-                        <td data-label="Horse">
+                        <td data-label="Horse" data-slot="name">
                             <span class="inline-flex items-center gap-2">{% include 'horses/_coat_dot.html' with horse=item.horse %}<a href="{% url 'horse_detail' item.horse.pk %}" class="link font-medium tap-pad">{{ item.horse.name }}</a></span>
                         </td>
-                        <td data-label="Type">
+                        <td data-label="Type" data-slot="hide">
                             <span class="badge-neutral">{{ item.type }}</span>
                         </td>
-                        <td class="text-charcoal" data-label="Detail">{{ item.detail }}</td>
-                        <td data-label="Due">
+                        <td class="text-charcoal" data-label="Detail" data-slot="hide">{{ item.detail }}</td>
+                        <td data-label="Due" data-slot="meta">
                             <div class="text-right">
                                 <span class="text-error-red font-medium">{{ item.due_date|due_label }}</span>
                                 <p class="text-xs text-sage">{{ item.due_date|date:"j M Y" }}</p>
                             </div>
                         </td>
-                        <td class="text-right">
-                            <a href="{{ item.url }}&next={{ request.get_full_path|urlencode }}" class="btn-ghost btn-xs">{{ item.action_label }}</a>
+                        <td class="text-right" data-slot="action">
+                            <a href="{{ item.url }}&next={{ request.get_full_path|urlencode }}" class="btn-ghost btn-xs" aria-label="{{ item.action_label }} for {{ item.horse.name }}"><span class="sm:hidden">Record</span><span class="hidden sm:inline">{{ item.action_label }}</span></a>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
+                {% endfor %}
             </table>
         </div>
     </div>
@@ -95,7 +117,7 @@
             <span class="badge-info">{{ coming_up|length }}</span>
         </div>
         <div class="overflow-x-auto">
-            <table class="data-table data-table-cards">
+            <table class="data-table data-table-compact">
                 <thead>
                     <tr>
                         <th>Horse</th>
@@ -108,21 +130,21 @@
                 <tbody>
                     {% for item in coming_up %}
                     <tr>
-                        <td data-label="Horse">
+                        <td data-label="Horse" data-slot="name">
                             <span class="inline-flex items-center gap-2">{% include 'horses/_coat_dot.html' with horse=item.horse %}<a href="{% url 'horse_detail' item.horse.pk %}" class="link font-medium tap-pad">{{ item.horse.name }}</a></span>
                         </td>
-                        <td data-label="Type">
+                        <td data-label="Type" data-slot="hide">
                             <span class="badge-neutral">{{ item.type }}</span>
                         </td>
-                        <td class="text-charcoal" data-label="Detail">{{ item.detail }}</td>
-                        <td data-label="Due">
+                        <td class="text-charcoal" data-label="Detail" data-slot="meta">{{ item.detail }}</td>
+                        <td data-label="Due" data-slot="meta">
                             <div class="text-right">
                                 <span class="text-forest">{{ item.due_date|due_label }}</span>
                                 <p class="text-xs text-sage">{{ item.due_date|date:"j M Y" }}</p>
                             </div>
                         </td>
-                        <td class="text-right">
-                            <a href="{{ item.url }}&next={{ request.get_full_path|urlencode }}" class="btn-ghost btn-xs">{{ item.action_label }}</a>
+                        <td class="text-right" data-slot="action">
+                            <a href="{{ item.url }}&next={{ request.get_full_path|urlencode }}" class="btn-ghost btn-xs" aria-label="{{ item.action_label }} for {{ item.horse.name }}"><span class="sm:hidden">Record</span><span class="hidden sm:inline">{{ item.action_label }}</span></a>
                         </td>
                     </tr>
                     {% endfor %}

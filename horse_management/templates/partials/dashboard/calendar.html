@@ -12,15 +12,29 @@ keeps working wherever it is.
 The grid is a size container (.cal-wrap): narrow, a day shows dots; from
 36rem wide (the calendar on its own row, with no map) it also names the
 first two kinds due.
+
+On a phone the card opens as a list: today and the next 7 days, one line
+a job, each with its button (upcoming.week; docs/MOBILE_APP_PLAN.md, C3).
+The grid shows dots there, not words, and took the first screen. "Month"
+changes the card to the grid, and "Next 7 days" changes it back. `is-week`
+on the card is the list; `grid_open` is set when the card was asked for
+from the grid (a day or a month was chosen), so the grid stays open.
+`cal-in-week` and `cal-in-month` name what each view shows on a phone. A
+wider screen always shows the month.
 {% endcomment %}
 {% url 'dashboard_calendar' as cal_url %}
-<div class="card overflow-hidden h-full flex flex-col" id="dash-calendar" aria-busy="false">
+<div class="card overflow-hidden h-full flex flex-col{% if not grid_open %} is-week{% endif %}" id="dash-calendar" aria-busy="false"
+     x-data="{ week: {% if grid_open %}false{% else %}true{% endif %} }" :class="{ 'is-week': week }">
     <div class="section-header">
         <div class="flex items-center gap-2.5 min-w-0">
-            <h2 class="section-title" id="upcoming-title">{{ calendar.month|date:"F Y" }}</h2>
-            {% if calendar.total %}<span class="{% if calendar.overdue %}badge-danger{% else %}badge-neutral{% endif %}" title="{{ calendar.total }} thing{{ calendar.total|pluralize }} dated this month{% if calendar.overdue %}, {{ calendar.overdue }} overdue{% endif %}">{{ calendar.total }}</span>{% endif %}
+            <h2 class="section-title" id="upcoming-title"><span class="cal-in-week">Next 7 days</span><span class="cal-in-month">{{ calendar.month|date:"F Y" }}</span></h2>
+            {% if calendar.total %}<span class="cal-in-month {% if calendar.overdue %}badge-danger{% else %}badge-neutral{% endif %}" title="{{ calendar.total }} thing{{ calendar.total|pluralize }} dated this month{% if calendar.overdue %}, {{ calendar.overdue }} overdue{% endif %}">{{ calendar.total }}</span>{% endif %}
         </div>
         <div class="flex items-center gap-1 shrink-0">
+            <button type="button" class="btn-secondary btn-xs cal-phone" @click="week = !week" data-testid="calendar-view">
+                <span class="cal-in-week">Month</span><span class="cal-in-month">Next 7 days</span>
+            </button>
+            <span class="cal-in-month contents">
             {% if not calendar.is_this_month %}
             <button type="button" class="btn-ghost btn-xs"
                     hx-get="{{ cal_url }}?month={{ calendar.this_month|date:'Y-m' }}" hx-target="#dash-calendar" hx-select="unset" hx-swap="outerHTML" hx-push-url="false">Today</button>
@@ -33,10 +47,63 @@ first two kinds due.
                     hx-get="{{ cal_url }}?month={{ calendar.next|date:'Y-m' }}" hx-target="#dash-calendar" hx-select="unset" hx-swap="outerHTML" hx-push-url="false">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
             </button>
+            </span>
         </div>
     </div>
 
-    <div class="cal-wrap">
+    {# ── A phone: today and the next 7 days ── #}
+    <section class="cal-in-week week-list" aria-labelledby="upcoming-title" data-testid="week-list">
+        {% for day in upcoming.week %}
+        <div class="week-day{% if day.is_today %} is-today{% endif %}">
+            <div class="week-day-head">
+                <h3>{{ day.label }} <span>{{ day.date|date:"D j M" }}</span></h3>
+                {% if day.is_today and feature_access.dashboard.full %}
+                {% url 'calendar_entry_add' as week_add_url %}
+                <a href="{{ week_add_url }}?date={{ day.date|date:'Y-m-d' }}"
+                   hx-get="{{ week_add_url }}?date={{ day.date|date:'Y-m-d' }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                   data-popup-title="Add to {{ day.date|date:'l j F' }}" class="btn-ghost btn-xs">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                    Add
+                </a>
+                {% endif %}
+            </div>
+            {% if day.lines %}
+            <ul>
+                {% for line in day.lines %}
+                <li class="week-line"{% if line.horses %} x-data="{ names: false }"{% endif %}>
+                    <span class="strip-dot dot-{{ line.kind }}" aria-hidden="true"></span>
+                    <div class="week-text">
+                        {% if line.horses %}
+                        {# One job for many horses: the line opens to name them. #}
+                        <button type="button" class="week-main" @click="names = !names" :aria-expanded="names ? 'true' : 'false'">
+                            <span class="week-title">{{ line.title }}</span>
+                            <span class="week-sub">{{ line.sub }} <span class="link" x-text="names ? '· hide names' : '· show names'">· show names</span></span>
+                        </button>
+                        <div class="week-names" x-show="names" x-cloak>
+                            {% for horse in line.horses %}<a href="{% url 'horse_detail' horse.pk %}" class="horse-chip">{{ horse.name }}</a>{% endfor %}
+                        </div>
+                        {% else %}
+                        <a href="{{ line.url }}" class="week-main">
+                            <span class="week-title">{{ line.title }}</span>
+                            {% if line.sub %}<span class="week-sub">{{ line.sub }}</span>{% endif %}
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% if line.action %}<div class="week-action">{% include 'partials/dashboard/_action.html' with action=line.action %}</div>{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="week-empty">Nothing is due today.</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% if upcoming.week|length == 1 %}
+        <p class="week-empty border-t border-light-sage pt-3">Nothing {% if upcoming.week.0.lines %}else {% endif %}is due in the next 7 days.</p>
+        {% endif %}
+    </section>
+
+    <div class="cal-wrap cal-in-month">
         <div class="cal-grid" role="grid" aria-labelledby="upcoming-title">
             <div class="cal-row cal-head" role="row">
                 <span role="columnheader" class="cal-dow"><abbr title="Monday">Mon</abbr></span>
@@ -76,7 +143,7 @@ first two kinds due.
     </div>
 
     {# ── The chosen day ── #}
-    <section class="cal-day-list" aria-labelledby="cal-day-title" aria-live="polite">
+    <section class="cal-day-list cal-in-month" aria-labelledby="cal-day-title" aria-live="polite">
         <div class="cal-day-head">
             <h3 id="cal-day-title" class="cal-day-title">
                 {% if calendar.selected == today %}Today{% else %}{{ calendar.selected|date:"l j F" }}{% endif %}
@@ -135,6 +202,6 @@ first two kinds due.
     </section>
 
     {% if calendar.is_this_month %}
-    <div class="border-t border-light-sage">{% include 'partials/dashboard/_visits.html' %}</div>
+    <div class="border-t border-light-sage cal-in-month">{% include 'partials/dashboard/_visits.html' %}</div>
     {% endif %}
 </div>

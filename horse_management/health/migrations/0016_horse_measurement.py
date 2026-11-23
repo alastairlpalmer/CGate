@@ -9,7 +9,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("core", "0071_payment_reminder_settings"),
+        ("core", "0073_payment_reminder_settings"),
         ("health", "0015_farrier_list_and_notes"),
     ]
 
