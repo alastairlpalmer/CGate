@@ -934,6 +934,13 @@ MFA_REMEMBER_DAYS = env.int('MFA_REMEMBER_DAYS', default=14)
 # The name authenticator apps show next to the six-digit code.
 OTP_TOTP_ISSUER = env('OTP_TOTP_ISSUER', default='Cgate')
 
+# The main app's service worker (core.views.app_shell): it keeps the
+# styles, scripts, fonts and icons on the phone and shows a "No signal"
+# page. False is the way out if it gives trouble: pages stop registering
+# it, and /sw.js becomes a worker that removes itself and its store from
+# each phone the next time that phone asks for it.
+APP_WORKER_ENABLED = env.bool('APP_WORKER_ENABLED', default=True)
+
 # CSRF cookie
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'
