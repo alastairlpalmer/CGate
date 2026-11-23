@@ -1252,8 +1252,9 @@ def location_move_horses(request, pk):
 @feature_required('horses')
 @require_POST
 def group_move_undo(request):
-    """The Undo on the message of a group move: "Move horses" on a
-    location, and "Move to Location" for ticked horses on the horse list.
+    """The Undo on the message of a move: "Move horses" on a location,
+    "Move to Location" for ticked horses on the horse list, and the move
+    of one horse (core.views.horses.horse_move).
 
     The link names the stays that the move made (core.views._undo). Each
     horse goes back only if nothing changed after the move; any other
@@ -1274,6 +1275,7 @@ def group_move_undo(request):
         asked['placement_ids'],
         destination_id=asked['destination_id'],
         move_date=asked['move_date'],
+        share_owner_id=asked['share_owner_id'],
     )
     if restored:
         source = PlacementService.one_location(restored)

@@ -22,7 +22,7 @@ from django.test import override_settings
 from django.urls import reverse
 
 from core.models import (
-    Horse, Location, LocationUsagePeriod, OwnershipShare, Placement, Turnout,
+    Horse, Location, LocationUsagePeriod, Owner, OwnershipShare, Placement, Turnout,
 )
 from core.roles_testutils import make_user_with_access
 from core.services import LocationUsageService, PlacementService
@@ -259,6 +259,7 @@ class UndoLinkTests(UndoFixture):
             'destination_id': self.clover.pk,
             'move_date': self.today,
             'placement_ids': [placement.pk for placement in moved],
+            'share_owner_id': None,
         })
 
     def test_the_message_code_accepts_it_as_an_undo_link(self):
@@ -586,3 +587,125 @@ class UndoNotificationTests(UndoFixture):
     def today_time(self):
         from django.utils import timezone
         return timezone.now()
+
+
+class SingleMoveUndoTests(UndoFixture):
+    """The move of one horse (core.views.horses.horse_move) has the same Undo."""
+
+    def move_one(self, horse, location=None, popup=True, **data):
+        response = self.client.post(reverse('horse_move', args=[horse.pk]), {
+            'new_location': (location or self.clover).pk, 'move_date': self.today.isoformat(),
+            'notes': '', **data,
+        }, **(POPUP if popup else {}))
+        self.assertEqual(response.status_code, 204 if popup else 302)
+        return response
+
+    def undo_link(self, response):
+        link = next(
+            undo_url_from_tags(message.extra_tags) for message in response.wsgi_request._messages
+            if message.level_tag == 'success'
+        )
+        # The page shows the message, and that takes it out of the queue.
+        self.client.get(reverse('help_index'))
+        return link
+
+    def share(self, horse, owner):
+        return OwnershipShare.objects.create(
+            horse=horse, owner=owner, share_percentage=100, is_primary_contact=True)
+
+    def test_the_moved_message_has_undo_and_it_puts_the_horse_back(self):
+        stay = self.ace.placements.get()
+        link = self.undo_link(self.move_one(self.ace))
+        self.assertTrue(link.startswith(reverse('group_move_undo') + '?t='))
+        self.assertEqual(self.where(self.ace), self.clover)
+        response = self.client.post(link, {'next': reverse('horse_detail', args=[self.ace.pk])})
+        self.assertRedirects(response, reverse('horse_detail', args=[self.ace.pk]))
+        self.assertEqual(self.said(response), ['Move undone. Ace is back in Sandhills.'])
+        now = self.ace.placements.get()
+        self.assertEqual((now.pk, now.end_date, now.location), (stay.pk, None, self.sandhills))
+
+    def test_the_full_page_form_has_it_also(self):
+        response = self.move_one(self.ace, popup=False)
+        self.assertTrue(self.undo_link(response))
+
+    def test_a_move_that_changed_the_owner_gives_the_horse_back(self):
+        share = self.share(self.ace, self.helen)
+        link = self.undo_link(self.move_one(self.ace, new_owner=self.tom.pk))
+        share.refresh_from_db()
+        self.assertEqual(share.owner, self.tom)
+        self.assertEqual(read_group_move_token(token_of(link), self.admin)['share_owner_id'], self.helen.pk)
+        self.client.post(link)
+        share.refresh_from_db()
+        self.assertEqual(share.owner, self.helen)
+        stay = self.ace.placements.get()
+        self.assertEqual((stay.owner, stay.location), (self.helen, self.sandhills))
+
+    def test_a_share_that_somebody_changed_after_the_move_is_left(self):
+        share = self.share(self.ace, self.helen)
+        link = self.undo_link(self.move_one(self.ace, new_owner=self.tom.pk))
+        other = Owner.objects.create(name='Priya Shah')
+        share.owner = other
+        share.save()
+        self.client.post(link)
+        share.refresh_from_db()
+        self.assertEqual(share.owner, other)
+        self.assertEqual(self.where(self.ace), self.sandhills)
+
+    def test_a_move_that_kept_the_owner_names_no_owner(self):
+        self.share(self.ace, self.helen)
+        link = self.undo_link(self.move_one(self.ace))
+        self.assertIsNone(read_group_move_token(token_of(link), self.admin)['share_owner_id'])
+
+    def test_a_horse_with_two_owners_keeps_its_shares(self):
+        OwnershipShare.objects.create(horse=self.ace, owner=self.helen, share_percentage=60, is_primary_contact=True)
+        OwnershipShare.objects.create(horse=self.ace, owner=self.tom, share_percentage=40)
+        link = self.undo_link(self.move_one(self.ace, new_owner=self.tom.pk))
+        self.assertIsNone(read_group_move_token(token_of(link), self.admin)['share_owner_id'])
+        self.client.post(link)
+        self.assertEqual(
+            sorted(self.ace.ownership_shares.values_list('owner__name', 'share_percentage')),
+            [('Helen Marsh', 60), ('Tom Ellery', 40)])
+
+    def test_a_stable_chosen_in_the_move_goes_with_it(self):
+        barn = Location.objects.create(
+            name='Top Barn', site='Somerford', location_type=Location.LocationType.BARN, layout='aisle')
+        add_stables(barn, 4)
+        link = self.undo_link(self.move_one(self.ace, location=barn, stable=barn.stables.get(label='2').pk))
+        self.assertEqual(open_stay(Horse.objects.get(pk=self.ace.pk)).stable.label, '2')
+        self.client.post(link)
+        self.assertIsNone(open_stay(Horse.objects.get(pk=self.ace.pk)))
+        self.assertEqual(self.where(self.ace), self.sandhills)
+        # The stable is free again for another horse.
+        self.assertFalse(barn.stables.get(label='2').stays.filter(end_date__isnull=True).exists())
+
+    def test_the_expected_departure_date_is_as_it_was(self):
+        leaves = self.today + timedelta(days=9)
+        stay = self.ace.placements.get()
+        stay.expected_departure = leaves
+        stay.save()
+        link = self.undo_link(self.move_one(self.ace, expected_departure=''))
+        self.client.post(link)
+        self.assertEqual(self.ace.placements.get().expected_departure, leaves)
+
+    def test_a_rate_change_in_the_same_location_is_undone_with_the_usage_as_it_was(self):
+        # The service allows it (a rate change at foaling is one): the
+        # same location, a new stay. The location does not start to rest.
+        before = usage_history(self.clover)
+        new = PlacementService.move_horse(
+            Horse.objects.get(pk=self.dot.pk), new_location=self.clover,
+            move_date=self.today, new_rate_type=self.premium)
+        restored, failed, _gone = PlacementService.undo_move_group(
+            [new.pk], destination_id=self.clover.pk, move_date=self.today)
+        self.assertEqual((len(restored), failed), (1, []))
+        self.assertEqual(self.dot.placements.get().rate_type, self.grass)
+        self.assertEqual(usage_history(self.clover), before)
+
+    def test_a_horse_that_comes_back_to_the_yard_has_no_undo(self):
+        # The move form also brings back a horse that left. That is an
+        # arrival: there is no open stay to go back to.
+        PlacementService.depart_horse(Horse.objects.get(pk=self.ace.pk), self.today - timedelta(days=3))
+        response = self.move_one(
+            Horse.objects.get(pk=self.ace.pk),
+            new_owner=self.helen.pk, new_rate_type=self.grass.pk)
+        self.assertEqual(self.undo_link(response), '')
+        self.assertEqual(self.where(self.ace), self.clover)

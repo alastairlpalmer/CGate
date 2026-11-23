@@ -157,7 +157,7 @@ says "Move horses".
                     {% if form.new_rate_type.errors %}
                     <p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.new_rate_type.errors.0 }}</p>
                     {% endif %}
-                    <p class="mt-1 text-xs text-charcoal-light">Leave empty and each horse keeps its rate. Each horse keeps its owner.</p>
+                    <p class="mt-1 text-xs text-charcoal-light">Leave empty and each horse keeps its rate. Each horse keeps its owner and its expected departure date.</p>
                 </div>
                 <div{% if form.notes.errors %} class="field-invalid"{% endif %}>
                     <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-charcoal">Notes</label>

@@ -4,9 +4,9 @@ A view that soft-deletes something adds ``extra_tags=undo_tag(url)`` to
 its message. base.html shows an Undo button that POSTs to ``url``
 (``core.templatetags.ui_extras.undo_url`` reads it back).
 
-A group move has no row of its own to name in a URL, so its Undo link
-carries a signed list of the stays the move made (``group_move_undo_url``,
-read back by ``read_group_move_token``).
+A move (of one horse, or of a group) has no row of its own to name in a
+URL, so its Undo link carries a signed list of the stays the move made
+(``group_move_undo_url``, read back by ``read_group_move_token``).
 """
 
 from urllib.parse import urlencode
@@ -43,25 +43,30 @@ def undo_url_from_tags(extra_tags):
 
 
 def group_move_undo_url(user, moved):
-    """The Undo link for a group move, or '' if none can be offered.
+    """The Undo link for a move, or '' if none can be offered.
 
-    ``moved``: the stays ``PlacementService.move_group`` returned. Only a
-    horse that came from another stay can be put back; one that had no
-    location before the move is left out. All stays of one group move have
-    the same location and the same start date.
+    ``moved``: the stays ``PlacementService.move_group`` returned, or the
+    one stay of ``move_horse``. Only a horse that came from another stay
+    can be put back; one that had no location before the move is left
+    out. All stays of one move have the same location and the same start
+    date.
+
+    The move of one horse can give it to another owner. The link then
+    names the owner its share had, so that Undo gives the share back.
     """
     back = [placement for placement in moved if getattr(placement, 'previous_placement', None)]
     if not back:
         return ''
-    token = signing.dumps(
-        {
-            'u': user.pk,
-            'to': back[0].location_id,
-            'd': back[0].start_date.isoformat(),
-            'p': [placement.pk for placement in back],
-        },
-        salt=GROUP_MOVE_SALT, compress=True,
-    )
+    data = {
+        'u': user.pk,
+        'to': back[0].location_id,
+        'd': back[0].start_date.isoformat(),
+        'p': [placement.pk for placement in back],
+    }
+    share_owner = getattr(back[0], 'share_owner_was', None) if len(back) == 1 else None
+    if share_owner is not None:
+        data['o'] = share_owner.pk
+    token = signing.dumps(data, salt=GROUP_MOVE_SALT, compress=True)
     url = reverse('group_move_undo') + '?' + urlencode({'t': token})
     return url if len(url) <= GROUP_MOVE_UNDO_MAX_URL else ''
 
@@ -79,6 +84,7 @@ def read_group_move_token(token, user):
             'destination_id': int(data['to']),
             'move_date': date.fromisoformat(data['d']),
             'placement_ids': [int(pk) for pk in data['p']],
+            'share_owner_id': int(data['o']) if data.get('o') else None,
         }
     except (signing.BadSignature, KeyError, TypeError, ValueError):
         return None

@@ -74,7 +74,7 @@ from .locations import (
 from ..search import fuzzy_horse_ids
 from ._next import safe_next
 from ._popup import is_popup_request, popup_saved_response
-from ._undo import undo_tag
+from ._undo import group_move_undo_url, undo_tag
 
 
 def _warn_if_incomplete_ownership(request, formset):
@@ -2202,16 +2202,27 @@ def horse_move(request, pk):
                 rate_note = ''
                 if current_placement and new_placement.rate_type_id != current_placement.rate_type_id:
                     rate_note = f" Rate changed to {new_placement.rate_type.name}."
+                # Undo puts the horse back, as it does for a group
+                # (core.views.locations.group_move_undo): a horse that
+                # arrives in the wrong location today cannot be moved
+                # again until tomorrow.
+                undo = group_move_undo_url(request.user, [new_placement])
                 messages.success(
-                    request, f"{horse.name} moved successfully.{stable_note}{rate_note}")
+                    request, f"{horse.name} moved successfully.{stable_note}{rate_note}",
+                    extra_tags=undo_tag(undo) if undo else '')
                 _warn_wrong_rate(request, horse, new_placement)
                 _flash_superseded_trim(request, horse, new_placement)
                 if in_popup:
                     return popup_saved_response()
                 return redirect(next_url or 'horse_list')
     else:
+        today = timezone.localdate()
         form = MoveHorseForm(horse=horse, initial={
-            'move_date': timezone.localdate()
+            'move_date': today,
+            # A move inside the yard does not change the day the horse
+            # leaves it. Before, the box was empty and the date was lost
+            # unless the person typed it again.
+            'expected_departure': PlacementService.kept_departure(current_placement, today),
         })
 
     template = 'horses/partials/move_form.html' if in_popup else 'horses/horse_move.html'
