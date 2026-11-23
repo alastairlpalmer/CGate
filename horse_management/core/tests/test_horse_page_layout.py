@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from core.models import Horse, Location, Owner, OwnershipShare, Placement, RateType
 from core.roles_testutils import make_admin
+from health.models import BreedingRecord
 from training.models import Activity, WorkType
 
 
@@ -112,3 +113,39 @@ class TrainingCardTests(Base):
         Activity.objects.create(horse=self.horse, date=self.today - timedelta(days=1),
                                 work_type=self.canter, status='not_done', reason='vet')
         self.assertEqual(self.shown(), (True, True))
+
+
+class BannerAreasTests(Base):
+    """23 Nov 2026: the tree sits between the name and the buttons on a wide
+    screen, so the buttons have their own area and the page horse's own
+    box is left out of the banner's tree."""
+
+    def test_buttons_have_their_own_area(self):
+        self.place()
+        banner = self.banner(main(self.page()))
+        head = banner.split('class="horse-hero-head"', 1)[1].split('class="horse-hero-actions"', 1)[0]
+        self.assertIn('<h1', head)
+        self.assertNotIn('Move', head)
+        actions = banner.split('class="horse-hero-actions"', 1)[1].split('data-testid="hero-placement"', 1)[0]
+        self.assertIn('Move', actions)
+        self.assertIn('class="ped is-page-horse"', banner)
+
+
+class PhoneTablesTests(Base):
+    """On a phone, Breeding history and Foals stack into labelled cards
+    (data-table-cards), so Actions is no longer off the screen."""
+
+    def test_both_tables_use_cards(self):
+        foal = Horse.objects.create(name='Little', sex='colt', dam=self.horse,
+                                    date_of_birth=self.today - timedelta(days=60))
+        BreedingRecord.objects.create(mare=self.horse, stallion_name='Hip Hop', foal=foal, status='born',
+                                      date_covered=self.today - timedelta(days=400),
+                                      foal_dob=self.today - timedelta(days=60))
+        body = main(self.page())
+        history = body.split('<!-- Breeding history -->', 1)[1].split('<!-- Foals -->', 1)[0]
+        foals = body.split('<!-- Foals -->', 1)[1].split('<!-- History:', 1)[0]
+        for table, labels in ((history, ('Season', 'Stallion', 'Coverings', 'Scans', 'Outcome', 'Foal')),
+                              (foals, ('Name', 'Foaled', 'Age', 'Sire', 'Status'))):
+            self.assertIn('class="data-table data-table-cards"', table)
+            for label in labels:
+                self.assertIn(f'data-label="{label}"', table)

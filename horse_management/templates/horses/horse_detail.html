@@ -38,16 +38,16 @@
     {% endif %}
     </div>
 
-    {% comment %}The banner (21 Nov 2026 layout): the photo, large; the name,
-    summary and main buttons; then the current placement and the pedigree
-    tree side by side in the space beside the photo. The areas are in
-    static/css/input.css (.horse-hero): on a phone the photo sits beside the
-    name and the placement and tree go full width under it.{% endcomment %}
+    {% comment %}The banner: the photo, large; the name, summary and owner;
+    the main buttons; the current placement; the pedigree tree. On a wide
+    screen the tree sits between the name and the buttons, so it does not
+    make the banner taller (23 Nov 2026). The areas are in
+    static/css/input.css (.horse-hero).{% endcomment %}
     <div class="panel horse-hero" data-testid="horse-hero">
         <div class="horse-hero-photo">
             {% include 'horses/_horse_avatar.html' with horse=horse size='xl' %}
         </div>
-        <div class="horse-hero-head flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+        <div class="horse-hero-head">
             <div class="min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
                     <h1 class="page-title">{{ horse.name }}</h1>
@@ -88,12 +88,14 @@
                 </p>
                 {% endif %}
             </div>
+        </div>
+        <div class="horse-hero-actions">
             {% if feature_access.horses.full %}
             {% comment %}One main button: Move while the horse is here, Log
             arrival when it is not. Edit beside it. Depart is rare and final,
             so it is in More, last, in red (docs/UX_REVIEW_PLAN.md A2). The
             depart date form opens in place under the buttons.{% endcomment %}
-            <div x-data="{ showDate: false }" class="flex flex-col items-start md:items-end gap-2 shrink-0">
+            <div x-data="{ showDate: false }" class="flex flex-col items-start sm:items-end gap-2">
                 <div class="flex items-center gap-2 flex-wrap">
                     {% if current_placement %}
                     <a href="{% url 'horse_move' horse.pk %}?next={{ request.path|urlencode }}" title="Move to a different location"
@@ -644,7 +646,7 @@
                     <a href="{% url 'breeding_list' %}?horse={{ horse.pk }}" class="text-xs link tap-pad">See all records</a>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="data-table">
+                    <table class="data-table data-table-cards">
                         <thead>
                             <tr>
                                 <th>Season</th>
@@ -659,25 +661,25 @@
                         <tbody>
                             {% for br in breeding_history %}
                             <tr>
-                                <td class="whitespace-nowrap">{{ br.season }}</td>
-                                <td>{{ br.stallion_name }}</td>
-                                <td class="whitespace-nowrap text-sage">
+                                <td class="whitespace-nowrap" data-label="Season">{{ br.season }}</td>
+                                <td data-label="Stallion">{{ br.stallion_name }}</td>
+                                <td class="whitespace-nowrap text-sage" data-label="Coverings">
                                     {% with cs=br.coverings.all %}
                                     {{ cs|length }} &middot; {{ br.first_covering_date|date:"j M" }}{% if cs|length > 1 %} &ndash; {{ br.date_covered|date:"j M" }}{% endif %}
                                     {% endwith %}
                                 </td>
-                                <td class="whitespace-nowrap text-xs">
+                                <td class="whitespace-nowrap text-xs" data-label="Scans">
                                     14-day: {% include 'health/partials/scan_result_label.html' with result=br.scan_14_result %}
                                     &middot; Heartbeat: {% include 'health/partials/scan_result_label.html' with result=br.scan_heartbeat_result %}
                                 </td>
-                                <td>{% include 'health/partials/breeding_status_badge.html' with br=br %}</td>
-                                <td class="whitespace-nowrap">
+                                <td data-label="Outcome">{% include 'health/partials/breeding_status_badge.html' with br=br %}</td>
+                                <td class="whitespace-nowrap" data-label="Foal">
                                     {% if br.foal %}<a href="{% url 'horse_detail' br.foal.pk %}" class="link tap-pad">{{ br.foal.name }}</a>{% if br.foal_dob %}<div class="text-xs text-sage">{{ br.foal_dob|date:"j M Y" }}</div>{% endif %}
                                     {% elif br.foal_dob %}<span class="text-charcoal">{{ br.foal_dob|date:"j M Y" }}</span><div class="text-xs text-sage">not linked</div>
                                     {% else %}<span class="text-sage">-</span>{% endif %}
                                 </td>
                                 {% if feature_access.breeding.full %}
-                                <td class="text-right whitespace-nowrap">
+                                <td class="text-right whitespace-nowrap max-sm:!text-left">
                                     {% if br.can_add_covering %}<a href="{% url 'breeding_covering_add' br.pk %}" hx-get="{% url 'breeding_covering_add' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record covering for {{ horse.name }}" class="btn-ghost btn-xs">Record covering</a>{% endif %}
                                     {% if br.can_record_foaling %}<a href="{% url 'breeding_foaling' br.pk %}" hx-get="{% url 'breeding_foaling' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Record foaling for {{ horse.name }}" class="btn-ghost btn-xs">Record foaling</a>{% endif %}
                                     <a href="{% url 'breeding_update' br.pk %}" hx-get="{% url 'breeding_update' br.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record" class="btn-ghost btn-xs">Edit</a>
@@ -699,7 +701,7 @@
                 </div>
                 <div class="p-4">
                     <div class="overflow-x-auto">
-                        <table class="data-table">
+                        <table class="data-table data-table-cards">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -715,14 +717,14 @@
                                 {% for foal in foals %}
                                 {% with fr=foal.birth_record.all.0 %}
                                 <tr>
-                                    <td class="whitespace-nowrap"><a href="{% url 'horse_detail' foal.pk %}" class="link tap-pad">{{ foal.name }}</a></td>
-                                    <td class="text-sage whitespace-nowrap">{% if foal.date_of_birth %}{{ foal.date_of_birth|date:"j M Y" }}{% else %}-{% endif %}</td>
-                                    <td class="text-charcoal whitespace-nowrap">{{ foal.age_label|default:"-" }}</td>
-                                    <td class="text-sage">{{ foal.get_sex_display|default:"-" }}{% if foal.color %} &middot; {{ foal.get_color_display }}{% endif %}</td>
-                                    <td class="text-sage">{{ foal.sire_name|default:"-" }}</td>
-                                    <td>{% if fr %}{% if fr.is_weaned %}<span class="badge-neutral">Weaned {{ fr.weaned_date|date:"j M Y" }}</span>{% else %}<span class="badge-success">At foot</span>{% endif %}{% else %}<span class="text-sage">-</span>{% endif %}</td>
+                                    <td class="whitespace-nowrap" data-label="Name"><a href="{% url 'horse_detail' foal.pk %}" class="link tap-pad">{{ foal.name }}</a></td>
+                                    <td class="text-sage whitespace-nowrap" data-label="Foaled">{% if foal.date_of_birth %}{{ foal.date_of_birth|date:"j M Y" }}{% else %}-{% endif %}</td>
+                                    <td class="text-charcoal whitespace-nowrap" data-label="Age">{{ foal.age_label|default:"-" }}</td>
+                                    <td class="text-sage" data-label="Sex &amp; colour">{{ foal.get_sex_display|default:"-" }}{% if foal.color %} &middot; {{ foal.get_color_display }}{% endif %}</td>
+                                    <td class="text-sage" data-label="Sire">{{ foal.sire_name|default:"-" }}</td>
+                                    <td data-label="Status">{% if fr %}{% if fr.is_weaned %}<span class="badge-neutral">Weaned {{ fr.weaned_date|date:"j M Y" }}</span>{% else %}<span class="badge-success">At foot</span>{% endif %}{% else %}<span class="text-sage">-</span>{% endif %}</td>
                                     {% if feature_access.breeding.full %}
-                                    <td class="text-right whitespace-nowrap">
+                                    <td class="text-right whitespace-nowrap max-sm:!text-left">
                                         {% if fr.can_wean %}<a href="{% url 'breeding_wean' fr.pk %}" hx-get="{% url 'breeding_wean' fr.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Wean {{ foal.name }}" class="btn-ghost btn-xs">Wean</a>{% endif %}
                                         {% if fr %}<a href="{% url 'breeding_foal_edit' fr.pk %}" hx-get="{% url 'breeding_foal_edit' fr.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit foal details for {{ foal.name }}" class="btn-ghost btn-xs">Edit foal details</a>{% endif %}
                                     </td>
