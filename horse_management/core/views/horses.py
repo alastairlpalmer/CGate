@@ -1880,11 +1880,14 @@ def horse_credential_rows(horse):
     """
     today = timezone.localdate()
 
-    def due_row(label, due):
+    def due_row(label, due, kind):
         return {
             'label': label,
             'value': due.strftime('%d %b %Y') if due else 'Not recorded',
             'tone': 'muted' if not due else ('alert' if due < today else 'plain'),
+            # For preview_due(): the date itself and the kind of reminder.
+            'due': due,
+            'kind': kind,
         }
 
     rows = [
@@ -1905,15 +1908,49 @@ def horse_credential_rows(horse):
     for vaccination in current_vaccinations(
         horse.vaccinations.select_related('vaccination_type')
     ):
-        rows.append(due_row(vaccination.vaccination_type.name, vaccination.next_due_date))
+        rows.append(due_row(vaccination.vaccination_type.name, vaccination.next_due_date, 'vaccination'))
 
     farrier = current_farrier_visits(horse.farrier_visits.all()).first()
-    rows.append(due_row('Farrier', farrier.next_due_date if farrier else None))
+    rows.append(due_row('Farrier', farrier.next_due_date if farrier else None, 'farrier'))
 
     worming = current_worming_treatments(horse.worming_treatments.all()).first()
-    rows.append(due_row('Worming', worming.next_due_date if worming else None))
+    rows.append(due_row('Worming', worming.next_due_date if worming else None, 'worming'))
 
     return rows
+
+
+def preview_due(rows, user, today=None):
+    """The preview's line under the name: the first thing that is overdue
+    or due in the next fortnight, and how many more there are.
+
+    ``{'label', 'due_date', 'severity': 'overdue' | 'due', 'more'}`` or
+    None. It reads the rows of ``horse_credential_rows``, which the
+    preview has loaded already: the pane opens once for each horse as
+    someone goes down the list, so the line must not cost a query of its
+    own. (The list's dot and the horse page use ``_health_flags``, which
+    reads every horse.) A kind of reminder the yard switched off in
+    Settings is left out, as it is there.
+    """
+    from ..reminders import muted_collectors
+
+    if not has_feature_access(user, 'health', LEVEL_VIEW):
+        return None
+    today = today or timezone.localdate()
+    horizon = today + timedelta(days=HEALTH_FLAG_DAYS)
+    due = [row for row in rows if row.get('due') and row['due'] <= horizon]
+    if not due:
+        return None
+    muted = muted_collectors()
+    due = sorted((row for row in due if row['kind'] not in muted), key=lambda row: row['due'])
+    if not due:
+        return None
+    first = due[0]
+    return {
+        'label': first['label'],
+        'due_date': first['due'],
+        'severity': 'overdue' if first['due'] < today else 'due',
+        'more': len(due) - 1,
+    }
 
 
 @feature_required('horses', LEVEL_VIEW)
@@ -1969,6 +2006,7 @@ def horse_preview(request, pk):
         activities=training_horse.timeline_activities(request.user, horse, 5),
     )
 
+    credential_rows = horse_credential_rows(horse)
     return render(request, 'horses/partials/preview.html', {
         'horse': horse,
         'gallery': _preview_gallery(horse),
@@ -1976,11 +2014,13 @@ def horse_preview(request, pk):
         'last_placement': last_placement,
         'owner': horse.current_owner,
         'ownership_shares': list(horse.ownership_shares.all()),
-        'credential_rows': horse_credential_rows(horse),
+        'credential_rows': credential_rows,
         'documents': list(horse.documents.all()[:6]),
         'timeline_events': timeline[:12],
         'has_training': training_horse.can_see_training(request.user),
         'today': timezone.localdate(),
+        # What is due, in words, under the name.
+        'due_line': preview_due(credential_rows, request.user) if horse.is_active else None,
     })
 
 

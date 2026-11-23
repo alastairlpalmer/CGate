@@ -1952,6 +1952,12 @@ html.page-pending #main-content { opacity: 0.5; transition: opacity 0.15s ease-o
     @apply flex flex-col items-center justify-center gap-3 cursor-default ring-black/10;
 }
 .preview-hero.is-empty:hover { @apply ring-1; }
+/* Below lg the preview is a sheet that opens a third of the way up. An
+   empty photo block filled that third; the name's line has the small
+   picture in its place (C9). */
+@media (max-width: 1023px) {
+    .preview-hero.is-empty { display: none; }
+}
 .preview-hero-count {
     @apply absolute right-2 bottom-2 rounded-full bg-charcoal/75 px-2 py-0.5
            text-[11px] font-medium text-white tabular-nums;

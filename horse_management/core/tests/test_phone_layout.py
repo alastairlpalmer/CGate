@@ -786,3 +786,128 @@ class PhoneTextTests(TestCase):
     def test_small_grey_text_is_darker_on_a_phone(self):
         block = self.css.split('/* ── Text on a phone (docs/MOBILE_APP_PLAN.md, C7)', 1)[1]
         self.assertRegex(block, r'\.text-xs\.text-sage,[^{]*\{\s*color: var\(--color-charcoal-light, #4A4A4A\);')
+
+
+class PreviewSheetTests(TestCase):
+    """C9: the horse preview opens with who, what is due and whom to call."""
+
+    PANE = {'HTTP_HX_REQUEST': 'true', 'HTTP_HX_TARGET': 'horse-preview-body'}
+
+    def setUp(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from core.models import Horse, Location, Owner, Placement, RateType
+
+        self.today = timezone.localdate()
+        self.days = timedelta
+        self.client.force_login(make_admin('boss'))
+        self.owner = Owner.objects.create(name='Jo Bloggs', phone='01234 567890')
+        self.horse = Horse.objects.create(name='Belina', sex='mare')
+        Placement.objects.create(
+            horse=self.horse, owner=self.owner,
+            location=Location.objects.create(name='Top Field', site='Main'),
+            rate_type=RateType.objects.create(name='Full', daily_rate=10),
+            start_date=self.today - timedelta(days=30),
+        )
+
+    def preview(self):
+        return self.client.get(reverse('horse_preview', args=[self.horse.pk]), **self.PANE).content.decode()
+
+    def overdue(self):
+        from health.models import Vaccination, VaccinationType
+
+        Vaccination.objects.create(
+            horse=self.horse, vaccination_type=VaccinationType.objects.create(name='Flu', interval_months=12),
+            date_given=self.today - self.days(days=400), next_due_date=self.today - self.days(days=35),
+        )
+
+    def test_with_no_photo_the_small_picture_is_beside_the_name(self):
+        html = self.preview()
+        who = html.split('data-testid="preview-avatar"', 1)[1].split('</h2>', 1)[0]
+        self.assertIn('Belina', who)
+        # A tap on it adds a photo.
+        self.assertIn('data-popup-title="Add photos for Belina" aria-label="Add a photo of Belina"', who)
+        # The large empty block is still there for the side pane, and a sheet hides it.
+        self.assertIn('class="preview-hero is-empty"', html)
+        css = (Path(settings.BASE_DIR) / 'static' / 'css' / 'input.css').read_text()
+        self.assertRegex(css, r'@media \(max-width: 1023px\) \{\s*\.preview-hero\.is-empty \{ display: none; \}')
+
+    def test_a_role_that_cannot_change_horses_gets_the_picture_and_no_link(self):
+        self.client.force_login(make_user_with_access('groom', horses='view'))
+        who = self.preview().split('data-testid="preview-avatar"', 1)[1].split('</h2>', 1)[0]
+        self.assertNotIn('Add a photo', who)
+
+    def test_what_is_due_is_the_line_under_the_name(self):
+        self.overdue()
+        html = self.preview()
+        line = html.split('data-testid="preview-due"', 1)[1].split('</p>', 1)[0]
+        self.assertIn('>Flu<', line)
+        self.assertIn('35 days overdue', line)
+        # Before the status badges and the figures.
+        self.assertLess(html.index('data-testid="preview-due"'), html.index('class="pane-stats"'))
+
+    def test_a_horse_with_nothing_due_has_no_line(self):
+        self.assertNotIn('data-testid="preview-due"', self.preview())
+
+    def test_the_line_says_the_first_thing_due_and_how_many_more(self):
+        from core import reminders
+        from core.views.horses import preview_due
+
+        # A new yard has the farrier reminder switched off.
+        reminders.set_reminder('farrier', True)
+        admin = make_admin('counter')
+        day = self.days
+        rows = [
+            {'label': 'Passport', 'value': 'On record', 'tone': 'plain'},
+            {'label': 'Flu', 'due': self.today + day(days=5), 'kind': 'vaccination'},
+            {'label': 'Farrier', 'due': self.today - day(days=3), 'kind': 'farrier'},
+            {'label': 'Worming', 'due': self.today + day(days=40), 'kind': 'worming'},
+            {'label': 'Tetanus', 'due': None, 'kind': 'vaccination'},
+        ]
+        self.assertEqual(preview_due(rows, admin, self.today), {
+            'label': 'Farrier', 'due_date': self.today - day(days=3), 'severity': 'overdue', 'more': 1,
+        })
+        # Due in 14 days counts; in 15 it does not.
+        soon = [{'label': 'Flu', 'due': self.today + day(days=14), 'kind': 'vaccination'}]
+        self.assertEqual(preview_due(soon, admin, self.today)['severity'], 'due')
+        later = [{'label': 'Flu', 'due': self.today + day(days=15), 'kind': 'vaccination'}]
+        self.assertIsNone(preview_due(later, admin, self.today))
+
+    def test_a_reminder_the_yard_switched_off_is_not_in_the_line(self):
+        from core import reminders
+        from core.views.horses import preview_due
+
+        rows = [{'label': 'Farrier', 'due': self.today - self.days(days=3), 'kind': 'farrier'}]
+        admin = make_admin('counter')
+        reminders.set_reminder('farrier', True)
+        self.assertIsNotNone(preview_due(rows, admin, self.today))
+        reminders.set_reminder('farrier', False)
+        self.assertIsNone(preview_due(rows, admin, self.today))
+
+    def test_a_role_with_no_health_gets_no_line(self):
+        self.overdue()
+        self.client.force_login(make_user_with_access('office', horses='view', owners='view'))
+        self.assertNotIn('data-testid="preview-due"', self.preview())
+
+    def test_a_horse_that_left_has_no_line(self):
+        self.overdue()
+        self.horse.is_active = False
+        self.horse.save()
+        self.assertNotIn('data-testid="preview-due"', self.preview())
+
+    def test_the_owner_can_be_called_from_the_first_lines(self):
+        html = self.preview()
+        self.assertIn('href="tel:01234567890"', html)
+        self.assertIn('aria-label="Call Jo Bloggs, 01234 567890"', html)
+        self.assertLess(html.index('data-testid="preview-call"'), html.index('class="pane-stats"'))
+
+    def test_no_call_link_without_a_number_or_without_the_right_to_see_owners(self):
+        self.owner.phone = ''
+        self.owner.save()
+        self.assertNotIn('data-testid="preview-call"', self.preview())
+        self.owner.phone = '01234 567890'
+        self.owner.save()
+        self.client.force_login(make_user_with_access('groom', horses='view'))
+        self.assertNotIn('data-testid="preview-call"', self.preview())
