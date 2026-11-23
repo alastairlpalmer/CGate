@@ -357,6 +357,10 @@ class LocationListView(FeatureAccessMixin, ListView):
             )
             loc['bar_height'] = _rest_bar_height(loc['rest_days'])
             (mapped if loc['kind'] else unmapped).append(loc)
+        # "Most horses" is the sort that is on when the page opens. The
+        # script sorts the mapped rows; the block with no boundary gets
+        # the same order here, so it is right before the script runs.
+        unmapped.sort(key=lambda loc: (-loc['count'], loc['name'].lower()))
 
         from ..models import DashboardPreference
         pinned = DashboardPreference.objects.filter(
