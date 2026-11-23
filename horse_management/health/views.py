@@ -34,6 +34,7 @@ from billing.forms import BulkChargeForm
 from billing.models import ExtraCharge
 from core.models import Horse, Placement
 from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_response
+from core.views._undo import group_move_undo_url, undo_tag
 
 from .forms import (
     hide_cost,
@@ -770,7 +771,10 @@ def bulk_health_apply(request):
     else:
         success_msg = f"{label} recorded for {count} horse{plural}."
     if count or not (action_errors or restore_skipped):
-        messages.success(request, success_msg)
+        # A move can be undone, as "Move horses" on a location can
+        # (core.views.locations.group_move_undo).
+        undo = group_move_undo_url(request.user, moved) if action_type == 'move' else ''
+        messages.success(request, success_msg, extra_tags=undo_tag(undo) if undo else '')
     for err in action_errors:
         messages.error(request, err)
     if wrong_rate:

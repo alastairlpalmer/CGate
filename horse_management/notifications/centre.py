@@ -254,9 +254,73 @@ def horses_moved(event, horses, *, location=None, day=None, actor=None):
     if len(horses) > 1:
         body = f'{_names(horses)}' + (f' · {body}' if body else '')
     body += f' · {day.day} {day:%b}'
-    ids = '-'.join(str(h.pk) for h in sorted(horses, key=lambda h: h.pk))
-    key = _short_key('move', event, ids, getattr(location, 'pk', ''), day.isoformat())
+    key = _move_key(event, horses, getattr(location, 'pk', ''), day)
     return notify(Category.MOVEMENT, kind=event, title=title, body=body, url=url,
+                  dedupe_key=key, actor=actor)
+
+
+def _move_key(event, horses, location_pk, day):
+    ids = '-'.join(str(h.pk) for h in sorted(horses, key=lambda h: h.pk))
+    return _short_key('move', event, ids, location_pk, day.isoformat())
+
+
+def move_undone(horses, *, moved_to_id, day, back_in=None, actor=None):
+    """A group move was undone (PlacementService.undo_move_group).
+
+    The "moved" notifications of that move are not true any more, so they
+    go from everyone's list. Usually nobody has seen them: an Undo comes
+    seconds after the slip. If somebody has read one, or gets movements
+    by e-mail, one new notification says that the horses are back.
+
+    ``back_in``: the location they are back in, or None if they came
+    from more than one. Never raises. Returns how many it made.
+    """
+    try:
+        return _move_undone(horses, moved_to_id, day, back_in, actor)
+    except Exception:
+        logger.exception('Could not put right the notifications of an undone move')
+        return 0
+
+
+def _move_undone(horses, moved_to_id, day, back_in, actor):
+    from django.urls import reverse
+
+    horses = [h for h in horses if h is not None]
+    if not horses:
+        return 0
+    # The move told each horse on its own (PlacementService.move_horse).
+    stale = Notification.objects.filter(
+        category=Category.MOVEMENT,
+        dedupe_key__in=[_move_key('moved', [horse], moved_to_id, day) for horse in horses],
+    )
+    seen = (
+        stale.filter(read_at__isnull=False).exists()
+        or NotificationPreference.objects.filter(
+            category=Category.MOVEMENT, email=True, user__is_active=True,
+        ).exists()
+    )
+    stale.delete()
+    if not seen:
+        return 0
+    one = len(horses) == 1
+    if back_in is not None:
+        where = f'in {back_in.name}'
+    else:
+        where = 'where it was' if one else 'where they were'
+    if one:
+        title = f'Move undone: {horses[0].name} is back {where}'
+        url = reverse('horse_detail', args=[horses[0].pk])
+        body = ''
+    else:
+        title = f'Move undone: {len(horses)} horses are back {where}'
+        url = reverse('location_detail', args=[back_in.pk]) if back_in is not None else reverse('horse_list')
+        body = _names(horses)
+    body += (' · ' if body else '') + f'{day.day} {day:%b}'
+    # The time is in the key: a group can go to the wrong place and come
+    # back two times in one day, and each time is its own event. (A second
+    # tap on one Undo does not get here: it finds nothing to put back.)
+    key = _short_key(_move_key('undone', horses, moved_to_id, day), f'{timezone.now():%H%M%S%f}')
+    return notify(Category.MOVEMENT, kind='moved', title=title, body=body, url=url,
                   dedupe_key=key, actor=actor)
 
 

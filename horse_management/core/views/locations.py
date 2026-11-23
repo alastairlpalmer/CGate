@@ -28,6 +28,7 @@ from ..boundary_import import area_hectares
 from ..geo import coords_from_link, site_distance_warning
 from ._next import safe_next
 from ._popup import PopupFormMixin, is_popup_request, popup_saved_response
+from ._undo import group_move_undo_url, read_group_move_token, undo_tag
 from ..permissions import LEVEL_VIEW, FeatureAccessMixin, SettingsReturnMixin, feature_required
 from ..models import Horse, Location, LocationUsagePeriod, Placement, SiteSettings, Stable
 
@@ -1169,10 +1170,16 @@ def location_move_horses(request, pk):
                     form.add_error(None, f'{horse.name}: {reason}')
             else:
                 count = len(moved)
+                # Undo puts the group back (group_move_undo). A horse that
+                # arrives in the wrong location today cannot be moved again
+                # until tomorrow, so without it a slip costs an edit of
+                # each horse's stay.
+                undo = group_move_undo_url(request.user, moved)
                 messages.success(
                     request,
                     f"{count} horse{'s' if count != 1 else ''} moved from "
                     f"{location.name} to {destination.name}.",
+                    extra_tags=undo_tag(undo) if undo else '',
                 )
                 for horse, reason in failed:
                     messages.error(request, f'Not moved: {horse.name}. {reason[:1].upper()}{reason[1:]}')
@@ -1240,6 +1247,47 @@ def location_move_horses(request, pk):
         'in_popup': in_popup,
         'today': today,
     })
+
+
+@feature_required('horses')
+@require_POST
+def group_move_undo(request):
+    """The Undo on the message of a group move: "Move horses" on a
+    location, and "Move to Location" for ticked horses on the horse list.
+
+    The link names the stays that the move made (core.views._undo). Each
+    horse goes back only if nothing changed after the move; any other
+    horse is named with the reason. A second tap changes nothing.
+    """
+    from ..services import PlacementService
+
+    back = safe_next(request, reverse('horse_list'))
+    asked = read_group_move_token(request.GET.get('t', ''), request.user)
+    if asked is None:
+        messages.error(
+            request,
+            "This move cannot be undone here any more. "
+            "To put a horse back, change its stay on the horse's page.",
+        )
+        return redirect(back)
+    restored, failed, gone = PlacementService.undo_move_group(
+        asked['placement_ids'],
+        destination_id=asked['destination_id'],
+        move_date=asked['move_date'],
+    )
+    if restored:
+        source = PlacementService.one_location(restored)
+        if len(restored) == 1:
+            where = f"in {source.name}"
+            messages.success(request, f"Move undone. {restored[0].horse.name} is back {where}.")
+        else:
+            where = f"in {source.name}" if source is not None else "where they were"
+            messages.success(request, f"Move undone. {len(restored)} horses are back {where}.")
+    elif gone and not failed:
+        messages.info(request, "This move was undone already.")
+    for horse, reason in failed:
+        messages.error(request, f"Not put back: {horse.name}. {reason[:1].upper()}{reason[1:]}")
+    return redirect(back)
 
 
 @feature_required('locations')
