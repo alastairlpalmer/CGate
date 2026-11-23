@@ -2263,6 +2263,24 @@ a.pane-item-title:hover { @apply text-forest; }
 .notif-body { @apply mt-0.5 text-sm text-charcoal-light; }
 .notif-meta { @apply mt-1.5 flex flex-wrap items-center gap-2 text-xs text-sage; }
 .notif-actions { @apply mt-2 flex flex-wrap items-center gap-1.5; }
+/* A row was five lines: title, two of text, when, buttons. Now "when" is
+   at the end of the title's line, where the eye looks for it, and goes
+   under the title only when the two do not fit (docs/MOBILE_APP_PLAN.md,
+   C11). A group keeps "Show all" and its button on one line. */
+.notif-text { display: flex; flex-wrap: wrap; align-items: center; column-gap: 0.5rem; }
+.notif-text > .notif-title { order: 1; flex: 1 1 8rem; min-width: 0; }
+.notif-text > .notif-meta { order: 2; flex: 0 0 auto; @apply mt-0; }
+.notif-text > .notif-body { order: 3; flex: 0 0 100%; min-width: 0; }
+.notif-text > .notif-actions { order: 4; flex: 0 0 100%; }
+.notif-text > .notif-group-items { order: 5; flex: 0 0 100%; min-width: 0; }
+.notif-group .notif-text > .notif-title { flex: 0 0 100%; }
+.notif-group .notif-text > .notif-meta { order: 4; flex: 1 1 auto; @apply mt-1.5; }
+.notif-group .notif-text > .notif-actions { order: 4; flex: 0 1 auto; @apply mt-1.5; }
+/* The notices of a group, shown when the row is opened. */
+.notif-group-items { @apply mt-2 divide-y divide-light-sage/70 border-t border-light-sage/70; }
+.notif-group-items > li { @apply flex flex-wrap items-center gap-x-2 py-1.5 min-h-[44px] text-sm; }
+.notif-group-name { @apply font-medium text-charcoal no-underline hover:text-forest; }
+.notif-group-detail { @apply text-charcoal-light; }
 .notif-unread-dot {
     @apply mt-1.5 w-2.5 h-2.5 rounded-full bg-saddle hover:ring-4 hover:ring-saddle/20 transition-shadow;
 }

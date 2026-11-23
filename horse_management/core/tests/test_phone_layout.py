@@ -911,3 +911,101 @@ class PreviewSheetTests(TestCase):
         self.owner.save()
         self.client.force_login(make_user_with_access('groom', horses='view'))
         self.assertNotIn('data-testid="preview-call"', self.preview())
+
+
+class NotificationRowTests(TestCase):
+    """C11: several notices of one kind are one row with one button."""
+
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        self.boss = make_admin('boss')
+        self.client.force_login(self.boss)
+
+    def over_capacity(self, *names):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from core.models import Horse, Location, Owner, Placement, RateType
+
+        owner = Owner.objects.create(name='Jo Bloggs')
+        rate = RateType.objects.create(name='Full', daily_rate=10)
+        for name in names:
+            field = Location.objects.create(name=name, site='Main', capacity=1)
+            for n in range(2):
+                Placement.objects.create(
+                    horse=Horse.objects.create(name=f'{name} horse {n}', sex='mare'), owner=owner, location=field,
+                    rate_type=rate, start_date=timezone.localdate() - timedelta(days=30),
+                )
+
+    def panel(self, tab='action'):
+        return self.client.get(reverse('notification_panel'), {'tab': tab, 'fresh': '1'}).content.decode()
+
+    def test_notices_of_one_kind_become_one_row_where_the_first_stood(self):
+        from types import SimpleNamespace
+
+        from notifications.centre_views import group_rows
+
+        def notice(pk, kind, title, resolved=None, unread=False):
+            return SimpleNamespace(pk=pk, kind=kind, title=title, resolved_at=resolved, is_unread=unread)
+
+        rows = [
+            notice(1, 'vaccination', 'Bella'),
+            notice(2, 'capacity', 'Bottom Field · Colgate'),
+            notice(3, 'departure', 'Oldie'),
+            notice(4, 'capacity', 'Mare Paddock · California Farm', unread=True),
+            notice(5, 'capacity', 'Paddock 1 · Somerford'),
+            notice(6, 'capacity', 'Top Field · Colgate'),
+            notice(7, 'capacity', 'Old Barn · Colgate', resolved='done'),
+        ]
+        out = group_rows(rows)
+        self.assertEqual([getattr(row, 'pk', 'group') for row in out], [1, 'group', 3, 7])
+        group = out[1]
+        self.assertEqual(group['title'], '4 locations over capacity')
+        self.assertEqual(group['summary'], 'Bottom Field, Mare Paddock, Paddock 1 and 1 more')
+        self.assertEqual(group['ids'], [2, 4, 5, 6])
+        self.assertTrue(group['is_unread'])
+        self.assertEqual(group['url'], reverse('location_list'))
+
+    def test_one_notice_of_a_kind_stays_a_row_of_its_own(self):
+        from types import SimpleNamespace
+
+        from notifications.centre_views import group_rows
+
+        rows = [SimpleNamespace(pk=1, kind='capacity', title='Top Field · Main', resolved_at=None, is_unread=False)]
+        self.assertEqual(group_rows(rows), rows)
+
+    def test_the_panel_shows_the_group_with_one_button_and_the_places_inside(self):
+        self.over_capacity('Top Field', 'Long Meadow', 'Home Paddock')
+        html = self.panel()
+        self.assertEqual(html.count('data-testid="notif-group"'), 1)
+        # Only these notices are in the panel, so the group is the rest of the list.
+        group = html.split('data-testid="notif-group"', 1)[1]
+        self.assertIn('<p class="notif-title">3 locations over capacity</p>', group)
+        self.assertIn('>See locations</a>', group)
+        self.assertIn('Show all 3', group)
+        for name in ('Top Field', 'Long Meadow', 'Home Paddock'):
+            self.assertIn(f'{name} · Main</a>', group)
+        # Each place can still be dismissed by itself.
+        items = group.split('class="notif-group-items"', 1)[1]
+        self.assertEqual(items.count('>Dismiss</button>'), 3)
+        # The count on the tab is of notices, not rows.
+        self.assertIn('Needs action <b>3</b>', html)
+
+    def test_one_place_over_capacity_is_an_ordinary_row(self):
+        self.over_capacity('Top Field')
+        html = self.panel()
+        self.assertNotIn('data-testid="notif-group"', html)
+        self.assertIn('Top Field · Main', html)
+
+    def test_the_needs_action_tab_does_not_repeat_its_name_on_each_row(self):
+        self.over_capacity('Top Field')
+        self.assertNotIn('<span>Needs action</span>', self.panel('action'))
+        self.assertIn('<span>Needs action</span>', self.panel('all'))
+
+    def test_the_when_badge_is_on_the_title_line(self):
+        css = (Path(settings.BASE_DIR) / 'static' / 'css' / 'input.css').read_text()
+        self.assertIn('.notif-text > .notif-title { order: 1; flex: 1 1 8rem; min-width: 0; }', css)
+        self.assertIn('.notif-text > .notif-meta { order: 2; flex: 0 0 auto;', css)
