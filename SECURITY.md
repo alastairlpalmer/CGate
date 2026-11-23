@@ -101,6 +101,13 @@ no cross-customer isolation boundary to get wrong.
 - Content-Security-Policy in **report-only** mode (see Known gaps).
 - `Referrer-Policy: strict-origin-when-cross-origin`, so record IDs in URLs
   do not leak to third parties.
+- The app keeps copies of the last 10 pages in the browser's
+  `localStorage`, so the Back button is fast (htmx's history store). They
+  hold what the pages showed: names, phone numbers, amounts. They are
+  deleted at sign-out, and each time the sign-in page loads, which covers
+  a sign-in that ended by itself (`static/js/connection.js`,
+  `templates/registration/login.html`). While a person is signed in, the
+  copies stay on the device.
 - `Permissions-Policy` on every response: location and camera for this
   site only (maps, photo uploads); microphone, payment, USB and the rest off
   (`core/middleware.py`). One exception: the C-vet page

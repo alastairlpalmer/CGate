@@ -65,9 +65,14 @@
             swiped: 0,      // time of the last swipe, to swallow its click
 
             show: function (gallery, opener) {
+                var self = this;
                 this.photos = gallery.photos;
                 this.opener = opener || null;
                 this.open = true;
+                // The phone's Back button closes the viewer (overlay_back.js).
+                if (window.Yardway && Yardway.overlay) {
+                    Yardway.overlay.opened('lightbox', function () { self.close(); }, function () { return self.open; });
+                }
                 this.at(gallery.index);
                 document.documentElement.classList.add('overflow-hidden');
                 // The panel is display:none until Alpine applies x-show
@@ -142,6 +147,7 @@
             close: function () {
                 if (!this.open) { return; }
                 this.open = false;
+                if (window.Yardway && Yardway.overlay) { Yardway.overlay.closed('lightbox'); }
                 var opener = this.opener;
                 this.opener = null;
                 this.touch = null;
