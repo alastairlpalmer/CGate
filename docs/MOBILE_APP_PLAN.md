@@ -16,7 +16,7 @@ it ready to launch as an app.
 | 1. Nothing breaks, nothing is lost | Done in this branch: A1 to A7 (see the notes below the table) |
 | 2. Faster taps | Done in this branch: B1, B2, B7, B8, and part of B5 and B6. Not done: B3, B4 (see the notes below the table) |
 | 3. Key information first | Done in this branch: C1 to C12, and B4 from phase 2 (see the notes below the table) |
-| 4. Installed app | Not started |
+| 4. Installed app | Done in this branch: D2, D3, D4, D6, D7 (see the notes below the table). Not done: the tests on real phones (section 8) |
 | 5. Push notifications | Not started |
 | 6. App stores | Later: the installed web app comes first (section 9, decision 6) |
 
@@ -177,6 +177,54 @@ Phase 3 notes:
   before is corrected with
   it: each More menu kept its scroll listener on the page's outer scope,
   so one menu removed the listener of another.
+
+Phase 4 notes:
+
+- D4: the main app has a service worker (`/sw.js`,
+  `static/js/app_worker.js`, `core/views/app_shell.py`). It keeps the
+  styles, scripts, fonts and icons on the phone, and one page that says
+  "No signal". A page that cannot load shows that page at the address
+  that was asked for, with **Try again**; it loads by itself when the
+  signal is back. It does not make a warm start faster (the note under
+  the targets table has the times). The worker stores no page of the app (level 1 of
+  section E: level 2 is still a decision). A tap inside the app and a
+  save are not touched: `connection.js` says "No signal" for those, as
+  before. The list of files is read from `base.html`.
+  `APP_WORKER_ENABLED=False` takes the worker off every phone.
+- D3: the manifest has an `id`, `categories`, three phone screenshots and
+  the shortcuts Find a horse, Log arrival and Health. An iPhone gets a
+  start picture for each screen size (`core/start_images.py`, 15 files,
+  about 200 KB in total; `tools/make_start_images.py` draws them). The
+  screenshots come from a small yard with made-up names
+  (`tools/qa/app_shots_seed.py`).
+- D2: the dashboard has a card, "Use Cgate as an app"
+  (`static/js/app_install.js`). Android: one button. iPhone and iPad: two
+  steps, Share and then "Add to Home Screen". It shows in a phone's
+  browser until the person installs the app or closes the card. It does
+  not show in the installed app or on a computer. Help has a guide,
+  "Install Cgate on your phone".
+- D6: on a phone that can share a file, a link to an invoice's PDF or to
+  a statement gives the file to the share sheet
+  (`static/js/share_file.js`). The page stays where it is. A computer
+  downloads as before.
+- D7: four events go to the usage figures: "app request failed",
+  "app no signal" (seconds, sent when the signal is back), "app slow
+  tap" (2 seconds or more) and "app installed". Each event and each page
+  view says `app_display`: `installed` or `browser`. No event holds a
+  name or a record's number. **Not done:** to choose the tabs from the
+  page figures (C2). That needs some weeks of figures from a yard.
+- D1 is not changed in this phase. The answer of 23 November stands: the
+  two-step code is remembered for 14 days, and a sign-in lasts 7 days
+  with no use and 30 days in total. An iPhone keeps the sign-in of the
+  installed app apart from Safari's, so the person signs in one time
+  more after the install. Help says so.
+- Found and corrected in this phase: on a horse page on a phone, the line
+  "Billed to <name> (from the stay) Call" broke the words of each part.
+  A preview that failed to load was told to the person and was also an
+  "unhandled rejection" in the error reports.
+- **Section 8 is not done.** A browser on a computer cannot show how an
+  iPhone or an Android phone installs and starts the app. Tests 13 to 16
+  are new in that list.
 
 Not part of the plan, done with phase 2: **"Remember this device"** for
 two-step sign-in. After a correct code a device is remembered for
@@ -751,7 +799,7 @@ customer asks for it. Store rules change: read them again at that time.
 | A tab tap, good signal | 0.2 to 0.4 s (local) | Not measured again | Not measured again | Under 0.3 s |
 | A tab tap, weak signal (400 kbit/s, 400 ms) | 1.1 to 1.4 s | 0.6 to 0.9 s | Not measured again | Under 1 s |
 | Download for one tap | 24 to 38 KB | 1 to 15 KB | The same or less (a lighter horse row) | Under 15 KB, long lists excepted |
-| Open the installed app to the first screen | Not measured | Not measured | Not measured (phase 4) | Under 2 s on 4G |
+| Open the installed app to the first screen | Not measured | Not measured | Phase 4: 0.3 to 0.8 s in a browser (see the note under the table) | Under 2 s on 4G |
 | Fixed bars | 187 px | 187 px | **134 px** | 135 px or less |
 | Horses on the first screen (390 x 844) | 5 | 5 | **7** (target not met) | 8 or more |
 | Text of 12 px or smaller | 39% to 83% on the main lists | The same | **3% to 25%** on the main lists; 40% on the dashboard | Under 25% |
@@ -762,6 +810,17 @@ customer asks for it. Store rules change: read them again at that time.
 
 The farrier page is 7.6 screens on a phone. It has its own plan and is
 not in these figures.
+
+The time to open the app (phase 4) is from Chromium on a computer, with
+the test server on the same computer and an emulated signal. It is a
+second open, when the phone has the app's files. Fast 4G (9 Mbit/s,
+170 ms): first content at 0.2 s, ready at 0.3 s. Slow 4G (1.6 Mbit/s,
+560 ms): first content at 0.6 s, ready at 0.8 s. Only the page itself
+comes from the network. The time was the same with the service worker
+and with only the browser's own cache: the worker does not make a warm
+start faster. It makes the start sure when the browser has dropped its
+cache, and it gives the "No signal" page. A real phone on a real signal
+is test 1 of section 8.
 
 ## 7. Order of work
 
@@ -809,6 +868,19 @@ Android phone before phase 4 is closed.
 10. Speak a note with the keyboard's microphone.
 11. Set the phone's text size to large. Does the layout hold?
 12. Use the app in bright sun with one hand.
+
+Added with phase 4:
+
+13. iPhone: after "Add to Home Screen", open the app. Does the start
+    picture show (the icon on the page colour), and not a white screen?
+14. Android: does the dashboard show "Use Cgate as an app"? Does
+    **Install the app** open the browser's question, with the three
+    pictures?
+15. In the installed app, switch flight mode on and open the app. Does
+    "No signal" show? Switch flight mode off. Does the page load by
+    itself?
+16. In the installed app, open an invoice and tap **Download PDF**. Does
+    the share sheet open, and can you send the file by email?
 
 ## 9. Decisions needed from you
 

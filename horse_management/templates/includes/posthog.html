@@ -96,6 +96,11 @@ Two details matter here:
 
             loaded: function (ph) {
                 ph.identify(cfg.distinct_id, cfg.person_properties);
+                // Each event says if it came from the app opened from its
+                // icon or from a browser tab (docs/MOBILE_APP_PLAN.md, D7).
+                var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+                    window.navigator.standalone === true;
+                ph.register({ app_display: standalone ? 'installed' : 'browser' });
                 capturePageview();
             }
         });

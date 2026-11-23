@@ -311,7 +311,7 @@
             target: '#' + names.body,
             select: '#' + names.content,
             swap: 'innerHTML'
-        });
+        }).catch(function () { /* said by js/connection.js */ });
     }
 
     function open(pk, opts) {

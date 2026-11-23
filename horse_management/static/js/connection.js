@@ -91,12 +91,55 @@
         return !!hiddenAt && now - hiddenAt >= AWAY_MS;
     }
 
+    // ── What happens on phones (docs/MOBILE_APP_PLAN.md, item D7) ──
+    // The usage figures get four events: a request that failed, time with
+    // no signal, a tap that was slow, and "app installed"
+    // (js/app_install.js). They say how often a yard's signal fails,
+    // which decides the work on "no signal" (section E of the plan). An
+    // event has no name, number or text of a record in it.
+    var SLOW_MS = 2000;
+
+    /**
+     * An address with its numbers and keys taken out: /horses/54/edit/
+     * becomes /horses/:id/edit/. A query string is left off: the search
+     * box puts typed names in it.
+     */
+    function pathPattern(url) {
+        var path = String(url || '').replace(/^[a-z]+:\/\/[^/]+/i, '').split(/[?#]/)[0];
+        return path.split('/').map(function (part) {
+            if (/^\d+$/.test(part)) { return ':id'; }
+            // A key in a sign-in link or an unsubscribe link: letters with
+            // digits, or a long part that is not plain words with hyphens
+            // (the name of a Help guide is).
+            var mixed = /\d/.test(part) && /[a-z]/i.test(part);
+            if ((mixed && part.length >= 8) || (part.length >= 16 && !/^[a-z-]+$/.test(part))) { return ':key'; }
+            return part;
+        }).join('/');
+    }
+
+    /** Was a tap slow enough to count? Rounded, so it says no exact time. */
+    function slowTap(ms) {
+        if (!(ms >= SLOW_MS)) { return null; }
+        return { seconds: Math.round(ms / 100) / 10 };
+    }
+
+    /** Send one event, if the usage figures are on and loaded. */
+    function track(ph, name, properties) {
+        if (!ph || !ph.__loaded || typeof ph.capture !== 'function') { return false; }
+        try { ph.capture(name, properties || {}); } catch (err) { return false; }
+        return true;
+    }
+
     var api = {
         timeLimit: timeLimit,
         startedByPerson: startedByPerson,
         failureMessage: failureMessage,
         safeToRefresh: safeToRefresh,
         awayLongEnough: awayLongEnough,
+        pathPattern: pathPattern,
+        slowTap: slowTap,
+        track: track,
+        SLOW_MS: SLOW_MS,
         AWAY_MS: AWAY_MS
     };
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; }
@@ -124,9 +167,9 @@
         if (!box) { return null; }
         clearNotice();
         var el = doc.createElement('div');
-        el.className = kind === 'warning' ? 'toast-warning' : 'toast-error';
+        el.className = kind === 'warning' ? 'toast-warning' : kind === 'info' ? 'toast-info' : 'toast-error';
         el.setAttribute('data-request-error', '');
-        el.setAttribute('role', 'alert');
+        el.setAttribute('role', kind === 'info' ? 'status' : 'alert');
         var words = doc.createElement('span');
         words.className = 'toast-words';
         words.textContent = text;
@@ -151,6 +194,17 @@
     }
     Yardway.notice = notice;
 
+    function installed() {
+        var match = root.matchMedia ? root.matchMedia('(display-mode: standalone)').matches : false;
+        return !!match || root.navigator.standalone === true;
+    }
+    // Each event says if it came from the app opened from its icon.
+    Yardway.track = function (name, properties) {
+        var all = { app_display: installed() ? 'installed' : 'browser' };
+        Object.keys(properties || {}).forEach(function (key) { all[key] = properties[key]; });
+        return track(root.posthog, name, all);
+    };
+
     // ── Time limits ──
     doc.addEventListener('htmx:configRequest', function (e) {
         var detail = e.detail || {};
@@ -169,13 +223,20 @@
 
     function onFailure(kind, e) {
         var detail = e.detail || {};
-        if (isSheet(detail.target)) { return; }     // popup.js says it in the sheet
         var config = detail.requestConfig || {};
         var event = config.triggeringEvent;
         var elt = detail.elt;
         var spec = elt && elt.getAttribute ? elt.getAttribute('hx-trigger') : '';
-        if (!startedByPerson(event ? event.type : '', spec)) { return; }
+        var byPerson = startedByPerson(event ? event.type : '', spec);
         var status = detail.xhr ? detail.xhr.status : 0;
+        if (byPerson) {
+            Yardway.track('app request failed', {
+                kind: kind, status: status, verb: (config.verb || 'get').toLowerCase(),
+                path: pathPattern(config.path), in_sheet: isSheet(detail.target)
+            });
+        }
+        if (isSheet(detail.target)) { return; }     // popup.js says it in the sheet
+        if (!byPerson) { return; }
         var message = failureMessage(kind, config.verb, status);
         var action = null;
         if (message.retry && event && elt) {
@@ -196,6 +257,26 @@
     // The next request that works takes the message away.
     doc.addEventListener('htmx:afterRequest', function (e) {
         if (e.detail && e.detail.successful) { clearNotice(); }
+    });
+
+    // A tap that took more than 2 seconds to get its answer.
+    var started = typeof WeakMap === 'function' ? new WeakMap() : null;
+    doc.addEventListener('htmx:beforeRequest', function (e) {
+        var detail = e.detail || {};
+        if (started && detail.xhr) { started.set(detail.xhr, Date.now()); }
+    });
+    doc.addEventListener('htmx:afterRequest', function (e) {
+        var detail = e.detail || {};
+        if (!started || !detail.xhr || !started.has(detail.xhr) || !detail.successful) { return; }
+        var slow = slowTap(Date.now() - started.get(detail.xhr));
+        if (!slow) { return; }
+        var config = detail.requestConfig || {};
+        var event = config.triggeringEvent;
+        var spec = detail.elt && detail.elt.getAttribute ? detail.elt.getAttribute('hx-trigger') : '';
+        if (!startedByPerson(event ? event.type : '', spec)) { return; }
+        Yardway.track('app slow tap', {
+            seconds: slow.seconds, verb: (config.verb || 'get').toLowerCase(), path: pathPattern(config.path)
+        });
     });
     // htmx keeps a copy of the page for Back. A message in that copy would
     // come back with buttons that do nothing.
@@ -249,8 +330,18 @@
         }
         mark.hidden = !offline;
     }
-    root.addEventListener('offline', showSignal);
-    root.addEventListener('online', function () { showSignal(); clearNotice(); });
+    // How long the phone had no signal. Said when the signal is back: an
+    // event cannot be sent before that.
+    var signalLostAt = root.navigator.onLine === false ? Date.now() : 0;
+    root.addEventListener('offline', function () { signalLostAt = Date.now(); showSignal(); });
+    root.addEventListener('online', function () {
+        showSignal();
+        clearNotice();
+        if (signalLostAt) {
+            Yardway.track('app no signal', { seconds: Math.round((Date.now() - signalLostAt) / 1000) });
+            signalLostAt = 0;
+        }
+    });
     doc.addEventListener('DOMContentLoaded', showSignal);
     doc.addEventListener('htmx:historyRestore', showSignal);
     showSignal();

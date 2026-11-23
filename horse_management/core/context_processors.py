@@ -1,6 +1,7 @@
 """Template context: feature switches that every template can read."""
 
 from django.conf import settings
+from django.urls import reverse
 
 
 def location_maps(request):
@@ -35,7 +36,12 @@ def page_frame(request):
     load, a Back that htmx fetches again, and a part of a page all get the
     whole page, as before.
     """
-    return {'slim_page': request.headers.get('HX-Boosted') == 'true'}
+    return {
+        'slim_page': request.headers.get('HX-Boosted') == 'true',
+        # The address of the service worker, or '' when it is switched off
+        # (settings.APP_WORKER_ENABLED). js/app_install.js registers it.
+        'app_worker_url': reverse('service_worker') if settings.APP_WORKER_ENABLED else '',
+    }
 
 
 def google_sign_in(request):

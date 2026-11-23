@@ -55,6 +55,9 @@ it does not (partials/dashboard/site_tools.html).{% endcomment %}
     <div class="alert-error">The dashboard could not load its data. The error has been logged; try again in a moment.</div>
     {% endif %}
 
+    {# ── Help to install the app: a phone's browser only (js/app_install.js) ── #}
+    {% include 'partials/dashboard/_install_card.html' %}
+
     {# ── The yard's figures, across the whole width ── #}
     {% if 'metrics' in visible and metrics %}
     <section class="zone-enter" style="--i:1" aria-label="The yard at a glance" data-testid="metrics-zone">

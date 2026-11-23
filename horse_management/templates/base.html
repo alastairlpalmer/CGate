@@ -7,6 +7,7 @@
     {% load static %}
     {% load cache_bust %}
     {% load ui_extras %}
+    {% load app_shell %}
     {% comment %}
     A tap on a link replaces #main-content only (hx-boost on <body>). It
     reads three things from the response: the title, the messages and
@@ -25,8 +26,15 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{% static 'icons/favicon-16.png' %}">
     <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
     <meta name="apple-mobile-web-app-title" content="Cgate">
+    {# An iPhone opens the installed app with no browser bars, and shows a picture while it starts (not a white screen). #}
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    {% start_image_links %}
     {# The version that made this page. A tap compares it with the server's (js/connection.js). #}
     <meta name="app-version" content="{% app_version %}">
+    {# The service worker: files kept on the phone, and a page for no signal (js/app_install.js). Empty: switched off. #}
+    <meta name="app-worker" content="{{ app_worker_url }}">
     <!-- Brand fonts are self-hosted (static/fonts, declared in css/input.css).
          Preload the two text faces so the first paint uses them; JetBrains
          Mono is only for figures and can arrive with the stylesheet. -->
@@ -53,6 +61,10 @@
     <script defer src="{% static_v 'js/connection.js' %}"></script>
     {# A tap shows at once: the tab is marked, and a slow page dims. #}
     <script defer src="{% static_v 'js/tap_feedback.js' %}"></script>
+    {# The installed app: registers the service worker, and helps a phone to install the app. #}
+    <script defer src="{% static_v 'js/app_install.js' %}"></script>
+    {# On a phone a PDF goes to the share sheet, so the page stays where it is. #}
+    <script defer src="{% static_v 'js/share_file.js' %}"></script>
     {# notifications.js registers the drawer's Alpine store on alpine:init #}
     <script defer src="{% static_v 'js/notifications.js' %}"></script>
     {# lightbox.js registers an Alpine store on alpine:init, so it must run before Alpine starts #}

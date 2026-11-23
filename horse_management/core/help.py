@@ -51,6 +51,8 @@ GROUPS = ('Start here', 'The yard', 'Health', 'Money', 'Administration')
 GUIDES = [
     Guide('getting-started', 'Getting started', 'The sidebar, the dashboard and its calendar, and the Add button.',
           'Start here', keywords=('dashboard', 'calendar', 'sidebar', 'menu', 'add', 'phone', 'collapse')),
+    Guide('install-the-app', 'Install Cgate on your phone', 'Open Cgate from an icon on your phone or tablet, like an app.',
+          'Start here', keywords=('app', 'install', 'home screen', 'iphone', 'ipad', 'android', 'icon', 'no signal', 'offline', 'phone')),
     Guide('search', 'Search', 'Find a horse, owner, location, invoice or health record from any page.',
           'Start here', keywords=('find', 'look up', 'microchip', 'passport number', 'shortcut')),
     Guide('notifications', 'Notifications', 'What needs doing, horse movements and money, in one place.',
