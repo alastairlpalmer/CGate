@@ -53,6 +53,9 @@ urlpatterns = [
 
     # Medical Conditions
     path('conditions/', views.MedicalConditionListView.as_view(), name='condition_list'),
+    path('measurements/add/', views.MeasurementCreateView.as_view(), name='measurement_create'),
+    path('measurements/<int:pk>/edit/', views.MeasurementUpdateView.as_view(), name='measurement_update'),
+    path('measurements/<int:pk>/delete/', views.measurement_delete, name='measurement_delete'),
     path('conditions/add/', views.MedicalConditionCreateView.as_view(), name='condition_create'),
     path('conditions/<int:pk>/edit/', views.MedicalConditionUpdateView.as_view(), name='condition_update'),
 

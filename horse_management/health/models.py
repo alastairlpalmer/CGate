@@ -7,6 +7,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Exists, OuterRef, Q, Sum
 from django.utils import timezone
@@ -607,6 +608,50 @@ class WormingTreatment(models.Model):
         if not self.next_due_date:
             return False
         return timezone.localdate() > self.next_due_date
+
+
+class HorseMeasurement(models.Model):
+    """Weight, height, body condition and girth on a day (Dev board,
+    "Advanced record keeping: track weight and height across time").
+
+    One row holds what was measured that day; at least one value. The
+    horse page shows the latest values, the change since the one before,
+    and a weight chart. A height measured on the latest day also updates
+    the horse's own height (Horse.height_inches, on the Identity card).
+    """
+
+    BODY_CONDITION_CHOICES = [(Decimal(f'{n / 2:.1f}'), f'{n / 2:g}') for n in range(0, 11)]
+
+    horse = models.ForeignKey('core.Horse', on_delete=models.CASCADE, related_name='measurements')
+    date = models.DateField()
+    weight_kg = models.DecimalField(
+        'Weight (kg)', max_digits=5, decimal_places=1, null=True, blank=True,
+        validators=[MinValueValidator(Decimal('20')), MaxValueValidator(Decimal('1500'))],
+    )
+    height_inches = models.PositiveSmallIntegerField(null=True, blank=True)
+    body_condition = models.DecimalField(
+        'Body condition score', max_digits=2, decimal_places=1, null=True, blank=True,
+        choices=BODY_CONDITION_CHOICES, help_text='0 (very poor) to 5 (obese). 2.5 to 3 is good for most horses.',
+    )
+    girth_cm = models.DecimalField(
+        'Girth (cm)', max_digits=4, decimal_places=1, null=True, blank=True,
+        validators=[MinValueValidator(Decimal('40')), MaxValueValidator(Decimal('300'))],
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date', '-created_at']
+        indexes = [models.Index(fields=['horse', '-date'], name='measurement_horse_date')]
+
+    def __str__(self):
+        return f'{self.horse} measured {self.date}'
+
+    @property
+    def height_display(self):
+        from core.identity import format_height
+        return format_height(self.height_inches)
 
 
 class WormEggCount(models.Model):

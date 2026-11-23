@@ -1448,6 +1448,12 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
         # them has their own cards on this page (Training, In foal, Breeding
         # history), so the Timeline does not show them a second time (UX
         # review A3). A role that may not see them gets none of them anyway.
+        # Weight and condition (health/measurements.py): only once there is
+        # one; the Record card's Weight tile adds the first.
+        context['measurements'] = None
+        if has_feature_access(self.request.user, 'health', LEVEL_VIEW):
+            from health.measurements import summary
+            context['measurements'] = summary(horse)
         context['training_card'] = training_horse.training_card(self.request.user, horse)
         # The Training card shows only once the horse has a training record
         # (done or did not work, today or earlier): the rows the Timeline

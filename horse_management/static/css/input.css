@@ -2872,6 +2872,25 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
 .horse-hero-ped .ped-meta { font-size: .72rem; }
 .horse-hero-ped .ped ~ div { margin-top: .5rem; font-size: .75rem; }
 
+/* The weight chart on the horse page (templates/horses/partials/
+   measurements_card.html): one series in forest, a 2px line, 8px points
+   with a 2px surface ring, a hit circle larger than the point, recessive
+   grid and axis text. Text uses ink tokens, never the series colour. */
+@layer components {
+    .measure-chart { @apply max-w-xl; }
+    .measure-plot-row { @apply flex items-start gap-2; }
+    .measure-y { @apply flex flex-col justify-between shrink-0 text-xs text-sage tabular-nums text-right py-0.5; min-width: 3.5rem; }
+    .measure-plot { @apply relative flex-1 min-w-0; margin-right: 4.5rem; }
+    .measure-x { @apply flex justify-between text-xs text-sage tabular-nums mt-1; margin-left: calc(3.5rem + 0.5rem); margin-right: 4.5rem; }
+    .measure-grid { stroke: --theme(--color-light-sage); stroke-width: 1; }
+    .measure-line { stroke: --theme(--color-forest); stroke-width: 2; stroke-linecap: round; }
+    .measure-dot { fill: --theme(--color-forest); stroke: #fff; stroke-width: 2; }
+    .measure-hit { fill: transparent; }
+    .measure-point:hover .measure-dot { r: 5; }
+    .measure-value { @apply absolute text-xs font-semibold text-charcoal tabular-nums whitespace-nowrap; left: calc(100% + 0.5rem); transform: translateY(-50%); }
+}
+
+
 /* Yesterday / Today / Tomorrow under a date box (static/js/date_quick.js). */
 @layer components {
     .date-quick { @apply flex flex-wrap gap-1.5 mt-1.5; }

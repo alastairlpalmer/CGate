@@ -529,6 +529,10 @@
             </div>
             {% endif %}
 
+            {% if measurements %}
+            {% include 'horses/partials/measurements_card.html' %}
+            {% endif %}
+
             {% if horse.is_mare and feature_access.breeding.view %}
             {% if active_pregnancy %}
             <!-- Active Pregnancy -->
