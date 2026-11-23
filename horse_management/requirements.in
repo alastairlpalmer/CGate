@@ -72,7 +72,7 @@ Pillow~=13.0
 pillow-heif~=1.8.1  # decode iPhone HEIC uploads (converted to JPEG on save)
 
 # Development
-django-debug-toolbar~=6.2.0
+django-debug-toolbar~=8.0.0
 
 # Testing
 # The suite runs on Django's own test runner (`python manage.py test`).
