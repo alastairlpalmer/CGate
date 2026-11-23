@@ -415,6 +415,17 @@
                 {% comment %}Only where there is more than one group: on the
                 All axis this card is the whole list, and the line under it
                 already says the same thing.{% endcomment %}
+                {% if group.kind == 'location' and group.pk and feature_access.horses.full %}
+                {# The whole group to another location, in one step. #}
+                <p class="px-4 py-1 border-t border-light-sage text-sm">
+                    <a href="{% url 'location_move_horses' group.pk %}"
+                       hx-get="{% url 'location_move_horses' group.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                       data-popup-title="Move horses from {{ group.name }}" class="link tap-pad inline-flex items-center gap-1.5" data-testid="group-move-horses">
+                        <svg class="w-4 h-4" aria-hidden="true"><use href="#i-arrows-lr"/></svg>
+                        Move horses from {{ group.name }}
+                    </a>
+                </p>
+                {% endif %}
                 {% if group.hidden_here and grouped_horses|length > 1 %}
                 <p class="px-4 py-3 text-sm text-sage border-t border-light-sage">
                     {{ group.hidden_here }} more here, not shown.

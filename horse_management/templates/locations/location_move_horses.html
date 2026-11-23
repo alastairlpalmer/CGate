@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}Move horses from {{ location.name }} - Cgate{% endblock %}
+
+{% block content %}
+{# The page for a direct visit. The pop-up sheet shows the same form partial. #}
+<div class="max-w-2xl mx-auto space-y-4">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Move horses</h1>
+            <p class="page-subtitle">From <a href="{% url 'location_detail' location.pk %}" class="link">{{ location.name }}</a>{% if location.site %} · {{ location.site }}{% endif %}</p>
+        </div>
+    </div>
+    <div class="card">
+        {% include 'locations/partials/move_horses_form.html' %}
+    </div>
+</div>
+{% endblock %}

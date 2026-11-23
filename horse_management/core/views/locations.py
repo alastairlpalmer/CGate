@@ -3,6 +3,7 @@ Location views — CRUD, detail tabs, arrival/departure logging.
 """
 
 import calendar
+import json
 from datetime import date, timedelta
 from itertools import groupby
 
@@ -21,7 +22,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from ..forms import (
     AddStablesForm, ArrivalForm, BarnForm, ConvertToBarnForm, LocationForm,
-    LocationUsageForm, SiteSettingsForm, StableForm, StableGapForm,
+    LocationMoveForm, LocationUsageForm, SiteSettingsForm, StableForm, StableGapForm,
 )
 from ..boundary_import import area_hectares
 from ..geo import coords_from_link, site_distance_warning
@@ -1105,6 +1106,139 @@ def log_arrival(request, pk):
     return render(request, 'locations/location_arrive.html', {
         'location': location,
         'form': form,
+    })
+
+
+def _horses_here(location):
+    """The open stays of the horses that live at a location, by name."""
+    return list(
+        location.placements.filter(end_date__isnull=True, horse__is_active=True)
+        .select_related('horse', 'owner').order_by('horse__name')
+    )
+
+
+@feature_required('horses')
+def location_move_horses(request, pk):
+    """Move the horses of one location to another, as a group.
+
+    This is "Move horses" on the Locations page, on a location's own page
+    and on a location group of the horse list. Every horse of the location
+    is ticked; the person unticks the ones that stay, chooses where the
+    others go and saves. Each horse keeps its owner and its rate.
+
+    A stay that began today cannot end before it began, so a horse that
+    arrived here today is shown and is not ticked: it can move tomorrow.
+
+    One form partial serves two shells, as the single move does: the
+    pop-up sheet, and a full page for a direct visit.
+    """
+    from ..rates import rate_mismatch
+    from ..services import PlacementService
+
+    location = get_object_or_404(Location, pk=pk)
+    in_popup = is_popup_request(request)
+    today = timezone.localdate()
+    placements = _horses_here(location)
+    here = {placement.horse_id: placement for placement in placements}
+    can_move = {pk for pk, placement in here.items() if placement.start_date < today}
+
+    if request.method == 'POST':
+        form = LocationMoveForm(request.POST, source=location)
+        asked = [int(value) for value in request.POST.getlist('horse_ids') if value.isdigit()]
+        picked = [pk for pk in asked if pk in here]
+        # Ticked in the sheet, and moved or departed by someone else since.
+        gone = len(asked) - len(picked)
+        if form.is_valid() and not picked:
+            form.add_error(None, (
+                f'The horses you chose are not in {location.name} any more.' if gone
+                else 'Choose at least one horse to move.'
+            ))
+        if form.is_valid():
+            destination = form.cleaned_data['new_location']
+            moved, failed = PlacementService.move_group(
+                [here[pk].horse for pk in picked],
+                new_location=destination,
+                move_date=form.cleaned_data['move_date'],
+                new_rate_type=form.cleaned_data.get('new_rate_type'),
+                notes=form.cleaned_data.get('notes', ''),
+                from_location=location,
+            )
+            if not moved:
+                # Nothing moved: say why in the form, and keep it open.
+                for horse, reason in failed:
+                    form.add_error(None, f'{horse.name}: {reason}')
+            else:
+                count = len(moved)
+                messages.success(
+                    request,
+                    f"{count} horse{'s' if count != 1 else ''} moved from "
+                    f"{location.name} to {destination.name}.",
+                )
+                for horse, reason in failed:
+                    messages.error(request, f'Not moved: {horse.name}. {reason[:1].upper()}{reason[1:]}')
+                if gone:
+                    messages.warning(
+                        request,
+                        f"{gone} horse{'s were' if gone != 1 else ' was'} not in "
+                        f"{location.name} any more, and {'were' if gone != 1 else 'was'} not moved.",
+                    )
+                wrong_rate = [p for p in moved if rate_mismatch(p.rate_type, p.location)]
+                if wrong_rate:
+                    names = ', '.join(p.horse.name for p in wrong_rate)
+                    rates = ' / '.join(sorted({p.rate_type.name for p in wrong_rate}))
+                    messages.warning(
+                        request,
+                        f"Check the rate: {names} {'is' if len(wrong_rate) == 1 else 'are'} "
+                        f"still on {rates}, which is not a rate for this type of location.",
+                    )
+                now_there = len(_horses_here(destination))
+                if destination.capacity and now_there > destination.capacity:
+                    messages.warning(
+                        request,
+                        f"{destination.name} now has {now_there} horses. Its limit is {destination.capacity}.",
+                    )
+                if in_popup:
+                    return popup_saved_response()
+                return redirect('location_detail', pk=location.pk)
+        ticked = set(picked)
+    else:
+        form = LocationMoveForm(source=location, initial={'move_date': today})
+        ticked = set(can_move)
+
+    rows = [
+        {
+            'horse': placement.horse,
+            'owner': placement.owner,
+            'since': placement.start_date,
+            'can_move': placement.horse_id in can_move,
+            'ticked': placement.horse_id in ticked and placement.horse_id in can_move,
+        }
+        for placement in placements
+    ]
+    # Checkbox values are text in a browser, so the ids are text here too.
+    ticked_ids = [str(row['horse'].pk) for row in rows if row['ticked']]
+    movable_ids = [str(row['horse'].pk) for row in rows if row['can_move']]
+    template = (
+        'locations/partials/move_horses_form.html' if in_popup
+        else 'locations/location_move_horses.html'
+    )
+    return render(request, template, {
+        'location': location,
+        'form': form,
+        'rows': rows,
+        'ticked_count': len(ticked_ids),
+        'movable_count': len(movable_ids),
+        # For the form's script, as JSON. The template escapes it, and
+        # the browser reads it back inside the attribute.
+        'ticked_json': json.dumps(ticked_ids),
+        'movable_json': json.dumps(movable_ids),
+        # Spaces left in each location that has a limit, for the note
+        # that says a group does not fit.
+        'room_json': json.dumps({str(pk): spaces for pk, spaces in form.room.items()}),
+        # Empty and rested ground on this site, nearest first: one tap each.
+        'neighbours': _ready_neighbours(location)[:4],
+        'in_popup': in_popup,
+        'today': today,
     })
 
 

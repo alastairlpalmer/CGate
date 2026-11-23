@@ -9,7 +9,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from billing.forms import ServicePickerMixin
-from core.forms import MoveHorseForm
+from core.forms import GroupMoveForm
 from core.models import Horse
 from core.widgets import MoneyInput
 from pedigree.widgets import stallion_input
@@ -542,22 +542,9 @@ class BulkActualDepartureForm(forms.Form):
     )
 
 
-class BulkMoveForm(MoveHorseForm):
-    """Bulk action: move the selected horses to a new location.
-
-    The single-horse move form minus the per-horse fields: every horse
-    keeps its own owner, and the rate applies to all of them (left empty,
-    each keeps its current rate). Subclassing keeps single and bulk move
-    semantics from drifting apart.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        del self.fields['new_owner']
-        del self.fields['expected_departure']
-        self.fields['new_rate_type'].help_text = (
-            "Leave empty to keep each horse's current rate"
-        )
+class BulkMoveForm(GroupMoveForm):
+    """Bulk action: move the selected horses to a new location. The form
+    is core.forms.GroupMoveForm; "Move horses" on a location uses it too."""
 
 
 class BulkRestoreForm(forms.Form):
