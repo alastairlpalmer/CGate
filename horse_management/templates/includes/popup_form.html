@@ -38,19 +38,36 @@ the generic layout leaves out (inline add-a-vet, archive/delete controls).
             {% for field in form.visible_fields %}
                 {% if field.name in popup_deferred_fields %}
                     {# Rendered by popup_extra_template below, not in the grid #}
-                {% elif field.name == 'horse' and popup_horse_id %}
-                    <input type="hidden" name="horse" value="{{ popup_horse_id }}">
-                {% elif field.field.widget.input_type == 'checkbox' %}
-                    <div class="sm:col-span-2 flex items-center min-h-[44px]">
-                        {% include "includes/form_field.html" with field=field %}
-                    </div>
-                {% elif field.name == 'horse' or field.name == 'description' or field.field.widget.template_name == 'django/forms/widgets/textarea.html' %}
-                    {% include "includes/form_field.html" with field=field span="2" %}
+                {% elif field.name in popup_more_fields %}
+                    {# Under "More details" below #}
                 {% else %}
-                    {% include "includes/form_field.html" with field=field %}
+                    {% include "includes/_popup_field.html" %}
                 {% endif %}
             {% endfor %}
         </div>
+
+        {% if popup_more_fields %}
+        {% comment %}The fields a usual record does not need
+        (PopupFormMixin.popup_main_fields). Closed for a new record; open
+        for a saved one and when a field in it has an error.{% endcomment %}
+        <details class="popup-more"{% if popup_more_open %} open{% endif %} data-testid="more-details">
+            <summary>
+                <svg class="popup-more-chevron w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                <span class="font-medium text-forest whitespace-nowrap shrink-0">More details</span>
+                <span class="popup-more-hint">{{ popup_more_hint }}</span>
+            </summary>
+            <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 pt-2">
+                {% for field in form.visible_fields %}
+                    {% if field.name in popup_more_fields %}
+                        {% include "includes/_popup_field.html" %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% if popup_add_another %}
+            <button type="submit" name="save_and_add" value="1" class="btn-secondary w-full mt-4">Save &amp; add another</button>
+            {% endif %}
+        </details>
+        {% endif %}
 
         {% if popup_extra_template %}
         {# A form-specific block below the generic grid (e.g. the coordinate picker) #}
@@ -64,7 +81,8 @@ the generic layout leaves out (inline add-a-vet, archive/delete controls).
            class="hidden sm:inline-flex items-center mr-auto text-xs text-sage hover:text-charcoal-light">Open the full form</a>
         <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
         <button type="submit" class="btn-primary">{{ popup_submit_label }}</button>
-        {% if popup_add_another %}
+        {# With "More details", this button is in there: the footer is one row. #}
+        {% if popup_add_another and not popup_more_fields %}
         <button type="submit" name="save_and_add" value="1" class="btn-secondary popup-add-another">Save &amp; add another</button>
         {% endif %}
     </div>

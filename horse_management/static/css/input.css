@@ -3015,6 +3015,16 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
 
 /* Yesterday / Today / Tomorrow under a date box (static/js/date_quick.js). */
 @layer components {
+    /* "More details" in a pop-up form (includes/popup_form.html): the
+       fields a usual record does not need (C8). */
+    .popup-more { @apply border-t border-light-sage pt-1; }
+    .popup-more > summary { @apply flex items-center gap-2 min-h-[44px] cursor-pointer select-none text-sm list-none; }
+    .popup-more > summary::-webkit-details-marker { display: none; }
+    .popup-more-chevron { @apply text-forest transition-transform duration-150; }
+    .popup-more[open] .popup-more-chevron { transform: rotate(90deg); }
+    .popup-more-hint { @apply min-w-0 truncate text-charcoal-light; }
+    .popup-more[open] .popup-more-hint { display: none; }
+
     .date-quick { @apply flex flex-wrap gap-1.5 mt-1.5; }
     .date-quick-btn {
         @apply text-xs leading-5 px-2 rounded-full border border-light-sage bg-white text-charcoal-light

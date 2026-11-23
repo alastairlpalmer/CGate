@@ -601,3 +601,106 @@ class PhoneDashboardTests(TestCase):
         html = self.client.get(reverse('dashboard_activity'), HTTP_HX_REQUEST='true').content.decode()
         self.assertNotIn('is-many', html)
         self.assertNotIn('data-testid="timeline-names"', html)
+
+
+class ShortRecordSheetTests(TestCase):
+    """C8: a Record sheet opens with the answers a usual record needs."""
+
+    POPUP = {'HTTP_HX_REQUEST': 'true', 'HTTP_HX_TARGET': 'popup-body'}
+
+    def setUp(self):
+        from core.models import Horse
+
+        self.client.force_login(make_admin('boss'))
+        self.horse = Horse.objects.create(name='Ace', sex='mare')
+
+    def sheet(self, url_name, *args, **query):
+        return self.client.get(reverse(url_name, args=args), query, **self.POPUP).content.decode()
+
+    def parts(self, html):
+        """(before "More details", inside it, the footer)."""
+        before, rest = html.split('<details class="popup-more"', 1)
+        inside, after = rest.split('</details>', 1)
+        return before, inside, after.split('class="popup-footer"', 1)[1]
+
+    def test_a_new_vaccination_shows_the_type_and_the_date_first(self):
+        before, inside, footer = self.parts(self.sheet('vaccination_create', horse=self.horse.pk))
+        for name in ('vaccination_type', 'date_given'):
+            self.assertIn(f'name="{name}"', before)
+        for name in ('service_item', 'new_type_name', 'course_stage', 'next_due_date', 'vet', 'batch_number', 'cost', 'notes'):
+            with self.subTest(field=name):
+                self.assertIn(f'name="{name}"', inside)
+                self.assertNotIn(f'name="{name}"', before)
+        # Closed for a new record.
+        self.assertTrue(inside.startswith(' data-testid="more-details">'), inside[:60])
+
+    def test_the_footer_is_cancel_and_save_and_add_another_is_in_more_details(self):
+        before, inside, footer = self.parts(self.sheet('vaccination_create', horse=self.horse.pk))
+        self.assertIn('Save &amp; add another', inside)
+        self.assertNotIn('Save &amp; add another', footer)
+        self.assertEqual(footer.count('<button'), 2)
+        self.assertIn('>Cancel</button>', footer)
+        self.assertIn('>Save</button>', footer)
+
+    def test_the_closed_line_says_what_is_in_it(self):
+        html = self.sheet('farrier_create', horse=self.horse.pk)
+        self.assertIn('<span class="popup-more-hint">farrier, next due date, notes</span>', html)
+
+    def test_a_field_that_must_be_filled_in_is_never_under_more_details(self):
+        # A browser cannot show "fill in this field" on a box that is folded away.
+        for url_name in ('farrier_create', 'vet_visit_create', 'worming_create', 'egg_count_create', 'vaccination_create'):
+            with self.subTest(sheet=url_name):
+                before, inside, footer = self.parts(self.sheet(url_name, horse=self.horse.pk))
+                self.assertNotIn(' required', inside)
+
+    def test_a_saved_record_opens_with_more_details_open(self):
+        from django.utils import timezone
+
+        from health.models import Vaccination, VaccinationType
+
+        record = Vaccination.objects.create(
+            horse=self.horse, vaccination_type=VaccinationType.objects.create(name='Flu', interval_months=12),
+            date_given=timezone.localdate(),
+        )
+        html = self.sheet('vaccination_update', record.pk)
+        self.assertIn('<details class="popup-more" open data-testid="more-details">', html)
+
+    def test_an_error_in_more_details_opens_it(self):
+        from django.utils import timezone
+
+        today = timezone.localdate()
+        response = self.client.post(
+            reverse('vaccination_create') + f'?horse={self.horse.pk}',
+            {'horse': self.horse.pk, 'date_given': today.isoformat(), 'next_due_date': 'not a date', 'cost': '0'},
+            **self.POPUP,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('<details class="popup-more" open data-testid="more-details">', response.content.decode())
+
+    def test_the_full_page_and_a_short_form_have_no_more_details(self):
+        page = self.client.get(reverse('vaccination_create')).content.decode()
+        self.assertNotIn('data-testid="more-details"', page)
+        # A medical condition has five fields: all show, and the footer keeps its three buttons.
+        condition = self.sheet('condition_create', horse=self.horse.pk)
+        self.assertNotIn('data-testid="more-details"', condition)
+        self.assertIn('popup-add-another', condition)
+
+    def test_a_date_that_is_months_away_gets_its_own_quick_buttons(self):
+        cases = (
+            ('vaccination_create', 'next_due_date', '+6m +12m', 'date_given'),
+            ('farrier_create', 'next_due_date', '+6w +8w', 'date'),
+            ('worming_create', 'next_due_date', '+3m +6m', 'date'),
+            ('vet_visit_create', 'follow_up_date', '+1w +2w', 'date'),
+        )
+        for url_name, field, spec, base in cases:
+            with self.subTest(sheet=url_name):
+                html = self.sheet(url_name, horse=self.horse.pk)
+                box = html.split(f'name="{field}"', 1)[1].split('>', 1)[0]
+                self.assertIn(f'data-date-quick="{spec}"', box)
+                self.assertIn(f'data-date-quick-from="{base}"', box)
+
+    def test_the_bulk_forms_have_them_too(self):
+        html = self.client.get(
+            reverse('bulk_health_form'), {'action_type': 'vaccination', 'horse_ids': self.horse.pk}, HTTP_HX_REQUEST='true',
+        ).content.decode()
+        self.assertIn('data-date-quick="+6m +12m"', html)

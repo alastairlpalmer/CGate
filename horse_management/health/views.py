@@ -882,6 +882,8 @@ class HealthRecordSuccessUrlMixin:
 
 
 class VaccinationCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'vaccination_type', 'date_given')
     feature = 'health'
     model = Vaccination
     form_class = VaccinationForm
@@ -907,6 +909,8 @@ class VaccinationCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordS
 
 
 class VaccinationUpdateView(CostNeedsChargesMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'vaccination_type', 'date_given')
     feature = 'health'
     model = Vaccination
     form_class = VaccinationForm
@@ -972,6 +976,8 @@ class VaccinationTypeUpdateView(SettingsReturnMixin, FeatureAccessMixin, UpdateV
 # ─── Farrier Views ───────────────────────────────────────────────────
 
 class FarrierCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'service_item', 'date', 'work_done', 'cost')
     feature = 'health'
     model = FarrierVisit
     form_class = FarrierVisitForm
@@ -997,6 +1003,8 @@ class FarrierCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSucce
 
 
 class FarrierUpdateView(CostNeedsChargesMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'service_item', 'date', 'work_done', 'cost')
     feature = 'health'
     model = FarrierVisit
     form_class = FarrierVisitForm
@@ -1041,6 +1049,8 @@ class WormingListView(FeatureAccessMixin, ListView):
 
 
 class WormingCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'date', 'product_name')
     feature = 'health'
     model = WormingTreatment
     form_class = WormingTreatmentForm
@@ -1066,6 +1076,8 @@ class WormingCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSucce
 
 
 class WormingUpdateView(CostNeedsChargesMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'date', 'product_name')
     feature = 'health'
     model = WormingTreatment
     form_class = WormingTreatmentForm
@@ -1109,6 +1121,8 @@ class WormEggCountListView(FeatureAccessMixin, ListView):
 
 
 class WormEggCountCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'date', 'count', 'sample_type')
     feature = 'health'
     model = WormEggCount
     form_class = WormEggCountForm
@@ -1134,6 +1148,8 @@ class WormEggCountCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecord
 
 
 class WormEggCountUpdateView(CostNeedsChargesMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'date', 'count', 'sample_type')
     feature = 'health'
     model = WormEggCount
     form_class = WormEggCountForm
@@ -1238,6 +1254,8 @@ class VetVisitListView(FeatureAccessMixin, ListView):
 
 
 class VetVisitCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'service_item', 'date', 'reason', 'cost')
     feature = 'health'
     model = VetVisit
     form_class = VetVisitForm
@@ -1263,6 +1281,8 @@ class VetVisitCreateView(CostNeedsChargesMixin, PopupFormMixin, HealthRecordSucc
 
 
 class VetVisitUpdateView(CostNeedsChargesMixin, PopupFormMixin, FeatureAccessMixin, UpdateView):
+    # The sheet shows these first; the rest wait under "More details".
+    popup_main_fields = ('horse', 'service_item', 'date', 'reason', 'cost')
     feature = 'health'
     model = VetVisit
     form_class = VetVisitForm
