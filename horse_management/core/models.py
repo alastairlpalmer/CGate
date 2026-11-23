@@ -2826,6 +2826,8 @@ class AuditEvent(models.Model):
         MFA_RESET = 'mfa_reset', 'Two-step sign-in turned off for someone else'
         MFA_RECOVERY_CODE_USED = 'mfa_recovery_code_used', 'Recovery code used'
         MFA_RECOVERY_CODES_RENEWED = 'mfa_recovery_codes_renewed', 'New recovery codes made'
+        MFA_DEVICE_REMEMBERED = 'mfa_device_remembered', 'Device remembered for two-step sign-in'
+        MFA_CODE_SKIPPED = 'mfa_code_skipped', 'Signed in without a code on a remembered device'
         MFA_EXEMPTED = 'mfa_exempted', 'Excused from two-step sign-in'
         MFA_EXEMPTION_REMOVED = 'mfa_exemption_removed', 'No longer excused from two-step sign-in'
         GOOGLE_LINKED = 'google_linked', 'Google account connected'
@@ -2884,6 +2886,10 @@ class UserProfile(models.Model):
     display_size = models.CharField(
         max_length=10, choices=DisplaySize.choices, default=DisplaySize.COMPACT,
     )
+    # "Remember this device" for two-step sign-in (core.mfa). A device that
+    # was remembered before this time is not remembered any more. Set by
+    # "sign out everywhere", so a lost phone asks for a code again.
+    two_step_remembered_from = models.DateTimeField(null=True, blank=True, editable=False)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):

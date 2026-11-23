@@ -754,6 +754,18 @@ input[type="file"]:not(.hidden):not(.sr-only) { @apply block w-full text-sm text
 }
 .page-enter { animation: page-in 0.2s ease-out both; }
 
+/* A page is on its way and the answer is slow (static/js/tap_feedback.js
+   sets the class after 150 ms). The content dims, so the person can see
+   that the tap was taken. On a touch screen the line at the top is
+   thicker, to show in daylight. */
+html.page-pending #main-content { opacity: 0.5; transition: opacity 0.15s ease-out; }
+@media (pointer: coarse) {
+    #htmx-progress { height: 3px; }
+    /* A row under a finger. The tap highlight is off for these rows
+       (see the split view), so this is the only sign before the answer. */
+    tr[data-horse-row]:active, [data-split-row]:active { background-color: var(--color-sand-100, #F2EEE4); }
+}
+
 /* A list reloading after a filter or search change (base.html). The
    delay keeps fast reloads from flickering. */
 #list-results { transition: opacity 0.15s ease-out; }

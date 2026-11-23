@@ -7,6 +7,17 @@
     {% load static %}
     {% load cache_bust %}
     {% load ui_extras %}
+    {% comment %}
+    A tap on a link replaces #main-content only (hx-boost on <body>). It
+    reads three things from the response: the title, the messages and
+    #main-content. So for such a request (slim_page, set by
+    core.context_processors.page_frame) the page is made without its
+    frame: no head assets, sidebar, bars, sheets or scripts. That frame is
+    about 106 KB of each page, and the phone already has it
+    (docs/MOBILE_APP_PLAN.md, item B1). Each "if not slim_page" below
+    takes out one part of the frame.
+    {% endcomment %}
+    {% if not slim_page %}
     <!-- PWA: installable, branded home-screen app -->
     <meta name="theme-color" content="#3D5A63">
     <link rel="manifest" href="{% static_v 'manifest.json' %}">
@@ -40,6 +51,8 @@
     <script defer src="{% static_v 'js/popup.js' %}"></script>
     {# A failed request, no signal, a long time in the background, a new version. #}
     <script defer src="{% static_v 'js/connection.js' %}"></script>
+    {# A tap shows at once: the tab is marked, and a slow page dims. #}
+    <script defer src="{% static_v 'js/tap_feedback.js' %}"></script>
     {# notifications.js registers the drawer's Alpine store on alpine:init #}
     <script defer src="{% static_v 'js/notifications.js' %}"></script>
     {# lightbox.js registers an Alpine store on alpine:init, so it must run before Alpine starts #}
@@ -121,6 +134,7 @@
     </script>
     {% include 'includes/posthog.html' %}
     {% block extra_head %}{% endblock %}
+    {% endif %}
 </head>
 {# x-init: the phone's Back button closes the More sheet (js/overlay_back.js). #}
 <body class="bg-parchment font-body antialiased text-charcoal" x-data="{ moreSheetOpen: false }"
@@ -128,6 +142,7 @@
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
       hx-boost="true" hx-swap="outerHTML show:window:top transition:true" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
 
+    {% if not slim_page %}
     <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-btn focus:bg-white focus:text-charcoal focus:ring-2 focus:ring-forest">Skip to content</a>
 
     <!-- ── Progress Bar ── -->
@@ -141,10 +156,12 @@
     <!-- ── Sidebar (desktop only) ── -->
     {% include 'includes/_sidebar.html' %}
     {% include 'includes/_notification_drawer.html' %}
+    {% endif %}
 
     <!-- ── Main Wrapper ── -->
     <div class="app-shell lg:pl-64 min-h-[100dvh] flex flex-col">
 
+        {% if not slim_page %}
         <!-- Top bar (mobile — slim bar that names the section you are in) -->
         {% comment %}List pages hide their <h1> on a phone to save a row, which
         left the small tab label as the only sign of where you are. This bar
@@ -189,6 +206,7 @@
             <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856a9.72 9.72 0 012.52-1.84m3.106-1.02a9.75 9.75 0 018.162 2.86M1.924 8.674a14.2 14.2 0 013.2-2.37m3.42-1.32c4.74-1.18 9.98.05 13.532 3.69M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z"/></svg>
             No signal
         </div>
+        {% endif %}
 
         <!-- Toast Messages — always rendered (with a stable id) so boosted
              navigations can lift fresh toasts out of the full response;
@@ -240,14 +258,17 @@
             {% block content %}{% endblock %}
         </main>
 
+        {% if not slim_page %}
         <!-- Footer (hidden on mobile — tab bar replaces it) -->
         <footer class="border-t border-light-sage mt-auto hidden lg:block">
             <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
                 <p class="text-center text-sage text-xs">Cgate &mdash; Equine livery management</p>
             </div>
         </footer>
+        {% endif %}
     </div>
 
+    {% if not slim_page %}
     <!-- ── Mobile Bottom Tab Bar ── -->
     {% if user.is_authenticated %}
     <nav class="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-light-sage lg:hidden tab-bar-safe"
@@ -550,54 +571,14 @@
         }
     };
 
-    // ── Progress bar ──
-    document.body.addEventListener('htmx:beforeRequest', function (e) {
-        if (!e.detail.boosted) return;
-        clearTimeout(barTimer);
-        bar.style.transition = 'none';
-        bar.style.width = '0%';
-        bar.style.opacity = '1';
-        requestAnimationFrame(function () {
-            bar.style.transition = 'width 1.5s cubic-bezier(0.1, 0.05, 0, 1)';
-            bar.style.width = '70%';
-        });
-    });
-
-    document.body.addEventListener('htmx:afterRequest', function (e) {
-        if (!e.detail.boosted) return;
-        bar.style.transition = 'width 0.15s ease-out';
-        bar.style.width = '100%';
-        barTimer = setTimeout(function () {
-            bar.style.transition = 'opacity 0.25s ease-in';
-            bar.style.opacity = '0';
-            setTimeout(function () {
-                bar.style.transition = 'none';
-                bar.style.width = '0%';
-            }, 250);
-        }, 150);
-    });
-
-    // ── Page entrance animation + scroll to top + nav highlight ──
-    document.body.addEventListener('htmx:afterSwap', function (e) {
-        // Only run full-page logic on boosted navigation, not partial loads
-        if (!e.detail.boosted) return;
-
-        window.scrollTo({ top: 0, behavior: 'instant' });
-        var main = document.getElementById('main-content');
-        if (!main) return;
-        // Browsers with view transitions already animate the change
-        // (hx-swap "transition:true" on <body>, styled in input.css), so the
-        // entrance animation runs only where they are not supported.
-        if (!document.startViewTransition) {
-            main.classList.remove('page-enter');
-            void main.offsetWidth;
-            main.classList.add('page-enter');
-        }
-        // Update nav active states based on current path.
+    // ── The current section, in the sidebar, the tab bar and the More sheet ──
+    // After each page change, and at once on a tap on one of those links
+    // (static/js/tap_feedback.js), which passes the path it is going to.
+    window.Yardway.syncNav = function (forPath) {
         // Only the link with the longest matching href prefix is active, so
         // nested routes (e.g. /health/breeding/ under /health/) highlight one
         // item, not both.
-        var path = window.location.pathname;
+        var path = forPath || window.location.pathname;
         function pickActive(links) {
             var best = null;
             links.forEach(function(a) {
@@ -647,6 +628,53 @@
             a.className = (a === sheetActive) ? 'sheet-nav-item-active' : 'sheet-nav-item';
         });
         window.Yardway.syncMoreTab();
+    };
+
+    // ── Progress bar ──
+    document.body.addEventListener('htmx:beforeRequest', function (e) {
+        if (!e.detail.boosted) return;
+        clearTimeout(barTimer);
+        bar.style.transition = 'none';
+        bar.style.width = '0%';
+        bar.style.opacity = '1';
+        requestAnimationFrame(function () {
+            bar.style.transition = 'width 1.5s cubic-bezier(0.1, 0.05, 0, 1)';
+            bar.style.width = '70%';
+        });
+    });
+
+    document.body.addEventListener('htmx:afterRequest', function (e) {
+        if (!e.detail.boosted) return;
+        bar.style.transition = 'width 0.15s ease-out';
+        bar.style.width = '100%';
+        barTimer = setTimeout(function () {
+            bar.style.transition = 'opacity 0.25s ease-in';
+            bar.style.opacity = '0';
+            setTimeout(function () {
+                bar.style.transition = 'none';
+                bar.style.width = '0%';
+            }, 250);
+        }, 150);
+    });
+
+    // ── Page entrance animation + scroll to top + nav highlight ──
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+        // Only run full-page logic on boosted navigation, not partial loads
+        if (!e.detail.boosted) return;
+
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        var main = document.getElementById('main-content');
+        if (!main) return;
+        // Browsers with view transitions already animate the change
+        // (hx-swap "transition:true" on <body>, styled in input.css), so the
+        // entrance animation runs only where they are not supported.
+        if (!document.startViewTransition) {
+            main.classList.remove('page-enter');
+            void main.offsetWidth;
+            main.classList.add('page-enter');
+        }
+        // The current section, in the sidebar, the tab bar and the More sheet.
+        window.Yardway.syncNav();
         // Page title, toasts, Alpine, inline scripts
         var responseText = e.detail.xhr && e.detail.xhr.responseText;
         window.Yardway.afterMainSwap(main, responseText);
@@ -666,6 +694,8 @@
     document.body.addEventListener('htmx:historyRestore', function () {
         var slot = document.getElementById('app-bar-slot');
         if (slot) slot.innerHTML = '';
+        // The copy holds the bars as they were when the page was left.
+        window.Yardway.syncNav();
     });
 
     // ── Stale-target guard for overlapping boosted navigations ──
@@ -989,6 +1019,7 @@ document.addEventListener('alpine:init', function() {
     });
 });
 </script>
+{% endif %}
 
 </body>
 </html>

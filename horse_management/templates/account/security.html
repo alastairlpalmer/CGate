@@ -65,6 +65,13 @@
         <div class="px-4 py-3 space-y-3">
             {% if mfa.enabled %}
             <p class="text-sm text-charcoal"><strong>On.</strong> Sign-in asks for a code from your authenticator app.</p>
+            {% if mfa.remember_days %}
+            <p class="text-sm text-sage">
+                A device can be remembered for {{ mfa.remember_days }} day{{ mfa.remember_days|pluralize }} after a correct code.
+                Sign-in on it then asks for your password only.
+                A new password, or &ldquo;Sign Out Other Devices&rdquo; below, makes every device ask for a code again.
+            </p>
+            {% endif %}
             <p class="text-sm {% if mfa.recovery_codes_left < 3 %}text-saddle font-medium{% else %}text-sage{% endif %}">
                 {{ mfa.recovery_codes_left }} recovery code{{ mfa.recovery_codes_left|pluralize }} left.
                 {% if mfa.recovery_codes_left < 3 %}Make new codes now, so you can still sign in if you lose your phone.{% endif %}
@@ -101,7 +108,7 @@
             <h3 class="section-title">Signed-In Devices</h3>
         </div>
         <div class="px-4 py-3 flex items-center justify-between gap-4">
-            <p class="text-sm text-sage">Lost a phone or used a shared computer? Sign out everywhere except here.</p>
+            <p class="text-sm text-sage">Lost a phone or used a shared computer? Sign out everywhere except here. Every device then asks for a two-step code again.</p>
             <form method="post" action="{% url 'sign_out_other_devices' %}"
                   hx-confirm="Sign out of every other device and browser?">
                 {% csrf_token %}

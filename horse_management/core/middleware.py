@@ -121,6 +121,10 @@ class MFAMiddleware:
         if mfa.session_enrolled(request):
             if user.is_verified() or path == verify_url:
                 return None
+            # "Remember this device": a code was given on this device in
+            # the last MFA_REMEMBER_DAYS, so the password was enough.
+            if mfa.pass_remembered_device(request):
+                return None
             return verify_url
         if mfa.mfa_required(user) and path != setup_url:
             return setup_url
@@ -246,6 +250,34 @@ class AppVersionMiddleware:
         response = self.get_response(request)
         if response.get('Content-Type', '').startswith('text/html'):
             response.headers.setdefault(self.HEADER, self.version)
+        return response
+
+
+class SlimPageCacheMiddleware:
+    """Keep the short answer to a tap out of the way of a page load.
+
+    A tap on a link (``HX-Boosted``) gets the page without its frame
+    (``core.context_processors.page_frame``). The address is the same as
+    for a page load. A browser that kept the short answer could show it
+    for a later page load of that address, most likely on Back after a
+    full load of another page: a page with no styles and no scripts.
+
+    Two headers prevent that. ``Vary: HX-Boosted`` on every page says the
+    answer depends on that header. ``Cache-Control: no-store`` on the short
+    answer says it is not to be kept at all.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from django.utils.cache import patch_vary_headers
+
+        response = self.get_response(request)
+        if response.get('Content-Type', '').startswith('text/html'):
+            patch_vary_headers(response, ['HX-Boosted'])
+            if request.headers.get('HX-Boosted') == 'true':
+                response.headers.setdefault('Cache-Control', 'no-store')
         return response
 
 

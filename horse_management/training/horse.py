@@ -33,6 +33,19 @@ def timeline_activities(user, horse, limit):
     )
 
 
+def training_actions(user):
+    """What the horse page needs when it does not show the Training card.
+
+    The page still asks one thing of it: may this role record and change
+    training (the Record card, the Timeline's Edit link). ``None`` when the
+    role cannot see training, as ``training_card``. It runs no query; the
+    card runs eight.
+    """
+    if not can_see_training(user):
+        return None
+    return {'can_change': has_feature_access(user, 'training', LEVEL_FULL)}
+
+
 def training_card(user, horse):
     """The horse page's Training card, or None when the role cannot see it."""
     if not can_see_training(user):

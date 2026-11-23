@@ -53,6 +53,14 @@ no cross-customer isolation boundary to get wrong.
   wait. Setting it up signs out every other session. Only an Administrator
   can turn it off for another user, and that signs the user out
   everywhere. From a shell: `python manage.py mfa_reset <email>`.
+- "Remember this device": after a correct code, a device can be
+  remembered for `MFA_REMEMBER_DAYS` (14). The next sign-in on it asks for
+  the password only. The device holds a signed, HttpOnly cookie. It stops
+  working after the 14 days, when the password changes, when the
+  authenticator is replaced or removed, and when the account is signed out
+  everywhere (the answer to a lost device). The box is ticked when the code
+  page opens; a person on a shared device must clear it. Each use is in the
+  account events. `MFA_REMEMBER_DAYS=0` turns it off.
 - Password reset links expire after 1 hour and work once. Reset requests
   are limited per address and per IP address (`core/ratelimit.py`).
 - Sign in with Google is optional (`core/google_oidc.py`, off until
