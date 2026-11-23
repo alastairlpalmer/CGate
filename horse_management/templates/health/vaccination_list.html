@@ -56,7 +56,8 @@
     <!-- Vaccination Table -->
     <div class="card overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="data-table data-table-cards">
+            {# On a phone: one compact row a record (item C5, .data-table-compact). #}
+            <table class="data-table data-table-compact" data-actions="top" style="--row-actions: 7rem">
                 <thead>
                     <tr>
                         <th>Horse</th>
@@ -70,15 +71,16 @@
                 <tbody>
                     {% for vax in vaccinations %}
                     <tr>
-                        <td data-label="Horse">
+                        <td data-label="Horse" data-slot="name">
                             <a href="{% url 'horse_detail' vax.horse.pk %}" class="link tap-pad">{{ vax.horse.name }}</a>
                         </td>
-                        <td data-label="Type">{{ vax.vaccination_type.name }}</td>
-                        <td class="text-sage" data-label="Date Given">{{ vax.date_given|date:"j M Y" }}</td>
-                        <td class="{% if not vax.is_superseded and vax.next_due_date < today %}text-error-red font-semibold{% elif vax.is_due_soon %}text-forest{% else %}text-sage{% endif %}" data-label="Next Due">
-                            {{ vax.next_due_date|date:"j M Y" }}
+                        <td data-label="Type" data-slot="meta">{{ vax.vaccination_type.name }}</td>
+                        <td class="text-sage" data-label="Date Given" data-slot="hide">{{ vax.date_given|date:"j M Y" }}</td>
+                        <td class="{% if not vax.is_superseded and vax.next_due_date < today %}text-error-red font-semibold{% elif vax.is_due_soon %}text-forest{% else %}text-sage{% endif %}" data-label="Next Due" data-slot="meta">
+                            {# A phone has no Status column: the words go with the date. #}
+                            <span class="sm:hidden">{% if vax.is_superseded %}replaced · next was {% elif vax.next_due_date < today %}overdue since {% else %}due {% endif %}</span>{{ vax.next_due_date|date:"j M Y" }}
                         </td>
-                        <td data-label="Status">
+                        <td data-label="Status" data-slot="hide">
                             {% if not vax.is_superseded and vax.next_due_date < today %}
                             <span class="badge-danger">Overdue</span>
                     {% elif vax.is_superseded %}
@@ -89,10 +91,10 @@
                             <span class="badge-success">OK</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td data-slot="action">
                             <div class="flex items-center gap-1">
                                 <a href="{% url 'vaccination_update' vax.pk %}" hx-get="{% url 'vaccination_update' vax.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vaccination" class="btn-ghost btn-xs">Edit</a>
-                                <a href="{% url 'vaccination_create' %}?horse={{ vax.horse.pk }}" class="btn-ghost btn-xs">Record vaccination</a>
+                                <a href="{% url 'vaccination_create' %}?horse={{ vax.horse.pk }}" class="btn-ghost btn-xs" aria-label="Record vaccination for {{ vax.horse.name }}"><span class="sm:hidden">Record</span><span class="hidden sm:inline">Record vaccination</span></a>
                             </div>
                         </td>
                     </tr>

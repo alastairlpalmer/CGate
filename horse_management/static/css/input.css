@@ -995,6 +995,54 @@ html.page-pending #main-content { opacity: 0.5; transition: opacity 0.15s ease-o
     .data-table-cards tfoot tr { border-top: 2px solid var(--color-light-sage, #E3E8E6); }
 }
 
+/* One compact row for each record on a phone (docs/MOBILE_APP_PLAN.md,
+   item C5): add `data-table-compact` to a `.data-table`. Each row is two
+   lines, 64px or so:
+
+       Avicii                         [Record]
+       Equine Influenza · 16 days overdue
+
+   A cell says what it is with data-slot: "name" (line 1), "meta" (line 2,
+   joined with dots), "action" (the one button, at the right), "hide" (not
+   on a phone: the group heading or the page says it already). The labelled
+   card of .data-table-cards is right for a record with six facts; for a
+   list of horses it made 27 items 9.8 screens long. */
+.data-table .group-row th { @apply bg-sand-50 text-left text-sm font-normal normal-case tracking-normal px-4 py-2 border-b border-light-sage; }
+.data-table .group-row-inner { @apply flex items-center justify-between gap-3; }
+@media (max-width: 639px) {
+    .data-table-compact, .data-table-compact tbody { display: block; width: 100%; }
+    .data-table-compact thead { display: none; }
+    .data-table-compact tbody tr {
+        position: relative; display: block; min-height: 3.75rem;
+        /* --row-actions: the room for the buttons at the right; set it on
+           the table when a row has more than one. */
+        padding: 0.5rem var(--row-actions, 6rem) 0.5rem 1rem; border-bottom: 1px solid var(--color-light-sage, #E4EAEB);
+    }
+    /* A tick box at the left of the row, as a 44px target. */
+    .data-table-compact tbody tr:has(td[data-slot="check"]) { padding-left: 3rem; }
+    .data-table-compact tbody td[data-slot="check"] { position: absolute; left: 0.125rem; top: 50%; transform: translateY(-50%); }
+    .check-hit { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; cursor: pointer; }
+    .data-table-compact tbody tr:last-child { border-bottom: 0; }
+    .data-table-compact tbody td { display: inline; border: 0; padding: 0 !important; text-align: left; }
+    .data-table-compact tbody td[data-slot="hide"], .data-table-compact tbody td:empty { display: none; }
+    .data-table-compact tbody td[data-slot="name"] { display: block; font-size: 1rem; line-height: 1.5rem; overflow-wrap: anywhere; }
+    .data-table-compact tbody td[data-slot="meta"] { font-size: 0.875rem; line-height: 1.25rem; color: var(--color-charcoal-light, #4A4A4A); }
+    .data-table-compact tbody td[data-slot="meta"] ~ td[data-slot="meta"]::before { content: " · "; color: var(--color-sage, #56737A); }
+    /* A cell's own blocks run on in the line; a second line in a cell (the
+       date under "16 days overdue") is for a wide table. */
+    .data-table-compact tbody td[data-slot="meta"] > div { display: inline; }
+    .data-table-compact tbody td[data-slot="meta"] p { display: none; }
+    .data-table-compact tbody td[data-slot="action"] { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); }
+    /* `data-actions="top"`: the buttons stand beside the name, and the
+       second line has the width of the row. For a list whose second line
+       is long ("Equine Influenza · overdue since 18 Oct 2026"). */
+    .data-table-compact[data-actions="top"] tbody tr { padding-right: 1rem; }
+    .data-table-compact[data-actions="top"] tbody td[data-slot="name"] { padding-right: var(--row-actions, 6rem) !important; }
+    .data-table-compact[data-actions="top"] tbody td[data-slot="action"] { top: -0.125rem; transform: none; }
+    .data-table-compact tbody tr.group-row { min-height: 0; padding: 0; }
+    .data-table-compact tbody tr.group-row th { display: block; }
+}
+
 /* Inline-link tap target: on touch layouts, pad the link's hit box out to
    ~44px tall with padding cancelled by negative margin, so small text links
    (row names, "View all →", mailto/tel) are comfortably tappable without
@@ -1175,6 +1223,39 @@ html.page-pending #main-content { opacity: 0.5; transition: opacity 0.15s ease-o
         @apply inline-flex items-center justify-center w-8 h-8 rounded-btn text-sage hover:text-forest hover:bg-light-sage
                disabled:opacity-40 disabled:pointer-events-none transition-colors;
     }
+    /* A phone opens the card as a list of today and the next 7 days
+       (`is-week` on #dash-calendar); "Month" changes it to the grid
+       (docs/MOBILE_APP_PLAN.md, C3). From `sm` the card is always the
+       month, and what belongs to the list is not shown. */
+    .cal-in-week, .cal-phone { display: none; }
+    @media (max-width: 639px) {
+        .cal-phone { display: inline-flex; }
+        #dash-calendar.is-week .cal-in-week { display: revert; }
+        #dash-calendar.is-week .cal-in-month { display: none !important; }
+        /* 44px, the app's rule for a target (C10). They were 32px. */
+        .cal-nav { @apply w-11 h-11; }
+    }
+    .week-day + .week-day { @apply border-t border-light-sage; }
+    .week-day-head { @apply flex items-center justify-between gap-2 px-4 pt-3 pb-1 min-h-[2.75rem]; }
+    .week-day-head h3 { @apply text-sm font-semibold text-charcoal; }
+    .week-day-head h3 span { @apply ml-1 font-normal text-charcoal-light; }
+    .week-line { @apply flex items-center gap-3 px-4 py-2 min-h-[3.75rem]; }
+    .week-line + .week-line { @apply border-t border-light-sage/60; }
+    .week-line > .strip-dot { @apply shrink-0; }
+    .week-text { @apply min-w-0 flex-1; }
+    .week-main { @apply block w-full text-left no-underline; }
+    .week-title { @apply block text-base font-medium text-charcoal; overflow-wrap: anywhere; }
+    .week-sub { @apply block text-sm text-charcoal-light; }
+    .week-names { @apply mt-2 mb-1 flex flex-wrap gap-2; }
+    .week-action { @apply shrink-0; }
+    .week-empty { @apply px-4 pb-3 text-sm text-charcoal-light; }
+
+    /* The figures that need no action, as one line of links on a phone
+       (partials/dashboard/_yard_counts.html). */
+    .yard-counts { @apply flex flex-wrap gap-2; }
+    .yard-count { @apply inline-flex items-center gap-1.5 min-h-[2.75rem] rounded-full border border-light-sage bg-white px-4 text-sm text-charcoal-light no-underline; }
+    .yard-count b { @apply font-semibold text-charcoal tabular-nums; }
+
     .cal-day-list { @apply border-t border-light-sage mt-1; }
     .cal-day-head { @apply flex items-center justify-between gap-2 pr-3 lg:pr-4; }
     .cal-day-title { @apply flex items-center gap-2 px-4 pt-3 pb-2 text-sm font-semibold text-charcoal lg:px-5; }
@@ -1350,6 +1431,12 @@ html.page-pending #main-content { opacity: 0.5; transition: opacity 0.15s ease-o
     .metric-value { @apply mt-1 font-heading text-2xl font-semibold leading-none tracking-[-0.01em] text-forest tabular-nums; }
     .metric-meta { @apply mt-1.5 block w-full truncate text-xs text-sage; }
     .metric.is-alert { @apply border-saddle/40 bg-saddle-50; }
+    /* A phone's first screen is for what needs a look: the other figures
+       are a line of links lower down (C3). One figure takes the width. */
+    @media (max-width: 639px) {
+        .metric-strip { grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+        .metric-strip .metric:not(.is-alert), .metric-strip.is-quiet { display: none; }
+    }
     .metric.is-alert .metric-value { @apply text-saddle; }
 
     /* The Timeline's filter (a funnel opening the app's menu) and its
@@ -1481,6 +1568,18 @@ html.page-pending #main-content { opacity: 0.5; transition: opacity 0.15s ease-o
     .log-name { @apply inline-flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-charcoal no-underline ring-1 ring-light-sage transition-colors hover:ring-sage hover:text-forest; }
     .log-what { @apply text-sm text-charcoal-light; }
     .log-count { @apply text-xs text-sage; }
+    /* A row for many horses (a farrier's morning for 18): on a phone it is
+       one line, "Farrier · Trim Only · 18 horses", and the count opens
+       the names (C3). On a wider screen the names always show. */
+    .log-more { @apply hidden; }
+    @media (max-width: 639px) {
+        .log-body.is-many:not(.show-names) .log-name { display: none; }
+        .log-body.is-many .log-count { display: none; }
+        .log-more { @apply inline-flex items-center min-h-[2.75rem] -my-2.5 text-sm text-forest underline decoration-forest/30 underline-offset-2; }
+        /* A name is a target: 32px high and 8px apart (C10). It was 20px. */
+        .log-name { @apply min-h-[2rem] px-2.5 text-sm; }
+        .log-body { @apply gap-y-2; }
+    }
     .log-amount { @apply pt-1 text-xs text-sage tabular-nums; }
 }
 
@@ -1593,8 +1692,20 @@ html.page-pending #main-content { opacity: 0.5; transition: opacity 0.15s ease-o
            nothing: its track collapses and its gap goes with it, because
            the gaps are margins on the cells rather than a column-gap. */
         grid-template-columns: auto minmax(0, auto) minmax(0, 1fr) auto;
+        /* Two lines, named, so the tick box and the menu button can stand
+           the height of both (`1 / -1` counts only rows that are named).
+           With this padding a row is 64px: seven horses on a first screen
+           that used to show five (docs/MOBILE_APP_PLAN.md, C5). */
+        grid-template-rows: auto auto;
         align-items: center;
-        padding: 0.75rem 1rem;
+        padding: 0.625rem 0.5rem 0.625rem 1rem;
+    }
+    /* The picture stands beside both lines. Its box is only as high as
+       the name's line, so it does not make the first line taller. */
+    .horse-rows tbody td[data-col="name"] a[data-horse-link] { align-items: flex-start; }
+    .horse-rows tbody td[data-col="name"] a[data-horse-link] > :first-child {
+        margin-top: 0.375rem;
+        margin-bottom: -1.625rem;
     }
     .horse-rows tbody tr[data-horse-row] > td {
         min-width: 0;
@@ -1624,12 +1735,27 @@ html.page-pending #main-content { opacity: 0.5; transition: opacity 0.15s ease-o
     /* The Needs cell ("Needs action" view): its own line under the meta
        line, and above the name's tap overlay so its buttons can be used. */
     .horse-rows tbody tr[data-horse-row] > td[data-col="needs"] {
-        grid-column: 2 / 4;
+        grid-column: 2 / 5;
         grid-row: 3;
         padding-left: 2.75rem;
-        margin-top: 0.5rem;
+        padding-right: 0.5rem;
+        margin-top: 0.375rem;
         position: relative;
         z-index: 10;
+    }
+    /* What is needed on the left, its button on the right: one block of
+       two lines, where the button used to take a line of its own. */
+    .horse-rows .needs-body { flex-wrap: nowrap; justify-content: space-between; }
+    .horse-rows .needs-text { flex: 1 1 auto; }
+    .horse-rows .needs-body > :is(a, form) { flex-shrink: 0; }
+    /* The name and its details share the first line when there is room
+       for both. A long name pushes the details to a line of their own,
+       as before. */
+    .horse-rows tbody td[data-col="name"] .horse-name {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        column-gap: 0.5rem;
     }
     /* A long name gets two lines, then an ellipsis, so one horse never
        takes the height of four. */
@@ -1638,7 +1764,9 @@ html.page-pending #main-content { opacity: 0.5; transition: opacity 0.15s ease-o
         -webkit-box-orient: vertical;
         -webkit-line-clamp: 2;
         overflow: hidden;
+        @apply text-base;
     }
+    .horse-rows tbody td[data-col="name"] .horse-name-detail { @apply text-charcoal-light; }
     .horse-rows tbody td[data-col="owner"] { grid-column: 2; grid-row: 2; }
     .horse-rows tbody td[data-col="location"] { grid-column: 3; grid-row: 2; }
     /* The meta line starts where the name does, clear of the avatar
@@ -1660,7 +1788,7 @@ html.page-pending #main-content { opacity: 0.5; transition: opacity 0.15s ease-o
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
-        @apply text-xs text-sage;
+        @apply text-sm text-charcoal-light;
     }
     /* Everything in the two meta cells, not only their links: the
        separator is a span, and a span that swallowed the tap would leave

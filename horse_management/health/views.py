@@ -175,6 +175,10 @@ def health_dashboard(request):
 
         context.update({
             'action_required': action_required,
+            # The same entries, under one heading for each job.
+            'action_groups': attention.group_health_entries(
+                action_required, can_record=has_feature_access(request.user, 'health', LEVEL_FULL),
+            ),
             'coming_up': coming_up,
             'high_egg_counts': high_egg_counts,
             'active_conditions': active_conditions,

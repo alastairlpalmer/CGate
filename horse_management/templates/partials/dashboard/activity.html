@@ -69,12 +69,13 @@ every row of its group.
         {% for event in day.events %}
         <div class="log-event" data-group="{{ event.group }}" x-show="kind === 'all' ? {% if event.folded %}all{% else %}true{% endif %} : kind === '{{ event.group }}'"{% if event.folded %} x-cloak{% endif %}>
             <span class="log-icon log-icon-{{ event.group }}" aria-hidden="true"><svg class="w-4 h-4"><use href="#i-{{ event.kind|kind_icon }}"/></svg></span>
-            <div class="log-body">
+            <div class="log-body{% if event.names|length > 3 %} is-many{% endif %}"{% if event.names|length > 3 %} x-data="{ names: false }" :class="names && 'show-names'"{% endif %}>
                 {% for n in event.names %}
                 <a href="{{ n.url }}" class="log-name">{% if n.color %}{% with coat=n.color|coat_colour %}<span class="coat-dot" style="background:{{ coat.0 }}"></span>{% endwith %}{% endif %}{{ n.name }}</a>
                 {% endfor %}
                 {% if event.url %}<a href="{{ event.url }}" class="log-what link">{{ event.what }}</a>{% else %}<span class="log-what">{{ event.what }}</span>{% endif %}
                 {% if event.count > 1 %}<span class="log-count">{{ event.count }} horses</span>{% endif %}
+                {% if event.names|length > 3 %}<button type="button" class="log-more" @click="names = !names" :aria-expanded="names ? 'true' : 'false'" data-testid="timeline-names"><span x-show="!names">{{ event.names|length }} horses</span><span x-show="names" x-cloak>Hide names</span></button>{% endif %}
             </div>
             {% if event.amount is not None %}<span class="log-amount">{{ event.amount|gbp }}</span>{% endif %}
         </div>

@@ -610,7 +610,8 @@
         </div>
         {% endif %}
         <div class="overflow-x-auto">
-            <table class="data-table data-table-cards">
+            {# On a phone: one compact row a horse, with a 44px tick box (items C5, C10). #}
+            <table class="data-table data-table-compact" style="--row-actions: 7.75rem">
                 <thead>
                     <tr>
                         <th class="w-10">
@@ -625,25 +626,28 @@
                 <tbody>
                     {% for horse in table_horses %}
                     <tr>
-                        <td>
-                            <input type="checkbox"
-                                   data-horse-checkbox aria-label="Select {{ horse.name }}"
-                                   value="{{ horse.pk }}"
-                                   @change="toggleHorse({{ horse.pk }})"
-                                   :checked="isSelected({{ horse.pk }})"
-                                   class="form-checkbox rounded">
+                        <td data-slot="check">
+                            {# The label is the target: 44px on a phone, where the box alone was 20px. #}
+                            <label class="check-hit">
+                                <input type="checkbox"
+                                       data-horse-checkbox aria-label="Select {{ horse.name }}"
+                                       value="{{ horse.pk }}"
+                                       @change="toggleHorse({{ horse.pk }})"
+                                       :checked="isSelected({{ horse.pk }})"
+                                       class="form-checkbox rounded">
+                            </label>
                         </td>
-                        <td data-label="Name">
+                        <td data-label="Name" data-slot="name">
                             <a href="{% url 'horse_detail' horse.pk %}" class="link font-medium tap-pad">
                                 {{ horse.name }}
                             </a>
                         </td>
-                        <td class="text-sage" data-label="Details">
+                        <td class="text-sage" data-label="Details" data-slot="meta">
                             {{ horse.age_label }}
                             {{ horse.get_color_display }}
                             {{ horse.get_sex_display }}
                         </td>
-                        <td data-label="Owner">
+                        <td data-label="Owner" data-slot="meta">
                             {% with placement=horse.active_placements.0 %}
                             {% if placement %}
                             <a href="{% url 'owner_detail' placement.owner.pk %}" class="link tap-pad">
@@ -652,7 +656,7 @@
                             {% endif %}
                             {% endwith %}
                         </td>
-                        <td>
+                        <td data-slot="action">
                             <div class="flex items-center gap-1">
                                 {% if barn_tray and feature_access.horses.full %}
                                 <a href="{% url 'horse_stable' horse.pk %}?next={{ request.path|urlencode }}" hx-get="{% url 'horse_stable' horse.pk %}?next={{ request.path|urlencode }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
