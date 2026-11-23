@@ -310,3 +310,66 @@ class HorseOwnerLineTests(TestCase):
         owner = line[1].split('</p>', 1)[0]
         self.assertIn('<span class="whitespace-nowrap">Billed to</span>', owner)
         self.assertIn('<span class="text-sage whitespace-nowrap">(from the stay)</span>', owner)
+
+
+class InstallHelpTests(TestCase):
+    """D2: help to put the app on a phone."""
+
+    def setUp(self):
+        self.client.force_login(make_admin('boss'))
+
+    def card(self):
+        html = self.client.get(reverse('dashboard')).content.decode()
+        return html.split('data-install-card', 1)[1].split('</section>', 1)[0]
+
+    def test_the_dashboard_holds_the_card_and_it_is_hidden_until_the_script_shows_it(self):
+        html = self.client.get(reverse('dashboard')).content.decode()
+        self.assertEqual(html.count('data-install-card'), 1)
+        self.assertIn('<section class="install-card" data-install-card hidden', html)
+
+    def test_the_card_has_a_button_for_android_and_two_steps_for_an_iphone(self):
+        card = self.card()
+        self.assertIn('<div data-install-part="button" hidden>', card)
+        self.assertIn('data-install-now>Install the app</button>', card)
+        self.assertIn('<div data-install-part="steps" hidden>', card)
+        steps = card.split('data-install-part="steps"', 1)[1].split('</ol>', 1)[0]
+        self.assertEqual(steps.count('<li>'), 2)
+        self.assertLess(steps.index('<strong>Share</strong>'), steps.index('<strong>Add to Home Screen</strong>'))
+
+    def test_the_card_can_be_closed_and_points_to_help(self):
+        card = self.card()
+        self.assertIn('data-install-close aria-label="Close. The steps are in Help."', card)
+        self.assertIn(f'href="{reverse("help_article", args=["install-the-app"])}"', card)
+
+    def test_the_card_is_on_the_dashboard_only(self):
+        for name in ('horse_list', 'health_dashboard', 'owner_list'):
+            with self.subTest(page=name):
+                self.assertNotIn('data-install-card', self.client.get(reverse(name)).content.decode())
+
+    def test_a_card_that_is_hidden_stays_hidden_with_its_flex_style(self):
+        css = (STATIC / 'css' / 'input.css').read_text()
+        self.assertIn('.install-card[hidden] { display: none; }', css)
+
+    def test_help_has_the_steps_for_both_kinds_of_phone(self):
+        response = self.client.get(reverse('help_article', args=['install-the-app']))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        for text in ('Install on an iPhone or iPad', 'Install on an Android phone', '<strong>Add to Home Screen</strong>',
+                     '<strong>Install the app</strong>', 'No signal'):
+            with self.subTest(text=text):
+                self.assertIn(text, html)
+
+    def test_every_role_sees_the_guide_and_search_finds_it(self):
+        from core import help as guides
+        from core.roles_testutils import make_user_with_access
+
+        groom = make_user_with_access('groom', horses='view')
+        guide = guides.GUIDES_BY_SLUG['install-the-app']
+        self.assertTrue(guide.visible_to(groom))
+        for query in ('install', 'home screen', 'iphone', 'android'):
+            with self.subTest(query=query):
+                self.assertIn(guide, guides.search(groom, query))
+
+    def test_getting_started_points_to_it(self):
+        html = self.client.get(reverse('help_article', args=['getting-started'])).content.decode()
+        self.assertIn(f'href="{reverse("help_article", args=["install-the-app"])}"', html)
