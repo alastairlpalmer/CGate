@@ -28,7 +28,12 @@ class HorsePageTests(TestCase):
         later = Activity.objects.create(horse=self.horse, date=self.today + timedelta(days=1),
                                         work_type=self.canter, status='planned')
         response = self.client.get(reverse('horse_detail', args=[self.horse.pk]))
-        self.assertEqual(response.context['training_card']['coming_up'], [later])
+        # A plan alone does not show the Training card, and the page builds
+        # the card only when it shows, so ask for the card itself.
+        from training.horse import training_card
+
+        card = training_card(response.wsgi_request.user, self.horse)
+        self.assertEqual(card['coming_up'], [later])
         self.assertFalse([e for e in response.context['timeline_events'] if e['type'] == 'training'])
 
     def test_timeline_holds_at_most_10_rows_and_the_preview_5(self):

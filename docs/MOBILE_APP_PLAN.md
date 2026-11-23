@@ -14,7 +14,7 @@ it ready to launch as an app.
 | Phase | State |
 |---|---|
 | 1. Nothing breaks, nothing is lost | Done in this branch: A1 to A7 (see the notes below the table) |
-| 2. Faster taps | Not started |
+| 2. Faster taps | Done in this branch: B1, B2, B7, B8, and part of B5 and B6. Not done: B3, B4 (see the notes below the table) |
 | 3. Key information first | Not started |
 | 4. Installed app | Not started |
 | 5. Push notifications | Not started |
@@ -55,6 +55,56 @@ Phase 1 notes:
   sheet keeps its own code; the two work together. The helper also
   removes a fault that was there before: after a link in a sheet or a
   drawer, one Back press did nothing. **Not done:** the confirm dialog.
+
+Phase 2 notes:
+
+- B1: for a tap (`HX-Boosted`), `base.html` leaves out its frame
+  (`slim_page`). A tab tap was 33 KB as downloaded and is 11 KB. The
+  account security page was 110 KB of HTML and is 4 KB. On the weak
+  signal test a tab tap is 0.6 to 0.9 seconds (1.1 to 1.4 before).
+  `SlimPageCacheMiddleware` adds `Vary: HX-Boosted` to every page and
+  `Cache-Control: no-store` to the short one, so a browser cannot show
+  the short page for a page load.
+- B2: a tap on a tab, a More-sheet item or a sidebar link marks that
+  section at once (`static/js/tap_feedback.js`). If the answer takes
+  longer than 150 ms, the content dims until the new content is in. It
+  is a dim, not a skeleton: a skeleton needs the shape of each page, and
+  the dim says the same thing. A row under a finger shows as pressed.
+  Back now sets the marks in the bars again (`Yardway.syncNav`).
+- **B3 is not done.** There are two ways to start the request when the
+  finger goes down, and each has a fault. To act on the touch makes a
+  scroll that starts on a row open that row. To fetch early and use the
+  answer on the tap needs the browser to keep the page for some seconds,
+  and a page that was just changed would then show its old data. The
+  gain is about 0.1 seconds.
+- **B4 is moved to phase 3.** 60% of a row is its actions menu (2.8 KB
+  of 4.6 KB). Item C5 makes a new phone row for each list; to change the
+  row two times is waste. Paging is not done: the preview's "35 of 60"
+  and its Next and Previous need all the rows in the page.
+- B5: a test holds a limit on what each page loads
+  (`SizeBudgetTests`): 45 KB for `styles.css` and 120 KB for the scripts,
+  as gzip sends them. They are 39 KB and 107 KB. **Not done:** the map
+  scripts still load on each page. They start themselves from page
+  events that do not come again for a script that loads later, so each
+  one needs a change. The service worker of phase 4 stores all scripts
+  on the phone, which removes most of the gain.
+- B6: a horse page built the Training card (8 queries) and then asked if
+  the card shows. It now asks first. A horse with no training record
+  costs 40 queries, not 48. The Record sheet saves the same 8. The rest
+  needs the times from the live site (`Server-Timing`); a horse page
+  has no query that repeats, so the next cut is to load cards late.
+- B7: `brotli` is in the requirements. The first download of styles and
+  scripts is 122 KB (146 KB with gzip).
+- B8: the quick-add photo form makes a JPEG or WebP smaller in the
+  browser: the longest side is 2,000 px at most. An 11 MB test photo
+  went as 1 MB; before, the server refused it. A PNG and a small photo go
+  as they are. The form shows the percent sent, and Save waits until the
+  photos are ready.
+
+Not part of the plan, done with phase 2: **"Remember this device"** for
+two-step sign-in. After a correct code a device is remembered for
+`MFA_REMEMBER_DAYS` (14). This answers a part of D1 (section 9,
+decision 4). `SECURITY.md` has the rules.
 
 Found in phase 1, not corrected:
 
@@ -149,7 +199,7 @@ Section 8 is the list of tests for real phones.
 
 The script `tools/qa/phone_review.js` repeats the measurements. It prints
 PASS or FAIL for items A1, A2, A3, A6, A7 and B1. Before phase 1 all
-eight checks failed. After phase 1 seven pass; B1 is phase 2.
+eight checks failed. After phase 2 all eight pass.
 
 | Item | Result |
 |---|---|
@@ -618,19 +668,19 @@ customer asks for it. Store rules change: read them again at that time.
 
 ## 6. Targets
 
-| Item | Now | Target |
-|---|---|---|
-| First sign after a tap | After the response | Under 100 ms |
-| A tab tap, good signal | 0.2 to 0.4 s (local) | Under 0.3 s |
-| A tab tap, weak signal (400 kbit/s, 400 ms) | 1.1 to 1.4 s | Under 1 s |
-| Download for one tap | 24 to 38 KB | Under 15 KB, long lists excepted |
-| Open the installed app to the first screen | Not measured | Under 2 s on 4G |
-| Fixed bars | 187 px | 135 px or less |
-| Horses on the first screen (390 x 844) | 5 | 8 or more |
-| Text of 12 px or smaller | 39% to 83% on the main lists | Under 25% |
-| Longest list page | 10.8 screens | 4 screens for 50 items |
-| Queries for one page | Up to 48 | 25 or fewer |
-| Checks in `phone_review.js` | 7 of 8 pass (0 before phase 1) | 8 of 8 pass |
+| Item | At the review | After phase 2 | Target |
+|---|---|---|---|
+| First sign after a tap | After the response | At once (the tab is marked) | Under 100 ms |
+| A tab tap, good signal | 0.2 to 0.4 s (local) | Not measured again | Under 0.3 s |
+| A tab tap, weak signal (400 kbit/s, 400 ms) | 1.1 to 1.4 s | 0.6 to 0.9 s | Under 1 s |
+| Download for one tap | 24 to 38 KB | 1 to 15 KB | Under 15 KB, long lists excepted |
+| Open the installed app to the first screen | Not measured | Not measured | Under 2 s on 4G |
+| Fixed bars | 187 px | 187 px (phase 3) | 135 px or less |
+| Horses on the first screen (390 x 844) | 5 | 5 (phase 3) | 8 or more |
+| Text of 12 px or smaller | 39% to 83% on the main lists | The same (phase 3) | Under 25% |
+| Longest list page | 10.8 screens | The same (phase 3) | 4 screens for 50 items |
+| Queries for one page | Up to 48 | Up to 40 | 25 or fewer |
+| Checks in `phone_review.js` | 0 of 8 pass | 8 of 8 pass | 8 of 8 pass |
 
 ## 7. Order of work
 
@@ -691,9 +741,13 @@ Android phone before phase 4 is closed.
    **Answer (23 Nov 2026): yes.**
 3. **One top bar** with the search box, and no name bar (C1)?
    Recommended: yes.
+   **Answer (23 Nov 2026): yes.**
 4. **Sign-in on a phone** (D1): longer times, passkeys, or no change?
    Recommended: 30 days with no use and 90 days in total for an installed
    phone, then passkeys later.
+   **Answer in part (23 Nov 2026):** the two-step code is remembered on a
+   device for 14 days (done). The length of a sign-in is not changed:
+   7 days with no use, 30 days in total.
 5. **Saved copies for reading with no signal** (section E, level 2)?
    This stores owner data on the phone for up to 24 hours.
 6. **App stores** (section F): installed web app first? Recommended: yes.

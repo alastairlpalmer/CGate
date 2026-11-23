@@ -1448,13 +1448,19 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
         # them has their own cards on this page (Training, In foal, Breeding
         # history), so the Timeline does not show them a second time (UX
         # review A3). A role that may not see them gets none of them anyway.
-        context['training_card'] = training_horse.training_card(self.request.user, horse)
         # The Training card shows only once the horse has a training record
         # (done or did not work, today or earlier): the rows the Timeline
         # would list. A horse that has never trained gets no empty 28-day
         # strip; Record training stays in the Record card (21 Nov 2026).
+        # Ask that first: the card costs eight queries, and most horses in
+        # a livery yard have no training record (phone plan, item B6).
         context['show_training_card'] = bool(
-            context['training_card'] and training_horse.timeline_activities(self.request.user, horse, 1)
+            training_horse.timeline_activities(self.request.user, horse, 1)
+        )
+        context['training_card'] = (
+            training_horse.training_card(self.request.user, horse)
+            if context['show_training_card']
+            else training_horse.training_actions(self.request.user)
         )
         context['timeline_events'] = build_horse_timeline(
             placements=context['placements'],
@@ -1719,7 +1725,8 @@ def horse_record_actions(request, pk):
         active_pregnancy = horse.breeding_records.filter(status__in=('covered', 'confirmed')).first()
     return render(request, 'horses/partials/record_actions.html', {
         'horse': horse, 'active_pregnancy': active_pregnancy,
-        'training_card': training_horse.training_card(request.user, horse),
+        # The sheet only asks "may this role record training?".
+        'training_card': training_horse.training_actions(request.user),
     })
 
 

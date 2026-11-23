@@ -4,7 +4,12 @@ docs/MOBILE_APP_PLAN.md, items B1 to B8. tools/qa/phone_review.js checks
 the size of one tap in a browser; these tests hold the server's part.
 """
 
-from django.test import TestCase
+import gzip
+import re
+from pathlib import Path
+
+from django.conf import settings
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from core.roles_testutils import make_admin
@@ -106,3 +111,32 @@ class SlimPageCacheTests(TestCase):
         response = self.client.get(reverse('web_health_check'), **BOOSTED)
         self.assertNotIn('HX-Boosted', response.get('Vary', ''))
         self.assertNotIn('no-store', response.get('Cache-Control', ''))
+
+
+class SizeBudgetTests(SimpleTestCase):
+    """B5: what a phone downloads on its first visit has a limit.
+
+    The sizes are as gzip sends them. A change that goes over a limit is
+    not wrong by itself: first look for what can load later (a script
+    that only one page needs loads with that page, as Chart.js and
+    Leaflet do), and raise the limit only when nothing can.
+    """
+
+    STYLES_LIMIT = 45_000   # styles.css is 39 KB today
+    SCRIPTS_LIMIT = 120_000  # the scripts in <head> are 107 KB today
+
+    base = Path(settings.BASE_DIR)
+
+    def compressed(self, path):
+        return len(gzip.compress((self.base / 'static' / path).read_bytes(), 9))
+
+    def test_the_stylesheet_is_under_its_limit(self):
+        size = self.compressed('css/styles.css')
+        self.assertLess(size, self.STYLES_LIMIT, f'styles.css is {size} bytes compressed')
+
+    def test_the_scripts_every_page_loads_are_under_their_limit(self):
+        head = (self.base / 'templates' / 'base.html').read_text().split('</head>')[0]
+        scripts = re.findall(r"<script[^>]*src=\"{% static_v '(js/[^']+)' %}\"", head)
+        self.assertGreater(len(scripts), 10)
+        size = sum(self.compressed(path) for path in scripts)
+        self.assertLess(size, self.SCRIPTS_LIMIT, f'{len(scripts)} scripts, {size} bytes compressed')
