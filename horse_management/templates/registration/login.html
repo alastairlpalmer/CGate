@@ -1,4 +1,4 @@
-{% load static %}
+{% load static app_shell %}
 <!DOCTYPE html>
 <html lang="en" class="h-full">
 <head>
@@ -6,6 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign in - Cgate</title>
     {% include "registration/_auth_head.html" %}
+    {# As in base.html: someone can add the app to the Home Screen from this page (item D3). #}
+    <meta name="apple-mobile-web-app-title" content="Cgate">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    {% start_image_links %}
     {% comment %}
     The app keeps copies of the last pages in the browser, for the Back
     button (htmx's history store). They hold names, phone numbers and

@@ -99,3 +99,17 @@ nothing goes into the yard's records. To check the real path, set
 `CVET_TEST_MODE=False` for the server and for the script, on a fresh
 throwaway database. The script then prints the yard records to look for:
 vaccination records, a vet visit record, charges and a cost.
+
+## The pictures in the app's manifest
+
+`app_shots_seed.py` and `app_shots.js` are kept on purpose: they make the
+three pictures that `static/manifest.json` names
+(`docs/MOBILE_APP_PLAN.md`, item D3). Android shows them when it offers
+to install the app. The seed is a small yard with made-up names, so no
+real horse or owner is in a picture. Run them again after a change to the
+dashboard, the horse list or a horse page on a phone. The steps are at
+the top of `app_shots_seed.py`.
+
+`tools/make_start_images.py` draws the pictures an iPhone shows while
+the installed app starts (`static/start/`). Run it again when the icon
+changes or a new screen size is added to `core/start_images.py`.

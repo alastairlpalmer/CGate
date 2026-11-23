@@ -186,3 +186,127 @@ class OfflinePageTests(TestCase):
         html = self.page().content.decode()
         self.assertNotIn('id="mobile-tab-bar"', html)
         self.assertNotIn('htmx', html)
+
+
+class ManifestTests(TestCase):
+    """D3: what a phone reads to install the app."""
+
+    manifest = json.loads((STATIC / 'manifest.json').read_text())
+
+    def test_it_has_an_id_so_a_new_start_address_is_still_the_same_app(self):
+        self.assertEqual(self.manifest['id'], '/')
+        self.assertEqual(self.manifest['start_url'], '/')
+        self.assertEqual(self.manifest['scope'], '/')
+        self.assertEqual(self.manifest['display'], 'standalone')
+
+    def test_it_says_what_kind_of_app_it_is(self):
+        self.assertEqual(self.manifest['categories'], ['business', 'productivity'])
+        self.assertEqual(self.manifest['lang'], 'en-GB')
+
+    def test_the_shortcuts_are_the_jobs_done_on_a_phone(self):
+        shortcuts = [(item['name'], item['url']) for item in self.manifest['shortcuts']]
+        self.assertEqual(shortcuts, [
+            ('Find a horse', reverse('horse_list')),
+            ('Log arrival', reverse('horse_new_arrival')),
+            ('Health', reverse('health_dashboard')),
+        ])
+
+    def test_every_picture_it_names_exists_and_has_the_size_it_says(self):
+        from PIL import Image
+
+        pictures = self.manifest['icons'] + self.manifest['screenshots']
+        pictures += [icon for item in self.manifest['shortcuts'] for icon in item['icons']]
+        self.assertGreaterEqual(len(pictures), 10)
+        for picture in pictures:
+            with self.subTest(src=picture['src']):
+                path = static_path(picture['src'])
+                self.assertTrue(path.is_file(), picture['src'])
+                with Image.open(path) as image:
+                    self.assertEqual('{}x{}'.format(*image.size), picture['sizes'])
+
+    def test_the_screenshots_are_phone_screens(self):
+        shots = self.manifest['screenshots']
+        self.assertEqual(len(shots), 3)
+        for shot in shots:
+            with self.subTest(src=shot['src']):
+                self.assertEqual(shot['form_factor'], 'narrow')
+                self.assertTrue(shot['label'])
+                # Small enough to show at once in the install dialog.
+                self.assertLess(static_path(shot['src']).stat().st_size, 200_000)
+
+
+class StartImageTests(TestCase):
+    """D3: an iPhone shows the app's picture while the app starts."""
+
+    def test_there_is_a_picture_of_the_exact_size_of_each_screen(self):
+        from PIL import Image
+
+        from core import start_images
+
+        self.assertGreaterEqual(len(start_images.SCREENS), 15)
+        for width, height, ratio in start_images.SCREENS:
+            with self.subTest(screen=(width, height, ratio)):
+                path = STATIC / start_images.file_name(width, height, ratio)
+                self.assertTrue(path.is_file(), path.name)
+                with Image.open(path) as image:
+                    self.assertEqual(image.size, (width * ratio, height * ratio))
+
+    def test_no_two_screens_share_a_picture_or_a_rule(self):
+        from core import start_images
+
+        links = start_images.links()
+        self.assertEqual(len({item['file'] for item in links}), len(links))
+        self.assertEqual(len({item['media'] for item in links}), len(links))
+
+    def test_the_pictures_are_small_files(self):
+        total = sum(path.stat().st_size for path in (STATIC / 'start').glob('*.png'))
+        self.assertLess(total, 400_000, f'{total} bytes')
+
+    def assert_names_the_pictures(self, html):
+        from core import start_images
+
+        self.assertEqual(html.count('rel="apple-touch-startup-image"'), len(start_images.SCREENS))
+        self.assertIn(
+            '<link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) '
+            'and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/static/start/start-1170x2532.png">',
+            html)
+        self.assertIn('<meta name="apple-mobile-web-app-capable" content="yes">', html)
+        self.assertIn('<meta name="apple-mobile-web-app-status-bar-style" content="default">', html)
+
+    def test_a_page_of_the_app_names_them(self):
+        self.client.force_login(make_admin('boss'))
+        self.assert_names_the_pictures(self.client.get(reverse('dashboard')).content.decode())
+
+    def test_the_sign_in_page_names_them(self):
+        self.assert_names_the_pictures(self.client.get(reverse('login')).content.decode())
+
+    def test_a_tap_does_not_download_them_again(self):
+        self.client.force_login(make_admin('boss'))
+        html = self.client.get(reverse('dashboard'), HTTP_HX_REQUEST='true', HTTP_HX_BOOSTED='true').content.decode()
+        self.assertNotIn('apple-touch-startup-image', html)
+
+
+class HorseOwnerLineTests(TestCase):
+    """Found with the manifest pictures: a long owner line broke each part's words."""
+
+    def test_the_owner_line_wraps_as_whole_parts(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from core.models import Horse, Location, Owner, Placement, RateType
+
+        self.client.force_login(make_admin('boss'))
+        horse = Horse.objects.create(name='Bramble', sex='mare')
+        Placement.objects.create(
+            horse=horse, owner=Owner.objects.create(name='Helen Marsh', phone='07700 900101'),
+            location=Location.objects.create(name='Top Field', site='Home Farm'),
+            rate_type=RateType.objects.create(name='Grass', daily_rate=6),
+            start_date=timezone.localdate() - timedelta(days=30),
+        )
+        html = self.client.get(reverse('horse_detail', args=[horse.pk])).content.decode()
+        line = html.split('data-testid="header-owner"', 1)
+        self.assertIn('flex flex-wrap items-center gap-x-1.5"', line[0][-120:])
+        owner = line[1].split('</p>', 1)[0]
+        self.assertIn('<span class="whitespace-nowrap">Billed to</span>', owner)
+        self.assertIn('<span class="text-sage whitespace-nowrap">(from the stay)</span>', owner)

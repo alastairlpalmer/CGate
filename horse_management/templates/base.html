@@ -7,6 +7,7 @@
     {% load static %}
     {% load cache_bust %}
     {% load ui_extras %}
+    {% load app_shell %}
     {% comment %}
     A tap on a link replaces #main-content only (hx-boost on <body>). It
     reads three things from the response: the title, the messages and
@@ -25,6 +26,11 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{% static 'icons/favicon-16.png' %}">
     <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
     <meta name="apple-mobile-web-app-title" content="Cgate">
+    {# An iPhone opens the installed app with no browser bars, and shows a picture while it starts (not a white screen). #}
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    {% start_image_links %}
     {# The version that made this page. A tap compares it with the server's (js/connection.js). #}
     <meta name="app-version" content="{% app_version %}">
     {# The service worker: files kept on the phone, and a page for no signal (js/app_install.js). Empty: switched off. #}
