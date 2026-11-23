@@ -182,7 +182,13 @@ def _invoice_parts(invoice):
         'payments': invoice.payments.all(),
         'amount_paid': invoice.amount_paid,
         'balance_due': invoice.balance_due,
+        'can_remind': _can_remind(invoice),
     }
+
+
+def _can_remind(invoice):
+    from .reminders import can_remind
+    return can_remind(invoice)
 
 
 @feature_required('invoices', LEVEL_VIEW)
@@ -558,6 +564,29 @@ def invoice_send(request, pk):
 
 # The shortest time between two emails of the same invoice from "Send".
 RESEND_GAP = timedelta(minutes=1)
+
+
+@feature_required('invoices')
+@require_POST
+def invoice_send_reminder(request, pk):
+    """"Send reminder now" on an overdue invoice (invoicing/reminders.py).
+    It counts as the next step, so the daily job moves on from it."""
+    from notifications.mail import EMAIL_NOT_SET_UP, email_is_set_up
+
+    from .reminders import can_remind, send_now
+
+    invoice = get_object_or_404(Invoice.objects.select_related('owner'), pk=pk)
+    if not can_remind(invoice):
+        messages.error(request, "Only an overdue invoice with money owed and an owner email can get a reminder.")
+    elif not email_is_set_up():
+        messages.error(request, EMAIL_NOT_SET_UP)
+    else:
+        stage = send_now(invoice)
+        if stage:
+            messages.success(request, f"Reminder {stage} sent to {invoice.owner.email}.")
+        else:
+            messages.error(request, f"The reminder to {invoice.owner.email} could not be sent. Try again later.")
+    return redirect('invoice_detail', pk=pk)
 
 
 @feature_required('invoices')

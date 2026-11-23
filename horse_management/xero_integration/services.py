@@ -284,12 +284,66 @@ def _record_push_error(invoice, message, new_round=False):
         )
 
 
+def _xero_date(value):
+    """A Xero date: "/Date(1763596800000+0000)/" or "2026-11-20T00:00:00".
+    None when it cannot be read."""
+    import re
+    from datetime import date, datetime, timezone as dt_timezone
+
+    if not value:
+        return None
+    match = re.match(r'/Date\((-?\d+)', str(value))
+    if match:
+        return datetime.fromtimestamp(int(match.group(1)) / 1000, tz=dt_timezone.utc).date()
+    try:
+        return date.fromisoformat(str(value)[:10])
+    except ValueError:
+        return None
+
+
+def record_xero_payments(invoice, xero_invoice):
+    """Record each payment Xero lists on the invoice that is not here yet,
+    by its PaymentID, so a part payment made in Xero shows on the invoice
+    and lowers what is owed (Dev board, 23 Nov 2026). Call it inside a
+    transaction with the invoice locked. Answers how many were recorded."""
+    from decimal import Decimal, InvalidOperation
+
+    from invoicing.models import Payment
+
+    made = 0
+    for item in xero_invoice.get('Payments') or []:
+        payment_id = str(item.get('PaymentID') or '').strip()
+        if not payment_id or item.get('Status') in ('DELETED', 'VOIDED'):
+            continue
+        if Payment.all_objects.filter(xero_payment_id=payment_id).exists():
+            continue
+        try:
+            amount = Decimal(str(item.get('Amount'))).quantize(Decimal('0.01'))
+        except (InvalidOperation, TypeError):
+            continue
+        if amount <= 0:
+            continue
+        Payment.objects.create(
+            invoice=invoice, amount=amount, method=Payment.Method.XERO,
+            date=_xero_date(item.get('Date')) or timezone.localdate(),
+            reference=(item.get('Reference') or 'Payment in Xero')[:100],
+            xero_payment_id=payment_id,
+        )
+        made += 1
+    if made:
+        invoice.refresh_payment_status()
+    return made
+
+
 def check_xero_invoice_status(sync, client=None):
     """Check Xero for updated invoice status.
 
-    Updates sync record and local invoice if Xero reports PAID.
-    Returns the updated sync record.
+    Records the payments Xero lists (part payments too), and marks the
+    local invoice paid when Xero reports PAID. Returns the updated sync
+    record.
     """
+    from django.db import transaction
+
     from invoicing.models import Invoice
 
     # The nightly sweep passes one client for every invoice.
@@ -301,21 +355,31 @@ def check_xero_invoice_status(sync, client=None):
     sync.last_status_check_at = now
 
     if xero_status == 'PAID':
-        from django.db import transaction
-
         sync.sync_status = XeroInvoiceSync.SyncStatus.PAID_IN_XERO
         # Update local invoice if not already paid. Locked and re-read: two
         # checks at once (two staff on the page, or the nightly sweep) each
-        # recorded the full balance as a payment.
+        # recorded the full balance as a payment. Xero's own payments go
+        # in first, each with its date; a balancing payment covers the
+        # rest (a credit note or an overpayment in Xero).
         with transaction.atomic():
             invoice = Invoice.objects.select_for_update().get(pk=sync.invoice_id)
             if invoice.status in (
                 Invoice.Status.SENT, Invoice.Status.OVERDUE, Invoice.Status.DRAFT,
             ):
-                invoice.mark_as_paid(method='xero', reference='Reported paid by Xero')
+                record_xero_payments(invoice, xero_invoice)
+                invoice.refresh_from_db()
+                if invoice.status != Invoice.Status.PAID:
+                    invoice.mark_as_paid(method='xero', reference='Reported paid by Xero')
         sync.invoice = invoice
     elif xero_status == 'AUTHORISED':
         sync.sync_status = XeroInvoiceSync.SyncStatus.PUSHED
+        # Part payments made in Xero: the invoice stays open here, with
+        # less to pay, and the reminders follow the new balance.
+        with transaction.atomic():
+            invoice = Invoice.objects.select_for_update().get(pk=sync.invoice_id)
+            if invoice.status in (Invoice.Status.SENT, Invoice.Status.OVERDUE):
+                record_xero_payments(invoice, xero_invoice)
+        sync.invoice = invoice
     elif xero_status == 'VOIDED':
         sync.sync_status = XeroInvoiceSync.SyncStatus.ERROR
         sync.error_message = 'Invoice voided in Xero'

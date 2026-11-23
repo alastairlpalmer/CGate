@@ -1498,6 +1498,7 @@ class BusinessSettingsForm(forms.ModelForm):
             'business_name', 'address', 'phone', 'email', 'website',
             'vat_registration', 'vat_rate', 'bank_details', 'card_payment_url',
             'default_payment_terms', 'invoice_prefix', 'auto_generate_invoices',
+            'overdue_reminder_days', 'overdue_reminder_message',
         ]
         widgets = {
             'business_name': forms.TextInput(attrs={'class': 'form-input'}),
@@ -1514,7 +1515,18 @@ class BusinessSettingsForm(forms.ModelForm):
             # hidden and the .switch-track next to it draws the control.
             'auto_generate_invoices': forms.CheckboxInput(attrs={'class': 'switch-input'}),
             'vat_rate': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'inputmode': 'decimal'}),
+            'overdue_reminder_days': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '1, 14, 30', 'inputmode': 'numeric'}),
+            'overdue_reminder_message': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
+
+    def clean_overdue_reminder_days(self):
+        from invoicing.reminders import parse_days
+        text = self.cleaned_data.get('overdue_reminder_days', '')
+        try:
+            days = parse_days(text)
+        except ValueError as e:
+            raise forms.ValidationError(str(e))
+        return ', '.join(str(d) for d in days) if days else ''
 
     def clean_vat_rate(self):
         rate = self.cleaned_data['vat_rate']
