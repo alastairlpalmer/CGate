@@ -116,6 +116,19 @@ no cross-customer isolation boundary to get wrong.
   a sign-in that ended by itself (`static/js/connection.js`,
   `templates/registration/login.html`). While a person is signed in, the
   copies stay on the device.
+- The main app has a service worker (`/sw.js`, `static/js/app_worker.js`).
+  It stores the app's own files on the device: styles, scripts, fonts,
+  icons and one page that says "No signal". It stores no page of the app
+  and no answer from it, so it holds no personal data and there is
+  nothing to delete at sign-out. A page load always goes to the network.
+  `APP_WORKER_ENABLED=False` removes the worker and its store from each
+  device the next time that device asks for `/sw.js`. C-vet has its own
+  worker, with its own rules (`docs/C_VET_PLAN.md`).
+- The usage figures (PostHog, when a key is set) get four events from a
+  phone: a request that failed, time with no signal, a slow tap, and
+  "app installed". An event holds no name and no text of a record. Its
+  address has the numbers and keys taken out (`/horses/:id/edit/`), and
+  no query string (`static/js/connection.js`, `pathPattern`).
 - `Permissions-Policy` on every response: location and camera for this
   site only (maps, photo uploads); microphone, payment, USB and the rest off
   (`core/middleware.py`). One exception: the C-vet page

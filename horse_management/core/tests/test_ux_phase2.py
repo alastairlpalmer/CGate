@@ -60,7 +60,9 @@ class InvoiceHeaderTests(PhaseTwoTestCase):
     def test_a_paid_invoice_leads_with_the_pdf(self):
         Invoice.objects.filter(pk=self.invoice.pk).update(status=Invoice.Status.PAID)
         header = self.header(self.page('invoice_detail', self.invoice.pk))
-        self.assertIn('class="btn-primary" hx-boost="false">', header)
+        # The PDF link is the main button. On a phone it goes to the share
+        # sheet (docs/MOBILE_APP_PLAN.md, D6), so it also names its file.
+        self.assertIn('class="btn-primary" hx-boost="false" data-share-file="', header)
         self.assertNotIn('Record Payment', header)
 
 
