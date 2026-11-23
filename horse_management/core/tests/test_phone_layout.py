@@ -704,3 +704,85 @@ class ShortRecordSheetTests(TestCase):
             reverse('bulk_health_form'), {'action_type': 'vaccination', 'horse_ids': self.horse.pk}, HTTP_HX_REQUEST='true',
         ).content.decode()
         self.assertIn('data-date-quick="+6m +12m"', html)
+
+
+class PhoneTextTests(TestCase):
+    """C7: text a phone can be read from in a yard."""
+
+    POPUP = {'HTTP_HX_REQUEST': 'true', 'HTTP_HX_TARGET': 'popup-body'}
+    css = (Path(settings.BASE_DIR) / 'static' / 'css' / 'input.css').read_text()
+
+    def setUp(self):
+        self.user = make_admin('reader', email='reader@example.com')
+        self.client.force_login(self.user)
+
+    def size(self):
+        import re
+
+        html = self.client.get(reverse('dashboard')).content.decode()
+        return re.search(r'<html lang="en" data-ui-size="[a-z]+" data-phone-text="([a-z]+)">', html).group(1)
+
+    def save(self, **extra):
+        data = {'action': 'details', 'first_name': 'R', 'last_name': 'D', 'email': 'reader@example.com',
+                'phone': '', 'display_size': 'compact'}
+        data.update(extra)
+        return self.client.post(reverse('profile'), data, **self.POPUP)
+
+    def test_standard_is_the_default(self):
+        self.assertEqual(self.size(), 'standard')
+
+    def test_the_profile_offers_the_two_sizes(self):
+        html = self.client.get(reverse('profile')).content.decode()
+        self.assertIn('Text size on a phone', html)
+        select = html.split('name="phone_text_size"', 1)[1].split('</select>', 1)[0]
+        self.assertIn('value="standard"', select)
+        self.assertIn('value="large"', select)
+
+    def test_large_applies_at_once_and_is_kept(self):
+        from core.models import UserProfile
+
+        self.save(phone_text_size='large')
+        self.assertEqual(UserProfile.objects.get(user=self.user).phone_text_size, 'large')
+        self.assertEqual(self.size(), 'large')
+        self.client.logout()
+        self.client.force_login(self.user)
+        self.assertEqual(self.size(), 'large')
+
+    def test_a_form_sent_without_the_setting_keeps_the_size(self):
+        from core.models import UserProfile
+
+        self.save(phone_text_size='large')
+        self.save()
+        self.assertEqual(UserProfile.objects.get(user=self.user).phone_text_size, 'large')
+
+    def test_an_unknown_value_falls_back_to_standard(self):
+        session = self.client.session
+        session['_phone_text_size'] = 'huge'
+        session.save()
+        self.assertEqual(self.size(), 'standard')
+
+    def test_the_sign_in_page_is_standard(self):
+        self.client.logout()
+        html = self.client.get(reverse('dashboard'), follow=True).content.decode()
+        self.assertNotIn('data-phone-text="large"', html)
+
+    def test_large_is_one_eighth_bigger_below_lg_only(self):
+        self.assertRegex(
+            self.css,
+            r'@media \(max-width: 63\.99rem\) \{\s*html\[data-phone-text="large"\] \{ font-size: 112\.5%; \}\s*\}')
+
+    def test_no_text_class_is_under_12px_on_a_phone(self):
+        block = self.css.split('/* ── Text on a phone (docs/MOBILE_APP_PLAN.md, C7)', 1)[1]
+        # The block is the last in the file, so it has the last word.
+        self.assertEqual(block.count('@media (max-width: 639px) {'), 1)
+        self.assertTrue(block.rstrip().endswith('}'))
+        first_rule = block.split('@media (max-width: 639px) {', 1)[1].split('}', 1)[0]
+        for name in (r'.text-\[9px\]', r'.text-\[10px\]', r'.text-\[11px\]', '.tab-bar-label', '.cal-dow', '.log-day',
+                     '.data-table-cards :is(tbody, tfoot) td[data-label]::before'):
+            with self.subTest(selector=name):
+                self.assertIn(name, first_rule)
+        self.assertIn('font-size: 0.75rem;', first_rule)
+
+    def test_small_grey_text_is_darker_on_a_phone(self):
+        block = self.css.split('/* ── Text on a phone (docs/MOBILE_APP_PLAN.md, C7)', 1)[1]
+        self.assertRegex(block, r'\.text-xs\.text-sage,[^{]*\{\s*color: var\(--color-charcoal-light, #4A4A4A\);')

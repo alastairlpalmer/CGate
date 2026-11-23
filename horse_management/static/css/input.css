@@ -2113,6 +2113,13 @@ a.pane-item-title:hover { @apply text-forest; }
     html[data-ui-size="compact"] { font-size: 75%; }
     html[data-ui-size="medium"] { font-size: 87.5%; }
 }
+/* ── Text size on a phone (the same tab; docs/MOBILE_APP_PLAN.md, C7) ──
+   Large makes everything set in rem one eighth bigger below lg: 16px text
+   is 18px, a 44px button is 49.5px. A phone of 390px then lays out as one
+   of 347px does, which the app already fits. */
+@media (max-width: 63.99rem) {
+    html[data-phone-text="large"] { font-size: 112.5%; }
+}
 
 /* ── Sidebar (includes/_sidebar.html) ─────────────────────────────────
    Dark Brim teal, cream icons. Top to bottom: logo row, search, nav, then
@@ -3092,4 +3099,35 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
         grid-template-areas: "photo head head" "photo place ped";
     }
     .horse-hero-img { width: 14rem; height: 14rem; }
+}
+
+
+/* ── Text on a phone (docs/MOBILE_APP_PLAN.md, C7) ────────────────────
+   A phone is read in a yard, in the sun, at arm's length. So below `sm`:
+   no text is under 12px, a name is 16px and its second line 14px, and
+   small grey text is charcoal-light (9:1 on white) where it was sage
+   (5:1). A count inside a round badge keeps its size: it is a number in
+   a 16px circle, not a line to read.
+
+   This block is the last in the file and in no layer, so it has the
+   last word over the classes it names. */
+@media (max-width: 639px) {
+    .text-\[9px\], .text-\[10px\], .text-\[11px\],
+    .tab-bar-label, .quick-find-group-label, .more-menu-label, .settings-subhead-title, .quick-view-label,
+    .strip-day-name, .strip-legend, .cal-dow, .cal-label, .visit-date-name, .log-day,
+    .loc-sheet-label, .loc-row-pin, .loc-sheet-count-label, .loc-card-unit,
+    .barn-cell-state, .stable-chip, .turnout-chip, .segmented-count, .show-chip-count,
+    .data-table-cards :is(tbody, tfoot) td[data-label]::before {
+        font-size: 0.75rem;
+        line-height: 1rem;
+    }
+    .list-card-title { font-size: 1rem; line-height: 1.375rem; }
+    .list-card-meta { font-size: 0.875rem; line-height: 1.25rem; }
+    .text-xs.text-sage, .text-\[11px\].text-sage, .text-\[10px\].text-sage,
+    .list-card-meta, .page-subtitle, .metric-meta, .attn-sub, .strip-legend, .cal-dow, .log-day, .log-count,
+    .loc-sheet-label, .loc-sheet-count-label, .quick-view-label, .settings-subhead-title, .more-menu-label,
+    .quick-find-group-label,
+    .data-table-cards :is(tbody, tfoot) td[data-label]::before {
+        color: var(--color-charcoal-light, #4A4A4A);
+    }
 }
