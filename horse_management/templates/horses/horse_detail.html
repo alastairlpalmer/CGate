@@ -48,7 +48,7 @@
             {% include 'horses/_horse_avatar.html' with horse=horse size='xl' %}
         </div>
         <div class="horse-hero-head flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-            <div class="min-w-0">
+            <div class="horse-hero-name min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
                     <h1 class="page-title">{{ horse.name }}</h1>
                     {% if not horse.is_active %}
@@ -88,12 +88,34 @@
                 </p>
                 {% endif %}
             </div>
+            {% comment %}A phone: the two things to know first, in words, under
+            the photo and the name (docs/MOBILE_APP_PLAN.md, item C4). What
+            is due, and what to know before you handle the horse. Each line
+            goes to its card. From 640px the cards are near enough.{% endcomment %}
+            {% if due_flag or medical_conditions or horse.notes %}
+            <div class="horse-hero-flags sm:hidden" data-testid="header-flags">
+                {% if due_flag %}{% with first=due_flag.items.0 more=due_flag.items|length|add:"-1" %}
+                <a href="#due" class="hero-flag" data-testid="header-due">
+                    <span class="health-dot is-{{ first.severity }} shrink-0" aria-hidden="true"></span>
+                    <span class="min-w-0"><span class="text-charcoal">{{ first.detail }}</span>
+                        <span class="{% if first.severity == 'overdue' %}text-error-red font-medium{% else %}text-saddle{% endif %} whitespace-nowrap">{{ first.due_date|due_label }}</span>{% if more > 0 %}
+                        <span class="text-sage whitespace-nowrap">+{{ more }} more</span>{% endif %}</span>
+                </a>
+                {% endwith %}{% endif %}
+                {% if medical_conditions or horse.notes %}
+                <a href="#notes-conditions" class="hero-flag text-saddle font-medium" data-testid="header-alert">
+                    <svg class="w-4 h-4 shrink-0" aria-hidden="true"><use href="#i-heart"/></svg>
+                    <span class="min-w-0">{% for condition in medical_conditions|slice:":2" %}{{ condition.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if medical_conditions|length > 2 %} +{{ medical_conditions|length|add:"-2" }}{% endif %}{% if medical_conditions and horse.notes %} · {% endif %}{% if horse.notes %}Notes{% endif %}</span>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
             {% if feature_access.horses.full %}
             {% comment %}One main button: Move while the horse is here, Log
             arrival when it is not. Edit beside it. Depart is rare and final,
             so it is in More, last, in red (docs/UX_REVIEW_PLAN.md A2). The
             depart date form opens in place under the buttons.{% endcomment %}
-            <div x-data="{ showDate: false }" class="flex flex-col items-start md:items-end gap-2 shrink-0">
+            <div x-data="{ showDate: false }" class="horse-hero-actions flex flex-col items-start md:items-end gap-2 shrink-0">
                 <div class="flex items-center gap-2 flex-wrap">
                     {% if current_placement %}
                     <a href="{% url 'horse_move' horse.pk %}?next={{ request.path|urlencode }}" title="Move to a different location"
@@ -205,7 +227,7 @@
     days, from the same collectors as the dashboard and the list's
     "Needs action", each with its Record button. Nothing due: no card.{% endcomment %}
     {% if due_flag %}
-    <section class="card border-saddle/40" aria-labelledby="due-title" data-testid="due-strip">
+    <section class="card border-saddle/40" id="due" aria-labelledby="due-title" data-testid="due-strip">
         <div class="section-header">
             <h2 id="due-title" class="section-title">Due</h2>
             <span class="text-xs text-sage">Overdue and the next 14 days</span>
@@ -235,7 +257,8 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         <!-- Left Column -->
-        <div class="lg:col-span-2 space-y-4">
+        {# flex, not space-y: on a phone Notes & conditions comes first (order-first below). #}
+        <div class="lg:col-span-2 flex flex-col gap-4 min-w-0">
 
             <!-- Unified Timeline -->
             {% comment %}Filter pills come from the view (timeline_filters): only the
@@ -468,8 +491,13 @@
             {% endif %}
 
             <!-- Notes & conditions. The numbers are on the Identity card. -->
+            {% comment %}On a phone this card comes before the Timeline: a
+            note such as "bites when rugged" is what a person must read
+            before they handle the horse, and it was 2.6 screens down
+            (docs/MOBILE_APP_PLAN.md, item C4). On a computer it keeps its
+            place under the Timeline (the layout of 21 Nov 2026).{% endcomment %}
             {% if horse.breeding or horse.notes or medical_conditions or resolved_conditions %}
-            <div class="card">
+            <div class="card order-first lg:order-none" id="notes-conditions">
                 <div class="section-header">
                     <h2 class="section-title">Notes &amp; conditions</h2>
                     {% if feature_access.health.full %}<a href="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-get="{% url 'condition_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Add condition for {{ horse.name }}" class="btn-ghost btn-xs">Add condition</a>{% endif %}

@@ -2925,9 +2925,28 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     /* The banner is cream, like a tree box: white boxes stand out on it. */
     .horse-hero-ped .ped-node:not(.is-subject, .is-dashed, .is-twin) { background: #fff; }
 }
+/* A phone (docs/MOBILE_APP_PLAN.md, item C4). The name and the buttons
+   are two parts of the head: the name stays beside the photo, and the
+   buttons go under both in one row of three, where a thumb reaches them.
+   Beside a 7rem photo they wrapped to two or three rows. The tree is one
+   line until it is opened. */
+@media (max-width: 39.99rem) {
+    .horse-hero { grid-template-areas: "photo head" "flags flags" "actions actions" "place place" "ped ped"; }
+    .horse-hero-head { display: contents; }
+    .horse-hero-name { grid-area: head; }
+    .horse-hero-flags { grid-area: flags; @apply -my-1.5; }
+    .hero-flag { @apply flex items-center gap-2 min-h-[44px] text-sm; }
+    .horse-hero-actions { grid-area: actions; align-items: stretch; }
+    .horse-hero-actions > div:first-child { flex-wrap: nowrap; }
+    .horse-hero-actions > div:first-child > * { flex: 1 1 0; min-width: 0; }
+    .horse-hero-actions .more-menu > button { width: 100%; }
+    .horse-hero-ped:not(.is-open) .hero-ped-body { display: none; }
+    .hero-ped-line { @apply mt-1 text-sm text-charcoal-light; }
+}
 @media (min-width: 40rem) {
     .horse-hero { grid-template-areas: "photo head" "photo place" "ped ped"; }
     .horse-hero-img { width: 11rem; height: 11rem; }
+    .hero-ped-line { display: none; }
 }
 @media (min-width: 80rem) {
     .horse-hero {
