@@ -47,9 +47,9 @@ the generic layout leaves out (inline add-a-vet, archive/delete controls).
         </div>
 
         {% if popup_more_fields %}
-        {% comment %}The fields a usual record does not need
+        {% comment %}What a usual record does not need
         (PopupFormMixin.popup_main_fields). Closed for a new record; open
-        for a saved one and when a field in it has an error.{% endcomment %}
+        for a saved one, and when something in it has an error.{% endcomment %}
         <details class="popup-more"{% if popup_more_open %} open{% endif %} data-testid="more-details">
             <summary>
                 <svg class="popup-more-chevron w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>

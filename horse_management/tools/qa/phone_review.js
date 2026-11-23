@@ -156,12 +156,18 @@ const measure = () => {
         await page.tap('#main-content a.qa-tile[href*="/health/vaccinations/add/"] >> visible=true');
         await page.waitForSelector('#popup-body form', { timeout: 5000 });
         await context.setOffline(true);
-        await page.tap('#popup-panel button[type=submit] >> nth=0');
-        await page.waitForTimeout(2500);
-        const kept = await page.evaluate(() => !!document.querySelector('#popup-body form'));
-        await page.screenshot({ path: `${OUT}/no_signal_save.png` });
-        await context.setOffline(false);
-        return [kept, kept ? '' : 'the form was replaced by the error text'];
+        try {
+            // The footer's Save. "Save & add another" is under "More
+            // details" (item C8), so it is first in the form and not shown.
+            await page.tap('#popup-panel .popup-footer button[type=submit]');
+            await page.waitForTimeout(2500);
+            const kept = await page.evaluate(() => !!document.querySelector('#popup-body form'));
+            await page.screenshot({ path: `${OUT}/no_signal_save.png` });
+            return [kept, kept ? '' : 'the form was replaced by the error text'];
+        } finally {
+            // A check that fails here must not leave the next ones with no signal.
+            await context.setOffline(false);
+        }
     });
 
     await check('A7', 'Back closes the notification drawer and stays on the page', async () => {
