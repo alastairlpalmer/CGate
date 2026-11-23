@@ -23,10 +23,10 @@ brotli~=1.2
 
 # Monitoring
 # Error reporting. Inert unless SENTRY_DSN is set (see core/monitoring.py).
-sentry-sdk[django]~=2.74
+sentry-sdk[django]~=2.75
 
 # Off-site backups: upload to any S3-compatible store (core/backup/).
-boto3~=1.43
+boto3~=1.44
 
 # Uploads held in an S3-compatible bucket rather than a local disk, so
 # every service can read them (settings.STORAGES / MEDIA_S3_*).
