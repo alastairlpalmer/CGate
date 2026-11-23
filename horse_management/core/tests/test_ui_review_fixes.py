@@ -170,32 +170,43 @@ class HorsePageRecordTests(TestCase):
         self.assertNotIn('+ Vaccination', body)
 
 
-class PhoneSectionBarTests(TestCase):
-    """The phone's top bar names the section, since list pages hide their
-    title there. The script fills it for pages under More; the two tab
-    sections are set by the server so a full load does not flash the name."""
+class PhoneTopBarTests(TestCase):
+    """One bar at the top of a phone (docs/MOBILE_APP_PLAN.md, item C1).
+
+    There were two: a 44px bar that said the section, and the bar with the
+    search. The first is gone. The tab bar names the section, and a list
+    page shows its own title, which it hid on a phone before.
+    """
 
     def setUp(self):
         self.client.force_login(make_admin(username='bar-admin'))
 
-    def label(self, url):
-        body = self.client.get(url).content.decode()
-        start = body.index('data-brand-label')
-        return body[body.index('>', start) + 1:body.index('</span>', start)]
+    def body(self, url):
+        return self.client.get(url).content.decode()
 
-    def test_the_bar_names_the_tab_sections(self):
-        horse = Horse.objects.create(name='Apollo')
-        self.assertEqual(self.label(reverse('horse_list')), 'Horses')
-        self.assertEqual(self.label(reverse('horse_detail', args=[horse.pk])), 'Horses')
-        self.assertEqual(self.label(reverse('location_list')), 'Locations')
+    def test_the_name_bar_is_gone(self):
+        body = self.body(reverse('horse_list'))
+        self.assertNotIn('data-mobile-brand', body)
+        self.assertNotIn('data-brand-label', body)
 
-    def test_the_dashboard_keeps_the_name(self):
-        self.assertEqual(self.label(reverse('dashboard')), 'Cgate')
+    def test_the_search_bar_is_the_top_of_the_page(self):
+        self.assertIn('class="app-bar sticky top-0 ', self.body(reverse('dashboard')))
 
-    def test_the_script_reads_the_section_off_the_nav(self):
-        body = self.client.get(reverse('invoice_list')).content.decode()
-        self.assertIn('data-brand="Cgate"', body)
-        self.assertIn("document.querySelector('[data-brand-label]')", body)
+    def test_the_bell_is_in_the_search_bar_before_the_search(self):
+        body = self.body(reverse('dashboard'))
+        bar = body.index('class="app-bar ')
+        bell = body.index('class="phone-bell"')
+        search = body.index('data-search-input', bar)
+        self.assertLess(bar, bell)
+        self.assertLess(bell, search)
+        self.assertEqual(body.count('id="notif-count-phone"'), 1)
+
+    def test_a_list_page_shows_its_title_on_a_phone(self):
+        for name, title in (('horse_list', 'Horses'), ('owner_list', 'Owners'), ('health_dashboard', 'Health')):
+            with self.subTest(page=name):
+                body = self.body(reverse(name))
+                self.assertRegex(body, r'<h1 class="page-title page-title-list">\s*' + title)
+                self.assertNotIn('sr-only lg:not-sr-only', body)
 
 
 class SiteMenuLayerTests(TestCase):

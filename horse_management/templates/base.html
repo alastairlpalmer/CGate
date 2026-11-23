@@ -162,40 +162,10 @@
     <div class="app-shell lg:pl-64 min-h-[100dvh] flex flex-col">
 
         {% if not slim_page %}
-        <!-- Top bar (mobile — slim bar that names the section you are in) -->
-        {% comment %}List pages hide their <h1> on a phone to save a row, which
-        left the small tab label as the only sign of where you are. This bar
-        was spending 44px on the product's name, so it now says the section:
-        "Horses" on the horse list and on a horse's page, "Invoices" under
-        More. The dashboard, and a page in no section, keep the name.
-        syncMoreTab() fills it from the same active nav item the More tab
-        reads; the two tab sections are also set here so a full load does
-        not show the name first.{% endcomment %}
-        {# data-mobile-brand: the phone Locations page hides this row — the #}
-        {# site selector on it already names the yard (static/css/input.css). #}
-        <header data-mobile-brand class="sticky top-0 z-30 bg-parchment/80 backdrop-blur border-b border-light-sage lg:hidden">
-            <div class="relative flex items-center justify-center h-11 px-4">
-                {% if user.is_authenticated %}
-                {# The notification centre, on a phone (the sidebar has it on a computer). #}
-                <button type="button" class="phone-bell" @click="$store.notif.toggle()"
-                        :aria-expanded="$store.notif.open ? 'true' : 'false'" aria-controls="notif-drawer"
-                        aria-label="Notifications" title="Notifications">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
-                    <span id="notif-count-phone" class="notif-count notif-count-dot hidden"></span>
-                </button>
-                {% endif %}
-                <div class="flex items-center gap-1.5">
-                    <svg class="w-5 h-5 text-forest" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M22 16c0 5.523-3.134 10-7 10s-7-4.477-7-10S11.134 6 15 6s7 4.477 7 10z" stroke="currentColor" stroke-width="2.2" fill="none"/>
-                        <line x1="15" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        <line x1="15" y1="16" x2="21" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        <line x1="15" y1="20" x2="21" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                    <span class="text-base font-semibold text-charcoal font-heading truncate" data-brand-label data-brand="Cgate">{% if '/horses/' in request.path %}Horses{% elif '/locations/' in request.path or '/placements/' in request.path %}Locations{% else %}Cgate{% endif %}</span>
-                </div>
-            </div>
-        </header>
-
+        {% comment %}One bar at the top of a phone (docs/MOBILE_APP_PLAN.md,
+        item C1). There were two: a 44px bar with the section's name, and
+        the bar with the search. The name bar is gone: the tab bar names the
+        section, and each page shows its own title as a heading.{% endcomment %}
         {% comment %}The app bar sits outside #main-content on purpose:
         hx-boost only swaps that element, so search and Add survive every
         navigation.{% endcomment %}
@@ -309,6 +279,19 @@
                 </span>
                 <span class="tab-bar-label">Training</span>
             </a>
+            {% elif feature_access.health.view %}
+            {% comment %}With no Training tab the bar has a free place, and
+            health records are a daily job on a phone: Health takes it and
+            leaves the More sheet (item C2). Farrier and Breeding stay in
+            More and their addresses start with /health/ too, so
+            data-nav-skip keeps this tab from marking itself for them.{% endcomment %}
+            <a href="{% url 'health_dashboard' %}" id="tab-health" data-nav-skip="/health/farrier /health/breeding/"
+               class="tab-bar-item {% if '/health/' in request.path and '/health/breeding/' not in request.path and '/health/farrier' not in request.path %}active{% endif %}">
+                <span class="tab-bar-icon">
+                    <svg class="w-6 h-6" aria-hidden="true"><use href="#i-stethoscope"/></svg>
+                </span>
+                <span class="tab-bar-label">Health</span>
+            </a>
             {% endif %}
             {% comment %}The pages behind this button have no tab of their own,
             so without help the bar says "More" while you stand on Invoices.
@@ -353,7 +336,8 @@
                 {% if feature_access.health.view or feature_access.charges.view or feature_access.breeding.view or feature_access.feed.view %}
                 <p class="text-xs font-semibold text-sage uppercase tracking-widest px-3 pt-3 pb-2">Manage</p>
                 {% endif %}
-                {% if feature_access.health.view %}
+                {# Health is here only when Training has its place on the tab bar (see the bar). #}
+                {% if feature_access.health.view and training_enabled and feature_access.training.view %}
                 <a href="{% url 'health_dashboard' %}" class="sheet-nav-item {% if '/health/' in request.path and '/health/breeding/' not in request.path and '/health/farrier' not in request.path %}sheet-nav-item-active{% endif %}">
                     <svg class="w-5 h-5 shrink-0" aria-hidden="true"><use href="#i-stethoscope"/></svg>
                     Health
@@ -557,18 +541,6 @@
             if (label) label.textContent = 'More';
             tab.classList.remove('active');
         }
-        // The phone's top bar names the section too (see the bar's comment):
-        // the current More item, or else the current tab. The dashboard is
-        // home, so it keeps the product's name, as does a page in no section.
-        var brand = document.querySelector('[data-brand-label]');
-        if (brand) {
-            var section = active ? active.textContent.trim() : '';
-            if (!section) {
-                var current = document.querySelector('#mobile-tab-bar a.tab-bar-item.active .tab-bar-label');
-                section = current ? current.textContent.trim() : '';
-            }
-            brand.textContent = (section && section !== 'Dashboard') ? section : brand.getAttribute('data-brand');
-        }
     };
 
     // ── The current section, in the sidebar, the tab bar and the More sheet ──
@@ -584,6 +556,10 @@
             links.forEach(function(a) {
                 var href = a.getAttribute('href');
                 if (!href || href === '#') return;
+                // data-nav-skip takes addresses out of a link's section:
+                // the Health tab is not the place for /health/farrier/.
+                var skips = (a.getAttribute('data-nav-skip') || '').split(/\s+/);
+                if (skips.some(function (p) { return p && path.startsWith(p); })) return;
                 // data-nav-match widens a link to a section: the Farrier
                 // link also covers /health/farrier-visits/..., and the
                 // Finances link covers all four of its tabs. It may hold

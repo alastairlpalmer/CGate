@@ -224,6 +224,10 @@
        The sidebar and the phone's top bar already say where the reader is. */
     .page-header { @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between; }
     .page-title { @apply text-xl font-semibold text-charcoal tracking-[-0.01em] font-heading; }
+    /* A list page's title on a phone. It was hidden there, and a bar at
+       the top said the section; that bar is gone (item C1). It is a plain
+       heading, so it scrolls away with the page. */
+    .page-title-list { @apply text-lg lg:text-xl; }
     .page-subtitle { @apply mt-0.5 text-sm text-sage; }
 
     /* Detail / filter labels — sentence case, 13px. Uppercase tracking is
@@ -799,10 +803,9 @@ html.page-pending #main-content { opacity: 0.5; transition: opacity 0.15s ease-o
 
 /* Page changes (boosted navigation, hx-swap "transition:true" on <body>).
    The old page fades out quickly and the new one fades in with a small
-   rise. The sidebar, the phone header and the phone tab bar have names
-   of their own, so they stay still instead of fading with the page. */
+   rise. The sidebar and the phone tab bar have names of their own, so
+   they stay still instead of fading with the page. */
 .app-sidebar { view-transition-name: app-sidebar; }
-[data-mobile-brand] { view-transition-name: mobile-brand; }
 #mobile-tab-bar { view-transition-name: mobile-tab-bar; }
 ::view-transition-old(root) { animation: 90ms ease-in both vt-fade-out; }
 ::view-transition-new(root) { animation: 200ms cubic-bezier(0.22, 1, 0.36, 1) both vt-rise-in; }
@@ -2075,8 +2078,16 @@ a.pane-item-title:hover { @apply text-forest; }
 .notif-count-dot {
     @apply absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-saddle text-white ring-2 ring-parchment text-[10px];
 }
+/* "Press /" in the search box is for a keyboard. A tablet shows the box
+   at this width too, and has none (item C12). */
+@media (pointer: coarse) {
+    .search-key-hint { display: none !important; }
+}
+
+/* The bell in the phone's top bar: a 44px target (it was 40px in the
+   name bar that is gone). */
 .phone-bell {
-    @apply absolute left-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-10 h-10 rounded-btn
+    @apply relative shrink-0 inline-flex items-center justify-center w-11 h-11 -ml-1 rounded-btn
            text-forest hover:bg-light-sage transition-colors;
 }
 .nav-link-open { @apply text-white bg-white/[0.08] ring-white/[0.12]; }
@@ -2261,11 +2272,6 @@ a.pane-item-title:hover { @apply text-forest; }
         display: flex;
         flex-direction: column;
     }
-    /* The site selector names the yard, so the brand bar above it would
-       say it twice — and cost 44px of map to do it. */
-    body:has([data-phone-map]) [data-mobile-brand] { display: none; }
-    body:has([data-phone-map]) .app-bar { top: 0; }
-
     /* One row of chrome, not two. The site selector is teleported into
        the app bar's page-action slot, so the slot has to give it the
        room and the search box has to stand aside — down to its icon
@@ -2745,11 +2751,10 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
         top: 0;
         z-index: 10;
     }
-    /* On a phone two bars stick at the top: the title bar (2.75rem, the
-       app bar's own top-11) and the search bar (--app-bar-h). The lot
-       header stops under both, or Mark lot done hides behind them. */
+    /* On a phone the search bar sticks at the top (--app-bar-h). The lot
+       header stops under it, or Mark lot done hides behind it. */
     @media (max-width: 1023px) {
-        .lot-day-head { top: calc(2.75rem + var(--app-bar-h, 0px)); }
+        .lot-day-head { top: var(--app-bar-h, 0px); }
     }
     .lot-row { @apply flex items-center gap-2 px-3 min-h-[48px]; }
     .row-menu { @apply absolute right-0 top-full mt-1 z-20 min-w-[13rem] bg-white rounded-card border border-light-sage shadow-float py-1; }
