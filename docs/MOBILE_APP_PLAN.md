@@ -13,12 +13,63 @@ it ready to launch as an app.
 
 | Phase | State |
 |---|---|
-| 1. Nothing breaks, nothing is lost | Not started |
+| 1. Nothing breaks, nothing is lost | Done in this branch: A1 to A7 (see the notes below the table) |
 | 2. Faster taps | Not started |
 | 3. Key information first | Not started |
 | 4. Installed app | Not started |
 | 5. Push notifications | Not started |
-| 6. App stores | Decision needed (section 9) |
+| 6. App stores | Later: the installed web app comes first (section 9, decision 6) |
+
+Phase 1 notes:
+
+- A1: `SignInRedirectMiddleware` answers an htmx request with
+  `HX-Redirect` when the view sends it to the sign-in page. After
+  sign-in, a tap on a link goes to the page that was asked for. A part of
+  a page (a sheet, a count) or a save goes to the page the person was on.
+- A2: a failed tap or save shows a message (`static/js/connection.js`).
+  **Try again** shows only for a request that reads. A save is never sent
+  again by the message: after a timeout the first one may have arrived,
+  and the message says so. Time limits: 20 seconds to read (the plan said
+  15; the limit includes the download, which is slow on a weak signal),
+  60 seconds to save, 5 minutes for a save with a file. A "No signal" mark shows while
+  the browser reports no connection. A request that the person did not
+  start (a card that loads by itself, a count) fails with no message. A
+  tap that gets a 403 or a 404 shows the app's own page for it.
+- A3: the sheet keeps the form and shows the reason above it
+  (`showSaveError` in `popup.js`). Save stays active.
+- A4: after 5 minutes in the background, the page is fetched again. Only
+  in the installed app and on a phone or a tablet: a computer has a
+  reload button. Not when a sheet or a drawer is open, a field has the
+  focus, something was typed on the page, or rows are selected.
+- A5: `AppVersionMiddleware` sends `X-App-Version`. The page carries the
+  same value (`<meta name="app-version">`). When they differ, the next
+  tap on a link loads the page in full. A save is not changed.
+- A6: the copies are deleted at sign-out and when the sign-in page loads.
+  **Not done:** `hx-history="false"` on the owner and money pages. It
+  makes Back on those pages a full page load and loses the place in the
+  list, which is the main way the office uses invoices. The two deletes
+  cover the fault that was found. `SECURITY.md` has a line on this.
+- A7: one helper (`static/js/overlay_back.js`) for the horse and owner
+  preview on a phone, the notification drawer, the More sheet, the photo
+  viewer and a location picked on the phone Locations page. The pop-up
+  sheet keeps its own code; the two work together. The helper also
+  removes a fault that was there before: after a link in a sheet or a
+  drawer, one Back press did nothing. **Not done:** the confirm dialog.
+
+Found in phase 1, not corrected:
+
+- **A8.** Back to the horse list gives 4 script errors ("filtersOpen is
+  not defined"). The filter button still works. `main` has the same
+  errors. They are noise in the error reports. Cause: the copy of the
+  page that htmx keeps holds the filter button that Alpine moved into
+  the app bar.
+- A link in a sheet that loads a full page (the "full edit page" link in
+  the quick edit) leaves one Back press that does nothing. Before
+  phase 1 too.
+- When the sign-in has ended, a save sends the person to the sign-in
+  page, and what they typed is lost. Section E, level 3 is the answer.
+- On the phone Locations page, Back after a return to the page leaves
+  the page while a picked location shows.
 
 ## 1. Summary
 
@@ -55,8 +106,9 @@ Phases 1 to 5 are about 6 to 8 weeks of work for one developer.
 
 ## 2. How the phone is used
 
-These are assumptions. Confirm them (section 9, decision 1). Phase 3
-depends on them.
+These were assumptions. On 23 November 2026 the owner said that the phone
+is used mostly by the people on the yards (section 9, decision 1). Phase 3
+depends on this.
 
 | Person | Where | Jobs on the phone |
 |---|---|---|
@@ -96,8 +148,8 @@ Not tested: a real iPhone or Android phone. Chromium is not Safari.
 Section 8 is the list of tests for real phones.
 
 The script `tools/qa/phone_review.js` repeats the measurements. It prints
-PASS or FAIL for items A1, A2, A3, A6, A7 and B1. Today all eight checks
-fail.
+PASS or FAIL for items A1, A2, A3, A6, A7 and B1. Before phase 1 all
+eight checks failed. After phase 1 seven pass; B1 is phase 2.
 
 | Item | Result |
 |---|---|
@@ -578,7 +630,7 @@ customer asks for it. Store rules change: read them again at that time.
 | Text of 12 px or smaller | 39% to 83% on the main lists | Under 25% |
 | Longest list page | 10.8 screens | 4 screens for 50 items |
 | Queries for one page | Up to 48 | 25 or fewer |
-| Checks in `phone_review.js` | 0 of 8 pass | 8 of 8 pass |
+| Checks in `phone_review.js` | 7 of 8 pass (0 before phase 1) | 8 of 8 pass |
 
 ## 7. Order of work
 
@@ -631,9 +683,12 @@ Android phone before phase 4 is closed.
 
 1. **Who uses the phone, and for which jobs?** Section 2 is an
    assumption. Correct it if it is wrong.
+   **Answer (23 Nov 2026): mostly the people on the yards.** The yard
+   manager and yard staff rows of section 2 come first in phase 3.
 2. **Dashboard on a phone:** a list of today and the next 7 days in
    place of the month grid (C3)? Recommended: yes. The grid stays on a
    computer and behind a "Month" button.
+   **Answer (23 Nov 2026): yes.**
 3. **One top bar** with the search box, and no name bar (C1)?
    Recommended: yes.
 4. **Sign-in on a phone** (D1): longer times, passkeys, or no change?
@@ -642,4 +697,5 @@ Android phone before phase 4 is closed.
 5. **Saved copies for reading with no signal** (section E, level 2)?
    This stores owner data on the phone for up to 24 hours.
 6. **App stores** (section F): installed web app first? Recommended: yes.
+   **Answer (23 Nov 2026): yes.**
 7. **The name** for the icon and the stores (D8).

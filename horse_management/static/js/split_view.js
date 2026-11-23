@@ -245,6 +245,17 @@
 
     var state = { pk: null, sheet: 'closed' };
 
+    // On a phone the preview is a sheet over the list, so the Back
+    // button closes it (static/js/overlay_back.js). On a computer it is a
+    // pane beside the list, and Back stays a page change.
+    function backCloses(on) {
+        var overlay = window.Yardway && window.Yardway.overlay;
+        if (!overlay) { return; }
+        overlay.sync('preview', on && !isDesktop() && state.pk !== null, close, function () {
+            return state.pk !== null && !isDesktop() && !!root_();
+        });
+    }
+
     // Both twins are marked, not only the one on screen: a rotation
     // swaps which is which without another click to put it right.
     function markRows() {
@@ -327,6 +338,7 @@
             load(panel);
         }
         if (!isDesktop()) { setSheet('peek'); }
+        backCloses(true);
         markRows();
         updateChrome();
         if (opts && opts.focusRow) {
@@ -342,6 +354,7 @@
         var panel = pane();
         state.pk = null;
         remember(null);
+        backCloses(false);
         if (container) { container.classList.remove('is-open'); }
         if (panel) {
             setSheet('closed');
@@ -585,7 +598,7 @@
 
     function restoreNow() {
         var container = root_();
-        if (!container) { state.pk = null; return; }
+        if (!container) { state.pk = null; backCloses(false); return; }
         bindDrag();
         var pk = remembered();
         state.pk = null;
@@ -613,11 +626,15 @@
             // selector, matching nothing and blanking the pane.
             load(panel);
         }
+        backCloses(true);
         markRows();
         updateChrome();
     }
 
     document.addEventListener('DOMContentLoaded', restore);
+    // Back to a list puts the page back as it was left, with the sheet
+    // drawn open, but nothing here knew which record it showed.
+    document.addEventListener('htmx:historyRestore', restore);
     document.addEventListener('htmx:afterSwap', function (e) {
         if (e.target && (e.target.id === 'main-content' || e.target.id === 'list-results')) {
             restore();
@@ -640,5 +657,6 @@
     window.matchMedia(DESKTOP).addEventListener('change', function () {
         if (!state.pk) { return; }
         setSheet(isDesktop() ? 'closed' : 'peek');
+        backCloses(true);
     });
 })(typeof window !== 'undefined' ? window : globalThis);

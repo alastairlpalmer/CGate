@@ -146,6 +146,11 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
+    # An htmx request that is sent to the sign-in page loads that page in
+    # full; before, it left an empty screen. After HtmxMiddleware.
+    'core.middleware.SignInRedirectMiddleware',
+    # Tells an open page which version the server runs (X-App-Version).
+    'core.middleware.AppVersionMiddleware',
     # Content-Security-Policy. Report-only for now (see CSP settings below),
     # so it adds a header and never blocks a response.
     'csp.middleware.CSPMiddleware',

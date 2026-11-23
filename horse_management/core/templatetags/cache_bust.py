@@ -66,6 +66,15 @@ _VERSION = version()
 
 
 @register.simple_tag
+def app_version():
+    """The version this page was made by. core.middleware.AppVersionMiddleware
+    sends the same value with every response, so a page that stays open
+    across a deploy can see that the server has moved on
+    (static/js/connection.js)."""
+    return _VERSION
+
+
+@register.simple_tag
 def static_v(path):
     """Like {% static %} but with a deploy-unique cache-busting query."""
     url = static_url(path)

@@ -204,6 +204,41 @@
             'That didn’t load. Check your signal and try again.' + link + '</div>';
     }
 
+    // A save that failed. The form stays, with what the person typed, and
+    // the reason goes above it. Before, the form was replaced by "That
+    // didn't load", and a record typed in a field with no signal was lost
+    // (docs/MOBILE_APP_PLAN.md, item A3). Save stays active: base.html
+    // frees the button when the request ends.
+    function showSaveError(kind, status) {
+        var body = popupBody();
+        if (!body) { return; }
+        body.classList.remove('popup-busy');
+        var old = body.querySelector('[data-save-error]');
+        if (old) { old.remove(); }
+        var text;
+        if (kind === 'htmx:sendError') {
+            text = 'Not saved: no signal. Your entries are still here. Tap Save again when the signal is back.';
+        } else if (kind === 'htmx:timeout') {
+            text = 'No answer from the server. The record may be saved. Close this and check before you save it again.';
+        } else if (status === 403) {
+            text = 'Not saved. Your role does not have access to do this.';
+        } else if (status === 413) {
+            text = 'Not saved. The file is too large.';
+        } else {
+            text = 'Not saved. The fault is on our side. Your entries are still here. Try again.';
+        }
+        var box = document.createElement('div');
+        box.className = 'alert-error popup-save-error';
+        box.setAttribute('role', 'alert');
+        box.setAttribute('data-save-error', '');
+        box.setAttribute('tabindex', '-1');
+        box.textContent = text;
+        body.insertBefore(box, body.firstChild);
+        // The sheet may be scrolled to its foot, where Save is.
+        if (box.scrollIntoView) { box.scrollIntoView({ block: 'nearest' }); }
+        box.focus({ preventScroll: true });
+    }
+
     // A boosted navigation (e.g. the "full edit page" link inside a form)
     // has left the page: close the sheet once the new page has landed.
     // (Closing on request start would remove the link mid-request.)
@@ -293,8 +328,20 @@
     ['htmx:responseError', 'htmx:sendError', 'htmx:timeout'].forEach(function (name) {
         document.body.addEventListener(name, function (e) {
             if (!isPopupTarget(e.detail.target)) { return; }
+            var verb = e.detail.requestConfig && e.detail.requestConfig.verb;
+            var body = popupBody();
+            if (verb && verb !== 'get' && body && body.querySelector('form')) {
+                showSaveError(name, e.detail.xhr ? e.detail.xhr.status : 0);
+                return;
+            }
             showLoadError();
         });
+    });
+    // The next try starts: the old reason goes.
+    document.body.addEventListener('htmx:beforeRequest', function (e) {
+        if (!isPopupTarget(e.detail.target)) { return; }
+        var old = popupBody() && popupBody().querySelector('[data-save-error]');
+        if (old) { old.remove(); }
     });
 
     // Any edit inside the sheet marks it dirty.
@@ -322,17 +369,31 @@
     // Re-fetch the current page and swap #main-content in place. Scroll,
     // filters and the URL all stay put; toasts and Alpine state come back
     // through the same chrome hook boosted navigations use (base.html).
-    function refreshMain(flashId) {
+    //
+    // opts.quiet is for a refresh nobody asked for (the app came back to
+    // the front, static/js/connection.js): a failure then changes nothing.
+    // After a save, a failure says so. It does not reload: with no signal,
+    // a reload puts the browser's error page in place of the app.
+    function refreshMain(flashId, opts) {
+        var quiet = !!(opts && opts.quiet);
+        var redirected = false;
+        var ok = false;
         return fetch(window.location.href, {
             credentials: 'same-origin',
             headers: { 'Accept': 'text/html' }
         }).then(function (resp) {
+            redirected = resp.redirected;
+            ok = resp.ok;
             return resp.text();
         }).then(function (html) {
             var doc = new DOMParser().parseFromString(html, 'text/html');
             var fresh = doc.getElementById('main-content');
             var live = document.getElementById('main-content');
-            if (!fresh || !live) { window.location.reload(); return; }
+            if (!fresh || !live || !ok) {
+                // A sign-in that ended sends us to the sign-in page: go there.
+                if (redirected || !quiet) { window.location.reload(); }
+                return;
+            }
             live.replaceWith(fresh);
             if (window.htmx) { htmx.process(fresh); }
             if (window.Yardway && Yardway.afterMainSwap) {
@@ -340,9 +401,17 @@
             }
             flashRow(flashId);
         }).catch(function () {
-            window.location.reload();
+            if (quiet) { return; }
+            if (window.Yardway && Yardway.notice) {
+                Yardway.notice('warning', 'Saved. The page is not up to date: no signal.', {
+                    label: 'Refresh',
+                    run: function () { refreshMain(flashId); }
+                });
+            }
         });
     }
+    window.Yardway = window.Yardway || {};
+    window.Yardway.refreshMain = refreshMain;
 
     document.body.addEventListener('popup:saved', function () {
         var s = store();

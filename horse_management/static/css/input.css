@@ -359,6 +359,23 @@
     .toast-error { @apply bg-error-red-50 border-error-red/20 text-error-red; }
     .toast-info { @apply bg-info-blue-50 border-info-blue/20 text-info-blue; }
     .toast-warning { @apply bg-sand-50 border-sand/40 text-saddle; }
+    /* A message built in the browser when a request fails
+       (static/js/connection.js). Its button is a 44px target: the person
+       may be in a field, with gloves on. */
+    .toast-words { @apply flex-1 min-w-0; }
+    .toast-action { @apply shrink-0 -my-2 px-2 min-h-[44px] inline-flex items-center font-semibold underline underline-offset-2 cursor-pointer whitespace-nowrap; }
+    .toast-dismiss { @apply shrink-0 -my-2 -mr-2 w-11 min-h-[44px] inline-flex items-center justify-center text-xl leading-none opacity-60 cursor-pointer hover:opacity-100; }
+
+    /* "No signal": shows while the browser reports no connection. The
+       script sets `top` to just under the phone's bars. Under the sheets
+       (z-50), over the page. */
+    .offline-mark { @apply fixed left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-1.5 rounded-full bg-charcoal px-3 py-1.5 text-xs font-semibold text-white shadow-lg whitespace-nowrap; top: 0.75rem; }
+    .offline-mark[hidden] { display: none; }
+
+    /* A save from the pop-up sheet that failed: the reason, above the form
+       that is still there (static/js/popup.js). */
+    .popup-save-error { @apply mx-5 mt-4; }
+    .popup-save-error:focus { @apply outline-hidden; }
 
     /* Link styling — hover warms to Saddle for a touch of personality */
     .link { @apply text-forest hover:text-saddle font-medium transition-colors duration-100 relative; }

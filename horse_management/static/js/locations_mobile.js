@@ -230,6 +230,10 @@
         state.pk = String(pk);
         detail.hidden = false;
         if (list) { list.hidden = true; }
+        // The phone's Back button goes back to the list (overlay_back.js).
+        if (window.Yardway && Yardway.overlay) {
+            Yardway.overlay.opened('location', clearSelection, function () { return state.pk !== null && !!page(); });
+        }
         if (changed && window.htmx) {
             // `select` is named because htmx.ajax with no source element
             // falls back to <body>, whose hx-select is #main-content for
@@ -258,6 +262,7 @@
         var detail = document.getElementById('loc-sheet-detail');
         var list = document.querySelector('[data-loc-list]');
         state.pk = null;
+        if (window.Yardway && Yardway.overlay) { Yardway.overlay.closed('location'); }
         if (detail) { detail.hidden = true; }
         if (list) { list.hidden = false; }
         markRows();
