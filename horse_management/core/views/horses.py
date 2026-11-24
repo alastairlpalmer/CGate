@@ -1388,12 +1388,10 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
         # and no "Use as profile picture" (UX review B8).
         source = _profile_source(horse.photo.name if horse.photo else '', context['photos'])
         context['profile_photo_pk'] = source.pk if source else None
-        # Identity card (plan §8.2): the extra numbers and links, who
-        # checked the chip, and any other horse with the same number.
-        context['identifiers'] = list(horse.identifiers.all())
+        # Any other horse with the same chip or UELN: a warning in the
+        # banner's facts. The rest of the identity is in the pop-up
+        # (horse_identity, "All details").
         context['identity_duplicates'] = horse.identity_duplicates()
-        context['identity_checked_by'] = (
-            horse.identity_checked_by if horse.identity_checked_by_id else None)
         # Pedigree card and the "by … out of …" line (plan §8.3).
         from pedigree.display import diagram_context, record_for_page
         context['pedigree'] = diagram_context(record_for_page(horse), page_horse=horse)
@@ -1718,6 +1716,22 @@ def horse_scan_check(request, pk):
     context.update({'scanned': scanned, 'scanned_shown': shown(scanned), 'mismatch': True,
                     'form': ScanCheckForm()})
     return render(request, 'horses/partials/scan_check.html', context)
+
+
+@feature_required('horses', LEVEL_VIEW)
+def horse_identity(request, pk):
+    """The horse's full identity: "All details" under the banner's facts
+    opens it in the pop-up sheet (24 Nov 2026); a direct visit gets a page."""
+    horse = get_object_or_404(Horse, pk=pk)
+    context = {
+        'horse': horse,
+        'identifiers': list(horse.identifiers.all()),
+        'identity_duplicates': horse.identity_duplicates(),
+        'identity_checked_by': horse.identity_checked_by if horse.identity_checked_by_id else None,
+    }
+    template = ('horses/partials/identity_details.html' if is_popup_request(request)
+                else 'horses/identity_page.html')
+    return render(request, template, context)
 
 
 @feature_required('horses', LEVEL_VIEW)

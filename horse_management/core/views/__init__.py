@@ -36,6 +36,7 @@ from .horses import (  # noqa: F401
     horse_quick_view,
     horse_reactivate,
     horse_scan_check,
+    horse_identity,
     horse_record_actions,
     manage_ownership_shares,
     new_arrival,

@@ -177,7 +177,9 @@ class HorsePagePhoneTests(TestCase):
     def test_the_stylesheet_folds_the_tree_and_lays_the_buttons_in_one_row(self):
         css = (Path(settings.BASE_DIR) / 'static' / 'css' / 'input.css').read_text()
         self.assertIn('.horse-hero-ped:not(.is-open) .hero-ped-body { display: none; }', css)
-        self.assertIn('"photo head" "flags flags" "actions actions" "place place" "ped ped"', css)
+        # 24 Nov 2026: ownership and the identity facts are a row of the
+        # banner too, under the placement.
+        self.assertIn('"photo head" "flags flags" "actions actions" "place place" "facts facts" "ped ped"', css)
 
 
 class GroupedActionsTests(TestCase):

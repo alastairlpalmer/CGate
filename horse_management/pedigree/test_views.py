@@ -214,7 +214,7 @@ class HorsePageTests(TestCase):
     def test_the_tree_in_the_banner(self):
         response = self.client.get(self.url)
         page = response.content.decode()
-        banner = page.split('data-testid="horse-hero"', 1)[1].split('id="identity"', 1)[0]
+        banner = page.split('data-testid="horse-hero"', 1)[1].split('<!-- Grid Layout -->', 1)[0]
         self.assertIn('id="pedigree"', banner)
         # The tree is in the banner, so the "by … out of …" line under the
         # name is gone: the parents show once (21 Nov 2026 layout).
