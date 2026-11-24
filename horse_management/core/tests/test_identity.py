@@ -622,8 +622,11 @@ class HorsePageIdentityTests(TestCase):
         self.url = reverse('horse_detail', args=[self.horse.pk])
 
     def test_the_identity_card(self):
+        # 24 Nov 2026: the full identity is the pop-up behind "All details"
+        # in the banner's facts.
         self.client.force_login(self.admin)
-        response = self.client.get(self.url)
+        response = self.client.get(reverse('horse_identity', args=[self.horse.pk]),
+                                   HTTP_HX_REQUEST='true', HTTP_HX_TARGET='popup-body')
         # The registered name is on the Identity card, not in the header too
         # (horse page review A3).
         card = response.content.decode().split('id="identity"', 1)[1]
@@ -649,7 +652,10 @@ class HorsePageIdentityTests(TestCase):
         self.client.force_login(self.admin)
         response = self.client.get(self.url)
         self.assertContains(response, 'ID checked')
-        self.assertContains(response, 'data-testid="identity-checked"')
+        self.assertContains(response, '✓ Chip checked')
+        details = self.client.get(reverse('horse_identity', args=[self.horse.pk]),
+                                  HTTP_HX_REQUEST='true', HTTP_HX_TARGET='popup-body')
+        self.assertContains(details, 'data-testid="identity-checked"')
 
     def test_missing_line_and_duplicate_warning(self):
         Horse.objects.create(name='Twin', microchip='372141000123456', is_active=False)

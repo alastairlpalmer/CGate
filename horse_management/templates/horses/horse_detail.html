@@ -112,6 +112,11 @@
             </div>
             {% endif %}
         </div>
+        {% comment %}The right-hand column: the main buttons, then ownership and
+        the key identity facts under them (24 Nov 2026: no separate
+        Ownership and identity band). On a phone the two are separate rows
+        of the banner (.horse-hero-side is display: contents).{% endcomment %}
+        <div class="horse-hero-side">
             {% if feature_access.horses.full %}
             {% comment %}One main button: Move while the horse is here, Log
             arrival when it is not. Edit beside it. Depart is rare and final,
@@ -178,6 +183,8 @@
                 {% endif %}
             </div>
             {% endif %}
+            {% include 'horses/partials/_hero_facts.html' %}
+        </div>
         {% include 'horses/partials/_hero_placement.html' %}
         {% include 'pedigree/_card.html' with in_hero=True %}
     </div>
@@ -250,9 +257,6 @@
     </section>
     {% endif %}
 
-    {% comment %}Ownership and identity: one band, full width, under the
-    banner. The Timeline comes straight after it.{% endcomment %}
-    {% include 'horses/_identity_card.html' %}
 
     <!-- Grid Layout -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">

@@ -38,7 +38,7 @@ class Base(TestCase):
 
     @staticmethod
     def banner(body):
-        return body.split('data-testid="horse-hero"', 1)[1].split('data-testid="ownership-identity"', 1)[0]
+        return body.split('data-testid="horse-hero"', 1)[1].split('<!-- Grid Layout -->', 1)[0]
 
 
 class BannerTests(Base):
@@ -64,25 +64,83 @@ class BannerTests(Base):
         self.assertIn('Log arrival', banner)
 
 
-class OwnershipAndIdentityTests(Base):
+class FactsTests(Base):
+    """24 Nov 2026: ownership and the key identity facts in the banner,
+    under the buttons; no separate Ownership and identity band; the rest
+    in the identity pop-up ("All details")."""
 
-    def test_one_band_under_the_banner_then_the_timeline(self):
+    def facts(self):
+        return main(self.page()).split('data-testid="hero-facts"', 1)[1].split('</section>', 1)[0]
+
+    def test_no_band_and_the_timeline_comes_first(self):
         self.place()
-        OwnershipShare.objects.create(horse=self.horse, owner=self.owner, share_percentage=100)
         body = main(self.page())
-        band = body.split('data-testid="ownership-identity"', 1)[1].split('<!-- Grid Layout -->', 1)[0]
-        self.assertIn('Ownership and identity', band)
-        self.assertIn('id="ownership"', band)
-        self.assertIn('Jo Bloggs', band)
-        self.assertIn('100%', band)
-        self.assertIn('>Identity</h3>', band)
-        # The old Ownership card in the side column is gone.
+        self.assertNotIn('data-testid="ownership-identity"', body)
         self.assertNotIn('<h2 class="section-title">Ownership</h2>', body)
-        # The Timeline is the first card after the band.
         after = body.split('<!-- Grid Layout -->', 1)[1]
         first_card = after.split('<div class="card', 2)[1]
         self.assertIn('>Timeline</h2>', first_card)
-        self.assertLess(after.index('>Timeline</h2>'), after.index('Breeding</h2>'))
+
+    def test_facts_sit_under_the_buttons(self):
+        self.place()
+        side = main(self.page()).split('class="horse-hero-side"', 1)[1].split('data-testid="hero-placement"', 1)[0]
+        self.assertLess(side.index('class="horse-hero-actions'), side.index('data-testid="hero-facts"'))
+
+    def test_one_owner_is_named_once(self):
+        self.place()
+        OwnershipShare.objects.create(horse=self.horse, owner=self.owner, share_percentage=100)
+        self.assertNotIn('data-testid="facts-owners"', self.facts())
+        self.assertIn('data-testid="header-owner"', main(self.page()))
+
+    def test_two_owners_with_their_shares(self):
+        other = Owner.objects.create(name='Sam Hine')
+        OwnershipShare.objects.create(horse=self.horse, owner=self.owner, share_percentage=60, is_primary_contact=True)
+        OwnershipShare.objects.create(horse=self.horse, owner=other, share_percentage=40)
+        facts = self.facts()
+        self.assertIn('data-testid="facts-owners"', facts)
+        self.assertIn('Jo Bloggs', facts)
+        self.assertIn('60%', facts)
+        self.assertIn('Sam Hine', facts)
+        self.assertIn('40%', facts)
+
+    def test_numbers_missing_line_and_all_details(self):
+        Horse.objects.filter(pk=self.horse.pk).update(microchip='826098000123456', breed='Thoroughbred')
+        facts = self.facts()
+        self.assertIn('826 098 000 123 456', facts)
+        self.assertIn('data-copy="826098000123456"', facts)
+        self.assertIn('Thoroughbred', facts)
+        self.assertIn('Missing: UELN, passport number, foaling date.', facts)
+        self.assertIn(reverse('horse_quick_edit', args=[self.horse.pk]), facts)
+        self.assertIn(reverse('horse_identity', args=[self.horse.pk]), facts)
+        self.assertIn(reverse('horse_scan_check', args=[self.horse.pk]), facts)
+
+    def test_a_duplicate_chip_is_warned_in_the_banner(self):
+        Horse.objects.filter(pk=self.horse.pk).update(microchip='826098000123456')
+        Horse.objects.create(name='Twin', microchip='826098000123456', is_active=False)
+        self.assertIn('(departed). Is this the same horse?', self.facts())
+
+
+class IdentityPopupTests(Base):
+
+    def test_popup_and_page(self):
+        Horse.objects.filter(pk=self.horse.pk).update(markings='Star', breeder='Moyglare Stud')
+        url = reverse('horse_identity', args=[self.horse.pk])
+        popup = self.client.get(url, HTTP_HX_REQUEST='true', HTTP_HX_TARGET='popup-body').content.decode()
+        self.assertIn('data-testid="identity-details"', popup)
+        self.assertIn('Moyglare Stud', popup)
+        self.assertNotIn('<html', popup)
+        self.assertIn(reverse('horse_identifier_add', args=[self.horse.pk]), popup)
+        page = self.client.get(url)
+        self.assertContains(page, 'Identity of Belina')
+        self.assertContains(page, 'Moyglare Stud')
+
+    def test_view_only(self):
+        from core.roles_testutils import make_viewer
+        self.client.force_login(make_viewer())
+        popup = self.client.get(reverse('horse_identity', args=[self.horse.pk]),
+                                HTTP_HX_REQUEST='true', HTTP_HX_TARGET='popup-body').content.decode()
+        self.assertNotIn(reverse('horse_identifier_add', args=[self.horse.pk]), popup)
+        self.assertNotIn(reverse('horse_quick_edit', args=[self.horse.pk]), popup)
 
 
 class TrainingCardTests(Base):

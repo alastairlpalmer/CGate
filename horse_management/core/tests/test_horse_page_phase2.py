@@ -85,8 +85,8 @@ class OrderTests(Base):
         # 21 Nov 2026 layout: the banner holds the placement and the tree;
         # then Due, the Ownership and identity band, and the Timeline.
         places = [main.index(marker) for marker in (
-            'data-testid="horse-hero"', 'Current placement', 'id="pedigree"', 'data-testid="due-strip"',
-            'id="identity"', '>Timeline</h2>', 'Notes &amp; conditions')]
+            'data-testid="horse-hero"', 'data-testid="hero-facts"', 'Current placement', 'id="pedigree"',
+            'data-testid="due-strip"', '>Timeline</h2>', 'Notes &amp; conditions')]
         self.assertEqual(places, sorted(places))
 
 

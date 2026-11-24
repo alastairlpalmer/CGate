@@ -50,7 +50,9 @@ class OnePlaceTests(Base):
         self.assertNotIn('Registered as', header)
         self.assertNotIn('born ', header)
         self.assertIn('Gelding', header)
-        self.assertIn('Karma Avicii (GB)', body.split('id="identity"', 1)[1])
+        # The registered name is in the identity pop-up ("All details").
+        details = self.client.get(reverse('horse_identity', args=[horse.pk]), **POPUP).content.decode()
+        self.assertIn('Karma Avicii (GB)', details)
 
     def test_lineage_notes_label(self):
         body = main(self.page(self.horse(breeding='By Galileo\nout of Urban Sea')))
@@ -172,7 +174,8 @@ class ConsistencyTests(Base):
         placement = body.split('data-testid="placement-empty"', 1)[1][:1500]
         self.assertIn('class="empty-state empty-state-compact"', placement)
         self.assertIn('No current placement', placement)
-        self.assertIn('No owners set', body)
+        self.assertIn('data-testid="facts-owners"', body)  # no owners: the banner says so
+        self.assertIn('Set owners', body)
         self.assertIn('Manage ownership', body)
         self.assertIn('Nothing recorded yet.', body)
         self.assertIn(f'hx-get="{reverse("horse_record_actions", args=[horse.pk])}"', body)

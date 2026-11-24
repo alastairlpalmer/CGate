@@ -813,6 +813,27 @@ name; the placement and the tree go full width under it. The "by … out
 of …" line under the name is gone: the tree in the banner shows the
 parents (A3, one place for each fact).
 
+### 5.2 Changes of 23 and 24 Nov 2026
+
+- The pedigree tree sits between the name and the buttons on a wide
+  screen, so the banner is no taller than the photo.
+- Ownership and identity are no longer a band. The banner's right-hand
+  column holds the buttons and, under them, the key facts: owners (only
+  with two or more, or none; one owner is the line under the name),
+  chip, UELN, passport, foaled, breed, height, what is missing, a
+  duplicate chip or UELN, and the chip check. "All details" opens the
+  full identity in the pop-up (markings, breeder, registered name,
+  other numbers and links). The Timeline is the first card under Due.
+
+```
+┌ [photo] Avicii · 7yo bay gelding · owner ☎ │ Pedigree    │ [Move] [Edit] [More] ┐
+│ [     ] ────────────────────────────────── │ (tree)      │ Owners  …            │
+│ [     ] Current placement                  │             │ Chip    …  Copy      │
+│ [     ] Location · Rate · Arrived          │             │ UELN · Passport · …  │
+│ [     ]                                    │             │ ✓ Chip checked · All │
+└──────────────────────────────────────────────────────────────────────────────────┘
+```
+
 ## 6. How the SaaS UI patterns fit this page
 
 | Pattern | Fit | Where |

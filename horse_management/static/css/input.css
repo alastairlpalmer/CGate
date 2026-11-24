@@ -3157,7 +3157,13 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     .horse-hero-actions { grid-area: actions; min-width: 0; }
     .horse-hero-place { grid-area: place; }
     .horse-hero-ped { grid-area: ped; }
-    .horse-hero-place, .horse-hero-ped { @apply border-t border-light-sage pt-4; }
+    .horse-hero-facts { grid-area: facts; }
+    /* The buttons and the facts: one column from sm, two rows on a phone. */
+    .horse-hero-side { display: contents; }
+    .horse-hero-place, .horse-hero-ped, .horse-hero-facts { @apply border-t border-light-sage pt-4; }
+    .hero-facts { @apply grid gap-x-3 gap-y-1.5 text-sm text-charcoal; grid-template-columns: 4.25rem minmax(0, 1fr); }
+    .hero-facts dt { @apply text-xs font-medium text-sage pt-px; }
+    .hero-facts dd { @apply min-w-0; }
     .horse-hero-img { width: 7rem; height: 7rem; }
     .hero-section-title { @apply flex items-center gap-2 text-sm font-semibold text-forest font-heading; }
     .hero-label { @apply block text-xs font-medium text-sage; }
@@ -3170,7 +3176,7 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
    Beside a 7rem photo they wrapped to two or three rows. The tree is one
    line until it is opened. */
 @media (max-width: 39.99rem) {
-    .horse-hero { grid-template-areas: "photo head" "flags flags" "actions actions" "place place" "ped ped"; }
+    .horse-hero { grid-template-areas: "photo head" "flags flags" "actions actions" "place place" "facts facts" "ped ped"; }
     .horse-hero-head { display: contents; }
     .horse-hero-name { grid-area: head; }
     .horse-hero-flags { grid-area: flags; @apply -my-1.5; }
@@ -3184,8 +3190,10 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
 }
 @media (min-width: 40rem) {
     .horse-hero {
-        grid-template-columns: auto minmax(0, 1fr) auto;
-        grid-template-areas: "photo head actions" "photo place place" "ped ped ped";
+        grid-template-columns: auto minmax(0, 1fr) minmax(15rem, auto);
+        /* A tall right-hand column grows the placement's row, not the name's. */
+        grid-template-rows: auto 1fr auto;
+        grid-template-areas: "photo head side" "photo place side" "ped ped ped";
     }
     .horse-hero-img { width: 11rem; height: 11rem; }
     .hero-ped-line { display: none; }
@@ -3196,11 +3204,16 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
         /* A tall tree grows the second row, so the placement stays right
            under the name; the photo fills the banner's height. */
         grid-template-rows: auto 1fr;
-        grid-template-areas: "photo head ped actions" "photo place ped actions";
+        grid-template-areas: "photo head ped side" "photo place ped side";
     }
     .horse-hero-photo { align-self: stretch; }
     .horse-hero-img { width: 14rem; height: 100%; min-height: 14rem; }
     .horse-hero-ped { @apply border-t-0 pt-0 border-l pl-6; align-self: stretch; }
+}
+@media (min-width: 40rem) {
+    .horse-hero-side { grid-area: side; display: flex; flex-direction: column; gap: 1rem; min-width: 15rem; }
+    .horse-hero-side > .horse-hero-actions { align-self: stretch; }
+    .horse-hero-facts { @apply pt-3; }
 }
 
 

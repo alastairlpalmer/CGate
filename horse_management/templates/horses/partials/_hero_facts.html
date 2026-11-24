@@ -1,0 +1,72 @@
+{% load ui_extras %}
+{% comment %}
+Ownership and the key identity facts, in the banner under the main buttons
+(24 Nov 2026). No separate Ownership and identity band:
+
+- Owners: only with two or more (with their shares), or with none set.
+  One owner is the line under the horse's name, with Call.
+- Chip, UELN, passport, foaled, breed and height: only the ones entered.
+  What is missing is one line, with Add.
+- A chip or UELN also on another horse: a warning here, not in a pop-up.
+- All details opens the pop-up with everything else (markings, breeder,
+  registered name, other numbers and links, the chip check).
+
+Context: horse, ownership_shares, identity_duplicates, feature_access.
+{% endcomment %}
+<section class="horse-hero-facts min-w-0" aria-labelledby="facts-title" data-testid="hero-facts">
+    <h2 id="facts-title" class="sr-only">Ownership and identity</h2>
+    <dl class="hero-facts">
+        {% if ownership_shares|length != 1 %}
+        <dt>Owners</dt>
+        <dd data-testid="facts-owners">
+            {% for share in ownership_shares %}
+            <span class="block truncate"><a href="{% url 'owner_detail' share.owner.pk %}" class="link tap-pad">{{ share.owner.name }}</a> <span class="text-sage tabular-nums">{{ share.share_percentage|floatformat:0 }}%</span>{% if share.is_primary_contact %} <span class="sr-only">(primary contact)</span>{% endif %}</span>
+            {% empty %}
+            <span class="text-sage">Not set.</span>{% if feature_access.horses.full %} <a href="{% url 'horse_ownership' horse.pk %}" class="link tap-pad">Set owners</a>{% endif %}
+            {% endfor %}
+        </dd>
+        {% endif %}
+        {% if horse.microchip %}
+        <dt>Chip</dt>
+        <dd class="flex flex-wrap items-center gap-x-2"><span class="font-mono tabular-nums whitespace-nowrap" data-testid="facts-microchip">{{ horse.microchip_display }}</span>{% include 'horses/_copy_button.html' with value=horse.microchip label="Copy microchip" %}</dd>
+        {% endif %}
+        {% if horse.ueln %}
+        <dt>UELN</dt>
+        <dd><span class="font-mono tabular-nums whitespace-nowrap">{{ horse.ueln_display }}</span></dd>
+        {% endif %}
+        {% if horse.passport_number or horse.passport_issuer %}
+        <dt>Passport</dt>
+        <dd class="min-w-0 break-words">{% if horse.passport_number %}<span class="font-mono">{{ horse.passport_number }}</span>{% endif %}{% if horse.passport_number and horse.passport_issuer %} <span class="text-sage">·</span> {% endif %}<span class="text-sage">{{ horse.passport_issuer }}</span></dd>
+        {% endif %}
+        {% if horse.date_of_birth %}
+        <dt>Foaled</dt>
+        <dd class="tabular-nums">{% if horse.dob_is_exact %}{{ horse.date_of_birth|date:"j M Y" }}{% elif horse.dob_precision == 'estimated' %}c. {{ horse.date_of_birth.year }}{% else %}{{ horse.date_of_birth.year }}{% endif %}{% if horse.country_of_birth %} · {{ horse.country_of_birth }}{% endif %}</dd>
+        {% endif %}
+        {% if horse.breed %}
+        <dt>Breed</dt>
+        <dd class="min-w-0 break-words">{{ horse.breed }}</dd>
+        {% endif %}
+        {% if horse.height_inches %}
+        <dt>Height</dt>
+        <dd class="tabular-nums">{{ horse.height_display }}</dd>
+        {% endif %}
+    </dl>
+
+    {% for label, value, other in identity_duplicates %}
+    <p class="mt-2 text-xs text-saddle flex gap-1.5" role="status">
+        <span aria-hidden="true">⚠</span>
+        <span>{{ label }} also on <a href="{% url 'horse_detail' other.pk %}" class="link tap-pad">{{ other.name }}</a>{% if not other.is_active %} (departed){% endif %}. Is this the same horse?</span>
+    </p>
+    {% endfor %}
+
+    {% with missing=horse.missing_identity %}{% if missing %}
+    <p class="mt-2 text-xs text-sage" data-testid="facts-missing">Missing: {{ missing|join:", " }}.{% if feature_access.horses.full %} <a href="{% url 'horse_update' horse.pk %}" hx-get="{% url 'horse_quick_edit' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit {{ horse.name }}" class="link tap-pad">Add</a>{% endif %}</p>
+    {% endif %}{% endwith %}
+
+    <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+        {% if horse.is_identity_checked %}<span class="text-forest" title="Chip scanned and matched the record">✓ Chip checked {{ horse.identity_checked_at|date:"j M Y" }}</span>
+        {% elif horse.microchip and feature_access.horses.full %}<a href="{% url 'horse_detail' horse.pk %}" hx-get="{% url 'horse_scan_check' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Scan to check {{ horse.name }}" class="link tap-pad">Scan to check</a>{% endif %}
+        <a href="{% url 'horse_identity' horse.pk %}" hx-get="{% url 'horse_identity' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Identity of {{ horse.name }}" class="link tap-pad" data-testid="facts-all">All details</a>
+    </div>
+</section>

@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}Identity of {{ horse.name }} - Cgate{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-4">
+    <a href="{% url 'horse_detail' horse.pk %}" class="inline-flex items-center gap-1.5 text-sm text-sage hover:text-forest tap-pad">← {{ horse.name }}</a>
+    <div class="page-header"><h1 class="page-title">Identity of {{ horse.name }}</h1></div>
+    <div class="card">{% include 'horses/partials/identity_details.html' %}</div>
+</div>
+{% endblock %}
