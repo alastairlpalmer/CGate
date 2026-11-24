@@ -303,7 +303,7 @@ def _client_horse_payload(horse, due=()):
         'name': horse.name,
         'microchip': horse.microchip,
         'passport': horse.passport,
-        'about': '',
+        'about': horse.about,
         'location': '',
         'owner': horse.owner_name,
         'payers': [],
@@ -380,6 +380,7 @@ def api_horses(request):
         'microchip': _text(request, 'microchip', 50),
         'passport': _text(request, 'passport', 100),
         'owner_name': _text(request, 'owner_name', 200),
+        'about': _text(request, 'about', 100),
     }
     if not fields['name'] or None in fields.values():
         return JsonResponse({'error': 'name_invalid' if not fields['name'] else 'text_too_long'}, status=400)

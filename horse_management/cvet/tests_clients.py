@@ -63,6 +63,15 @@ class ClientListTests(YardCase):
             [item['client_id'] for item in data['horses'] if not item.get('own')], [yard_client['id']],
         )
 
+    def test_a_horse_of_the_practices_own_client_has_a_description(self):
+        client = client_data()
+        self.client.post(CLIENTS, client)
+        horse = horse_data(client['id'], about='Bay mare, 12yo')
+        self.assertEqual(self.client.post(HORSES, horse).json()['about'], 'Bay mare, 12yo')
+        own = next(item for item in self.client.get(YARD).json()['horses'] if item.get('own'))
+        self.assertEqual(own['about'], 'Bay mare, 12yo')
+        self.assertEqual(self.client.post(HORSES, dict(horse, about='x' * 101)).json(), {'error': 'text_too_long'})
+
     def test_the_same_id_changes_the_client_and_makes_no_second_one(self):
         client = client_data()
         self.client.post(CLIENTS, client)

@@ -54,7 +54,6 @@
         draft: null,       // the horse screen: { horse, lines, followUp, photo, audio }
         picker: null,      // the item list, while it is open: { mode, category }
         open: {},          // the parts of the Visits screen that are unfolded
-        visitFilter: '',   // Visits shows this client only
         visitDetails: {},  // visit id -> the practice's record of it, once loaded
         visitTried: {},
         selecting: false,
@@ -589,7 +588,6 @@
         }
         if (open) {
             counts.push(count(open, 'visit open', 'visits open', true, function () {
-                state.visitFilter = '';
                 show('visits');
             }));
         }
@@ -640,7 +638,19 @@
             core.kindLabel(client.kind), countText(horses.length, 'horse', 'horses'),
             client.is_active === false ? 'archived' : ''
         ].filter(Boolean).join(' · ');
-        $('client-contact').textContent = [client.contact_name, client.phone, client.email].filter(Boolean).join(' · ');
+        // Who to ask for, and one tap to call, to write or to find the way.
+        var contact = [];
+        function reach(text, href) {
+            var link = el('a', '', text);
+            link.href = href;
+            if (/^https/.test(href)) { link.target = '_blank'; link.rel = 'noopener'; }
+            contact.push(link);
+        }
+        if (client.contact_name) contact.push(el('span', '', client.contact_name));
+        if (client.phone) reach(client.phone, 'tel:' + client.phone.replace(/[^+\d]/g, ''));
+        if (client.email) reach(client.email, 'mailto:' + client.email);
+        if (client.address) reach('Directions', 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(client.address));
+        fill($('client-contact'), contact);
         // The C-gate yard: its name and its horses are the yard's records.
         $('client-edit').hidden = !!client.is_yard;
         $('horse-add').hidden = !!client.is_yard;
@@ -1085,6 +1095,13 @@
         $('no-history').hidden = notes.length > 0;
         state.lastNotes = notes;
         renderRepeat();
+        // The last time, at the top of the screen: the history itself is under the note.
+        var seen = notes[0];
+        $('horse-last').hidden = !seen;
+        if (seen) {
+            $('horse-last').textContent = 'Last seen ' + core.dayLabel(seen.day, today()).replace(/^T/, 't').replace(/^Y/, 'y') +
+                (seen.lines.length ? ': ' + seen.lines.map(function (line) { return line.description; }).join(', ') : '') + ' ›';
+        }
         $('load-history').hidden = !!state.olderNotes;
         desk('history', horse, notes.length ? box : null);
     }
@@ -1137,6 +1154,12 @@
         if (parts.length) item.appendChild(el('small', '', parts.join(' · ')));
         note.files.forEach(function (file) { item.appendChild(fileNode(file)); });
         if (note.entry && note.status !== 'sent') {
+            // A note the server has never been sent, or has refused, can
+            // be opened again. One that was sent with no answer may be
+            // in the practice's records already: it stays as it is.
+            if (!note.entry.attempts || note.status === 'failed') {
+                item.appendChild(button('link calm', 'Change', function () { changeEntry(note.entry); }));
+            }
             item.appendChild(button('link', 'Remove', function () { removeEntry(note.entry); }));
         }
         return item;
@@ -1220,6 +1243,30 @@
         if (!state.syncing) return false;
         say('The phone is sending. Try again in a moment.');
         return true;
+    }
+
+    // Open a note that has not gone again, as it was: its items, its
+    // words, its recheck date, its photo and its recording. It leaves the
+    // list of notes and is the note in progress, which the phone keeps
+    // as it is typed; Save puts it back.
+    function changeEntry(entry) {
+        if (busySending()) return;
+        var horse = state.horsesById[entry.horseId];
+        if (!horse) { say('This horse is not on the phone now. The note stays as it is.'); return; }
+        if (state.view === 'horse' && !draftIsEmpty() && !window.confirm('Leave the note you are writing, to change this one?')) return;
+        function file(stored, bytes) {
+            return stored ? { buffer: stored.buffer, type: stored.type, bytes: bytes, sha256: stored.sha256 } : null;
+        }
+        remove('entries', entry.clientId).then(function () {
+            state.entries.splice(state.entries.indexOf(entry), 1);
+            openHorse(horse, {
+                note: entry.note, followUp: entry.followUp,
+                lines: (entry.lines || []).map(function (line) { return Object.assign({ custom: !line.priceId }, line); }),
+                photo: file(entry.photo, entry.photoBytes), audio: file(entry.audio, entry.audioBytes)
+            });
+            persistDraft();
+            say('The note is open again. Tap Save when it is right.', true);
+        });
     }
 
     function removeEntry(entry) {
@@ -1449,9 +1496,8 @@
         return node;
     }
 
-    // `only`: the visits of one client. Left out: as the Visits screen is set.
+    // `only`: the visits of one client. Left out: every client's.
     function visitRows(only) {
-        if (only === undefined) only = state.visitFilter;
         var byId = {};
         var rows = [];
         var done = closed();
@@ -1508,12 +1554,6 @@
         $('open-visits-box').hidden = open.length === 0;
         $('past-visits-box').hidden = past.length === 0;
         $('visits-empty').hidden = rows.length > 0;
-        var only = state.visitFilter && clientById(state.visitFilter);
-        $('visit-filter').hidden = !only;
-        if (only) {
-            $('visit-filter').textContent = only.name + ' ✕';
-            $('visit-filter').setAttribute('aria-label', 'Show the visits of every client');
-        }
     }
 
     // "Bill CV-0001" once the server has made it.
@@ -1839,29 +1879,11 @@
         $('bill-sheet').hidden = false;
     }
 
+    // The mark is made on the server, so its code comes with the first
+    // use, with the rest of what needs a signal (online.js).
     function markPaid(bill, paid, message) {
-        var form = new FormData();
-        if (!paid) form.append('paid', 'no');
-        message.textContent = '';
-        getSession().then(function (result) {
-            if (result.kind !== 'ok') {
-                message.textContent = result.kind === 'offline' ? 'No signal. The invoice was not changed.'
-                    : result.kind === 'denied' ? DENIED_TEXT : 'Sign in again to change an invoice.';
-                return;
-            }
-            return post(config.billsApiUrl + bill.id + '/paid/', form, result.session.csrf).then(function (reply) {
-                if (reply.kind !== 'ok' || reply.status !== 200) {
-                    message.textContent = reply.kind === 'offline' ? 'No signal. The invoice was not changed.' : 'The invoice was not changed.';
-                    return;
-                }
-                return setMeta('billList', bills().map(function (other) {
-                    return other.id === reply.data.id ? reply.data : other;
-                })).then(function () {
-                    say(reply.data.number + (reply.data.paid_on ? ' marked as paid.' : ' marked as not paid.'));
-                    openBill(reply.data);
-                    render();
-                });
-            });
+        online().then(function (part) { part.markPaid(bill, paid, message); }, function () {
+            message.textContent = 'No signal. The invoice was not changed.';
         });
     }
 
@@ -2069,6 +2091,7 @@
         $('horse-form-owner').value = horse ? horse.owner || '' : '';
         $('horse-form-microchip').value = horse ? horse.microchip || '' : '';
         $('horse-form-passport').value = horse ? horse.passport || '' : '';
+        $('horse-form-about').value = horse ? horse.about || '' : '';
         $('horse-form-archive').hidden = !horse;
         $('horse-form-archive').textContent = horse && horse.is_active === false ? 'Restore' : 'Archive';
         $('horse-form-message').textContent = '';
@@ -2086,6 +2109,7 @@
         }, {
             name: name, owner: $('horse-form-owner').value.trim(),
             microchip: $('horse-form-microchip').value.trim(), passport: $('horse-form-passport').value.trim(),
+            about: $('horse-form-about').value.trim(),
             unsent: true
         });
         delete horse.refused;
@@ -2130,6 +2154,7 @@
                 form.append('owner_name', item.owner || '');
                 form.append('microchip', item.microchip || '');
                 form.append('passport', item.passport || '');
+                form.append('about', item.about || '');
             } else {
                 ['kind', 'contact_name', 'phone', 'email', 'address'].forEach(function (field) {
                     form.append(field, item[field] || '');
@@ -2658,9 +2683,6 @@
         Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (tab) {
             tab.addEventListener('click', function () {
                 if (state.view === 'horse' && !leaveHorse()) return;
-                // The tab shows every client's visits; "Visit history"
-                // on a client shows that client's.
-                state.visitFilter = '';
                 show(tab.dataset.view);
             });
         });
@@ -2675,10 +2697,8 @@
         $('client-visit').addEventListener('click', function () {
             var visit = visits()[state.client];
             if (visit) state.open['v:' + visit.id] = true;
-            state.visitFilter = '';
             show('visits');
         });
-        $('visit-filter').addEventListener('click', function () { state.visitFilter = ''; renderVisits(); });
         $('client-form').addEventListener('submit', function (event) { saveClient(event, false); });
         $('client-form-archive').addEventListener('click', function () { saveClient(null, true); });
         $('client-form-cancel').addEventListener('click', function () { $('client-sheet').hidden = true; });
@@ -2711,6 +2731,7 @@
         $('record').addEventListener('click', toggleRecording);
         $('save').addEventListener('click', saveDraft);
         $('load-history').addEventListener('click', function () { loadOlderNotes(false); });
+        $('horse-last').addEventListener('click', function () { $('history').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
         $('price-add').addEventListener('click', function () { editPrice(null); });
         // A tap on the dark area round a sheet closes it. So does Escape.
         $('bill-close').addEventListener('click', function () { $('bill-sheet').hidden = true; });
@@ -2753,6 +2774,7 @@
             isWide: isWide, visitRows: visitRows, visitFold: visitFold, editPrice: editPrice,
             renderPrices: renderPrices, loadVisitList: loadVisitList, clientById: clientById,
             // For online.js.
+            setMeta: setMeta, bills: bills, openBill: openBill, render: render,
             newId: newId, getSession: getSession, request: request, post: post, put: put,
             fromServerPrice: fromServerPrice, lossQuestion: lossQuestion, clearEverything: clearEverything,
             setHorses: setHorses, setClients: setClients, DENIED_TEXT: DENIED_TEXT

@@ -1,9 +1,9 @@
 /* C-vet: what needs a signal (docs/C_VET_PLAN.md, section 5).
 
-   To change the price list, and to sign out. Neither works with no
-   signal, so the phone does not need this code to open the app or to
-   work at a yard. The app fetches this file the first time one of the
-   two is used (static/cvet/app.js, online), and the service worker
+   To change the price list, to sign out, and to mark an invoice as
+   paid. None of them works with no signal, so the phone does not need this code to open the app or to
+   work at a yard. The app fetches this file the first time one of
+   them is used (static/cvet/app.js, online), and the service worker
    keeps it from then on.
 
    It holds no data: it reads the app's state and calls the app's
@@ -33,6 +33,10 @@
     var setClients = app.setClients;
     var renderPrices = app.renderPrices;
     var DENIED_TEXT = app.DENIED_TEXT;
+    var setMeta = app.setMeta;
+    var bills = app.bills;
+    var openBill = app.openBill;
+    var render = app.render;
 
     // Open the form at the top of the screen: for a new price (null), or
     // for one of the list.
@@ -174,9 +178,36 @@
         });
     }
 
+    // Mark an invoice as paid today, or as not paid again.
+    function markPaid(bill, paid, message) {
+        var form = new FormData();
+        if (!paid) form.append('paid', 'no');
+        message.textContent = '';
+        getSession().then(function (result) {
+            if (result.kind !== 'ok') {
+                message.textContent = result.kind === 'offline' ? 'No signal. The invoice was not changed.'
+                    : result.kind === 'denied' ? DENIED_TEXT : 'Sign in again to change an invoice.';
+                return;
+            }
+            return post(config.billsApiUrl + bill.id + '/paid/', form, result.session.csrf).then(function (reply) {
+                if (reply.kind !== 'ok' || reply.status !== 200) {
+                    message.textContent = reply.kind === 'offline' ? 'No signal. The invoice was not changed.' : 'The invoice was not changed.';
+                    return;
+                }
+                return setMeta('billList', bills().map(function (other) {
+                    return other.id === reply.data.id ? reply.data : other;
+                })).then(function () {
+                    say(reply.data.number + (reply.data.paid_on ? ' marked as paid.' : ' marked as not paid.'));
+                    openBill(reply.data);
+                    render();
+                });
+            });
+        });
+    }
+
     $('price-form').addEventListener('submit', function (event) { savePrice(event, false); });
     $('price-hide').addEventListener('click', function () { savePrice(null, true); });
     $('price-cancel').addEventListener('click', closePriceForm);
 
-    window.CvetOnline = { editPrice: editPrice, signOut: signOut };
+    window.CvetOnline = { editPrice: editPrice, signOut: signOut, markPaid: markPaid };
 })();
