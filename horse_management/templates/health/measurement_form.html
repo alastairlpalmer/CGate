@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Edit measurement{% else %}Record weight and condition{% endif %} - Cgate{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-4">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{% if object %}Edit measurement{% else %}Record weight and condition{% endif %}</h1>
+            <p class="page-subtitle">Fill in what you measured. Leave the others blank.</p>
+        </div>
+    </div>
+    <div class="card">
+        <form method="post">
+            {% csrf_token %}
+            {% include 'includes/form_errors.html' %}
+            <fieldset class="px-4 py-3 space-y-3">
+                <legend class="section-title">Measurement</legend>
+                <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+                    {% include 'includes/form_field.html' with field=form.horse span="2" %}
+                    {% include 'includes/form_field.html' with field=form.date %}
+                    {% include 'includes/form_field.html' with field=form.weight_kg help=form.weight_kg.help_text %}
+                    {% include 'includes/form_field.html' with field=form.height help=form.height.help_text %}
+                    {% include 'includes/form_field.html' with field=form.body_condition help=form.body_condition.help_text %}
+                    {% include 'includes/form_field.html' with field=form.girth_cm %}
+                    {% include 'includes/form_field.html' with field=form.notes span="2" %}
+                </div>
+            </fieldset>
+            <div class="form-footer">
+                <a href="{% if object %}{% url 'horse_detail' object.horse_id %}{% else %}{% url 'horse_list' %}{% endif %}" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">{% if object %}Save changes{% else %}Save{% endif %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

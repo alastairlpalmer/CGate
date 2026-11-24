@@ -1,0 +1,96 @@
+{% load ui_extras %}
+{% comment %}
+Weight and condition on the horse page (health/measurements.py). The latest
+value of each measure with its date and the change since the one before,
+the weight chart, and the last measurements (the chart's table view).
+Context: horse, measurements (summary), feature_access.
+{% endcomment %}
+{% with m=measurements %}
+<section class="card" id="measurements" aria-labelledby="measurements-title" data-testid="measurements-card">
+    <div class="section-header">
+        <h2 id="measurements-title" class="section-title">Weight and condition</h2>
+        {% if feature_access.health.full %}
+        <a href="{% url 'measurement_create' %}?horse={{ horse.pk }}" hx-get="{% url 'measurement_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Weight and condition for {{ horse.name }}" class="btn-ghost btn-xs">Record</a>
+        {% endif %}
+    </div>
+    <div class="p-4 space-y-4">
+        <dl class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">
+            {% if m.weight %}
+            <div>
+                <dt class="hero-label">Weight</dt>
+                <dd class="mt-0.5 text-sm text-charcoal"><span class="font-semibold tabular-nums">{{ m.weight.value|floatformat:"-1" }} kg</span>
+                    {% if m.weight.change %}<span class="block text-xs text-sage tabular-nums">{{ m.weight.change_abs|floatformat:"-1" }} kg {% if m.weight.change > 0 %}more{% else %}less{% endif %} since {{ m.weight.since|date:"j M" }}</span>{% elif m.weight.change is not None %}<span class="block text-xs text-sage">No change since {{ m.weight.since|date:"j M" }}</span>{% endif %}
+                    <span class="block text-xs text-sage">{{ m.weight.date|date:"j M Y" }}</span></dd>
+            </div>
+            {% endif %}
+            {% if m.height %}
+            <div>
+                <dt class="hero-label">Height</dt>
+                <dd class="mt-0.5 text-sm text-charcoal"><span class="font-semibold tabular-nums">{{ m.height.value|height_hh }}</span>
+                    <span class="block text-xs text-sage">{{ m.height.date|date:"j M Y" }}</span></dd>
+            </div>
+            {% endif %}
+            {% if m.body_condition %}
+            <div>
+                <dt class="hero-label">Body condition</dt>
+                <dd class="mt-0.5 text-sm text-charcoal"><span class="font-semibold tabular-nums">{{ m.body_condition.value|floatformat:"-1" }}</span> <span class="text-xs text-sage">of 5</span>
+                    {% if m.body_condition.change %}<span class="block text-xs text-sage tabular-nums">{% if m.body_condition.change > 0 %}Up{% else %}Down{% endif %} {{ m.body_condition.change_abs|floatformat:"-1" }} since {{ m.body_condition.since|date:"j M" }}</span>{% endif %}
+                    <span class="block text-xs text-sage">{{ m.body_condition.date|date:"j M Y" }}</span></dd>
+            </div>
+            {% endif %}
+            {% if m.girth %}
+            <div>
+                <dt class="hero-label">Girth</dt>
+                <dd class="mt-0.5 text-sm text-charcoal"><span class="font-semibold tabular-nums">{{ m.girth.value|floatformat:"-1" }} cm</span>
+                    <span class="block text-xs text-sage">{{ m.girth.date|date:"j M Y" }}</span></dd>
+            </div>
+            {% endif %}
+        </dl>
+
+        {% if m.chart %}{% with c=m.chart %}
+        <figure class="measure-chart" data-testid="weight-chart" aria-labelledby="weight-chart-title">
+            <figcaption id="weight-chart-title" class="sr-only">{{ c.summary }} The list below has every value.</figcaption>
+            <div class="measure-plot-row" aria-hidden="true">
+                <div class="measure-y" style="height: {{ c.height }}px"><span>{{ c.high }} kg</span><span>{{ c.low }} kg</span></div>
+                <div class="measure-plot" style="height: {{ c.height }}px">
+                    <svg width="100%" height="{{ c.height }}" focusable="false">
+                        <line class="measure-grid" x1="0" x2="100%" y1="{{ c.y_high }}" y2="{{ c.y_high }}"/>
+                        <line class="measure-grid" x1="0" x2="100%" y1="{{ c.y_low }}" y2="{{ c.y_low }}"/>
+                        {% for s in c.segments %}<line class="measure-line" x1="{{ s.x1 }}%" y1="{{ s.y1 }}" x2="{{ s.x2 }}%" y2="{{ s.y2 }}"/>{% endfor %}
+                        {% for p in c.marks %}
+                        <g class="measure-point"><circle class="measure-hit" cx="{{ p.x }}%" cy="{{ p.y }}" r="11"><title>{{ p.label }}</title></circle><circle class="measure-dot" cx="{{ p.x }}%" cy="{{ p.y }}" r="4"/></g>
+                        {% endfor %}
+                    </svg>
+                    <span class="measure-value" style="top: {{ c.last.y }}px">{{ c.last.kg }} kg</span>
+                </div>
+            </div>
+            <div class="measure-x" aria-hidden="true"><span>{{ c.first_date }}</span><span>{{ c.last_date }}</span></div>
+        </figure>
+        {% endwith %}{% endif %}
+
+        <ul class="divide-y divide-light-sage border-t border-light-sage" data-testid="measurement-rows">
+            {% for row in m.rows %}
+            <li class="py-2 flex items-start justify-between gap-3 text-sm">
+                <div class="min-w-0">
+                    <span class="text-charcoal tabular-nums">{{ row.date|date:"j M Y" }}</span>
+                    <span class="text-sage dot-list text-xs ml-1">{% if row.weight_kg is not None %}<span>{{ row.weight_kg|floatformat:"-1" }} kg</span>{% endif %}{% if row.height_inches %}<span>{{ row.height_display }}</span>{% endif %}{% if row.body_condition is not None %}<span>Condition {{ row.body_condition|floatformat:"-1" }}</span>{% endif %}{% if row.girth_cm is not None %}<span>Girth {{ row.girth_cm|floatformat:"-1" }} cm</span>{% endif %}</span>
+                    {% if row.notes %}<p class="text-xs text-sage mt-0.5">{{ row.notes|truncatechars:120 }}</p>{% endif %}
+                </div>
+                {% if feature_access.health.full %}
+                <span class="flex items-center gap-2 shrink-0">
+                    <a href="{% url 'measurement_update' row.pk %}" hx-get="{% url 'measurement_update' row.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                       data-popup-title="Edit measurement" class="link text-xs tap-pad" aria-label="Edit measurement, {{ row.date|date:'j M Y' }}">Edit</a>
+                    <form method="post" action="{% url 'measurement_delete' row.pk %}" class="inline-flex" hx-confirm="Delete the measurement of {{ row.date|date:'j M Y' }}?">
+                        {% csrf_token %}
+                        <button type="submit" class="link text-xs text-error-red tap-pad" aria-label="Delete measurement, {{ row.date|date:'j M Y' }}">Delete</button>
+                    </form>
+                </span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% if m.count > m.rows|length %}<p class="text-xs text-sage">Showing the latest {{ m.rows|length }} of {{ m.count }}.</p>{% endif %}
+    </div>
+</section>
+{% endwith %}

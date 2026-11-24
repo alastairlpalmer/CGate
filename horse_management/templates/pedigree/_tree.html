@@ -6,7 +6,7 @@ static/js/pedigree_tree.js only adds the highlight.
 Needs: tree, root, page_horse, is_page_horse; feature_access.
 Without page_horse (Fill in records) the boxes are not buttons.
 {% endcomment %}
-<div class="ped">
+<div class="ped{% if is_page_horse %} is-page-horse{% endif %}">
     <div class="ped-scroll">
         <div class="ped-tree ped-g{{ tree.generations }}" style="grid-template-rows: repeat({{ tree.rows }}, minmax(var(--ped-row), 1fr))"
              role="group" aria-label="Pedigree of {{ root.label }}, {{ tree.generations }} generations"{% if is_page_horse %} tabindex="-1" data-focus-after-swap{% endif %}>

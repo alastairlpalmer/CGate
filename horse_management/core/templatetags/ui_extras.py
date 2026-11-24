@@ -11,6 +11,16 @@ register = template.Library()
 
 
 @register.filter
+def height_hh(inches):
+    """66 -> '16.2 hh' (core.identity.format_height)."""
+    from core.identity import format_height
+    try:
+        return format_height(int(inches)) if inches not in (None, '') else ''
+    except (TypeError, ValueError):
+        return ''
+
+
+@register.filter
 def days_until(value):
     """Return days until a date. Negative = overdue."""
     if not value:

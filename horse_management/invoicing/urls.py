@@ -19,6 +19,7 @@ urlpatterns = [
     path('<int:pk>/csv/', views.invoice_csv, name='invoice_csv'),
     path('<int:pk>/send/', views.invoice_send, name='invoice_send'),
     path('<int:pk>/mark-paid/', views.invoice_mark_paid, name='invoice_mark_paid'),
+    path('<int:pk>/send-reminder/', views.invoice_send_reminder, name='invoice_send_reminder'),
     path('export-csv/', views.invoice_export_csv, name='invoice_export_csv'),
     path('bulk-action/', views.invoice_bulk_action, name='invoice_bulk_action'),
     path('<int:pk>/payments/add/', views.payment_create, name='payment_create'),

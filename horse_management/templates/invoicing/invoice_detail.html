@@ -100,6 +100,15 @@
                 <div class="more-menu-panel" x-ref="panel" x-show="open" x-cloak x-transition.opacity
                      role="menu" aria-label="More actions for {{ invoice.invoice_number }}"
                      @keydown="onPanelKey($event)" @click="close(false)">
+                    {% if can_edit and can_remind %}
+                    <form method="post" action="{% url 'invoice_send_reminder' invoice.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" role="menuitem" class="more-menu-item" data-testid="send-reminder">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+                            Send reminder now
+                        </button>
+                    </form>
+                    {% endif %}
                     {% if can_edit and invoice.status != 'cancelled' and invoice.status != 'paid' %}
                     <a href="{% url 'invoice_update' invoice.pk %}" role="menuitem" class="more-menu-item">
                         <svg aria-hidden="true"><use href="#i-pencil"/></svg>

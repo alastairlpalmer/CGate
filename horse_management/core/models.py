@@ -1998,6 +1998,16 @@ class BusinessSettings(models.Model):
     # Kinds of reminder the yard has switched off on its dashboard
     # (core/reminders.py). A list of keys; the farrier is off to start.
     muted_reminders = models.JSONField(default=default_muted_reminders, blank=True)
+    # Overdue invoice reminders (invoicing/reminders.py). Blank: the
+    # server's OVERDUE_REMINDER_DAYS (1, 14, 30).
+    overdue_reminder_days = models.CharField(
+        'Reminder days', max_length=40, blank=True,
+        help_text='Days after the due date, for example 1, 14, 30. The last one is the final notice.',
+    )
+    overdue_reminder_message = models.TextField(
+        'Reminder message', blank=True, max_length=1000,
+        help_text='Added to every overdue reminder email, for example who to call.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

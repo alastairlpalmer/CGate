@@ -144,6 +144,25 @@ the page name in its top bar, so the heading is for wide screens only.{% endcomm
                     </label>
                 </div>
 
+                <div class="settings-subhead">
+                    <span class="settings-subhead-title">Payment reminders</span>
+                </div>
+                <div class="settings-fields" data-testid="reminder-settings">
+                    <div>
+                        <label for="{{ biz_form.overdue_reminder_days.id_for_label }}" class="settings-label">Reminder days</label>
+                        {{ biz_form.overdue_reminder_days }}
+                        {% if biz_form.overdue_reminder_days.errors %}
+                        <p class="mt-1 text-sm text-error-red" role="alert">{{ biz_form.overdue_reminder_days.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-xs text-sage mt-0.5">Days after the due date, for example 1, 14, 30. The last one is the final notice. Blank: 1, 14, 30.</p>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label for="{{ biz_form.overdue_reminder_message.id_for_label }}" class="settings-label">Reminder message</label>
+                        {{ biz_form.overdue_reminder_message }}
+                        <p class="text-xs text-sage mt-0.5">Added to every reminder email, for example who to call. To stop reminders for one owner, use Pause overdue reminders on the owner.</p>
+                    </div>
+                </div>
+
                 <div class="settings-save-bar" :class="dirty && 'is-dirty'">
                     <span class="text-xs text-saddle font-medium" x-show="dirty" x-cloak role="status">Unsaved changes</span>
                     <button type="submit" class="btn-primary btn-sm ml-auto">Save</button>

@@ -206,6 +206,8 @@ def send_invoice_overdue_reminder(invoice, stage=1, final=False):
         'stage': stage,
         'reminder_label': reminder_label,
         'final': final,
+        # The yard's own words (Settings → Billing), in every reminder.
+        'note': business.overdue_reminder_message.strip(),
     }
 
     html_content = render_to_string('notifications/email/invoice_overdue.html', context)

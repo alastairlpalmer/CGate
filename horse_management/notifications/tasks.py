@@ -192,8 +192,9 @@ def send_overdue_invoice_reminders():
     """
     Send stepped reminders for overdue invoices, then stop.
 
-    settings.OVERDUE_REMINDER_DAYS lists the days past the due date at which
-    each reminder goes out (default 1, 14, 30). The last one is worded as a
+    invoicing.reminders.reminder_days() lists the days past the due date at
+    which each reminder goes out: Settings → Billing, or the server's
+    OVERDUE_REMINDER_DAYS (default 1, 14, 30). The last one is worded as a
     final notice. After it, nothing more is sent: the yard follows up in
     person. An owner with pause_reminders set gets none.
 
@@ -205,7 +206,8 @@ def send_overdue_invoice_reminders():
     # BST now.date() is still yesterday and an invoice due yesterday would
     # not yet count as overdue.
     today = timezone.localdate()
-    schedule = list(settings.OVERDUE_REMINDER_DAYS)
+    from invoicing.reminders import reminder_days
+    schedule = reminder_days()
     gap_cutoff = now - timedelta(days=REMINDER_MIN_GAP_DAYS)
     reminders_sent = 0
 

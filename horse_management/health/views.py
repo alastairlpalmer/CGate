@@ -28,6 +28,8 @@ from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.dateformat import format as date_format
+from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from billing.forms import BulkChargeForm
@@ -56,6 +58,7 @@ from .forms import (
     BulkWormEggCountForm,
     BulkWormingTreatmentForm,
     FarrierVisitForm,
+    MeasurementForm,
     MedicalConditionForm,
     VaccinationForm,
     VaccinationTypeForm,
@@ -69,6 +72,7 @@ from .models import (
     FoalNote,
     PregnancyScan,
     FarrierVisit,
+    HorseMeasurement,
     MedicalCondition,
     Vaccination,
     VaccinationType,
@@ -1196,6 +1200,75 @@ class MedicalConditionListView(FeatureAccessMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['horses'] = Horse.objects.filter(is_active=True).only('pk', 'name')
         return context
+
+
+def _sync_horse_height(measurement):
+    """A height on the latest measured day is the horse's height now."""
+    from .models import HorseMeasurement
+    if not measurement.height_inches:
+        return
+    latest = (HorseMeasurement.objects.filter(horse=measurement.horse, height_inches__isnull=False)
+              .order_by('-date', '-created_at').first())
+    if latest and latest.pk == measurement.pk and measurement.horse.height_inches != measurement.height_inches:
+        measurement.horse.height_inches = measurement.height_inches
+        measurement.horse.save(update_fields=['height_inches'])
+
+
+class MeasurementCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):
+    feature = 'health'
+    model = HorseMeasurement
+    form_class = MeasurementForm
+    template_name = 'health/measurement_form.html'
+    dashboard_type = ''
+    popup_intro = 'Fill in what you measured today. Leave the others blank.'
+
+    def get_initial(self):
+        initial = super().get_initial()
+        horse_id = self.request.GET.get('horse')
+        if horse_id:
+            initial['horse'] = horse_id
+        initial['date'] = timezone.localdate()
+        return initial
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        _sync_horse_height(form.instance)
+        messages.success(self.request, f"Measurement for {form.instance.horse.name} recorded.")
+        return response
+
+    def get_success_url(self):
+        url = super().get_success_url()
+        if url == reverse('health_dashboard'):
+            return reverse('horse_detail', args=[self.object.horse_id])
+        return url
+
+
+class MeasurementUpdateView(PopupFormMixin, FeatureAccessMixin, UpdateView):
+    feature = 'health'
+    model = HorseMeasurement
+    form_class = MeasurementForm
+    template_name = 'health/measurement_form.html'
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        _sync_horse_height(form.instance)
+        messages.success(self.request, f"Measurement for {form.instance.horse.name} updated.")
+        return response
+
+    def get_success_url(self):
+        return reverse('horse_detail', args=[self.object.horse_id]) + '#measurements'
+
+
+@feature_required('health')
+@require_POST
+def measurement_delete(request, pk):
+    measurement = get_object_or_404(HorseMeasurement.objects.select_related('horse'), pk=pk)
+    horse = measurement.horse
+    measurement.delete()
+    messages.success(request, f"Measurement of {date_format(measurement.date, 'j M Y')} deleted.")
+    if request.headers.get('HX-Request'):
+        return popup_saved_response()
+    return redirect(reverse('horse_detail', args=[horse.pk]) + '#measurements')
 
 
 class MedicalConditionCreateView(PopupFormMixin, HealthRecordSuccessUrlMixin, FeatureAccessMixin, CreateView):

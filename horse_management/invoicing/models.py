@@ -555,6 +555,9 @@ class Payment(models.Model):
         help_text="e.g. bank reference or cheque number"
     )
     credit_note_number = models.CharField(max_length=20, null=True, blank=True, unique=True, editable=False)
+    # A payment brought in from Xero (xero_integration.services): its
+    # PaymentID, so the nightly check records each one once.
+    xero_payment_id = models.CharField(max_length=50, null=True, blank=True, unique=True, editable=False)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     voided_at = models.DateTimeField(null=True, blank=True, editable=False)

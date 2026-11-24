@@ -1444,6 +1444,13 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
             context['foal_notes'] = list(foal_record.foal_notes.all())
             context['foal_note_form'] = FoalNoteForm(initial={'date': timezone.localdate()})
 
+        # Weight and condition (health/measurements.py): only once there is
+        # one; the Record card's Weight tile adds the first.
+        context['measurements'] = None
+        if has_feature_access(self.request.user, 'health', LEVEL_VIEW):
+            from health.measurements import summary
+            context['measurements'] = summary(horse)
+
         # Training and breeding are not in the Timeline: a role that may see
         # them has their own cards on this page (Training, In foal, Breeding
         # history), so the Timeline does not show them a second time (UX

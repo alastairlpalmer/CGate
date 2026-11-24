@@ -19,6 +19,7 @@ from .models import (
     FoalNote,
     PregnancyScan,
     FarrierVisit,
+    HorseMeasurement,
     MedicalCondition,
     Vaccination,
     VaccinationType,
@@ -377,6 +378,65 @@ class MedicalConditionForm(ActiveHorseFormMixin, forms.ModelForm):
             'status': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
+
+
+class MeasurementForm(ActiveHorseFormMixin, forms.ModelForm):
+    """Weight, height, body condition and girth on one day. Height is typed
+    in hands (16.2), as on the horse's own form."""
+
+    height = forms.CharField(
+        label='Height (hh)', required=False, max_length=10,
+        widget=forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'e.g. 16.2', 'inputmode': 'decimal'}),
+        help_text='In hands: 16.2 means 16 hands and 2 inches.',
+    )
+
+    class Meta:
+        model = HorseMeasurement
+        fields = ['horse', 'date', 'weight_kg', 'height', 'body_condition', 'girth_cm', 'notes']
+        widgets = {
+            'horse': forms.Select(attrs={'class': 'form-select'}),
+            'date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'weight_kg': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.5', 'inputmode': 'decimal'}),
+            'body_condition': forms.Select(attrs={'class': 'form-select'}),
+            'girth_cm': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.5', 'inputmode': 'decimal'}),
+            'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+        }
+        help_texts = {
+            'weight_kg': 'From a weighbridge or a weight tape.',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk and self.instance.height_inches:
+            from core.identity import format_height
+            self.initial['height'] = format_height(self.instance.height_inches).replace(' hh', '')
+        self.fields['body_condition'].choices = [('', '---------')] + [
+            (value, label) for value, label in HorseMeasurement.BODY_CONDITION_CHOICES]
+
+    def clean_height(self):
+        from django.core.exceptions import ValidationError
+
+        from core.identity import parse_height
+        try:
+            return parse_height(self.cleaned_data.get('height'))
+        except ValidationError as e:
+            raise forms.ValidationError(e.messages)
+
+    def clean_date(self):
+        day = self.cleaned_data['date']
+        if day and day > timezone.localdate():
+            raise forms.ValidationError('A measurement cannot be in the future.')
+        return day
+
+    def clean(self):
+        data = super().clean()
+        if not any(data.get(f) not in (None, '') for f in ('weight_kg', 'height', 'body_condition', 'girth_cm')):
+            raise forms.ValidationError('Enter at least one of weight, height, body condition or girth.')
+        return data
+
+    def save(self, commit=True):
+        self.instance.height_inches = self.cleaned_data.get('height')
+        return super().save(commit=commit)
 
 
 class VetVisitForm(ServicePickerMixin, ActiveHorseFormMixin, forms.ModelForm):

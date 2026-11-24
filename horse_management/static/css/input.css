@@ -3069,6 +3069,46 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     .ped-node, .ped-gap path { transition: none; }
 }
 
+/* The tree in the horse page's banner: shorter rows and boxes. The page
+   horse's own box is left out (its name is beside the tree), as the
+   narrow layout above does; another horse's tree keeps its box. Not in a
+   layer, so it wins over the container query. */
+.horse-hero-ped .ped-tree { --ped-row: 2.45rem; }
+.horse-hero-ped .ped-tree.ped-g3 { --ped-row: 2.2rem; }
+.horse-hero-ped .ped.is-page-horse .ped-c0,
+.horse-hero-ped .ped.is-page-horse .ped-gap0 { display: none; }
+.horse-hero-ped .ped.is-page-horse .ped-tree { grid-template-columns: 0 0 minmax(0, 1fr) 1.25rem minmax(0, 1fr); }
+.horse-hero-ped .ped.is-page-horse .ped-tree.ped-g3 {
+    min-width: 22rem;
+    grid-template-columns: 0 0 minmax(6.5rem, 1fr) 1rem minmax(6.5rem, 1fr) 1rem minmax(6.5rem, 1fr);
+}
+.horse-hero-ped .ped-node { padding: 2px 8px; margin-block: 2px; }
+/* Grandparents: their place in the tree says "Sire's dam"; no label. */
+.horse-hero-ped .ped-k2 .ped-rel { display: none; }
+.horse-hero-ped .ped-rel { font-size: 9.5px; }
+.horse-hero-ped .ped-name { font-size: .8125rem; }
+.horse-hero-ped .ped-meta { font-size: .72rem; }
+.horse-hero-ped .ped ~ div { margin-top: .5rem; font-size: .75rem; }
+
+/* The weight chart on the horse page (templates/horses/partials/
+   measurements_card.html): one series in forest, a 2px line, 8px points
+   with a 2px surface ring, a hit circle larger than the point, recessive
+   grid and axis text. Text uses ink tokens, never the series colour. */
+@layer components {
+    .measure-chart { @apply max-w-xl; }
+    .measure-plot-row { @apply flex items-start gap-2; }
+    .measure-y { @apply flex flex-col justify-between shrink-0 text-xs text-sage tabular-nums text-right py-0.5; min-width: 3.5rem; }
+    .measure-plot { @apply relative flex-1 min-w-0; margin-right: 4.5rem; }
+    .measure-x { @apply flex justify-between text-xs text-sage tabular-nums mt-1; margin-left: calc(3.5rem + 0.5rem); margin-right: 4.5rem; }
+    .measure-grid { stroke: --theme(--color-light-sage); stroke-width: 1; }
+    .measure-line { stroke: --theme(--color-forest); stroke-width: 2; stroke-linecap: round; }
+    .measure-dot { fill: --theme(--color-forest); stroke: #fff; stroke-width: 2; }
+    .measure-hit { fill: transparent; }
+    .measure-point:hover .measure-dot { r: 5; }
+    .measure-value { @apply absolute text-xs font-semibold text-charcoal tabular-nums whitespace-nowrap; left: calc(100% + 0.5rem); transform: translateY(-50%); }
+}
+
+
 /* Yesterday / Today / Tomorrow under a date box (static/js/date_quick.js). */
 @layer components {
     /* "More details" in a pop-up form (includes/popup_form.html): the
@@ -3094,22 +3134,27 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     .date-quick-btn { min-height: 2.25rem; padding-inline: 0.75rem; }
 }
 
-/* Horse page banner (templates/horses/horse_detail.html, 21 Nov 2026): the
-   photo, the name and buttons, the current placement and the pedigree.
-   Phone: the photo beside the name, then the placement and the tree full
-   width. From sm the photo spans the name and the placement, and the tree
-   goes under them; from xl the tree takes the space beside the placement. */
+/* Horse page banner (templates/horses/horse_detail.html, 21 Nov 2026;
+   the tree moved beside the name on 23 Nov 2026, so it no longer makes the
+   banner taller). Areas: photo, head (name, summary, owner), actions (the
+   buttons), place (current placement), ped (pedigree tree).
+   Phone: the photo beside the name and buttons; placement and tree full
+   width under them. From sm: the buttons at the top right, the photo
+   beside the name and the placement, the tree under them. From xl: the
+   tree in its own column between the name and the buttons, as tall as
+   the photo. */
 @layer components {
     .horse-hero {
         display: grid;
         gap: 1rem 1.5rem;
         grid-template-columns: auto minmax(0, 1fr);
-        grid-template-areas: "photo head" "place place" "ped ped";
+        grid-template-areas: "photo head" "photo actions" "place place" "ped ped";
         align-items: start;
         padding: 1.25rem;
     }
     .horse-hero-photo { grid-area: photo; }
     .horse-hero-head { grid-area: head; min-width: 0; }
+    .horse-hero-actions { grid-area: actions; min-width: 0; }
     .horse-hero-place { grid-area: place; }
     .horse-hero-ped { grid-area: ped; }
     .horse-hero-place, .horse-hero-ped { @apply border-t border-light-sage pt-4; }
@@ -3138,16 +3183,24 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     .hero-ped-line { @apply mt-1 text-sm text-charcoal-light; }
 }
 @media (min-width: 40rem) {
-    .horse-hero { grid-template-areas: "photo head" "photo place" "ped ped"; }
+    .horse-hero {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas: "photo head actions" "photo place place" "ped ped ped";
+    }
     .horse-hero-img { width: 11rem; height: 11rem; }
     .hero-ped-line { display: none; }
 }
 @media (min-width: 80rem) {
     .horse-hero {
-        grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.35fr);
-        grid-template-areas: "photo head head" "photo place ped";
+        grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.1fr) auto;
+        /* A tall tree grows the second row, so the placement stays right
+           under the name; the photo fills the banner's height. */
+        grid-template-rows: auto 1fr;
+        grid-template-areas: "photo head ped actions" "photo place ped actions";
     }
-    .horse-hero-img { width: 14rem; height: 14rem; }
+    .horse-hero-photo { align-self: stretch; }
+    .horse-hero-img { width: 14rem; height: 100%; min-height: 14rem; }
+    .horse-hero-ped { @apply border-t-0 pt-0 border-l pl-6; align-self: stretch; }
 }
 
 

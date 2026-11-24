@@ -55,6 +55,10 @@
     <p>Please arrange payment at your earliest convenience.</p>
     {% endif %}
 
+    {% if note %}
+    <p>{{ note|linebreaksbr }}</p>
+    {% endif %}
+
     {% if business.bank_details %}
     <h3>Payment Details</h3>
     <p>{{ business.bank_details|linebreaksbr }}</p>
