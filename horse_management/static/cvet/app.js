@@ -850,6 +850,13 @@
         return setMeta('draft', null);
     }
 
+    // The note box is as high as the note: no small box to scroll in.
+    function growNote() {
+        var box = $('note');
+        box.style.height = 'auto';
+        box.style.height = Math.max(box.scrollHeight + 2, 76) + 'px';
+    }
+
     function draftIsEmpty() {
         var draft = state.draft;
         return !draft || (!draft.lines.length && !draft.photo && !draft.audio && !draft.followUp && !$('note').value.trim());
@@ -890,6 +897,7 @@
         renderLines();
         renderFollowUps();
         renderHistory();
+        growNote();
     }
 
     function addLine(line) {
@@ -2376,7 +2384,7 @@
             renderFollowUps();
             persistDraft();
         });
-        $('note').addEventListener('input', function () { renderSuggestion(); persistDraft(); });
+        $('note').addEventListener('input', function () { growNote(); renderSuggestion(); persistDraft(); });
         $('photo').addEventListener('change', onPhotoChosen);
         $('record').addEventListener('click', toggleRecording);
         $('save').addEventListener('click', saveDraft);

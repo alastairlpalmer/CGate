@@ -69,7 +69,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
             <ul id="archived-clients" class="list card"></ul>
         </details>
         <div id="no-clients" class="card pad" hidden>
-            <p class="strong">No clients on this phone.</p>
+            <p class="strong">No clients on this <span class="dev"></span>.</p>
             <button id="download-first" type="button" class="button primary">Download clients and horses</button>
             <p class="muted">You need a signal for this. After that, the app works with no signal.</p>
         </div>
@@ -236,12 +236,12 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
             <li><a class="horse go" href="{{ config.bills_url }}"><span class="text"><span class="strong">Bills and reports</span><small>Paid and not paid, statements, work done, the price list file. Needs a signal.</small></span></a></li>
         </ul>
         <details class="fold card">
-            <summary><span class="text">This phone</span></summary>
+            <summary><span class="text">This <span class="dev"></span></span></summary>
             <dl id="details"></dl>
         </details>
         <ul class="list card menu">
-            <li><button id="sign-out" type="button" class="horse go"><span class="text"><span class="strong">Sign out</span><small>Removes the clients, the horses and every note from this phone, and ends the sign-in. Needs a signal.</small></span></button></li>
-            <li><button id="clear" type="button" class="horse go danger"><span class="text"><span class="strong">Clear this phone</span><small>Removes them and keeps the sign-in.</small></span></button></li>
+            <li><button id="sign-out" type="button" class="horse go"><span class="text"><span class="strong">Sign out</span><small>Removes the clients, the horses and every note from this <span class="dev"></span>, and ends the sign-in. Needs a signal.</small></span></button></li>
+            <li><button id="clear" type="button" class="horse go danger"><span class="text"><span class="strong">Clear this <span class="dev"></span></span><small>Removes them and keeps the sign-in.</small></span></button></li>
         </ul>
         <p class="muted">Notes that were sent stay in the practice's records.</p>
     </section>

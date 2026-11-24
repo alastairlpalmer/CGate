@@ -15,6 +15,7 @@
     body { font-size: 14px; }
     .bar, .status { padding-left: calc(var(--side) + 32px); padding-right: 32px; }
     .bar { min-height: 44px; }
+    .dev::after { content: "computer"; }
     .status.toast { left: calc(50% + var(--side) / 2); bottom: 24px; }
     /* The name is on the left edge. The TEST label stays here. */
     .bar h1 { font-size: 0; }
