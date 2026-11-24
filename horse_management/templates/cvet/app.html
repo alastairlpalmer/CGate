@@ -119,6 +119,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
         <p id="horse-ids" class="muted"></p>
         <p id="horse-payers" class="muted"></p>
         <p id="horse-due"></p>
+        <button id="horse-last" type="button" class="link calm" hidden></button>
 
         {# Two columns on a wide screen: the note, and the horse's history beside it. #}
         <div class="cols"><div>
@@ -175,7 +176,6 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
     <section id="view-visits" class="view" aria-label="Visits" hidden>
         <div class="head">
             <h2>Visits</h2>
-            <button id="visit-filter" type="button" class="chip filter" hidden></button>
         </div>
         <p id="visits-empty" class="empty" hidden>No visits yet. Tap a client, then a horse, to start one.</p>
         <div id="open-visits-box" hidden>
@@ -325,6 +325,8 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
         <h2 id="horse-form-title">Add horse</h2>
         <label for="horse-form-name">Name</label>
         <input id="horse-form-name" type="text" maxlength="200" autocomplete="off">
+        <label for="horse-form-about">Description</label>
+        <input id="horse-form-about" type="text" maxlength="100" autocomplete="off" placeholder="Bay mare, 12yo">
         <label for="horse-form-owner">Owner</label>
         <input id="horse-form-owner" type="text" maxlength="200" autocomplete="off">
         <div class="row">

@@ -244,6 +244,8 @@ async function openVisit(page, clientName) {
   await page.fill('#client-form-name', 'Marsh Stud');
   await page.selectOption('#client-form-kind', 'stud');
   await page.fill('#client-form-contact', 'Sam Marsh');
+  await page.fill('#client-form-phone', '07700 900123');
+  await page.fill('#client-form-address', 'Marsh Lane, Wettenhall');
   await page.screenshot({ path: path.join(OUT, '3-client-form.png') });
   await page.click('#client-form button[type=submit]');
   await page.waitForFunction(() => document.getElementById('client-name').textContent === 'Marsh Stud');
@@ -251,6 +253,7 @@ async function openVisit(page, clientName) {
   await page.click('#horse-add');
   await page.fill('#horse-form-name', 'Juniper');
   await page.fill('#horse-form-owner', 'Sam Marsh');
+  await page.fill('#horse-form-about', 'Bay mare, 12yo');
   await page.click('#horse-form button[type=submit]');
   await page.waitForFunction(() => document.querySelectorAll('#horses .horse').length === 1);
   check('a horse is added to the new client with no signal', (await horseRow(page, 'Juniper').textContent()).includes('not sent yet'));
@@ -261,6 +264,19 @@ async function openVisit(page, clientName) {
   await page.fill('#note', 'In foal. Scan again in a month.');
   await page.click('#save');
   await page.waitForFunction(() => document.getElementById('unsent').textContent === '5 notes not sent');
+  // The client can be reached in one tap, and the way to it found.
+  const reach = await page.locator('#client-contact a').evaluateAll((links) => links.map((link) => link.getAttribute('href')));
+  check('one tap calls the client, and one finds the way', reach[0] === 'tel:07700900123' && reach[1].startsWith('https://www.google.com/maps/search/?api=1&query=Marsh%20Lane'), reach.join(' '));
+  // A note that has not gone can be opened again and put right.
+  await horseRow(page, 'Juniper').click();
+  check('the horse says what it looks like', (await text(page, '#horse-ids')) === 'Bay mare, 12yo', await text(page, '#horse-ids'));
+  await page.locator('#history .link', { hasText: 'Change' }).click();
+  await page.waitForFunction(() => document.getElementById('note').value.startsWith('In foal'));
+  check('a note that is not sent opens again as it was', (await page.locator('#lines > li').count()) === 1 && (await text(page, '#lines-total')) === 'Total £40.00' && (await text(page, '#unsent')) === '4 notes not sent', await text(page, '#lines-total'));
+  await page.fill('#note', 'In foal, 45 days. Scan again in a month.');
+  await page.click('#save');
+  await page.waitForFunction(() => document.getElementById('unsent').textContent === '5 notes not sent');
+  check('saved again, it is one note, as before', true);
 
   // ── Visits: one open visit for each client, each folded to a line.
   await tab(page, 'visits');
@@ -420,6 +436,7 @@ async function openVisit(page, clientName) {
   check('the history shows the note once, with its photo and recording to open', (await page.locator('#history .entry').count()) === 1 && (await page.locator('#history .file .link').count()) === 2);
   await page.screenshot({ path: path.join(OUT, '4-horse-history.png'), fullPage: true });
   // One tap for the items of the last note: at today's prices.
+  check('the top of the horse says when it was last seen, and what was done', (await text(page, '#horse-last')).startsWith('Last seen today: Sedation, Flu/Tet booster'), await text(page, '#horse-last'));
   check('the horse offers the items of its last note', (await text(page, '#repeat')).includes('Sedation, Flu/Tet booster'), await text(page, '#repeat'));
   await page.click('#repeat');
   check('one tap puts them on the note, at the price of the list', (await page.locator('#lines > li').count()) === 2 && (await text(page, '#lines-total')) === 'Total £92.50' && await page.locator('#repeat').isHidden(), await text(page, '#lines-total'));

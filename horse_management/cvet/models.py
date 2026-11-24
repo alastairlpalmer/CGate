@@ -227,6 +227,8 @@ class ClientHorse(models.Model):
     name = models.CharField(max_length=200)
     microchip = models.CharField(max_length=50, blank=True)
     passport = models.CharField(max_length=100, blank=True)
+    # What the horse looks like, in the vet's words: "Bay mare, 12yo".
+    about = models.CharField(max_length=100, blank=True)
     # Who owns the horse, as the client says. Text only: not a C-gate owner.
     owner_name = models.CharField(max_length=200, blank=True)
     is_active = models.BooleanField(default=True)

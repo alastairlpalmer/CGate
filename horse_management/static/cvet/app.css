@@ -102,7 +102,6 @@ button.chip::after { content: ""; position: absolute; left: -6px; right: -6px; t
 .chip.count::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
 .chip.pending::before { background: var(--accent); }
 .chip.off, .chip.pending { border-color: rgba(160, 82, 45, .5); background: var(--accent-tint); color: var(--accent); }
-.chip.filter { max-width: 60%; overflow: hidden; text-overflow: ellipsis; color: var(--brand); }
 
 .status { margin: 0; padding: 8px 16px; background: var(--cream); border-bottom: 1px solid var(--cream-line); color: var(--ink-light); font-size: 14px; }
 .status:empty { display: none; }
@@ -288,6 +287,11 @@ small { color: var(--muted); font-size: 13px; }
 #horse-ids:not(:empty) + #horse-payers:not(:empty)::before, #client-line:not(:empty) + #client-contact:not(:empty)::before { content: " \00b7  "; }
 #horse-due { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 6px; }
 #horse-due:empty { display: none; }
+#horse-last { display: block; min-height: 32px; margin: 2px 0 -2px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+/* Who to ask for, and the ways to reach the client: each link takes a finger. */
+#client-contact > * + *::before { content: " \00b7  "; color: var(--muted); }
+#client-contact a { position: relative; color: var(--brand); font-weight: 500; }
+#client-contact a::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 40px; transform: translateY(-50%); }
 
 /* A list of things to do, as C-gate's menu: each row says its state
    under its name. The lines under a name may wrap here. */

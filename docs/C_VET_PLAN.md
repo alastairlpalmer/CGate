@@ -746,6 +746,36 @@ Every screen and state was captured again on a phone and on a computer (44 pictu
 | Clients said nothing of money. | Each client's line says what it still has to pay. A count at the top, "£282.50 to pay", goes to Invoices with the unpaid ones shown. |
 | "To speak the note, tap the microphone on the keyboard." showed on a computer. | On a phone or a tablet only. |
 
+## 7n. Change a note, reach a client, and the last time a horse was seen
+
+| Part | What the vet does |
+|---|---|
+| **Change** on a note that has not gone | Before, a note that was not sent could only be removed. **Change** opens it again as it was: its items, its words, its recheck date, its photo and its recording. It leaves the list and is the note in progress, which the phone keeps as it is typed. **Save** puts it back. |
+| **Call, write, find the way** | Under a client's name: the contact, then the phone number (one tap calls), the email address (one tap writes), and **Directions** (the address in a map). On a computer they are in the client's Details card. |
+| **Last seen** | At the top of a horse: "Last seen today: Sedation, Flu/Tet booster ›". A tap goes down to the history. On a computer the history is beside the note, so the line is not shown. |
+| **A description for a horse of the practice's own client** | The horse form has **Description** ("Bay mare, 12yo"). It shows under the horse's name, as the colour, sex and age of a C-gate horse do (section 7l). |
+
+### When a note can be changed
+
+Decision 14 stands: a note that was sent is never changed. **Change** is offered only for a note that the practice's records cannot hold:
+
+- a note that the phone has never tried to send (it was saved with no signal), or
+- a note that the server refused.
+
+A note that was sent and got no answer is not offered: the server may hold it, and a changed copy would be a second note. It can still be removed, as before.
+
+### Taken out
+
+The filter of Visits by client, and its chip. Nothing set it since a client has its own Timeline (section 7l).
+
+### The size of the download
+
+48 KB of the 50 KB limit. The code to mark an invoice as paid moved to `online.js` (it needs a signal). **The next function for the phone cannot go in the files that open the app as they are.** The choices, for the owner of C-gate: a higher limit; or `online.js` fetched in the background at the first open, which frees the forms for a client and a horse to move there too (about 1.5 KB), at the price that a phone which has never had a signal after its first open has no such form.
+
+| Record | What it holds |
+|---|---|
+| `ClientHorse.about` | What the horse looks like, in the vet's words. |
+
 ## 8. The test on Tim's phone
 
 ### Set-up (once, by an administrator)

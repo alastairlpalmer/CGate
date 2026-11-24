@@ -96,7 +96,8 @@
     .cols > :last-child > h3:first-child { margin-top: 10px; }
 
     /* A client: how to reach it is in a card of its own; the line under its name is short. */
-    #client-contact { display: none; }
+    /* The history is beside the note here: no line to say when it was last seen. */
+    #client-contact, #horse-last { display: none !important; }
     .seg { max-width: 420px; }
     .seg-tab { min-height: 28px; font-size: 13px; }
     .day { font-size: 11.5px; }
