@@ -279,12 +279,14 @@ small { color: var(--muted); font-size: 13px; }
 #client-horses > .row { margin: 6px 0; }
 #client-horses > .list.card { margin-top: 6px; }
 #bill-body .item { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; font-size: 15px; }
-#bill-body h3 { margin: 12px 0 2px; }
+#bill-body .head { margin: 12px 0 2px; }
+#bill-body .head .amount { color: var(--brand); font-size: 13px; }
+.fold > summary .due { margin-right: -2px; }
 
 /* Under a horse's name: where it is and who owns it, on one line. */
 #horse-ids, #horse-payers, #client-line, #client-contact { display: inline; }
 #horse-ids:not(:empty) + #horse-payers:not(:empty)::before, #client-line:not(:empty) + #client-contact:not(:empty)::before { content: " \00b7  "; }
-#horse-due { margin-top: 6px; }
+#horse-due { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 6px; }
 #horse-due:empty { display: none; }
 
 /* A list of things to do, as C-gate's menu: each row says its state
@@ -339,6 +341,7 @@ small { color: var(--muted); font-size: 13px; }
 .lines > li { padding: 8px 0; }
 .line-controls { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
 .step { flex: 0 0 44px; width: 44px; height: 44px; border: 1px solid var(--edge); border-radius: var(--radius-btn); background: #fff; color: var(--ink-light); font-size: 20px; cursor: pointer; }
+.step.off { color: var(--bad); }
 .qty { flex: 0 0 24px; text-align: center; font-weight: 600; }
 .line-controls input { flex: 1 1 0; min-width: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .line-total { flex: 0 0 76px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
