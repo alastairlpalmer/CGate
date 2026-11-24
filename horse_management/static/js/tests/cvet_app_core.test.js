@@ -403,3 +403,15 @@ test('oftenUsed: the active prices used on 3 notes or more, the most used first'
     assert.deepEqual(core.oftenUsed(prices, entries).map((price) => price.name), ['Booster', 'Sedation']);
     assert.deepEqual(core.oftenUsed(prices, []), []);
 });
+
+test('dayLabel and byDay: the headings of a timeline, the newest day first', () => {
+    assert.equal(core.dayLabel('2026-11-24', '2026-11-24'), 'Today');
+    assert.equal(core.dayLabel('2026-11-23', '2026-11-24'), 'Yesterday');
+    assert.equal(core.dayLabel('2026-11-16', '2026-11-24'), 'Mon 16 Nov');
+    assert.equal(core.dayLabel('2025-12-31', '2026-01-01'), 'Yesterday');
+    assert.equal(core.dayLabel('2025-11-16', '2026-11-24'), 'Sun 16 Nov 2025');
+    const groups = core.byDay([{ day: '2026-11-16', n: 1 }, { day: '2026-11-24', n: 2 }, { day: '2026-11-16', n: 3 }]);
+    assert.deepEqual(groups.map((group) => [group.day, group.rows.map((row) => row.n)]),
+        [['2026-11-24', [2]], ['2026-11-16', [1, 3]]]);
+    assert.deepEqual(core.byDay([]), []);
+});

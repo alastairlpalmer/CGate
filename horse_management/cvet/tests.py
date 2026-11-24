@@ -269,6 +269,7 @@ class YardDownloadTests(YardCase):
             'name': 'Bramble',
             'microchip': '985100012345678',
             'passport': '826002',
+            'about': '',
             'location': 'Top Field',
             'owner': 'Jo Smith',
             'payers': [{'name': 'Jo Smith', 'share': '100.00'}],

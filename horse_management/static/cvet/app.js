@@ -411,7 +411,7 @@
         badge.textContent = String(open);
     }
 
-    var VIEWS = ['clients', 'client', 'horse', 'visits', 'prices', 'phone'];
+    var VIEWS = ['clients', 'client', 'horse', 'visits', 'bills', 'prices', 'phone'];
 
     // A computer, or a tablet on its side: the screen has room for two
     // parts. The clients stay on the left while one client, or one
@@ -468,6 +468,7 @@
         render();
         window.scrollTo(0, 0);
         if (view === 'visits') loadVisitList();
+        if (view === 'bills') loadBills();
     }
 
     function render() {
@@ -481,6 +482,7 @@
         else if (state.view === 'client') renderClient();
         else if (state.view === 'horse') renderHorse();
         else if (state.view === 'visits') renderVisits();
+        else if (state.view === 'bills') renderBills();
         else if (state.view === 'prices') renderPrices();
         else if (state.view === 'phone') renderPhone();
         desk('view');
@@ -610,6 +612,7 @@
         state.client = id;
         state.selecting = false;
         state.selected = {};
+        state.clientTab = 'horses';
         $('search').value = '';
         show('client');
     }
@@ -636,6 +639,31 @@
         banner.hidden = entries.length === 0;
         banner.textContent = 'Visit open · ' + countText(groups.length, 'horse', 'horses') + ' · ' +
             core.money(groups.reduce(function (sum, group) { return sum + group.total; }, 0));
+
+        // Three ways to look at one client. The number on Invoices: not paid yet.
+        var tab = state.clientTab || 'horses';
+        var unpaid = bills().filter(function (bill) { return bill.client_id === client.id && !bill.paid_on; }).length;
+        fill($('client-tabs'), [
+            ['horses', 'Horses', String(horses.length)], ['timeline', 'Timeline', ''],
+            ['bills', 'Invoices', unpaid ? String(unpaid) : '']
+        ].map(function (choice) {
+            var node = button('seg-tab' + (tab === choice[0] ? ' on' : ''), choice[1], function () {
+                state.clientTab = choice[0];
+                state.selecting = false;
+                state.selected = {};
+                renderClient();
+                if (choice[0] !== 'horses') { loadVisitList(); loadBills(); }
+            });
+            node.setAttribute('role', 'tab');
+            node.setAttribute('aria-selected', tab === choice[0] ? 'true' : 'false');
+            if (choice[2]) node.appendChild(el('span', 'n' + (choice[0] === 'bills' ? ' hot' : ''), choice[2]));
+            return node;
+        }));
+        $('client-horses').hidden = tab !== 'horses';
+        $('client-timeline').hidden = tab !== 'timeline';
+        $('client-bills').hidden = tab !== 'bills';
+        fill($('client-timeline'), tab === 'timeline' ? clientTimeline(client, horses) : []);
+        fill($('client-bills'), tab === 'bills' ? clientBills(client) : []);
 
         var seen = {};
         entries.forEach(function (entry) { seen[entry.horseId] = true; });
@@ -802,6 +830,7 @@
         $('entry-message').textContent = '';
         $('history-message').textContent = '';
         state.olderNotes = null;
+        state.lastNotes = null;
         // Where Back goes: the horses of this horse's client.
         state.client = clientIdOf(horse);
         showAttachments();
@@ -881,7 +910,7 @@
         $('horse-edit').hidden = !horse.own;
         $('horse-name').textContent = horse.name;
         $('horse-ids').textContent = [
-            horse.location,
+            horse.about, horse.location,
             horse.microchip ? 'Chip ' + horse.microchip : '',
             horse.passport ? 'Passport ' + horse.passport : ''
         ].filter(Boolean).join(' · ');
@@ -964,6 +993,7 @@
         }));
         $('no-lines').hidden = draft.lines.length > 0;
         renderLinesTotal();
+        renderRepeat();
     }
 
     function renderLinesTotal() {
@@ -1020,12 +1050,45 @@
         });
         Object.keys(record).forEach(function (id) { notes.push(core.noteFromServer(record[id])); });
         notes.sort(function (a, b) { return a.when < b.when ? 1 : -1; });
-        var box = el('div', 'card');
-        notes.forEach(function (note) { box.appendChild(noteCard(note)); });
+        // A timeline: the notes of a day under its heading, the newest day first.
+        var box = el('div', 'tl');
+        core.byDay(notes).forEach(function (group) {
+            box.appendChild(el('p', 'day', core.dayLabel(group.day, today())));
+            var card = el('div', 'card timeline');
+            group.rows.forEach(function (note) { card.appendChild(noteCard(note)); });
+            box.appendChild(card);
+        });
         fill($('history'), notes.length ? [box] : []);
         $('no-history').hidden = notes.length > 0;
+        state.lastNotes = notes;
+        renderRepeat();
         $('load-history').hidden = !!state.olderNotes;
         desk('history', horse, notes.length ? box : null);
+    }
+
+    // "Same items as 24 Nov: Sedation, Flu/Tet booster": one tap puts the
+    // items of the horse's last note on this one, at today's prices. It
+    // is offered while the note has no items; the vet taps to use it.
+    function renderRepeat() {
+        var node = $('repeat');
+        var draft = state.draft;
+        var last = (state.lastNotes || []).filter(function (note) { return note.lines.length; })[0];
+        if (!draft || !last || draft.lines.length) { node.hidden = true; return; }
+        node.hidden = false;
+        node.textContent = 'Same items as ' + core.shortDate(last.day, today()) + ': ' +
+            last.lines.map(function (line) { return line.description; }).join(', ');
+        node.onclick = function () {
+            last.lines.forEach(function (line) {
+                var qty = line.qty || 1;
+                var price = state.prices.filter(function (item) { return item.isActive && item.name === line.description; })[0];
+                draft.lines.push(price ? Object.assign(lineFrom(price), { qty: qty }) : {
+                    id: newId(), priceId: '', description: line.description, qty: qty,
+                    unitPence: Math.round(line.pence / qty), vatRate: line.vatRate || '20.00', custom: true
+                });
+            });
+            renderLines();
+            persistDraft();
+        };
     }
 
     // One note, read back: when, by whom, the items, the words, the
@@ -1035,7 +1098,9 @@
         var label = note.status === 'sent' ? (note.author || 'Sent')
             : note.status === 'failed' ? 'Not sent: ' + (note.error || 'the server refused it')
             : 'Not sent yet';
-        item.appendChild(el('small', 'state ' + note.status, timeText(note.when) + ' · ' + label));
+        // The time only: the day is the heading over the note, or the day of the visit.
+        var time = new Date(note.when).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+        item.appendChild(el('small', 'state ' + note.status, time + ' · ' + label));
         note.lines.forEach(function (line) {
             var row = el('div', 'item');
             row.appendChild(el('span', '', (line.qty > 1 ? line.qty + ' × ' : '') + line.description));
@@ -1416,7 +1481,7 @@
         var open = rows.filter(function (row) { return row.open; });
         var past = rows.filter(function (row) { return !row.open; });
         fill($('open-visits'), open.map(visitFold));
-        fill($('past-visits'), past.map(visitFold));
+        fill($('past-visits'), dayGroups(past, []));
         $('open-visits-box').hidden = open.length === 0;
         $('past-visits-box').hidden = past.length === 0;
         $('visits-empty').hidden = rows.length > 0;
@@ -1595,6 +1660,216 @@
             // The notes on the phone may have changed (sent, or not): show that.
             if (state.view === 'visits') renderVisits();
         }).catch(function () { /* the list on the phone stays */ });
+    }
+
+    // ── Invoices ─────────────────────────────────────────────────────────
+    //
+    // The practice's bills, read from its records with a signal and kept
+    // on the phone, so the list is there with no signal too. A bill is
+    // made by the server when a visit is finished; this screen shows it
+    // and marks it paid.
+
+    function bills() { return state.meta.billList || []; }
+    function pence(text) { return core.toPence(text) || 0; }
+    function sumOf(list) { return list.reduce(function (sum, bill) { return sum + pence(bill.total); }, 0); }
+
+    var billListAt = 0;
+    function loadBills(now) {
+        if (!now && (Date.now() - billListAt < 30000 || !navigator.onLine)) {
+            if (!navigator.onLine) $('bills-message').textContent = 'No signal. This is the list from the last time there was one.';
+            return;
+        }
+        billListAt = Date.now();
+        request(config.billsApiUrl, {}, 20000).then(function (result) {
+            if (result.kind !== 'ok' || result.status !== 200) {
+                if (result.kind === 'offline') $('bills-message').textContent = 'No signal. This is the list from the last time there was one.';
+                return;
+            }
+            return setMeta('billList', result.data.bills).then(function () {
+                return setMeta('unbilled', result.data.unbilled);
+            }).then(function () {
+                $('bills-message').textContent = '';
+                if (state.view === 'bills') renderBills();
+                else if (state.view === 'client' && state.clientTab !== 'horses') renderClient();
+            });
+        }).catch(function () { /* the list on the phone stays */ });
+    }
+
+    // A figure with its words, as C-gate's count pills.
+    function stat(figure, words, hot) {
+        var node = el('span', 'count' + (hot ? ' hot' : ''));
+        node.appendChild(el('b', '', figure));
+        node.appendChild(document.createTextNode(' ' + words));
+        return node;
+    }
+
+    function paidPill(bill) {
+        return bill.paid_on ? el('span', 'pill done', 'Paid ' + core.shortDate(bill.paid_on, today()))
+            : el('span', 'due soon', 'Not paid');
+    }
+
+    // The bills as a list: number and day, who it is to, the amount, paid or not.
+    function billList(list, withClient) {
+        var box = el('ul', 'list card');
+        list.forEach(function (bill) {
+            var item = el('li');
+            var row = button('horse go', undefined, function () { openBill(bill); });
+            var text = el('span', 'text');
+            text.appendChild(el('span', 'strong', bill.number));
+            var horses = (bill.horses || []).length;
+            text.appendChild(el('small', '', [
+                core.shortDate(bill.date, today()), withClient ? bill.to : '', countText(horses, 'horse', 'horses')
+            ].filter(Boolean).join(' · ')));
+            row.appendChild(text);
+            row.appendChild(paidPill(bill));
+            row.appendChild(el('span', 'amount', core.money(pence(bill.total))));
+            item.appendChild(row);
+            box.appendChild(item);
+        });
+        return box;
+    }
+
+    function renderBills() {
+        var all = bills();
+        var unpaid = all.filter(function (bill) { return !bill.paid_on; });
+        var paid = all.filter(function (bill) { return bill.paid_on; });
+        var waiting = pence((state.meta.unbilled || {}).total);
+        var counts = all.length ? [
+            stat(core.money(sumOf(unpaid)), 'to pay', unpaid.length > 0),
+            stat(core.money(sumOf(paid)), 'paid')
+        ] : [];
+        if (waiting) counts.push(stat(core.money(waiting), 'not on an invoice yet'));
+        fill($('bill-counts'), counts);
+        var filter = state.billFilter || '';
+        fill($('bill-chips'), all.length ? [['', 'All'], ['unpaid', 'Not paid'], ['paid', 'Paid']].map(function (choice) {
+            var chip = button('tile' + (filter === choice[0] ? ' on' : ''), choice[1], function () {
+                state.billFilter = choice[0];
+                renderBills();
+            });
+            chip.setAttribute('aria-pressed', filter === choice[0] ? 'true' : 'false');
+            return chip;
+        }) : []);
+        var shown = filter === 'unpaid' ? unpaid : filter === 'paid' ? paid : all;
+        fill($('bills'), shown.length ? [billList(shown, true)] : [el('p', 'empty', all.length
+            ? 'No invoice fits this choice.'
+            : 'No invoices yet. An invoice is made when a visit is finished and all of its notes are sent.')]);
+    }
+
+    // One invoice: each horse's items, the total, and paid or not.
+    function openBill(bill) {
+        var day = today();
+        $('bill-title').textContent = 'Invoice ' + bill.number;
+        var nodes = [el('p', 'muted', 'To ' + bill.to + ' · ' + core.shortDate(bill.date, '0') + (bill.period_start
+            ? ' · visits from ' + core.shortDate(bill.period_start, day) + ' to ' + core.shortDate(bill.period_end, day) : ''))];
+        (bill.horses || []).forEach(function (horse) {
+            nodes.push(el('h3', '', horse.name));
+            horse.lines.forEach(function (line) {
+                var row = el('div', 'item');
+                row.appendChild(el('span', '', (Number(line.quantity) !== 1 ? Number(line.quantity) + ' × ' : '') + line.description));
+                row.appendChild(el('span', 'amount', '£' + line.amount));
+                nodes.push(row);
+            });
+        });
+        nodes.push(el('p', 'total', 'Total ' + core.money(pence(bill.total))));
+        nodes.push(el('p', 'muted', 'Includes VAT of ' + core.money(pence(bill.vat)) + '.' +
+            (bill.emailed_at ? ' Sent ' + timeText(bill.emailed_at) + '.' : '')));
+        var state_ = el('p', '');
+        state_.appendChild(paidPill(bill));
+        nodes.push(state_);
+        var message = el('p', 'problem');
+        var actions = el('div', 'row');
+        actions.appendChild(button('button' + (bill.paid_on ? '' : ' primary'), bill.paid_on ? 'Mark as not paid' : 'Mark as paid today', function () {
+            markPaid(bill, !bill.paid_on, message);
+        }));
+        var page = el('a', 'button', 'Print or send');
+        page.href = bill.url;
+        actions.appendChild(page);
+        nodes.push(actions, message, el('p', 'muted', 'Both need a signal.'));
+        fill($('bill-body'), nodes);
+        $('bill-sheet').hidden = false;
+    }
+
+    function markPaid(bill, paid, message) {
+        var form = new FormData();
+        if (!paid) form.append('paid', 'no');
+        message.textContent = '';
+        getSession().then(function (result) {
+            if (result.kind !== 'ok') {
+                message.textContent = result.kind === 'offline' ? 'No signal. The invoice was not changed.'
+                    : result.kind === 'denied' ? DENIED_TEXT : 'Sign in again to change an invoice.';
+                return;
+            }
+            return post(config.billsApiUrl + bill.id + '/paid/', form, result.session.csrf).then(function (reply) {
+                if (reply.kind !== 'ok' || reply.status !== 200) {
+                    message.textContent = reply.kind === 'offline' ? 'No signal. The invoice was not changed.' : 'The invoice was not changed.';
+                    return;
+                }
+                return setMeta('billList', bills().map(function (other) {
+                    return other.id === reply.data.id ? reply.data : other;
+                })).then(function () {
+                    say(reply.data.number + (reply.data.paid_on ? ' marked as paid.' : ' marked as not paid.'));
+                    openBill(reply.data);
+                    render();
+                });
+            });
+        });
+    }
+
+    // ── One client: its timeline, and its invoices ───────────────────────
+
+    // What is due for its horses, then its visits under the day of each.
+    function clientTimeline(client, horses) {
+        var day = today();
+        var nodes = [];
+        var due = [];
+        horses.forEach(function (horse) {
+            (horse.due || []).forEach(function (item) { due.push({ horse: horse, item: item }); });
+        });
+        due.sort(function (a, b) { return a.item.date < b.item.date ? -1 : a.item.date > b.item.date ? 1 : 0; });
+        if (due.length) {
+            nodes.push(el('h3', '', 'Due'));
+            var list = el('ul', 'list card');
+            due.forEach(function (entry) {
+                var status = core.dueStatus(entry.item.date, day);
+                var item = el('li');
+                var row = button('horse go', undefined, function () { openHorse(entry.horse); });
+                var text = el('span', 'text');
+                text.appendChild(el('span', 'strong', entry.horse.name));
+                text.appendChild(el('small', '', entry.item.label));
+                row.appendChild(text);
+                row.appendChild(el('span', status === 'later' ? 'pill' : 'due ' + status,
+                    (status === 'overdue' ? 'Overdue ' : '') + core.shortDate(entry.item.date, day)));
+                item.appendChild(row);
+                list.appendChild(item);
+            });
+            nodes.push(list);
+        }
+        var rows = visitRows(client.id);
+        if (rows.length) nodes.push(el('h3', '', 'Visits'));
+        dayGroups(rows, nodes);
+        if (!nodes.length) nodes.push(el('p', 'empty', 'Nothing yet. Tap a horse to start a visit.'));
+        return nodes;
+    }
+
+    // Visits under the heading of their day: "Today", "Mon 16 Nov".
+    function dayGroups(rows, nodes) {
+        core.byDay(rows).forEach(function (group) {
+            nodes.push(el('p', 'day', core.dayLabel(group.day, today())));
+            group.rows.forEach(function (row) { nodes.push(visitFold(row)); });
+        });
+        return nodes;
+    }
+
+    function clientBills(client) {
+        var mine = bills().filter(function (bill) { return bill.client_id === client.id; });
+        var unpaid = mine.filter(function (bill) { return !bill.paid_on; });
+        if (!mine.length) {
+            return [el('p', 'empty', 'No invoices for this client yet. An invoice is made when a visit is finished.')];
+        }
+        var counts = el('div', 'counts');
+        counts.appendChild(stat(core.money(sumOf(unpaid)), 'to pay', unpaid.length > 0));
+        counts.appendChild(stat(core.money(sumOf(mine) - sumOf(unpaid)), 'paid'));
+        return [counts, billList(mine, false)];
     }
 
     // ── Prices ───────────────────────────────────────────────────────────
@@ -2001,7 +2276,7 @@
             var fresh = !otherPerson ? Promise.resolve() : replaceAll('entries', []).then(function () {
                 state.entries = [];
                 state.visitDetails = {};
-                return Promise.all(['visits', 'closed', 'finishQueue', 'visitList', 'draft'].map(function (key) {
+                return Promise.all(['visits', 'closed', 'finishQueue', 'visitList', 'billList', 'unbilled', 'draft'].map(function (key) {
                     return setMeta(key, null);
                 }));
             });
@@ -2258,6 +2533,7 @@
             } else if (state.view === 'visits') {
                 renderBar();
                 loadVisitList(true);
+                loadBills(true);
             } else if (state.view === 'horse') {
                 // The note in progress keeps its boxes. Its history shows what was sent.
                 renderBar();
@@ -2352,10 +2628,6 @@
             state.visitFilter = '';
             show('visits');
         });
-        $('client-history').addEventListener('click', function () {
-            state.visitFilter = state.client;
-            show('visits');
-        });
         $('visit-filter').addEventListener('click', function () { state.visitFilter = ''; renderVisits(); });
         $('client-form').addEventListener('submit', function (event) { saveClient(event, false); });
         $('client-form-archive').addEventListener('click', function () { saveClient(null, true); });
@@ -2391,7 +2663,8 @@
         $('load-history').addEventListener('click', function () { loadOlderNotes(false); });
         $('price-add').addEventListener('click', function () { editPrice(null); });
         // A tap on the dark area round a sheet closes it. So does Escape.
-        ['picker', 'client-sheet', 'horse-sheet'].forEach(function (id) {
+        $('bill-close').addEventListener('click', function () { $('bill-sheet').hidden = true; });
+        ['picker', 'client-sheet', 'horse-sheet', 'bill-sheet'].forEach(function (id) {
             $(id).addEventListener('click', function (event) {
                 if (event.target !== $(id)) return;
                 if (id === 'picker') closePicker();
@@ -2403,6 +2676,7 @@
             closePicker();
             $('client-sheet').hidden = true;
             $('horse-sheet').hidden = true;
+            $('bill-sheet').hidden = true;
         });
         $('clear').addEventListener('click', clearPhone);
         $('sign-out').addEventListener('click', signOut);
@@ -2468,7 +2742,7 @@
             if (window.performance && performance.now) state.openMs = Math.round(performance.now());
             refreshStorage();
             sync(false);
-            if (navigator.onLine) loadVisitList(true);
+            if (navigator.onLine) { loadVisitList(true); loadBills(true); }
             // Fresh due dates and prices for today's visit, if the list
             // is from another day. Behind the screen: nothing waits for it.
             var age = state.meta.downloadedAt ? Date.now() - new Date(state.meta.downloadedAt).getTime() : 0;

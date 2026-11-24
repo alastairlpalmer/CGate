@@ -136,7 +136,7 @@ C-vet is used with one hand, outdoors, between horses. Every screen in every pha
 | Rule | Limit |
 |---|---|
 | Open the app, from the tap on the icon to the horse list | Under 1 second, with or without a signal |
-| Page files (script, styles) | Under 50 KB as the phone downloads them (compressed), and under 200 KB as written (decision 27). No web fonts, no framework. Under 200 KB as written since section 7h. Now 39 KB and 155 KB. The download is 1 KB under its limit: the next screen must come with a smaller file, or as a file that only a wide screen loads. |
+| Page files (script, styles) | Under 50 KB as the phone downloads them (compressed), and under 200 KB as written (decision 27). No web fonts, no framework. Under 200 KB as written since section 7h. Now 46 KB and 182 KB, after section 7l. The download is 1 KB under its limit: the next screen must come with a smaller file, or as a file that only a wide screen loads. |
 | Horses on the first screen of a phone | 8 or more |
 | Tap targets | 44 px or more |
 | A tap shows its result | At once. No screen waits for the network. The app reads and writes the phone's storage, and the sync runs behind it. |
@@ -685,6 +685,48 @@ Asked for after the practice office: C-vet must look and feel like C-gate, the m
 **The fonts and the speed rule.** The plan said "no web fonts" (section 5), so that a font never makes the vet wait. That stays true: the app opens in the phone's own font and changes when the font file arrives (`font-display: swap`), and fallback faces with the same measures keep the text from moving. The two files (66 KB) are not part of the download that opens the app. The service worker stores them the first time the page asks, so they are there with no signal. A phone that opens the app for the first time with a weak signal shows the phone's font until they arrive.
 
 On a phone every tap target stays 44 px, and 8 horses still fit the first screen: the check script holds both.
+
+## 7l. Invoices in the app, timelines, and more detail
+
+Asked for after the look of C-gate: the app must meet what a vet does in a day with no break in it. Four things were named: what the app can do, how easy it is, the detail it shows, and a view of the timeline and of the invoices.
+
+### What is built
+
+| Part | What the vet does |
+|---|---|
+| **Invoices** (a tab of its own) | Every bill, newest first: number, day, client, horses, amount, and **Paid** or **Not paid**. Above it: what is to pay, what is paid, and finished work that is on no invoice yet. Three chips cut the list: All, Not paid, Paid. A tap opens the invoice: each horse's items, the total, the VAT. **Mark as paid today** and **Mark as not paid** are one tap (with a signal). **Print or send** opens the bill page of section 7j. The list is kept on the phone: it is there with no signal. |
+| **A client, three ways** | A switch under the client's name, as C-gate's view switch: **Horses** (with their number), **Timeline**, **Invoices** (with the number not paid). Before, the client screen had its horses only, and a link to its visits. |
+| **A client's timeline** | **Due** first: each horse with a vaccination or a recheck to come, the nearest first, overdue in red; a tap opens the horse. Then its **visits**, under the heading of each day ("Today", "Mon 16 Nov"), each one folded as on Visits. |
+| **A client's invoices** | Its bills, and what it still has to pay. |
+| **Visits** | The finished visits are under the heading of their day. |
+| **A horse's history** | A timeline: the heading of the day, then the notes of that day on a rail, with the time and the vet on each. |
+| **Same items as last time** | On a horse with a note before: "Same items as 24 Nov: Sedation, Flu/Tet booster". One tap puts them on the new note, at today's price from the price list. It is an offer, as the recheck date is: nothing is added without the tap. |
+| **A horse, by sight** | Under the name: "Bay mare, 12yo", from C-gate. |
+| **Back** | On a client, an arrow beside the name. It takes no line of its own, so the switch costs no horse on the first screen: 8 still fit. |
+
+| Address | What it does |
+|---|---|
+| `GET /c-vet/api/bills/` | The practice's bills with each horse's items, and the finished work on no bill yet. |
+| `POST /c-vet/api/bills/<id>/paid/` | Paid on a day (today with no day), or not paid. The same mark as on the Bills page. |
+| `GET /c-vet/api/yard/` | Now also `about` for each horse of the C-gate yard. |
+
+### The horse's colour, sex and age
+
+Section 3 lists the horse's identity as name, microchip, passport and photo. Colour, sex and age are what the passport says of the horse, and a vet uses them to know that the horse in front of him is the horse on the screen. They are sent as identity. They are not clinical and the yard holds them already. **If the owner of C-gate does not want them shared, `cvet.yard.about` is the one place to take them out.**
+
+### Rules that tests hold
+
+- **An invoice in the app carries items and amounts, never the text of a note** (`cvet/tests_office.py`).
+- **Another practice, and the yard's administrator, read no invoice and mark none.**
+- **The list of invoices takes the same number of database queries for 2 bills or more.**
+- The check script (`tools/qa/cvet_offline_qa.js`) runs the whole path: the client's three ways, the Invoices tab, an invoice opened and marked paid, the timeline of a horse, and the items of the last note in one tap.
+
+### What this does not do
+
+- **A part payment, or a payment method.** Paid is a mark with a day.
+- **Mark as paid with no signal.** The mark is made on the server. The list shows what the phone last read.
+- **Colour, sex and age for a horse of a client of the practice's own.** The form has name, owner, microchip and passport.
+- **A change to a note that was sent** (decision 14).
 
 ## 8. The test on Tim's phone
 

@@ -419,9 +419,36 @@ async function openVisit(page, clientName) {
   await page.locator('#history .file .link', { hasText: 'Play voice note' }).waitFor();
   check('the history shows the note once, with its photo and recording to open', (await page.locator('#history .entry').count()) === 1 && (await page.locator('#history .file .link').count()) === 2);
   await page.screenshot({ path: path.join(OUT, '4-horse-history.png'), fullPage: true });
+  // One tap for the items of the last note: at today's prices.
+  check('the horse offers the items of its last note', (await text(page, '#repeat')).includes('Sedation, Flu/Tet booster'), await text(page, '#repeat'));
+  await page.click('#repeat');
+  check('one tap puts them on the note, at the price of the list', (await page.locator('#lines > li').count()) === 2 && (await text(page, '#lines-total')) === 'Total £92.50' && await page.locator('#repeat').isHidden(), await text(page, '#lines-total'));
+  for (let i = 0; i < 2; i += 1) await page.locator('#lines .step').first().click();
+  check('the history is a timeline: the day, then its notes', (await text(page, '#history .day')) === 'Today' && (await page.locator('#history .timeline .entry').count()) === 1);
   await page.click('#back');
-  await page.click('#client-history');
-  check('Visit history shows the visits of that client only', (await page.locator('#past-visits details[data-visit]').count()) === 1 && (await text(page, '#visit-filter')).startsWith(YARD_NAME));
+
+  // ── One client, three ways: horses, timeline, invoices.
+  await page.locator('#client-tabs .seg-tab', { hasText: 'Timeline' }).click();
+  check('the client\'s timeline has what is due and its visits only', (await page.locator('#client-timeline details[data-visit]').count()) === 1 && (await page.locator('#client-timeline .list .horse').count()) >= 2 && (await text(page, '#client-timeline h3 >> nth=0')) === 'Due');
+  await page.locator('#client-tabs .seg-tab', { hasText: 'Invoices' }).click();
+  await page.locator('#client-bills .horse').first().waitFor();
+  check('the client\'s invoices: its bill, not paid, and the amount to pay', (await page.locator('#client-bills .horse').count()) === 1 && (await text(page, '#client-bills .horse')).includes(BILL_2) && (await text(page, '#client-bills .horse .due')) === 'Not paid' && (await text(page, '#client-bills .count.hot')) === '£282.50 to pay', await text(page, '#client-bills'));
+  check('the tab counts the invoices that are not paid', (await text(page, '#client-tabs .seg-tab >> nth=2')) === 'Invoices1');
+
+  // ── Invoices: every bill, paid or not, with no page to load.
+  await tab(page, 'bills');
+  await page.locator('#bills .horse').first().waitFor();
+  check('Invoices lists both bills and what is to pay', (await page.locator('#bills .horse').count()) === 2 && (await text(page, '#bill-counts .count.hot')) === '£322.50 to pay', await text(page, '#bill-counts'));
+  await page.locator('#bills .horse', { hasText: BILL }).click();
+  check('an invoice opens with each horse\'s items and the total', (await text(page, '#bill-title')) === `Invoice ${BILL}` && (await text(page, '#bill-body')).includes('Juniper') && (await text(page, '#bill-body .total')) === 'Total £40.00' && !(await text(page, '#bill-body')).includes('In foal'), await text(page, '#bill-body'));
+  await page.locator('#bill-body button', { hasText: 'Mark as paid today' }).click();
+  await page.locator('#bill-body button', { hasText: 'Mark as not paid' }).waitFor();
+  await page.click('#bill-close');
+  check('one tap marks it paid, and the figures follow', (await text(page, '#bill-counts .count.hot')) === '£282.50 to pay' && (await page.locator('#bills .horse', { hasText: BILL }).locator('.pill.done').count()) === 1, await text(page, '#bill-counts'));
+  await page.locator('#bill-chips .tile', { hasText: 'Not paid' }).click();
+  check('the list is cut to what is not paid', (await page.locator('#bills .horse').count()) === 1 && (await text(page, '#bills .horse')).includes(BILL_2));
+  await page.locator('#bill-chips .tile', { hasText: 'All' }).click();
+  await page.screenshot({ path: path.join(OUT, '4-invoices.png'), fullPage: true });
 
   // ── The vet adds a price.
   await tab(page, 'prices');
@@ -499,7 +526,7 @@ async function openVisit(page, clientName) {
 
   // ── Every screen fits a phone.
   let wide = [];
-  for (const name of ['clients', 'visits', 'prices', 'phone']) {
+  for (const name of ['clients', 'visits', 'bills', 'prices', 'phone']) {
     await tab(page, name);
     if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) wide.push(name);
   }

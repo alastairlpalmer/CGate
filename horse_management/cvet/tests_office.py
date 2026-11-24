@@ -239,3 +239,59 @@ class GateTests(OfficeCase):
         self.stud_bill.refresh_from_db()
         self.assertIsNone(self.stud_bill.paid_on)
         self.assertEqual(mail.outbox, [])
+
+
+class InvoicesInTheAppTests(OfficeCase):
+    """The app's Invoices screen: the list, and the paid mark."""
+
+    API = '/c-vet/api/bills/'
+
+    def test_the_list_has_each_bill_with_its_items_and_no_note(self):
+        data = self.client.get(self.API).json()
+        self.assertEqual(data['unbilled'], {'visits': 0, 'total': '0.00'})
+        bills = {bill['number']: bill for bill in data['bills']}
+        stud = bills[self.stud_bill.number]
+        self.assertEqual((stud['to'], stud['client_id'], stud['total'], stud['paid_on']),
+                         ('Marsh Stud', self.stud['id'], '60.00', None))
+        self.assertEqual(stud['horses'], [{'name': 'Juniper', 'lines': [{
+            'description': 'Scan', 'quantity': '2', 'amount': '60.00', 'date': stud['date'],
+        }]}])
+        self.assertNotIn('clinical finding', json.dumps(data))
+
+    def test_the_list_takes_the_same_number_of_queries_for_2_bills_or_more(self):
+        def count():
+            from django.db import connection
+            from django.test.utils import CaptureQueriesContext
+            with CaptureQueriesContext(connection) as queries:
+                self.client.get(self.API)
+            return len(queries)
+        two = count()
+        self.finish(self.visit((self.horse, [line()], {})))
+        self.assertEqual(Bill.objects.count(), 3)
+        self.assertEqual(count(), two)
+
+    def test_paid_and_not_paid_from_the_app(self):
+        url = f'{self.API}{self.stud_bill.pk}/paid/'
+        self.assertEqual(self.client.post(url, {'paid_on': '2026-11-10'}).json()['paid_on'], '2026-11-10')
+        self.assertIsNone(self.client.post(url, {'paid': 'no'}).json()['paid_on'])
+        self.assertEqual(self.client.post(url).json()['paid_on'], timezone.localdate().isoformat())
+
+    def test_another_practice_and_the_yard_reach_none_of_it(self):
+        url = f'{self.API}{self.stud_bill.pk}/paid/'
+        self.client.force_login(make_vet('other', practice=make_practice('Far Vets', linked=False)))
+        self.assertEqual(self.client.get(self.API).json()['bills'], [])
+        self.assertEqual(self.client.post(url).status_code, 404)
+        self.client.force_login(make_admin())
+        self.assertEqual(self.client.get(self.API).status_code, 403)
+        self.assertEqual(self.client.post(url).status_code, 403)
+        self.stud_bill.refresh_from_db()
+        self.assertIsNone(self.stud_bill.paid_on)
+
+
+class HorseAboutTests(OfficeCase):
+    def test_the_download_says_what_the_passport_says_of_the_horse(self):
+        from core.models import Horse
+        Horse.objects.filter(pk=self.horse.pk).update(color=Horse.Color.values[0], sex=Horse.Sex.values[0])
+        horse = next(item for item in self.client.get('/c-vet/api/yard/').json()['horses'] if item['id'] == self.horse.pk)
+        expected = f'{Horse.Color.labels[0]} {Horse.Sex.labels[0]}'.capitalize()
+        self.assertEqual(horse['about'], expected)
