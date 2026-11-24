@@ -10,8 +10,8 @@
 const VERSION = {{ version }};
 const SHELL = {{ shell_url }};
 const ASSETS = {{ asset_urls }};
-// For a wide screen, or for work that needs a signal. Stored when a
-// page first asks for them.
+// For a wide screen, for work that needs a signal, and C-gate's two
+// fonts. Stored when a page first asks for them.
 const WIDE = {{ wide_urls }};
 
 const PREFIX = 'cvet-';

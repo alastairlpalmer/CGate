@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>C-vet</title>
-    <meta name="theme-color" content="#3D5A63">
+    <meta name="theme-color" content="#F5F2EA">
     <link rel="manifest" href="{% static_v 'cvet/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static_v 'icons/apple-touch-icon.png' %}">
     <link rel="icon" type="image/png" sizes="192x192" href="{% static_v 'icons/icon-192.png' %}">
@@ -128,7 +128,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
         </div>
 
         <div class="card pad">
-            <label for="note">Note</label>
+            <div class="head"><h3><label for="note">Note</label></h3></div>
             <textarea id="note" rows="3" maxlength="5000" placeholder="What you found, what you did"></textarea>
             <p class="muted">To speak the note, tap the microphone on the keyboard.</p>
             <div class="row">
@@ -142,7 +142,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
         </div>
 
         <div class="card pad">
-            <h3>Recheck</h3>
+            <div class="head"><h3>Recheck</h3></div>
             <div id="followups" class="tiles"></div>
             <button id="recheck-suggestion" type="button" class="suggest" hidden></button>
             <input id="follow-up" type="date" aria-label="Recheck date">
@@ -189,7 +189,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
         </div>
         <p class="muted">Prices include VAT. A change needs a signal.</p>
         <form id="price-form" class="card pad" novalidate hidden>
-            <h3 id="price-form-title">Add a price</h3>
+            <div class="head"><h3 id="price-form-title">Add a price</h3></div>
             <label for="price-name">Name</label>
             <input id="price-name" type="text" maxlength="100" autocomplete="off" placeholder="Flu/Tet booster">
             <label for="price-category">Category</label>
@@ -319,16 +319,20 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
 
 <nav class="tabs" aria-label="Screens">
     <button type="button" class="tab" data-view="clients" aria-current="page">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21V9l9-6 9 6v12h-6v-7H9v7z"/></svg>Clients
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM21 19v-1a4 4 0 0 0-3-3.87M15.5 3.13a3.5 3.5 0 0 1 0 6.74"/></svg></span>
+        <span>Clients</span>
     </button>
     <button type="button" class="tab" data-view="visits">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM9 10h7M9 14h7M9 18h4"/></svg>Visits <span id="visit-badge" class="badge" hidden></span>
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM9 12h6M9 16h4"/></svg><span id="visit-badge" class="badge" hidden></span></span>
+        <span>Visits</span>
     </button>
     <button type="button" class="tab" data-view="prices">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h8l8 8-8 8-8-8zM8.5 8.5h.01"/></svg>Prices
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01"/></svg></span>
+        <span>Prices</span>
     </button>
     <button type="button" class="tab" data-view="phone">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>More
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"/></svg></span>
+        <span>More</span>
     </button>
 </nav>
 

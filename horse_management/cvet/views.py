@@ -51,6 +51,7 @@ from django.db import IntegrityError, transaction
 from django.http import FileResponse, Http404, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
+from django.templatetags.static import static
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
@@ -112,6 +113,10 @@ STATIC_FILES = (
 # a phone never downloads them. online.js: what needs a signal (a change
 # to the price list, sign out), fetched the first time it is used.
 WIDE_FILES = ('cvet/desk.css', 'cvet/desk.js', 'cvet/online.js')
+# C-gate's two fonts (static/cvet/app.css). Not part of the download that
+# opens the app: the app opens in the phone's own font and changes when
+# they arrive. The worker stores them then, so they are there with no signal.
+FONT_FILES = ('fonts/DMSans-Variable.woff2', 'fonts/SourceSans3-Variable.woff2')
 
 
 def _user_name(user):
@@ -179,7 +184,10 @@ def service_worker(request):
         'version': json.dumps(_VERSION),
         'shell_url': json.dumps(reverse('cvet:app')),
         'asset_urls': json.dumps([static_v(path) for path in STATIC_FILES]),
-        'wide_urls': json.dumps([static_v(path) for path in WIDE_FILES]),
+        # A font is asked for by the stylesheet, with no version on its address.
+        'wide_urls': json.dumps(
+            [static_v(path) for path in WIDE_FILES] + [static(path) for path in FONT_FILES]
+        ),
     }, content_type='text/javascript')
     # The browser checks for a new worker on each visit. It must get the
     # current one, not a stored copy.
