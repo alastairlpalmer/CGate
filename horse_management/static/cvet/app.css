@@ -106,6 +106,21 @@ button.chip::after { content: ""; position: absolute; left: -6px; right: -6px; t
 
 .status { margin: 0; padding: 8px 16px; background: var(--cream); border-bottom: 1px solid var(--cream-line); color: var(--ink-light); font-size: 14px; }
 .status:empty { display: none; }
+/* A line that asks for nothing ("Willow saved.") floats over the foot of
+   the page and goes. It moves nothing on the page. */
+.status.toast { position: fixed; bottom: calc(var(--tabs) + 14px + env(safe-area-inset-bottom)); left: 50%; z-index: 5; width: max-content; max-width: calc(100% - 32px); padding: 8px 14px; border: 0; border-radius: 8px; background: var(--ink); color: #fff; box-shadow: 0 8px 24px -8px rgba(61, 90, 99, .45); transform: translateX(-50%); }
+/* C-gate's count pills: the day at a glance. A rust one needs attention,
+   and a tap on it shows what. */
+.counts { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+.counts:empty { display: none; }
+.count { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--ink-light); font: 400 13px/1 var(--body); white-space: nowrap; }
+.count b { color: var(--ink); font-weight: 600; }
+.count.hot { border-color: rgba(160, 82, 45, .5); background: var(--accent-tint); color: var(--accent); }
+.count.hot b { color: var(--accent); }
+button.count { position: relative; cursor: pointer; }
+button.count::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); }
+button.count[aria-pressed=true] { border-color: var(--accent); background: var(--accent); color: #fff; }
+button.count[aria-pressed=true] b { color: #fff; }
 
 /* ── The page ── */
 main {

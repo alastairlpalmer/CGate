@@ -372,6 +372,22 @@
         });
     }
 
+    // The active prices the vet used on 3 notes or more, the most used
+    // first: at most 5. From the notes on the phone, so it needs no signal.
+    function oftenUsed(prices, entries) {
+        var uses = {};
+        (entries || []).forEach(function (entry) {
+            (entry.lines || []).forEach(function (line) {
+                if (line.priceId) uses[line.priceId] = (uses[line.priceId] || 0) + 1;
+            });
+        });
+        return (prices || []).filter(function (price) {
+            return price.isActive && uses[price.id] >= 3;
+        }).sort(function (a, b) {
+            return uses[b.id] - uses[a.id] || a.name.localeCompare(b.name);
+        }).slice(0, 5);
+    }
+
     // The category names of the active prices, in the order of the list.
     function priceCategories(prices) {
         return groupPrices(prices).map(function (group) { return group.category; });
@@ -490,6 +506,7 @@
         matchesClient: matchesClient,
         groupPrices: groupPrices,
         priceCategories: priceCategories,
+        oftenUsed: oftenUsed,
         noteFromEntry: noteFromEntry,
         noteFromServer: noteFromServer,
         groupNotes: groupNotes,

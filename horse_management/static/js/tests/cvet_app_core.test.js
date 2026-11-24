@@ -392,3 +392,14 @@ test('localVisits: the visits on the phone, from its notes, newest first', () =>
     assert.deepEqual(visits.map((visit) => [visit.id, visit.clientName, visit.day, visit.entries.length]),
         [['v2', 'Marsh Stud', '2026-11-16', 1], ['v1', 'Palmer Farm', '2026-11-15', 2]]);
 });
+
+test('oftenUsed: the active prices used on 3 notes or more, the most used first', () => {
+    const prices = [
+        { id: 'a', name: 'Sedation', isActive: true }, { id: 'b', name: 'Booster', isActive: true },
+        { id: 'c', name: 'Rasp', isActive: true }, { id: 'd', name: 'Old', isActive: false },
+    ];
+    const note = (...ids) => ({ lines: ids.map((id) => ({ priceId: id })) });
+    const entries = [note('a', 'b'), note('b'), note('b', 'd'), note('a', 'd'), note('a', 'd'), note('b', 'c'), note({})];
+    assert.deepEqual(core.oftenUsed(prices, entries).map((price) => price.name), ['Booster', 'Sedation']);
+    assert.deepEqual(core.oftenUsed(prices, []), []);
+});

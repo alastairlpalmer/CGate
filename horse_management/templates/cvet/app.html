@@ -56,9 +56,11 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
             <button id="client-add" type="button" class="button slim">Add client</button>
         </div>
         <input id="client-search" type="search" placeholder="Find a client or a horse" autocomplete="off" aria-label="Find a client or a horse">
+        {# The day at a glance, as C-gate's count pills: a tap on "due" shows those horses. #}
+        <div id="counts" class="counts"></div>
         <ul id="clients" class="list card"></ul>
         <div id="found-horses-box" hidden>
-            <h3>Horses</h3>
+            <h3 id="found-title">Horses</h3>
             <ul id="found-horses" class="list card"></ul>
         </div>
         <p id="no-match" class="muted" hidden>No client and no horse has these words.</p>
