@@ -16,6 +16,8 @@
     .bar, .status { padding-left: calc(var(--side) + 32px); padding-right: 32px; }
     .bar { min-height: 44px; }
     .dev::after { content: "computer"; }
+    /* A hint for a phone's keyboard has no use here. */
+    .touch-only { display: none; }
     .status.toast { left: calc(50% + var(--side) / 2); bottom: 24px; }
     /* The name is on the left edge. The TEST label stays here. */
     .bar h1 { font-size: 0; }

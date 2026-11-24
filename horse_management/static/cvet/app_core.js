@@ -55,8 +55,11 @@
         return (pence < 0 ? '-' : '') + whole + '.' + (rest < 10 ? '0' : '') + rest;
     }
 
+    // 128250 -> "£1,282.50": for the screen only. A comma marks each
+    // thousand, as on an invoice.
     function money(pence) {
-        return '\u00a3' + decimal(pence);
+        var parts = decimal(pence).split('.');
+        return '\u00a3' + parts[0].replace(/\B(?=(\d{3})+$)/g, ',') + '.' + parts[1];
     }
 
     function lineTotal(line) {
@@ -239,6 +242,12 @@
         if (parts.length !== 3) return '';
         var text = +parts[2] + ' ' + MONTHS[+parts[1] - 1];
         return today && today.slice(0, 4) !== parts[0] ? text + ' ' + parts[0] : text;
+    }
+
+    // Whole days from one day to another: 14 from 24 Nov to 8 Dec.
+    function daysBetween(from, to) {
+        function at(day) { var parts = day.split('-'); return Date.UTC(+parts[0], +parts[1] - 1, +parts[2]); }
+        return Math.round((at(to) - at(from)) / 86400000);
     }
 
     var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -552,6 +561,7 @@
         addDays: addDays,
         shortDate: shortDate,
         dayLabel: dayLabel,
+        daysBetween: daysBetween,
         byDay: byDay,
         dueStatus: dueStatus,
         horseDue: horseDue,

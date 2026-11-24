@@ -137,7 +137,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
         <div class="card pad">
             <div class="head"><h3><label for="note">Note</label></h3></div>
             <textarea id="note" rows="3" maxlength="5000" placeholder="What you found, what you did"></textarea>
-            <p class="muted">To speak the note, tap the microphone on the keyboard.</p>
+            <p class="muted touch-only">To speak the note, tap the microphone on the keyboard.</p>
             <div class="row">
                 <label class="button" for="photo">Take photo</label>
                 <input id="photo" type="file" accept="image/*" capture="environment" class="visually-hidden">
@@ -153,6 +153,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
             <div id="followups" class="tiles"></div>
             <button id="recheck-suggestion" type="button" class="suggest" hidden></button>
             <input id="follow-up" type="date" aria-label="Recheck date">
+            <p id="follow-up-text" class="muted" aria-live="polite"></p>
         </div>
 
         {# Stays in reach at the foot of the screen, with the reason when a save is refused. #}

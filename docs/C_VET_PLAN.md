@@ -728,6 +728,24 @@ Section 3 lists the horse's identity as name, microchip, passport and photo. Col
 - **Colour, sex and age for a horse of a client of the practice's own.** The form has name, owner, microchip and passport.
 - **A change to a note that was sent** (decision 14).
 
+## 7m. A pass for detail
+
+Every screen and state was captured again on a phone and on a computer (44 pictures) and read one by one. These were found and corrected:
+
+| Found | Corrected |
+|---|---|
+| Two "due" badges under a horse's name touched each other. | A gap between them; they go to a second line when there is no room. |
+| The recheck was a date box alone, in the phone's own date format. | A line in words under it: "Recheck on Tue 8 Dec, in 14 days." A date in the past says so. |
+| At a quantity of 1, the minus button took the item off, with no sign that it would. | At 1 it is a red "×". Each button says what it does to a screen reader. |
+| On a client's timeline, an open visit looked like a finished one, and each visit said the client's name and the day again, under the day's heading. | "Visit", with an **Open** badge. The day is the heading only. |
+| A finished visit said its bill number, not if it was paid. | "Bill CV-0002 · paid", when the phone's list of invoices says so. |
+| An invoice that was not paid did not say for how long. | "Not paid · 14 days". Past 30 days the badge is red. |
+| An invoice with many horses gave no figure for each horse. | Each horse's part beside its name, when it has more than one item. A monthly invoice says the day of each item. |
+| The list of invoices did not say which were sent to the client. | "sent" on the line. |
+| An amount over £999 had no comma. | "£1,282.50" on every screen. Boxes to type in, and what is sent, keep the plain number. |
+| Clients said nothing of money. | Each client's line says what it still has to pay. A count at the top, "£282.50 to pay", goes to Invoices with the unpaid ones shown. |
+| "To speak the note, tap the microphone on the keyboard." showed on a computer. | On a phone or a tablet only. |
+
 ## 8. The test on Tim's phone
 
 ### Set-up (once, by an administrator)

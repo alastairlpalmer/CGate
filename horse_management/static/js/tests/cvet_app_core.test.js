@@ -415,3 +415,18 @@ test('dayLabel and byDay: the headings of a timeline, the newest day first', () 
         [['2026-11-24', [2]], ['2026-11-16', [1, 3]]]);
     assert.deepEqual(core.byDay([]), []);
 });
+
+test('money: a comma marks each thousand; decimal, for a box and the server, has none', () => {
+    assert.equal(core.money(6500), '£65.00');
+    assert.equal(core.money(128250), '£1,282.50');
+    assert.equal(core.money(123456789), '£1,234,567.89');
+    assert.equal(core.money(0), '£0.00');
+    assert.equal(core.decimal(128250), '1282.50');
+});
+
+test('daysBetween: whole days, over a month end and a year end', () => {
+    assert.equal(core.daysBetween('2026-11-24', '2026-12-08'), 14);
+    assert.equal(core.daysBetween('2026-12-31', '2027-01-01'), 1);
+    assert.equal(core.daysBetween('2026-11-24', '2026-11-24'), 0);
+    assert.equal(core.daysBetween('2026-11-24', '2026-11-20'), -4);
+});

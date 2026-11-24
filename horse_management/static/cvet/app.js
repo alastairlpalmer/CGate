@@ -499,9 +499,11 @@
         var text = el('span', 'text');
         text.appendChild(el('span', 'strong', client.name));
         var horses = clientHorses(client.id);
+        var owed = sumOf(bills().filter(function (bill) { return bill.client_id === client.id && !bill.paid_on; }));
         text.appendChild(el('small', '', [
             core.kindLabel(client.kind), countText(horses.length, 'horse', 'horses'),
-            client.unsent ? 'not sent yet' : client.refused ? 'not saved' : ''
+            client.unsent ? 'not sent yet' : client.refused ? 'not saved' : '',
+            owed ? core.money(owed) + ' to pay' : ''
         ].filter(Boolean).join(' · ')));
         row.appendChild(text);
         var day = today();
@@ -590,6 +592,17 @@
                 state.visitFilter = '';
                 show('visits');
             }));
+        }
+        // What every client together still has to pay: a tap goes to Invoices.
+        var owed = sumOf(bills().filter(function (bill) { return !bill.paid_on; }));
+        if (owed) {
+            var owedCount = button('count', undefined, function () {
+                state.billFilter = 'unpaid';
+                show('bills');
+            });
+            owedCount.appendChild(el('b', '', core.money(owed)));
+            owedCount.appendChild(document.createTextNode(' to pay'));
+            counts.push(owedCount);
         }
         fill($('counts'), state.clients.length && !query ? counts : []);
         if (state.dueOnly && !query) found = due;
@@ -957,14 +970,19 @@
             }
             var controls = el('div', 'line-controls');
             var total = el('span', 'line-total', core.money(core.lineTotal(line)));
-            controls.appendChild(button('step', '−', function () {
+            // At 1, one less is none: the button shows that it takes the item off.
+            var less = button('step' + (line.qty > 1 ? '' : ' off'), line.qty > 1 ? '−' : '×', function () {
                 if (line.qty > 1) line.qty -= 1;
                 else draft.lines.splice(draft.lines.indexOf(line), 1);
                 renderLines();
                 persistDraft();
-            }));
+            });
+            less.setAttribute('aria-label', line.qty > 1 ? 'One less' : 'Take this item off');
+            controls.appendChild(less);
             controls.appendChild(el('span', 'qty', String(line.qty)));
-            controls.appendChild(button('step', '+', function () { line.qty += 1; renderLines(); persistDraft(); }));
+            var more = button('step', '+', function () { line.qty += 1; renderLines(); persistDraft(); });
+            more.setAttribute('aria-label', 'One more');
+            controls.appendChild(more);
             var price = el('input');
             price.type = 'text';
             price.inputMode = 'decimal';
@@ -1031,6 +1049,11 @@
             return tile;
         }));
         $('follow-up').value = draft.followUp;
+        // The date in words, with how far off it is: a date box alone is easy to misread.
+        var away = draft.followUp ? core.daysBetween(day, draft.followUp) : 0;
+        $('follow-up-text').textContent = !draft.followUp ? 'No recheck.'
+            : 'Recheck on ' + core.dayLabel(draft.followUp, day).replace(/^Today$/, 'today') +
+              (away > 1 ? ', in ' + away + ' days.' : away < 0 ? ', which is in the past.' : '.');
         renderSuggestion();
     }
 
@@ -1480,8 +1503,8 @@
         var rows = visitRows();
         var open = rows.filter(function (row) { return row.open; });
         var past = rows.filter(function (row) { return !row.open; });
-        fill($('open-visits'), open.map(visitFold));
-        fill($('past-visits'), dayGroups(past, []));
+        fill($('open-visits'), open.map(function (row) { return visitFold(row); }));
+        fill($('past-visits'), dayGroups(past, [], false));
         $('open-visits-box').hidden = open.length === 0;
         $('past-visits-box').hidden = past.length === 0;
         $('visits-empty').hidden = rows.length > 0;
@@ -1496,18 +1519,31 @@
     // "Bill CV-0001" once the server has made it.
     function billLabel(row) {
         if (row.waiting || row.unsent) return 'not all sent yet';
-        if (row.bills.length) return 'Bill ' + row.bills.map(function (bill) { return bill.number; }).join(', ');
+        if (row.bills.length) {
+            // Paid, when the phone's list of invoices says every one of them is.
+            var numbers = row.bills.map(function (bill) { return bill.number; });
+            var known = bills().filter(function (bill) { return numbers.indexOf(bill.number) !== -1; });
+            var paid = known.length === numbers.length && known.every(function (bill) { return bill.paid_on; });
+            return 'Bill ' + numbers.join(', ') + (paid ? ' · paid' : '');
+        }
         return row.billWhen === 'month' ? 'on the monthly bill' : 'finished';
     }
 
     // One visit, folded: the client, the day, the horses and the total.
-    function visitFold(row) {
+    // `underDay`: it is under the heading of its day, so its own line
+    // does not say the day again. `ofClient`: it is on its client's own
+    // timeline, so it does not say the client again.
+    function visitFold(row, underDay, ofClient) {
         var day = today();
-        var text = el('span', 'text', row.clientName);
+        var text = el('span', 'text', ofClient ? 'Visit' : row.clientName);
         text.appendChild(el('small', '', [
-            core.shortDate(row.day, day), countText(row.horses, 'horse', 'horses'), row.open ? '' : billLabel(row)
+            underDay ? '' : core.shortDate(row.day, day), countText(row.horses, 'horse', 'horses'),
+            row.open ? '' : billLabel(row)
         ].filter(Boolean).join(' · ')));
-        var summary = [text, el('span', 'amount', core.money(row.total))];
+        var summary = [text];
+        // Among finished visits, the one that still waits for Finish visit says so.
+        if (row.open && underDay) summary.push(el('span', 'due soon', 'Open'));
+        summary.push(el('span', 'amount', core.money(row.total)));
         var node = fold('v:' + row.id, 'card', summary, function (box) { visitBody(row, box); },
             row.open && row.day === day);
         node.dataset.visit = row.id;
@@ -1597,7 +1633,7 @@
 
         row.bills.forEach(function (bill) {
             if (!bill.url) return;
-            var link = el('a', 'button wide', 'Bill ' + bill.number + ' · £' + bill.total + ' (needs a signal)');
+            var link = el('a', 'button wide', 'Bill ' + bill.number + ' · ' + core.money(pence(bill.total)) + ' (needs a signal)');
             link.href = bill.url;
             box.appendChild(link);
         });
@@ -1704,8 +1740,11 @@
     }
 
     function paidPill(bill) {
-        return bill.paid_on ? el('span', 'pill done', 'Paid ' + core.shortDate(bill.paid_on, today()))
-            : el('span', 'due soon', 'Not paid');
+        if (bill.paid_on) return el('span', 'pill done', 'Paid ' + core.shortDate(bill.paid_on, today()));
+        // How long it has waited. Past 30 days it is red.
+        var age = core.daysBetween(bill.date, today());
+        return el('span', 'due ' + (age > 30 ? 'overdue' : 'soon'),
+            'Not paid' + (age > 0 ? ' · ' + countText(age, 'day', 'days') : ''));
     }
 
     // The bills as a list: number and day, who it is to, the amount, paid or not.
@@ -1718,7 +1757,8 @@
             text.appendChild(el('span', 'strong', bill.number));
             var horses = (bill.horses || []).length;
             text.appendChild(el('small', '', [
-                core.shortDate(bill.date, today()), withClient ? bill.to : '', countText(horses, 'horse', 'horses')
+                core.shortDate(bill.date, today()), withClient ? bill.to : '', countText(horses, 'horse', 'horses'),
+                bill.emailed_at ? 'sent' : ''
             ].filter(Boolean).join(' · ')));
             row.appendChild(text);
             row.appendChild(paidPill(bill));
@@ -1762,11 +1802,21 @@
         var nodes = [el('p', 'muted', 'To ' + bill.to + ' · ' + core.shortDate(bill.date, '0') + (bill.period_start
             ? ' · visits from ' + core.shortDate(bill.period_start, day) + ' to ' + core.shortDate(bill.period_end, day) : ''))];
         (bill.horses || []).forEach(function (horse) {
-            nodes.push(el('h3', '', horse.name));
+            // Each horse, with what it comes to: the yard's own invoices go by horse.
+            var head = el('div', 'head');
+            head.appendChild(el('h3', '', horse.name));
+            // With one item, the item's own amount says it.
+            if (horse.lines.length > 1) {
+                head.appendChild(el('span', 'amount', core.money(horse.lines.reduce(function (sum, line) {
+                    return sum + pence(line.amount);
+                }, 0))));
+            }
+            nodes.push(head);
             horse.lines.forEach(function (line) {
                 var row = el('div', 'item');
-                row.appendChild(el('span', '', (Number(line.quantity) !== 1 ? Number(line.quantity) + ' × ' : '') + line.description));
-                row.appendChild(el('span', 'amount', '£' + line.amount));
+                row.appendChild(el('span', '', (bill.period_start ? core.shortDate(line.date, day) + ' · ' : '') +
+                    (Number(line.quantity) !== 1 ? Number(line.quantity) + ' × ' : '') + line.description));
+                row.appendChild(el('span', 'amount', core.money(pence(line.amount))));
                 nodes.push(row);
             });
         });
@@ -1846,16 +1896,16 @@
         }
         var rows = visitRows(client.id);
         if (rows.length) nodes.push(el('h3', '', 'Visits'));
-        dayGroups(rows, nodes);
+        dayGroups(rows, nodes, true);
         if (!nodes.length) nodes.push(el('p', 'empty', 'Nothing yet. Tap a horse to start a visit.'));
         return nodes;
     }
 
     // Visits under the heading of their day: "Today", "Mon 16 Nov".
-    function dayGroups(rows, nodes) {
+    function dayGroups(rows, nodes, ofClient) {
         core.byDay(rows).forEach(function (group) {
             nodes.push(el('p', 'day', core.dayLabel(group.day, today())));
-            group.rows.forEach(function (row) { nodes.push(visitFold(row)); });
+            group.rows.forEach(function (row) { nodes.push(visitFold(row, true, ofClient)); });
         });
         return nodes;
     }
