@@ -1856,13 +1856,17 @@
 
     function renderPhone() {
         var info = clientInfo();
-        $('who').textContent = state.meta.userName
-            ? 'Signed in as ' + state.meta.userName + (state.meta.practice ? ', ' + state.meta.practice : '') + '.'
-            : '';
+        var name = state.meta.userName || 'Not signed in on this phone yet';
+        $('who').textContent = name;
+        $('who-initial').textContent = name.charAt(0).toUpperCase();
+        $('who-practice').textContent = state.meta.practice || '';
+        var waiting = unsentEntries().length + pendingChanges().length + finishQueue().length;
+        $('sync-line').textContent = (waiting ? waiting + ' to send. ' : 'All sent. ') +
+            (state.meta.lastSyncAt ? 'Last sent ' + timeText(state.meta.lastSyncAt) + '.' : '');
         $('downloaded').textContent = state.meta.downloadedAt
             ? countText(state.clients.length, 'client', 'clients') + ' and ' +
               countText(state.horses.length, 'horse', 'horses') + ', downloaded ' + timeText(state.meta.downloadedAt) + '.'
-            : '';
+            : 'Clients, horses and prices. Needs a signal.';
         var rows = [
             ['App version', info.version],
             ['Installed on the home screen', info.standalone ? 'Yes' : 'No'],

@@ -63,7 +63,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
             <h3 id="found-title">Horses</h3>
             <ul id="found-horses" class="list card"></ul>
         </div>
-        <p id="no-match" class="muted" hidden>No client and no horse has these words.</p>
+        <p id="no-match" class="empty" hidden>No client and no horse has these words.</p>
         <details id="archived-clients-box" class="fold plain" hidden>
             <summary><span class="text">Archived clients</span></summary>
             <ul id="archived-clients" class="list card"></ul>
@@ -95,7 +95,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
             <button id="select-toggle" type="button" class="button slim">Select</button>
         </div>
         <ul id="horses" class="list card"></ul>
-        <p id="no-horses" class="muted" hidden></p>
+        <p id="no-horses" class="empty" hidden></p>
         <details id="archived-horses-box" class="fold plain" hidden>
             <summary><span class="text">Archived horses</span></summary>
             <ul id="archived-horses" class="list card"></ul>
@@ -159,7 +159,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
         </div><div>
         <h3>History</h3>
         <div id="history"></div>
-        <p id="no-history" class="muted">No notes for this horse yet.</p>
+        <p id="no-history" class="empty">No notes for this horse yet.</p>
         <button id="load-history" type="button" class="button">Load older notes</button>
         <p id="history-message" class="muted" aria-live="polite"></p>
         </div></div>
@@ -171,7 +171,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
             <h2>Visits</h2>
             <button id="visit-filter" type="button" class="chip filter" hidden></button>
         </div>
-        <p id="visits-empty" class="muted" hidden>No visits yet. Tap a client, then a horse, to start one.</p>
+        <p id="visits-empty" class="empty" hidden>No visits yet. Tap a client, then a horse, to start one.</p>
         <div id="open-visits-box" hidden>
             <h3>Open</h3>
             <div id="open-visits"></div>
@@ -224,25 +224,26 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
     {# ── More: this phone, bills, sign out ── #}
     <section id="view-phone" class="view" aria-label="More" hidden>
         <h2>More</h2>
-        <div class="card pad">
-            <p class="muted"><span id="who"></span> <span id="downloaded"></span></p>
-            <div class="row">
-                <button id="sync" type="button" class="button primary">Sync now</button>
-                <button id="download" type="button" class="button">Download again</button>
-            </div>
-            <p><a class="button wide" href="{{ config.bills_url }}">Bills and reports (needs a signal)</a></p>
+        {# Who is signed in, as C-gate shows it: a round, the name, the practice. #}
+        <div class="card pad person">
+            <span id="who-initial" class="initial"></span>
+            <span class="text"><span id="who" class="strong"></span><small id="who-practice"></small></span>
         </div>
+        {# What the vet does here, each on a row: the row says the state under its name. #}
+        <ul class="list card menu">
+            <li><button id="sync" type="button" class="horse go"><span class="text"><span class="strong">Sync now</span><small id="sync-line"></small></span></button></li>
+            <li><button id="download" type="button" class="horse go"><span class="text"><span class="strong">Download again</span><small id="downloaded"></small></span></button></li>
+            <li><a class="horse go" href="{{ config.bills_url }}"><span class="text"><span class="strong">Bills and reports</span><small>Paid and not paid, statements, work done, the price list file. Needs a signal.</small></span></a></li>
+        </ul>
         <details class="fold card">
             <summary><span class="text">This phone</span></summary>
             <dl id="details"></dl>
         </details>
-        <div class="card pad">
-            <div class="row">
-                <button id="sign-out" type="button" class="button">Sign out</button>
-                <button id="clear" type="button" class="button danger">Clear this phone</button>
-            </div>
-            <p class="muted">Sign out removes the clients, the horses and every note from this phone, and ends the sign-in. Clear this phone removes them and keeps the sign-in. Notes that were sent stay in the practice's records.</p>
-        </div>
+        <ul class="list card menu">
+            <li><button id="sign-out" type="button" class="horse go"><span class="text"><span class="strong">Sign out</span><small>Removes the clients, the horses and every note from this phone, and ends the sign-in. Needs a signal.</small></span></button></li>
+            <li><button id="clear" type="button" class="horse go danger"><span class="text"><span class="strong">Clear this phone</span><small>Removes them and keeps the sign-in.</small></span></button></li>
+        </ul>
+        <p class="muted">Notes that were sent stay in the practice's records.</p>
     </section>
 </main>
 
