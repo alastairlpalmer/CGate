@@ -108,7 +108,7 @@ button.chip::after { content: ""; position: absolute; left: -6px; right: -6px; t
 .status:empty { display: none; }
 /* A line that asks for nothing ("Willow saved.") floats over the foot of
    the page and goes. It moves nothing on the page. */
-.status.toast { position: fixed; bottom: calc(var(--tabs) + 14px + env(safe-area-inset-bottom)); left: 50%; z-index: 5; width: max-content; max-width: calc(100% - 32px); padding: 8px 14px; border: 0; border-radius: 8px; background: var(--ink); color: #fff; box-shadow: 0 8px 24px -8px rgba(61, 90, 99, .45); transform: translateX(-50%); }
+.status.toast { position: fixed; bottom: calc(var(--tabs) + 14px + env(safe-area-inset-bottom)); left: 50%; z-index: 3; width: max-content; max-width: calc(100% - 32px); padding: 8px 14px; border: 0; border-radius: 8px; background: var(--ink); color: #fff; box-shadow: 0 8px 24px -8px rgba(61, 90, 99, .45); transform: translateX(-50%); }
 /* C-gate's count pills: the day at a glance. A rust one needs attention,
    and a tap on it shows what. */
 .counts { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
