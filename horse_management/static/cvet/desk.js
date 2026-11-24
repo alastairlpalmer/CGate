@@ -7,7 +7,7 @@
 
      - the keyboard: "/" to search, the arrows in a list, Ctrl+Enter to save
      - Prices as a table, with a search
-     - a client's page: its details and its visits under its horses
+     - a client's page: how to reach the client, under its horses
      - print: one visit, or one horse's record
 
    Text goes on the page with textContent only, as in app.js. */
@@ -136,8 +136,8 @@
         return link;
     }
 
-    // Under the client's horses: how to reach the client, and its visits,
-    // each one folded as on the Visits screen.
+    // Under the client's tabs: how to reach the client. Its visits are on
+    // its Timeline tab.
     function renderClientPage() {
         var client = app.clientById(state.client);
         var box = $('client-desk');
@@ -169,13 +169,8 @@
             });
             nodes.push(el('h3', '', 'Details'), list);
         }
-        var visits = app.visitRows(client.id);
-        nodes.push(el('h3', '', 'Visits'));
-        if (visits.length) visits.forEach(function (row) { nodes.push(app.visitFold(row)); });
-        else nodes.push(el('p', 'muted', 'No visits yet. Tap a horse to start one.'));
         app.fill(box, nodes);
-        // The practice's list of visits, if it was not read a moment ago.
-        app.loadVisitList();
+        box.hidden = nodes.length === 0;
     }
 
     // ── Print ────────────────────────────────────────────────────────────

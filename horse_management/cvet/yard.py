@@ -56,6 +56,17 @@ def recheck_due_by_client_horse(practice, horses):
     return due
 
 
+def about(horse):
+    """'Bay mare, 12yo': what the passport says of the horse, to know it by sight.
+
+    Part of the horse's identity (section 3 of the plan), with its name,
+    microchip and passport number. Empty when the yard holds none of it.
+    """
+    parts = [horse.get_color_display() if horse.color else '', horse.get_sex_display() if horse.sex else '']
+    words = ' '.join(part for part in parts if part).capitalize()
+    return ', '.join(part for part in (words, horse.age_label) if part)
+
+
 def payers_by_horse(horses):
     """{horse id: [{'owner_id', 'name', 'share'}]}: who pays, and how much of it.
 

@@ -6,7 +6,7 @@
 //   node tools/qa/cvet_desktop_qa.js http://127.0.0.1:8765 /path/to/out
 //
 // It checks, at 1440 x 900: the clients stay on the left with one client
-// on the right, and its details and visits under its horses; a horse has
+// on the right, with its details and its timeline; a horse has
 // its history beside the note; "/" goes to the search and the arrows go
 // down the list; Ctrl+Enter saves; Prices is a table with a search; a
 // visit and a record can be printed; no screen scrolls sideways; a narrow
@@ -34,8 +34,12 @@ const OUT = process.argv[3] || 'cvet_qa';
   await page.locator('#clients .horse', { hasText: 'Marsh Stud' }).click();
   r.second = await page.locator('#client-name').textContent();
   // The client's page: its details and its visits, under its horses.
-  await page.locator('#client-desk details[data-visit]').first().waitFor();
-  r.clientPage = (await page.locator('#client-desk dl').textContent()).includes('Sam Marsh') && (await page.locator('#client-desk details[data-visit]').count()) === 1;
+  await page.locator('#client-desk dl').waitFor();
+  await page.locator('#client-tabs .seg-tab', { hasText: 'Timeline' }).click();
+  await page.locator('#client-timeline details[data-visit]').first().waitFor();
+  r.clientPage = (await page.locator('#client-desk dl').textContent()).includes('Sam Marsh') && (await page.locator('#client-timeline details[data-visit]').count()) === 1;
+  await page.screenshot({ path: `${OUT}/d1c-client-timeline.png` });
+  await page.locator('#client-tabs .seg-tab', { hasText: 'Horses' }).click();
   // "/" goes to the search; the arrow goes into the list; Enter opens.
   await page.locator('#client-name').click();
   await page.keyboard.press('/');

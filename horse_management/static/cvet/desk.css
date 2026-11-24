@@ -93,9 +93,11 @@
     .cols > :last-child { position: sticky; top: 64px; max-height: calc(100vh - 88px); overflow: auto; }
     .cols > :last-child > h3:first-child { margin-top: 10px; }
 
-    /* A client: its details and its visits are under its horses. */
-    /* The client's visits are on its page: no need for the link to them. */
-    #client-history, #client-contact { display: none; }
+    /* A client: how to reach it is in a card of its own; the line under its name is short. */
+    #client-contact { display: none; }
+    .seg { max-width: 420px; }
+    .seg-tab { min-height: 28px; font-size: 13px; }
+    .day { font-size: 11.5px; }
     #client-desk dl { padding: 10px 14px; font-size: 13px; }
 
     /* Prices as a table: C-gate's data table. A cool band over the columns,

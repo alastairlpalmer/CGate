@@ -37,6 +37,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
       data-desk-js="{{ config.desk_js }}"
       data-online-js="{{ config.online_js }}"
       data-visits-url="{{ config.visits_url }}"
+      data-bills-api-url="{{ config.bills_api_url }}"
       data-login-url="{{ config.login_url }}"
       data-logout-url="{{ config.logout_url }}">
 
@@ -77,29 +78,31 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
 
     {# ── One client: its horses ── #}
     <section id="view-client" class="view" aria-labelledby="client-name" hidden>
-        <button id="client-back" type="button" class="back">‹ Clients</button>
         <div class="head">
+            <button id="client-back" type="button" class="back icon" aria-label="Back to Clients">‹</button>
             <h2 id="client-name"></h2>
             <button id="client-edit" type="button" class="button slim">Edit</button>
         </div>
-        {# What the client is, and what the vet does most: both in reach above a long list. #}
-        <div class="meta">
-            <p id="client-line" class="muted"></p>
-            <button id="horse-add" type="button" class="link calm">Add horse</button>
-            <button id="client-history" type="button" class="link calm">Visit history</button>
-        </div>
+        <p id="client-line" class="muted"></p>
         <p id="client-contact" class="muted"></p>
         <button id="client-visit" type="button" class="banner" hidden></button>
-        <div class="row">
-            <input id="search" type="search" placeholder="Find a horse" autocomplete="off" aria-label="Find a horse">
-            <button id="select-toggle" type="button" class="button slim">Select</button>
+        {# One client, three ways: its horses, what happened and what is due, and its invoices. #}
+        <div id="client-tabs" class="seg" role="tablist" aria-label="Show"></div>
+        <div id="client-horses">
+            <div class="row">
+                <input id="search" type="search" placeholder="Find a horse" autocomplete="off" aria-label="Find a horse">
+                <button id="select-toggle" type="button" class="button slim">Select</button>
+            </div>
+            <ul id="horses" class="list card"></ul>
+            <p id="no-horses" class="empty" hidden></p>
+            <button id="horse-add" type="button" class="link calm">+ Add horse</button>
+            <details id="archived-horses-box" class="fold plain" hidden>
+                <summary><span class="text">Archived horses</span></summary>
+                <ul id="archived-horses" class="list card"></ul>
+            </details>
         </div>
-        <ul id="horses" class="list card"></ul>
-        <p id="no-horses" class="empty" hidden></p>
-        <details id="archived-horses-box" class="fold plain" hidden>
-            <summary><span class="text">Archived horses</span></summary>
-            <ul id="archived-horses" class="list card"></ul>
-        </details>
+        <div id="client-timeline" hidden></div>
+        <div id="client-bills" hidden></div>
         <div id="select-bar" class="actionbar" hidden>
             <span id="select-count" class="strong"></span>
             <button id="select-add" type="button" class="button primary">Add item</button>
@@ -125,6 +128,8 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
                 <button id="item-add" type="button" class="button slim primary">Add item</button>
             </div>
             <p id="no-lines" class="muted">No items yet.</p>
+            {# One tap for the items of the last visit to this horse. An offer, as the recheck date is. #}
+            <button id="repeat" type="button" class="suggest" hidden></button>
             <ul id="lines" class="list lines"></ul>
             <p id="lines-total" class="total"></p>
         </div>
@@ -181,6 +186,15 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
             <div id="past-visits"></div>
         </div>
         <p id="visits-message" class="muted" aria-live="polite"></p>
+    </section>
+
+    {# ── Invoices: what was billed, what is paid, what is still to pay ── #}
+    <section id="view-bills" class="view" aria-label="Invoices" hidden>
+        <div class="head"><h2>Invoices</h2></div>
+        <div id="bill-counts" class="counts"></div>
+        <div id="bill-chips" class="tiles" role="group" aria-label="Show"></div>
+        <div id="bills"></div>
+        <p id="bills-message" class="muted" aria-live="polite"></p>
     </section>
 
     {# ── The practice's price list ── #}
@@ -262,6 +276,17 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
     </div>
 </div>
 
+{# One invoice: each horse's items, the total, paid or not. #}
+<div id="bill-sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="bill-title" hidden>
+    <div class="sheet-body">
+        <div class="head">
+            <h2 id="bill-title"></h2>
+            <button id="bill-close" type="button" class="button slim">Close</button>
+        </div>
+        <div id="bill-body"></div>
+    </div>
+</div>
+
 {# A client of the practice: a new one, or a change. #}
 <div id="client-sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="client-form-title" hidden>
     <form id="client-form" class="sheet-body" novalidate>
@@ -328,6 +353,10 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
     <button type="button" class="tab" data-view="visits">
         <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM9 12h6M9 16h4"/></svg><span id="visit-badge" class="badge" hidden></span></span>
         <span>Visits</span>
+    </button>
+    <button type="button" class="tab" data-view="bills">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2zM9 7h6M9 11h6M9 15h4"/></svg></span>
+        <span>Invoices</span>
     </button>
     <button type="button" class="tab" data-view="prices">
         <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01"/></svg></span>

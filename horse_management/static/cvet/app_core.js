@@ -241,6 +241,29 @@
         return today && today.slice(0, 4) !== parts[0] ? text + ' ' + parts[0] : text;
     }
 
+    var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    // The heading of a day on a timeline: "Today", "Yesterday", "Mon 16 Nov",
+    // with the year when it is not `today`'s.
+    function dayLabel(day, today) {
+        if (day === today) return 'Today';
+        if (day === addDays(today, -1)) return 'Yesterday';
+        var parts = String(day || '').split('-');
+        if (parts.length !== 3) return '';
+        return DAYS[new Date(Date.UTC(+parts[0], +parts[1] - 1, +parts[2])).getUTCDay()] + ' ' + shortDate(day, today);
+    }
+
+    // Rows that each have a `day`, as [{ day, rows }], the newest day first.
+    function byDay(rows) {
+        var groups = [];
+        rows.slice().sort(function (a, b) { return a.day < b.day ? 1 : a.day > b.day ? -1 : 0; }).forEach(function (row) {
+            var last = groups[groups.length - 1];
+            if (last && last.day === row.day) last.rows.push(row);
+            else groups.push({ day: row.day, rows: [row] });
+        });
+        return groups;
+    }
+
     // overdue: before today. soon: in the next 14 days. later: after that.
     function dueStatus(day, today) {
         if (day < today) return 'overdue';
@@ -528,6 +551,8 @@
         visitSummary: visitSummary,
         addDays: addDays,
         shortDate: shortDate,
+        dayLabel: dayLabel,
+        byDay: byDay,
         dueStatus: dueStatus,
         horseDue: horseDue,
         sortHorses: sortHorses,

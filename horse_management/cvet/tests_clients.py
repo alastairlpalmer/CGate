@@ -54,7 +54,7 @@ class ClientListTests(YardCase):
         own = [item for item in data['horses'] if item.get('own')]
         self.assertEqual(own, [{
             'id': horse['id'], 'client_id': client['id'], 'name': 'Juniper',
-            'microchip': '985100099999999', 'passport': '', 'location': '', 'owner': 'Sam Marsh',
+            'microchip': '985100099999999', 'passport': '', 'about': '', 'location': '', 'owner': 'Sam Marsh',
             'payers': [], 'due': [], 'own': True, 'is_active': True,
         }])
         # The yard's horse stays with the yard client.

@@ -21,6 +21,8 @@ One page, one service worker and a small JSON API:
 * ``api_prices`` saves one line of the practice's price list.
 * ``api_visit_finish`` closes a visit, when the vet taps Finish visit, and
   bills it (``cvet.billing``).
+* ``api_bills`` lists the practice's bills for the app's Invoices screen;
+  ``api_bill_paid`` marks one as paid, or as not paid.
 * ``bill_list``, ``bill_detail`` and ``bill_export`` are the practice's own
   pages for its bills. They need a signal and are not part of the stored app.
   The rest of the practice office's pages are in ``cvet.office``.
@@ -149,6 +151,8 @@ def app(request):
             'horses_url': reverse('cvet:api_horses'),
             # The phone adds "<visit id>/" or "<visit id>/finish/".
             'visits_url': reverse('cvet:api_visits'),
+            # The phone adds "<bill number of ours>/paid/".
+            'bills_api_url': reverse('cvet:api_bills'),
             # The phone adds "<file id>/".
             'files_url': f"{reverse('cvet:app')}api/files/",
             'desk_css': static_v(WIDE_FILES[0]),
@@ -231,6 +235,9 @@ def api_yard(request):
                 'name': horse.name,
                 'microchip': horse.microchip,
                 'passport': horse.passport_number,
+                # What the passport says of the horse, to know it by sight:
+                # "Bay mare, 12yo". Identity, as its name and its numbers are.
+                'about': yard.about(horse),
                 'location': locations.get(horse.pk, ''),
                 'owner': horse.current_owner.name if horse.current_owner else '',
                 # Who pays and each share: the phone shows the split on
@@ -296,6 +303,7 @@ def _client_horse_payload(horse, due=()):
         'name': horse.name,
         'microchip': horse.microchip,
         'passport': horse.passport,
+        'about': '',
         'location': '',
         'owner': horse.owner_name,
         'payers': [],
@@ -1014,6 +1022,76 @@ def api_visit_finish(request, client_id):
     # then failed, this one finishes the job. It makes nothing twice.
     billing.close_out(visit)
     return JsonResponse(_visit_payload(visit))
+
+
+# ── The practice's bills, for the app's Invoices screen ─────────────────
+
+BILLS_LISTED = 200
+
+
+def _bill_payload(bill):
+    by_horse = {}
+    for line in bill.lines.all():
+        by_horse.setdefault(line.horse_name, []).append({
+            'description': line.description,
+            'quantity': f'{line.quantity.normalize():f}',
+            'amount': f'{line.amount_inc_vat:.2f}',
+            'date': line.date.isoformat(),
+        })
+    client = bill.practice_client
+    return {
+        'id': bill.pk,
+        'number': bill.number,
+        'date': bill.date.isoformat(),
+        'to': bill.to_name,
+        'client_id': str(client.client_id) if client else None,
+        'visit_id': str(bill.visit.client_id) if bill.visit_id else None,
+        'period_start': bill.period_start.isoformat() if bill.period_start else None,
+        'period_end': bill.period_end.isoformat() if bill.period_end else None,
+        'total': f'{bill.total_inc_vat:.2f}',
+        'vat': f'{bill.total_vat:.2f}',
+        'paid_on': bill.paid_on.isoformat() if bill.paid_on else None,
+        'emailed_at': bill.emailed_at.isoformat() if bill.emailed_at else None,
+        # Items and amounts, each horse apart. Never the text of a note.
+        'horses': [{'name': name, 'lines': lines} for name, lines in sorted(by_horse.items())],
+        'url': reverse('cvet:bill_detail', args=[bill.pk]),
+    }
+
+
+def _bills(request):
+    return (
+        access.bills_for(request.practice).filter(is_test=settings.CVET_TEST_MODE)
+        .select_related('practice_client', 'visit').prefetch_related('lines')
+    )
+
+
+@practice_api
+@require_GET
+def api_bills(request):
+    """The practice's bills, newest first, and the finished work that is on no bill yet."""
+    visits, unbilled = billing.unbilled_summary(request.practice, settings.CVET_TEST_MODE)
+    return JsonResponse({
+        'bills': [_bill_payload(bill) for bill in _bills(request)[:BILLS_LISTED]],
+        'unbilled': {'visits': visits, 'total': f'{unbilled:.2f}'},
+    })
+
+
+@practice_api
+@require_POST
+def api_bill_paid(request, pk):
+    """Mark a bill as paid on a day (today with no day), or as not paid again.
+
+    The practice's own mark, as on the Bills page (``cvet.office.bill_paid``).
+    """
+    bill = _bills(request).filter(pk=pk).first()
+    if bill is None:
+        raise Http404
+    if request.POST.get('paid') == 'no':
+        bill.paid_on = None
+    else:
+        bill.paid_on = parse_date(request.POST.get('paid_on', '')) or timezone.localdate()
+    bill.save(update_fields=['paid_on'])
+    return JsonResponse(_bill_payload(bill))
 
 
 # ── The practice's bills (pages, with a signal) ──────────────────────────
