@@ -663,6 +663,29 @@ The three questions of section 7h were not answered before the build, so these w
 - **A paid mark in the yard's books.** The mark is the practice's own. What the yard owes is in C-gate's Costs.
 - **The reports as charts.**
 
+## 7k. The look of C-gate
+
+Asked for after the practice office: C-vet must look and feel like C-gate, the main platform: compact, tidy, organised, clean. C-vet keeps its own small stylesheet (section 5), so the look is copied by value, not shared by file. `tailwind.config.js` and `static/css/input.css` are the source; `static/cvet/app.css` names each C-gate colour beside its own.
+
+| Part | In C-gate | Now in C-vet |
+|---|---|---|
+| Fonts | DM Sans for titles, Source Sans 3 for text | The same two files, from C-gate's own `static/fonts`. |
+| Colours | Brim, parchment, light sage, saddle rust, meadow | The same values. Before, C-vet had near colours of its own. |
+| The main action | One rust button on a screen | Save, Add item, Finish visit, Sync now are rust. Every other button is white with a hairline. |
+| A card | A hairline, a soft shadow, a cream header band 44 px high with the title in the brand colour | Items, Note, Recheck, an open visit and a form have the band. |
+| A label over a group | Small capitals in the brand colour | Open, Finished, History, the categories. |
+| A badge | Round, with a tint and a hairline of its colour | Due, overdue, Visit open, TEST. |
+| The sent counter | A white pill with a dot | Green dot: all sent. Rust dot and tint: something waits. |
+| A choice | A round chip; the chosen one is filled | The recheck choices, the categories of the item list. |
+| The tab bar on a phone | White, the open tab's icon in a soft tile | The same. The count of open visits is on the corner of the icon. |
+| The top of a phone screen | The page colour, no dark bar | The same: the name in the brand colour on parchment. |
+| A computer | A dark sidebar with the open screen in a quiet tile; 14 px text; rows and buttons for a pointer; a table with a cool band over its columns | The same. Buttons are 34 px high, rows 40 px. |
+| The practice office pages | — | The same fonts, colours, table and buttons. |
+
+**The fonts and the speed rule.** The plan said "no web fonts" (section 5), so that a font never makes the vet wait. That stays true: the app opens in the phone's own font and changes when the font file arrives (`font-display: swap`), and fallback faces with the same measures keep the text from moving. The two files (66 KB) are not part of the download that opens the app. The service worker stores them the first time the page asks, so they are there with no signal. A phone that opens the app for the first time with a weak signal shows the phone's font until they arrive.
+
+On a phone every tap target stays 44 px, and 8 horses still fit the first screen: the check script holds both.
+
 ## 8. The test on Tim's phone
 
 ### Set-up (once, by an administrator)

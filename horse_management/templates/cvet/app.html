@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>C-vet</title>
-    <meta name="theme-color" content="#3D5A63">
+    <meta name="theme-color" content="#F5F2EA">
     <link rel="manifest" href="{% static_v 'cvet/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static_v 'icons/apple-touch-icon.png' %}">
     <link rel="icon" type="image/png" sizes="192x192" href="{% static_v 'icons/icon-192.png' %}">
@@ -56,18 +56,20 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
             <button id="client-add" type="button" class="button slim">Add client</button>
         </div>
         <input id="client-search" type="search" placeholder="Find a client or a horse" autocomplete="off" aria-label="Find a client or a horse">
+        {# The day at a glance, as C-gate's count pills: a tap on "due" shows those horses. #}
+        <div id="counts" class="counts"></div>
         <ul id="clients" class="list card"></ul>
         <div id="found-horses-box" hidden>
-            <h3>Horses</h3>
+            <h3 id="found-title">Horses</h3>
             <ul id="found-horses" class="list card"></ul>
         </div>
-        <p id="no-match" class="muted" hidden>No client and no horse has these words.</p>
+        <p id="no-match" class="empty" hidden>No client and no horse has these words.</p>
         <details id="archived-clients-box" class="fold plain" hidden>
             <summary><span class="text">Archived clients</span></summary>
             <ul id="archived-clients" class="list card"></ul>
         </details>
         <div id="no-clients" class="card pad" hidden>
-            <p class="strong">No clients on this phone.</p>
+            <p class="strong">No clients on this <span class="dev"></span>.</p>
             <button id="download-first" type="button" class="button primary">Download clients and horses</button>
             <p class="muted">You need a signal for this. After that, the app works with no signal.</p>
         </div>
@@ -93,7 +95,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
             <button id="select-toggle" type="button" class="button slim">Select</button>
         </div>
         <ul id="horses" class="list card"></ul>
-        <p id="no-horses" class="muted" hidden></p>
+        <p id="no-horses" class="empty" hidden></p>
         <details id="archived-horses-box" class="fold plain" hidden>
             <summary><span class="text">Archived horses</span></summary>
             <ul id="archived-horses" class="list card"></ul>
@@ -128,7 +130,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
         </div>
 
         <div class="card pad">
-            <label for="note">Note</label>
+            <div class="head"><h3><label for="note">Note</label></h3></div>
             <textarea id="note" rows="3" maxlength="5000" placeholder="What you found, what you did"></textarea>
             <p class="muted">To speak the note, tap the microphone on the keyboard.</p>
             <div class="row">
@@ -142,7 +144,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
         </div>
 
         <div class="card pad">
-            <h3>Recheck</h3>
+            <div class="head"><h3>Recheck</h3></div>
             <div id="followups" class="tiles"></div>
             <button id="recheck-suggestion" type="button" class="suggest" hidden></button>
             <input id="follow-up" type="date" aria-label="Recheck date">
@@ -157,7 +159,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
         </div><div>
         <h3>History</h3>
         <div id="history"></div>
-        <p id="no-history" class="muted">No notes for this horse yet.</p>
+        <p id="no-history" class="empty">No notes for this horse yet.</p>
         <button id="load-history" type="button" class="button">Load older notes</button>
         <p id="history-message" class="muted" aria-live="polite"></p>
         </div></div>
@@ -169,7 +171,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
             <h2>Visits</h2>
             <button id="visit-filter" type="button" class="chip filter" hidden></button>
         </div>
-        <p id="visits-empty" class="muted" hidden>No visits yet. Tap a client, then a horse, to start one.</p>
+        <p id="visits-empty" class="empty" hidden>No visits yet. Tap a client, then a horse, to start one.</p>
         <div id="open-visits-box" hidden>
             <h3>Open</h3>
             <div id="open-visits"></div>
@@ -189,7 +191,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
         </div>
         <p class="muted">Prices include VAT. A change needs a signal.</p>
         <form id="price-form" class="card pad" novalidate hidden>
-            <h3 id="price-form-title">Add a price</h3>
+            <div class="head"><h3 id="price-form-title">Add a price</h3></div>
             <label for="price-name">Name</label>
             <input id="price-name" type="text" maxlength="100" autocomplete="off" placeholder="Flu/Tet booster">
             <label for="price-category">Category</label>
@@ -222,25 +224,26 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
     {# ── More: this phone, bills, sign out ── #}
     <section id="view-phone" class="view" aria-label="More" hidden>
         <h2>More</h2>
-        <div class="card pad">
-            <p class="muted"><span id="who"></span> <span id="downloaded"></span></p>
-            <div class="row">
-                <button id="sync" type="button" class="button primary">Sync now</button>
-                <button id="download" type="button" class="button">Download again</button>
-            </div>
-            <p><a class="button wide" href="{{ config.bills_url }}">Bills and reports (needs a signal)</a></p>
+        {# Who is signed in, as C-gate shows it: a round, the name, the practice. #}
+        <div class="card pad person">
+            <span id="who-initial" class="initial"></span>
+            <span class="text"><span id="who" class="strong"></span><small id="who-practice"></small></span>
         </div>
+        {# What the vet does here, each on a row: the row says the state under its name. #}
+        <ul class="list card menu">
+            <li><button id="sync" type="button" class="horse go"><span class="text"><span class="strong">Sync now</span><small id="sync-line"></small></span></button></li>
+            <li><button id="download" type="button" class="horse go"><span class="text"><span class="strong">Download again</span><small id="downloaded"></small></span></button></li>
+            <li><a class="horse go" href="{{ config.bills_url }}"><span class="text"><span class="strong">Bills and reports</span><small>Paid and not paid, statements, work done, the price list file. Needs a signal.</small></span></a></li>
+        </ul>
         <details class="fold card">
-            <summary><span class="text">This phone</span></summary>
+            <summary><span class="text">This <span class="dev"></span></span></summary>
             <dl id="details"></dl>
         </details>
-        <div class="card pad">
-            <div class="row">
-                <button id="sign-out" type="button" class="button">Sign out</button>
-                <button id="clear" type="button" class="button danger">Clear this phone</button>
-            </div>
-            <p class="muted">Sign out removes the clients, the horses and every note from this phone, and ends the sign-in. Clear this phone removes them and keeps the sign-in. Notes that were sent stay in the practice's records.</p>
-        </div>
+        <ul class="list card menu">
+            <li><button id="sign-out" type="button" class="horse go"><span class="text"><span class="strong">Sign out</span><small>Removes the clients, the horses and every note from this <span class="dev"></span>, and ends the sign-in. Needs a signal.</small></span></button></li>
+            <li><button id="clear" type="button" class="horse go danger"><span class="text"><span class="strong">Clear this <span class="dev"></span></span><small>Removes them and keeps the sign-in.</small></span></button></li>
+        </ul>
+        <p class="muted">Notes that were sent stay in the practice's records.</p>
     </section>
 </main>
 
@@ -319,16 +322,20 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
 
 <nav class="tabs" aria-label="Screens">
     <button type="button" class="tab" data-view="clients" aria-current="page">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21V9l9-6 9 6v12h-6v-7H9v7z"/></svg>Clients
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM21 19v-1a4 4 0 0 0-3-3.87M15.5 3.13a3.5 3.5 0 0 1 0 6.74"/></svg></span>
+        <span>Clients</span>
     </button>
     <button type="button" class="tab" data-view="visits">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM9 10h7M9 14h7M9 18h4"/></svg>Visits <span id="visit-badge" class="badge" hidden></span>
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM9 12h6M9 16h4"/></svg><span id="visit-badge" class="badge" hidden></span></span>
+        <span>Visits</span>
     </button>
     <button type="button" class="tab" data-view="prices">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h8l8 8-8 8-8-8zM8.5 8.5h.01"/></svg>Prices
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01"/></svg></span>
+        <span>Prices</span>
     </button>
     <button type="button" class="tab" data-view="phone">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>More
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"/></svg></span>
+        <span>More</span>
     </button>
 </nav>
 

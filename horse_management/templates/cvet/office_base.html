@@ -1,4 +1,4 @@
-{% load ui_extras %}<!DOCTYPE html>
+{% load ui_extras static %}<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6,50 +6,60 @@
     <title>{% block title %}C-vet{% endblock %} · {{ practice.name }}</title>
     {# The practice office's pages (docs/C_VET_PLAN.md, section 7j): one look, written here once. #}
     <style>
-        :root { --ink: #17252a; --muted: #5b6a70; --brand: #2f5560; --tint: #e8f0f1; --paper: #f3f1ea; --line: #e1ddd2; --good: #2f6b45; --bad: #a3322b; }
+        @font-face { font-family: "DM Sans"; src: url("{% static 'fonts/DMSans-Variable.woff2' %}") format("woff2"); font-weight: 400 700; font-display: swap; }
+        @font-face { font-family: "Source Sans 3"; src: url("{% static 'fonts/SourceSans3-Variable.woff2' %}") format("woff2"); font-weight: 400 700; font-display: swap; }
+        /* C-gate's colours and sizes (tailwind.config.js), as in static/cvet/app.css. */
+        :root { --ink: #2C2C2C; --ink-light: #4A4A4A; --muted: #56737A; --brand: #3D5A63; --tint: #EFF3F4; --paper: #F5F2EA; --line: #E4EAEB; --edge: rgba(86, 115, 122, .3); --cream: #FAF8F3; --cream-line: #ECE7DA; --accent: #A0522D; --accent-dark: #86431F; --good: #3F7A4F; --bad: #C0392B; --heading: "DM Sans", system-ui, sans-serif; }
         * { box-sizing: border-box; }
-        body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.4 "Source Sans 3", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+        /* The bar at the top: C-gate's sidebar, on its side. */
         .top { background: var(--brand); }
-        .top nav { display: flex; gap: 4px; align-items: center; max-width: 62em; margin: 0 auto; padding: 4px 12px; overflow-x: auto; }
-        .top a { flex: 0 0 auto; padding: 12px 10px; border-radius: 8px; color: #c9d8dc; font-weight: 600; text-decoration: none; white-space: nowrap; }
-        .top a.here { color: #fff; background: rgba(255, 255, 255, .16); }
-        .page { max-width: 62em; margin: 0 auto; padding: 12px 16px 40px; }
-        h1 { font-size: 22px; margin: 4px 0 12px; letter-spacing: -.01em; }
-        h2 { margin: 20px 0 6px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-        a { color: var(--brand); font-weight: 600; }
-        td a { display: inline-block; padding: 11px 0; }
+        .top nav { display: flex; gap: 2px; align-items: center; max-width: 62em; margin: 0 auto; padding: 6px 12px; overflow-x: auto; }
+        .top a { flex: 0 0 auto; padding: 9px 12px; border-radius: 6px; color: rgba(255, 255, 255, .7); font-size: 14px; font-weight: 500; text-decoration: none; white-space: nowrap; box-shadow: inset 0 0 0 1px transparent; }
+        .top a:hover { color: #fff; background: rgba(255, 255, 255, .05); }
+        .top a.here { color: #fff; font-weight: 600; background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); }
+        .page { max-width: 62em; margin: 0 auto; padding: 14px 16px 40px; }
+        h1 { margin: 4px 0 12px; font: 600 20px/1.2 var(--heading); letter-spacing: -.01em; }
+        h2 { margin: 20px 0 6px; color: var(--brand); font: 600 14px/1.3 var(--heading); }
+        a { color: var(--brand); font-weight: 500; }
+        td a { display: inline-block; padding: 9px 0; font-weight: 600; }
         .nowrap { white-space: nowrap; }
         .bar { display: flex; gap: 8px 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-        /* A wide table moves sideways inside its box, never the page. */
-        .box { overflow-x: auto; margin: 12px 0; border-radius: 12px; background: #fff; box-shadow: 0 1px 2px rgba(23, 37, 42, .06), 0 1px 6px rgba(23, 37, 42, .05); }
+        /* A card. A wide table moves sideways inside it, never the page. */
+        .box { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); border-radius: 12px; background: #fff; box-shadow: 0 1px 2px rgba(44, 44, 44, .04), 0 4px 12px -4px rgba(61, 90, 99, .12); }
         .box.pad { padding: 12px 14px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 2px 6px; text-align: left; border-top: 1px solid var(--line); }
-        td { height: 44px; }
-        th:first-child, td:first-child { padding-left: 14px; }
-        th:last-child, td:last-child { padding-right: 14px; }
-        th { padding-top: 10px; padding-bottom: 10px; border-top: 0; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+        /* C-gate's data table: a cool band over the columns, small capitals. */
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 2px 8px; text-align: left; border-top: 1px solid var(--line); }
+        td { height: 40px; }
+        tr:hover td { background: rgba(239, 243, 244, .8); }
+        th:first-child, td:first-child { padding-left: 16px; }
+        th:last-child, td:last-child { padding-right: 16px; }
+        th { padding-top: 8px; padding-bottom: 8px; border-top: 0; background: rgba(228, 234, 235, .6); color: var(--brand); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
         .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
         td.num, tr.sum td { font-weight: 600; }
         tr.sum td { border-top: 2px solid var(--ink); }
-        .muted { color: var(--muted); font-size: 14px; }
+        .muted { color: var(--muted); font-size: 13px; }
         .good { color: var(--good); font-weight: 600; }
         .bad { color: var(--bad); font-weight: 600; }
         fieldset { border: 0; padding: 0; margin: 0; }
-        legend { font-weight: 600; padding: 0; margin-bottom: 4px; }
-        label { font-weight: 600; font-size: 13px; }
-        label.choice { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 400; font-size: inherit; }
-        input[type=radio] { width: 22px; height: 22px; flex: 0 0 auto; margin: 0; accent-color: var(--brand); }
-        select, input[type=date], input[type=file] { min-height: 44px; max-width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font: inherit; }
+        legend { padding: 0; margin-bottom: 4px; color: var(--brand); font: 600 14px/1.3 var(--heading); }
+        label { color: var(--ink-light); font-weight: 500; font-size: 13px; }
+        label.choice { display: flex; align-items: center; gap: 10px; min-height: 40px; color: var(--ink); font-size: inherit; font-weight: 400; }
+        input[type=radio] { width: 20px; height: 20px; flex: 0 0 auto; margin: 0; accent-color: var(--brand); }
+        select, input[type=date], input[type=file] { min-height: 40px; max-width: 100%; padding: 7px 10px; border: 1px solid var(--edge); border-radius: 6px; background: #fff; color: var(--ink); font: inherit; box-shadow: 0 1px 2px rgba(44, 44, 44, .04); }
         .fields { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
         .fields > div { display: flex; flex-direction: column; gap: 3px; }
-        button, .button { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1px solid var(--brand); border-radius: 10px; background: var(--brand); color: #fff; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
-        button.quiet, .button.quiet { background: #fff; color: var(--brand); }
-        button.small { min-height: 36px; padding: 0 10px; font-size: 14px; }
-        .tag { padding: 2px 6px; border-radius: 4px; background: #ffe2b8; color: #5c3600; font-size: 12px; font-weight: 700; text-transform: uppercase; vertical-align: 3px; }
+        /* Rust: the one main action. White with a hairline: one of several. */
+        button, .button { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border: 1px solid var(--accent); border-radius: 6px; background: var(--accent); color: #fff; font: inherit; font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer; }
+        button:hover, .button:hover { background: var(--accent-dark); }
+        button.quiet, .button.quiet { border-color: var(--edge); background: #fff; color: var(--ink); }
+        button.quiet:hover, .button.quiet:hover { background: var(--line); }
+        button.small { min-height: 30px; padding: 0 10px; font-size: 13px; }
+        .tag { padding: 2px 8px; border-radius: 999px; background: var(--cream); box-shadow: inset 0 0 0 1px var(--cream-line); color: var(--accent); font: 600 11px/1.4 "Source Sans 3", sans-serif; text-transform: uppercase; letter-spacing: .04em; vertical-align: 3px; }
         .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(9em, 1fr)); gap: 10px; margin: 12px 0; }
-        .tile { padding: 10px 14px; border-radius: 12px; background: #fff; box-shadow: 0 1px 2px rgba(23, 37, 42, .06); }
-        .tile strong { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+        .tile { padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+        .tile strong { display: block; font: 600 20px/1.3 var(--heading); font-variant-numeric: tabular-nums; }
         .tile span { color: var(--muted); font-size: 13px; }
         ul.problems { margin: 6px 0; padding-left: 20px; }
         input[type=file] { width: 100%; }
@@ -61,6 +71,7 @@
             .narrow { display: block; }
             table { font-size: 14px; }
             button.small { padding: 0 8px; }
+            td { height: 44px; }
         }
         @media print { .top, .screen { display: none; } body { background: #fff; } .page { padding: 0; } .box, .tile { box-shadow: none; } }
         {% block style %}{% endblock %}

@@ -279,9 +279,12 @@
     // one that asks the vet to do something (`stays`) does not.
     var sayTimer = null;
     function say(text, stays) {
-        $('sync-message').textContent = text;
+        var node = $('sync-message');
+        node.textContent = text;
+        // "Willow saved." floats over the page and goes: it moves nothing.
+        node.classList.toggle('toast', !stays);
         if (sayTimer) clearTimeout(sayTimer);
-        sayTimer = text && !stays ? setTimeout(function () { $('sync-message').textContent = ''; }, 8000) : null;
+        sayTimer = text && !stays ? setTimeout(function () { node.textContent = ''; }, 5000) : null;
     }
 
     function unsentEntries() { return core.unsent(state.entries); }
@@ -556,7 +559,40 @@
             var client = clientById(clientIdOf(horse));
             return horse.is_active !== false && client && client.is_active !== false && core.matchesHorse(horse, query);
         }).slice(0, 30) : [];
-        fill($('found-horses'), found.map(function (horse) { return horseRow(horse, { client: true, ids: true }); }));
+        // What is due, at every client: one tap on the count shows the horses.
+        var day = today();
+        var due = core.sortHorses(state.horses, day).filter(function (horse) {
+            var client = clientById(clientIdOf(horse));
+            return horse.is_active !== false && client && client.is_active !== false && core.horseDue(horse, day);
+        });
+        if (!due.length) state.dueOnly = false;
+        var open = Object.keys(visits()).filter(function (clientId) { return openEntries(clientId).length > 0; }).length;
+        function count(number, one, many, hot, onClick) {
+            var node = onClick ? button('count', undefined, onClick) : el('span', 'count');
+            node.appendChild(el('b', '', String(number)));
+            node.appendChild(document.createTextNode(' ' + (number === 1 ? one : many)));
+            if (hot) node.classList.add('hot');
+            return node;
+        }
+        var counts = [count(shown.length, 'client', 'clients')];
+        if (due.length) {
+            var dueCount = count(due.length, 'horse due', 'horses due', true, function () {
+                state.dueOnly = !state.dueOnly;
+                renderClients();
+            });
+            dueCount.setAttribute('aria-pressed', state.dueOnly ? 'true' : 'false');
+            counts.push(dueCount);
+        }
+        if (open) {
+            counts.push(count(open, 'visit open', 'visits open', true, function () {
+                state.visitFilter = '';
+                show('visits');
+            }));
+        }
+        fill($('counts'), state.clients.length && !query ? counts : []);
+        if (state.dueOnly && !query) found = due;
+        $('found-title').textContent = state.dueOnly && !query ? 'Due' : 'Horses';
+        fill($('found-horses'), found.map(function (horse) { return horseRow(horse, { client: true, ids: !!query }); }));
         $('found-horses-box').hidden = found.length === 0;
         $('no-match').hidden = !(query && !shown.length && !found.length);
         fill($('archived-clients'), archived.map(clientRow));
@@ -667,6 +703,9 @@
         $('picker').hidden = false;
         renderPicker();
         $('picker-list').scrollTop = 0;
+        // With a keyboard at hand, the search is ready. On a phone it
+        // would bring the keyboard up over the list.
+        if (isWide()) $('picker-search').focus();
     }
 
     function closePicker() {
@@ -687,9 +726,13 @@
             return chip;
         }) : []);
         var groups = core.groupPrices(state.prices, $('picker-search').value, picker.category);
+        if (!$('picker-search').value.trim() && !picker.category) {
+            var often = core.oftenUsed(state.prices, state.entries);
+            if (often.length) groups.unshift({ category: 'Often used', items: often });
+        }
         var nodes = [];
         groups.forEach(function (group) {
-            if (categories.length > 1) nodes.push(el('h3', '', group.category));
+            if (categories.length > 1 || group.category === 'Often used') nodes.push(el('h3', '', group.category));
             group.items.forEach(function (price) {
                 var row = button('pick', undefined, function () {
                     if (picker.mode === 'draft') { addLine(lineFrom(price)); renderPicker(); }
@@ -807,6 +850,13 @@
         return setMeta('draft', null);
     }
 
+    // The note box is as high as the note: no small box to scroll in.
+    function growNote() {
+        var box = $('note');
+        box.style.height = 'auto';
+        box.style.height = Math.max(box.scrollHeight + 2, 76) + 'px';
+    }
+
     function draftIsEmpty() {
         var draft = state.draft;
         return !draft || (!draft.lines.length && !draft.photo && !draft.audio && !draft.followUp && !$('note').value.trim());
@@ -847,6 +897,7 @@
         renderLines();
         renderFollowUps();
         renderHistory();
+        growNote();
     }
 
     function addLine(line) {
@@ -1813,13 +1864,17 @@
 
     function renderPhone() {
         var info = clientInfo();
-        $('who').textContent = state.meta.userName
-            ? 'Signed in as ' + state.meta.userName + (state.meta.practice ? ', ' + state.meta.practice : '') + '.'
-            : '';
+        var name = state.meta.userName || 'Not signed in on this phone yet';
+        $('who').textContent = name;
+        $('who-initial').textContent = name.charAt(0).toUpperCase();
+        $('who-practice').textContent = state.meta.practice || '';
+        var waiting = unsentEntries().length + pendingChanges().length + finishQueue().length;
+        $('sync-line').textContent = (waiting ? waiting + ' to send. ' : 'All sent. ') +
+            (state.meta.lastSyncAt ? 'Last sent ' + timeText(state.meta.lastSyncAt) + '.' : '');
         $('downloaded').textContent = state.meta.downloadedAt
             ? countText(state.clients.length, 'client', 'clients') + ' and ' +
               countText(state.horses.length, 'horse', 'horses') + ', downloaded ' + timeText(state.meta.downloadedAt) + '.'
-            : '';
+            : 'Clients, horses and prices. Needs a signal.';
         var rows = [
             ['App version', info.version],
             ['Installed on the home screen', info.standalone ? 'Yes' : 'No'],
@@ -2329,7 +2384,7 @@
             renderFollowUps();
             persistDraft();
         });
-        $('note').addEventListener('input', function () { renderSuggestion(); persistDraft(); });
+        $('note').addEventListener('input', function () { growNote(); renderSuggestion(); persistDraft(); });
         $('photo').addEventListener('change', onPhotoChosen);
         $('record').addEventListener('click', toggleRecording);
         $('save').addEventListener('click', saveDraft);
