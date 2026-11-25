@@ -266,14 +266,20 @@ small { color: var(--muted); font-size: 13px; }
 /* A timeline. The heading of a day: small, as C-gate's. */
 .day { margin: 14px 0 -4px; color: var(--muted); font: 600 12px/1.4 var(--body); letter-spacing: .02em; }
 .day:first-child { margin-top: 4px; }
-/* The notes of a day on a rail: a dot for each one. */
-.timeline { position: relative; overflow: hidden; }
-.card.timeline > .entry { position: relative; padding-left: 36px; }
-.timeline > .entry::before { content: ""; position: absolute; left: 17px; top: 0; bottom: 0; width: 1px; background: var(--line); }
-.timeline > .entry::after { content: ""; position: absolute; left: 13px; top: 15px; width: 9px; height: 9px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 2px var(--muted); }
-.timeline > .entry:first-child::before { top: 15px; }
-.timeline > .entry:last-child::before { bottom: auto; height: 15px; }
+/* A horse's history: one record. A band for each day; under it the notes
+   of the day on a rail, with the time of each one beside its dot. */
+.tl { margin: -10px -14px -12px; }
+#history:not(:empty) ~ :not([hidden]):not(:empty) { margin-top: 18px; }
+.tl .day { margin: 0; padding: 4px 14px; border-top: 1px solid var(--line); background: var(--tint); color: var(--brand); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.tl .day:first-child { border-top: 0; }
+.timeline > .entry { position: relative; padding: 8px 14px 8px 70px; border-top: 0; }
+.timeline > .entry::before { content: ""; position: absolute; left: 57px; top: 0; bottom: 0; width: 1px; background: var(--line); }
+.timeline > .entry::after { content: ""; position: absolute; left: 54px; top: 14px; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); box-shadow: 0 0 0 2px #fff; }
+.timeline > .entry:first-child::before { top: 14px; }
+.timeline > .entry:last-child::before { bottom: auto; height: 14px; }
 .timeline > .entry:only-child::before { display: none; }
+.timeline .when { position: absolute; left: 14px; top: 9px; }
+.timeline .when::after { content: none; }
 #horse-add { display: block; margin: -4px 0 0; }
 #client-horses > .row { margin: 6px 0; }
 #client-horses > .list.card { margin-top: 6px; }
@@ -382,14 +388,15 @@ small { color: var(--muted); font-size: 13px; }
 /* One note, as it is read back. */
 .entry { padding: 8px 0; border-top: 1px solid var(--line); }
 .entry:first-child { border-top: 0; }
-.card > .entry { padding: 10px 14px; }
 .entry small { display: block; }
-.entry small.state { font-weight: 600; }
-.entry small.sent { color: var(--brand); }
-.entry small.pending { color: var(--accent); }
-.entry small.failed { color: var(--bad); }
-.entry .words { margin: 4px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.entry .item { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.entry small.pending { color: var(--accent); font-weight: 600; }
+.entry small.failed { color: var(--bad); font-weight: 600; }
+.when { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+.when::after { content: " \00b7  "; }
+.entry .words { margin: 2px 0; color: var(--ink-light); font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.entry .item { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 500; }
+.entry .file { display: inline-block; margin-right: 14px; vertical-align: top; max-width: 100%; }
+.file audio { display: block; width: 280px; max-width: 100%; }
 .entry img { display: block; max-width: 100%; margin-top: 6px; border-radius: 8px; }
 .pay { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; }
 .price.hidden-price .strong { color: var(--muted); text-decoration: line-through; }

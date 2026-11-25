@@ -776,6 +776,33 @@ The filter of Visits by client, and its chip. Nothing set it since a client has 
 |---|---|
 | `ClientHorse.about` | What the horse looks like, in the vet's words. |
 
+
+## 7o. The computer: the whole width, tables with filters, and one history
+
+The owner looked at C-vet on a computer and asked for: less empty space, a smaller sidebar, owners set apart from horses, real filters, tidier lists, a better timeline on a horse, and more items in the price list.
+
+| Part | What changed |
+|---|---|
+| **The whole width** | On a computer the page uses the full width of the screen. Before, it stopped at 1,280 px and each part at 760 px. Only **More** stays the width of a form. |
+| **A smaller sidebar** | 184 px (was 224 px), with rows of 32 px and icons of 16 px. |
+| **A client's horses are a table** | Columns: **Horse**, **Description** (when a horse has one), **Owner**, **Location**, **Due**. The owner has a column of its own, so a horse and its owner are not on one line. |
+| **Filters over the table** | Search, **Owner**, **Location**, **Due**, and **Group** (by owner or by location: a band with the name and the count over each group). A filter shows each value with its count. "8 of 24 horses · Clear filters" says what is shown. The filters go back to "All" when another client is opened. The group stays (it is kept on the computer). |
+| **Sort** | The head of a column sorts by it. First tap: A to Z. Second: Z to A. Third: the order of the list again (due first). |
+| **Invoices are a table** | Invoice, Date, Billed to, Horses, Emailed, Status, Amount. Over it: a search (number, client, horse) and **Billed to**, next to All / Not paid / Paid. The line on the right gives the count and the sum of what is shown. |
+| **Prices** | The table has a **Category** filter. With no sort it is in groups by category. |
+| **A horse's history** | One card, **History**, with the same header as Items, Note and Recheck. A band for each day. Under it, each note on a rail: the time on the left, a small dot, the items with their amounts, the words, then the vet and the recheck date. The photo and the recording are on one line. **Print this record** is in the header (computer). The phone has the same history. |
+| **Time** | A note shows its time as 14:05 on every device. Before, it followed the language of the browser ("02:05 PM"). |
+| **The starter price list** | A practice gets 39 items under 9 categories (Visit, Examination, Vaccination, Sedation, Dental, Diagnostics, Reproduction, Procedure, Medication): `cvet/starter_prices.py`. A new practice gets them when it is made. A practice that exists gets them from migration `0010`. An item is added only when the practice has no item of that name: no price is changed. **The prices are typical ones. The practice must check each one.** |
+
+### Where the code is
+
+All the tables and filters are in `desk.js` and `desk.css`, which only a wide screen loads. The phone's download did not grow for them. The app tells `desk.js` when a list is drawn (`horses`, `bills`, `prices`), and `desk.js` draws the table in its place.
+
+### Not done
+
+- **Filters on the phone.** The phone has its search, the Due count and the invoice chips. Owner and location filters on the phone need the decision on the size of the download (section 7n).
+- **A filter on Visits.** Visits are in groups by day. A client's visits are on its Timeline.
+
 ## 8. The test on Tim's phone
 
 ### Set-up (once, by an administrator)

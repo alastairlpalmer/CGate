@@ -10,19 +10,20 @@
    A file of its own, with desk.js: only a wide screen loads them
    (static/cvet/app.js, loadDesk), so the phone's download stays small. */
 @media (min-width: 1000px) {
-    :root { --tabs: 0px; --side: 224px; }
+    :root { --tabs: 0px; --side: 184px; }
     /* A pointer needs less room than a finger: C-gate's sizes on a computer. */
     body { font-size: 14px; }
-    .bar, .status { padding-left: calc(var(--side) + 32px); padding-right: 32px; }
-    .bar { min-height: 44px; }
+    .bar, .status { padding-left: calc(var(--side) + 24px); padding-right: 24px; }
+    .bar { min-height: 40px; padding-top: 4px; padding-bottom: 4px; }
     .dev::after { content: "computer"; }
     /* A hint for a phone's keyboard has no use here. */
     .touch-only { display: none; }
     .status.toast { left: calc(50% + var(--side) / 2); bottom: 24px; }
     /* The name is on the left edge. The TEST label stays here. */
     .bar h1 { font-size: 0; }
-    main { max-width: 1280px; margin: 0; padding: 20px 32px 48px calc(var(--side) + 32px); }
-    .view { max-width: 760px; }
+    /* The whole width of the screen. A page of settings stays the width of a form. */
+    main { max-width: none; margin: 0; padding: 14px 24px 40px calc(var(--side) + 24px); }
+    #view-phone { max-width: 720px; }
     h2 { font-size: 20px; }
     small, .muted { font-size: 12.5px; }
 
@@ -42,7 +43,9 @@
     .fold > summary { min-height: 44px; }
     .fold.inner > summary { min-height: 40px; }
     .initial { flex-basis: 28px; width: 28px; height: 28px; font-size: 12px; line-height: 28px; }
-    .card.pad > .head:first-child { min-height: 44px; }
+    .card.pad > .head:first-child { min-height: 38px; padding-top: 2px; padding-bottom: 2px; }
+    .suggest { min-height: 34px; font-size: 13px; }
+    .empty { padding: 12px 14px; font-size: 13px; }
     .total { font-size: 16px; }
     .banner { min-height: 38px; font-size: 14px; }
 
@@ -54,23 +57,24 @@
         height: auto;
         flex-direction: column;
         gap: 2px;
-        padding: 64px 10px 12px;
+        padding: 52px 8px 10px;
         border-top: 0;
         background: var(--brand);
     }
     /* The name of the app, where the eye starts: a tile and the name, as C-gate's. */
-    .tabs::before { content: "C-vet"; position: absolute; top: 12px; left: 12px; display: flex; align-items: center; height: 28px; padding-left: 38px; color: #fff; font: 600 15px/1 var(--heading); letter-spacing: -.01em; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Crect x='.5' y='.5' width='27' height='27' rx='6' fill='%23ffffff' fill-opacity='.1' stroke='%23ffffff' stroke-opacity='.2'/%3E%3Cpath d='M14 8v12M8 14h12' stroke='%23E6E1D1' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") left center no-repeat; }
-    .tab { flex: 0 0 36px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 12px; border-radius: var(--radius-btn); color: rgba(255, 255, 255, .7); font: 500 14px/1 var(--body); text-align: left; box-shadow: inset 0 0 0 1px transparent; transition: background-color .1s, color .1s; }
-    .tab .ico { width: 20px; height: 20px; border-radius: 0; background: none !important; box-shadow: none !important; }
-    .tab svg { width: 20px; height: 20px; }
+    .tabs::before { content: "C-vet"; position: absolute; top: 10px; left: 10px; display: flex; align-items: center; height: 24px; padding-left: 32px; color: #fff; font: 600 14px/1 var(--heading); letter-spacing: -.01em; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Crect x='.5' y='.5' width='23' height='23' rx='5' fill='%23ffffff' fill-opacity='.1' stroke='%23ffffff' stroke-opacity='.2'/%3E%3Cpath d='M12 7v10M7 12h10' stroke='%23E6E1D1' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") left center no-repeat; }
+    .tab { flex: 0 0 32px; flex-direction: row; justify-content: flex-start; gap: 10px; padding: 0 10px; border-radius: var(--radius-btn); color: rgba(255, 255, 255, .7); font: 500 13px/1 var(--body); text-align: left; box-shadow: inset 0 0 0 1px transparent; transition: background-color .1s, color .1s; }
+    .tab .ico { width: 16px; height: 16px; border-radius: 0; background: none !important; box-shadow: none !important; }
+    .tab svg { width: 16px; height: 16px; stroke-width: 1.7; }
     .tab:hover { background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); color: #fff; }
     .tab[aria-current=page] { background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); color: #fff; font-weight: 600; }
     .tab[aria-current=page] svg { color: #E6E1D1; }
     .badge { top: -6px; right: -8px; box-shadow: 0 0 0 2px var(--brand); }
 
     /* Clients on the left, one client on the right. */
-    .split main { display: grid; grid-template-columns: 320px minmax(0, 760px); gap: 28px; align-items: start; }
-    .split #view-clients { position: sticky; top: 64px; max-height: calc(100vh - 88px); overflow: auto; }
+    .split main { display: grid; grid-template-columns: 272px minmax(0, 1fr); gap: 24px; align-items: start; }
+    .split #view-clients { position: sticky; top: 54px; max-height: calc(100vh - 70px); overflow: auto; }
+    .split .counts .count { min-height: 26px; padding: 0 9px; font-size: 12px; }
     .split .back { display: none; }
     .horse[aria-current=true] { background: var(--tint); box-shadow: inset 3px 0 0 var(--brand); }
     .horse:hover, .price:hover, .pick:hover, .fold > summary:hover { background: rgba(239, 243, 244, .8); }
@@ -80,7 +84,7 @@
     .fold .button.wide { display: inline-flex; width: auto; min-width: 160px; margin-right: 8px; }
     .savebar { position: static; margin: 12px 0 0; padding: 0; border: 0; background: none; }
     .savebar .button { width: auto; min-width: 160px; }
-    .actionbar { left: var(--side); padding: 10px 32px; }
+    .actionbar { left: var(--side); padding: 8px 24px; }
     .selecting { padding-bottom: 72px; }
 
     .sheet { align-items: center; padding: 24px; }
@@ -90,30 +94,54 @@
 
     /* A horse: the note on the left, its history on the right, in view
        while the vet writes. */
-    #view-horse, #view-prices { max-width: 1100px; }
-    .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
-    .cols > :last-child { position: sticky; top: 64px; max-height: calc(100vh - 88px); overflow: auto; }
-    .cols > :last-child > h3:first-child { margin-top: 10px; }
+    .cols { display: grid; grid-template-columns: minmax(340px, 500px) minmax(0, 1fr); gap: 24px; align-items: start; }
+    .cols > :last-child { position: sticky; top: 54px; max-height: calc(100vh - 70px); overflow: auto; }
+    .cols .card { margin: 0 0 12px; }
+    #horse-due { margin-bottom: 10px; }
+    #view-horse > .muted:last-of-type { margin-bottom: 10px; }
 
     /* A client: how to reach it is in a card of its own; the line under its name is short. */
     /* The history is beside the note here: no line to say when it was last seen. */
     #client-contact, #horse-last { display: none !important; }
-    .seg { max-width: 420px; }
+    .seg { max-width: 380px; }
     .seg-tab { min-height: 28px; font-size: 13px; }
     .day { font-size: 11.5px; }
     #client-desk dl { padding: 10px 14px; font-size: 13px; }
 
-    /* Prices as a table: C-gate's data table. A cool band over the columns,
+    /* A list as a table: C-gate's data table. A cool band over the columns,
        small capitals in the brand colour, and a wash on the row under the pointer. */
-    .table { width: 100%; border-collapse: collapse; overflow: hidden; font-size: 14px; }
-    .table th { padding: 8px 16px; background: rgba(228, 234, 235, .6); color: var(--brand); font: 600 11px/1.4 var(--body); text-align: left; text-transform: uppercase; letter-spacing: .06em; }
-    .table td { padding: 0 16px; border-top: 1px solid var(--line); }
+    .table { width: 100%; margin: 8px 0; border-collapse: separate; border-spacing: 0; overflow: hidden; font-size: 13.5px; }
+    .table th { padding: 0 12px; height: 30px; background: rgba(228, 234, 235, .6); color: var(--brand); font: 600 11px/1.2 var(--body); text-align: left; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+    .table td { height: 34px; padding: 4px 12px; border-top: 1px solid var(--line); }
+    .table td.dim { color: var(--muted); }
+    .table td.tick { width: 34px; padding-right: 0; }
     .table tr.prow { cursor: pointer; }
     .table tr.prow:hover, .table tr.prow:focus-within { background: rgba(239, 243, 244, .8); }
+    .table tr.prow[aria-selected=true] { background: var(--tint); }
     .table .num { text-align: right; font-variant-numeric: tabular-nums; }
     .table .off { color: var(--muted); text-decoration: line-through; }
-    .rowlink { min-height: 36px; padding: 0; border: 0; background: none; font-weight: 500; text-align: left; cursor: pointer; }
-    #price-filter { max-width: 320px; margin: 4px 0; }
+    .table .due, .table .pill { font-size: 11.5px; }
+    .table .mark { display: inline-block; width: 18px; height: 18px; flex: none; font-size: 11px; line-height: 15px; vertical-align: middle; }
+    /* A group in a table: the owner, the field, the category. */
+    .table tr.band td { height: 28px; background: var(--cream); border-top: 1px solid var(--cream-line); color: var(--ink); font-weight: 600; font-size: 12.5px; }
+    .table tr.band small { margin-left: 6px; font-weight: 400; }
+    /* The head of a column is the button that sorts by it. */
+    .sort { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-transform: inherit; letter-spacing: inherit; cursor: pointer; }
+    .sort::after { content: "↕"; margin-left: 4px; opacity: .35; }
+    th[aria-sort=ascending] .sort::after { content: "↑"; opacity: 1; }
+    th[aria-sort=descending] .sort::after { content: "↓"; opacity: 1; }
+    .rowlink { padding: 0; border: 0; background: none; font-weight: 600; text-align: left; cursor: pointer; }
+    .rowlink:hover { color: var(--brand); text-decoration: underline; }
+    /* The filters of a list, on one line over it. */
+    .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; }
+    .filters input[type=search] { flex: 1 1 200px; width: auto; max-width: 340px; }
+    .filters select { flex: 0 1 auto; width: auto; max-width: 220px; }
+    .filters .tile { min-height: 34px; border-color: var(--edge); border-radius: var(--radius-btn); }
+    .filters .found { margin-left: auto; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+    .filters .link { min-height: 0; min-width: 0; padding: 0; }
+    #client-horses > .filters > input { flex: 1 1 200px; max-width: 340px; }
+    /* The table takes the place of the list. */
+    #horses, #bills > .list { display: none; }
     .card > .link { margin-left: 6px; }
 }
 
