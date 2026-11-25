@@ -792,7 +792,7 @@ The owner looked at C-vet on a computer and asked for: less empty space, a small
 | **Prices** | The table has a **Category** filter. With no sort it is in groups by category. |
 | **A horse's history** | One card, **History**, with the same header as Items, Note and Recheck. A band for each day. Under it, each note on a rail: the time on the left, a small dot, the items with their amounts, the words, then the vet and the recheck date. The photo and the recording are on one line. **Print this record** is in the header (computer). The phone has the same history. |
 | **Time** | A note shows its time as 14:05 on every device. Before, it followed the language of the browser ("02:05 PM"). |
-| **The starter price list** | A practice gets 39 items under 9 categories (Visit, Examination, Vaccination, Sedation, Dental, Diagnostics, Reproduction, Procedure, Medication): `cvet/starter_prices.py`. A new practice gets them when it is made. A practice that exists gets them from migration `0010`. An item is added only when the practice has no item of that name: no price is changed. **The prices are typical ones. The practice must check each one.** |
+| **The starter price list** | A practice gets 38 items under 9 categories (Visit, Examination, Vaccination, Sedation, Dental, Diagnostics, Reproduction, Procedure, Medication): `cvet/starter_prices.py`. A new practice gets them when it is made. A practice that exists gets them from migration `0010`. An item is added only when the practice has no item of that name: no price is changed. **The prices are typical ones. The practice must check each one.** |
 
 ### Where the code is
 
