@@ -121,6 +121,24 @@ class SetupPageTests(TestCase):
         self.assertEqual(self.client.get(SETUP).status_code, 302)
         self.assertFalse(Practice.objects.exists())
 
+    def test_a_new_practice_starts_with_the_starter_price_list(self):
+        from .models import PriceItem
+        from .starter_prices import STARTER_PRICES, add_starter_prices
+
+        self.post()
+        practice = Practice.objects.get()
+        count = sum(len(items) for _category, items in STARTER_PRICES)
+        self.assertEqual(PriceItem.objects.filter(practice=practice).count(), count)
+        self.assertEqual(PriceItem.objects.get(practice=practice, name='Visit fee').category, 'Visit')
+        # A price the practice has set is not changed, and nothing is added twice.
+        PriceItem.objects.filter(practice=practice, name='Visit fee').update(price_inc_vat='99.00')
+        PriceItem.objects.filter(practice=practice, name='Microchip').delete()
+        self.assertEqual(add_starter_prices(practice), 1)
+        self.assertEqual(str(PriceItem.objects.get(practice=practice, name='Visit fee').price_inc_vat), '99.00')
+        # A change to the practice's details adds no price.
+        self.post(name='Hill Vets Ltd')
+        self.assertEqual(PriceItem.objects.filter(practice=practice).count(), count)
+
     @override_settings(CVET_ENABLED=False)
     def test_it_is_not_there_when_cvet_is_off(self):
         self.assertEqual(self.client.get(SETUP).status_code, 404)

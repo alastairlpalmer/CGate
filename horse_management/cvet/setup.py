@@ -33,6 +33,7 @@ from .access import cvet_enabled, vet_logins
 from billing.models import ServiceProvider
 
 from .models import Practice, PracticeMember, PracticeYardLink
+from .starter_prices import add_starter_prices
 
 
 def login_label(user):
@@ -215,6 +216,8 @@ def save(form, practice):
     details = {name: data[name] for name in SetupForm.PRACTICE_FIELDS}
     if practice is None:
         practice = Practice.objects.create(name=data['name'], **details)
+        # The item list is not empty on the first day.
+        add_starter_prices(practice)
     else:
         changed = [name for name, value in {'name': data['name'], **details}.items() if getattr(practice, name) != value]
         if changed:

@@ -691,9 +691,10 @@
         var seen = {};
         entries.forEach(function (entry) { seen[entry.horseId] = true; });
         var query = $('search').value;
-        fill($('horses'), core.sortHorses(horses, day).filter(function (horse) {
+        var list = core.sortHorses(horses, day).filter(function (horse) {
             return core.matchesHorse(horse, query);
-        }).map(function (horse) {
+        });
+        fill($('horses'), list.map(function (horse) {
             return horseRow(horse, {
                 selecting: state.selecting, picked: !!state.selected[horse.id], seen: seen[horse.id], ids: !!query,
                 onClick: state.selecting ? function () { toggleSelected(horse); } : null
@@ -722,6 +723,7 @@
         $('view-client').classList.toggle('selecting', state.selecting);
         $('select-count').textContent = countText(picked, 'horse', 'horses') + ' selected';
         $('select-add').disabled = picked === 0;
+        desk('horses', list, seen);
     }
 
     function toggleSelected(horse) {
@@ -1087,7 +1089,7 @@
         var box = el('div', 'tl');
         core.byDay(notes).forEach(function (group) {
             box.appendChild(el('p', 'day', core.dayLabel(group.day, today())));
-            var card = el('div', 'card timeline');
+            var card = el('div', 'timeline');
             group.rows.forEach(function (note) { card.appendChild(noteCard(note)); });
             box.appendChild(card);
         });
@@ -1135,12 +1137,9 @@
     // recheck date, and the photo and the recording to open.
     function noteCard(note) {
         var item = el('div', 'entry');
-        var label = note.status === 'sent' ? (note.author || 'Sent')
+        var parts = [note.status === 'sent' ? (note.author || 'Sent')
             : note.status === 'failed' ? 'Not sent: ' + (note.error || 'the server refused it')
-            : 'Not sent yet';
-        // The time only: the day is the heading over the note, or the day of the visit.
-        var time = new Date(note.when).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-        item.appendChild(el('small', 'state ' + note.status, time + ' · ' + label));
+            : 'Not sent yet'];
         note.lines.forEach(function (line) {
             var row = el('div', 'item');
             row.appendChild(el('span', '', (line.qty > 1 ? line.qty + ' × ' : '') + line.description));
@@ -1148,10 +1147,14 @@
             item.appendChild(row);
         });
         if (note.text) item.appendChild(el('p', 'words', note.text));
-        var parts = [];
         if (note.followUp) parts.push('Recheck ' + core.shortDate(note.followUp, today()));
         if (note.attempts > 1 && note.status !== 'sent') parts.push(note.attempts + ' tries');
-        if (parts.length) item.appendChild(el('small', '', parts.join(' · ')));
+        // Under the note: when, by whom, the recheck. The time only: the day
+        // is the heading over the note, or the day of the visit.
+        var meta = el('small', 'state ' + note.status);
+        meta.appendChild(el('b', 'when', new Date(note.when).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })));
+        meta.appendChild(document.createTextNode(parts.join(' · ')));
+        item.appendChild(meta);
         note.files.forEach(function (file) { item.appendChild(fileNode(file)); });
         if (note.entry && note.status !== 'sent') {
             // A note the server has never been sent, or has refused, can
@@ -1833,6 +1836,7 @@
         fill($('bills'), shown.length ? [billList(shown, true)] : [el('p', 'empty', all.length
             ? 'No invoice fits this choice.'
             : 'No invoices yet. An invoice is made when a visit is finished and all of its notes are sent.')]);
+        desk('bills', shown);
     }
 
     // One invoice: each horse's items, the total, and paid or not.
@@ -2773,6 +2777,8 @@
             state: state, core: core, config: config, $: $, el: el, button: button, fill: fill, say: say,
             isWide: isWide, visitRows: visitRows, visitFold: visitFold, editPrice: editPrice,
             renderPrices: renderPrices, loadVisitList: loadVisitList, clientById: clientById,
+            openHorse: openHorse, toggleSelected: toggleSelected, clientHorses: clientHorses,
+            dueText: dueText, today: today, paidPill: paidPill,
             // For online.js.
             setMeta: setMeta, bills: bills, openBill: openBill, render: render,
             newId: newId, getSession: getSession, request: request, post: post, put: put,
