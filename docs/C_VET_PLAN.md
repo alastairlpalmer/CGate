@@ -798,10 +798,22 @@ The owner looked at C-vet on a computer and asked for: less empty space, a small
 
 All the tables and filters are in `desk.js` and `desk.css`, which only a wide screen loads. The phone's download did not grow for them. The app tells `desk.js` when a list is drawn (`horses`, `bills`, `prices`), and `desk.js` draws the table in its place.
 
+### The phone
+
+The phone has the same choices in a form that fits it, and they work with no signal.
+
+| Part | What the vet does |
+|---|---|
+| **Show** | Beside the search of a client's horses, one choice: **All horses**, **Due**, **By owner**, **By location**, or one owner, or one location. The phone's own picker opens. It takes no line of the screen, so 8 horses still fit. |
+| **By owner, By location** | The horses are under a band with the name and the count ("Ali Khan · 8"). The line under each horse does not say the owner again. |
+| **Find a price** | Prices has a search (the name or the category). The price list is longer now. |
+
+The download is 49 KB of the 50 KB limit.
+
 ### Not done
 
-- **Filters on the phone.** The phone has its search, the Due count and the invoice chips. Owner and location filters on the phone need the decision on the size of the download (section 7n).
 - **A filter on Visits.** Visits are in groups by day. A client's visits are on its Timeline.
+- **A search of Invoices on the phone.** The phone has All / Not paid / Paid.
 
 ## 8. The test on Tim's phone
 
