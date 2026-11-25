@@ -20,13 +20,16 @@ from core.permissions import (
 )
 from core.views._popup import PopupFormMixin, is_popup_request, popup_saved_response
 
-from . import board, charges, load, overview, services
+from . import board, charges, load, overview, plan, profile, services, share
 from .access import TrainingEnabledMixin, training_enabled
 from .forms import (
-    ActivityForm, BoardSettingsForm, HorseTrainingForm, LotDayForm, LotForm, RiderForm, VenueForm,
-    WeekPlanForm, WorkTypeForm, parse_who, who_value,
+    ActivityForm, BoardSettingsForm, DayNoteForm, HorseTrainingForm, LotDayForm, LotForm, RiderForm,
+    TrainingNoteForm, VenueForm, WeekPlanForm, WorkTypeForm, parse_who, who_value,
 )
-from .models import Activity, HorseTraining, Lot, LotDay, LotMember, Rider, TrainingSettings, Venue, WorkType
+from .models import (
+    Activity, DayNote, HorseTraining, Lot, LotDay, LotMember, Rider, TrainingNote, TrainingSettings, Venue,
+    WorkType,
+)
 
 STATUS_FILTERS = [
     ('done', 'Done'),
@@ -98,6 +101,7 @@ def training_home(request):
         'sources': [(v, dict(TrainingSettings.BoardSource.choices)[v]) for v in TrainingSettings.OFFERED_SOURCES],
         'default_source': settings_row.board_source,
         'last_board': board.last_board_before(today),
+        'day_note': DayNote.objects.filter(date=today).first(),
         'training_tab': 'overview',
     })
 
@@ -114,11 +118,11 @@ class ActivityLogView(TrainingEnabledMixin, FeatureAccessMixin, ListView):
         from core.csv_export import csv_response
         rows = self.get_queryset().select_related('rider', 'venue').order_by('date', 'horse__name', 'pk')
         header = ['Date', 'Horse', 'Lot', 'Work', 'Effort', 'Minutes', 'Status', 'Reason',
-                  'Rider', 'Venue', 'Gear', 'Notes']
+                  'Rider', 'Venue', 'Gear', 'Notes', 'How it went', 'Instruction']
         data = (
             [a.date, a.horse.name, a.lot_day.lot.name if a.lot_day_id else '', a.work_type.name,
              a.effort_label, a.minutes, a.status_label, a.get_reason_display() if a.reason else '',
-             a.rider_label, a.venue.name if a.venue_id else '', a.gear, a.notes]
+             a.rider_label, a.venue.name if a.venue_id else '', a.gear, a.notes, a.rating_label, a.instructions]
             for a in rows
         )
         return csv_response(f'training-log-{timezone.localdate().isoformat()}', header, data)
@@ -345,6 +349,13 @@ def activity_mark(request, pk):
         _report(request, services.mark_not_done([activity.pk], reason, user=request.user), 'as did not work')
     elif action == 'planned':
         _report(request, services.mark_planned([activity.pk], user=request.user), 'as planned again')
+    elif action == 'undo_done':
+        # Board redesign, B1: the Undo of one horse's Done.
+        result, billed = services.unmark_done([activity.pk], user=request.user)
+        if billed:
+            messages.error(request, charges.billed_message(billed, 'record'))
+        else:
+            _report(request, result, 'as planned again')
     else:
         return HttpResponseBadRequest('Unknown action')
     return redirect(back)
@@ -703,6 +714,12 @@ def training_board(request, day=None):
         )
         lot_day.can_mark_done = lot_day.is_open and day <= today
         lot_day.other_days = [other for other in lot_days if other.pk != lot_day.pk and other.is_open]
+        # Board redesign: "2 of 7 done" while the lot is open (B3), and the
+        # lot as text to send (D2). The text is the lot as this page shows it.
+        lot_day.done_rows = sum(1 for r in lot_day.rows if r.status == Activity.Status.DONE)
+        lot_day.settled = sum(1 for r in lot_day.rows if r.status != Activity.Status.PLANNED)
+        lot_day.share_text = share.day_title(day) + '\n\n' + share.lot_text(lot_day)
+    day_note = DayNote.objects.filter(date=day).first()
     last_not_confirmed = board.last_not_confirmed_before(today)
     settings_row = TrainingSettings.load()
     return render(request, 'training/board.html', {
@@ -729,6 +746,9 @@ def training_board(request, day=None):
         'can_change': can_change,
         'can_record_health': has_feature_access(request.user, 'health', LEVEL_FULL),
         'board_url': request.get_full_path(),
+        'day_note': day_note,
+        'share_title': share.day_title(day),
+        'share_text': share.board_text(day, lot_days, day_note.text if day_note else '') if lot_days else '',
         'training_tab': 'board',
     })
 
@@ -744,7 +764,7 @@ def board_start(request, day):
     if result.created:
         count = Activity.objects.filter(lot_day__in=result.lot_days).count()
         messages.success(request, f"Board started: {len(result.lot_days)} lots, {count} horses.")
-    return redirect(_board_url(day))
+    return redirect(_safe_next(request, _board_url(day)))
 
 
 @training_enabled
@@ -951,4 +971,133 @@ def board_sheet(request, day, mode):
         lot_day.rows = by_day.get(lot_day.pk, [])
     return render(request, 'training/board_sheet.html', {
         'day': day, 'lot_days': lot_days, 'mode': mode, 'now': timezone.localtime(),
+        'day_note': DayNote.objects.filter(date=day).first(),
     })
+
+
+# ─── Board redesign (docs/TRAINING_BOARD_REDESIGN_PLAN.md) ───────────
+
+@training_enabled
+@feature_required('training', LEVEL_VIEW)
+def training_plan(request, day=None):
+    """The Plan tab: the week by lot (5.1). Showing it never writes (5.3)."""
+    today = timezone.localdate()
+    day = _parse_day(day) if day else today
+    data = plan.build(day, today=today)
+    return render(request, 'training/plan.html', {
+        **data,
+        'today': today,
+        'can_change': has_feature_access(request.user, 'training', LEVEL_FULL),
+        'plan_url': request.get_full_path(),
+        'default_source_label': dict(TrainingSettings.BoardSource.choices).get(
+            TrainingSettings.load().board_source, ''),
+        'training_tab': 'plan',
+    })
+
+
+@training_enabled
+@feature_required('training')
+def day_note(request, day):
+    """The note for the whole yard on one date (5.5, D3)."""
+    day = _parse_day(day)
+    current = DayNote.objects.filter(date=day).first()
+    form = DayNoteForm(request.POST or None, initial={'text': current.text if current else ''})
+    if request.method == 'POST' and form.is_valid():
+        saved = services.set_day_note(day, form.cleaned_data['text'], user=request.user)
+        messages.success(
+            request, f"Note for {_date_label(day)} saved." if saved else f"Note for {_date_label(day)} removed.",
+        )
+        if is_popup_request(request):
+            return popup_saved_response()
+        return redirect(_safe_next(request, _board_url(day)))
+    template = 'training/partials/day_note_form.html' if is_popup_request(request) else 'training/day_note_form.html'
+    return render(request, template, {'day': day, 'form': form, 'next': _safe_next(request, _board_url(day))})
+
+
+@training_enabled
+@feature_required('training', LEVEL_VIEW)
+def horse_profile(request, horse_pk):
+    """A horse's training profile: the facts, 8 weeks, every record and note (5.3)."""
+    horse = get_object_or_404(Horse, pk=horse_pk)
+    today = timezone.localdate()
+    data = profile.build(
+        horse, today=today, only=request.GET.get('only', ''), page=request.GET.get('page') or 1,
+    )
+    return render(request, 'training/horse_profile.html', {
+        **data,
+        'horse': horse,
+        'today': today,
+        'can_change': has_feature_access(request.user, 'training', LEVEL_FULL),
+        'can_see_horse': has_feature_access(request.user, 'horses', LEVEL_VIEW),
+        'reasons': Activity.Reason.choices,
+        'profile_url': request.get_full_path(),
+        'training_tab': '',
+    })
+
+
+class TrainingNoteViewMixin:
+    """A note about how a horse is going (5.4, C3). The same pop-up sheet
+    as every other form."""
+
+    feature = 'training'
+    model = TrainingNote
+    form_class = TrainingNoteForm
+    template_name = 'training/note_form.html'
+    popup_add_another = False
+    popup_intro = 'A note about how the horse is going. A note about one piece of work goes on that record.'
+
+    def get_success_url(self):
+        return _safe_next(self.request, reverse('training_horse_profile', args=[self.horse.pk]))
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['horse'] = self.horse
+        context['next'] = self.get_success_url()
+        return context
+
+
+class TrainingNoteCreateView(TrainingEnabledMixin, TrainingNoteViewMixin, PopupFormMixin,
+                             FeatureAccessMixin, CreateView):
+
+    def dispatch(self, request, *args, **kwargs):
+        self.horse = get_object_or_404(Horse, pk=kwargs['horse_pk'])
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        form.instance.horse = self.horse
+        form.instance.created_by = self.request.user
+        messages.success(self.request, f"Note for {self.horse.name} saved.")
+        return super().form_valid(form)
+
+
+class TrainingNoteUpdateView(TrainingEnabledMixin, TrainingNoteViewMixin, PopupFormMixin,
+                             FeatureAccessMixin, UpdateView):
+
+    def get_queryset(self):
+        return TrainingNote.objects.select_related('horse')
+
+    def get_object(self, queryset=None):
+        note = super().get_object(queryset)
+        self.horse = note.horse
+        return note
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Note for {self.horse.name} saved.")
+        return super().form_valid(form)
+
+
+@training_enabled
+@feature_required('training')
+def training_note_delete(request, pk):
+    """Ask, then delete one note. History keeps it."""
+    note = get_object_or_404(TrainingNote.objects.select_related('horse'), pk=pk)
+    back = _safe_next(request, reverse('training_horse_profile', args=[note.horse_id]))
+    if request.method == 'POST':
+        name = note.horse.name
+        note.delete()
+        messages.success(request, f"Note for {name} deleted.")
+        if is_popup_request(request):
+            return popup_saved_response()
+        return redirect(back)
+    template = 'training/partials/note_delete.html' if is_popup_request(request) else 'training/note_delete.html'
+    return render(request, template, {'note': note, 'next': back})

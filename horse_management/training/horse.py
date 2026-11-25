@@ -70,6 +70,8 @@ def training_card(user, horse):
             .order_by('-date', '-created_at')
         ),
         'not_confirmed': rows.filter(status=Activity.Status.PLANNED, date__lt=today).count(),
+        # Board redesign, C3: the newest note about how the horse is going.
+        'latest_note': horse.training_notes.select_related('created_by').first(),
         'can_change': has_feature_access(user, 'training', LEVEL_FULL),
         'reasons': Activity.Reason.choices,
         'days': RECENT_DAYS,

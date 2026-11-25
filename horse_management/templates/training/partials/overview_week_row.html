@@ -1,5 +1,5 @@
 {# One horse in the Overview's This week grid. The squares are the horse page's. #}
-<th scope="row" class="training-week-name{% if indent %} pl-9{% endif %}"><a href="{% url 'horse_detail' h.id %}#training" class="link text-sm font-medium truncate block" title="{{ h.name }}">{{ h.name }}</a></th>
+<th scope="row" class="training-week-name{% if indent %} pl-9{% endif %}"><a href="{% url 'training_horse_profile' h.id %}" class="link text-sm font-medium truncate block" title="{{ h.name }}">{{ h.name }}</a></th>
 {% for d in h.cells %}<td{% if d.date == today %} class="is-today"{% endif %}><span class="training-day training-day-{{ d.tone }} training-week-day" title="{{ d.label }}" aria-label="{{ d.label }}"><span aria-hidden="true">{{ d.letter }}</span></span></td>{% endfor %}
 <td class="text-sage">{{ h.days }}</td>
 <td class="text-sage">{{ h.fast }}</td>

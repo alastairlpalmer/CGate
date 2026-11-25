@@ -2,10 +2,11 @@
 The header of every Training tab, with the tab bar (docs/TRAINING_DASHBOARD_PLAN.md,
 C1 and C2): the title, a sub-title, and one main button for the tab.
 Usage: {% include 'training/_header.html' with subtitle="..." %}, with
-training_tab and can_change in the context. On a phone the board shows no
-title, because the app bar already says Training and more horses fit.
+training_tab and can_change in the context. On a phone the board and the
+plan show no title, because the app bar already says Training and more
+horses fit.
 {% endcomment %}
-<div class="page-header{% if training_tab == 'board' %} max-lg:hidden{% endif %}">
+<div class="page-header{% if training_tab == 'board' or training_tab == 'plan' %} max-lg:hidden{% endif %}">
     <div>
         <h1 class="page-title">Training</h1>
         {% if subtitle %}<p class="page-subtitle">{{ subtitle }}</p>{% endif %}
@@ -21,7 +22,7 @@ title, because the app bar already says Training and more horses fit.
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
             Add lot
         </a>
-        {% elif training_tab != 'setup' %}
+        {% elif training_tab != 'setup' and training_tab != 'plan' %}
         <a href="{% url 'training_activity_create' %}"
            hx-get="{% url 'training_activity_create' %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
            data-popup-title="Record training" class="{% if training_tab == 'log' %}btn-primary{% else %}btn-secondary{% endif %}">
@@ -32,5 +33,5 @@ title, because the app bar already says Training and more horses fit.
         {% endif %}
     </div>
 </div>
-{% if training_tab == 'board' %}<h1 class="sr-only lg:hidden">Training</h1>{% endif %}
+{% if training_tab == 'board' or training_tab == 'plan' %}<h1 class="sr-only lg:hidden">Training</h1>{% endif %}
 {% include 'training/_tabs.html' %}

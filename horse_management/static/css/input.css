@@ -2312,6 +2312,9 @@ a.pane-item-title:hover { @apply text-forest; }
 
 /* The tab bar of the four money pages (includes/_finance_tabs.html). */
 .finance-tabs { @apply flex gap-4 overflow-x-auto border-b border-light-sage -mb-1; }
+/* Training has six tabs: a smaller gap fits them on a 375 px phone. Not in a
+   layer, as .finance-tabs is not: a layered rule would lose to it. */
+.finance-tabs.training-tabs { @apply gap-1 sm:gap-4; }
 
 /* ── Help centre (templates/help/) ── */
 .help-search { @apply relative flex items-center gap-2; }
@@ -2985,6 +2988,104 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     .training-count-part { @apply bg-light-sage text-charcoal; }
     .training-count-low { @apply bg-saddle/15 text-saddle; }
     .training-count-today { @apply bg-white border border-light-sage text-sage; }
+}
+
+/* Training board redesign (docs/TRAINING_BOARD_REDESIGN_PLAN.md).
+   No new colour: every value is a brand token. Saddle stays for the main
+   action and for attention ("Poor", Not confirmed). */
+@layer components {
+    /* The board row: the name line, then one line that reads like a line of
+       the yard's work list (rider, gear, instruction; after work, how it
+       went and the note). The two lines are one tap target. */
+    .lot-row-main { @apply min-w-0 flex-1 flex flex-col justify-center py-1 min-h-[46px]; }
+    .lot-row-main:hover .lot-row-name > span:first-child { @apply underline; }
+    /* 20 + 18 px of text: a row is 48 px, as before, so 6 rows fit a 375 x 667 phone (5.8). */
+    .lot-row-name { @apply flex items-center gap-x-1.5 min-w-0 leading-5; }
+    .lot-row-meta { @apply flex min-w-0 text-[13px] leading-snug text-sage overflow-hidden whitespace-nowrap; }
+    .lot-row-meta > span { @apply flex-none; }
+    .lot-row-meta > span:last-child { @apply shrink min-w-0 truncate; }
+    .lot-row-meta > span + span::before { content: "\00B7"; @apply mx-1.5 text-sage font-normal; }
+    .row-menu-label { @apply px-3 pt-2 pb-1 text-xs font-semibold text-sage; }
+    .day-note { @apply mt-0.5 text-sm text-charcoal text-center max-w-[60ch] mx-auto; }
+
+    /* The record sheet: Status as three buttons, the reasons and "How it
+       went" as buttons. Radio inputs under the words, so the keyboard and a
+       screen reader work, and the choice is a word (5.13). */
+    .choice-seg { @apply grid grid-flow-col auto-cols-fr rounded-lg border border-sage-200 bg-white overflow-hidden; }
+    .choice-seg-item { @apply relative cursor-pointer; }
+    .choice-seg-item + .choice-seg-item { @apply border-l border-light-sage; }
+    .choice-seg-item > span { @apply flex items-center justify-center min-h-[44px] px-2 text-sm font-semibold text-sage text-center; }
+    .choice-seg-item > input:checked + span { @apply bg-forest text-white; }
+    .choice-seg-item > input:focus-visible + span { outline: 2px solid currentColor; outline-offset: -5px; }
+    .choice-chips { @apply flex flex-wrap gap-1.5; }
+    .choice-chip { @apply cursor-pointer; }
+    .choice-chip > span, .choice-chip-btn { @apply inline-flex items-center min-h-[44px] px-3.5 rounded-full border border-sage-200 bg-white text-sm text-charcoal cursor-pointer; }
+    .choice-chip > input:checked + span, .choice-chip-btn.is-on { @apply bg-forest border-forest text-white font-medium; }
+    .choice-chip > input:focus-visible + span, .choice-chip-btn:focus-visible { @apply outline-2 outline-offset-2 outline-forest; }
+    .record-more { @apply border-t border-light-sage; }
+    .record-more > summary { @apply flex items-center gap-2 min-h-[44px] cursor-pointer text-sm font-medium text-charcoal list-none; }
+    .record-more > summary::-webkit-details-marker { display: none; }
+    .record-more > summary::before { content: "\25B8"; @apply text-sage shrink-0; }
+    .record-more[open] > summary::before { content: "\25BE"; }
+    .record-more > summary > span { @apply truncate min-w-0; }
+    .record-more > div { @apply pb-1; }
+
+    /* The training profile: four figures in one card, the 8-week calendar,
+       and the list of work and notes. */
+    .fact-grid { @apply grid grid-cols-2 gap-px bg-light-sage sm:grid-cols-4 lg:grid-cols-2; }
+    .fact { @apply bg-white px-4 py-3; }
+    .fact dt { @apply text-xs font-semibold text-sage; }
+    .fact dd { @apply mt-0.5 font-heading text-xl font-semibold text-charcoal tabular-nums leading-tight; }
+    .training-cal { @apply w-full border-separate; border-spacing: 2px; table-layout: fixed; }
+    .training-cal thead th { @apply text-[10px] font-semibold text-sage text-center pb-0.5; }
+    .training-cal thead th:first-child, .training-cal tbody th { width: 3.25rem; }
+    .training-cal thead abbr { @apply no-underline; }
+    .training-cal tbody th { @apply text-left text-[11px] font-normal text-sage whitespace-nowrap tabular-nums; }
+    .training-cal td { @apply p-0; }
+    .training-cal .training-day { @apply h-7 w-full; }
+    .training-day.is-today { @apply ring-2 ring-forest; }
+    .profile-entry { @apply px-4 py-2.5; }
+    .profile-entry-head { @apply text-sm text-sage min-w-0; }
+    .profile-entry-text { @apply mt-0.5 text-sm text-charcoal max-w-[70ch]; }
+    .profile-entry-note { @apply bg-sand-50; }
+
+    /* The Plan tab: the week by lot. On a phone each day is a card and each
+       cell names its lot. From 1024 px the days are columns, with the lot
+       names at the side; fixed heights keep the rows in line. */
+    .plan-grid { @apply grid grid-cols-1 gap-3; }
+    .plan-lots { @apply hidden; }
+    .plan-day { @apply flex flex-col gap-1.5 p-2 bg-white rounded-card border border-light-sage; }
+    .plan-day.is-today { @apply border-forest; }
+    .plan-head { @apply px-1 pb-0.5; }
+    .plan-day-link { @apply text-sm font-semibold text-charcoal hover:underline; }
+    .plan-head h2 { @apply text-sm leading-tight; }
+    .plan-state { @apply block text-xs text-sage; }
+    .plan-state-warn { @apply text-saddle; }
+    .plan-state-done { @apply text-forest; }
+    .plan-note { @apply text-xs text-charcoal-light truncate; }
+    .plan-cell { @apply flex flex-col justify-center min-h-[52px] px-2.5 py-1.5 rounded-lg border border-light-sage bg-white text-sm min-w-0; }
+    a.plan-cell:hover { @apply bg-sage-50; }
+    .plan-cell.is-usual { @apply border-dashed border-sage-300 bg-transparent; }
+    .plan-cell.is-off { @apply border-transparent bg-transparent; }
+    .plan-cell-lot { @apply text-xs font-semibold text-sage; }
+    .plan-cell-work { @apply font-medium text-charcoal truncate; }
+    .plan-cell.is-usual .plan-cell-work, .plan-cell.is-off .plan-cell-work { @apply text-sage font-normal; }
+    .plan-cell-meta { @apply text-xs text-sage truncate; }
+    .plan-lot { @apply flex flex-col justify-center min-w-0 px-1 text-sm; }
+    /* On a phone a day that is over, or has no lots, is one line: the plan
+       is for today and the days after. */
+    @media (max-width: 1023px) {
+        .plan-day.is-past .plan-cell, .plan-day.is-empty .plan-cell { @apply hidden; }
+    }
+    @media (min-width: 1024px) {
+        .plan-grid { grid-template-columns: 8.5rem repeat(7, minmax(0, 1fr)); gap: 6px; }
+        .plan-lots { @apply flex flex-col; gap: 6px; }
+        .plan-day { @apply p-0 border-0 bg-transparent; gap: 6px; }
+        .plan-head { @apply px-2 py-1.5 rounded-lg overflow-hidden; height: 4.75rem; }
+        .plan-day.is-today .plan-head { @apply bg-sage-100; }
+        .plan-cell, .plan-lot { height: 4rem; min-height: 0; }
+        .plan-cell-lot { @apply sr-only; }
+    }
 }
 
 /* Training Overview, first-run checklist (phase C). */

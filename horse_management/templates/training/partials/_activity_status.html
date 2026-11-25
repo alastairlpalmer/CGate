@@ -1,0 +1,30 @@
+{% comment %}
+Status as three buttons, and the reasons as buttons under Did not work
+(board redesign, B4). Radio inputs: they work with the keyboard, and the
+chosen one is a word, not only a colour (5.13). The caller's x-data holds
+``status``; training/partials/_activity_fields.html holds ``reason``.
+{% endcomment %}
+<fieldset{% if form.status.errors %} class="field-invalid"{% endif %}>
+    <legend class="block text-sm font-medium text-charcoal">Status</legend>
+    <div class="choice-seg mt-1">
+        {% for value, label in form.status.field.choices %}
+        <label class="choice-seg-item">
+            <input type="radio" name="status" value="{{ value }}" x-model="status" class="sr-only"{% if form.status.value == value %} checked{% endif %}>
+            <span>{{ label }}</span>
+        </label>
+        {% endfor %}
+    </div>
+    {% if form.status.errors %}<p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.status.errors.0 }}</p>{% endif %}
+</fieldset>
+<fieldset x-show="status === 'not_done'" x-cloak{% if form.reason.errors %} class="field-invalid"{% endif %}>
+    <legend class="block text-sm font-medium text-charcoal">Why the horse did not work</legend>
+    <div class="choice-chips mt-1">
+        {% for value, label in form.reason.field.choices %}{% if value %}
+        <label class="choice-chip">
+            <input type="radio" name="reason" value="{{ value }}" x-model="reason" :disabled="status !== 'not_done'" class="sr-only"{% if form.reason.value == value %} checked{% endif %}>
+            <span>{{ label }}</span>
+        </label>
+        {% endif %}{% endfor %}
+    </div>
+    {% if form.reason.errors %}<p class="form-error mt-1 text-xs text-error-red" role="alert">{{ form.reason.errors.0 }}</p>{% endif %}
+</fieldset>

@@ -1,0 +1,17 @@
+{% comment %}
+The note for the whole yard on one date (redesign plan, D3). Empty text
+removes it.
+{% endcomment %}
+<form method="post" action="{% url 'training_day_note' day.isoformat %}"
+      hx-post="{% url 'training_day_note' day.isoformat %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="px-4 py-3 space-y-3">
+        {% for error in form.non_field_errors %}<p class="text-sm text-error-red" role="alert">{{ error }}</p>{% endfor %}
+        {% include "includes/form_field.html" with field=form.text %}
+    </div>
+    <div class="popup-footer">
+        <button type="button" class="btn-secondary" @click="$store.popup.close()">Cancel</button>
+        <button type="submit" class="btn-primary">Save</button>
+    </div>
+</form>

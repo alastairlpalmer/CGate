@@ -94,6 +94,8 @@ def bulk_apply(request):
                 rider_is_owner=is_owner,
                 gear=data.get('gear') or own.get('gear', ''),
                 notes=data.get('notes') or '',
+                instructions=data.get('instructions') or '',
+                rating=data.get('rating'),
                 source=Activity.Source.BULK,
                 created_by=request.user,
                 updated_by=request.user,

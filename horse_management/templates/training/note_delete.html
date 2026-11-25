@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete note - Cgate{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto space-y-4">
+    <div class="page-header"><div><h1 class="page-title">Delete note</h1></div></div>
+    <div class="card">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+            <div class="px-4 py-3 space-y-2 text-sm">
+                <p class="font-medium">{{ note.horse.name }} &middot; {{ note.date|date:"D j M Y" }}</p>
+                <p class="text-charcoal-light">{{ note.text|truncatechars:200 }}</p>
+            </div>
+            <div class="px-4 py-3 border-t border-light-sage flex justify-end gap-3">
+                <a href="{{ next }}" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-danger">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

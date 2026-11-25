@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block title %}Note for {{ day|date:"D j M" }} - Cgate{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto space-y-4">
+    <div class="page-header"><div><h1 class="page-title">Note for {{ day|date:"D j M" }}</h1></div></div>
+    <div class="card">{% include 'training/partials/day_note_form.html' %}</div>
+</div>
+{% endblock %}

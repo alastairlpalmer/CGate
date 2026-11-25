@@ -1,26 +1,84 @@
 {% comment %}
 The inputs of a training record, shared by the pop-up, the full page and
-the bulk form. The caller wraps them in x-data="{ status: '…' }": the
-reason shows, and is sent, only with Did not work.
+the bulk form (docs/TRAINING_BOARD_REDESIGN_PLAN.md, 5.1 and 5.2). The
+caller wraps them in x-data="{ status: '…' }".
+
+Three layouts, each input once:
+- a new record: Horse, Work and Date, then the answer;
+- a planned record after today (the plan): Work, Rider and Instruction;
+- any other saved record: the answer first (Status, How it went, Notes).
+The other inputs wait under a heading that names their values.
 {% endcomment %}
-<div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
-    {% if form.horse %}
-        {% if popup_horse_id %}
-        <input type="hidden" name="horse" value="{{ popup_horse_id }}">
-        {% else %}
-        {% include "includes/form_field.html" with field=form.horse span="2" %}
+<div class="space-y-3"
+     x-data="{ reason: '{{ form.reason.value|default:''|escapejs }}', rating: '{{ form.rating.value|default:''|escapejs }}' }">
+{% if not form.instance.pk %}
+
+    <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+        {% if form.horse %}
+            {% if popup_horse_id %}
+            <input type="hidden" name="horse" value="{{ popup_horse_id }}">
+            {% else %}
+            {% include "includes/form_field.html" with field=form.horse span="2" %}
+            {% endif %}
         {% endif %}
-    {% endif %}
-    {% include "includes/form_field.html" with field=form.work_type %}
-    {% include "includes/form_field.html" with field=form.date %}
-    {% include "includes/form_field.html" with field=form.status %}
-    <div x-show="status === 'not_done'" x-cloak>
-        {% include "includes/form_field.html" with field=form.reason %}
+        {% include "includes/form_field.html" with field=form.work_type %}
+        {% include "includes/form_field.html" with field=form.date %}
     </div>
-    {% include "includes/form_field.html" with field=form.minutes %}
-    {% include "includes/form_field.html" with field=form.effort %}
-    {% include "includes/form_field.html" with field=form.who %}
-    {% include "includes/form_field.html" with field=form.venue %}
-    {% include "includes/form_field.html" with field=form.gear span="2" %}
-    {% include "includes/form_field.html" with field=form.notes span="2" %}
+    {% include "training/partials/_activity_status.html" %}
+    {% include "training/partials/_activity_result.html" %}
+    <details class="record-more"{% if form.who.errors or form.venue.errors or form.minutes.errors or form.effort.errors or form.gear.errors or form.instructions.errors %} open{% endif %}>
+        <summary>More details <span class="text-sage font-normal">rider, venue, minutes, effort, gear, instruction</span></summary>
+        <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 pt-2">
+            {% include "includes/form_field.html" with field=form.who %}
+            {% include "includes/form_field.html" with field=form.venue %}
+            {% include "includes/form_field.html" with field=form.minutes %}
+            {% include "includes/form_field.html" with field=form.effort %}
+            {% include "includes/form_field.html" with field=form.gear span="2" %}
+            {% include "includes/form_field.html" with field=form.instructions span="2" %}
+        </div>
+    </details>
+
+{% elif form.instance.is_plan %}
+
+    <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+        {% include "includes/form_field.html" with field=form.work_type %}
+        {% include "includes/form_field.html" with field=form.who %}
+        {% include "includes/form_field.html" with field=form.instructions span="2" %}
+    </div>
+    <details class="record-more"{% if form.horse.errors or form.date.errors or form.status.errors or form.reason.errors or form.venue.errors or form.minutes.errors or form.effort.errors or form.gear.errors or form.notes.errors %} open{% endif %}>
+        <summary>More details <span class="text-sage font-normal">date, status, venue, minutes, effort, gear, notes</span></summary>
+        <div class="space-y-3 pt-2">
+            {% include "training/partials/_activity_status.html" %}
+            <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+                {% if form.horse %}{% include "includes/form_field.html" with field=form.horse span="2" %}{% endif %}
+                {% include "includes/form_field.html" with field=form.date %}
+                {% include "includes/form_field.html" with field=form.venue %}
+                {% include "includes/form_field.html" with field=form.minutes %}
+                {% include "includes/form_field.html" with field=form.effort %}
+                {% include "includes/form_field.html" with field=form.gear span="2" %}
+                {% include "includes/form_field.html" with field=form.notes span="2" %}
+            </div>
+        </div>
+    </details>
+
+{% else %}
+
+    {% include "training/partials/_activity_status.html" %}
+    {% include "training/partials/_activity_result.html" %}
+    <details class="record-more"{% if form.horse.errors or form.work_type.errors or form.date.errors or form.who.errors or form.venue.errors or form.minutes.errors or form.effort.errors or form.gear.errors or form.instructions.errors %} open{% endif %}>
+        <summary>Work details <span class="text-sage font-normal">{{ form.instance.work_type.name }}{% if form.instance.rider_label %} &middot; {{ form.instance.rider_label }}{% endif %}{% if form.instance.venue %} &middot; {{ form.instance.venue.name }}{% endif %}{% if form.instance.minutes %} &middot; {{ form.instance.minutes }} min{% endif %}{% if form.instance.gear %} &middot; {{ form.instance.gear }}{% endif %}</span></summary>
+        <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 pt-2">
+            {% if form.horse %}{% include "includes/form_field.html" with field=form.horse span="2" %}{% endif %}
+            {% include "includes/form_field.html" with field=form.work_type %}
+            {% include "includes/form_field.html" with field=form.date %}
+            {% include "includes/form_field.html" with field=form.who %}
+            {% include "includes/form_field.html" with field=form.venue %}
+            {% include "includes/form_field.html" with field=form.minutes %}
+            {% include "includes/form_field.html" with field=form.effort %}
+            {% include "includes/form_field.html" with field=form.gear span="2" %}
+            {% include "includes/form_field.html" with field=form.instructions span="2" %}
+        </div>
+    </details>
+
+{% endif %}
 </div>
