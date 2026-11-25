@@ -141,7 +141,7 @@
     .filters .link { min-height: 0; min-width: 0; padding: 0; }
     #client-horses > .filters > input { flex: 1 1 200px; max-width: 340px; }
     /* The table takes the place of the list. */
-    #horses, #bills > .list { display: none; }
+    #horses, #bills > .list, #horse-show, #price-find { display: none; }
     .card > .link { margin-left: 6px; }
 }
 

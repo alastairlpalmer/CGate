@@ -514,7 +514,8 @@
     }
 
     // One horse in a list. options: selecting, picked, seen (a tick),
-    // client (name its client), ids (show chip and passport), onClick.
+    // client (name its client), ids (show chip and passport), onClick,
+    // skip ('owner' or 'location': the heading over the row says it).
     function horseRow(horse, options) {
         options = options || {};
         var item = el('li');
@@ -532,7 +533,7 @@
         text.appendChild(el('span', 'strong', horse.name));
         var client = options.client ? clientById(clientIdOf(horse)) : null;
         var line = [
-            client ? client.name : '', horse.owner, horse.location,
+            client ? client.name : '', options.skip === 'owner' ? '' : horse.owner, options.skip === 'location' ? '' : horse.location,
             horse.unsent ? 'not sent yet' : horse.refused ? 'not saved' : ''
         ].filter(Boolean).join(' · ');
         if (line) text.appendChild(el('small', '', line));
@@ -624,7 +625,7 @@
         state.selecting = false;
         state.selected = {};
         state.clientTab = 'horses';
-        $('search').value = '';
+        state.horseShow = $('search').value = '';
         show('client');
     }
 
@@ -691,17 +692,56 @@
         var seen = {};
         entries.forEach(function (entry) { seen[entry.horseId] = true; });
         var query = $('search').value;
-        var list = core.sortHorses(horses, day).filter(function (horse) {
-            return core.matchesHorse(horse, query);
+        // One choice cuts or groups the list: what is due, by owner or by
+        // place, or one owner or one place. A computer has its own filters.
+        var choice = $('horse-show');
+        var pick = isWide() ? '' : state.horseShow || '';
+        var choices = [['', 'All horses'], ['d', 'Due'], ['gowner', 'By owner'], ['glocation', 'By location']].map(function (item) {
+            var option = el('option', '', item[1]);
+            option.value = item[0];
+            return option;
         });
-        fill($('horses'), list.map(function (horse) {
-            return horseRow(horse, {
-                selecting: state.selecting, picked: !!state.selected[horse.id], seen: seen[horse.id], ids: !!query,
-                onClick: state.selecting ? function () { toggleSelected(horse); } : null
+        [['owner', 'Owner'], ['location', 'Location']].forEach(function (kind) {
+            var group = el('optgroup');
+            group.label = kind[1];
+            horses.map(function (horse) { return horse[kind[0]]; }).sort().forEach(function (value, index, all) {
+                if (!value || value === all[index - 1]) return;
+                var option = el('option', '', value);
+                option.value = kind[0].charAt(0) + value;
+                group.appendChild(option);
             });
-        }));
-        $('no-horses').hidden = horses.length > 0;
-        $('no-horses').textContent = client.is_yard
+            choices.push(group);
+        });
+        fill(choice, choices);
+        choice.value = pick;
+        if (choice.value !== pick) pick = choice.value = state.horseShow = '';
+        choice.className = pick ? 'on' : '';
+        var groupBy = pick.charAt(0) === 'g' ? pick.slice(1) : '';
+        var list = core.sortHorses(horses, day).filter(function (horse) {
+            return core.matchesHorse(horse, query) && (!pick || groupBy || (pick === 'd' ? core.horseDue(horse, day)
+                : horse[pick.charAt(0) === 'o' ? 'owner' : 'location'] === pick.slice(1)));
+        });
+        if (groupBy) {
+            // A horse with no owner, or no place, is at the end.
+            list.sort(function (a, b) {
+                return !a[groupBy] - !b[groupBy] || String(a[groupBy]).localeCompare(b[groupBy]);
+            });
+        }
+        var rows = [];
+        list.forEach(function (horse, index) {
+            if (groupBy && (!index || horse[groupBy] !== list[index - 1][groupBy])) {
+                rows.push(el('li', 'band', (horse[groupBy] || 'Not set') + ' · ' + list.filter(function (other) {
+                    return other[groupBy] === horse[groupBy];
+                }).length));
+            }
+            rows.push(horseRow(horse, {
+                selecting: state.selecting, picked: !!state.selected[horse.id], seen: seen[horse.id], ids: !!query,
+                skip: groupBy, onClick: state.selecting ? function () { toggleSelected(horse); } : null
+            }));
+        });
+        fill($('horses'), rows);
+        $('no-horses').hidden = list.length > 0;
+        $('no-horses').textContent = horses.length ? 'No horse fits this.' : client.is_yard
             ? 'No horses. The horses of this client come from C-gate.'
             : 'No horses yet. Tap Add horse.';
         $('search').parentNode.hidden = horses.length === 0;
@@ -1954,8 +1994,10 @@
         // Under their categories, as in the item list. Hidden prices too.
         var groups = {};
         var names = [];
+        var find = isWide() ? '' : $('price-find').value.trim().toLowerCase();
         state.prices.forEach(function (price) {
             var name = price.category || 'Other';
+            if ((price.name + ' ' + name).toLowerCase().indexOf(find) < 0) return;
             if (!groups[name]) { groups[name] = []; names.push(name); }
             groups[name].push(price);
         });
@@ -2712,6 +2754,11 @@
         $('horse-form-archive').addEventListener('click', function () { saveHorse(null, true); });
         $('horse-form-cancel').addEventListener('click', function () { $('horse-sheet').hidden = true; });
         $('search').addEventListener('input', renderClient);
+        $('horse-show').addEventListener('change', function () {
+            state.horseShow = $('horse-show').value;
+            renderClient();
+        });
+        $('price-find').addEventListener('input', renderPrices);
         $('select-toggle').addEventListener('click', toggleSelecting);
         $('select-add').addEventListener('click', function () { openPicker('selected'); });
         $('item-add').addEventListener('click', function () { openPicker('draft'); });

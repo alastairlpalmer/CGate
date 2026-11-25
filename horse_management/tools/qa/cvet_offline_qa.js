@@ -469,6 +469,9 @@ async function openVisit(page, clientName) {
 
   // ── The vet adds a price.
   await tab(page, 'prices');
+  await page.fill('#price-find', 'sed');
+  check('Prices has a search', (await page.locator('#prices .price').count()) === 1 && (await text(page, '#prices .price .strong')) === 'Sedation');
+  await page.fill('#price-find', '');
   check('the booster is marked as a vaccination', (await page.locator('#prices .price', { hasText: 'Flu/Tet booster' }).textContent()).includes('records a vaccination'));
   await page.click('#price-add');
   // The code for a price change comes with the first use: it needs a signal.
@@ -520,6 +523,16 @@ async function openVisit(page, clientName) {
   check('and under 200 KB as written', written < 200 * 1024, `${Math.round(written / 1024)} KB`);
   await page.screenshot({ path: path.join(OUT, '5-compact.png') });
   await context.setOffline(false);
+
+  // ── One choice cuts the list or puts it in groups, with no signal.
+  await page.selectOption('#horse-show', 'gowner');
+  const bands = await page.locator('#horses .band').allTextContents();
+  check('By owner puts the horses under their owners', bands.length >= 3 && bands[0] === 'Ali Khan · 8' && (await page.locator('#horses .horse').count()) === 24 && !(await text(page, '#horses .horse >> nth=0 >> small')).includes('Ali Khan'), bands.join(', '));
+  await page.selectOption('#horse-show', 'oJo Bloggs');
+  check('one owner shows that owner\'s horses only', (await page.locator('#horses .horse').count()) === 8 && (await page.locator('#horses .band').count()) === 0);
+  await page.selectOption('#horse-show', 'd');
+  check('Due shows the horses with something due', (await page.locator('#horses .horse').count()) === (await page.locator('#horses .horse .due').count()) && (await page.locator('#horses .horse').count()) >= 1);
+  await page.selectOption('#horse-show', '');
 
   // ── A long horse name is shown in full, and Select hides no horse.
   const longName = await horseRow(page, 'Thunderbolt Magnificent Champion of Wettenhall').locator('.strong').evaluate((node) => node.scrollWidth <= node.clientWidth + 1);

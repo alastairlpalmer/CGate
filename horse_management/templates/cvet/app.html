@@ -91,6 +91,8 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
         <div id="client-horses">
             <div class="row">
                 <input id="search" type="search" placeholder="Find a horse" autocomplete="off" aria-label="Find a horse">
+                {# One choice: all, what is due, in groups, or one owner or one place. #}
+                <select id="horse-show" aria-label="Show"></select>
                 <button id="select-toggle" type="button" class="button slim">Select</button>
             </div>
             <ul id="horses" class="list card"></ul>
@@ -235,6 +237,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
             </div>
             <p id="price-message" class="problem" aria-live="assertive"></p>
         </form>
+        <input id="price-find" type="search" placeholder="Find a price" autocomplete="off" aria-label="Find a price">
         <div id="prices"></div>
     </section>
 

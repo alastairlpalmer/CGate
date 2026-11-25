@@ -329,7 +329,7 @@
             mark: function (horse, tr) {
                 if (state.selecting) tr.setAttribute('aria-selected', state.selected[horse.id] ? 'true' : 'false');
             }
-        })] : all.length ? [el('p', 'empty', 'No horse fits these choices.')] : []);
+        })] : list.length ? [el('p', 'empty', 'No horse fits these choices.')] : []);
     }
 
     // ── Invoices as a table ──────────────────────────────────────────────
