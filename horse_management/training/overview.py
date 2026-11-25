@@ -210,7 +210,7 @@ def needs_attention(today, *, statuses, history, lot=None, rest=None):
 
 
 def _horse_url(horse_id):
-    return reverse('horse_detail', args=[horse_id]) + '#training'
+    return reverse('training_horse_profile', args=[horse_id])
 
 
 # ─── Today ───────────────────────────────────────────────────────────

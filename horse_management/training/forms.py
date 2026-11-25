@@ -6,7 +6,10 @@ from django.utils import timezone
 
 from health.forms import ActiveHorseFormMixin
 
-from .models import Activity, HorseTraining, Lot, LotDay, LotWeekPlan, Rider, TrainingSettings, Venue, WorkType
+from .models import (
+    Activity, DayNote, HorseTraining, Lot, LotDay, LotWeekPlan, Rider, TrainingNote, TrainingSettings, Venue,
+    WorkType,
+)
 
 DATE_WIDGET = forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'})
 OWNER = 'owner'
@@ -85,6 +88,11 @@ class ActivityRulesMixin:
         self.fields['venue'].empty_label = 'No venue'
         self.fields['venue'].required = False
         self.fields['gear'].help_text = 'For example: martingale, boots.'
+        # Board redesign (5.2, 5.4): the sheet draws Status, Reason and How
+        # it went as buttons (training/partials/_activity_fields.html).
+        self.fields['rating'].required = False
+        self.fields['notes'].widget.attrs['placeholder'] = 'How the horse worked.'
+        self.fields['instructions'].widget.attrs['placeholder'] = 'For example: 2 canters, sit in behind.'
         if not getattr(self.instance, 'pk', None):
             self.fields['date'].initial = timezone.localdate()
             self.fields['status'].initial = Activity.Status.DONE
@@ -111,6 +119,8 @@ class ActivityRulesMixin:
 
         if work_type and work_type.is_rest and cleaned.get('effort'):
             self.add_error('effort', 'A rest has no effort. Leave it empty.')
+        if status != Activity.Status.DONE:
+            cleaned['rating'] = None    # "How it went" goes only with Done
         return cleaned
 
     def fill_defaults(self, activity):
@@ -132,7 +142,8 @@ ACTIVITY_WIDGETS = {
     'reason': forms.Select(attrs={'class': 'form-select'}),
     'minutes': forms.NumberInput(attrs={'class': 'form-input', 'min': 0, 'max': 600, 'inputmode': 'numeric'}),
     'effort': forms.Select(attrs={'class': 'form-select'}),
-    'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
+    'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
+    'instructions': forms.TextInput(attrs={'class': 'form-input', 'maxlength': 200}),
 }
 
 
@@ -141,7 +152,8 @@ class ActivityForm(ActivityRulesMixin, ActiveHorseFormMixin, forms.ModelForm):
 
     class Meta:
         model = Activity
-        fields = ['horse', 'date', 'work_type', 'status', 'reason', 'minutes', 'effort', 'venue', 'gear', 'notes']
+        fields = ['horse', 'date', 'work_type', 'status', 'reason', 'rating', 'minutes', 'effort', 'venue', 'gear',
+                  'instructions', 'notes']
         widgets = ACTIVITY_WIDGETS
 
     def __init__(self, *args, **kwargs):
@@ -168,7 +180,8 @@ class BulkActivityForm(ActivityRulesMixin, forms.ModelForm):
 
     class Meta:
         model = Activity
-        fields = ['date', 'work_type', 'status', 'reason', 'minutes', 'effort', 'venue', 'gear', 'notes']
+        fields = ['date', 'work_type', 'status', 'reason', 'rating', 'minutes', 'effort', 'venue', 'gear',
+                  'instructions', 'notes']
         widgets = ACTIVITY_WIDGETS
 
     def __init__(self, *args, **kwargs):
@@ -422,3 +435,41 @@ class WeekPlanForm(forms.Form):
                 lot=self.lot, weekday=day,
                 defaults={'work_type': None if no_lot else work_type, 'venue': None if no_lot else venue, 'no_lot': no_lot},
             )
+
+
+# ─── Board redesign: notes (docs/TRAINING_BOARD_REDESIGN_PLAN.md) ────
+
+class TrainingNoteForm(forms.ModelForm):
+    """A note about how a horse is going. The horse comes from the address."""
+
+    class Meta:
+        model = TrainingNote
+        fields = ['date', 'text']
+        widgets = {
+            'date': DATE_WIDGET,
+            'text': forms.Textarea(attrs={
+                'class': 'form-textarea', 'rows': 4, 'maxlength': 2000,
+                'placeholder': 'How the horse is going. For example: coming to hand, aim for a run in 3 weeks.',
+            }),
+        }
+        labels = {'text': 'Note'}
+
+    def clean_date(self):
+        day = self.cleaned_data['date']
+        if day > timezone.localdate():
+            raise forms.ValidationError('A note cannot have a date after today.')
+        return day
+
+
+class DayNoteForm(forms.Form):
+    """The note for the whole yard on one date. Empty text removes it."""
+
+    text = forms.CharField(
+        required=False, max_length=DayNote._meta.get_field('text').max_length, label='Note for the day',
+        widget=forms.Textarea(attrs={
+            'class': 'form-textarea', 'rows': 3, 'maxlength': 300,
+            'placeholder': 'For example: farrier here at 10:00. Gallop closed after 2nd lot.',
+        }),
+        help_text='Everyone sees it at the top of the board, on the printed sheet and in the shared text. '
+                  'Leave it empty to remove the note.',
+    )

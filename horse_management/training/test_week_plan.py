@@ -120,7 +120,7 @@ class RiderTests(Base):
         board.start_board(timezone.localdate(), user=self.user, source='lots')
         response = self.client.get(reverse('training_board'))
         self.assertEqual([r.horse for r in response.context['my_rows']], [self.kite])
-        self.assertContains(response, 'Your horses today (1)')
+        self.assertContains(response, 'Your horses (1)')
 
     def test_the_rider_filter_shows_one_riders_horses(self):
         services.set_defaults(self.kite, rider=self.sam)

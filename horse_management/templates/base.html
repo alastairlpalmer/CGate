@@ -65,6 +65,8 @@
     <script defer src="{% static_v 'js/app_install.js' %}"></script>
     {# On a phone a PDF goes to the share sheet, so the page stays where it is. #}
     <script defer src="{% static_v 'js/share_file.js' %}"></script>
+    {# Training: the day's lots as text, to the share sheet or the clipboard. #}
+    <script defer src="{% static_v 'js/share_text.js' %}"></script>
     {# notifications.js registers the drawer's Alpine store on alpine:init #}
     <script defer src="{% static_v 'js/notifications.js' %}"></script>
     {# lightbox.js registers an Alpine store on alpine:init, so it must run before Alpine starts #}

@@ -23,6 +23,10 @@
         td.n { width: 1.5em; color: #56737A; }
         td.tick { width: 2.5em; border: 1px solid #9CB2B8; }
         .own { font-style: italic; }
+        /* Board redesign: the note for the day, and each horse's instruction. */
+        .daynote { margin: 0 0 8px; padding: 4px 8px; border-left: 3px solid #3D5A63; font-size: 10pt; }
+        .todo { display: block; color: #4A4A4A; }
+        body.tv .daynote { font-size: 1.8vw; background: #fff; border-radius: 8px; padding: 0.8vw 1vw; }
         .actions { margin-bottom: 8px; }
         @media print { .actions { display: none; } }
         /* TV: large text, readable across the tack room. */
@@ -44,6 +48,7 @@
         <h1>Lot board, {{ day|date:"l j F Y" }}</h1>
         <span class="meta">{% if mode == 'tv' %}Updated {{ now|time:"H:i" }}{% else %}Printed {{ now|date:"j M Y H:i" }}{% endif %}</span>
     </header>
+    {% if day_note %}<p class="daynote">{{ day_note.text }}</p>{% endif %}
     {% if lot_days %}
     <div class="lots">
         {% for lot_day in lot_days %}
@@ -57,7 +62,7 @@
                     {% for row in lot_day.rows %}
                     <tr>
                         <td class="n">{{ forloop.counter }}</td>
-                        <td>{{ row.horse.name }}{% if not row.follows_lot %} <span class="own">({{ row.work_type.name }})</span>{% endif %}{% if row.status == 'not_done' %} — {{ row.get_reason_display }}{% endif %}</td>
+                        <td>{{ row.horse.name }}{% if not row.follows_lot %} <span class="own">({{ row.work_type.name }})</span>{% endif %}{% if row.status == 'not_done' %} — {{ row.get_reason_display }}{% endif %}{% if row.instructions %}<span class="todo">{{ row.instructions }}</span>{% endif %}</td>
                         <td>{{ row.rider_label }}</td>
                         <td>{{ row.gear }}</td>
                         <td class="tick">{% if row.status == 'done' %}✓{% endif %}</td>

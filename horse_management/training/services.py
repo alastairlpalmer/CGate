@@ -34,14 +34,14 @@ def _ids(activities):
     return [a.pk if isinstance(a, Activity) else int(a) for a in activities]
 
 
-def _save(rows, user):
+def _save(rows, user, fields=CHANGED_FIELDS):
     if not rows:
         return
     now = timezone.now()
     for row in rows:
         row.updated_by = user
         row.updated_at = now
-    bulk_update_with_history(rows, Activity, CHANGED_FIELDS, default_user=user)
+    bulk_update_with_history(rows, Activity, fields, default_user=user)
 
 
 @transaction.atomic
@@ -108,6 +108,47 @@ def mark_planned(activities, *, user):
     _save(to_change, user)
     result.changed = len(to_change)
     return result
+
+
+@transaction.atomic
+def unmark_done(activities, *, user):
+    """Done → Planned for one horse: the Undo of a single **Done** (board
+    redesign, B1). Its unbilled charge goes; a record whose charge is on a
+    live invoice is refused (5.12). The rating goes with the status.
+    Returns ``(MarkResult, billed)``: ``billed`` is what
+    ``charges.refuse_if_billed`` found, or None.
+    """
+    ids = _ids(activities)
+    rows = list(
+        Activity.objects.select_for_update(of=('self',))
+        .select_related('horse', 'extra_charge').filter(pk__in=ids)
+    )
+    result = MarkResult()
+    done = [row for row in rows if row.status == Activity.Status.DONE]
+    result.other = len(rows) - len(done)
+    billed = charges.refuse_if_billed(done)
+    if billed:
+        return result, billed
+    for row in done:
+        row.status = Activity.Status.PLANNED
+        row.reason = ''
+        row.lot_action = ''
+        row.rating = None
+    _save(done, user, fields=CHANGED_FIELDS + ['rating'])
+    result.changed = len(done)
+    charges.sync(done)
+    return result, None
+
+
+def set_day_note(day, text, *, user):
+    """The note for the whole yard on ``day``. Empty text deletes it."""
+    from .models import DayNote
+    text = (text or '').strip()
+    if not text:
+        DayNote.objects.filter(date=day).delete()
+        return None
+    note, _ = DayNote.objects.update_or_create(date=day, defaults={'text': text, 'updated_by': user})
+    return note
 
 
 # ─── Phase 2a: lots and training status ─────────────────────────────

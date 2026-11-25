@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Note about {{ horse.name }} - Cgate{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto space-y-4">
+    <div class="page-header"><div><h1 class="page-title">Note about {{ horse.name }}</h1><p class="page-subtitle">How the horse is going. A note about one piece of work goes on that record.</p></div></div>
+    <div class="card">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+            <div class="px-4 py-3 grid grid-cols-1 gap-y-3">
+                {% for error in form.non_field_errors %}<p class="text-sm text-error-red" role="alert">{{ error }}</p>{% endfor %}
+                {% for field in form.visible_fields %}{% include "includes/form_field.html" with field=field %}{% endfor %}
+            </div>
+            <div class="px-4 py-3 border-t border-light-sage flex justify-end gap-3">
+                <a href="{{ next }}" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from simple_history.admin import SimpleHistoryAdmin
 
-from .models import Activity, HorseTraining, Lot, LotMember, TrainingSettings, WorkType
+from .models import Activity, DayNote, HorseTraining, Lot, LotMember, TrainingNote, TrainingSettings, WorkType
 
 
 @admin.register(WorkType)
@@ -43,3 +43,17 @@ class HorseTrainingAdmin(SimpleHistoryAdmin):
 @admin.register(TrainingSettings)
 class TrainingSettingsAdmin(admin.ModelAdmin):
     list_display = ['__str__', 'board_source']
+
+
+@admin.register(TrainingNote)
+class TrainingNoteAdmin(SimpleHistoryAdmin):
+    list_display = ['date', 'horse', 'created_by']
+    search_fields = ['horse__name', 'text']
+    date_hierarchy = 'date'
+    raw_id_fields = ['horse']
+
+
+@admin.register(DayNote)
+class DayNoteAdmin(admin.ModelAdmin):
+    list_display = ['date', 'text', 'updated_by']
+    date_hierarchy = 'date'

@@ -1,0 +1,18 @@
+{% comment %}
+How the work went: Good, OK or Poor (only with Done), then the notes
+(board redesign, C1 and C2). A second tap on the chosen word clears it:
+the answer is optional. The hidden input carries the value.
+{% endcomment %}
+<div x-show="status === 'done'" x-cloak>
+    <span id="rating-label" class="block text-sm font-medium text-charcoal">How it went</span>
+    <div class="choice-chips mt-1" role="group" aria-labelledby="rating-label">
+        {% for value, label in form.rating.field.choices %}{% if value %}
+        <button type="button" class="choice-chip-btn" :class="rating === '{{ value }}' && 'is-on'"
+                :aria-pressed="(rating === '{{ value }}').toString()"
+                @click="rating = rating === '{{ value }}' ? '' : '{{ value }}'">{{ label }}</button>
+        {% endif %}{% endfor %}
+    </div>
+    {# Not the form's own widget: a hidden widget would also be drawn by the pop-up's list of hidden inputs. #}
+    <input type="hidden" name="rating" value="{{ form.rating.value|default:'' }}" :value="rating">
+</div>
+{% include "includes/form_field.html" with field=form.notes %}

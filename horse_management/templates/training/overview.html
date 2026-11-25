@@ -82,6 +82,7 @@ figures, Today, Needs attention and Not in work. Facts only, and no price.
                 <h2 id="today-title" class="section-title">Today</h2>
                 <a href="{% url 'training_board' %}" class="link text-sm tap-pad">Open the board &rsaquo;</a>
             </div>
+            {% if day_note %}<p class="px-4 py-2 text-sm border-b border-light-sage" role="note"><span class="dt-label">Note for the day</span> <span class="text-charcoal">{{ day_note.text }}</span></p>{% endif %}
             {% if today_data.lot_days %}
             <ul class="divide-y divide-light-sage">
                 {% for lot_day in today_data.lot_days %}

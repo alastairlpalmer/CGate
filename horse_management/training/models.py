@@ -116,6 +116,11 @@ class Activity(models.Model):
         NO_RIDER = 'no_rider', 'No rider'
         OTHER = 'other', 'Other'
 
+    class Rating(models.IntegerChoices):
+        GOOD = 3, 'Good'
+        OK = 2, 'OK'
+        POOR = 1, 'Poor'
+
     class Source(models.TextChoices):
         BOARD = 'board', 'Lot board'
         HORSE = 'horse', 'One horse'
@@ -132,6 +137,16 @@ class Activity(models.Model):
         help_text="Leave empty to use the work type's usual effort.",
     )
     notes = models.TextField(blank=True)
+    # Board redesign (docs/TRAINING_BOARD_REDESIGN_PLAN.md, 5.6). The
+    # instruction is the plan for this horse on this date; ``notes`` is how
+    # the work went. The rating goes only with Done.
+    instructions = models.CharField(
+        max_length=200, blank=True, verbose_name='Instruction',
+        help_text='What the horse must do. It shows on the board and the printed sheet.',
+    )
+    rating = models.PositiveSmallIntegerField(
+        choices=Rating.choices, null=True, blank=True, verbose_name='How it went',
+    )
     source = models.CharField(max_length=12, choices=Source.choices, default=Source.HORSE)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
@@ -223,6 +238,15 @@ class Activity(models.Model):
     @property
     def can_mark_done(self):
         return self.status == self.Status.PLANNED and self.date <= timezone.localdate()
+
+    @property
+    def rating_label(self):
+        return self.get_rating_display() if self.rating else ''
+
+    @property
+    def is_plan(self):
+        """Planned work after today: the sheet shows the plan inputs first."""
+        return self.status == self.Status.PLANNED and self.date > timezone.localdate()
 
 
 # ─── Phase 2a: lots, training status, the board setting ─────────────
@@ -487,3 +511,58 @@ class LotWeekPlan(models.Model):
 
     def __str__(self):
         return f"{self.lot} · {self.WEEKDAYS[self.weekday]}"
+
+
+# ─── Board redesign: notes (docs/TRAINING_BOARD_REDESIGN_PLAN.md, 5.6) ──
+
+class TrainingNote(models.Model):
+    """A note about how a horse is going, not about one piece of work.
+
+    Notes about one piece of work go on the record itself (``Activity.notes``).
+    A note is not training work, so ``Activity`` stays the only training
+    record (module plan, 5.1). It follows ``health.FarrierNote``.
+    """
+
+    horse = models.ForeignKey('core.Horse', on_delete=models.CASCADE, related_name='training_notes')
+    date = models.DateField(default=timezone.localdate)
+    text = models.TextField(max_length=2000)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ['-date', '-created_at', '-pk']
+        indexes = [models.Index(fields=['horse', '-date'], name='training_note_horse_date')]
+
+    def __str__(self):
+        return f"{self.horse} · note · {self.date:%d %b %Y}"
+
+    @property
+    def author(self):
+        user = self.created_by
+        return (user.first_name or user.username) if user else ''
+
+
+class DayNote(models.Model):
+    """One note for the whole yard on one date: "Farrier here at 10:00".
+
+    It shows at the top of the board, on the printed sheet, the TV view and
+    in the shared text. Saving empty text deletes the row
+    (``training.services.set_day_note``).
+    """
+
+    date = models.DateField(unique=True)
+    text = models.CharField(max_length=300)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"Note for {self.date:%d %b %Y}"

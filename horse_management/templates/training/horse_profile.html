@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ horse.name }}, training - Cgate{% endblock %}
+
+{% block content %}
+{# A horse's training profile (docs/TRAINING_BOARD_REDESIGN_PLAN.md, 5.3). #}
+<div class="space-y-3 max-w-5xl">
+
+    <div class="flex items-center justify-between gap-3">
+        <a href="{% url 'training_home' %}" class="link text-sm inline-flex items-center gap-1 tap-pad">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+            Training
+        </a>
+        {% if can_see_horse %}<a href="{% url 'horse_detail' horse.pk %}" class="link text-sm tap-pad">Horse page</a>{% endif %}
+    </div>
+
+    <div class="page-header">
+        <div class="min-w-0">
+            <p class="dt-label">Training profile</p>
+            <h1 class="page-title">{{ horse.name }}</h1>
+            <p class="page-subtitle flex flex-wrap items-center gap-x-2 gap-y-1">
+                {% include 'training/_training_status.html' with value=status_value label=status %}
+                {% if status_since %}<span>since {{ status_since|date:"j M Y" }}</span>{% endif %}
+                <span>Lot: {% if lot %}<a href="{% url 'training_lots' %}#lot-{{ lot.pk }}" class="link">{{ lot.name }}</a>{% else %}none{% endif %}</span>
+                {% if default_rider %}<span>Usual rider: {{ default_rider }}</span>{% endif %}
+                {% if default_gear %}<span>Gear: {{ default_gear }}</span>{% endif %}
+                {% if review_on %}<span>Review on {{ review_on|date:"j M" }}</span>{% endif %}
+                {% if can_change %}<a href="{% url 'training_horse_edit' horse.pk %}" hx-get="{% url 'training_horse_edit' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                   data-popup-title="Training status for {{ horse.name }}" class="link tap-pad" aria-label="Change training status and lot">Change</a>{% endif %}
+            </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            {% if can_change %}
+            <a href="{% url 'training_activity_create' %}?horse={{ horse.pk }}&amp;next={{ profile_url|urlencode }}" hx-get="{% url 'training_activity_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Training for {{ horse.name }}" class="btn-primary max-sm:flex-1 justify-center">Record training</a>
+            <a href="{% url 'training_note_create' horse.pk %}" hx-get="{% url 'training_note_create' horse.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+               data-popup-title="Note about {{ horse.name }}" class="btn-secondary max-sm:flex-1 justify-center">Add note</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if status_notes %}<p class="text-sm text-charcoal-light">{{ status_notes }}</p>{% endif %}
+
+    {% if not_confirmed %}
+    <div class="alert-warning flex flex-wrap items-center justify-between gap-2" role="status">
+        <span>{{ not_confirmed }} planned record{{ not_confirmed|pluralize }} from past days {{ not_confirmed|pluralize:"is,are" }} not confirmed.</span>
+        <a href="{% url 'training_log' %}?horse={{ horse.pk }}&amp;status=not_confirmed" class="link tap-pad">Show {{ not_confirmed|pluralize:"it,them" }}</a>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 gap-3 lg:grid-cols-5 items-start">
+
+        <div class="space-y-3 lg:col-span-2">
+            {# The facts: four figures in one card. #}
+            <section class="card" aria-label="Workload">
+                <dl class="fact-grid">
+                    {% for fact in facts %}
+                    <div class="fact">
+                        <dt>{{ fact.label }}{% if fact.sub %} <span class="font-normal">&middot; {{ fact.sub }}</span>{% endif %}</dt>
+                        <dd>{{ fact.value }}</dd>
+                    </div>
+                    {% endfor %}
+                </dl>
+                {% if chips or rated %}
+                <div class="px-4 py-2 border-t border-light-sage flex flex-wrap items-center gap-1.5 text-sm">
+                    {% for chip in chips %}<span class="{% if chip.tone == 'warn' %}badge-warning{% elif chip.tone == 'info' %}badge-info{% else %}badge-neutral{% endif %}">{{ chip.text }}</span>{% endfor %}
+                    {% if rated %}<span class="text-sage">How it went, last 28 days: {% for label, count in rated %}<span class="{% if label == 'Poor' and count %}text-saddle{% else %}text-charcoal{% endif %} font-medium tabular-nums">{{ count }}</span> {{ label|lower }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}
+                </div>
+                {% endif %}
+            </section>
+
+            {# Eight weeks, Monday to Sunday, the newest week first. #}
+            <section class="card px-4 py-3" aria-labelledby="profile-weeks">
+                <h2 id="profile-weeks" class="dt-label">Last 8 weeks</h2>
+                <table class="training-cal mt-1">
+                    <thead>
+                        <tr><th scope="col"><span class="sr-only">Week from</span></th><th scope="col"><abbr title="Monday">M</abbr></th><th scope="col"><abbr title="Tuesday">T</abbr></th><th scope="col"><abbr title="Wednesday">W</abbr></th><th scope="col"><abbr title="Thursday">T</abbr></th><th scope="col"><abbr title="Friday">F</abbr></th><th scope="col"><abbr title="Saturday">S</abbr></th><th scope="col"><abbr title="Sunday">S</abbr></th></tr>
+                    </thead>
+                    <tbody>
+                        {% for week in calendar %}
+                        <tr>
+                            <th scope="row">{{ week.start|date:"j M" }}</th>
+                            {% for d in week.cells %}<td><span class="training-day training-day-{{ d.tone }}{% if d.is_today %} is-today{% endif %}" title="{{ d.label }}"><span aria-hidden="true">{{ d.letter }}</span><span class="sr-only">{{ d.label }}</span></span></td>{% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <p class="mt-2 text-xs text-sage">E easy, S steady, F fast, R rest, &times; did not work, ? planned.</p>
+            </section>
+
+            {% if coming_up %}
+            <section class="card" aria-labelledby="profile-coming">
+                <div class="section-header"><h2 id="profile-coming" class="section-title">Coming up</h2></div>
+                <ul class="divide-y divide-light-sage">
+                    {% for a in coming_up %}
+                    <li class="px-4 py-2 text-sm flex items-start justify-between gap-2">
+                        <span class="min-w-0">
+                            <span class="font-medium text-charcoal">{{ a.date|date:"D j M" }}</span>
+                            <span class="text-sage">&middot; {{ a.work_type.name }}{% if a.lot_day %} &middot; {{ a.lot_day.lot.name }}{% endif %}{% if a.rider_label %} &middot; {{ a.rider_label }}{% endif %}</span>
+                            {% if a.instructions %}<span class="block text-charcoal-light">{{ a.instructions }}</span>{% endif %}
+                        </span>
+                        {% if can_change %}
+                        <a href="{% url 'training_activity_update' a.pk %}?next={{ profile_url|urlencode }}" hx-get="{% url 'training_activity_update' a.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="{{ horse.name }}, {{ a.date|date:'D j M' }}" class="link text-xs tap-pad shrink-0" aria-label="Change the plan for {{ a.date|date:'D j M' }}">Change</a>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+        </div>
+
+        {# Every record and every note, newest first. #}
+        <section class="card lg:col-span-3" aria-labelledby="profile-history">
+            <div class="section-header flex flex-wrap items-center justify-between gap-2">
+                <h2 id="profile-history" class="section-title">Work and notes</h2>
+                <nav class="training-lot-chips" aria-label="Show">
+                    <a href="?" class="training-lot-chip{% if not only %} is-on{% endif %}"{% if not only %} aria-current="true"{% endif %}>All</a>
+                    <a href="?only=notes" class="training-lot-chip{% if only == 'notes' %} is-on{% endif %}"{% if only == 'notes' %} aria-current="true"{% endif %}>Notes only</a>
+                    <a href="?only=missed" class="training-lot-chip{% if only == 'missed' %} is-on{% endif %}"{% if only == 'missed' %} aria-current="true"{% endif %}>Did not work</a>
+                </nav>
+            </div>
+            {% if entries %}
+            <ol class="divide-y divide-light-sage">
+                {% for entry in entries %}
+                {% if entry.kind == 'note' %}
+                {% with note=entry.obj %}
+                <li class="profile-entry profile-entry-note">
+                    <div class="flex items-start justify-between gap-2">
+                        <p class="profile-entry-head"><span class="font-medium text-charcoal">{{ note.date|date:"D j M Y" }}</span> &middot; Note{% if note.author %} by {{ note.author }}{% endif %}</p>
+                        {% if can_change %}
+                        <span class="flex items-center gap-3 shrink-0">
+                            <a href="{% url 'training_note_update' note.pk %}" hx-get="{% url 'training_note_update' note.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Note about {{ horse.name }}" class="link text-xs tap-pad" aria-label="Edit the note of {{ note.date|date:'j M' }}">Edit</a>
+                            <a href="{% url 'training_note_delete' note.pk %}" hx-get="{% url 'training_note_delete' note.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Delete note" class="link text-xs tap-pad" aria-label="Delete the note of {{ note.date|date:'j M' }}">Delete</a>
+                        </span>
+                        {% endif %}
+                    </div>
+                    <p class="profile-entry-text">{{ note.text|linebreaksbr }}</p>
+                </li>
+                {% endwith %}
+                {% else %}
+                {% with a=entry.obj %}
+                <li class="profile-entry">
+                    <div class="flex items-start justify-between gap-2">
+                        <p class="profile-entry-head">
+                            <span class="font-medium text-charcoal">{{ a.date|date:"D j M Y" }}</span>
+                            &middot; <span class="text-charcoal">{{ a.work_type.name }}</span>{% if a.effort_label %} &middot; {{ a.effort_label }}{% endif %}{% if a.minutes %} &middot; <span class="tabular-nums">{{ a.minutes }}</span> min{% endif %}{% if a.rider_label %} &middot; {{ a.rider_label }}{% endif %}{% if a.venue %} &middot; {{ a.venue.name }}{% endif %}
+                            {% if a.status != 'done' %}{% include 'training/_status_badge.html' with activity=a %}{% endif %}
+                            {% if a.rating %}<span class="{% if a.rating == 1 %}text-saddle{% else %}text-charcoal{% endif %} font-medium">&middot; {{ a.rating_label }}</span>{% endif %}
+                        </p>
+                        {% if can_change %}
+                        <a href="{% url 'training_activity_update' a.pk %}?next={{ profile_url|urlencode }}" hx-get="{% url 'training_activity_update' a.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="{{ horse.name }}, {{ a.date|date:'D j M' }}" class="link text-xs tap-pad shrink-0" aria-label="Edit {{ a.work_type.name }}, {{ a.date|date:'j M' }}">Edit</a>
+                        {% endif %}
+                    </div>
+                    {% if a.notes %}<p class="profile-entry-text">{{ a.notes|linebreaksbr }}</p>{% endif %}
+                    {% if can_change and a.can_mark_done %}
+                    <form method="post" action="{% url 'training_activity_mark' a.pk %}" class="mt-1.5">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ profile_url }}">
+                        <button type="submit" name="action" value="done" class="btn-secondary btn-sm min-h-[44px] sm:min-h-0">Mark done</button>
+                    </form>
+                    {% endif %}
+                </li>
+                {% endwith %}
+                {% endif %}
+                {% endfor %}
+            </ol>
+            {% else %}
+            <div class="px-4 py-8 text-center">
+                <p class="text-sm font-medium text-sage">{% if only == 'notes' %}No notes yet.{% elif only == 'missed' %}No days when {{ horse.name }} did not work.{% else %}No training recorded yet.{% endif %}</p>
+                {% if can_change and not only %}
+                <a href="{% url 'training_activity_create' %}?horse={{ horse.pk }}" hx-get="{% url 'training_activity_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Training for {{ horse.name }}" class="btn-primary mt-4 inline-flex">Record the first training</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </section>
+
+    </div>
+
+    {% include 'includes/pagination.html' %}
+
+</div>
+{% endblock %}

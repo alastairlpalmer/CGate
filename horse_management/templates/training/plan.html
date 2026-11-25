@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Training plan - Cgate{% endblock %}
+
+{% block content %}
+{# The Plan tab: the week by lot (docs/TRAINING_BOARD_REDESIGN_PLAN.md, 5.1). #}
+<div class="space-y-3">
+
+    {% include 'training/_header.html' with subtitle="The week, lot by lot." %}
+
+    <nav class="flex items-center justify-between gap-2" aria-label="Week">
+        <a href="{% url 'training_plan_week' previous.isoformat %}" class="btn-ghost min-h-[44px] min-w-[44px] inline-flex items-center justify-center" aria-label="Week before">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+        </a>
+        <p class="font-semibold text-charcoal text-center">{{ days.0|date:"j M" }} to {{ days.6|date:"j M Y" }}{% if is_this_week %} <span class="badge-neutral ml-1">This week</span>{% endif %}</p>
+        <span class="flex items-center gap-1">
+            {% if not is_this_week %}<a href="{% url 'training_plan' %}" class="btn-ghost btn-sm min-h-[44px] inline-flex items-center">This week</a>{% endif %}
+            <a href="{% url 'training_plan_week' next.isoformat %}" class="btn-ghost min-h-[44px] min-w-[44px] inline-flex items-center justify-center" aria-label="Week after">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+            </a>
+        </span>
+    </nav>
+
+    {% if lots %}
+    <div class="plan-grid" style="--plan-lots: {{ lots|length }}">
+        {# The lot names, at the side on a wide screen. On a phone each cell names its lot. #}
+        <div class="plan-lots" aria-hidden="true">
+            <div class="plan-head"></div>
+            {% for lot in lots %}
+            <div class="plan-lot">
+                <span class="font-semibold text-charcoal truncate">{{ lot.name }}</span>
+                <span class="text-xs text-sage">{% if lot.usual_time %}{{ lot.usual_time|time:"H:i" }} &middot; {% endif %}{{ lot.size }} horse{{ lot.size|pluralize }}{% if not lot.is_active %} &middot; archived{% endif %}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% for col in columns %}
+        <section class="plan-day{% if col.is_today %} is-today{% endif %}{% if col.is_past %} is-past{% endif %}{% if col.no_lots %} is-empty{% endif %}" aria-labelledby="plan-day-{{ col.date.isoformat }}">
+            <header class="plan-head">
+                <div class="flex items-start justify-between gap-1">
+                    <h2 id="plan-day-{{ col.date.isoformat }}" class="min-w-0">
+                        <a href="{% url 'training_board_day' col.date.isoformat %}" class="plan-day-link">{{ col.date|date:"D j" }}{% if col.is_today %} <span class="badge-neutral">Today</span>{% endif %}</a>
+                        <span class="plan-state plan-state-{{ col.tone }}">{{ col.state }}</span>
+                    </h2>
+                    {% if can_change and col.can_start %}
+                    <form method="post" action="{% url 'training_board_start' col.date.isoformat %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ plan_url }}">
+                        <button type="submit" class="btn-secondary btn-sm min-h-[44px] lg:min-h-0" aria-label="Start the board for {{ col.date|date:'l j F' }}">Start</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% if col.note %}<p class="plan-note" title="{{ col.note }}">{{ col.note }}</p>{% endif %}
+            </header>
+            {% for cell in col.cells %}
+            {% if cell.lot_day %}
+            <a href="{% url 'training_board_day' col.date.isoformat %}#lot-day-{{ cell.lot_day.pk }}" class="plan-cell">
+                <span class="plan-cell-lot">{{ cell.lot.name }}</span>
+                <span class="plan-cell-work">{{ cell.work }}</span>
+                <span class="plan-cell-meta">{% if cell.venue %}{{ cell.venue }} &middot; {% endif %}<span class="plan-state-{{ cell.tone }}">{{ cell.state }}</span> &middot; <span class="tabular-nums">{{ cell.total }}</span></span>
+            </a>
+            {% else %}
+            <div class="plan-cell {% if cell.off %}is-off{% else %}is-usual{% endif %}">
+                <span class="plan-cell-lot">{{ cell.lot.name }}</span>
+                <span class="plan-cell-work">{{ cell.work }}</span>
+                {% if cell.usual and not cell.no_lot %}<span class="plan-cell-meta">{% if cell.venue %}{{ cell.venue }} &middot; {% endif %}usual &middot; <span class="tabular-nums">{{ cell.total }}</span></span>{% endif %}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </section>
+        {% endfor %}
+    </div>
+    <p class="text-xs text-sage">
+        A dashed border: the day has no board yet, and shows the work a new board starts with. The number is the horses in the lot. Tap a lot to open it on that day's board. <strong class="font-semibold">Start</strong> starts a board ({{ default_source_label|lower }}).
+        {% if can_change %}<a href="{% url 'training_setup' %}" class="link">Change the usual week</a>{% endif %}
+    </p>
+    {% else %}
+    <div class="card px-4 py-8 text-center">
+        <p class="text-sm font-medium text-sage">No lots yet. The plan shows each lot's work for the week.</p>
+        {% if can_change %}<a href="{% url 'training_lots' %}" class="btn-primary mt-4 inline-flex">Make your lots</a>{% endif %}
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
