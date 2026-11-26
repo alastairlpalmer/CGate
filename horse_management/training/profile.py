@@ -12,12 +12,13 @@ from django.core.paginator import Paginator
 from django.db.models import Count
 
 from . import load
+from .horse import status_changes
 from .models import Activity, HorseTraining, LotMember, TrainingNote, TrainingSettings
 
 WEEKS = 8
 PAGE_SIZE = 30
 COMING_UP = 7
-ONLY = ('notes', 'missed')
+ONLY = ('notes', 'missed', 'health')
 
 
 def _ago(days):
@@ -60,33 +61,67 @@ def calendar(rows, today, *, weeks=WEEKS):
     return out
 
 
-def _history(horse, today, only, page):
-    """Records dated today or earlier and notes, as one list, newest first.
-    Only the keys of every row are read; the page's rows are read in full."""
+# The kinds of entry in "Work and notes". The number is the order inside
+# one moment, and is never shown.
+WORK, NOTE, STATUS, CONDITION, VET = range(5)
+KIND_NAMES = {WORK: 'work', NOTE: 'note', STATUS: 'status', CONDITION: 'condition', VET: 'vet'}
+
+
+def _history(horse, today, only, page, show_health):
+    """Records dated today or earlier, notes, training status changes and,
+    for a role that can see Health, conditions and vet visits: one list,
+    newest first. Only the keys of every row are read; the page's rows are
+    read in full.
+
+    ``only``: 'notes' is work with a note and the notes; 'missed' is the
+    days the horse did not work; 'health' is those days with the status
+    changes, the conditions and the vet visits: what happened to the horse.
+    """
+    from django.utils import timezone
+
+    from health.models import MedicalCondition, VetVisit
+
     activities = horse.activities.filter(date__lte=today)
     notes = horse.training_notes.all()
     if only == 'notes':
         activities = activities.exclude(notes='')
-    elif only == 'missed':
+    elif only in ('missed', 'health'):
         activities = activities.filter(status=Activity.Status.NOT_DONE)
         notes = notes.none()
-    keys = [(d, created, 0, pk) for pk, d, created in activities.values_list('pk', 'date', 'created_at')]
-    keys += [(d, created, 1, pk) for pk, d, created in notes.values_list('pk', 'date', 'created_at')]
+    keys = [(d, created, WORK, pk) for pk, d, created in activities.values_list('pk', 'date', 'created_at')]
+    keys += [(d, created, NOTE, pk) for pk, d, created in notes.values_list('pk', 'date', 'created_at')]
+    changes = {}
+    if only in ('', 'health'):
+        changes = dict(enumerate(status_changes(horse)))
+        keys += [(change.date, change.stamp, STATUS, index) for index, change in changes.items()]
+        if show_health:
+            for pk, diagnosed, created in MedicalCondition.objects.filter(horse=horse).values_list(
+                    'pk', 'diagnosed_date', 'created_at'):
+                keys.append((diagnosed or timezone.localtime(created).date(), created, CONDITION, pk))
+            keys += [(d, created, VET, pk) for pk, d, created in
+                     VetVisit.objects.filter(horse=horse).values_list('pk', 'date', 'created_at')]
     keys.sort(reverse=True)
     page_obj = Paginator(keys, PAGE_SIZE).get_page(page)
-    work_ids = [pk for _, _, kind, pk in page_obj.object_list if kind == 0]
-    note_ids = [pk for _, _, kind, pk in page_obj.object_list if kind == 1]
-    work = Activity.objects.select_related('work_type', 'rider', 'venue').in_bulk(work_ids)
-    note = TrainingNote.objects.select_related('created_by').in_bulk(note_ids)
+
+    def ids(kind):
+        return [pk for _, _, k, pk in page_obj.object_list if k == kind]
+
+    rows = {
+        WORK: Activity.objects.select_related('work_type', 'rider', 'venue').in_bulk(ids(WORK)),
+        NOTE: TrainingNote.objects.select_related('created_by').in_bulk(ids(NOTE)),
+        STATUS: changes,
+        CONDITION: MedicalCondition.objects.in_bulk(ids(CONDITION)) if ids(CONDITION) else {},
+        VET: VetVisit.objects.select_related('vet').in_bulk(ids(VET)) if ids(VET) else {},
+    }
     entries = []
-    for _, _, kind, pk in page_obj.object_list:
-        obj = (note if kind else work).get(pk)
+    for day, _, kind, pk in page_obj.object_list:
+        obj = rows[kind].get(pk)
         if obj is not None:
-            entries.append({'kind': 'note' if kind else 'work', 'obj': obj})
+            entries.append({'kind': KIND_NAMES[kind], 'obj': obj, 'date': day})
     return page_obj, entries
 
 
-def build(horse, *, today, only='', page=1):
+def build(horse, *, today, only='', page=1, show_health=False):
     only = only if only in ONLY else ''
     status_row = HorseTraining.objects.filter(horse=horse).select_related('default_rider').first()
     member = LotMember.objects.filter(horse=horse).select_related('lot').first()
@@ -101,7 +136,7 @@ def build(horse, *, today, only='', page=1):
         horse.activities.filter(status=Activity.Status.DONE, rating__isnull=False, date__gte=since, date__lte=today)
         .values_list('rating').annotate(n=Count('id'))
     )
-    page_obj, entries = _history(horse, today, only, page)
+    page_obj, entries = _history(horse, today, only, page, show_health)
     default_rider = ''
     if status_row:
         if status_row.default_rider_id:

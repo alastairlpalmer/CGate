@@ -6,6 +6,7 @@ shows to every role with Horses access, so this check cannot be left to the
 template alone.
 """
 
+from dataclasses import dataclass
 from datetime import timedelta
 
 from django.utils import timezone
@@ -31,6 +32,62 @@ def timeline_activities(user, horse, limit):
     return list(
         horse.activities.for_timeline().select_related('work_type').order_by('-date', '-created_at')[:limit]
     )
+
+
+@dataclass
+class StatusChange:
+    """One change of a horse's training status, for a timeline."""
+    date: object            # the day the status started
+    status: str
+    label: str
+    notes: str = ''
+    review_on: object = None
+    stamp: object = None    # when it was saved: the order inside one day
+    is_rest: bool = False   # Resting or Box rest
+
+
+def status_changes(horse):
+    """The horse's training status changes, oldest first, from the history
+    of its settings row. Saves that keep the status (a new note, a corrected
+    date, a review date) fold into the change they belong to, and show its
+    last values. A first status of Not in training is not a change."""
+    rows = (
+        HorseTraining.history.filter(horse_id=horse.pk).exclude(history_type='-')
+        .order_by('history_date', 'history_id')
+        .values('status', 'status_since', 'notes', 'review_on', 'history_date')
+    )
+    changes = []
+    for row in rows:
+        if changes and changes[-1].status == row['status']:
+            last = changes[-1]
+            last.date, last.notes, last.review_on = row['status_since'], row['notes'], row['review_on']
+            continue
+        changes.append(StatusChange(
+            date=row['status_since'], status=row['status'],
+            label=HorseTraining.Status(row['status']).label, notes=row['notes'],
+            review_on=row['review_on'], stamp=row['history_date'],
+            is_rest=row['status'] in HorseTraining.ON_REST,
+        ))
+    if changes and changes[0].status == HorseTraining.Status.NOT_IN_TRAINING:
+        changes = changes[1:]
+    # The same status for the same day, saved two times (a change that was
+    # undone and made again, or a date typed over another), is one entry:
+    # the later one.
+    seen, kept = set(), []
+    for change in reversed(changes):
+        if (change.status, change.date) not in seen:
+            seen.add((change.status, change.date))
+            kept.append(change)
+    return kept[::-1]
+
+
+def timeline_status_changes(user, horse, limit=None):
+    """Status changes for the horse page's Timeline and the preview pane,
+    newest first; none when the role cannot see training."""
+    if not can_see_training(user):
+        return []
+    changes = status_changes(horse)[::-1]
+    return changes[:limit] if limit else changes
 
 
 def training_actions(user):

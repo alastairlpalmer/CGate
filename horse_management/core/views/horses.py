@@ -1173,7 +1173,7 @@ def _stable_stays(horse, limit):
 def build_horse_timeline(
     *, placements, vaccinations, farrier_visits, worming_treatments,
     egg_counts, vet_visits, breeding_records=(), farrier_notes=(),
-    stable_stays=(), activities=(),
+    stable_stays=(), activities=(), conditions=(), status_changes=(),
 ):
     """One list of dated events, newest first.
 
@@ -1206,6 +1206,16 @@ def build_horse_timeline(
     # training.horse.timeline_activities (it checks the role and the switch).
     for activity in activities:
         timeline.append({'type': 'training', 'date': activity.date, 'obj': activity})
+    # An injury is a condition, and often a change to Box rest or Resting.
+    # Both are dated events, so both are on the timeline (training board
+    # redesign plan, 9.5). A condition with no diagnosis date shows on the
+    # day it was recorded. The status changes come from
+    # training.horse.timeline_status_changes (it checks the role and the switch).
+    for condition in conditions:
+        day = condition.diagnosed_date or timezone.localtime(condition.created_at).date()
+        timeline.append({'type': 'condition', 'date': day, 'obj': condition})
+    for change in status_changes:
+        timeline.append({'type': 'training_status', 'date': change.date, 'obj': change})
     timeline.sort(key=lambda e: e['date'], reverse=True)
     # Only the newest record of a kind can be overdue: an old booster's next
     # due date is in the past for ever once the horse has had the next one.
@@ -1285,10 +1295,12 @@ def horse_neighbours(horse):
 # filters with the kind in TIMELINE_FILTER_OF (a stable stay is a placement).
 TIMELINE_FILTERS = (
     ('placement', 'Placements'), ('vaccination', 'Vaccinations'), ('farrier', 'Farrier'),
-    ('vet_visit', 'Vet visits'), ('breeding', 'Breeding'), ('worming', 'Worming'),
+    ('vet_visit', 'Vet visits'), ('condition', 'Conditions'), ('breeding', 'Breeding'), ('worming', 'Worming'),
     ('training', 'Training'),
 )
-TIMELINE_FILTER_OF = {'stable': 'placement', 'egg_count': 'worming', 'farrier_note': 'farrier'}
+TIMELINE_FILTER_OF = {
+    'stable': 'placement', 'egg_count': 'worming', 'farrier_note': 'farrier', 'training_status': 'training',
+}
 
 
 # How many Timeline entries show before "Show older" (UX review A6).
@@ -1303,6 +1315,7 @@ TIMELINE_LABELS = {
     'placement': 'placement', 'stable': 'stable', 'vaccination': 'vaccination',
     'farrier': 'farrier visit', 'farrier_note': 'farrier note', 'vet_visit': 'vet visit',
     'breeding': 'breeding', 'worming': 'worming', 'egg_count': 'egg count', 'training': 'training',
+    'condition': 'condition', 'training_status': 'training status',
 }
 
 
@@ -1478,6 +1491,8 @@ class HorseDetailView(FeatureAccessMixin, DetailView):
             farrier_notes=list(horse.farrier_notes.select_related('provider')[:20]),
             stable_stays=_stable_stays(horse, 20),
             activities=[],
+            conditions=conditions,
+            status_changes=training_horse.timeline_status_changes(self.request.user, horse, 20),
         )
         context['timeline_filters'], context['timeline_overdue'] = timeline_filters(
             context['timeline_events'])

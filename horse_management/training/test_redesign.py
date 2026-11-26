@@ -285,7 +285,8 @@ class ProfileTests(Base):
         TrainingNote.objects.create(horse=self.kestrel, date=self.today - timedelta(days=1), text='A note.')
         self.work(0)
         kinds = [entry['kind'] for entry in self.client.get(self.url()).context['entries']]
-        self.assertEqual(kinds, ['work', 'note', 'work'])
+        # The horse went In work today, when it joined its lot: that change is in the list too.
+        self.assertEqual(kinds, ['work', 'status', 'note', 'work'])
 
     def test_notes_only_and_did_not_work(self):
         self.work(0, notes='With a note.')
@@ -302,7 +303,7 @@ class ProfileTests(Base):
                                 status='planned', instructions='Easy day')
         response = self.client.get(self.url())
         self.assertEqual(len(response.context['coming_up']), 1)
-        self.assertEqual(response.context['entries'], [])
+        self.assertEqual([e['kind'] for e in response.context['entries']], ['status'])     # no work yet
         self.assertContains(response, 'Easy day')
 
     def test_thirty_to_a_page(self):
@@ -310,7 +311,8 @@ class ProfileTests(Base):
             self.work(back)
         first = self.client.get(self.url())
         self.assertEqual(len(first.context['entries']), profile.PAGE_SIZE)
-        self.assertEqual(len(self.client.get(self.url(page=2)).context['entries']), 5)
+        # 5 more records, and the horse's change to In work.
+        self.assertEqual(len(self.client.get(self.url(page=2)).context['entries']), 6)
 
     def test_the_page_makes_no_training_row(self):
         self.client.get(reverse('training_horse_profile', args=[Horse.objects.create(name='Wren').pk]))

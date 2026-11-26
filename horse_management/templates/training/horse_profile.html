@@ -117,6 +117,7 @@
                     <a href="?" class="training-lot-chip{% if not only %} is-on{% endif %}"{% if not only %} aria-current="true"{% endif %}>All</a>
                     <a href="?only=notes" class="training-lot-chip{% if only == 'notes' %} is-on{% endif %}"{% if only == 'notes' %} aria-current="true"{% endif %}>Notes only</a>
                     <a href="?only=missed" class="training-lot-chip{% if only == 'missed' %} is-on{% endif %}"{% if only == 'missed' %} aria-current="true"{% endif %}>Did not work</a>
+                    <a href="?only=health" class="training-lot-chip{% if only == 'health' %} is-on{% endif %}"{% if only == 'health' %} aria-current="true"{% endif %}>Health and rest</a>
                 </nav>
             </div>
             {% if entries %}
@@ -135,6 +136,36 @@
                         {% endif %}
                     </div>
                     <p class="profile-entry-text">{{ note.text|linebreaksbr }}</p>
+                </li>
+                {% endwith %}
+                {% elif entry.kind == 'status' %}
+                {# A change of training status: into Box rest, back in work (redesign plan, 9.5). #}
+                <li class="profile-entry">
+                    <p class="profile-entry-head"><span class="font-medium text-charcoal">{{ entry.date|date:"D j M Y" }}</span> &middot; Training status {% include 'training/_training_status.html' with value=entry.obj.status label=entry.obj.label %}{% if entry.obj.review_on %} &middot; Review on {{ entry.obj.review_on|date:"j M Y" }}{% endif %}</p>
+                    {% if entry.obj.notes %}<p class="profile-entry-text">{{ entry.obj.notes|linebreaksbr }}</p>{% endif %}
+                </li>
+                {% elif entry.kind == 'condition' %}
+                {% with c=entry.obj %}
+                <li class="profile-entry">
+                    <div class="flex items-start justify-between gap-2">
+                        <p class="profile-entry-head"><span class="font-medium text-charcoal">{{ entry.date|date:"D j M Y" }}</span> &middot; Condition {% if c.status == 'resolved' %}<span class="badge-neutral">Resolved</span>{% elif c.status == 'monitoring' %}<span class="badge-info">Monitoring</span>{% else %}<span class="badge-warning">Active</span>{% endif %}</p>
+                        {% if can_change_health %}
+                        <a href="{% url 'condition_update' c.pk %}" hx-get="{% url 'condition_update' c.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit condition" class="link text-xs tap-pad shrink-0" aria-label="Edit the condition {{ c.name }}">Edit</a>
+                        {% endif %}
+                    </div>
+                    <p class="profile-entry-text"><span class="font-medium">{{ c.name }}</span>{% if c.notes %}<br>{{ c.notes|linebreaksbr }}{% endif %}</p>
+                </li>
+                {% endwith %}
+                {% elif entry.kind == 'vet' %}
+                {% with v=entry.obj %}
+                <li class="profile-entry">
+                    <div class="flex items-start justify-between gap-2">
+                        <p class="profile-entry-head"><span class="font-medium text-charcoal">{{ entry.date|date:"D j M Y" }}</span> &middot; Vet visit{% if v.vet %} &middot; {{ v.vet.name }}{% endif %}{% if v.follow_up_date %} &middot; <span class="text-forest font-medium">Follow-up {{ v.follow_up_date|date:"j M Y" }}</span>{% endif %}</p>
+                        {% if can_change_health %}
+                        <a href="{% url 'vet_visit_update' v.pk %}" hx-get="{% url 'vet_visit_update' v.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit vet visit" class="link text-xs tap-pad shrink-0" aria-label="Edit the vet visit of {{ entry.date|date:'j M' }}">Edit</a>
+                        {% endif %}
+                    </div>
+                    <p class="profile-entry-text"><span class="font-medium">{{ v.reason }}</span>{% if v.diagnosis %}<br>Diagnosis: {{ v.diagnosis }}{% endif %}{% if v.treatment %}<br>Treatment: {{ v.treatment }}{% endif %}</p>
                 </li>
                 {% endwith %}
                 {% else %}
@@ -166,7 +197,7 @@
             </ol>
             {% else %}
             <div class="px-4 py-8 text-center">
-                <p class="text-sm font-medium text-sage">{% if only == 'notes' %}No notes yet.{% elif only == 'missed' %}No days when {{ horse.name }} did not work.{% else %}No training recorded yet.{% endif %}</p>
+                <p class="text-sm font-medium text-sage">{% if only == 'notes' %}No notes yet.{% elif only == 'missed' %}No days when {{ horse.name }} did not work.{% elif only == 'health' %}No rest, conditions, vet visits or days off for {{ horse.name }}.{% else %}No training recorded yet.{% endif %}</p>
                 {% if can_change and not only %}
                 <a href="{% url 'training_activity_create' %}?horse={{ horse.pk }}" hx-get="{% url 'training_activity_create' %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Training for {{ horse.name }}" class="btn-primary mt-4 inline-flex">Record the first training</a>
                 {% endif %}

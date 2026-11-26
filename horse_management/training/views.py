@@ -1066,6 +1066,8 @@ def horse_profile(request, horse_pk):
     today = timezone.localdate()
     data = profile.build(
         horse, today=today, only=request.GET.get('only', ''), page=request.GET.get('page') or 1,
+        # Health data stays with the Health access level, as on the Overview.
+        show_health=has_feature_access(request.user, 'health', LEVEL_VIEW),
     )
     return render(request, 'training/horse_profile.html', {
         **data,
@@ -1073,6 +1075,7 @@ def horse_profile(request, horse_pk):
         'today': today,
         'can_change': has_feature_access(request.user, 'training', LEVEL_FULL),
         'can_see_horse': has_feature_access(request.user, 'horses', LEVEL_VIEW),
+        'can_change_health': has_feature_access(request.user, 'health', LEVEL_FULL),
         'reasons': Activity.Reason.choices,
         'profile_url': request.get_full_path(),
         'training_tab': '',

@@ -353,6 +353,12 @@
                                         {% elif event.type == 'training' %}
                                         <svg class="w-3.5 h-3.5 text-sage shrink-0" aria-hidden="true"><use href="#i-stopwatch"/></svg>
                                         <span class="text-xs font-semibold text-sage">Training</span>
+                                        {% elif event.type == 'condition' %}
+                                        <svg class="w-3.5 h-3.5 text-charcoal-light shrink-0" aria-hidden="true"><use href="#i-heart"/></svg>
+                                        <span class="text-xs font-semibold text-charcoal-light">Condition</span>
+                                        {% elif event.type == 'training_status' %}
+                                        <svg class="w-3.5 h-3.5 text-sage shrink-0" aria-hidden="true"><use href="#i-stopwatch"/></svg>
+                                        <span class="text-xs font-semibold text-sage">Training status</span>
                                         {% endif %}
                                     </div>
                                     <span class="flex items-center gap-2 shrink-0">
@@ -376,6 +382,9 @@
                                            class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.label }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% elif event.type == 'training' and training_card.can_change %}
                                         <a href="{% url 'training_activity_update' event.obj.pk %}?horse={{ horse.pk }}" hx-get="{% url 'training_activity_update' event.obj.pk %}?horse={{ horse.pk }}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit training"
+                                           class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.label }} record, {{ event.date|date:'j M Y' }}">Edit</a>
+                                        {% elif event.type == 'condition' and feature_access.health.full %}
+                                        <a href="{% url 'condition_update' event.obj.pk %}" hx-get="{% url 'condition_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit condition"
                                            class="link text-xs tap-pad inline-flex justify-center min-w-[44px]" aria-label="Edit {{ event.label }} record, {{ event.date|date:'j M Y' }}">Edit</a>
                                         {% elif event.type == 'breeding' and feature_access.breeding.full %}
                                         <a href="{% url 'breeding_update' event.obj.pk %}" hx-get="{% url 'breeding_update' event.obj.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" data-popup-title="Edit breeding record"
@@ -470,6 +479,12 @@
                                     {% elif event.type == 'training' %}
                                     <p class="text-charcoal font-medium">{{ event.obj.work_type.name }}{% if event.obj.effort_label %} <span class="badge-neutral ml-1">{{ event.obj.effort_label }}</span>{% endif %}</p>
                                     <p class="text-sage text-xs mt-0.5">{% include 'training/_status_badge.html' with activity=event.obj %}{% if event.obj.minutes %} &middot; {{ event.obj.minutes }} min{% endif %}{% if event.obj.notes %} &middot; {{ event.obj.notes|truncatechars:120 }}{% endif %}</p>
+                                    {% elif event.type == 'condition' %}
+                                    <p class="text-charcoal font-medium">{{ event.obj.name }}</p>
+                                    <p class="text-sage text-xs mt-0.5">{% if event.obj.status == 'resolved' %}<span class="badge-neutral">Resolved</span>{% elif event.obj.status == 'monitoring' %}<span class="badge-info">Monitoring</span>{% else %}<span class="badge-warning">Active</span>{% endif %}{% if not event.obj.diagnosed_date %} &middot; recorded on this date{% endif %}{% if event.obj.notes %} &middot; {{ event.obj.notes|truncatechars:140 }}{% endif %}</p>
+                                    {% elif event.type == 'training_status' %}
+                                    <p class="text-charcoal font-medium">{% include 'training/_training_status.html' with value=event.obj.status label=event.obj.label %}</p>
+                                    <p class="text-sage text-xs mt-0.5">From this date{% if event.obj.review_on %} &middot; <span class="text-forest font-medium">Review on {{ event.obj.review_on|date:"j M Y" }}</span>{% endif %}{% if event.obj.notes %} &middot; {{ event.obj.notes|truncatechars:140 }}{% endif %}</p>
                                     {% endif %}
                                 </div>
                             </div>

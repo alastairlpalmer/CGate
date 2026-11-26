@@ -424,7 +424,10 @@ def mark_lot_done(lot_day, *, user, today=None):
     if lot_day.status == LotDay.Status.CANCELLED:
         raise BoardError(f"{lot_day.lot.name} is cancelled. Reopen it first.")
     result = MarkLotResult()
-    rows = list(lot_day.activities.select_for_update().select_related('horse').filter(status=Activity.Status.PLANNED))
+    rows = list(
+        lot_day.activities.select_for_update(of=('self',)).select_related('horse')
+        .filter(status=Activity.Status.PLANNED)
+    )
     to_change = []
     for row in rows:
         if not row.horse.is_active:
@@ -469,7 +472,12 @@ def cancel_lot(lot_day, reason, *, user):
 def reopen_lot(lot_day, *, user):
     """Change back only the rows a lot action set. No time limit (5.12)."""
     lot_day = _lock(lot_day)
-    rows = list(lot_day.activities.select_for_update().select_related('horse', 'extra_charge').exclude(lot_action=''))
+    # of=('self',): the charge is an outer join, and PostgreSQL refuses
+    # FOR UPDATE on the nullable side of one (core/tests/test_lock_lint.py).
+    rows = list(
+        lot_day.activities.select_for_update(of=('self',)).select_related('horse', 'extra_charge')
+        .exclude(lot_action='')
+    )
     billed = charges.refuse_if_billed(rows)
     if billed:
         raise BoardError(charges.billed_message(billed, 'record'))
@@ -540,7 +548,9 @@ def add_horses(lot_day, horses, *, user, today=None):
 @transaction.atomic
 def move_horse(activity, to_lot_day, *, user):
     """Move one row to another lot day of the same date."""
-    activity = Activity.objects.select_for_update().select_related('horse', 'lot_day__lot').get(pk=activity.pk)
+    activity = (
+        Activity.objects.select_for_update(of=('self',)).select_related('horse', 'lot_day__lot').get(pk=activity.pk)
+    )
     if to_lot_day.date != activity.date:
         raise BoardError("A horse can move only to a lot on the same date.")
     if activity.lot_day_id == to_lot_day.pk:

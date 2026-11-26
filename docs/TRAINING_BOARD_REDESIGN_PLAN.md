@@ -257,6 +257,30 @@ The owner's point, on 26 Nov 2026: the page for a date with no board was "very b
 
 Tests (16, in `training/test_board_start.py`): for each way to start, the preview of a date equals the board that Start then makes for it. The copy case has a horse's own work, a lot made after the copied board, a horse now on rest, and an archived work type.
 
+### 9.5 An injury on the timelines
+
+The owner's question, on 26 Nov 2026: are there tags or items for an injury, and could they show on the timeline?
+
+What exists: a **Condition** (name, date, Active / Monitoring / Resolved, notes), a **Vet visit** (reason, diagnosis, treatment, follow-up date), the training statuses **Box rest** and **Resting** with a **Review on** date, and the **Did not work** reasons "Lame or sore" and "Vet or treatment". Nothing joined them, and a condition and a status change showed on no timeline.
+
+| # | Change | Where |
+|---|---|---|
+| I1 | **The horse page's Timeline shows conditions and training status changes.** A condition shows on its diagnosis date, or on the day it was recorded. A status change shows on the day the status started, with its review date and note. Two filters: **Conditions**, and status changes under **Training**. The list's preview pane does not change: it has a limit of 30 queries, and these two kinds need two more. | `build_horse_timeline`, `horse_detail.html` |
+| I2 | **The training profile's list shows status changes, conditions and vet visits**, between the work and the notes. A vet visit shows its reason, diagnosis, treatment and follow-up date, and no cost (module plan, D11). | `profile._history`, `horse_profile.html` |
+| I3 | **A new filter on the profile, Health and rest**: the status changes, the conditions, the vet visits and the days the horse did not work. It is the story of an injury in order. | `profile._history` |
+| I4 | The status changes come from the history of the horse's training settings. A save that keeps the status (a new note, a review date, a corrected date) is not a change. | `training.horse.status_changes` |
+
+Access: status changes need View on Training. On the profile, conditions and vet visits need View on Health, as on the Overview (dashboard plan, departure A2). On the horse page, conditions show to the roles that already see the Conditions card.
+
+No data change. Tests: 15, in `training/test_injury_timeline.py`.
+
+Not built, for the owner to decide:
+
+| # | Option | Note |
+|---|---|---|
+| J1 | A kind on a condition: Injury, Illness, Other, and the part of the body. | A change to the Health data. It gives a true "injury" tag and a list of injuries. |
+| J2 | One step for an injury: one form makes the condition, sets Box rest with a review date, and takes the horse off the boards. | Now it is four steps (the help guide lists them). |
+
 ## 10. Not in this plan
 
 - Messages inside the app to each rider ("your horses tomorrow").
