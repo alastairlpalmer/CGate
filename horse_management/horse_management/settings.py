@@ -617,6 +617,8 @@ CRON_HEARTBEAT_URL = env('CRON_HEARTBEAT_URL', default='')
 # /_health/ reports scheduled tasks as stale when none has finished in this
 # many hours. Something runs every day (backup, Xero sweep, invoice status).
 SCHEDULED_TASK_STALE_HOURS = env.int('SCHEDULED_TASK_STALE_HOURS', default=26)
+# /_health/ reports the backup as stale when the last good one is older.
+BACKUP_STALE_HOURS = env.int('BACKUP_STALE_HOURS', default=26)
 
 # Celery Beat schedule
 # ---------------------

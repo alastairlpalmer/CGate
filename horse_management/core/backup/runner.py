@@ -6,6 +6,7 @@ because you stop worrying about it.
 """
 
 import logging
+import os
 import posixpath
 import shutil
 import subprocess
@@ -56,7 +57,16 @@ def dump_database(destination_dir, now=None):
         )
 
     path = Path(destination_dir) / f'yardway-db-{stamp(now)}.dump'
-    dsn = settings.BACKUP_DATABASE_URL or _dsn_from_settings()
+    # The password goes to pg_dump in PGPASSWORD, never on its command
+    # line, where it could show in a process list or an error report.
+    if settings.BACKUP_DATABASE_URL:
+        dsn, password = _split_password(settings.BACKUP_DATABASE_URL)
+    else:
+        dsn = _dsn_from_settings()
+        password = settings.DATABASES['default'].get('PASSWORD') or ''
+    env = dict(os.environ)
+    if password:
+        env['PGPASSWORD'] = password
 
     logger.info('Backup: running pg_dump for %s', url)
     result = subprocess.run(  # noqa: S603 - fixed argv, no shell
@@ -72,6 +82,7 @@ def dump_database(destination_dir, now=None):
         text=True,
         timeout=settings.BACKUP_PG_DUMP_TIMEOUT,
         check=False,
+        env=env,
     )
     if result.returncode != 0:
         # stderr can name the host and user but never the password, which
@@ -82,15 +93,35 @@ def dump_database(destination_dir, now=None):
     return path
 
 
+def _split_password(dsn):
+    """``dsn`` without its password, and the password ('' if none)."""
+    from urllib.parse import unquote, urlsplit, urlunsplit
+
+    parts = urlsplit(dsn)
+    if parts.password is None:
+        return dsn, ''
+    host = parts.hostname or ''
+    if ':' in host:
+        host = f'[{host}]'  # an IPv6 address
+    netloc = f'{parts.username}@{host}' if parts.username else host
+    if parts.port:
+        netloc += f':{parts.port}'
+    return urlunsplit(parts._replace(netloc=netloc)), unquote(parts.password)
+
+
 def _dsn_from_settings():
-    """Rebuild a connection URL from DATABASES when no explicit one is set."""
+    """Rebuild a connection URL from DATABASES when no explicit one is set.
+
+    No password in it: dump_database passes that in PGPASSWORD.
+    """
+    from urllib.parse import quote
+
     config = settings.DATABASES['default']
     user = config.get('USER') or ''
-    password = config.get('PASSWORD') or ''
     host = config.get('HOST') or 'localhost'
     port = config.get('PORT') or 5432
     name = config.get('NAME') or ''
-    credentials = f'{user}:{password}@' if user else ''
+    credentials = f'{quote(user, safe="")}@' if user else ''
     dsn = f'postgresql://{credentials}{host}:{port}/{name}'
     sslmode = (config.get('OPTIONS') or {}).get('sslmode')
     if sslmode:

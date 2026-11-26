@@ -79,7 +79,9 @@ a stopped process sends nothing. These two checks can.
 - [ ] Create a free account at healthchecks.io (or Better Stack)
 - [ ] **Uptime:** add an HTTP check on `https://<your domain>/_health/`
       every 5 minutes. It returns 503 when the database or Redis is down,
-      or when no scheduled task has finished in 26 hours.
+      when no scheduled task has finished in 26 hours, when a scheduled
+      task failed on its latest run, or (with `BACKUP_ENABLED` on) when the
+      latest backup failed or the last good one is older than 26 hours.
 - [ ] **Scheduled tasks:** in Healthchecks.io, create a project and copy its
       **ping key**. Create one check per task, with the slug set to the
       task's function name (for example `run_nightly_backup`,

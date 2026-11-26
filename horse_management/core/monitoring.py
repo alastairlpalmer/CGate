@@ -14,8 +14,10 @@ report that carries a request body or a full local-variable dump would
 copy that personal data to a third party, and the yard has no record of it
 going. So:
 
-* ``send_default_pii`` stays False. Sentry then omits the request body,
-  cookies and the user's IP address.
+* ``send_default_pii`` stays False. Sentry then omits cookies and the
+  user's IP address. It does NOT omit the request body or local
+  variables, so ``max_request_body_size='never'`` and
+  ``include_local_variables=False`` are set as well.
 * ``_scrub`` removes this app's own secrets from anything that is sent,
   because a traceback frame can hold settings values as local variables.
 * Query strings are stripped. The search box puts owner and horse names
@@ -149,6 +151,11 @@ def init(dsn, environment='production', release='', traces_sample_rate=0.0):
         # False: no request bodies, no cookies, no IP addresses. See the
         # module docstring — this app's data is personal data.
         send_default_pii=False,
+        # send_default_pii=False does not stop these two. Request bodies
+        # hold form data (owner details, clinical notes), and local
+        # variables hold model rows and connection strings.
+        max_request_body_size='never',
+        include_local_variables=False,
         traces_sample_rate=traces_sample_rate,
         before_send=before_send,
     )

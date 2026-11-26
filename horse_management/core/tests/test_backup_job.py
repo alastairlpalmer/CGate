@@ -111,10 +111,15 @@ class NightlyTaskTests(TestCase):
         self.assertFalse(BackupRun.objects.exists())
 
     @override_settings(BACKUP_S3_BUCKET='')
-    def test_enabled_but_unconfigured_warns_instead_of_failing_nightly(self):
-        with self.assertLogs('core.tasks', level='WARNING'):
-            self.assertEqual(run_nightly_backup(), 'not configured')
-        self.assertFalse(BackupRun.objects.exists())
+    def test_enabled_but_unconfigured_is_a_failure(self):
+        with mock.patch.object(runner, 'run') as run_backup:
+            with self.assertRaises(runner.BackupError) as caught:
+                run_nightly_backup()
+        run_backup.assert_not_called()
+        self.assertIn('BACKUP_S3_BUCKET', str(caught.exception))
+        row = BackupRun.objects.get()
+        self.assertEqual(row.status, BackupRun.STATUS_FAILED)
+        self.assertIn('No backup was taken', row.error)
 
     @override_settings(BACKUP_INCLUDE_MEDIA=False)
     def test_the_media_switch_is_passed_through(self):

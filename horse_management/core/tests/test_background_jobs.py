@@ -63,6 +63,16 @@ class ScheduledOnceADayTests(TestCase):
             check_invoice_status.apply()
         get.assert_called_once_with('https://hc.example/ping/check_invoice_status', timeout=5)
 
+    @override_settings(CRON_HEARTBEAT_URL='https://hc.example/ping/{task}')
+    def test_no_heartbeat_when_the_task_did_nothing(self):
+        from core.jobs import finish_scheduled_run
+
+        run = ScheduledRun.objects.create(task_name='core.tasks.run_nightly_backup', run_key='k', task_id='x')
+        with mock.patch('requests.get') as get:
+            finish_scheduled_run(run, 'disabled')
+        get.assert_not_called()
+        self.assertEqual(run.status, ScheduledRun.Status.SUCCESS)
+
 
 class RetryTests(TestCase):
     """Eager mode does not run a retry, so each try is driven with
@@ -152,6 +162,42 @@ class DocumentExpiryClaimTests(TestCase):
 
 
 class HealthCheckTests(TestCase):
+    def test_a_task_that_failed_on_its_latest_run_fails_the_check(self):
+        now = timezone.now()
+        ScheduledRun.objects.create(
+            task_name=CHECK_STATUS, run_key='2026-01-01', task_id='x',
+            status=ScheduledRun.Status.SUCCESS, finished_at=now - timedelta(hours=2),
+        )
+        ScheduledRun.objects.create(
+            task_name='core.tasks.run_nightly_backup', run_key='2026-01-01', task_id='y',
+            status=ScheduledRun.Status.FAILED, finished_at=now - timedelta(hours=1),
+        )
+        response = self.client.get('/_health/')
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()['checks']['scheduled_tasks'], 'failed')
+
+    @override_settings(BACKUP_ENABLED=False)
+    def test_backups_off_shows_disabled(self):
+        response = self.client.get('/_health/')
+        self.assertEqual(response.json()['checks']['backup'], 'disabled')
+        self.assertEqual(response.status_code, 200)
+
+    @override_settings(BACKUP_ENABLED=True, BACKUP_STALE_HOURS=26)
+    def test_backup_states(self):
+        from core.models import BackupRun
+
+        self.assertEqual(self.client.get('/_health/').json()['checks']['backup'], 'none yet')
+        good = BackupRun.objects.create(status=BackupRun.STATUS_SUCCESS, finished_at=timezone.now())
+        self.assertEqual(self.client.get('/_health/').json()['checks']['backup'], 'ok')
+        BackupRun.objects.filter(pk=good.pk).update(
+            started_at=timezone.now() - timedelta(hours=30), finished_at=timezone.now() - timedelta(hours=30),
+        )
+        self.assertEqual(self.client.get('/_health/').json()['checks']['backup'], 'stale')
+        BackupRun.objects.create(status=BackupRun.STATUS_FAILED, finished_at=timezone.now())
+        response = self.client.get('/_health/')
+        self.assertEqual(response.json()['checks']['backup'], 'failed')
+        self.assertEqual(response.status_code, 503)
+
     def test_ok_before_any_scheduled_run(self):
         response = self.client.get('/_health/')
         self.assertEqual(response.status_code, 200)

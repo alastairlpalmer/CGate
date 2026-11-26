@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 def run_nightly_backup():
     """Back up the database and media off-site, then prune old copies.
 
-    Off unless BACKUP_ENABLED is true and the storage credentials are set,
-    so a deployment that has not configured backups does not fail a task
-    every night.
+    Off unless BACKUP_ENABLED is true. With BACKUP_ENABLED on and a storage
+    credential missing, it records a failed run and raises: a backup that
+    is switched on but cannot run must not look like a backup.
 
     On failure this does three things, and all three matter: it records the
     failure in BackupRun, it emails the yard, and it re-raises so Celery
@@ -34,15 +34,24 @@ def run_nightly_backup():
     quietly is worse than no backup, because you stop checking.
     """
     if not settings.BACKUP_ENABLED:
+        # No heartbeat for this result (core.jobs.NO_HEARTBEAT_RESULTS): an
+        # outside monitor must not read "backups off" as "backup taken".
         logger.info('Backup: BACKUP_ENABLED is off, nothing to do')
         return 'disabled'
 
     if not storage.is_configured():
-        logger.warning(
-            'Backup: BACKUP_ENABLED is on but the storage credentials are '
-            'missing. No backup is being taken.'
+        # On, but no storage: this is a failure, not a quiet skip. Record
+        # it, tell the yard, and raise so the task shows as failed.
+        error = runner.BackupError(
+            'BACKUP_ENABLED is on but BACKUP_S3_BUCKET, BACKUP_S3_ACCESS_KEY or '
+            'BACKUP_S3_SECRET_KEY is missing. No backup was taken.'
         )
-        return 'not configured'
+        BackupRun.objects.create(
+            status=BackupRun.STATUS_FAILED, finished_at=timezone.now(), error=str(error),
+        )
+        logger.error('Backup: %s', error)
+        _notify_failure(error)
+        raise error
 
     run = BackupRun.objects.create()
     try:

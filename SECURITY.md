@@ -170,9 +170,13 @@ no cross-customer isolation boundary to get wrong.
   form data per request, not counting files.
 - Nightly off-site backup of the database **and** the uploaded media, with
   grandfather-father-son retention (`core/backup/`). Off until
-  `BACKUP_ENABLED` and the storage credentials are set. Every attempt is
-  recorded in `BackupRun`, so a job that stops running is visible rather
-  than assumed. See `docs/BACKUP_RESTORE.md`.
+  `BACKUP_ENABLED` is set. With `BACKUP_ENABLED` on and a storage
+  credential missing, the nightly task records a failed run and raises.
+  With backups off, it sends no heartbeat. Every attempt is recorded in
+  `BackupRun`, and `/_health/` reports the last good backup, so a job that
+  stops running is visible rather than assumed. `pg_dump` gets the
+  database password in `PGPASSWORD`, never on its command line. See
+  `docs/BACKUP_RESTORE.md`.
 
 **Personal data (UK GDPR)**
 - An owner's page can download everything held about them as a ZIP
@@ -213,14 +217,18 @@ no cross-customer isolation boundary to get wrong.
 **Monitoring**
 - Sentry reports unhandled errors from both the web process and the Celery
   worker. Off until `SENTRY_DSN` is set.
-- `send_default_pii` is False, and `core/monitoring.py` scrubs this app's
-  own secrets and strips query strings before an event is sent. The app
+- `send_default_pii` is False. That alone does not stop request bodies
+  or local variables, so `max_request_body_size='never'` and
+  `include_local_variables=False` are set too. `core/monitoring.py` also
+  scrubs this app's own secrets and strips query strings before an event
+  is sent. The app
   holds personal data; the default Sentry configuration would send more of
   it than is acceptable.
 
 **Supply chain and CI**
 - `.github/workflows/ci.yml` — lint, missing migrations, Django checks,
-  1199 Python tests, JavaScript unit tests.
+  about 4,200 Python tests on SQLite and again on PostgreSQL (with every
+  migration from an empty database), JavaScript unit tests.
 - `.github/workflows/security.yml` — `manage.py check --deploy` at
   production settings, `pip-audit`, `npm audit`, bandit, gitleaks. Also on
   a weekly timer, because a clean dependency today gets a CVE next month.
