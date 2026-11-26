@@ -208,3 +208,62 @@ class XeroPaymentsTests(TestCase):
     def test_deleted_payments_are_skipped(self):
         self.check('AUTHORISED', [{'PaymentID': 'P-9', 'Amount': '10.00', 'Status': 'DELETED'}])
         self.assertFalse(self.invoice.payments.exists())
+
+
+class XeroPaymentsMatchTests(TestCase):
+    """Pre-launch review, blocker 8: a payment staff recorded here and the
+    same payment in Xero were counted twice."""
+
+    setUp = XeroPaymentsTests.setUp
+    check = XeroPaymentsTests.check
+
+    def staff_payment(self, amount):
+        return Payment.objects.create(
+            invoice=self.invoice, amount=amount, method=Payment.Method.BANK_TRANSFER,
+            date=date(2026, 11, 19), reference='Staff',
+        )
+
+    def test_a_payment_staff_recorded_is_linked_not_added_again(self):
+        part = (self.total / 2).quantize(Decimal('0.01'))
+        mine = self.staff_payment(part)
+        self.check('AUTHORISED', [{'PaymentID': 'P-1', 'Amount': str(part), 'Date': '2026-11-20T00:00:00'}])
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.payments.count(), 1)
+        mine.refresh_from_db()
+        self.assertEqual(mine.xero_payment_id, 'P-1')
+        self.assertEqual(self.invoice.balance_due, self.total - part)
+        self.assertNotEqual(self.invoice.status, Invoice.Status.PAID)
+
+    def test_a_xero_payment_never_takes_the_invoice_past_its_total(self):
+        part = (self.total / 2).quantize(Decimal('0.01'))
+        self.staff_payment(self.total - Decimal('1.00'))
+        self.check('AUTHORISED', [{'PaymentID': 'P-1', 'Amount': str(part), 'Date': '2026-11-20T00:00:00'}])
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.payments.get(xero_payment_id='P-1').amount, Decimal('1.00'))
+        self.assertEqual(self.invoice.balance_due, Decimal('0.00'))
+
+    def test_a_payment_removed_in_xero_is_voided_here(self):
+        part = (self.total / 2).quantize(Decimal('0.01'))
+        self.check('AUTHORISED', [{'PaymentID': 'P-1', 'Amount': str(part), 'Date': '2026-11-20T00:00:00'}])
+        self.check('AUTHORISED', [])
+        self.invoice.refresh_from_db()
+        self.assertFalse(self.invoice.payments.exists())
+        voided = Payment.all_objects.get(invoice=self.invoice)
+        self.assertTrue(voided.is_voided)
+        self.assertEqual(self.invoice.balance_due, self.total)
+
+    def test_a_removed_payment_opens_a_paid_invoice_again(self):
+        self.check('AUTHORISED', [{'PaymentID': 'P-1', 'Amount': str(self.total), 'Date': '2026-11-20T00:00:00'}])
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.status, Invoice.Status.PAID)
+        self.check('AUTHORISED', [])
+        self.invoice.refresh_from_db()
+        self.assertIn(self.invoice.status, (Invoice.Status.SENT, Invoice.Status.OVERDUE))
+
+    def test_a_staff_payment_linked_to_a_removed_xero_payment_stays(self):
+        mine = self.staff_payment(Decimal('10.00'))
+        self.check('AUTHORISED', [{'PaymentID': 'P-1', 'Amount': '10.00', 'Date': '2026-11-20T00:00:00'}])
+        self.check('AUTHORISED', [])
+        mine.refresh_from_db()
+        self.assertFalse(mine.is_voided)
+        self.assertIsNone(mine.xero_payment_id)

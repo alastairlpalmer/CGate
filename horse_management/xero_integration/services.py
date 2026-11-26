@@ -302,26 +302,76 @@ def _xero_date(value):
 
 
 def record_xero_payments(invoice, xero_invoice):
-    """Record each payment Xero lists on the invoice that is not here yet,
-    by its PaymentID, so a part payment made in Xero shows on the invoice
-    and lowers what is owed (Dev board, 23 Nov 2026). Call it inside a
-    transaction with the invoice locked. Answers how many were recorded."""
+    """Bring the invoice's payments in line with the payments Xero lists.
+
+    Call it inside a transaction with the invoice locked. For each live
+    Xero payment (by its PaymentID):
+
+    * already linked here: nothing to do;
+    * staff recorded the same payment here (same amount, not yet linked,
+      not from Xero): link that payment, do not add a second one;
+    * otherwise: record it, capped at what is still owed, so a payment
+      that staff also recorded with another amount cannot take the
+      invoice past its total.
+
+    A payment that was taken from Xero and is no longer listed there (it
+    was removed or voided in Xero) is voided here. A staff payment that
+    was linked to it is only unlinked. Returns how many were recorded.
+    """
     from decimal import Decimal, InvalidOperation
 
     from invoicing.models import Payment
 
-    made = 0
-    for item in xero_invoice.get('Payments') or []:
+    listed = xero_invoice.get('Payments')
+    live = []
+    for item in listed or []:
         payment_id = str(item.get('PaymentID') or '').strip()
         if not payment_id or item.get('Status') in ('DELETED', 'VOIDED'):
-            continue
-        if Payment.all_objects.filter(xero_payment_id=payment_id).exists():
             continue
         try:
             amount = Decimal(str(item.get('Amount'))).quantize(Decimal('0.01'))
         except (InvalidOperation, TypeError):
             continue
+        if amount > 0:
+            live.append((payment_id, amount, item))
+    live_ids = {payment_id for payment_id, _, _ in live}
+
+    changed = False
+    if listed is not None:
+        gone = Payment.all_objects.filter(invoice=invoice, xero_payment_id__isnull=False).exclude(
+            xero_payment_id__in=live_ids,
+        )
+        for payment in gone:
+            if payment.method == Payment.Method.XERO and not payment.is_voided:
+                payment.voided_at = timezone.now()
+                payment.void_reason = 'Removed or voided in Xero'
+                payment.xero_payment_id = None
+                payment.save(update_fields=['voided_at', 'void_reason', 'xero_payment_id'])
+            else:
+                payment.xero_payment_id = None
+                payment.save(update_fields=['xero_payment_id'])
+            changed = True
+
+    made = 0
+    for payment_id, amount, item in live:
+        if Payment.all_objects.filter(xero_payment_id=payment_id).exists():
+            continue
+        same = (
+            invoice.payments.filter(xero_payment_id__isnull=True, amount=amount)
+            .exclude(method__in=[Payment.Method.XERO, Payment.Method.CREDIT_NOTE])
+            .order_by('date', 'pk').first()
+        )
+        if same is not None:
+            same.xero_payment_id = payment_id
+            same.save(update_fields=['xero_payment_id'])
+            continue
+        invoice.refresh_from_db()
+        amount = min(amount, invoice.balance_due)
         if amount <= 0:
+            logger.warning(
+                'Xero payment %s on invoice %s not recorded: the invoice is already paid here.',
+                payment_id, invoice.pk,
+            )
             continue
         Payment.objects.create(
             invoice=invoice, amount=amount, method=Payment.Method.XERO,
@@ -330,7 +380,7 @@ def record_xero_payments(invoice, xero_invoice):
             xero_payment_id=payment_id,
         )
         made += 1
-    if made:
+    if made or changed:
         invoice.refresh_payment_status()
     return made
 
@@ -377,7 +427,8 @@ def check_xero_invoice_status(sync, client=None):
         # less to pay, and the reminders follow the new balance.
         with transaction.atomic():
             invoice = Invoice.objects.select_for_update().get(pk=sync.invoice_id)
-            if invoice.status in (Invoice.Status.SENT, Invoice.Status.OVERDUE):
+            # PAID too: a payment removed in Xero opens the invoice again.
+            if invoice.status in (Invoice.Status.SENT, Invoice.Status.OVERDUE, Invoice.Status.PAID):
                 record_xero_payments(invoice, xero_invoice)
         sync.invoice = invoice
     elif xero_status == 'VOIDED':
