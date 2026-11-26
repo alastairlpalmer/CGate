@@ -25,12 +25,10 @@ _boot_error = None
 try:
     from django.core.wsgi import get_wsgi_application
     _django_app = get_wsgi_application()
-    # Run pending migrations on serverless cold-start — Vercel only.
-    # On Railway (and anywhere else) migrations belong in the deploy step
-    # (see railway/*.json preDeployCommand), never at import time.
-    if os.environ.get('VERCEL'):
-        from django.core.management import call_command
-        call_command('migrate', '--noinput')
+    # No migrate here. This entry point once ran "migrate" on each Vercel
+    # cold start, so a preview build of an unmerged branch could change
+    # the production schema. Migrations run only in the Railway deploy
+    # step (railway/*.json preDeployCommand).
 except Exception:
     import traceback
     # Log the full traceback server-side only — it must never reach a
