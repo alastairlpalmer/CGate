@@ -30,6 +30,7 @@ urlpatterns = [
     # Visits recorded on the farrier's own page (docs/FARRIER_PAGE_PLAN.md, section 6).
     path('farrier-visits/', farrier_yard_views.provider_visit_list, name='provider_visit_list'),
     path('farrier-visits/qr/', farrier_yard_views.farrier_qr, name='farrier_qr'),
+    path('farrier-visits/qr/regenerate/', farrier_yard_views.farrier_qr_regenerate, name='farrier_qr_regenerate'),
     path('farrier-visits/list/', farrier_yard_views.farrier_job_list, name='farrier_job_list'),
     path('farrier-visits/list/<int:pk>/remove/', farrier_yard_views.farrier_job_remove, name='farrier_job_remove'),
     path('farrier-visits/<int:pk>/', farrier_yard_views.provider_visit_detail, name='provider_visit_detail'),

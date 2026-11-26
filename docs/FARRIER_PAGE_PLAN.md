@@ -81,7 +81,7 @@ The page is built for a phone first: big buttons and one column. It uses the exi
 - The farrier scans it with the phone camera. It opens the farrier page.
 - **First time:** the farrier signs in, then adds the page to the phone's home screen. After that, the farrier taps the icon or scans the code.
 - **Next times:** the phone stays signed in (section 9), so the scan goes straight to Today's visit.
-- The QR code holds only the page address. It holds no password or key. A person who scans it and has no farrier login sees the normal sign-in page and nothing else.
+- The QR code holds the page address with a secret (section 15). Without the secret, nobody sees the list of names.
 - Yardway makes the code. Staff open **Settings → Users → Farrier → Print QR code**. This uses the `qrcode` library that two-step sign-in already uses, so there is no new package.
 
 ### Screen 1: Today's visit (the main screen)
@@ -171,7 +171,7 @@ We do not change `ExtraCharge` or the invoice code. The farrier lines use the sa
 - **Two-step sign-in:** today it is required for admins only (`MFA_REQUIRED_FOR_ADMINS`). For the test, the farrier role does not need it. Decide before Option B (section 12, question 4).
 - **Stay signed in:** a long session on the farrier's phone (for example 30 days), so the farrier does not type a password in a field. Only for the Farrier role.
 - **Personal data:** the farrier sees horse names, photos and locations only. Add the farrier as a data recipient in `docs/DATA_RETENTION.md`.
-- **QR code:** it holds only the page address, not a login. If the code is copied or photographed, nobody gets in without the farrier's password. If we end the farrier's access, the code stays on the door and does nothing.
+- **QR code:** it holds the address with the yard's secret (section 15). A copy or photo of the code lets a person sign in as a farrier until the yard makes a new code.
 - **Agreement:** a short written note with the farrier: what they can see, what they must not share, and how we end access.
 
 ## 10. Build steps
@@ -274,11 +274,13 @@ The farrier page shows **Due now** (the yard's list, then horses due within 14 d
 
 **Decision (the yard owner, November 2026):** the farrier scans the QR code, picks their name from a dropdown and is signed in. No password and no PIN.
 
-- **Who can be picked:** an active farrier in Service Providers with a linked **farrier-only** login, or with **no login yet**. A staff login is never offered, so the QR code cannot sign anyone in as staff.
-- **First pick makes the login (November 2026):** when a farrier with no login picks their name, the app makes a login for them with the Farrier role and no password, and links it (`health.farrier.ensure_farrier_login`). The yard does not have to make one under Settings, Users. If the yard has changed the "Farrier" role so it reaches more than the farrier page, no login is made and the page says so.
-- **What such a session can do:** the farrier page only (the fence in section 4). If the login is later given a staff role, the session stops working (`core.auth_backends.FarrierQRBackend`).
+- **The address holds a secret (pre-launch review, November 2026):** the QR code opens `/farrier/who/<secret>/`. The secret is 32 random bytes, kept in Business settings (`farrier_qr_token`, `health.farrier.qr_token`). Without it, or with an old one, the page shows no names and asks the farrier to scan the code at the yard. Wrong secrets and name picks are rate limited for each address (`FARRIER_QR_LIMIT_PER_IP`, 20 in 15 minutes).
+- **Make a new code:** the QR code page has **Make a new QR code**. The old code stops working at once, and each farrier-only login is signed out. Use it if a photo of the code got out.
+- **Who can be picked:** an active farrier in Service Providers with a linked, active, **farrier-only** login. A staff login is never offered, so the QR code cannot sign anyone in as staff.
+- **Logins are made by staff, not by a pick:** when staff open the QR code page, the app makes a login with the Farrier role and no password for each active farrier with none, and links it (`health.farrier.prepare_qr_logins`). An anonymous request never makes a login. If the yard has changed the "Farrier" role so it reaches more than the farrier page, no login is made and the QR code page says so.
+- **What such a session can do:** the farrier page only (the fence in section 4). It cannot set up two-step sign-in, so it cannot lock the real farrier out. If the login is later given a staff role, the session stops working (`core.auth_backends.FarrierQRBackend`).
 - **Audit:** each sign-in is in the audit log as "Signed in · QR code, name picked", with the address it came from.
-- **The risk the yard accepts:** anyone who has the QR code (a photo of the door is enough) can sign in as the farrier. They could then record work, which adds charges to owners' next invoices, and see horse names and fields. The yard checks every visit before it is paid ("Mark as checked"), and a wrong line can be removed. **To close this later:** add a 4-digit PIN per farrier (the screen already has room for it), or make the picker work only on a phone that has signed in once.
+- **The risk the yard accepts:** anyone who has the QR code (a photo of the door is enough) can sign in as a farrier until the yard makes a new code. They could then record work, which adds charges to owners' next invoices, and change that farrier's prices. The yard checks every visit before it is paid ("Mark as checked"), and a wrong line can be removed. **To close this further:** add a 4-digit PIN per farrier, or make the picker work only on a phone that has signed in once.
 
 ## 16. Farrier notes on a horse
 

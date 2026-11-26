@@ -2,7 +2,7 @@
 {% block title %}Who is on the yard today?{% endblock %}
 {% block heading %}Farrier visit{% endblock %}
 {% block content %}
-<form method="post" class="bg-white rounded-lg border border-light-sage p-4 space-y-4" data-who-form>
+<form method="post" action="{% url 'farrier:who_token' token %}" class="bg-white rounded-lg border border-light-sage p-4 space-y-4" data-who-form>
     {% csrf_token %}
     <div>
         <h1 class="font-heading font-bold text-xl">Who is on the yard today?</h1>

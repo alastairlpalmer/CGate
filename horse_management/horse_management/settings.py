@@ -879,6 +879,11 @@ PASSWORD_RESET_LIMIT_PER_EMAIL = env.int('PASSWORD_RESET_LIMIT_PER_EMAIL', defau
 PASSWORD_RESET_LIMIT_PER_IP = env.int('PASSWORD_RESET_LIMIT_PER_IP', default=20)
 PASSWORD_RESET_LIMIT_WINDOW = 60 * 60
 
+# "Who is on the yard today?" (the farrier QR code page): name picks and
+# wrong QR secrets from one address in each window.
+FARRIER_QR_LIMIT_PER_IP = env.int('FARRIER_QR_LIMIT_PER_IP', default=20)
+FARRIER_QR_LIMIT_WINDOW = 15 * 60
+
 # Invitation links for new users (Settings → Users → Add user, password
 # left blank). Longer than a reset link, because a new starter may not
 # read the email the same day.

@@ -285,8 +285,8 @@ class ProviderPortalMiddleware:
     """Keep a visiting professional's login on their own page.
 
     A Farrier-role user (``core.permissions.is_provider_only``) may reach
-    the farrier page, horse profile photos, the two-step sign-in
-    pages, changing their password, and signing out. Every other path,
+    the farrier page, horse profile photos, the two-step code page (not
+    two-step set-up), changing their password, and signing out. Every other path,
     including staff pages that only check that someone is signed in, the
     Django admin and HTMX endpoints, sends them to Today's visit. A POST
     to a staff URL is redirected too, so it never runs.
@@ -301,9 +301,11 @@ class ProviderPortalMiddleware:
     """
 
     PORTAL_PREFIX = '/farrier/'
+    # No mfa_setup: a QR session (no password) must not be able to turn on
+    # two-step sign-in and lock the real farrier out of their login.
     ALLOWED_NAMES = (
         'logout', 'password_change', 'password_change_done',
-        'mfa_verify', 'mfa_setup', 'mfa_new_recovery_codes',
+        'mfa_verify', 'mfa_new_recovery_codes',
     )
 
     def __init__(self, get_response):

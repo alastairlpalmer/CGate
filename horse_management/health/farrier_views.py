@@ -354,33 +354,55 @@ def horse_note(request, pk):
 QR_BACKEND = 'core.auth_backends.FarrierQRBackend'
 
 
-def who(request):
+def who(request, token=''):
     """"Who is on the yard today?": the page the yard's QR code opens.
 
+    The address in the QR code holds the yard's secret
+    (``farrier.qr_token``). Only that address shows the list of names. With
+    no secret, or an old one, the page asks the farrier to scan the code at
+    the yard, and nobody can sign in.
+
     The farrier picks their name and is signed in with no password, by the
-    yard's choice (docs/FARRIER_PAGE_PLAN.md, section 15). Only farrier-only
-    logins are offered (farrier.qr_sign_in_farriers); a farrier with no
-    login yet gets one on their first pick (farrier.ensure_farrier_login).
-    Every sign-in is in
-    the audit log as "QR code, name picked", with the address it came from.
+    yard's choice (docs/FARRIER_PAGE_PLAN.md, section 15). Only farriers
+    with a farrier-only login are offered (farrier.qr_sign_in_farriers). An
+    anonymous request never makes a login: staff make them from the QR
+    code page. Picks and wrong secrets are rate limited for each address.
+    Every sign-in is in the audit log as "QR code, name picked", with the
+    address it came from.
     """
+    from django.conf import settings
     from django.contrib.auth import login
+
+    from core import ratelimit
+    from core.audit import client_ip
 
     if request.user.is_authenticated:
         # A farrier goes to Today's visit; staff get the page that
         # explains the farrier page (farrier/staff_notice.html).
         return redirect('farrier:today')
+    ip = client_ip(request) or ''
+    window = settings.FARRIER_QR_LIMIT_WINDOW
+    if not token or not farrier.qr_token_matches(token):
+        status = 200
+        if token:
+            # Count wrong secrets, so nobody can guess one. A guess is
+            # hopeless anyway (32 random bytes); this keeps the log quiet.
+            status = 404
+            if not ratelimit.allow('farrier-qr-token', ip, settings.FARRIER_QR_LIMIT_PER_IP, window):
+                status = 429
+        return render(request, 'farrier/who_scan.html', status=status)
     farriers = farrier.qr_sign_in_farriers()
     error = ''
     if request.method == 'POST':
+        if not ratelimit.allow('farrier-qr-pick', ip, settings.FARRIER_QR_LIMIT_PER_IP, window):
+            return render(request, 'farrier/who.html', {
+                'farriers': farriers, 'token': token,
+                'error': 'Too many tries from this phone. Wait 15 minutes, then try again.',
+            }, status=429)
         chosen = next((p for p in farriers if str(p.pk) == request.POST.get('provider', '')), None)
         if chosen is None:
             error = 'Choose your name from the list.'
         else:
-            user = farrier.ensure_farrier_login(chosen)
-            if user is None:
-                error = 'This name cannot sign in from the QR code. Ask the yard to check you in Service Providers.'
-            else:
-                login(request, user, backend=QR_BACKEND)
-                return redirect('farrier:today')
-    return render(request, 'farrier/who.html', {'farriers': farriers, 'error': error})
+            login(request, chosen.user, backend=QR_BACKEND)
+            return redirect('farrier:today')
+    return render(request, 'farrier/who.html', {'farriers': farriers, 'error': error, 'token': token})

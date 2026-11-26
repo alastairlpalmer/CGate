@@ -25,8 +25,9 @@ from .models import ProviderVisit
 def provider_page(view_func):
     """Gate a farrier page view; see the module docstring.
 
-    A signed-out visitor (someone who scanned the yard's QR code) goes to
-    "Who is on the yard today?" to pick their name.
+    A signed-out visitor goes to "Who is on the yard today?". That page
+    asks them to scan the yard's QR code: only the address in the code
+    (with its secret) shows the list of names.
     """
 
     @wraps(view_func)
@@ -55,27 +56,97 @@ def provider_page(view_func):
 def qr_sign_in_farriers():
     """Farriers who can be picked on "Who is on the yard today?".
 
-    An active farrier provider with either:
-
-    * a linked, active, farrier-only login, or
-    * no login at all. The first pick makes their farrier-only login
-      (``ensure_farrier_login``), so the yard does not have to make one
-      by hand under Settings, Users before the QR code works.
-
+    An active farrier provider with a linked, active, farrier-only login.
     A provider linked to a staff login (or to a switched-off login) is
     never offered, so the QR code can never sign anyone in as staff.
+
+    A farrier with no login is not offered. An anonymous request never
+    makes a login: staff make them when they open the QR code page
+    (``prepare_qr_logins``).
     """
     providers = (
         ServiceProvider.objects.filter(
             provider_type=ServiceProvider.ProviderType.FARRIER, is_active=True,
+            user__isnull=False, user__is_active=True,
         )
         .select_related('user')
         .order_by('name')
     )
-    return [
-        p for p in providers
-        if p.user_id is None or (p.user.is_active and is_provider_only(p.user))
-    ]
+    return [p for p in providers if is_provider_only(p.user)]
+
+
+def prepare_qr_logins():
+    """Make a farrier-only login for each active farrier with no login.
+
+    Called from the staff QR code page, so the QR code works for every
+    farrier the yard has added, without a login made by hand. Returns the
+    providers that could not get a safe login (see ``ensure_farrier_login``).
+    """
+    refused = []
+    providers = ServiceProvider.objects.filter(
+        provider_type=ServiceProvider.ProviderType.FARRIER, is_active=True, user__isnull=True,
+    )
+    for provider in providers:
+        if ensure_farrier_login(provider) is None:
+            refused.append(provider)
+    return refused
+
+
+# --- The secret in the QR code address ----------------------------------------
+
+def qr_token():
+    """The yard's current QR code secret, made on first use."""
+    import secrets
+
+    from django.db import transaction
+
+    from core.models import BusinessSettings
+
+    settings_row = BusinessSettings.get_settings()
+    if settings_row.farrier_qr_token:
+        return settings_row.farrier_qr_token
+    with transaction.atomic():
+        locked = BusinessSettings.objects.select_for_update().get(pk=settings_row.pk)
+        if not locked.farrier_qr_token:
+            locked.farrier_qr_token = secrets.token_urlsafe(32)
+            locked.skip_history_when_saving = True
+            locked.save(update_fields=['farrier_qr_token'])
+        return locked.farrier_qr_token
+
+
+def regenerate_qr_token():
+    """Make a new QR code secret, so every old code stops working.
+
+    Also signs out every farrier-only login, so a session that was opened
+    with a leaked code ends. Returns the number of sessions ended.
+    """
+    import secrets
+
+    from core.account_security import sign_out_everywhere
+    from core.models import BusinessSettings
+
+    settings_row = BusinessSettings.get_settings()
+    settings_row.farrier_qr_token = secrets.token_urlsafe(32)
+    settings_row.skip_history_when_saving = True
+    settings_row.save(update_fields=['farrier_qr_token'])
+    ended = 0
+    providers = ServiceProvider.objects.filter(
+        provider_type=ServiceProvider.ProviderType.FARRIER, user__isnull=False,
+    ).select_related('user')
+    for provider in providers:
+        if is_provider_only(provider.user):
+            ended += sign_out_everywhere(provider.user)
+    return ended
+
+
+def qr_token_matches(token):
+    """True if ``token`` is the yard's current QR code secret."""
+    import hmac
+
+    from core.models import BusinessSettings
+
+    current = BusinessSettings.get_settings().farrier_qr_token
+    return bool(current) and bool(token) and hmac.compare_digest(str(token), current)
 
 
 def _farrier_role():

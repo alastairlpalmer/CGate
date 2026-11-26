@@ -259,7 +259,9 @@ class QrAndLoginLinkTests(YardBase):
         self.client.force_login(self.admin)
         page = self.client.get(reverse('farrier_qr'))
         self.assertContains(page, '<svg')
-        self.assertContains(page, 'http://testserver/farrier/')
+        self.assertContains(page, 'http://testserver/farrier/who/')
+        from health import farrier
+        self.assertContains(page, farrier.qr_token())
 
     def test_qr_needs_settings(self):
         user = make_user_with_access(username='groom', dashboard='full', charges='full')
