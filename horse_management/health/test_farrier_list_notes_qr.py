@@ -234,17 +234,71 @@ class FarrierNoteTests(Yard):
 
 class QRSignInTests(TestCase):
     def setUp(self):
+        from django.core.cache import cache
+
+        from health import farrier
+
+        cache.clear()  # the rate limit counts live in the cache
         self.user, self.provider = make_farrier()
+        self.who_url = reverse('farrier:who_token', args=[farrier.qr_token()])
 
     def test_signed_out_qr_code_opens_the_name_picker(self):
-        response = self.client.get(TODAY_URL, follow=True)
-        self.assertEqual(response.redirect_chain[-1][0], reverse('farrier:who'))
+        response = self.client.get(self.who_url)
         self.assertContains(response, 'Who is on the yard today?')
         self.assertContains(response, 'Sam Shoe')
         self.assertNotContains(response, 'Sign out')
 
+    def test_the_farrier_page_with_no_secret_shows_no_names(self):
+        response = self.client.get(TODAY_URL, follow=True)
+        self.assertEqual(response.redirect_chain[-1][0], reverse('farrier:who'))
+        self.assertContains(response, "Scan the yard's QR code")
+        self.assertNotContains(response, 'Sam Shoe')
+        self.client.post(reverse('farrier:who'), {'provider': self.provider.pk})
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_a_wrong_secret_shows_no_names_and_signs_nobody_in(self):
+        url = reverse('farrier:who_token', args=['not-the-secret'])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+        self.assertNotContains(response, 'Sam Shoe', status_code=404)
+        self.client.post(url, {'provider': self.provider.pk})
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_a_new_code_stops_the_old_one_and_signs_farriers_out(self):
+        from health import farrier
+
+        farrier_client = self.client_class()
+        farrier_client.post(self.who_url, {'provider': self.provider.pk})
+        self.assertEqual(farrier_client.get(TODAY_URL).status_code, 200)
+        farrier.regenerate_qr_token()
+        self.assertEqual(self.client.get(self.who_url).status_code, 404)
+        self.assertRedirects(farrier_client.get(TODAY_URL), reverse('farrier:who'), fetch_redirect_response=False)
+        new_url = reverse('farrier:who_token', args=[farrier.qr_token()])
+        self.assertContains(self.client.get(new_url), 'Sam Shoe')
+
+    def test_regenerate_needs_settings_and_a_post(self):
+        from health import farrier
+
+        old = farrier.qr_token()
+        groom = make_user_with_access(username='groom', dashboard='full', charges='full')
+        self.client.force_login(groom)
+        self.client.post(reverse('farrier_qr_regenerate'))
+        self.assertEqual(farrier.qr_token(), old)
+        self.client.force_login(make_admin('boss'))
+        self.assertEqual(self.client.get(reverse('farrier_qr_regenerate')).status_code, 405)
+        self.client.post(reverse('farrier_qr_regenerate'))
+        self.assertNotEqual(farrier.qr_token(), old)
+
+    def test_picks_are_rate_limited(self):
+        with self.settings(FARRIER_QR_LIMIT_PER_IP=2):
+            self.client.post(self.who_url, {'provider': '99999'})
+            self.client.post(self.who_url, {'provider': '99999'})
+            response = self.client.post(self.who_url, {'provider': self.provider.pk})
+        self.assertEqual(response.status_code, 429)
+        self.assertNotIn('_auth_user_id', self.client.session)
+
     def test_picking_a_name_signs_in_with_no_password(self):
-        response = self.client.post(reverse('farrier:who'), {'provider': self.provider.pk})
+        response = self.client.post(self.who_url, {'provider': self.provider.pk})
         self.assertRedirects(response, TODAY_URL, fetch_redirect_response=False)
         self.assertEqual(int(self.client.session['_auth_user_id']), self.user.pk)
         self.assertEqual(self.client.session[BACKEND_SESSION_KEY], 'core.auth_backends.FarrierQRBackend')
@@ -252,12 +306,16 @@ class QRSignInTests(TestCase):
         event = AuditEvent.objects.filter(action=AuditEvent.Action.SIGNED_IN).latest('pk')
         self.assertEqual(event.detail, 'QR code, name picked')
 
+    def test_a_qr_session_cannot_set_up_two_step_sign_in(self):
+        self.client.post(self.who_url, {'provider': self.provider.pk})
+        self.assertRedirects(self.client.get(reverse('mfa_setup')), TODAY_URL, fetch_redirect_response=False)
+
     def test_staff_logins_are_never_offered(self):
         admin = make_admin('boss')
         staff_provider = ServiceProvider.objects.create(name='Office Farrier', provider_type='farrier', user=admin)
-        page = self.client.get(reverse('farrier:who'))
+        page = self.client.get(self.who_url)
         self.assertNotContains(page, 'Office Farrier')
-        self.client.post(reverse('farrier:who'), {'provider': staff_provider.pk})
+        self.client.post(self.who_url, {'provider': staff_provider.pk})
         self.assertNotIn('_auth_user_id', self.client.session)
 
     def test_inactive_and_non_farrier_providers_are_not_offered(self):
@@ -268,33 +326,37 @@ class QRSignInTests(TestCase):
         off_user, _ = make_farrier(username='off', name='Switched Off Forge')
         off_user.is_active = False
         off_user.save()
-        page = self.client.get(reverse('farrier:who'))
+        page = self.client.get(self.who_url)
         for name in ('Retired Forge', 'Downland Vets', 'Switched Off Forge'):
             self.assertNotContains(page, name)
 
-    def test_a_farrier_with_no_login_is_offered(self):
-        ServiceProvider.objects.create(name='New Forge', provider_type='farrier', email='new@example.com')
-        page = self.client.get(reverse('farrier:who'))
-        self.assertContains(page, 'New Forge')
-        self.assertNotContains(page, 'No farrier is set up yet')
-
-    def test_picking_a_farrier_with_no_login_makes_a_farrier_only_login(self):
+    def test_an_anonymous_pick_never_makes_a_login(self):
         provider = ServiceProvider.objects.create(name='New Forge', provider_type='farrier', email='new@example.com')
-        response = self.client.post(reverse('farrier:who'), {'provider': provider.pk})
-        self.assertRedirects(response, TODAY_URL, fetch_redirect_response=False)
+        page = self.client.get(self.who_url)
+        self.assertNotContains(page, 'New Forge')
+        response = self.client.post(self.who_url, {'provider': provider.pk})
+        self.assertContains(response, 'Choose your name from the list')
+        provider.refresh_from_db()
+        self.assertIsNone(provider.user)
+
+    def test_the_staff_qr_page_makes_a_farrier_only_login(self):
+        provider = ServiceProvider.objects.create(name='New Forge', provider_type='farrier', email='new@example.com')
+        staff = self.client_class()
+        staff.force_login(make_admin('boss'))
+        staff.get(reverse('farrier_qr'))
         provider.refresh_from_db()
         user = provider.user
         self.assertIsNotNone(user)
         self.assertFalse(user.has_usable_password())
         self.assertEqual(user.email, 'new@example.com')
         self.assertEqual(user.role_assignment.role.name, 'Farrier')
+        self.assertContains(self.client.get(self.who_url), 'New Forge')
+        response = self.client.post(self.who_url, {'provider': provider.pk})
+        self.assertRedirects(response, TODAY_URL, fetch_redirect_response=False)
         self.assertEqual(int(self.client.session['_auth_user_id']), user.pk)
-        self.assertEqual(self.client.get(TODAY_URL).status_code, 200)
         self.assertRedirects(self.client.get('/owners/'), TODAY_URL, fetch_redirect_response=False)
-        # The next pick uses the same login, not a new one.
-        self.client.logout()
-        self.client.post(reverse('farrier:who'), {'provider': provider.pk})
-        self.assertEqual(int(self.client.session['_auth_user_id']), user.pk)
+        # A second visit to the QR page uses the same login, not a new one.
+        staff.get(reverse('farrier_qr'))
         self.assertEqual(User.objects.filter(username__startswith='farrier-new-forge').count(), 1)
 
     def test_no_login_is_made_if_the_farrier_role_reaches_staff_pages(self):
@@ -302,23 +364,24 @@ class QRSignInTests(TestCase):
         role.access = {**role.access, 'owners': 'full'}
         role.save()
         provider = ServiceProvider.objects.create(name='New Forge', provider_type='farrier')
-        response = self.client.post(reverse('farrier:who'), {'provider': provider.pk})
-        self.assertContains(response, 'cannot sign in from the QR code')
-        self.assertNotIn('_auth_user_id', self.client.session)
+        self.client.force_login(make_admin('boss'))
+        page = self.client.get(reverse('farrier_qr'))
+        self.assertContains(page, 'cannot sign in from the code')
+        self.assertContains(page, 'New Forge')
         provider.refresh_from_db()
         self.assertIsNone(provider.user)
 
     def test_an_unknown_choice_is_refused(self):
-        response = self.client.post(reverse('farrier:who'), {'provider': '99999'})
+        response = self.client.post(self.who_url, {'provider': '99999'})
         self.assertContains(response, 'Choose your name from the list')
         self.assertNotIn('_auth_user_id', self.client.session)
 
     def test_a_qr_session_still_cannot_reach_staff_pages(self):
-        self.client.post(reverse('farrier:who'), {'provider': self.provider.pk})
+        self.client.post(self.who_url, {'provider': self.provider.pk})
         self.assertRedirects(self.client.get('/owners/'), TODAY_URL, fetch_redirect_response=False)
 
     def test_a_qr_session_ends_if_the_login_becomes_staff(self):
-        self.client.post(reverse('farrier:who'), {'provider': self.provider.pk})
+        self.client.post(self.who_url, {'provider': self.provider.pk})
         assign_role(self.user, administrator_role())
         response = self.client.get('/owners/')
         self.assertNotEqual(response.status_code, 200)

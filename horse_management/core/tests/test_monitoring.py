@@ -25,6 +25,16 @@ class InitTests(SimpleTestCase):
         import sentry_sdk
         sentry_sdk.init(dsn='')
 
+    def test_no_request_bodies_and_no_local_variables(self):
+        from unittest import mock
+
+        with mock.patch('sentry_sdk.init') as init:
+            monitoring.init(dsn=FAKE_DSN)
+        options = init.call_args.kwargs
+        self.assertEqual(options['max_request_body_size'], 'never')
+        self.assertFalse(options['include_local_variables'])
+        self.assertFalse(options['send_default_pii'])
+
 
 class SensitiveKeyTests(SimpleTestCase):
     def test_this_apps_own_secrets_are_recognised(self):

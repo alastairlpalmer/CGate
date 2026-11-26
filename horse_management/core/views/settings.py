@@ -69,17 +69,20 @@ def _location_groups(queryset):
 def health_check(request):
     """What an uptime monitor calls. No sign-in. 503 when a part is down.
 
-    Checks the database, Redis (the task queue), and that a scheduled task
-    has finished in the last SCHEDULED_TASK_STALE_HOURS, which catches a
-    beat or worker that has stopped. The response names each part and its
+    Checks the database, Redis (the task queue), that a scheduled task
+    has finished in the last SCHEDULED_TASK_STALE_HOURS (a beat or worker
+    that has stopped), that no scheduled task failed on its latest run,
+    and, with BACKUP_ENABLED on, that a backup succeeded in the last
+    BACKUP_STALE_HOURS. The response names each part and its
     state, and nothing more: it is public.
     """
     checks = {
         'database': _check_database(),
         'redis': _check_redis(),
         'scheduled_tasks': _check_scheduled_tasks(),
+        'backup': _check_backup(),
     }
-    healthy = all(state in ('ok', 'skipped', 'none yet') for state in checks.values())
+    healthy = all(state in ('ok', 'skipped', 'none yet', 'disabled') for state in checks.values())
     return JsonResponse(
         {'status': 'ok' if healthy else 'error', 'checks': checks},
         status=200 if healthy else 503,
@@ -144,7 +147,40 @@ def _check_scheduled_tasks():
     if latest is None:
         return 'none yet'  # A new deploy that has not reached its first run.
     limit = timedelta(hours=settings.SCHEDULED_TASK_STALE_HOURS)
-    return 'ok' if timezone.now() - latest <= limit else 'stale'
+    if timezone.now() - latest > limit:
+        return 'stale'
+    # One task that fails every day must not hide behind the others that
+    # succeed. "Run again" on Background tasks clears it.
+    from ..jobs import last_runs
+
+    if any(run.status == ScheduledRun.Status.FAILED for run in last_runs().values()):
+        return 'failed'
+    return 'ok'
+
+
+def _check_backup():
+    """'disabled', 'ok', 'none yet', 'failed' (latest run) or 'stale'."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from ..models import BackupRun
+
+    if not settings.BACKUP_ENABLED:
+        return 'disabled'
+    try:
+        latest = BackupRun.objects.exclude(status=BackupRun.STATUS_RUNNING).order_by('-started_at').first()
+        good = (BackupRun.objects.filter(status=BackupRun.STATUS_SUCCESS)
+                .order_by('-finished_at').values_list('finished_at', flat=True).first())
+    except Exception:
+        logger.exception('Health check: backup')
+        return 'error'
+    if latest is None:
+        return 'none yet'
+    if latest.status == BackupRun.STATUS_FAILED:
+        return 'failed'
+    limit = timedelta(hours=settings.BACKUP_STALE_HOURS)
+    return 'ok' if good is not None and timezone.now() - good <= limit else 'stale'
 
 
 @login_required

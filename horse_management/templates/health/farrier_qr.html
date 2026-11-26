@@ -16,8 +16,23 @@
         <p class="font-heading text-lg">Farrier: scan to record your visit</p>
         <div class="mx-auto w-64 h-64 [&>svg]:w-full [&>svg]:h-full" aria-label="QR code for the farrier page">{{ qr_svg|safe }}</div>
         <p class="text-sm text-sage break-all">{{ url }}</p>
-        <p class="text-sm">First time: sign in, then add the page to your home screen.</p>
+        <p class="text-sm">Pick your name. No password to type.</p>
     </div>
-    <p class="text-sage text-sm">The code holds only the page address. Nobody can sign in with it alone.</p>
+    {% if refused %}
+    <div class="card px-4 py-3 max-w-md mx-auto text-sm" role="alert">
+        <p class="font-bold">These farriers cannot sign in from the code:</p>
+        <ul class="list-disc pl-5">{% for p in refused %}<li>{{ p.name }}</li>{% endfor %}</ul>
+        <p>The "Farrier" role reaches more than the farrier page. Set it back to the farrier page only, under Settings, Roles.</p>
+    </div>
+    {% endif %}
+    <div class="max-w-md mx-auto text-sm space-y-2 print:hidden">
+        <p class="text-sage">Anyone with this code can sign in as one of your farriers. Keep it on the yard, and do not post it online.</p>
+        <p class="text-sage">If the code got out, make a new one. The old code stops working, and each farrier is signed out.</p>
+        <form method="post" action="{% url 'farrier_qr_regenerate' %}" data-confirm-danger="false"
+              hx-confirm="Make a new QR code? The printed code stops working, and each farrier is signed out.">
+            {% csrf_token %}
+            <button type="submit" class="btn-secondary">Make a new QR code</button>
+        </form>
+    </div>
 </div>
 {% endblock %}

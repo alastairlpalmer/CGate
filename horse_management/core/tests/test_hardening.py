@@ -226,7 +226,29 @@ class BackupConnectionTests(SimpleTestCase):
         config = {'USER': 'u', 'PASSWORD': 'p', 'HOST': 'db.example', 'PORT': 5432, 'NAME': 'x',
                   'OPTIONS': {'sslmode': 'require'}}
         with mock.patch.object(runner, 'settings', SimpleNamespace(DATABASES={'default': config})):
-            self.assertEqual(runner._dsn_from_settings(), 'postgresql://u:p@db.example:5432/x?sslmode=require')
+            self.assertEqual(runner._dsn_from_settings(), 'postgresql://u@db.example:5432/x?sslmode=require')
+
+    def test_the_password_goes_in_pgpassword_not_the_command_line(self):
+        import tempfile
+
+        config = {'ENGINE': 'django.db.backends.postgresql', 'USER': 'u', 'PASSWORD': 's3cr3t:@/',
+                  'HOST': 'db.example', 'PORT': 5432, 'NAME': 'x'}
+        fake = SimpleNamespace(DATABASES={'default': config}, BACKUP_DATABASE_URL='', BACKUP_PG_DUMP_TIMEOUT=5)
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch.object(runner, 'settings', fake), \
+                mock.patch('shutil.which', return_value='/usr/bin/pg_dump'), \
+                mock.patch('subprocess.run', return_value=SimpleNamespace(returncode=1, stderr='no')) as run:
+            with self.assertRaises(runner.BackupError):
+                runner.dump_database(folder)
+        argv, kwargs = run.call_args.args[0], run.call_args.kwargs
+        self.assertNotIn('s3cr3t', ' '.join(argv))
+        self.assertEqual(kwargs['env']['PGPASSWORD'], 's3cr3t:@/')
+
+    def test_a_backup_url_loses_its_password(self):
+        dsn, password = runner._split_password('postgresql://user.abc:p%40ss@host.example:6543/postgres?sslmode=require')
+        self.assertEqual(dsn, 'postgresql://user.abc@host.example:6543/postgres?sslmode=require')
+        self.assertEqual(password, 'p@ss')
+        self.assertEqual(runner._split_password('postgresql://h/db'), ('postgresql://h/db', ''))
 
 
 class XeroErrorSummaryTests(SimpleTestCase):

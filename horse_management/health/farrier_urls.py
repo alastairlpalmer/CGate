@@ -1,6 +1,7 @@
 """URLs for the farrier page, mounted at /farrier/ (see the root urls.py).
 
-No URL carries a provider id: the provider always comes from the
+No URL carries a provider id. The "who" address carries the yard's QR
+secret (health.farrier.qr_token), never a provider id: the provider always comes from the
 signed-in user (health.farrier.provider_page).
 """
 
@@ -13,6 +14,7 @@ app_name = 'farrier'
 urlpatterns = [
     path('', views.today, name='today'),
     path('who/', views.who, name='who'),
+    path('who/<str:token>/', views.who, name='who_token'),
     path('horses/<int:pk>/', views.horse_panel, name='horse_panel'),
     path('horses/<int:pk>/add/', views.horse_add, name='horse_add'),
     path('horses/<int:pk>/remove/', views.horse_remove, name='horse_remove'),

@@ -452,7 +452,10 @@ def send_document_expiry_reminders():
     with transaction.atomic():
         ids = list(
             documents_needing_renewal(
-                Document.objects.select_for_update(skip_locked=True).filter(
+                # of=('self',): the renewal rule joins the horse and owner
+                # with outer joins, and PostgreSQL refuses FOR UPDATE on
+                # the nullable side of an outer join.
+                Document.objects.select_for_update(skip_locked=True, of=('self',)).filter(
                     expiry_date__isnull=False,
                     expiry_date__lte=cutoff,
                     expiry_reminder_sent=False,

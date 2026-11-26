@@ -42,10 +42,14 @@ def _label(user) -> str:
     return user.email or user.get_username()
 
 
-def _ip(request) -> str | None:
+def client_ip(request) -> str | None:
+    """The address of the client that sent ``request``."""
     if request is None:
         return None
     return request.META.get('REMOTE_ADDR') or None
+
+
+_ip = client_ip
 
 
 def record(action, *, request=None, actor=None, target=None, detail='') -> None:

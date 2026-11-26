@@ -2008,13 +2008,20 @@ class BusinessSettings(models.Model):
         'Reminder message', blank=True, max_length=1000,
         help_text='Added to every overdue reminder email, for example who to call.',
     )
+    # The secret part of the address in the farrier QR code
+    # (health.farrier.qr_token). Blank until the QR page is first opened.
+    # "Regenerate" on that page makes a new one, so an old printed or
+    # shared code stops working.
+    farrier_qr_token = models.CharField(max_length=64, blank=True, default='', db_default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     # Bank details and VAT settings print on every invoice, so a change to
     # them must be traceable. next_invoice_number moves on every invoice
     # and is left out (get_next_invoice_number skips history).
-    history = HistoricalRecords(excluded_fields=['next_invoice_number', 'next_credit_note_number', 'updated_at'])
+    history = HistoricalRecords(excluded_fields=[
+        'next_invoice_number', 'next_credit_note_number', 'farrier_qr_token', 'updated_at',
+    ])
 
     class Meta:
         verbose_name = "Business Settings"

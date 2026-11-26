@@ -118,15 +118,36 @@ def provider_statement_pay(request, provider_pk, year, month):
 
 @feature_required('settings', LEVEL_FULL)
 def farrier_qr(request):
-    """A printable sheet with the QR code that opens the farrier page."""
+    """A printable sheet with the QR code that opens the farrier page.
+
+    The address holds the yard's secret (health.farrier.qr_token). Opening
+    this page also makes a farrier-only login for each farrier with none,
+    so each of them can pick their name from the code.
+    """
     from core.models import BusinessSettings
 
-    url = request.build_absolute_uri(reverse('farrier:today'))
+    from . import farrier
+
+    refused = farrier.prepare_qr_logins()
+    url = request.build_absolute_uri(reverse('farrier:who_token', args=[farrier.qr_token()]))
     return render(request, 'health/farrier_qr.html', {
         'url': url,
         'qr_svg': farrier_yard.qr_svg(url),
         'business': BusinessSettings.get_settings(),
+        'refused': refused,
     })
+
+
+@feature_required('settings', LEVEL_FULL)
+@require_POST
+def farrier_qr_regenerate(request):
+    """Make a new QR code. Old printed or shared codes stop working."""
+    from . import farrier
+
+    ended = farrier.regenerate_qr_token()
+    note = f" {ended} farrier session{'s' if ended != 1 else ''} signed out." if ended else ''
+    messages.success(request, f"New QR code made. The old code no longer works.{note} Print this one.")
+    return redirect('farrier_qr')
 
 
 # --- The yard's list for a farrier visit (plan section 14) ----------------------

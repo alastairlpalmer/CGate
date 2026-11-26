@@ -43,6 +43,10 @@ RETRYABLE_ERRORS = (OperationalError, InterfaceError, OSError)
 # The result Celery stores when a scheduled task finds today's claim taken.
 ALREADY_RAN = 'already_ran'
 
+# Results that mean the task did no work, so no heartbeat is sent: the
+# outside monitor must alert when, for example, backups are switched off.
+NO_HEARTBEAT_RESULTS = {'disabled'}
+
 
 def scheduled_task_names():
     """Dotted names of the tasks that beat runs on a schedule."""
@@ -125,7 +129,8 @@ def finish_scheduled_run(run, result):
     run.finished_at = timezone.now()
     run.result = str(result)[:500]
     run.save(update_fields=['status', 'finished_at', 'result'])
-    ping_heartbeat(run.task_name)
+    if result not in NO_HEARTBEAT_RESULTS:
+        ping_heartbeat(run.task_name)
 
 
 def record_failure(task, exc, task_id, args, kwargs, einfo):
