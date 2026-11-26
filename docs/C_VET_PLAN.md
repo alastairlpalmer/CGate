@@ -807,13 +807,10 @@ The phone has the same choices in a form that fits it, and they work with no sig
 | **Show** | Beside the search of a client's horses, one choice: **All horses**, **Due**, **By owner**, **By location**, or one owner, or one location. The phone's own picker opens. It takes no line of the screen, so 8 horses still fit. |
 | **By owner, By location** | The horses are under a band with the name and the count ("Ali Khan · 8"). The line under each horse does not say the owner again. |
 | **Find a price** | Prices has a search (the name or the category). The price list is longer now. |
+| **Find an invoice** | Invoices has a search under All / Not paid / Paid: the number, who it is to, or a horse on it. A computer has its own search over the table. |
+| **Visits of one client** | Beside the title of Visits, one choice: **All clients**, or one client. It is there when two clients or more have visits, on the phone and on a computer. This is the filter that section 7n took out, back at the owner's request. |
 
-The download is 49 KB of the 50 KB limit.
-
-### Not done
-
-- **A filter on Visits.** Visits are in groups by day. A client's visits are on its Timeline.
-- **A search of Invoices on the phone.** The phone has All / Not paid / Paid.
+The download is 48.5 KB of the 50 KB limit. **The next function for the phone needs the decision of section 7n** (a higher limit, or code that loads later).
 
 ## 8. The test on Tim's phone
 

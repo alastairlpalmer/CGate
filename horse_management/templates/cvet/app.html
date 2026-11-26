@@ -180,6 +180,8 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
     <section id="view-visits" class="view" aria-label="Visits" hidden>
         <div class="head">
             <h2>Visits</h2>
+            {# One client's visits, or all. #}
+            <select id="visit-show" aria-label="Client" hidden></select>
         </div>
         <p id="visits-empty" class="empty" hidden>No visits yet. Tap a client, then a horse, to start one.</p>
         <div id="open-visits-box" hidden>
@@ -198,6 +200,7 @@ horses, one horse, Visits, Prices, More. One is shown at a time.
         <div class="head"><h2>Invoices</h2></div>
         <div id="bill-counts" class="counts"></div>
         <div id="bill-chips" class="tiles" role="group" aria-label="Show"></div>
+        <input id="bill-find" type="search" placeholder="Find an invoice" autocomplete="off" aria-label="Find an invoice" hidden>
         <div id="bills"></div>
         <p id="bills-message" class="muted" aria-live="polite"></p>
     </section>

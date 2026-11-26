@@ -1590,6 +1590,20 @@
 
     function renderVisits() {
         var rows = visitRows();
+        // One client's visits, or all: the choice is there when two clients have visits.
+        var choice = $('visit-show');
+        var names = {};
+        rows.forEach(function (row) { names[row.clientId] = row.clientName; });
+        var ids = Object.keys(names).sort(function (a, b) { return names[a].localeCompare(names[b]); });
+        fill(choice, [''].concat(ids).map(function (id) {
+            var option = el('option', '', id ? names[id] : 'All clients');
+            option.value = id;
+            return option;
+        }));
+        choice.value = state.visitShow || '';
+        choice.hidden = ids.length < 2;
+        choice.className = choice.value ? 'on' : '';
+        if (choice.value) rows = rows.filter(function (row) { return row.clientId === choice.value; });
         var open = rows.filter(function (row) { return row.open; });
         var past = rows.filter(function (row) { return !row.open; });
         fill($('open-visits'), open.map(function (row) { return visitFold(row); }));
@@ -1873,6 +1887,15 @@
             return chip;
         }) : []);
         var shown = filter === 'unpaid' ? unpaid : filter === 'paid' ? paid : all;
+        // The phone's search: the number, who it is to, a horse. A computer has its own.
+        var find = $('bill-find');
+        find.hidden = isWide() || !all.length;
+        var words = find.hidden ? '' : find.value.trim().toLowerCase();
+        shown = shown.filter(function (bill) {
+            return (bill.number + ' ' + bill.to + ' ' + (bill.horses || []).map(function (horse) {
+                return horse.name;
+            }).join(' ')).toLowerCase().indexOf(words) >= 0;
+        });
         fill($('bills'), shown.length ? [billList(shown, true)] : [el('p', 'empty', all.length
             ? 'No invoice fits this choice.'
             : 'No invoices yet. An invoice is made when a visit is finished and all of its notes are sent.')]);
@@ -2759,6 +2782,11 @@
             renderClient();
         });
         $('price-find').addEventListener('input', renderPrices);
+        $('bill-find').addEventListener('input', renderBills);
+        $('visit-show').addEventListener('change', function () {
+            state.visitShow = $('visit-show').value;
+            renderVisits();
+        });
         $('select-toggle').addEventListener('click', toggleSelecting);
         $('select-add').addEventListener('click', function () { openPicker('selected'); });
         $('item-add').addEventListener('click', function () { openPicker('draft'); });
