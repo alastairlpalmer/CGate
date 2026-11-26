@@ -1,0 +1,107 @@
+{% comment %}
+A date with no board: what a new board starts with, and Start
+(docs/TRAINING_BOARD_REDESIGN_PLAN.md, 9.4). The lots below are a preview:
+nothing is saved until Start (principle 5.3). Context: preview
+(board.BoardPreview), start_sources, start_note, start_hint, day, can_change.
+{% endcomment %}
+<section class="card" aria-labelledby="board-start-title">
+    <div class="board-start-head">
+        <div class="min-w-0">
+            <h2 id="board-start-title" class="font-semibold text-charcoal">No board for {{ day|date:"D j M" }} yet.</h2>
+            <p class="text-sm text-sage">
+                {% if not preview.any_lots %}A board starts from your lots. Make the lots first.
+                {% elif preview.nothing %}{{ start_note }}
+                {% else %}A new board starts with <span class="font-medium text-charcoal tabular-nums">{{ preview.lot_days|length }}</span> lot{{ preview.lot_days|length|pluralize }} and <span class="font-medium text-charcoal tabular-nums">{{ preview.horse_count }}</span> horse{{ preview.horse_count|pluralize }}, shown below.{% if can_change %} Nothing is saved until you start it.{% else %} Someone with full access to Training starts it.{% endif %}
+                {% endif %}
+            </p>
+            {% if start_note and not preview.nothing %}<p class="text-sm text-charcoal-light" role="status">{{ start_note }}</p>{% endif %}
+        </div>
+        {% if can_change %}
+        {% if not preview.any_lots %}
+        <a href="{% url 'training_lots' %}" class="btn-primary max-sm:w-full justify-center shrink-0">Make your lots</a>
+        {% elif not preview.nothing %}
+        <form method="post" action="{% url 'training_board_start' day.isoformat %}" class="shrink-0">
+            {% csrf_token %}
+            <input type="hidden" name="source" value="{{ preview.source }}">
+            <button type="submit" class="btn-primary max-sm:w-full justify-center">Start the board</button>
+        </form>
+        {% endif %}
+        {% endif %}
+    </div>
+    {% if can_change and preview.any_lots %}
+    {# How to start. Each choice is a link: the lots below change to what that choice makes. #}
+    <div class="board-start-sources">
+        <p id="board-start-from" class="dt-label">Start from</p>
+        <nav class="training-lot-chips" aria-labelledby="board-start-from">
+            {% for source in start_sources %}
+            {% if source.disabled %}
+            <span class="training-lot-chip is-disabled" aria-disabled="true">{{ source.label }}</span>
+            {% else %}
+            <a href="?source={{ source.value }}" class="training-lot-chip{% if source.on %} is-on{% endif %}"{% if source.on %} aria-current="true"{% endif %}>{{ source.label }}{% if source.usual %}<span class="font-normal opacity-80">&nbsp;&middot; usual</span>{% endif %}</a>
+            {% endif %}
+            {% endfor %}
+        </nav>
+        {% if start_hint %}<p class="text-xs text-sage">{{ start_hint }} <a href="{% url 'training_setup' %}" class="link">Change the usual way</a></p>{% endif %}
+    </div>
+    {% endif %}
+    <div class="board-start-foot">
+        {% if can_change and not day_note %}
+        <a href="{% url 'training_day_note' day.isoformat %}?next={{ board_url|urlencode }}" hx-get="{% url 'training_day_note' day.isoformat %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+           data-popup-title="Note for {{ day|date:'D j M' }}" class="link tap-pad">Add a note for the day</a>
+        {% endif %}
+        <a href="{% url 'training_plan_week' day.isoformat %}" class="link tap-pad">See the week</a>
+        <a href="{% url 'training_lots' %}" class="link tap-pad">Lots</a>
+    </div>
+</section>
+
+{% if preview.lot_days %}
+<div class="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3 items-start">
+    {% for lot_day in preview.lot_days %}
+    <section class="card lot-day is-preview" aria-labelledby="preview-lot-{{ lot_day.lot.pk }}">
+        <header class="lot-day-head">
+            <div class="min-w-0">
+                <h3 id="preview-lot-{{ lot_day.lot.pk }}" class="flex flex-wrap items-center gap-x-2 font-semibold text-charcoal">
+                    <span class="truncate">{{ lot_day.lot.name }}{% if lot_day.start_time %} <span class="font-normal text-sage">&middot; {{ lot_day.start_time|time:"H:i" }}</span>{% endif %}</span>
+                    <span class="badge-neutral">Not started</span>
+                </h3>
+                <p class="text-sm text-charcoal-light truncate">
+                    {{ lot_day.work_type.name }}{% if lot_day.venue %}, {{ lot_day.venue.name }}{% endif %} <span class="text-sage">&middot; {{ lot_day.rows|length }} horse{{ lot_day.rows|length|pluralize }}</span>
+                </p>
+            </div>
+        </header>
+        {% if lot_day.notes %}<p class="px-3 pt-2 text-sm text-charcoal-light">{{ lot_day.notes }}</p>{% endif %}
+        {% if lot_day.rows %}
+        <ol class="divide-y divide-light-sage">
+            {% for row in lot_day.rows %}
+            <li class="lot-row">
+                <span class="w-5 shrink-0 text-right text-sm text-sage tabular-nums">{{ forloop.counter }}</span>
+                <a href="{% url 'training_horse_profile' row.horse.pk %}" class="lot-row-main">
+                    <span class="lot-row-name">
+                        <span class="font-medium text-charcoal truncate">{{ row.horse.name }}</span>
+                        {% if not row.follows_lot %}<span class="badge-neutral shrink-0" title="This horse's own work">{{ row.work_type.name }}<span class="sr-only"> (own work)</span></span>{% endif %}
+                    </span>
+                    {% if row.who or row.gear %}
+                    <span class="lot-row-meta">
+                        {% if row.who %}<span>{{ row.who }}</span>{% endif %}
+                        {% if row.gear %}<span>{{ row.gear }}</span>{% endif %}
+                    </span>
+                    {% endif %}
+                </a>
+            </li>
+            {% endfor %}
+        </ol>
+        {% else %}
+        <p class="px-3 py-3 text-sm text-sage">No horses.{% if preview.source == 'empty' %} You add them after the start.{% endif %}</p>
+        {% endif %}
+    </section>
+    {% endfor %}
+</div>
+{% if preview.off %}
+<p class="text-sm text-sage">
+    In a lot, but not in work, so not on this board:
+    {% if preview.off|length <= 8 %}{% for name, status in preview.off %}<span class="text-charcoal-light">{{ name }}</span> ({{ status|lower }}){% if not forloop.last %}, {% endif %}{% endfor %}.
+    {% else %}{{ preview.off|length }} horses.{% endif %}
+    <a href="{% url 'training_home' %}" class="link">See them on the Overview</a>
+</p>
+{% endif %}
+{% endif %}

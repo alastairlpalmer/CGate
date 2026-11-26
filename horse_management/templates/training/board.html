@@ -94,28 +94,7 @@
     </div>
     {% endif %}
 
-    {% if not lot_days %}
-    <div class="card px-4 py-5 space-y-3">
-        <p class="text-sm text-charcoal">No board for {{ day|date:"D j M" }} yet.</p>
-        {% if can_change %}
-        <form method="post" action="{% url 'training_board_start' day.isoformat %}" class="space-y-2">
-            {% csrf_token %}
-            <fieldset>
-                <legend class="text-sm text-sage pb-1">Start from</legend>
-                {% for value, label in sources %}
-                <label class="flex items-center gap-2 min-h-[44px] text-sm cursor-pointer">
-                    <input type="radio" name="source" value="{{ value }}" class="w-4 h-4 accent-forest"{% if value == default_source %} checked{% endif %}>
-                    {% if value == 'copy' %}{% if last_board %}Copy {{ last_board|date:"D j M" }}{% else %}Copy the last board (there is none yet){% endif %}{% elif value == 'week_plan' %}From the week plan ({{ day|date:"l" }}){% else %}{{ label }}{% endif %}
-                </label>
-                {% endfor %}
-            </fieldset>
-            <button type="submit" class="btn-primary">Start the board</button>
-        </form>
-        {% else %}
-        <p class="text-sm text-sage">Someone with full access to Training starts it.</p>
-        {% endif %}
-    </div>
-    {% endif %}
+    {% if not lot_days %}{% include 'training/partials/board_start.html' %}{% endif %}
 
     <div class="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3 items-start">
         {% for lot_day in lot_days %}
