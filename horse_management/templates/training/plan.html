@@ -53,11 +53,20 @@
             </header>
             {% for cell in col.cells %}
             {% if cell.lot_day %}
-            <a href="{% url 'training_board_day' col.date.isoformat %}#lot-day-{{ cell.lot_day.pk }}" class="plan-cell">
-                <span class="plan-cell-lot">{{ cell.lot.name }}</span>
-                <span class="plan-cell-work">{{ cell.work }}</span>
-                <span class="plan-cell-meta">{% if cell.venue %}{{ cell.venue }} &middot; {% endif %}<span class="plan-state-{{ cell.tone }}">{{ cell.state }}</span> &middot; <span class="tabular-nums">{{ cell.total }}</span></span>
-            </a>
+            {# The cell opens the lot on that day's board. With Full access and an open lot, the pencil changes the lot's work for the day (redesign plan, A1). #}
+            <div class="plan-cell is-live{% if can_change and cell.lot_day.is_open %} has-action{% endif %}">
+                <a href="{% url 'training_board_day' col.date.isoformat %}#lot-day-{{ cell.lot_day.pk }}" class="plan-cell-link">
+                    <span class="plan-cell-lot">{{ cell.lot.name }}</span>
+                    <span class="plan-cell-work">{{ cell.work }}</span>
+                    <span class="plan-cell-meta">{% if cell.venue %}{{ cell.venue }} &middot; {% endif %}<span class="plan-state-{{ cell.tone }}">{{ cell.state }}</span> &middot; <span class="tabular-nums">{{ cell.total }}</span></span>
+                </a>
+                {% if can_change and cell.lot_day.is_open %}
+                <a href="{% url 'training_lot_day_change' cell.lot_day.pk %}" hx-get="{% url 'training_lot_day_change' cell.lot_day.pk %}" hx-target="#popup-body" hx-select="unset" hx-swap="innerHTML" hx-push-url="false"
+                   data-popup-title="Change {{ cell.lot.name }}, {{ col.date|date:'D j M' }}" aria-label="Change {{ cell.lot.name }} on {{ col.date|date:'l j F' }}" title="Change the work, venue, time or notes" class="plan-cell-change">
+                    <svg class="w-4 h-4" aria-hidden="true"><use href="#i-pencil"/></svg>
+                </a>
+                {% endif %}
+            </div>
             {% else %}
             <div class="plan-cell {% if cell.off %}is-off{% else %}is-usual{% endif %}">
                 <span class="plan-cell-lot">{{ cell.lot.name }}</span>
@@ -70,7 +79,7 @@
         {% endfor %}
     </div>
     <p class="text-xs text-sage">
-        A dashed border: the day has no board yet, and shows the work a new board starts with. The number is the horses in the lot. Tap a lot to open it on that day's board. <strong class="font-semibold">Start</strong> starts a board ({{ default_source_label|lower }}).
+        A dashed border: the day has no board yet, and shows the work a new board starts with. The number is the horses in the lot. Tap a lot to open it on that day's board.{% if can_change %} The pencil changes a lot's work, venue, time or notes for that day.{% endif %} <strong class="font-semibold">Start</strong> starts a board ({{ default_source_label|lower }}).
         {% if can_change %}<a href="{% url 'training_setup' %}" class="link">Change the usual week</a>{% endif %}
     </p>
     {% else %}
