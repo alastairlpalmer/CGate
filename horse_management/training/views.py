@@ -663,6 +663,47 @@ def _board_url(day, anchor=''):
     return url + (f'#{anchor}' if anchor else '')
 
 
+START_HINTS = {
+    'lots': "Each lot with its usual work, and its horses in their order.",
+    'week_plan': "Each lot's work and venue for this day of the week, from the week plan.",
+    'copy': "The lots, work, riders and gear of the last board. A horse's own work is kept.",
+    'empty': "The lots with no horses. You add the horses.",
+}
+
+
+def _board_start(request, day, settings_row, last_board, can_change):
+    """A date with no board: what a new board starts with, for the way the
+    person chose (``?source=``) or the yard's usual way. Nothing is saved:
+    ``board.preview_board`` only reads (principle 5.3)."""
+    asked = request.GET.get('source', '')
+    if not can_change or asked not in TrainingSettings.OFFERED_SOURCES:
+        asked = settings_row.board_source
+    preview = board.preview_board(day, asked)
+    labels = dict(TrainingSettings.BoardSource.choices)
+    sources = []
+    for value in TrainingSettings.OFFERED_SOURCES:
+        label = labels[value]
+        if value == 'week_plan':
+            label = f"From the week plan ({day:%A})"
+        elif value == 'copy':
+            label = (f"Copy {last_board:%a} {last_board.day} {last_board:%b}" if last_board
+                     else "Copy the last board (there is none yet)")
+        sources.append({
+            'value': value, 'label': label, 'on': value == preview.source,
+            'usual': value == settings_row.board_source, 'disabled': value == 'copy' and last_board is None,
+        })
+    if preview.nothing:
+        note = f"The week plan has no lots on {day:%A}."
+    elif asked == 'copy' and preview.source != 'copy':
+        note = "There is no earlier board to copy. A new board starts from the lots."
+    else:
+        note = preview.note
+    return {
+        'preview': preview, 'start_sources': sources, 'start_note': note,
+        'start_hint': START_HINTS.get(preview.source, ''),
+    }
+
+
 @training_enabled
 @feature_required('training', LEVEL_VIEW)
 def training_board(request, day=None):
@@ -722,7 +763,10 @@ def training_board(request, day=None):
     day_note = DayNote.objects.filter(date=day).first()
     last_not_confirmed = board.last_not_confirmed_before(today)
     settings_row = TrainingSettings.load()
+    last_board = board.last_board_before(day)
+    start = _board_start(request, day, settings_row, last_board, can_change) if not lot_days else {}
     return render(request, 'training/board.html', {
+        **start,
         'day': day,
         'today': today,
         'is_today': day == today,
@@ -737,7 +781,7 @@ def training_board(request, day=None):
         'last_not_confirmed': last_not_confirmed if last_not_confirmed != day else None,
         'sources': [(v, dict(TrainingSettings.BoardSource.choices)[v]) for v in TrainingSettings.OFFERED_SOURCES],
         'default_source': settings_row.board_source,
-        'last_board': board.last_board_before(day),
+        'last_board': last_board,
         'reasons': Activity.Reason.choices,
         'riders': Rider.objects.active(),
         'rider_filter': rider_filter,

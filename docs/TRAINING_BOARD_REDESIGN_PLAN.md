@@ -242,6 +242,21 @@ Checked in a browser at 375 and 1280 wide, with the sample yard. A script did th
 | Function | 8 | One horse done: 1 tap. Done with how it went and a note: 3 taps and the text. The lots to the team: 2 taps. A horse's whole history with notes: 1 tap from the board menu, the Overview, the Lots tab or the Log. |
 | Restraint | 8 | No week strip. No rating buttons on the rows. One new tab. |
 
+### 9.4 The board before it starts
+
+The owner's point, on 26 Nov 2026: the page for a date with no board was "very basic". It showed four radio buttons and a button. It did not show what the board would be.
+
+| # | Change | Where |
+|---|---|---|
+| Z1 | **The page shows the board that Start makes**: each lot with its time, work, venue and horses in order, each horse with its rider and gear. The cards have a dashed border and a **Not started** badge, as a day with no board has on the Plan tab. Nothing is saved (principle 5.3). | `board.preview_board`, `templates/training/partials/board_start.html` |
+| Z2 | **Each way to start is a link** (week plan, lots, copy, empty). A tap shows what that way makes. The yard's usual way is marked and is the first view. **Start the board** sends the way that shows. | `views._board_start` |
+| Z3 | **One set of rules.** The top half of `start_board` moved to `_start_plan`. The preview and Start use the same plan and the same row builders, on lot days that the preview does not save. | `training/board.py` |
+| Z4 | The card says what stops a start: a yard with no lots gets **Make your lots**; a day that the week plan gives no lot has no Start. | `board_start.html` |
+| Z5 | The card links to **Add a note for the day**, **See the week** and **Lots**. A line names the horses that are in a lot but not in work, so the trainer sees why a horse is not on the board. | `board_start.html` |
+| Z6 | A role with View sees the preview for the yard's usual way, with no Start and no choices. | `views._board_start` |
+
+Tests (16, in `training/test_board_start.py`): for each way to start, the preview of a date equals the board that Start then makes for it. The copy case has a horse's own work, a lot made after the copied board, a horse now on rest, and an archived work type.
+
 ## 10. Not in this plan
 
 - Messages inside the app to each rider ("your horses tomorrow").

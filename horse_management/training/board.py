@@ -149,10 +149,11 @@ def _rows_from_members(lot_day, on_board, taken, user):
     return rows
 
 
-def _rows_from_copy(lot_days, copy_from, on_board, user):
+def _rows_from_copy(lot_days, copy_from, on_board, user, *, save=True):
     """Copy the last board: lot days' work, time and notes, each horse's own
     change and the lot it was in. Every copied row is Planned: the status of
-    the old day is not copied, so a day cancelled for weather copies whole."""
+    the old day is not copied, so a day cancelled for weather copies whole.
+    ``save=False`` is the preview: the lot days are not saved (5.3)."""
     by_lot = {ld.lot_id: ld for ld in lot_days}
     rows, taken, copied_lots = [], set(), set()
     sources = (
@@ -171,10 +172,13 @@ def _rows_from_copy(lot_days, copy_from, on_board, user):
         target.venue_id = source.venue_id
         target.start_time = source.start_time
         target.notes = source.notes
-        target.save(update_fields=['work_type', 'venue', 'start_time', 'notes', 'updated_at'])
+        if save:
+            target.save(update_fields=['work_type', 'venue', 'start_time', 'notes', 'updated_at'])
         position = 0
         for old in sorted(source.activities.all(), key=lambda a: (a.position, a.pk)):
-            if old.horse_id not in on_board or (target.pk, old.horse_id) in taken:
+            # Keyed by the lot, not the lot day: a date has one lot day for
+            # each lot, and a preview's lot days have no key yet.
+            if old.horse_id not in on_board or (target.lot_id, old.horse_id) in taken:
                 continue
             own = not old.follows_lot and old.work_type.is_active
             rows.append(_row(
@@ -187,7 +191,7 @@ def _rows_from_copy(lot_days, copy_from, on_board, user):
                 # The day's rider and gear: copy means "the same as last time".
                 rider_id=old.rider_id, rider_is_owner=old.rider_is_owner, gear=old.gear,
             ))
-            taken.add((target.pk, old.horse_id))
+            taken.add((target.lot_id, old.horse_id))
             position += 1
     # A lot made since the last board starts from its standing members.
     placed = {horse_id for _, horse_id in taken}
@@ -197,13 +201,21 @@ def _rows_from_copy(lot_days, copy_from, on_board, user):
     return rows
 
 
-@transaction.atomic
-def start_board(day, *, user, source=None):
-    """Start the board for ``day``: a lot day for every active lot, and the
-    Planned rows the source gives. A date that has a board keeps it."""
-    existing = board_days(day)
-    if existing:
-        return StartResult(existing, source or '', created=False)
+@dataclass
+class StartPlan:
+    """What a new board for a date starts from. Reads only."""
+    source: str
+    lots: list
+    plans: dict = field(default_factory=dict)   # {lot pk: LotWeekPlan}, for the week plan
+    copy_from: object = None                    # the date that Copy copies
+    note: str = ''
+    nothing: bool = False                       # the week plan gives this date no lot
+    any_lots: bool = False                      # the yard has an active lot
+
+
+def _start_plan(day, source=None):
+    """The source, the lots and their week plan for a new board. ``start_board``
+    and ``preview_board`` both use it, so the preview is what Start makes."""
     source = source if source in SOURCES else TrainingSettings.load().board_source
     if source not in SOURCES:
         source = 'lots'
@@ -215,42 +227,126 @@ def start_board(day, *, user, source=None):
             source = 'lots'
             note = 'There is no earlier board to copy, so the board started from the lots.'
     lots = list(Lot.objects.active().select_related('usual_work_type'))
-    plans = {}
+    plan = StartPlan(source, lots, copy_from=copy_from, note=note, any_lots=bool(lots))
     if source == 'week_plan':
-        plans = {p.lot_id: p for p in LotWeekPlan.objects.filter(lot__in=lots, weekday=day.weekday())}
-        skipped = [lot for lot in lots if plans.get(lot.pk) and plans[lot.pk].no_lot]
-        lots = [lot for lot in lots if lot not in skipped]
-        if skipped and not lots:
-            return StartResult([], source, created=False,
-                               note=f"The week plan has no lots on {LotWeekPlan.WEEKDAYS[day.weekday()]}. No board was started.")
-        if skipped:
-            note = f"No lot on {LotWeekPlan.WEEKDAYS[day.weekday()]} in the week plan: {', '.join(lot.name for lot in skipped)}."
-    try:
-        with transaction.atomic():
-            lot_days = []
-            for lot in lots:
-                plan = plans.get(lot.pk)
-                lot_days.append(LotDay.objects.create(
-                    lot=lot, date=day,
-                    work_type=(plan.work_type if plan and plan.work_type_id else lot.usual_work_type),
-                    venue=plan.venue if plan else None,
-                    start_time=lot.usual_time, created_by=user,
-                ))
-    except IntegrityError:
-        # Someone started the same date a moment before: show theirs.
-        return StartResult(board_days(day), source, created=False)
+        plan.plans = {
+            p.lot_id: p for p in
+            LotWeekPlan.objects.filter(lot__in=lots, weekday=day.weekday()).select_related('work_type', 'venue')
+        }
+        skipped = [lot for lot in lots if plan.plans.get(lot.pk) and plan.plans[lot.pk].no_lot]
+        plan.lots = [lot for lot in lots if lot not in skipped]
+        if skipped and not plan.lots:
+            plan.nothing = True
+            plan.note = f"The week plan has no lots on {LotWeekPlan.WEEKDAYS[day.weekday()]}. No board was started."
+        elif skipped:
+            plan.note = (f"No lot on {LotWeekPlan.WEEKDAYS[day.weekday()]} in the week plan: "
+                         f"{', '.join(lot.name for lot in skipped)}.")
+    return plan
 
-    on_board = on_board_horse_ids()
-    rows = []
-    if source in ('lots', 'week_plan'):
-        taken = set()
+
+def _lot_day_fields(lot, week_plan):
+    """The work, venue and time a new lot day starts with."""
+    return {
+        'work_type': week_plan.work_type if week_plan and week_plan.work_type_id else lot.usual_work_type,
+        'venue': week_plan.venue if week_plan else None,
+        'start_time': lot.usual_time,
+    }
+
+
+def _start_rows(lot_days, plan, user, *, on_board=None, save=True):
+    """The Planned rows the source gives. They are not saved here."""
+    on_board = on_board_horse_ids() if on_board is None else on_board
+    if plan.source in ('lots', 'week_plan'):
+        rows, taken = [], set()
         for lot_day in lot_days:
             rows += _rows_from_members(lot_day, on_board, taken, user)
-    elif source == 'copy':
-        rows = _rows_from_copy(lot_days, copy_from, on_board, user)
+        return rows
+    if plan.source == 'copy':
+        return _rows_from_copy(lot_days, plan.copy_from, on_board, user, save=save)
+    return []
+
+
+@transaction.atomic
+def start_board(day, *, user, source=None):
+    """Start the board for ``day``: a lot day for every active lot, and the
+    Planned rows the source gives. A date that has a board keeps it."""
+    existing = board_days(day)
+    if existing:
+        return StartResult(existing, source or '', created=False)
+    plan = _start_plan(day, source)
+    if plan.nothing:
+        return StartResult([], plan.source, created=False, note=plan.note)
+    try:
+        with transaction.atomic():
+            lot_days = [
+                LotDay.objects.create(
+                    lot=lot, date=day, created_by=user, **_lot_day_fields(lot, plan.plans.get(lot.pk)),
+                )
+                for lot in plan.lots
+            ]
+    except IntegrityError:
+        # Someone started the same date a moment before: show theirs.
+        return StartResult(board_days(day), plan.source, created=False)
+    rows = _start_rows(lot_days, plan, user)
     if rows:
         bulk_create_with_history(rows, Activity, default_user=user)
-    return StartResult(board_days(day), source, created=True, note=note)
+    return StartResult(board_days(day), plan.source, created=True, note=plan.note)
+
+
+# ─── The board before it starts ──────────────────────────────────────
+
+@dataclass
+class BoardPreview:
+    """What Start would make for a date, with nothing saved."""
+    source: str
+    lot_days: list = field(default_factory=list)    # unsaved, each with ``rows``
+    horse_count: int = 0
+    note: str = ''
+    nothing: bool = False
+    any_lots: bool = False
+    copy_from: object = None
+    off: list = field(default_factory=list)         # [(horse name, status)] in a lot, not in work
+
+
+def preview_board(day, source=None):
+    """The board that ``start_board`` would make for ``day``, read only (5.3).
+
+    It runs the same plan and the same row builders on lot days that are
+    never saved. Each lot day has ``rows``; each row has its ``horse`` and a
+    ``who`` label. ``off`` lists the horses of these lots that do not go on
+    the board, with the status that keeps them off.
+    """
+    from core.models import Horse
+    from .models import Rider
+
+    plan = _start_plan(day, source)
+    preview = BoardPreview(plan.source, note=plan.note, nothing=plan.nothing,
+                           any_lots=plan.any_lots, copy_from=plan.copy_from)
+    if plan.nothing or not plan.lots:
+        return preview
+    on_board = on_board_horse_ids()
+    lot_days = [LotDay(lot=lot, date=day, **_lot_day_fields(lot, plan.plans.get(lot.pk))) for lot in plan.lots]
+    rows = _start_rows(lot_days, plan, None, on_board=on_board, save=False)
+    horses = Horse.objects.only('pk', 'name').in_bulk({row.horse_id for row in rows})
+    riders = Rider.objects.in_bulk({row.rider_id for row in rows if row.rider_id})
+    for lot_day in lot_days:
+        lot_day.rows = []
+    for row in rows:
+        row.horse = horses[row.horse_id]
+        row.who = 'The owner' if row.rider_is_owner else (riders[row.rider_id].name if row.rider_id else '')
+        row.lot_day.rows.append(row)
+    preview.lot_days = lot_days
+    preview.horse_count = len(rows)
+    if plan.source != 'empty':
+        members = (
+            LotMember.objects.filter(lot__in=plan.lots, horse__is_active=True).exclude(horse_id__in=on_board)
+            .select_related('horse', 'horse__training').order_by('horse__name')
+        )
+        for member in members:
+            row = getattr(member.horse, 'training', None)
+            label = row.get_status_display() if row else HorseTraining.Status.NOT_IN_TRAINING.label
+            preview.off.append((member.horse.name, label))
+    return preview
 
 
 @transaction.atomic

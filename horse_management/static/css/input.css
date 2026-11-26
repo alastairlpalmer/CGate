@@ -3030,6 +3030,17 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     .record-more > summary > span { @apply truncate min-w-0; }
     .record-more > div { @apply pb-1; }
 
+    /* A date with no board: the Start card, the ways to start, and the lots
+       a new board starts with. The dashed border says "not saved yet", as on
+       the Plan tab. */
+    .board-start-head { @apply px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between; }
+    .board-start-sources { @apply px-4 py-3 border-t border-light-sage space-y-1.5; }
+    .board-start-sources .training-lot-chips { @apply flex-wrap overflow-visible; }
+    .board-start-sources .training-lot-chip { @apply min-h-[44px] sm:min-h-[36px]; }
+    .training-lot-chip.is-disabled { @apply border-dashed bg-transparent text-sage cursor-not-allowed hover:bg-transparent; }
+    .board-start-foot { @apply px-4 py-2 border-t border-light-sage flex flex-wrap items-center gap-x-5 gap-y-1 text-sm; }
+    .lot-day.is-preview { @apply border-dashed border-sage-300 shadow-none; }
+
     /* The training profile: four figures in one card, the 8-week calendar,
        and the list of work and notes. */
     .fact-grid { @apply grid grid-cols-2 gap-px bg-light-sage sm:grid-cols-4 lg:grid-cols-2; }
