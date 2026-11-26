@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load ui_extras %}
+
+{% block title %}Livery check - Cgate{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    {% include 'includes/_finance_tabs.html' with finance_tab='invoices' %}
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Livery check</h1>
+            <p class="page-subtitle">Livery that an invoice did not bill, because a stay was recorded or changed after the invoice was made.</p>
+        </div>
+        <a href="{% url 'invoice_list' %}" class="btn-secondary">Back</a>
+    </div>
+
+    {% if shortfalls %}
+    <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="data-table data-table-cards">
+                <thead>
+                    <tr>
+                        <th>Invoice</th>
+                        <th>Owner</th>
+                        <th>Horse</th>
+                        <th class="text-right">Billed</th>
+                        <th class="text-right">Livery now</th>
+                        <th class="text-right">To add</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in shortfalls %}
+                    <tr>
+                        <td data-label="Invoice"><a href="{% url 'invoice_detail' item.invoice.pk %}" class="link tap-pad">{{ item.invoice.invoice_number }}</a> <span class="text-sage text-sm">{{ item.invoice.period_start|date:"j M" }} to {{ item.invoice.period_end|date:"j M Y" }}</span></td>
+                        <td data-label="Owner">{{ item.invoice.owner.name }}</td>
+                        <td data-label="Horse"><a href="{% url 'horse_detail' item.horse.pk %}" class="link tap-pad">{{ item.horse.name }}</a></td>
+                        <td class="text-right tabular-nums" data-label="Billed">{{ item.billed|gbp }}</td>
+                        <td class="text-right tabular-nums" data-label="Livery now">{{ item.due|gbp }}</td>
+                        <td class="text-right tabular-nums font-medium" data-label="To add">{{ item.amount|gbp }}</td>
+                        <td>
+                            {% if can_add %}
+                            <form method="post" action="{% url 'livery_check_add' item.invoice.pk item.horse.pk %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-secondary">Add to next invoice</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if can_add %}<p class="text-sage text-sm">"Add to next invoice" makes a charge for the owner. It goes on their next invoice, as a livery adjustment.</p>{% endif %}
+    {% else %}
+    <div class="card px-4 py-6 text-center">
+        <p>All livery is billed. No stay changed after its invoice was made.</p>
+    </div>
+    {% endif %}
+    <p class="text-sage text-sm">Livery billed too high (a stay made shorter after the invoice) is not shown here. Make a credit note on that invoice.</p>
+</div>
+{% endblock %}
