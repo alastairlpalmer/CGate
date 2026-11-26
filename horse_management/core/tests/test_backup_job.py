@@ -157,6 +157,11 @@ class ManagementCommandTests(TestCase):
 
 
 class DumpDatabaseTests(TestCase):
+    # Set here, not taken from the test run: the suite also runs on
+    # PostgreSQL (horse_management/test_settings_pg.py).
+    @override_settings(DATABASES={'default': {
+        'ENGINE': 'django.db.backends.sqlite3', 'NAME': ':memory:',
+    }})
     def test_it_refuses_to_pretend_sqlite_is_a_backup(self):
         """The test and local databases are SQLite. Silently producing
         nothing here would look like a working backup."""
