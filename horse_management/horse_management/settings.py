@@ -344,7 +344,9 @@ STORAGES = {
         'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
     },
 }
-WHITENOISE_USE_FINDERS = True
+# Finders serve files from the app folders, uncompressed and with no long
+# cache. Only for local runs; production serves the collected, compressed files.
+WHITENOISE_USE_FINDERS = DEBUG
 WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0  # 1 year in production, no cache in dev
 
 # Serve media files through Django even when DEBUG=False. WhiteNoise only
@@ -880,6 +882,11 @@ PROVIDER_SESSION_IDLE_AGE = env.int('PROVIDER_SESSION_IDLE_AGE', default=30 * 24
 PASSWORD_RESET_LIMIT_PER_EMAIL = env.int('PASSWORD_RESET_LIMIT_PER_EMAIL', default=3)
 PASSWORD_RESET_LIMIT_PER_IP = env.int('PASSWORD_RESET_LIMIT_PER_IP', default=20)
 PASSWORD_RESET_LIMIT_WINDOW = 60 * 60
+
+# The client's address for rate limits and the audit log (core.audit.client_ip):
+# the number of proxies in front of the app that append to X-Forwarded-For.
+# Railway and Vercel: 1. Set 0 when the app is reached with no proxy.
+CLIENT_IP_PROXY_COUNT = env.int('CLIENT_IP_PROXY_COUNT', default=1)
 
 # "Who is on the yard today?" (the farrier QR code page): name picks and
 # wrong QR secrets from one address in each window.
