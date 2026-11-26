@@ -26,7 +26,7 @@
         .nowrap { white-space: nowrap; }
         .bar { display: flex; gap: 8px 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
         /* A card. A wide table moves sideways inside it, never the page. */
-        .box { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); border-radius: 12px; background: #fff; box-shadow: 0 1px 2px rgba(44, 44, 44, .04), 0 4px 12px -4px rgba(61, 90, 99, .12); }
+        .box { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); border-radius: 8px; background: #fff; box-shadow: 0 1px 2px rgba(44, 44, 44, .04), 0 4px 12px -4px rgba(61, 90, 99, .12); }
         .box.pad { padding: 12px 14px; }
         /* C-gate's data table: a cool band over the columns, small capitals. */
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -56,9 +56,9 @@
         button.quiet, .button.quiet { border-color: var(--edge); background: #fff; color: var(--ink); }
         button.quiet:hover, .button.quiet:hover { background: var(--line); }
         button.small { min-height: 30px; padding: 0 10px; font-size: 13px; }
-        .tag { padding: 2px 8px; border-radius: 999px; background: var(--cream); box-shadow: inset 0 0 0 1px var(--cream-line); color: var(--accent); font: 600 11px/1.4 "Source Sans 3", sans-serif; text-transform: uppercase; letter-spacing: .04em; vertical-align: 3px; }
+        .tag { padding: 1px 6px; border-radius: 4px; background: var(--cream); color: var(--accent); font: 600 11px/1.4 "Source Sans 3", sans-serif; text-transform: uppercase; letter-spacing: .04em; vertical-align: 3px; }
         .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(9em, 1fr)); gap: 10px; margin: 12px 0; }
-        .tile { padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+        .tile { padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
         .tile strong { display: block; font: 600 20px/1.3 var(--heading); font-variant-numeric: tabular-nums; }
         .tile span { color: var(--muted); font-size: 13px; }
         ul.problems { margin: 6px 0; padding-left: 20px; }

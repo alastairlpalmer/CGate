@@ -807,13 +807,29 @@ The phone has the same choices in a form that fits it, and they work with no sig
 | **Show** | Beside the search of a client's horses, one choice: **All horses**, **Due**, **By owner**, **By location**, or one owner, or one location. The phone's own picker opens. It takes no line of the screen, so 8 horses still fit. |
 | **By owner, By location** | The horses are under a band with the name and the count ("Ali Khan · 8"). The line under each horse does not say the owner again. |
 | **Find a price** | Prices has a search (the name or the category). The price list is longer now. |
+| **Find an invoice** | Invoices has a search under All / Not paid / Paid: the number, who it is to, or a horse on it. A computer has its own search over the table. |
+| **Visits of one client** | Beside the title of Visits, one choice: **All clients**, or one client. It is there when two clients or more have visits, on the phone and on a computer. This is the filter that section 7n took out, back at the owner's request. |
 
-The download is 49 KB of the 50 KB limit.
+The download is 48.5 KB of the 50 KB limit. **The next function for the phone needs the decision of section 7n** (a higher limit, or code that loads later).
 
-### Not done
 
-- **A filter on Visits.** Visits are in groups by day. A client's visits are on its Timeline.
-- **A search of Invoices on the phone.** The phone has All / Not paid / Paid.
+## 7p. No pills and no bubbles
+
+The owner said the round pills and bubbles made the app look made in a hurry. Each one was replaced with a plainer form. The colours, the fonts and the words did not change.
+
+| Before | Now |
+|---|---|
+| Count pills ("2 clients", "2 horses due", "£282.50 to pay") | One strip of figures: the number over its words, a hairline between two of them. A rust number needs attention. |
+| A dark pill for the open tab of a client (Horses, Timeline, Invoices), with a count in a bubble | Tabs on a line. The open one has the line of the brand under it. The count is a plain number. |
+| Round badges with an outline (due, overdue, paid, not paid, open) | Small labels, square at the corners, with no outline. |
+| Round choice chips (recheck, categories, All / Not paid / Paid) | Buttons with the corners of every other button (6 px). |
+| "All sent" and "No signal" in a pill | A dot and the words. |
+| The first letter of a client in a circle | In a small square tile. |
+| A round tick to select a horse | A square tick box. |
+| Boxes with a dashed edge (nothing here yet, the offers) | A plain hairline. |
+| Cards with corners of 12 px | 8 px. |
+
+The office pages (`/c-vet/bills/` and the others) follow: their label is square at the corners, and their boxes have corners of 8 px.
 
 ## 8. The test on Tim's phone
 
