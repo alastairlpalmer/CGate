@@ -165,3 +165,75 @@ class BulkMarkPaidTests(TestCase):
         invoice.refresh_from_db()
         self.assertEqual(invoice.status, Invoice.Status.PAID)
         self.assertEqual(invoice.payments.count(), 1)
+
+
+class CoOwnerTwoLiveryLinesTests(TestCase):
+    """Pre-launch review, blocker 3: a co-owned horse with two livery lines
+    in one month (here a move to a dearer field) left the second owner with
+    no invoice. Each line of the first owner's invoice was counted as a
+    separate 50%, so each day looked 100% billed."""
+
+    def setUp(self):
+        self.a = Owner.objects.create(name='Anna', email='anna@example.com')
+        self.b = Owner.objects.create(name='Ben', email='ben@example.com')
+        grass = RateType.objects.create(name='Grass', daily_rate=Decimal('10.00'))
+        stable = RateType.objects.create(name='Stable', daily_rate=Decimal('20.00'))
+        top = Location.objects.create(site='Colgate', name='Top Field')
+        barn = Location.objects.create(site='Colgate', name='Barn')
+        self.horse = Horse.objects.create(name='Ghost')
+        Placement.objects.create(
+            horse=self.horse, owner=self.a, location=top, rate_type=grass,
+            start_date=date(2026, 6, 1), end_date=date(2026, 6, 15),
+        )
+        Placement.objects.create(
+            horse=self.horse, owner=self.a, location=barn, rate_type=stable,
+            start_date=date(2026, 6, 16),
+        )
+        OwnershipShare.objects.create(
+            horse=self.horse, owner=self.a, share_percentage=Decimal('50'), is_primary_contact=True,
+        )
+        OwnershipShare.objects.create(horse=self.horse, owner=self.b, share_percentage=Decimal('50'))
+
+    def test_both_owners_are_billed_their_half(self):
+        anna = InvoiceService.create_invoice(self.a, *JUNE)
+        self.assertEqual(
+            anna.line_items.filter(line_type=InvoiceLineItem.LineType.LIVERY).count(), 2,
+        )
+        lines = InvoiceService.calculate_livery_charges(self.b, *JUNE)
+        self.assertEqual(sum((line['amount'] for line in lines), Decimal('0')), Decimal('225.00'))
+
+
+class StaleOwnershipPageTests(TestCase):
+    """Pre-launch review, blocker 3: a horse page opened before a second
+    owner was added saved 100% for the first owner, so the shares came to
+    150% and an owner was not billed. The total is checked again from the
+    database on save."""
+
+    def setUp(self):
+        self.client.force_login(make_admin())
+        self.a = Owner.objects.create(name='Anna', email='anna@example.com')
+        self.b = Owner.objects.create(name='Ben', email='ben@example.com')
+        self.horse = Horse.objects.create(name='Ghost')
+        self.share_a = OwnershipShare.objects.create(
+            horse=self.horse, owner=self.a, share_percentage=Decimal('100'), is_primary_contact=True,
+        )
+
+    def test_a_stale_page_cannot_take_the_total_over_100(self):
+        # The page as it was: only Anna, 100%.
+        stale = {
+            'ownership_shares-TOTAL_FORMS': '1', 'ownership_shares-INITIAL_FORMS': '1',
+            'ownership_shares-MIN_NUM_FORMS': '0', 'ownership_shares-MAX_NUM_FORMS': '1000',
+            'ownership_shares-0-id': str(self.share_a.pk), 'ownership_shares-0-owner': str(self.a.pk),
+            'ownership_shares-0-share_percentage': '100', 'ownership_shares-0-is_primary_contact': 'on',
+            'ownership_shares-0-notes': 'changed',
+        }
+        # Meanwhile someone else moved to 50/50.
+        OwnershipShare.objects.filter(pk=self.share_a.pk).update(share_percentage=Decimal('50'))
+        OwnershipShare.objects.create(horse=self.horse, owner=self.b, share_percentage=Decimal('50'))
+        response = self.client.post(reverse('horse_ownership', args=[self.horse.pk]), stale)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Someone changed the owners of this horse')
+        self.assertEqual(
+            sorted(OwnershipShare.objects.filter(horse=self.horse).values_list('share_percentage', flat=True)),
+            [Decimal('50.00'), Decimal('50.00')],
+        )

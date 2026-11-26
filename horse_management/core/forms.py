@@ -1526,6 +1526,40 @@ class BaseOwnershipShareFormSet(forms.BaseInlineFormSet):
                 f"Total ownership must be exactly 100%. It is currently {total}%."
             )
 
+    def save(self, commit=True):
+        """Save, then check the total again from the database.
+
+        clean() checks only the rows on the page. A page opened before
+        someone else added an owner does not have that row, so its 100%
+        could make 150% in the database, and an owner then gets no invoice.
+        The horse row is locked, so two saves at once are checked one after
+        the other. Call this inside transaction.atomic(): on a wrong total
+        it raises ValidationError and the caller's transaction rolls back.
+        Use ``save_or_report`` from a view.
+        """
+        from django.db.models import Sum
+
+        from .models import Horse, OwnershipShare
+
+        if self.instance.pk:
+            Horse.objects.select_for_update().filter(pk=self.instance.pk).first()
+        result = super().save(commit=commit)
+        if commit and self.instance.pk:
+            saved = OwnershipShare.objects.filter(horse=self.instance).aggregate(
+                total=Sum('share_percentage'),
+            )['total']
+            if saved is not None and saved != Decimal('100.00'):
+                raise forms.ValidationError(
+                    f"Someone changed the owners of this horse after you opened this page. "
+                    f"With your changes the total is {saved}%. Nothing was saved. "
+                    f"Open the page again and check the shares."
+                )
+        return result
+
+    def report(self, error):
+        """Show ``error`` (from save) at the top of the formset."""
+        self._non_form_errors = self.error_class(error.messages)
+
 
 OwnershipShareFormSet = forms.inlineformset_factory(
     Horse,

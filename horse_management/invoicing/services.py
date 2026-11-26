@@ -295,7 +295,8 @@ class InvoiceService:
         """The date ranges in the period where this owner's share is unbilled.
 
         Adds up, for each day, the share of the horse's livery that other
-        owners' live (not cancelled) invoices already bill. A day where that
+        owners' live (not cancelled) invoices already bill, one count for
+        each invoice. A day where that
         plus this owner's share is over 100% was billed before this owner's
         share existed (for example 100% to the old sole owner), so it is left
         out. Returns [(start, end), …], the whole period when nothing is
@@ -310,15 +311,22 @@ class InvoiceService:
             )
             .exclude(invoice__status=Invoice.Status.CANCELLED)
             .exclude(invoice__owner_id=owner_id)
-            .values_list('invoice__period_start', 'invoice__period_end', 'share_percentage')
+            .values_list('invoice_id', 'invoice__period_start', 'invoice__period_end', 'share_percentage')
         )
+        # One count for each invoice. An invoice can have two livery lines
+        # for the horse (a rate change, a gap, a move); counting each line
+        # took the day over 100% and left this owner unbilled.
+        per_invoice = {}
+        for invoice_id, start, end, share in billed_lines:
+            share = share if share is not None else Decimal('100')
+            known = per_invoice.get(invoice_id)
+            if known is None or share > known[2]:
+                per_invoice[invoice_id] = (start, end, share)
         billed = {}
-        for start, end, share in billed_lines:
+        for start, end, share in per_invoice.values():
             day = max(start, period_start)
             while day <= min(end, period_end):
-                billed[day] = billed.get(day, Decimal('0')) + (
-                    share if share is not None else Decimal('100')
-                )
+                billed[day] = billed.get(day, Decimal('0')) + share
                 day += timedelta(days=1)
         if not billed:
             return [(period_start, period_end)]
