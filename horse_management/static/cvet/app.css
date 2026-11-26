@@ -214,8 +214,9 @@ label.button { margin: 0; color: var(--ink); font-size: 15px; }
 
 /* The name of a group in a list: an owner, a place. */
 .list > .band { padding: 5px 14px; background: var(--cream); color: var(--brand); font-size: 12px; font-weight: 600; }
-#horse-show { flex: 0 0 auto; width: auto; max-width: 108px; padding-left: 8px; padding-right: 4px; font-size: 15px; }
-#horse-show.on { border-color: var(--brand); background: var(--tint); color: var(--brand); font-weight: 600; }
+#horse-show, #visit-show { flex: 0 0 auto; width: auto; max-width: 108px; padding-left: 8px; padding-right: 4px; font-size: 15px; }
+#visit-show { max-width: 180px; }
+#horse-show.on, #visit-show.on { border-color: var(--brand); background: var(--tint); color: var(--brand); font-weight: 600; }
 #price-find { margin-top: 6px; }
 
 /* A row: two lines, the whole row is the tap target. */

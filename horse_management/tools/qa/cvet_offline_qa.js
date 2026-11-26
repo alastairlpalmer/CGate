@@ -456,6 +456,17 @@ async function openVisit(page, clientName) {
   await tab(page, 'bills');
   await page.locator('#bills .horse').first().waitFor();
   check('Invoices lists both bills and what is to pay', (await page.locator('#bills .horse').count()) === 2 && (await text(page, '#bill-counts .count.hot')) === '£322.50 to pay', await text(page, '#bill-counts'));
+  await page.fill('#bill-find', 'juniper');
+  check('Invoices has a search: a horse finds its invoice', (await page.locator('#bills .horse').count()) === 1 && (await text(page, '#bills .horse')).includes(BILL));
+  await page.fill('#bill-find', '');
+  // Visits: one client's visits, or all.
+  await tab(page, 'visits');
+  await page.locator('#past-visits details[data-visit]').first().waitFor();
+  const everyVisit = await page.locator('#view-visits details[data-visit]').count();
+  await page.selectOption('#visit-show', { label: 'Marsh Stud' });
+  check('Visits can show one client only', everyVisit === 2 && (await page.locator('#view-visits details[data-visit]').count()) === 1 && (await text(page, '#view-visits details[data-visit] > summary .text')).includes('Marsh Stud'));
+  await page.selectOption('#visit-show', '');
+  await tab(page, 'bills');
   await page.locator('#bills .horse', { hasText: BILL }).click();
   check('an invoice opens with each horse\'s items and the total', (await text(page, '#bill-title')) === `Invoice ${BILL}` && (await text(page, '#bill-body')).includes('Juniper') && (await text(page, '#bill-body .total')) === 'Total £40.00' && !(await text(page, '#bill-body')).includes('In foal'), await text(page, '#bill-body'));
   await page.locator('#bill-body button', { hasText: 'Mark as paid today' }).click();
