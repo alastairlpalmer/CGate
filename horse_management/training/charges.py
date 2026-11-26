@@ -78,8 +78,11 @@ def sync(activities):
     if not ids:
         return counts
     with transaction.atomic():
+        # of=('self',): lock the activity rows only. The charge is joined
+        # with an outer join (a record may have none), and PostgreSQL refuses
+        # FOR UPDATE on the nullable side of an outer join.
         rows = list(
-            Activity.objects.select_for_update().filter(pk__in=ids)
+            Activity.objects.select_for_update(of=('self',)).filter(pk__in=ids)
             .select_related('work_type', 'horse', 'extra_charge')
         )
         for row in rows:

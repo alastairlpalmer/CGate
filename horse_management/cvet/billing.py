@@ -215,8 +215,11 @@ def send_note_to_yard(note, link):
 
     problems = []
     with transaction.atomic():
+        # of=('self',): lock the note only. Its horse and its visit can be
+        # empty, so they are outer joins, and PostgreSQL refuses FOR UPDATE
+        # on the nullable side of an outer join (core/tests/test_lock_lint.py).
         note = (
-            ClinicalNote.objects.select_for_update()
+            ClinicalNote.objects.select_for_update(of=('self',))
             .select_related('horse', 'visit', 'practice').get(pk=note.pk)
         )
         if note.yard_sent_at is not None or note.is_test:

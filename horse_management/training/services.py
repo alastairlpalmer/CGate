@@ -264,7 +264,7 @@ def remove_from_lot(horse):
 @transaction.atomic
 def move_to_lot(horse, lot, *, auto_status=True, day=None):
     """Put the horse in ``lot``, out of any other. Returns the lot it left."""
-    member = LotMember.objects.select_for_update().filter(horse=horse).select_related('lot').first()
+    member = LotMember.objects.select_for_update(of=('self',)).filter(horse=horse).select_related('lot').first()
     if member is None:
         add_to_lot(lot, [horse], auto_status=auto_status, day=day)
         return None
