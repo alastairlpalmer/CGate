@@ -465,3 +465,44 @@ class SheetInputTests(Base):
         row = Activity.objects.get(horse=self.kestrel, date=self.today)
         body = self.client.get(reverse('training_activity_update', args=[row.pk]), **POPUP).content.decode()
         self.assertEqual(body.count('name="rating"'), 1)
+
+
+class PlanChangeTests(Base):
+    """A1: with Full access, the pencil on an open lot in the Plan tab."""
+
+    def test_an_open_lot_has_change_and_a_done_lot_has_not(self):
+        self.start()
+        first, second = board.board_days(self.today)
+        board.mark_lot_done(first, user=self.user)
+        response = self.client.get(reverse('training_plan'))
+        self.assertContains(response, reverse('training_lot_day_change', args=[second.pk]))
+        self.assertNotContains(response, reverse('training_lot_day_change', args=[first.pk]))
+        self.assertContains(response, f'#lot-day-{first.pk}')        # the cell still opens the board
+
+    def test_a_view_role_has_no_change(self):
+        self.start()
+        self.client.force_login(self.viewer)
+        response = self.client.get(reverse('training_plan'))
+        self.assertNotContains(response, reverse('training_lot_day_change', args=[board.board_days(self.today)[0].pk]))
+
+    def test_the_change_saves_from_the_pop_up_and_the_plan_shows_it(self):
+        self.start()
+        lot_day = board.board_days(self.today)[0]
+        url = reverse('training_lot_day_change', args=[lot_day.pk])
+        self.assertContains(self.client.get(url, **POPUP), 'name="work_type"')
+        saved = self.client.post(url, {'work_type': self.walk.pk, 'venue': '', 'start_time': '', 'notes': ''}, **POPUP)
+        self.assertEqual(saved.status_code, 204)
+        cell = next(c for c in plan.build(self.today, today=self.today)['columns'] if c['is_today'])['cells'][0]
+        self.assertEqual(cell['work'], 'Walk')
+
+
+class LotsTabLinkTests(Base):
+    def test_a_horse_name_on_the_lots_tab_opens_its_training_profile(self):
+        services.set_status(Horse.objects.create(name='Wren'), HorseTraining.Status.IN_WORK)     # in work, no lot
+        gone = Horse.objects.create(name='Alder')
+        services.add_to_lot(self.second, [gone])
+        Horse.objects.filter(pk=gone.pk).update(is_active=False)                                 # left the yard
+        response = self.client.get(reverse('training_lots'))
+        for horse in Horse.objects.all():
+            self.assertContains(response, reverse('training_horse_profile', args=[horse.pk]))
+            self.assertNotContains(response, reverse('horse_detail', args=[horse.pk]))

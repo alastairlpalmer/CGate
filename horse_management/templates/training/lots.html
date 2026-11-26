@@ -9,7 +9,7 @@
 
     {% if in_work_no_lot %}
     <div class="alert-warning text-sm" role="status">
-        <p>In work but in no lot: {% for h in in_work_no_lot %}<a href="{% url 'horse_detail' h.pk %}#training" class="link">{{ h.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+        <p>In work but in no lot: {% for h in in_work_no_lot %}<a href="{% url 'training_horse_profile' h.pk %}" class="link">{{ h.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
     </div>
     {% endif %}
 
@@ -44,7 +44,7 @@
             <li class="px-4 py-2 flex flex-wrap items-center justify-between gap-2">
                 <span class="flex items-center gap-2 min-w-0">
                     <span class="text-sage text-sm w-6 text-right shrink-0">{{ forloop.counter }}</span>
-                    <a href="{% url 'horse_detail' m.horse.pk %}#training" class="link font-medium truncate">{{ m.horse.name }}</a>
+                    <a href="{% url 'training_horse_profile' m.horse.pk %}" class="link font-medium truncate">{{ m.horse.name }}</a>
                     {% with row=m.horse.training %}
                     {% if row %}{% include 'training/_training_status.html' with value=row.status label=row.get_status_display %}{% endif %}
                     {% endwith %}
@@ -91,7 +91,7 @@
             <ul class="mt-1 space-y-1">
                 {% for m in lot.left_yard %}
                 <li class="flex items-center justify-between gap-2 text-sm text-sage">
-                    <a href="{% url 'horse_detail' m.horse.pk %}" class="link">{{ m.horse.name }}</a>
+                    <a href="{% url 'training_horse_profile' m.horse.pk %}" class="link">{{ m.horse.name }}</a>
                     {% if can_change %}
                     <form method="post" action="{% url 'training_lot_member' m.pk %}">
                         {% csrf_token %}

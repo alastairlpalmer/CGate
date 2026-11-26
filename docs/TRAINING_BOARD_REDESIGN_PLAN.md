@@ -219,7 +219,18 @@ Screens of the build are in `docs/training-redesign/`: `board-phone.png`, `sheet
 | X5 | On a phone, the Plan tab shows a past day, and a day with no lots, as one line. | The plan is for today and the days after. |
 | X6 | The lot header counts only when a horse is Done ("1 of 7 done"). | "0 of 7 done" for a lot with one horse that did not work said nothing. |
 
-### 9.2 The second critique, on the real screens
+### 9.2 Two items completed in a second pull request
+
+A check of the build against section 5, after the first pull request merged, found two items that were not built. The first pull request said that they were. Both are built now.
+
+| # | Item | Now |
+|---|---|---|
+| Y1 | A1: with Full access, **Change** on a lot in the Plan tab. | A pencil on each open lot opens the lot's pop-up: work, venue, time, notes and Cancel lot. The cell still opens the board. A lot that is Done or Cancelled has no pencil: reopen it on the board first. |
+| Y2 | 5.3: a horse's name on the Lots tab opens its training profile. | The three lists on the Lots tab (the lot, "In work but in no lot", "Left the yard") link to the profile. |
+
+Not changed: a row in **Needs attention** opens the horse page, because the main dashboard uses the same list (`training/attention.py`).
+
+### 9.3 The second critique, on the real screens
 
 Checked in a browser at 375 and 1280 wide, with the sample yard. A script did the main flow on a phone screen: **Done** on one horse, the sheet with Good and a note, **Did not work** in the menu, **Undo done**, and **Copy the lots as text**. The flow gave no script error.
 

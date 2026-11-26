@@ -3063,8 +3063,13 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
     .plan-state-warn { @apply text-saddle; }
     .plan-state-done { @apply text-forest; }
     .plan-note { @apply text-xs text-charcoal-light truncate; }
-    .plan-cell { @apply flex flex-col justify-center min-h-[52px] px-2.5 py-1.5 rounded-lg border border-light-sage bg-white text-sm min-w-0; }
-    a.plan-cell:hover { @apply bg-sage-50; }
+    .plan-cell { @apply relative flex flex-col justify-center min-h-[52px] px-2.5 py-1.5 rounded-lg border border-light-sage bg-white text-sm min-w-0; }
+    .plan-cell.is-live:hover { @apply bg-sage-50; }
+    /* The whole cell is the link to the board; the pencil sits on top of it. */
+    .plan-cell-link { @apply flex flex-col justify-center min-w-0; }
+    .plan-cell-link::after { content: ""; @apply absolute inset-0 rounded-lg; }
+    .plan-cell-change { @apply absolute right-1 top-1/2 -translate-y-1/2 z-[1] inline-flex items-center justify-center w-11 h-11 rounded-md text-sage hover:text-charcoal hover:bg-sage-100; }
+    .plan-cell.has-action .plan-cell-link { @apply pr-11; }
     .plan-cell.is-usual { @apply border-dashed border-sage-300 bg-transparent; }
     .plan-cell.is-off { @apply border-transparent bg-transparent; }
     .plan-cell-lot { @apply text-xs font-semibold text-sage; }
@@ -3084,6 +3089,10 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
         .plan-head { @apply px-2 py-1.5 rounded-lg overflow-hidden; height: 4.75rem; }
         .plan-day.is-today .plan-head { @apply bg-sage-100; }
         .plan-cell, .plan-lot { height: 4rem; min-height: 0; }
+        /* A mouse needs less: a small pencil in the corner, and only the first line gives it room. */
+        .plan-cell-change { @apply top-0.5 right-0.5 translate-y-0 w-8 h-8; }
+        .plan-cell.has-action .plan-cell-link { @apply pr-0; }
+        .plan-cell.has-action .plan-cell-work { @apply pr-7; }
         .plan-cell-lot { @apply sr-only; }
     }
 }
