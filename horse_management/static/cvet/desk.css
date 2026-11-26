@@ -74,7 +74,9 @@
     /* Clients on the left, one client on the right. */
     .split main { display: grid; grid-template-columns: 272px minmax(0, 1fr); gap: 24px; align-items: start; }
     .split #view-clients { position: sticky; top: 54px; max-height: calc(100vh - 70px); overflow: auto; }
-    .split .counts .count { min-height: 26px; padding: 0 9px; font-size: 12px; }
+    .count { min-height: 40px; padding: 3px 10px; }
+    .count b { font-size: 14px; }
+    #bill-counts, #client-bills .counts { max-width: 420px; }
     .split .back { display: none; }
     .horse[aria-current=true] { background: var(--tint); box-shadow: inset 3px 0 0 var(--brand); }
     .horse:hover, .price:hover, .pick:hover, .fold > summary:hover { background: rgba(239, 243, 244, .8); }
@@ -103,8 +105,7 @@
     /* A client: how to reach it is in a card of its own; the line under its name is short. */
     /* The history is beside the note here: no line to say when it was last seen. */
     #client-contact, #horse-last { display: none !important; }
-    .seg { max-width: 380px; }
-    .seg-tab { min-height: 28px; font-size: 13px; }
+    .seg-tab { flex: 0 0 auto; min-height: 34px; padding: 0 14px; font-size: 13px; }
     .day { font-size: 11.5px; }
     #client-desk dl { padding: 10px 14px; font-size: 13px; }
 

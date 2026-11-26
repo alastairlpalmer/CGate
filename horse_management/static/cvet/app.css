@@ -43,7 +43,7 @@
     --heading: "DM Sans", "DM Sans Fallback", system-ui, sans-serif;
     --body: "Source Sans 3", "Source Sans 3 Fallback", system-ui, sans-serif;
     --tabs: 64px;
-    --radius: 12px;            /* a card */
+    --radius: 8px;             /* a card */
     --radius-btn: 6px;         /* a button, a box to type in */
     --shadow: 0 1px 2px rgba(44, 44, 44, .04), 0 4px 12px -4px rgba(61, 90, 99, .12);
 }
@@ -78,18 +78,17 @@ button { font: inherit; color: inherit; }
 }
 .bar h1 { margin: 0 auto 0 0; color: var(--brand); font: 600 18px/1 var(--heading); letter-spacing: -.01em; white-space: nowrap; }
 .tag { font-size: 11px; }
-#test-mode { padding: 2px 8px; border-radius: 999px; background: var(--cream); box-shadow: inset 0 0 0 1px var(--cream-line); color: var(--accent); font: 600 11px/1.4 var(--body); text-transform: uppercase; letter-spacing: .04em; vertical-align: 2px; }
-/* A pill: what is sent, the signal, a filter. */
+#test-mode { padding: 1px 6px; border-radius: 4px; background: var(--accent-tint); color: var(--accent); font: 600 10.5px/1.5 var(--body); text-transform: uppercase; letter-spacing: .06em; vertical-align: 2px; }
+/* What is sent, and the signal: a dot and the words. No box round them. */
 .chip {
     flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 12px;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    background: #fff;
-    color: var(--ink);
+    padding: 4px 0;
+    border: 0;
+    background: none;
+    color: var(--ink-light);
     font-size: 13px;
     font-weight: 500;
     white-space: nowrap;
@@ -99,27 +98,27 @@ button { font: inherit; color: inherit; }
 button.chip { position: relative; min-height: 30px; cursor: pointer; }
 button.chip::after { content: ""; position: absolute; left: -6px; right: -6px; top: 50%; height: 44px; transform: translateY(-50%); }
 /* A dot says the state before the words are read. */
+.chip.count { flex: 0 0 auto; flex-direction: row; align-items: center; min-height: 30px; padding: 4px 0; border: 0; color: var(--ink-light); font-size: 13px; font-weight: 500; }
 .chip.count::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
 .chip.pending::before { background: var(--accent); }
-.chip.off, .chip.pending { border-color: rgba(160, 82, 45, .5); background: var(--accent-tint); color: var(--accent); }
+.chip.off, .chip.pending { color: var(--accent); font-weight: 600; }
 
 .status { margin: 0; padding: 8px 16px; background: var(--cream); border-bottom: 1px solid var(--cream-line); color: var(--ink-light); font-size: 14px; }
 .status:empty { display: none; }
 /* A line that asks for nothing ("Willow saved.") floats over the foot of
    the page and goes. It moves nothing on the page. */
 .status.toast { position: fixed; bottom: calc(var(--tabs) + 14px + env(safe-area-inset-bottom)); left: 50%; z-index: 3; width: max-content; max-width: calc(100% - 32px); padding: 8px 14px; border: 0; border-radius: 8px; background: var(--ink); color: #fff; box-shadow: 0 8px 24px -8px rgba(61, 90, 99, .45); transform: translateX(-50%); }
-/* C-gate's count pills: the day at a glance. A rust one needs attention,
-   and a tap on it shows what. */
-.counts { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+/* The figures of a screen, in one strip: the number over its words, a
+   hairline between two of them. A rust number needs attention, and a
+   tap on it shows what. */
+.counts { display: flex; margin: 8px 0 0; border: 1px solid var(--line); border-radius: var(--radius-btn); background: #fff; overflow: hidden; }
 .counts:empty { display: none; }
-.count { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--ink-light); font: 400 13px/1 var(--body); white-space: nowrap; }
-.count b { color: var(--ink); font-weight: 600; }
-.count.hot { border-color: rgba(160, 82, 45, .5); background: var(--accent-tint); color: var(--accent); }
+.count { flex: 1 1 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-width: 0; min-height: 44px; padding: 4px 12px; border: 0; border-left: 1px solid var(--line); background: none; color: var(--muted); font: 400 12px/1.25 var(--body); text-align: left; white-space: nowrap; }
+.count:first-child { border-left: 0; }
+.count b { color: var(--ink); font: 600 15px/1.25 var(--heading); font-variant-numeric: tabular-nums; }
 .count.hot b { color: var(--accent); }
-button.count { position: relative; cursor: pointer; }
-button.count::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); }
-button.count[aria-pressed=true] { border-color: var(--accent); background: var(--accent); color: #fff; }
-button.count[aria-pressed=true] b { color: #fff; }
+button.count { cursor: pointer; }
+button.count[aria-pressed=true] { background: var(--accent-tint); box-shadow: inset 0 -2px 0 var(--accent); }
 
 /* ── The page ── */
 main {
@@ -249,26 +248,26 @@ small { color: var(--muted); font-size: 13px; }
 .horse small.wrap { white-space: normal; }
 /* Money is never cut short. */
 .amount { flex: 0 0 auto; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
-/* A badge: something due, a state. Round, with a hairline of its colour. */
-.due, .pill { flex: 0 0 auto; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; }
-.due.overdue { background: var(--bad-tint); box-shadow: inset 0 0 0 1px rgba(192, 57, 43, .2); color: var(--bad); }
-.due.soon, .pill.wait { background: var(--accent-tint); box-shadow: inset 0 0 0 1px rgba(160, 82, 45, .25); color: var(--accent); }
+/* A state: something due, paid or not. A small label, square at the corners. */
+.due, .pill { flex: 0 0 auto; padding: 1px 6px; border-radius: 4px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.due.overdue { background: var(--bad-tint); color: var(--bad); }
+.due.soon, .pill.wait { background: var(--accent-tint); color: var(--accent); }
 .pill { background: var(--line); color: var(--ink-light); }
-.pill.done { background: var(--tint); box-shadow: inset 0 0 0 1px rgba(86, 115, 122, .2); color: var(--brand); }
-.mark { flex: 0 0 22px; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #9CB2B8; text-align: center; font-size: 13px; line-height: 19px; color: #fff; }
+.pill.done { background: var(--tint); color: var(--brand); }
+.mark { flex: 0 0 20px; width: 20px; height: 20px; border-radius: 4px; border: 1.5px solid #9CB2B8; text-align: center; font-size: 13px; line-height: 17px; color: #fff; }
 .mark.done, .mark.picked { background: var(--good); border-color: var(--good); }
-/* The first letter of a client in a round, as C-gate shows a person. */
-.initial { flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%; background: #BCCCD0; color: var(--brand); font: 600 14px/34px var(--heading); text-align: center; }
+/* The first letter of a client, in a small tile. */
+.initial { flex: 0 0 32px; width: 32px; height: 32px; border-radius: var(--radius-btn); background: var(--line); color: var(--brand); font: 600 13px/32px var(--heading); text-align: center; }
 
-/* One thing, looked at in two or three ways: C-gate's view switch. The
-   chosen way is the dark one; a number beside a name counts what is in it. */
-.seg { display: flex; gap: 2px; margin: 6px 0; padding: 3px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; }
-.seg-tab { position: relative; flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 0 8px; border: 0; border-radius: 9px; background: none; color: var(--muted); font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+/* One thing, looked at in two or three ways: tabs on a line. The open
+   one has the line of the brand under it; a number beside a name counts
+   what is in it. */
+.seg { display: flex; margin: 6px 0 8px; border-bottom: 1px solid var(--line); }
+.seg-tab { position: relative; flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; margin-bottom: -1px; padding: 0 8px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer; }
 .seg-tab::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); }
-.seg-tab.on { background: var(--brand); color: #fff; font-weight: 600; }
-.seg-tab .n { min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--line); color: var(--ink-light); font-size: 11px; font-weight: 600; line-height: 18px; }
-.seg-tab.on .n { background: rgba(255, 255, 255, .2); color: #fff; }
-.seg-tab .n.hot { background: var(--accent); color: #fff; }
+.seg-tab.on { border-bottom-color: var(--brand); color: var(--brand); font-weight: 600; }
+.seg-tab .n { color: var(--muted); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.seg-tab .n.hot { color: var(--accent); font-weight: 700; }
 
 /* A timeline. The heading of a day: small, as C-gate's. */
 .day { margin: 14px 0 -4px; color: var(--muted); font: 600 12px/1.4 var(--body); letter-spacing: .02em; }
@@ -316,7 +315,7 @@ small { color: var(--muted); font-size: 13px; }
 .person .text { min-width: 0; }
 .person small { display: block; }
 /* Nothing here yet: a quiet card with the reason in the middle. */
-.empty { margin: 10px 0; padding: 18px 14px; border: 1px dashed #BCCCD0; border-radius: var(--radius); color: var(--muted); font-size: 14px; text-align: center; }
+.empty { margin: 10px 0; padding: 16px 14px; border: 1px solid var(--line); border-radius: var(--radius); color: var(--muted); font-size: 14px; text-align: center; }
 
 /* The open visit of a client: one line that goes to its summary. */
 .banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 44px; margin: 10px 0; padding: 6px 14px; border: 1px solid rgba(160, 82, 45, .5); border-radius: var(--radius); background: var(--accent-tint); color: var(--accent); font-weight: 600; font-size: 15px; text-align: left; cursor: pointer; }
@@ -333,7 +332,7 @@ small { color: var(--muted); font-size: 13px; }
     /* Five recheck choices fit one line of a phone. */
     padding: 4px 13px;
     border: 1px solid var(--line);
-    border-radius: 999px;
+    border-radius: var(--radius-btn);
     background: #fff;
     color: var(--ink-light);
     font-size: 14px;
@@ -343,7 +342,7 @@ small { color: var(--muted); font-size: 13px; }
 }
 .tile.on { background: var(--brand); border-color: var(--brand); color: #fff; }
 /* An offer, not a choice that is made: it does not look selected. */
-.suggest { display: block; width: 100%; min-height: 44px; margin: 6px 0; padding: 6px 12px; border: 1px dashed var(--muted); border-radius: var(--radius-btn); background: var(--tint); color: var(--brand); font-weight: 500; font-size: 14px; text-align: left; cursor: pointer; }
+.suggest { display: block; width: 100%; min-height: 44px; margin: 6px 0; padding: 6px 12px; border: 1px solid var(--edge); border-radius: var(--radius-btn); background: var(--tint); color: var(--brand); font-weight: 500; font-size: 14px; text-align: left; cursor: pointer; }
 .problem { margin: 0 0 6px; color: var(--bad); font-weight: 600; font-size: 14px; }
 .problem:empty { display: none; }
 .link { min-height: 44px; min-width: 44px; padding: 0 8px; border: 0; background: none; color: var(--bad); font-weight: 500; font-size: 14px; cursor: pointer; }
@@ -455,7 +454,7 @@ dd { margin: 0; word-break: break-word; }
 
 /* ── A sheet from the foot of the screen: the item list, a form ── */
 .sheet { position: fixed; inset: 0; z-index: 4; display: flex; align-items: flex-end; justify-content: center; background: rgba(44, 44, 44, .45); }
-.sheet-body { width: 100%; max-width: 680px; max-height: 88vh; overflow: auto; padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); border-radius: 16px 16px 0 0; background: #fff; box-shadow: 0 -8px 24px -8px rgba(61, 90, 99, .25); }
+.sheet-body { width: 100%; max-width: 680px; max-height: 88vh; overflow: auto; padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); border-radius: 12px 12px 0 0; background: #fff; box-shadow: 0 -8px 24px -8px rgba(61, 90, 99, .25); }
 .sheet-body h2 { font-size: 18px; }
 /* The item list keeps its height while the vet types, so it does not jump. */
 #picker .sheet-body { height: 88vh; display: flex; flex-direction: column; }
@@ -463,7 +462,7 @@ dd { margin: 0; word-break: break-word; }
 .picker-list h3 { position: sticky; top: 0; margin: 0; padding: 8px 0 4px; background: #fff; }
 .pick { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 4px 0; border: 0; border-top: 1px solid var(--line); background: none; text-align: left; cursor: pointer; }
 .pick .text { flex: 1 1 auto; min-width: 0; font-weight: 500; overflow-wrap: anywhere; }
-.pick .count { flex: 0 0 auto; min-width: 24px; padding: 0 7px; border-radius: 999px; background: var(--good); color: #fff; font-size: 12px; font-weight: 600; line-height: 22px; text-align: center; }
+.pick .count { display: block; flex: 0 0 auto; min-width: 24px; min-height: 0; padding: 0 7px; border: 0; border-radius: 4px; background: var(--good); color: #fff; font-size: 12px; font-weight: 600; line-height: 22px; text-align: center; }
 #picker-other { flex: 0 0 auto; margin-top: 8px; }
 
 /* "phone" here, "computer" on a wide screen (desk.css): the words fit
