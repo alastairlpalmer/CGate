@@ -13,8 +13,8 @@ from decimal import ROUND_HALF_UP, Decimal
 CORE_GROUPS = [
     {'key': 'horses', 'icon': 'horses', 'title': 'Horses and owners',
      'line': 'Every horse, owner and co-owner in one record.',
-     'points': ['Horse records and passports', 'Photos and documents', 'Owners and co-owner shares',
-                'Arrivals and departures, with history']},
+     'points': ['Horse records and passports', 'Photos and documents', 'Age, colour, breeding and weight',
+                'A timeline of every event', 'Owners and co-owner shares', 'Arrivals and departures']},
     {'key': 'health', 'icon': 'health', 'title': 'Health, farrier and vet',
      'line': 'Every health job, visit and due date for each horse.',
      'points': ['Vaccinations and worming', 'Farrier tracking', 'Vet tracking', 'Dentist and worm egg counts',
@@ -23,9 +23,10 @@ CORE_GROUPS = [
      'line': 'Record a job on a phone, where it happens.',
      'points': ['Phone, tablet and computer', 'Quick find for any horse or owner', 'Feed stock and feeding',
                 'A login for each member of staff, with set access']},
-    {'key': 'support', 'icon': 'security', 'title': 'Onboarding and security',
-     'line': 'We set you up, and keep your data safe.',
-     'points': ['Onboarding included', 'Two-step sign-in', 'Daily backups', 'Export your data at any time']},
+    {'key': 'support', 'icon': 'security', 'title': 'Set-up, support and security',
+     'line': 'We set you up, move your data and stay with you.',
+     'points': ['Set-up fully supported', 'Data transfer done for you', 'Support throughout', 'Two-step sign-in',
+                'Daily backups', 'Export your data at any time']},
 ]
 PRO_GROUPS = [
     {'key': 'maps', 'icon': 'locations', 'title': 'Maps, stables and fields',
@@ -139,21 +140,63 @@ def quote_summary(q):
 
 
 PRICING_FAQ = [
+    ('Can we try it first?',
+     'Yes. Ask us for a trial. We set it up with your own horses and owners, so you see Cgate working on '
+     'your yard before you decide.'),
+    ('How hard is it to get started?',
+     'Not hard: set-up is fully supported. We set up your yard with you: horses, owners, stables, fields, '
+     'livery rates and staff logins. You do not need any technical knowledge.'),
+    ('Do we have to type in all our data?',
+     'No. We transfer your data for you, from spreadsheets, another system or paper lists. You check it '
+     'before you go live, so nothing is lost.'),
+    ('What support do we get?',
+     'Support is there throughout, not only at the start. A real person helps you with set-up, with your '
+     'first invoice run, and with any question after that.'),
+    ('How does billing work?',
+     'Simply. One bill each month: the number of horses times your plan price, plus any add-on, plus VAT. '
+     'Onboarding and data transfer are included.'),
+    ('Is there a contract? What if we want to leave?',
+     'No long contract. You pay month by month and can leave at short notice. Your data is yours: you can '
+     'export your horses and owners at any time.'),
     ('How do you count horses?',
-     'We count the horses at your yard each month. A horse that leaves stops counting the next month.'),
+     'We count the horses at your yard each month. A horse that leaves stops counting the next month, so '
+     'your bill follows your yard.'),
     ('Can I change plan?',
-     'Yes. Move between Core and Pro, or add a module, at any time. The new price starts from your next monthly bill.'),
-    ('Do the prices include VAT?',
-     'No. All prices exclude VAT.'),
+     'Yes. Move between Core and Pro, or add a module, at any time. The new price starts from your next '
+     'monthly bill.'),
     ('How does the sign-up offer work?',
      f'Your first {OFFER_MONTHS} months are {OFFER_PERCENT}% off. If you add a module that is coming next or '
      f'coming soon, you help us build it: your first {OFFER_MONTHS} months are {PARTNER_PERCENT}% off instead.'),
-    ('Is there a contract?',
-     'No long contract. You pay month by month.'),
-    ('Can I take my data with me?',
-     'Yes. You can export your horses and owners at any time.'),
-    ('Do you help us set up?',
-     'Yes. Onboarding is included. We help you bring in your horses and owners, and show your staff how it works.'),
+    ('Do the prices include VAT?',
+     'No. All prices exclude VAT.'),
+    ('Is our data safe?',
+     'Yes. Every login can use two-step sign-in, the data is backed up every day, and only the people you '
+     'give a login to can see it.'),
+]
+
+# Example horses for the Home graphic: point at a stall to see the record
+# (marketing/_horse_preview.html). Invented, and shown as an example.
+HERO_HORSES = [
+    {'key': 'bramble', 'name': 'Bramble', 'desc': 'Chestnut gelding · 12 yrs · 16.1hh', 'coat': '#9A4A22',
+     'owner': 'Tom Hart', 'weight': '565 kg', 'place': 'Barn A, stall 1', 'sire': 'Brigadoon', 'dam': 'Hazel Wood',
+     'timeline': [('Moved to Field 1', 'Today'), ('Worm egg count: low', '2 Nov'), ('Farrier: trim', '20 Oct')],
+     'due': 'Dentist due 3 Jan', 'invoice': 'November £590 · Paid'},
+    {'key': 'duke', 'name': 'Duke', 'desc': 'Grey gelding · 15 yrs · 16.3hh', 'coat': '#8C8F94',
+     'owner': 'Amy Cole', 'weight': '610 kg', 'place': 'Barn A, stall 2', 'sire': 'Silver Duke', 'dam': 'Moonlight',
+     'timeline': [('Dentist: routine', '18 Nov'), ('Flu and tetanus', '9 Sep'), ('Farrier: shod', '30 Oct')],
+     'due': 'Farrier due 27 Nov', 'invoice': 'November £640 · Paid'},
+    {'key': 'pip', 'name': 'Pip', 'desc': 'Bay mare · 9 yrs · 15.2hh', 'coat': '#6B3A1F',
+     'owner': 'Sarah Jones', 'weight': '520 kg', 'place': 'Barn A, stall 3', 'sire': 'Dun Harley', 'dam': 'Mistral Lady',
+     'timeline': [('Farrier: shod all round', '12 Nov'), ('Flu and tetanus', '3 Oct'), ('Moved to Field 1', '28 Sep')],
+     'due': 'Flu jab due 12 Dec', 'invoice': 'November £640 · Paid'},
+    {'key': 'maple', 'name': 'Maple', 'desc': 'Dun mare · 6 yrs · 15.0hh', 'coat': '#B98A4E',
+     'owner': 'Raj Patel', 'weight': '480 kg', 'place': 'Barn A, stall 4', 'sire': 'Golden Oak', 'dam': 'Sycamore',
+     'timeline': [('Vet visit: lameness check', '15 Nov'), ('Weight recorded', '1 Nov'), ('Farrier: trim', '22 Oct')],
+     'due': 'Vet recheck 29 Nov', 'invoice': 'November £710 · Sent'},
+    {'key': 'otis', 'name': 'Otis', 'desc': 'Black gelding · 7 yrs · 17.0hh', 'coat': '#2A2622',
+     'owner': 'Claire Moss', 'weight': '640 kg', 'place': 'Barn A, stall 5', 'sire': 'Night Watch', 'dam': 'Ebony Rose',
+     'timeline': [('Flu and tetanus', '10 Nov'), ('Moved to Barn A', '1 Nov'), ('Arrived at the yard', '1 Nov')],
+     'due': 'Worming due 1 Dec', 'invoice': 'November £640 · Paid'},
 ]
 
 # Home page lists.
@@ -175,3 +218,9 @@ CONTACT_STEPS = [
     ('We reply by email', 'We answer your question, or find a time for a demo.'),
     ('You see Cgate on your yard', 'We show you the app with your own horses and owners.'),
 ]
+
+for _index, _horse in enumerate(HERO_HORSES):
+    # Where the stall is in the 560 x 460 drawing (marketing/_hero_art.html):
+    # five 52-unit stalls from x = 26. "left" places its button, in %.
+    _horse['x'] = 52 + 52 * _index
+    _horse['left'] = f'{(26 + 52 * _index) / 560 * 100:.3f}'

@@ -54,7 +54,7 @@ def root(request):
         response = dashboard(request)
     else:
         response = render(request, 'marketing/home.html', {
-            'page': 'home', 'plans': content.PLANS, 'addons': content.ADDONS, 'steps': content.STEPS,
+            'page': 'home', 'hero_horses': content.HERO_HORSES, 'plans': content.PLANS, 'addons': content.ADDONS, 'steps': content.STEPS,
             'beliefs': content.BELIEFS, 'partner_percent': content.PARTNER_PERCENT, 'offer_months': content.OFFER_MONTHS,
         })
     # The same address gives two pages, chosen by the session cookie.

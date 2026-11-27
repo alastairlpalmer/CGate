@@ -1,0 +1,33 @@
+{# One horse's record, as a preview (Home hero). Shown by js/marketing.js when its stall is pointed at or tapped: above the stalls, or at the foot of a phone screen. Example data. #}
+<div id="horse-{{ horse.key }}" data-horse-card="{{ horse.key }}" hidden role="region" aria-label="{{ horse.name }}'s record (example)"
+     class="pointer-events-none fixed inset-x-3 bottom-3 z-50 sm:absolute sm:inset-x-auto sm:bottom-[49.5%] sm:left-[1%] sm:z-20 sm:w-[min(340px,98%)] overflow-hidden rounded-2xl bg-white text-left text-charcoal shadow-2xl shadow-black/40 ring-1 ring-black/5">
+    <div class="flex gap-3 p-3.5">
+        {# Photo: a drawn stand-in in the horse's colour #}
+        <div class="flex h-16 w-16 shrink-0 items-end justify-center overflow-hidden rounded-xl" style="background:linear-gradient(160deg,{{ horse.coat }}cc,{{ horse.coat }})">
+            <svg viewBox="0 0 48 48" class="h-14 w-14 text-white/90" fill="currentColor" aria-hidden="true"><path d="M13 48l4-17c-2-6-1-13 4-18l2-6 3 5c6 0 11 4 14 10l5 9c1 3-1 5-4 4l-6-2-3 4v11z"/><circle cx="31" cy="17" r="1.6" fill="#2D2D2D"/></svg>
+        </div>
+        <div class="min-w-0 flex-1">
+            <div class="flex items-start justify-between gap-2">
+                <p class="font-heading text-lg font-semibold leading-tight text-forest">{{ horse.name }}</p>
+                <span class="shrink-0 rounded-full bg-parchment px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sage">Example</span>
+            </div>
+            <p class="text-xs text-sage">{{ horse.desc }}</p>
+            <p class="mt-1 text-xs"><span class="text-sage">Owner</span> <strong class="font-semibold">{{ horse.owner }}</strong></p>
+        </div>
+    </div>
+    <dl class="grid grid-cols-3 border-y border-sand text-center text-xs">
+        <div class="px-2 py-2"><dt class="text-sage">Weight</dt><dd class="font-semibold">{{ horse.weight }}</dd></div>
+        <div class="border-x border-sand px-2 py-2"><dt class="text-sage">Where</dt><dd class="font-semibold">{{ horse.place }}</dd></div>
+        <div class="px-2 py-2"><dt class="text-sage">Breeding</dt><dd class="font-semibold">{{ horse.sire }} &times; {{ horse.dam }}</dd></div>
+    </dl>
+    <div class="px-3.5 py-2.5">
+        <p class="text-[10px] font-semibold uppercase tracking-wider text-sage">Timeline</p>
+        <ol class="mt-1.5 space-y-1 border-l-2 border-sand pl-3 text-xs">
+            {% for event, when in horse.timeline %}<li class="flex justify-between gap-3"><span>{{ event }}</span><span class="shrink-0 text-sage">{{ when }}</span></li>{% endfor %}
+        </ol>
+    </div>
+    <div class="flex flex-wrap gap-2 border-t border-sand bg-parchment/60 px-3.5 py-2 text-xs">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 font-semibold text-saddle ring-1 ring-sand"><span class="h-1.5 w-1.5 rounded-full bg-saddle"></span>{{ horse.due }}</span>
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 font-semibold text-meadow ring-1 ring-sand"><span class="h-1.5 w-1.5 rounded-full bg-meadow"></span>{{ horse.invoice }}</span>
+    </div>
+</div>

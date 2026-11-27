@@ -53,6 +53,11 @@ class SiteOnTests(TestCase):
         for key in ['features', 'about'] + [item['key'] for item in FEATURES + ADDONS]:
             self.assertIn(f'id="{key}"', html)
         self.assertIn('Interactive map tracking of horses', html)
+        # The hero's stalls open each example horse's record.
+        for name in ('Bramble', 'Duke', 'Pip', 'Maple', 'Otis'):
+            self.assertIn(f'aria-label="See {name}\'s record"', html)
+        self.assertIn('id="horse-pip"', html)
+        self.assertIn('Dun Harley', html)
 
     def test_each_page_opens_for_a_visitor(self):
         for name in PAGES:
@@ -237,6 +242,9 @@ class PricingTests(TestCase):
         self.assertIn('data-out="monthly">£140</span>', html)      # 20 x 7
         self.assertIn('a month + VAT', html)
         self.assertIn('Onboarding included', html)
+        for worry in ('Can we try it first?', 'Do we have to type in all our data?', 'What support do we get?',
+                      'How does billing work?', 'What if we want to leave?'):
+            self.assertIn(worry, html)
         self.assertIn('Interactive map tracking of horses', html)
         self.assertIn('Farrier tracking', html)
         self.assertIn('Coming next', html)
