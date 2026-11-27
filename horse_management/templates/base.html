@@ -53,51 +53,10 @@
     <!-- Tailwind CSS (compiled) -->
     <link rel="stylesheet" href="{% static_v 'css/styles.css' %}">
     <!-- Alpine.js + Collapse plugin (vendored locally — no CDN round trip) -->
-    {# The phone's Back button closes a sheet or a drawer. The scripts below call it. #}
-    <script defer src="{% static_v 'js/overlay_back.js' %}"></script>
-    {# popup.js registers an Alpine store on alpine:init, so it must run before Alpine starts #}
-    <script defer src="{% static_v 'js/popup.js' %}"></script>
-    {# A failed request, no signal, a long time in the background, a new version. #}
-    <script defer src="{% static_v 'js/connection.js' %}"></script>
-    {# Keeps what was typed when the sign-in ends during a save. #}
-    <script defer src="{% static_v 'js/drafts.js' %}"></script>
-    {# A tap shows at once: the tab is marked, and a slow page dims. #}
-    <script defer src="{% static_v 'js/tap_feedback.js' %}"></script>
-    {# The installed app: registers the service worker, and helps a phone to install the app. #}
-    <script defer src="{% static_v 'js/app_install.js' %}"></script>
-    {# On a phone a PDF goes to the share sheet, so the page stays where it is. #}
-    <script defer src="{% static_v 'js/share_file.js' %}"></script>
-    {# Training: the day's lots as text, to the share sheet or the clipboard. #}
-    <script defer src="{% static_v 'js/share_text.js' %}"></script>
-    {# notifications.js registers the drawer's Alpine store on alpine:init #}
-    <script defer src="{% static_v 'js/notifications.js' %}"></script>
-    {# lightbox.js registers an Alpine store on alpine:init, so it must run before Alpine starts #}
-    <script defer src="{% static_v 'js/lightbox.js' %}"></script>
-    {# more_menu.js registers an Alpine component on alpine:init, so it must run before Alpine starts #}
-    <script defer src="{% static_v 'js/more_menu.js' %}"></script>
-    <script defer src="{% static_v 'js/formset_rows.js' %}"></script>
-    <script defer src="{% static_v 'js/date_quick.js' %}"></script>
-    {# settings_nav.js registers the settings page's section menu on alpine:init #}
-    <script defer src="{% static_v 'js/settings_nav.js' %}"></script>
-    <script defer src="{% static_v 'js/photo_quick_add.js' %}"></script>
-    {# Services directory picker: fills price and details on the record forms. #}
-    <script defer src="{% static_v 'js/service_picker.js' %}"></script>
-    {# Location mapping: the coordinate picker, the nearest-location chip and the map. #}
-    <script defer src="{% static_v 'js/coord_picker.js' %}"></script>
-    <script defer src="{% static_v 'js/geo.js' %}"></script>
-    <script defer src="{% static_v 'js/near_you.js' %}"></script>
-    {# The horse list's preview pane and its sheet on a phone. #}
-    <script defer src="{% static_v 'js/split_view.js' %}"></script>
-    <script defer src="{% static_v 'js/horse_step.js' %}"></script>
-    <script defer src="{% static_v 'js/panel_resize.js' %}"></script>
-    <script defer src="{% static_v 'js/map_layout.js' %}"></script>
-    <script defer src="{% static_v 'js/location_map.js' %}"></script>
-    {# The phone Locations page: the map, and its three-height sheet. #}
-    <script defer src="{% static_v 'js/locations_mobile.js' %}"></script>
-    {# The same site on a wide screen: the rail beside the map. #}
-    <script defer src="{% static_v 'js/locations_board.js' %}"></script>
-    <script defer src="{% static_v 'js/alpine-collapse.min.js' %}"></script>
-    <script defer src="{% static_v 'js/alpine.min.js' %}"></script>
+    {# Every page's scripts, joined in one file in the order of static/js/bundle.txt
+       (npm run build:js). One request instead of 27. #}
+    <script>window.YARDWAY_DRAFTS_OFFER = '{% static_v "js/drafts_offer.js" %}';</script>
+    <script defer src="{% static_v 'js/app.bundle.js' %}"></script>
     <!-- HTMX -->
     {# No page copies in the browser's storage (pre-launch review): each was a #}
     {# full page, 190 KB, with owners' names, phone numbers and form tokens, #}

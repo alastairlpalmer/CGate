@@ -134,9 +134,40 @@ class SizeBudgetTests(SimpleTestCase):
         size = self.compressed('css/styles.css')
         self.assertLess(size, self.STYLES_LIMIT, f'styles.css is {size} bytes compressed')
 
+    def bundle_list(self):
+        lines = (self.base / 'static' / 'js' / 'bundle.txt').read_text().splitlines()
+        return [line.strip() for line in lines if line.strip() and not line.strip().startswith('#')]
+
     def test_the_scripts_every_page_loads_are_under_their_limit(self):
         head = (self.base / 'templates' / 'base.html').read_text().split('</head>')[0]
         scripts = re.findall(r"<script[^>]*src=\"{% static_v '(js/[^']+)' %}\"", head)
-        self.assertGreater(len(scripts), 10)
+        self.assertIn('js/app.bundle.js', scripts)
+        self.assertGreater(len(self.bundle_list()), 10)
         size = sum(self.compressed(path) for path in scripts)
         self.assertLess(size, self.SCRIPTS_LIMIT, f'{len(scripts)} scripts, {size} bytes compressed')
+
+
+class ScriptBundleTests(SimpleTestCase):
+    """Every page's scripts come as one file, js/app.bundle.js, joined from
+    the list in js/bundle.txt (tools/build_js.mjs; pre-launch review: 29
+    requests for scripts on each page)."""
+
+    base = Path(settings.BASE_DIR)
+
+    def test_the_bundle_is_up_to_date(self):
+        static = self.base / 'static'
+        lines = (static / 'js' / 'bundle.txt').read_text().splitlines()
+        paths = [line.strip() for line in lines if line.strip() and not line.strip().startswith('#')]
+        expected = '/* Built by tools/build_js.mjs from static/js/bundle.txt. Do not edit. */\n' + ''.join(
+            f'/* ── {path} ── */\n{(static / path).read_text()}\n;\n' for path in paths
+        )
+        self.assertEqual(
+            (static / 'js' / 'app.bundle.js').read_text(), expected,
+            'js/app.bundle.js is out of date: run `npm run build:js` and commit it.',
+        )
+
+    def test_no_page_script_is_loaded_twice(self):
+        head = (self.base / 'templates' / 'base.html').read_text().split('</head>')[0]
+        lines = (self.base / 'static' / 'js' / 'bundle.txt').read_text().splitlines()
+        for path in (line.strip() for line in lines if line.strip() and not line.startswith('#')):
+            self.assertNotIn(f"'{path}'", head, path)

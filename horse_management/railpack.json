@@ -16,6 +16,7 @@
         "...",
         "npm install",
         "npm run build:css",
+        "npm run build:js",
         "python manage.py collectstatic --noinput"
       ]
     }

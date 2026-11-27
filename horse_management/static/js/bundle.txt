@@ -1,0 +1,51 @@
+# The scripts every page loads, in this order, joined into js/app.bundle.js
+# by `npm run build:js` (tools/build_js.mjs). One request instead of one
+# each; the same code runs in the same order (they were all `defer`).
+# Edit this list, then run `npm run build:js` and commit both files.
+# core/tests/test_phone_speed.py fails when the bundle is out of date.
+
+# The phone's Back button closes a sheet or a drawer. The scripts below call it.
+js/overlay_back.js
+# popup.js registers an Alpine store on alpine:init, so it must run before Alpine starts
+js/popup.js
+# A failed request, no signal, a long time in the background, a new version.
+js/connection.js
+# Keeps what was typed when the sign-in ends during a save.
+js/drafts.js
+# A tap shows at once: the tab is marked, and a slow page dims.
+js/tap_feedback.js
+# The installed app: registers the service worker, and helps a phone to install the app.
+js/app_install.js
+# On a phone a PDF goes to the share sheet, so the page stays where it is.
+js/share_file.js
+# Training: the day's lots as text, to the share sheet or the clipboard.
+js/share_text.js
+# notifications.js registers the drawer's Alpine store on alpine:init
+js/notifications.js
+# lightbox.js registers an Alpine store on alpine:init, so it must run before Alpine starts
+js/lightbox.js
+# more_menu.js registers an Alpine component on alpine:init, so it must run before Alpine starts
+js/more_menu.js
+js/formset_rows.js
+js/date_quick.js
+# settings_nav.js registers the settings page's section menu on alpine:init
+js/settings_nav.js
+js/photo_quick_add.js
+# Services directory picker: fills price and details on the record forms.
+js/service_picker.js
+# Location mapping: the coordinate picker, the nearest-location chip and the map.
+js/coord_picker.js
+js/geo.js
+js/near_you.js
+# The horse list's preview pane and its sheet on a phone.
+js/split_view.js
+js/horse_step.js
+js/panel_resize.js
+js/map_layout.js
+js/location_map.js
+# The phone Locations page: the map, and its three-height sheet.
+js/locations_mobile.js
+# The same site on a wide screen: the rail beside the map.
+js/locations_board.js
+js/alpine-collapse.min.js
+js/alpine.min.js
