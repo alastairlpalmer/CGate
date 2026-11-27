@@ -417,10 +417,52 @@
     window.Yardway = window.Yardway || {};
     window.Yardway.refreshMain = refreshMain;
 
+    // Where focus goes back after a save. The refresh replaces
+    // #main-content, opener included, so focus fell to the top of the page
+    // (pre-launch review). Note the opener's place now, and find the same
+    // control in the new content.
+    function openerKey(opener) {
+        if (!opener || !opener.getAttribute) { return null; }
+        return {
+            id: opener.id || '',
+            href: opener.getAttribute('hx-get') || opener.getAttribute('href') || '',
+            text: (opener.textContent || '').trim()
+        };
+    }
+    function refocus(key, flashId) {
+        var main = document.getElementById('main-content');
+        if (!main || (document.activeElement && document.activeElement !== document.body &&
+                      document.body.contains(document.activeElement))) { return; }
+        var target = null;
+        if (key && key.id) { target = document.getElementById(key.id); }
+        if (!target && key && key.href) {
+            var same = Array.prototype.filter.call(
+                main.querySelectorAll('a[href], button, [hx-get]'),
+                function (el) {
+                    return (el.getAttribute('hx-get') || el.getAttribute('href') || '') === key.href &&
+                        (el.textContent || '').trim() === key.text;
+                }
+            );
+            if (same.length === 1) { target = same[0]; }
+        }
+        if (!target && flashId) {
+            var row = document.getElementById(flashId);
+            target = row && row.querySelector('a[href], button');
+        }
+        if (target) {
+            target.focus({ preventScroll: true });
+        } else {
+            if (!main.hasAttribute('tabindex')) { main.setAttribute('tabindex', '-1'); }
+            main.focus({ preventScroll: true });
+        }
+    }
+
     document.body.addEventListener('popup:saved', function () {
         var s = store();
         var flashId = s ? s.flashId : '';
+        var key = openerKey(s && s.opener);
         if (s) { s.close(true); }
-        refreshMain(flashId);
+        var done = refreshMain(flashId);
+        if (done && done.then) { done.then(function () { refocus(key, flashId); }); }
     });
 })();
