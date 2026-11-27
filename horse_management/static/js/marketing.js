@@ -66,6 +66,7 @@
     var standard = Number(form.getAttribute('data-offer'));
     var partner = Number(form.getAttribute('data-partner'));
     var large = Number(slider.max);
+    var most = Number(number.max) || 100000;
 
     function money(value) {
         var pence = Math.round(value * 100);
@@ -79,7 +80,7 @@
     function horses() {
         var value = Math.round(Number(number.value));
         if (!isFinite(value) || value < 1) { value = 1; }
-        return Math.min(value, 2000);
+        return Math.min(value, most);
     }
     function update(from) {
         var count = horses();
@@ -110,7 +111,6 @@
         put('percent', percent);
         form.querySelector('[data-offer="standard"]').hidden = building.length > 0;
         form.querySelector('[data-offer="partner"]').hidden = building.length === 0;
-        form.querySelector('[data-large-yard]').hidden = count < large;
         slider.style.background = 'linear-gradient(to right, #3D5A63 ' + ((Math.min(count, large) - 1) / (large - 1) * 100) + '%, #E6E1D1 0)';
         slider.setAttribute('aria-valuetext', count + ' horses');
     }

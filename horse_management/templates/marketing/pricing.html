@@ -64,13 +64,13 @@ the script; js/marketing.js does the same sum as marketing.content.quote().
                         <label for="calc-horses" class="font-heading text-lg font-semibold text-charcoal">2. Horses</label>
                         <div class="flex items-center rounded-full border border-sand">
                             <button type="button" data-step="-1" class="flex h-11 w-11 items-center justify-center rounded-full text-xl text-forest transition hover:bg-parchment" aria-label="One horse fewer">&minus;</button>
-                            <input id="calc-horses" name="horses" type="number" inputmode="numeric" min="1" max="2000" value="{{ quote.horses }}" data-horses
+                            <input id="calc-horses" name="horses" type="number" inputmode="numeric" min="1" max="{{ max_horses }}" value="{{ quote.horses }}" data-horses
                                    class="h-11 w-20 border-0 bg-transparent text-center font-heading text-2xl text-charcoal focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none">
                             <button type="button" data-step="1" class="flex h-11 w-11 items-center justify-center rounded-full text-xl text-forest transition hover:bg-parchment" aria-label="One horse more">+</button>
                         </div>
                     </div>
-                    <input type="range" min="1" max="{{ large_yard }}" value="{{ quote.horses }}" data-horse-slider aria-label="Number of horses" class="mk-range mt-5 w-full">
-                    <div class="mt-2 flex justify-between text-xs text-sage"><span>1</span><span>{{ large_yard }}+</span></div>
+                    <input type="range" min="1" max="{{ slider_max }}" value="{{ quote.horses }}" data-horse-slider aria-label="Number of horses" class="mk-range mt-5 w-full">
+                    <div class="mt-2 flex justify-between text-xs text-sage"><span>1</span><span>{{ slider_max }}+ (type more in the box)</span></div>
                 </div>
 
                 {# Add-ons #}
@@ -120,7 +120,6 @@ the script; js/marketing.js does the same sum as marketing.content.quote().
                             <p class="mt-3 text-sm text-white/70">You save <strong class="text-white" data-out="saving">{{ quote.saving_label }}</strong> over {{ offer_months }} months.</p>
                         </div>
 
-                        <p class="relative mt-4 text-sm text-sand" data-large-yard {% if not quote.large %}hidden{% endif %}>More than {{ large_yard }} horses? We make a price to suit your yard.</p>
 
                         <input type="hidden" name="topic" value="offer">
                         <button type="submit" class="group relative mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-saddle px-6 font-semibold text-white shadow-lg shadow-black/20 transition hover:bg-saddle-dark">
@@ -144,7 +143,7 @@ the script; js/marketing.js does the same sum as marketing.content.quote().
         <div class="mk-reveal">
             <p class="text-sm font-semibold uppercase tracking-[0.14em] text-saddle">FAQ</p>
             <h2 id="faq-title" class="mt-2 font-heading text-3xl sm:text-4xl font-normal tracking-[-0.02em] text-forest">Questions</h2>
-            <p class="mt-4 text-sage">More than {{ large_yard }} horses, or more than one yard? <a href="{% url 'marketing:contact' %}?topic=pricing" class="font-semibold text-forest underline">Ask us for a price</a>.</p>
+            <p class="mt-4 text-sage">Another question? <a href="{% url 'marketing:contact' %}?topic=pricing" class="font-semibold text-forest underline">Ask us</a>.</p>
         </div>
         <div class="border-t border-sand lg:col-span-2">
             {% for question, answer in faq %}
