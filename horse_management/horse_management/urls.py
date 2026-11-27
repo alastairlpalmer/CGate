@@ -137,6 +137,10 @@ if getattr(settings, 'SERVE_MEDIA', False) and not settings.DEBUG:
         ('receipts/yard/', 'costs'),
         ('receipts/', 'charges'),
         ('business/', None),  # logo — any signed-in user (renders app-wide)
+        # Staff profile photos show beside names across the app. Without
+        # this they fell to "unknown prefix", superusers only, and every
+        # other login saw a broken image (pre-launch review).
+        ('people/', None),
     )
 
     PRACTICE_MEDIA_PREFIX = 'cvet/'
