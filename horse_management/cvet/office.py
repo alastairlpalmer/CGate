@@ -327,3 +327,44 @@ def price_file(request):
                 context['done'] = {'added': added, 'changed': changed, 'same': len(rows) - added - changed}
     context['count'] = access.prices_for(practice).filter(is_active=True).count()
     return render(request, 'cvet/price_file.html', context)
+
+
+# ── People ───────────────────────────────────────────────────────────────
+
+@practice_page
+@require_http_methods(['GET', 'POST'])
+def people(request):
+    """Who can read the practice's records, and who asks to.
+
+    A login the yard put in the practice (or that opened C-vet with the
+    Vet role) waits here until a member approves it. The yard gives the
+    role; only the practice lets a login read its notes.
+    """
+    from django.contrib import messages
+
+    practice = request.practice
+    if request.method == 'POST':
+        pk = request.POST.get('member', '')
+        if request.POST.get('action') == 'approve':
+            member = access.approve(practice, pk, request.user)
+            if member is not None:
+                messages.success(request, f'{_name(member.user)} can now read and write the practice\'s records.')
+        elif request.POST.get('action') == 'decline':
+            member = access.decline(practice, pk)
+            if member is not None:
+                messages.success(request, f'{_name(member.user)} is not let in.')
+        return redirect('cvet:people')
+    members = (
+        practice.members.filter(is_active=True, approved_at__isnull=False)
+        .select_related('user', 'approved_by').order_by('user__first_name', 'user__email')
+    )
+    return render(request, 'cvet/people.html', {
+        'practice': practice,
+        'section': 'people',
+        'waiting': access.waiting_for(practice),
+        'members': members,
+    })
+
+
+def _name(user):
+    return user.get_full_name() or user.email or user.get_username()

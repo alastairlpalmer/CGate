@@ -127,7 +127,8 @@ MIDDLEWARE = [
     'django.middleware.gzip.GZipMiddleware',
     'core.middleware.ServerTimingMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
+    # Django's, except that a background poll does not count as activity.
+    'core.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -304,6 +305,26 @@ MEDIA_S3_REGION = env('MEDIA_S3_REGION', default='auto')
 MEDIA_S3_SIGNED_URL_TTL = env.int('MEDIA_S3_SIGNED_URL_TTL', default=900)
 
 MEDIA_ON_S3 = bool(MEDIA_S3_BUCKET and MEDIA_S3_ACCESS_KEY and MEDIA_S3_SECRET_KEY)
+
+# Some MEDIA_S3_* set but not all: before, uploads went to the local disk
+# with no word, and were lost at the next deploy (pre-launch review).
+_media_s3_set = [name for name, value in (
+    ('MEDIA_S3_BUCKET', MEDIA_S3_BUCKET), ('MEDIA_S3_ACCESS_KEY', MEDIA_S3_ACCESS_KEY),
+    ('MEDIA_S3_SECRET_KEY', MEDIA_S3_SECRET_KEY),
+) if value]
+if _media_s3_set and not MEDIA_ON_S3:
+    _media_s3_missing = sorted(
+        {'MEDIA_S3_BUCKET', 'MEDIA_S3_ACCESS_KEY', 'MEDIA_S3_SECRET_KEY'} - set(_media_s3_set)
+    )
+    _media_message = (
+        'MEDIA_S3_* is only partly set (missing: ' + ', '.join(_media_s3_missing) + '). '
+        'Uploads would go to the local disk and be lost at the next deploy.'
+    )
+    if not DEBUG:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured(_media_message + ' Set all three, or none.')
+    import warnings
+    warnings.warn(_media_message, stacklevel=1)
 
 if MEDIA_ON_S3:
     _media_storage = {

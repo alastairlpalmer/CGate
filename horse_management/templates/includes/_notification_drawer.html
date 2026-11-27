@@ -12,7 +12,7 @@ out of band.
 {% endcomment %}
 {% if user.is_authenticated %}
 <div hx-get="{% url 'notification_badge' %}" hx-trigger="load, every 60s, notif:changed from:body, popup:saved from:body"
-     hx-target="this" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" class="sr-only"></div>
+     hx-target="this" hx-select="unset" hx-swap="innerHTML" hx-push-url="false" hx-headers='{"X-Background": "1"}' class="sr-only"></div>
 
 <div x-data x-show="$store.notif.open" x-cloak class="notif-layer" @keydown.escape.window="$store.notif.close()">
     <div class="notif-scrim" @click="$store.notif.close()" aria-hidden="true"></div>

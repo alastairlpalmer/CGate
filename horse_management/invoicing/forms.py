@@ -176,13 +176,27 @@ class PaymentForm(forms.ModelForm):
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 2}),
         }
 
+    # One token for each form shown (invoicing.views.payment_create).
+    form_token = forms.CharField(required=False, max_length=36, widget=forms.HiddenInput)
+
     def __init__(self, *args, invoice=None, **kwargs):
+        import uuid
+
         super().__init__(*args, **kwargs)
         self.invoice = invoice
+        if not self.is_bound:
+            self.fields['form_token'].initial = str(uuid.uuid4())
         # Credit notes are issued from their own form, which numbers them.
         self.fields['method'].choices = [
             c for c in self.fields['method'].choices if c[0] != Payment.Method.CREDIT_NOTE
         ]
+
+    def save(self, commit=True):
+        payment = super().save(commit=False)
+        payment.form_token = self.cleaned_data.get('form_token') or None
+        if commit:
+            payment.save()
+        return payment
 
     def clean_amount(self):
         amount = self.cleaned_data['amount']

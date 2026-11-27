@@ -49,14 +49,40 @@ class RestoreError(RuntimeError):
     """The restore was permitted but did not complete."""
 
 
+def _supabase_ref(parsed):
+    """The Supabase project reference in a URL, or ''.
+
+    One project has two kinds of address: the direct host
+    ``db.<ref>.supabase.co``, and a pooler host shared by every project
+    (``aws-0-eu-west-1.pooler.supabase.com``) with the user
+    ``postgres.<ref>``. Every project's database is named ``postgres``.
+    """
+    host = (parsed.hostname or '').lower()
+    if not (host.endswith('.supabase.co') or host.endswith('.supabase.com')):
+        return ''
+    if host.startswith('db.') and host.endswith('.supabase.co'):
+        return host[len('db.'):-len('.supabase.co')]
+    user = (parsed.username or '').lower()
+    if '.' in user:
+        return user.split('.', 1)[1]
+    return ''
+
+
 def _identity(url):
-    """(host, database) for a Postgres URL, lowercased.
+    """What names one database: ('supabase', ref) for a Supabase project,
+    else (host, database), lowercased.
 
     The port is left out on purpose. Two URLs differing only by port are
     two doors into one database, and restoring over it through either
-    would be equally final.
+    would be equally final. For Supabase the host is left out too: the
+    pooler host is shared by every project (so host and database said a
+    second project was production), and the direct host differs from the
+    pooler's (so production under its other address was allowed).
     """
     parsed = urlparse(url)
+    ref = _supabase_ref(parsed)
+    if ref:
+        return ('supabase', ref)
     return ((parsed.hostname or '').lower(), (parsed.path or '').lstrip('/').lower())
 
 
@@ -92,12 +118,16 @@ def target_database_url():
 
 def _live_database_url():
     """The production database as a URL, rebuilt from DATABASES."""
+    from urllib.parse import quote
+
     config = settings.DATABASES['default']
     host = config.get('HOST') or ''
     name = config.get('NAME') or ''
+    user = config.get('USER') or ''
     if not host:
         return ''
-    return f'postgresql://{host}/{name}'
+    credentials = f'{quote(user, safe=".")}@' if user else ''
+    return f'postgresql://{credentials}{host}/{name}'
 
 
 def target_media_bucket():

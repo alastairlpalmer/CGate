@@ -207,9 +207,11 @@ def generate_invoice_pdf_reportlab(invoice):
     elements.append(Paragraph("<b>INVOICE</b>", heading_style))
 
     # Two-column layout: Bill To + Invoice box
-    bill_to_parts = [f"<b>{_esc(invoice.owner.name)}</b>"]
-    if invoice.owner.address:
-        bill_to_parts.append(_esc_lines(invoice.owner.address))
+    # As issued (Invoice.bill_to_details), not as the owner record is now.
+    bill_to = invoice.bill_to_details()
+    bill_to_parts = [f"<b>{_esc(bill_to.name)}</b>"]
+    if bill_to.address:
+        bill_to_parts.append(_esc_lines(bill_to.address))
     bill_to_text = '<br/>'.join(bill_to_parts)
 
     invoice_info_lines = [
@@ -220,8 +222,8 @@ def generate_invoice_pdf_reportlab(invoice):
     ]
     if invoice.customer_reference:
         invoice_info_lines.append(f"Your ref: {_esc(invoice.customer_reference)}")
-    if hasattr(invoice.owner, 'account_code') and invoice.owner.account_code:
-        invoice_info_lines.append(f"Account: {invoice.owner.account_code}")
+    if bill_to.account_code:
+        invoice_info_lines.append(f"Account: {_esc(bill_to.account_code)}")
     # Only a real VAT number: "VAT Reg: N/A" on the invoice of a yard that
     # is not registered reads like a missing detail.
     vat_reg = (getattr(settings, 'vat_registration', '') or '').strip()
@@ -490,7 +492,6 @@ def generate_credit_note_pdf(credit):
 
     settings = credit.invoice.issuer_details()
     invoice = credit.invoice
-    owner = invoice.owner
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=20*mm, leftMargin=20*mm,
                             topMargin=15*mm, bottomMargin=15*mm)
@@ -505,9 +506,11 @@ def generate_credit_note_pdf(credit):
     elements.append(Paragraph('<b>CREDIT NOTE</b>', styles['Heading2']))
     if credit.is_voided:
         elements.append(Paragraph('<b>VOID</b>: this credit note was cancelled.', normal))
-    bill_to = f"<b>{_esc(owner.name)}</b>"
-    if owner.address:
-        bill_to += '<br/>' + _esc_lines(owner.address)
+    # The invoice's addressee as issued, like the invoice itself.
+    addressee = invoice.bill_to_details()
+    bill_to = f"<b>{_esc(addressee.name)}</b>"
+    if addressee.address:
+        bill_to += '<br/>' + _esc_lines(addressee.address)
     info = [
         f"Credit note No: {_esc(credit.credit_note_number)}",
         f"Date: {credit.date.strftime('%d/%m/%Y')}",

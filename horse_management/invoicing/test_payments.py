@@ -263,3 +263,45 @@ class OutstandingKpiTests(TestCase):
         ]
         self.assertEqual([item.amount for item in items], [Decimal("100.00")])
         self.assertIn("£100.00 of £150.00 outstanding", items[0].detail)
+
+
+class PaymentFormTokenTests(TestCase):
+    """Pre-launch review: a lost reply, then Save again, recorded the
+    payment twice."""
+
+    def setUp(self):
+        from datetime import date
+
+        from core.models import Owner
+        from core.roles_testutils import make_admin
+
+        self.client.force_login(make_admin('tokenadmin'))
+        owner = Owner.objects.create(name='Anna')
+        self.invoice = Invoice.objects.create(
+            owner=owner, invoice_number='TOK1', period_start=date(2026, 6, 1), period_end=date(2026, 6, 30),
+            status=Invoice.Status.SENT, total=Decimal('100.00'),
+        )
+
+    def test_the_same_form_sent_twice_records_one_payment(self):
+        from django.urls import reverse
+
+        url = reverse('payment_create', args=[self.invoice.pk])
+        form = self.client.get(url).context['form']
+        token = form['form_token'].value()
+        self.assertTrue(token)
+        data = {'date': '2026-07-01', 'amount': '40.00', 'method': 'bank_transfer', 'reference': '', 'notes': '',
+                'form_token': token}
+        self.client.post(url, data)
+        response = self.client.post(url, data, follow=True)
+        self.assertEqual(Payment.objects.filter(invoice=self.invoice).count(), 1)
+        self.assertContains(response, 'already recorded')
+
+    def test_two_forms_record_two_payments(self):
+        from django.urls import reverse
+
+        url = reverse('payment_create', args=[self.invoice.pk])
+        for _ in range(2):
+            token = self.client.get(url).context['form']['form_token'].value()
+            self.client.post(url, {'date': '2026-07-01', 'amount': '10.00', 'method': 'cash',
+                                   'reference': '', 'notes': '', 'form_token': token})
+        self.assertEqual(Payment.objects.filter(invoice=self.invoice).count(), 2)

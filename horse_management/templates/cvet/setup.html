@@ -57,7 +57,7 @@
                     </label>
                     {% endfor %}
                 </div>
-                <p class="text-xs text-sage mt-2">Every login with the Vet role is here. A ticked login can read and write the practice's records. Untick a login to stop it at once.</p>
+                <p class="text-xs text-sage mt-2">Every login with the Vet role is here. A ticked login asks to join the practice. A member of the practice must approve it in C-vet (People) before it can read the records. The practice's first login is approved at once. Untick a login to stop it at once.</p>
                 {% else %}
                 <p class="text-sm text-sage mt-1">No login has the Vet role. <a href="{% url 'user_create' %}" class="underline">Add a user</a> and give it the Vet role.</p>
                 {% endif %}

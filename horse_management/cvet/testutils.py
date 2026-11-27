@@ -35,5 +35,8 @@ def make_vet(username='vet', practice=None, **user_fields):
     assign_role(user, vet_role())
     if practice is None:
         practice = Practice.objects.filter(name='Hill Vets').first() or make_practice()
-    PracticeMember.objects.create(practice=practice, user=user)
+    from django.utils import timezone
+
+    # Approved: the tests of the approval itself make waiting members.
+    PracticeMember.objects.create(practice=practice, user=user, approved_at=timezone.now())
     return user

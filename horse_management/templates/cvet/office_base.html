@@ -83,6 +83,7 @@
     <a href="{% url 'cvet:bill_list' %}"{% if section == 'bills' %} class="here" aria-current="page"{% endif %}>Bills</a>
     <a href="{% url 'cvet:reports' %}"{% if section == 'reports' %} class="here" aria-current="page"{% endif %}>Reports</a>
     <a href="{% url 'cvet:price_file' %}"{% if section == 'prices' %} class="here" aria-current="page"{% endif %}>Price list file</a>
+    <a href="{% url 'cvet:people' %}"{% if section == 'people' %} class="here" aria-current="page"{% endif %}>People</a>
 </nav></div>
 <div class="page">
 {% block content %}{% endblock %}

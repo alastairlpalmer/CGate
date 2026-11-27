@@ -381,3 +381,30 @@ class RequestSizeLimitMiddleware:
                 status=413, content_type='text/plain; charset=utf-8',
             )
         return self.get_response(request)
+
+
+BACKGROUND_HEADER = 'HTTP_X_BACKGROUND'
+
+
+from django.contrib.sessions.middleware import SessionMiddleware as _DjangoSessionMiddleware  # noqa: E402
+
+
+class SessionMiddleware(_DjangoSessionMiddleware):
+    """Django's session middleware, except for background polls.
+
+    SESSION_SAVE_EVERY_REQUEST rolls the idle timeout forward on every
+    request. The notification badge asks every minute, so an open tab
+    nobody touched was never signed out (pre-launch review). A request
+    sent with ``X-Background: 1`` and no session change is not saved, so
+    it does not count as activity.
+    """
+
+    def process_response(self, request, response):
+        session = getattr(request, 'session', None)
+        if (
+            request.META.get(BACKGROUND_HEADER) == '1'
+            and session is not None
+            and not session.modified
+        ):
+            return response
+        return super().process_response(request, response)

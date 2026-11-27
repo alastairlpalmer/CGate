@@ -29,7 +29,7 @@ from django.utils import timezone
 
 from core.permissions import feature_required
 
-from .access import cvet_enabled, vet_logins
+from .access import cvet_enabled, new_member, vet_logins
 from billing.models import ServiceProvider
 
 from .models import Practice, PracticeMember, PracticeYardLink
@@ -151,7 +151,7 @@ def can_open(user, member, practices):
     """
     if member is None:
         return len(practices) == 1
-    return member.is_active and member.practice.is_active
+    return member.is_active and member.practice.is_active and member.is_approved
 
 
 def status():
@@ -164,12 +164,17 @@ def status():
     practice = practices[0] if len(practices) == 1 else None
     link = PracticeYardLink.objects.filter(practice=practice).first() if practice else None
     opened = [user for user in logins if can_open(user, members.get(user.pk), practices)]
+    waiting = sum(
+        1 for user in logins
+        if (m := members.get(user.pk)) is not None and m.is_active and not m.is_approved
+    )
     return {
+        'waiting': waiting,
         'practice': practice,
         'many': len(practices) > 1,
         'link_open': bool(link and link.is_open),
         'logins': len(opened),
-        'left_out': len(logins) - len(opened),
+        'left_out': len(logins) - len(opened) - waiting,
         'test_mode': settings.CVET_TEST_MODE,
     }
 
@@ -252,12 +257,20 @@ def save(form, practice):
     for user in logins:
         member = members.get(user.pk)
         if user.pk in chosen:
+            # The administrator can put a login in, but a member of the
+            # practice lets it read (cvet.access.approve). A login put
+            # back in after it was taken out waits again.
             if member is None:
-                PracticeMember.objects.create(practice=practice, user=user)
+                new_member(practice, user)
             elif not member.is_active or member.practice_id != practice.pk:
+                first = not PracticeMember.objects.filter(
+                    practice=practice, is_active=True, approved_at__isnull=False,
+                ).exists()
                 member.practice = practice
                 member.is_active = True
-                member.save(update_fields=['practice', 'is_active'])
+                member.approved_at = timezone.now() if first else None
+                member.approved_by = None
+                member.save(update_fields=['practice', 'is_active', 'approved_at', 'approved_by'])
         elif member is None:
             # An inactive row, so that the login does not join by itself
             # at its next sign-in.

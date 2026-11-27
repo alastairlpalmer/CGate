@@ -15,10 +15,13 @@ cannot get them wrong:
 A yard login, an administrator included, is not a member of a practice.
 It passes none of these, by any route.
 
-A Vet login needs no second step when the database has one practice: it
-joins that practice the first time it opens C-vet (``join_the_only_practice``).
-The yard's administrator makes the practice, and takes a login out of
-it, on the set-up page (``cvet.setup``).
+A Vet login asks to join when the database has one practice: the first
+time it opens C-vet, it becomes a waiting member (``join_the_only_practice``).
+It reads nothing until a member of the practice approves it, on the
+People page (``approve``). The first member of a practice with no
+approved member is approved at once. The yard's administrator makes the
+practice, and takes a login out of it, on the set-up page
+(``cvet.setup``), but cannot let a login in.
 """
 
 from functools import wraps
@@ -38,14 +41,72 @@ FEATURE = 'cvet'
 
 
 def membership_for(user):
-    """The user's active membership of an active practice, or None."""
+    """The user's approved, active membership of an active practice, or None."""
     if user is None or not getattr(user, 'is_authenticated', False):
         return None
     return (
         PracticeMember.objects.select_related('practice')
-        .filter(user=user, is_active=True, practice__is_active=True)
+        .filter(user=user, is_active=True, practice__is_active=True, approved_at__isnull=False)
         .first()
     )
+
+
+def waiting_membership(user):
+    """The user's active membership that a member has not approved yet, or None."""
+    if user is None or not getattr(user, 'is_authenticated', False):
+        return None
+    return (
+        PracticeMember.objects.select_related('practice')
+        .filter(user=user, is_active=True, practice__is_active=True, approved_at__isnull=True)
+        .first()
+    )
+
+
+def new_member(practice, user, **fields):
+    """Make a membership row: approved at once only as the practice's first member.
+
+    Every other new member waits for a member's approval (``approve``).
+    """
+    from django.utils import timezone
+
+    first = not PracticeMember.objects.filter(
+        practice=practice, is_active=True, approved_at__isnull=False,
+    ).exists()
+    if first and fields.get('is_active', True):
+        fields['approved_at'] = timezone.now()
+    return PracticeMember.objects.create(practice=practice, user=user, **fields)
+
+
+def waiting_for(practice):
+    """The practice's members who wait for approval, oldest first."""
+    return (
+        PracticeMember.objects.filter(practice=practice, is_active=True, approved_at__isnull=True)
+        .select_related('user').order_by('created_at')
+    )
+
+
+def approve(practice, member_pk, by):
+    """Let a waiting member in. Returns the member, or None."""
+    from django.utils import timezone
+
+    member = waiting_for(practice).filter(pk=member_pk).first()
+    if member is None:
+        return None
+    member.approved_at = timezone.now()
+    member.approved_by = by
+    member.save(update_fields=['approved_at', 'approved_by'])
+    return member
+
+
+def decline(practice, member_pk):
+    """Refuse a waiting member. The row stays, inactive, so the login does
+    not ask again by itself. Returns the member, or None."""
+    member = waiting_for(practice).filter(pk=member_pk).first()
+    if member is None:
+        return None
+    member.is_active = False
+    member.save(update_fields=['is_active'])
+    return member
 
 
 def practice_for(user):
@@ -105,12 +166,13 @@ def only_practice():
 
 
 def join_the_only_practice(user):
-    """Put a Vet login in the practice, when there is no doubt which one.
+    """Put a Vet login in the practice as a waiting member, when there is
+    no doubt which one.
 
-    The administrator who gives a login the Vet role means "this person
-    works for the practice". With one practice in the database, the role
-    names it, so a second step in a second place adds nothing: it was
-    only a way to leave a new vet on a page that says "not set up".
+    With one practice in the database, the role names it, so the vet need
+    not wait for the yard. But the yard's administrator gives the role,
+    so the vet reads nothing until a member of the practice approves them
+    (``approve``). Only the practice's first member is let in at once.
 
     Three limits keep the rule safe:
 
@@ -130,8 +192,13 @@ def join_the_only_practice(user):
     practice = only_practice()
     if practice is None:
         return None
-    # get_or_create: two first requests at the same time make one row.
-    PracticeMember.objects.get_or_create(user=user, defaults={'practice': practice})
+    from django.db import IntegrityError, transaction
+
+    try:
+        with transaction.atomic():
+            new_member(practice, user)
+    except IntegrityError:
+        pass  # Two first requests at the same time: the other made the row.
     return practice_for(user)
 
 
@@ -218,6 +285,9 @@ def practice_page(view_func):
     def _wrapped(request, *args, **kwargs):
         practice = practice_for(request.user) or join_the_only_practice(request.user)
         if practice is None:
+            waiting = waiting_membership(request.user)
+            if waiting is not None:
+                return render(request, 'cvet/waiting.html', {'practice': waiting.practice}, status=403)
             return render(request, 'cvet/no_practice.html', {
                 'can_set_up': has_feature_access(request.user, 'users', LEVEL_FULL),
             }, status=403)
@@ -241,6 +311,8 @@ def practice_api(view_func):
             return JsonResponse({'error': 'signed_out'}, status=401)
         practice = practice_for(request.user) or join_the_only_practice(request.user)
         if practice is None:
+            if waiting_membership(request.user) is not None:
+                return JsonResponse({'error': 'waiting_approval'}, status=403)
             return JsonResponse({'error': 'no_access'}, status=403)
         request.practice = practice
         return view_func(request, *args, **kwargs)

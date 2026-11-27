@@ -14,7 +14,7 @@ and turns red for destructive verbs.
      x-transition:leave="transition ease-in duration-100"
      x-transition:leave-start="opacity-100"
      x-transition:leave-end="opacity-0"
-     @keydown.escape.window="$store.confirm.open && $store.confirm.decide(false)">
+     @keydown.escape.window="if ($store.confirm.open && !$event.defaultPrevented) { $event.preventDefault(); $store.confirm.decide(false) }">
 
     <div class="absolute inset-0 bg-charcoal/50" @click="$store.confirm.decide(false)"></div>
 

@@ -65,7 +65,7 @@
         if (kind === 'send') {
             return reading
                 ? { text: 'No signal. That did not load.', retry: true }
-                : { text: 'Not saved: no signal. Your entries are still here. Save again when the signal is back.', retry: false };
+                : { text: 'No signal. The record may not be saved. Your entries are still here. Check before you save it again.', retry: false };
         }
         if (kind === 'timeout') {
             return reading

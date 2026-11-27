@@ -1,0 +1,39 @@
+{% extends "cvet/office_base.html" %}
+{% block title %}People{% endblock %}
+{% block content %}
+    <h1>People</h1>
+    {% if messages %}{% for message in messages %}<p class="box pad" role="status">{{ message }}</p>{% endfor %}{% endif %}
+    <p class="muted">Only the people on this page can read and write {{ practice.name }}'s records. The yard can give a login the Vet role, but a member of the practice must let it in.</p>
+
+    <h2>Waiting for you</h2>
+    {% if waiting %}
+    <div class="box"><table>
+        <tr><th>Login</th><th>Asked</th><th></th></tr>
+        {% for member in waiting %}
+        <tr>
+            <td>{{ member.user.get_full_name|default:member.user.email|default:member.user.username }}<br><span class="muted">{{ member.user.email }}</span></td>
+            <td>{{ member.created_at|date:"j M Y" }}</td>
+            <td>
+                <form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="member" value="{{ member.pk }}"><button type="submit" name="action" value="approve">Let in</button></form>
+                <form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="member" value="{{ member.pk }}"><button type="submit" name="action" value="decline" class="quiet">Do not let in</button></form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table></div>
+    <p class="muted">Let in only a person who works for the practice. If you do not know the login, choose "Do not let in".</p>
+    {% else %}
+    <p class="muted">Nobody is waiting.</p>
+    {% endif %}
+
+    <h2>Members</h2>
+    <div class="box"><table>
+        <tr><th>Login</th><th>Let in</th></tr>
+        {% for member in members %}
+        <tr>
+            <td>{{ member.user.get_full_name|default:member.user.email|default:member.user.username }}<br><span class="muted">{{ member.user.email }}</span></td>
+            <td>{{ member.approved_at|date:"j M Y" }}{% if member.approved_by %} by {{ member.approved_by.get_full_name|default:member.approved_by.email }}{% else %} (first member){% endif %}</td>
+        </tr>
+        {% endfor %}
+    </table></div>
+    <p class="muted">To take a login out, ask the yard's administrator (C-vet set-up in C-gate).</p>
+{% endblock %}

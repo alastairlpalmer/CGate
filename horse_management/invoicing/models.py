@@ -139,6 +139,28 @@ class Invoice(models.Model):
         business = BusinessSettings.get_settings()
         return {field: getattr(business, field, '') or '' for field in cls.ISSUER_FIELDS}
 
+    # The owner as billed, kept in the same snapshot at issue. An issued
+    # invoice printed the owner's name and address as they are now, so a
+    # PDF made again after a move or a sale showed a different addressee.
+    BILL_TO_FIELDS = ('name', 'address', 'account_code')
+
+    def issue_snapshot(self):
+        """What is kept at issue: the yard's details and the owner's."""
+        snapshot = self.current_issuer()
+        owner = self.owner
+        snapshot['bill_to'] = {field: getattr(owner, field, '') or '' for field in self.BILL_TO_FIELDS}
+        return snapshot
+
+    def bill_to_details(self):
+        """The owner to print: as issued, or as now on a draft (or an
+        invoice issued before this snapshot existed)."""
+        owner = self.owner
+        details = {field: getattr(owner, field, '') or '' for field in self.BILL_TO_FIELDS}
+        kept = (self.issuer or {}).get('bill_to')
+        if isinstance(kept, dict):
+            details.update({k: v for k, v in kept.items() if k in self.BILL_TO_FIELDS})
+        return SimpleNamespace(**details)
+
     def issuer_details(self):
         """The details to print: as issued, or the current ones on a draft."""
         details = self.current_issuer()
@@ -151,7 +173,7 @@ class Invoice(models.Model):
         if not self.due_date:
             self.due_date = self.period_end + timedelta(days=self.payment_terms_days)
         if not self.issuer and self.status in self.ISSUED_STATUSES:
-            self.issuer = self.current_issuer()
+            self.issuer = self.issue_snapshot()
             if kwargs.get('update_fields') is not None:
                 kwargs['update_fields'] = list(kwargs['update_fields']) + ['issuer']
         super().save(*args, **kwargs)
@@ -191,7 +213,7 @@ class Invoice(models.Model):
         ).update(status=self.Status.SENT, sent_at=now, send_queued_at=None, send_error='')
         if updated:
             if not self.issuer:
-                self.issuer = self.current_issuer()
+                self.issuer = self.issue_snapshot()
                 Invoice.objects.filter(pk=self.pk, issuer__isnull=True).update(issuer=self.issuer)
             self.status = self.Status.SENT
             self.sent_at = now
@@ -560,6 +582,9 @@ class Payment(models.Model):
     # A payment brought in from Xero (xero_integration.services): its
     # PaymentID, so the nightly check records each one once.
     xero_payment_id = models.CharField(max_length=50, null=True, blank=True, unique=True, editable=False)
+    # The one-time token of the form that recorded this payment. The same
+    # form sent twice (a lost reply, then Save again) records one payment.
+    form_token = models.CharField(max_length=36, null=True, blank=True, unique=True, editable=False)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     voided_at = models.DateTimeField(null=True, blank=True, editable=False)
