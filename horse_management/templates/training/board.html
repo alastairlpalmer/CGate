@@ -236,7 +236,9 @@
                                     <button type="submit" class="row-menu-item">Move to {{ other.lot.name }}</button>
                                 </form>
                                 {% endfor %}
-                                <form method="post" action="{% url 'training_activity_delete' row.pk %}">
+                                {# A confirm: the record and anything typed on it go, with no Undo. #}
+                                <form method="post" action="{% url 'training_activity_delete' row.pk %}"
+                                      hx-confirm="Remove {{ row.horse.name }} from this date? The record and its notes are deleted.">
                                     {% csrf_token %}
                                     <input type="hidden" name="next" value="{{ board_url }}#lot-day-{{ lot_day.pk }}">
                                     <button type="submit" class="row-menu-item">Remove from this date</button>

@@ -64,3 +64,13 @@ BARNS_ENABLED = True
 
 # Training is built and tested ahead of being switched on.
 TRAINING_ENABLED = True
+
+# Uploads made by tests go to a temporary folder, removed when the run
+# ends, never into the real media folder (pre-launch review: a test run
+# left files there). Each test that needs a fixed folder still overrides it.
+import atexit as _atexit
+import shutil as _shutil
+import tempfile as _tempfile
+
+MEDIA_ROOT = _tempfile.mkdtemp(prefix='cgate-test-media-')
+_atexit.register(_shutil.rmtree, MEDIA_ROOT, ignore_errors=True)

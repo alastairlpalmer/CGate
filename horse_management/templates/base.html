@@ -204,7 +204,7 @@
         (an error at once, as an alert). A message closes itself after 5
         seconds, but not while the pointer or the focus is on it, and never
         when it has an Undo button or is an error: those stay until closed.{% endcomment %}
-        <div id="toast-container" role="status" aria-live="polite" class="fixed top-14 lg:top-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:max-w-sm sm:w-full z-50 space-y-2">
+        <div id="toast-container" role="status" aria-live="polite" class="fixed top-14 lg:top-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:max-w-sm sm:w-full z-[65] space-y-2">
             {% if messages %}
             {% for message in messages %}
             {% with toast_undo=message|undo_url %}

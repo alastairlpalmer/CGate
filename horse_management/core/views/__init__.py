@@ -10,7 +10,7 @@ from .dashboard import (  # noqa: F401
 from .analytics_proxy import posthog_proxy  # noqa: F401
 from .calendar_entries import calendar_entry_add, calendar_entry_edit  # noqa: F401
 from .boundary_import import boundary_import_match, boundary_import_upload  # noqa: F401
-from .documents import document_create, document_delete, document_restore  # noqa: F401
+from .documents import document_create, document_delete, document_open, document_restore  # noqa: F401
 from .finances import finances  # noqa: F401
 from .photos import horse_photo_add, horse_photo_delete, horse_photo_restore, horse_photo_set_profile  # noqa: F401
 from .horses import (  # noqa: F401

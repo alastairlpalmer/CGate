@@ -97,7 +97,7 @@ it does not (partials/dashboard/site_tools.html).{% endcomment %}
         {% if 'activity' in visible %}
         <section class="zone-enter relative min-h-0 {% if 'upcoming' in visible or near_you_card %}lg:col-span-1{% else %}lg:col-span-3{% endif %}" style="--i:4" aria-labelledby="timeline-title" data-testid="timeline-zone">
             <div class="h-full {% if 'upcoming' in visible or near_you_card %}lg:absolute lg:inset-0{% endif %}"
-                 hx-get="{% url 'dashboard_activity' %}" hx-trigger="load" hx-swap="innerHTML" hx-target="this" hx-select="unset" hx-push-url="false">
+                 data-lazy-load hx-get="{% url 'dashboard_activity' %}" hx-trigger="load" hx-swap="innerHTML" hx-target="this" hx-select="unset" hx-push-url="false">
                 <div class="card overflow-hidden h-full" aria-busy="true">
                     <div class="section-header"><h2 class="section-title" id="timeline-title">Timeline</h2></div>
                     <div class="p-4 space-y-3">
@@ -124,7 +124,7 @@ it does not (partials/dashboard/site_tools.html).{% endcomment %}
     {# ── Money: loaded after first paint ── #}
     {% if 'money' in visible %}
     <section class="zone-enter" style="--i:6">
-        <div hx-get="{% url 'dashboard_money' %}" hx-trigger="load" hx-swap="outerHTML" hx-target="this" hx-select="unset" hx-push-url="false">
+        <div data-lazy-load hx-get="{% url 'dashboard_money' %}" hx-trigger="load" hx-swap="outerHTML" hx-target="this" hx-select="unset" hx-push-url="false">
             <div class="card overflow-hidden" aria-busy="true">
                 <div class="section-header"><h2 class="section-title">Money</h2></div>
                 <div class="grid grid-cols-2 gap-3 p-4 lg:grid-cols-4">

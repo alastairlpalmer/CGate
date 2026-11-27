@@ -53,3 +53,43 @@ class IssuedAddresseeTests(TestCase):
         details = self.invoice.bill_to_details()
         self.assertNotIn('Smith', details.name)
         self.assertEqual((details.address, details.account_code), ('', ''))
+
+
+class CreditNoteVatTests(TestCase):
+    """Pre-launch review: credit notes had no VAT split."""
+
+    def _rows(self, vat_rate, subtotal, total, amount):
+        from unittest import mock
+
+        import reportlab.platypus as platypus
+
+        from invoicing.models import Payment
+        from invoicing.pdf import generate_credit_note_pdf
+
+        owner = Owner.objects.create(name='Vat Owner')
+        invoice = Invoice.objects.create(
+            owner=owner, invoice_number='VAT1', period_start=date(2026, 6, 1), period_end=date(2026, 6, 30),
+            status=Invoice.Status.SENT, subtotal=subtotal, vat_rate=vat_rate, total=total,
+        )
+        credit = Payment.objects.create(invoice=invoice, amount=amount, date=date(2026, 7, 1),
+                                        method=Payment.Method.CREDIT_NOTE, notes='Overcharge')
+        seen = []
+        real = platypus.Table
+
+        def spy(data, *args, **kwargs):
+            seen.append(data)
+            return real(data, *args, **kwargs)
+
+        with mock.patch.object(platypus, 'Table', spy):
+            generate_credit_note_pdf(credit)
+        return [row for table in seen for row in table if isinstance(row[0], str)]
+
+    def test_a_credit_on_a_vat_invoice_shows_net_and_vat(self):
+        rows = self._rows(Decimal('20'), Decimal('100.00'), Decimal('120.00'), Decimal('60.00'))
+        self.assertIn(['Net', '£50.00'], rows)
+        self.assertIn(['VAT (20%)', '£10.00'], rows)
+        self.assertIn(['Total credited', '£60.00'], rows)
+
+    def test_no_vat_lines_without_vat(self):
+        rows = self._rows(Decimal('0'), Decimal('100.00'), Decimal('100.00'), Decimal('60.00'))
+        self.assertNotIn('Net', [row[0] for row in rows])

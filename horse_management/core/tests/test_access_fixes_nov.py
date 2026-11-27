@@ -28,7 +28,7 @@ class MediaPathTests(TestCase):
     def setUp(self):
         self.media = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.media, ignore_errors=True)
-        for folder, name in (('documents', 'passport.pdf'), ('receipts/yard', 'r.pdf')):
+        for folder, name in (('documents', 'passport.pdf'), ('receipts/yard', 'r.pdf'), ('people', 'user-1.jpg')):
             os.makedirs(os.path.join(self.media, folder), exist_ok=True)
             with open(os.path.join(self.media, folder, name), 'wb') as fh:
                 fh.write(b'%PDF-1.4 secret')
@@ -43,6 +43,11 @@ class MediaPathTests(TestCase):
             finally:
                 importlib.reload(urls)
                 clear_url_caches()
+
+    def test_any_signed_in_user_can_load_a_staff_photo(self):
+        """Pre-launch review: staff photos fell to 'superusers only'."""
+        self.client.force_login(make_user_with_access('groomphoto', dashboard='full'))
+        self.assertEqual(self._get('/media/people/user-1.jpg'), [200])
 
     def test_dot_dot_cannot_reach_another_folder(self):
         self.client.force_login(make_user_with_access('nobody'))

@@ -34,7 +34,7 @@ Params: segments, days, label (window), group.
         {% empty %}
         <span>No land use recorded for the {{ label }}.</span>
         {% endfor %}
-        {% if segments %}<span class="text-sage/70">· {{ label }}</span>{% endif %}
+        {% if segments %}<span class="text-sage">· {{ label }}</span>{% endif %}
 
         {% if group.pk and feature_access.locations.full %}
         <a href="{% url 'location_set_usage' group.pk %}"

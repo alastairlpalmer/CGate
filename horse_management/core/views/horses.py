@@ -2581,7 +2581,8 @@ def horse_depart(request, pk):
                     extra_tags=undo_tag(reverse('cancel_departure', args=[horse.pk])),
                 )
         except ValidationError as e:
-            messages.error(request, str(e))
+            # e.messages, not str(e): that printed "['...']".
+            messages.error(request, ' '.join(e.messages))
         except IntegrityError:
             messages.error(
                 request,

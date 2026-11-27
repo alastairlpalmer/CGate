@@ -472,7 +472,35 @@ class VetVisitForm(ServicePickerMixin, ActiveHorseFormMixin, forms.ModelForm):
 
 # ─── Bulk Forms (no horse field) ──────────────────────────────────────
 
-class BulkVaccinationForm(ServicePickerMixin, OptionalCostMixin, forms.ModelForm):
+class BulkDateChecksMixin:
+    """The date checks of the single-horse forms (pre-launch review: the
+    bulk forms skipped them, so one typo went on every selected horse).
+
+    ``date_field`` is the day of the work; ``next_field`` the next one.
+    """
+
+    date_field = 'date'
+    next_field = 'next_due_date'
+    next_message = 'Next due date must be after the visit date.'
+    no_future = False
+
+    def clean(self):
+        from django.utils import timezone
+
+        cleaned_data = super().clean()
+        when = cleaned_data.get(self.date_field)
+        following = cleaned_data.get(self.next_field)
+        if when and following and following <= when:
+            self.add_error(self.next_field, self.next_message)
+        if self.no_future and when and when > timezone.localdate():
+            self.add_error(self.date_field, 'This date cannot be in the future.')
+        return cleaned_data
+
+
+class BulkVaccinationForm(BulkDateChecksMixin, ServicePickerMixin, OptionalCostMixin, forms.ModelForm):
+    date_field = 'date_given'
+    next_message = 'Next due date must be after the date given.'
+    no_future = True
     service_category = 'vaccination'
     service_fill = (('vaccination_type', 'vaccination_type'),)
 
@@ -501,7 +529,7 @@ class BulkVaccinationForm(ServicePickerMixin, OptionalCostMixin, forms.ModelForm
         self.fields['vet'].empty_label = "Select vet..."
 
 
-class BulkFarrierVisitForm(FarrierProviderMixin, ServicePickerMixin, forms.ModelForm):
+class BulkFarrierVisitForm(BulkDateChecksMixin, FarrierProviderMixin, ServicePickerMixin, forms.ModelForm):
     service_category = 'farrier'
     service_fill = (('work_done', 'farrier_work'),)
 
@@ -564,7 +592,9 @@ class BulkWormEggCountForm(ServicePickerMixin, OptionalCostMixin, forms.ModelFor
         }
 
 
-class BulkVetVisitForm(ServicePickerMixin, forms.ModelForm):
+class BulkVetVisitForm(BulkDateChecksMixin, ServicePickerMixin, forms.ModelForm):
+    next_field = 'follow_up_date'
+    next_message = 'Follow-up date must be after the visit date.'
     service_category = 'vet'
     service_fill = (('reason', 'name'),)
 

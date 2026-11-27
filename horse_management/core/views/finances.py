@@ -43,7 +43,8 @@ def finances(request):
         return _finances_inner(request)
     except Exception:
         logger.exception("Finances page error")
-        return render(request, 'finances.html', _empty_context())
+        # Say so: a page of zeros read as "no money moved" (pre-launch review).
+        return render(request, 'finances.html', {**_empty_context(), 'load_failed': True})
 
 
 def _finances_inner(request):

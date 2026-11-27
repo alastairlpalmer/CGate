@@ -303,3 +303,22 @@ class UserManagerCannotGiveHigherRolesTests(TestCase):
         })
         self.assertContains(resp, "You can only give a role with access you have yourself")
         self.assertFalse(User.objects.filter(email="new@example.com").exists())
+
+
+class DeactivateEndsSessionsTests(TestCase):
+    """Pre-launch review: a deactivated user kept their stored sessions,
+    which worked again if the account was turned back on."""
+
+    def test_deactivating_deletes_the_users_sessions(self):
+        from django.contrib.sessions.models import Session
+        from django.test import Client
+
+        user = make_viewer()
+        theirs = Client()
+        theirs.force_login(user)
+        key = theirs.session.session_key
+        self.client.force_login(make_admin())
+        self.client.post(reverse("user_update", args=[user.pk]), {"toggle_active": "1"})
+        user.refresh_from_db()
+        self.assertFalse(user.is_active)
+        self.assertFalse(Session.objects.filter(session_key=key).exists())

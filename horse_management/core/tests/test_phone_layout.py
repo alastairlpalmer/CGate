@@ -344,7 +344,8 @@ class CompactRowTests(TestCase):
     def test_an_owner_can_be_called_and_emailed_from_the_list(self):
         body = self.body('owner_list')
         self.assertIn('href="tel:01234 567890"', body)
-        self.assertIn('aria-label="Call Jo Bloggs"', body)
+        # The spoken name starts with the number shown (WCAG 2.5.3).
+        self.assertIn('aria-label="01234 567890: call Jo Bloggs"', body)
         self.assertIn('href="mailto:jo@example.com"', body)
 
     def test_the_horse_list_row_is_two_lines_on_a_phone(self):

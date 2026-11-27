@@ -237,7 +237,7 @@ does from the horse page, so nothing here has to know it is in a pane.
             <li class="flex items-center gap-3 py-2">
                 <span class="pane-doc-icon" aria-hidden="true">DOC</span>
                 <span class="min-w-0 flex-1">
-                    <a href="{{ document.file.url }}" target="_blank" rel="noopener" class="block text-sm font-medium text-charcoal hover:text-forest truncate">{{ document.title }}</a>
+                    <a href="{% url 'document_open' document.pk %}" target="_blank" rel="noopener" class="block text-sm font-medium text-charcoal hover:text-forest truncate">{{ document.title }}</a>
                     <span class="block text-xs text-sage truncate">
                         {{ document.get_doc_type_display }} · Added {{ document.uploaded_at|date:"j M Y" }}{% if document.expiry_date %} · {% if document.is_expired %}<span class="text-error-red">Expired {{ document.expiry_date|date:"j M Y" }}</span>{% else %}Expires {{ document.expiry_date|date:"j M Y" }}{% endif %}{% endif %}
                     </span>

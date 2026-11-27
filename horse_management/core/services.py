@@ -633,7 +633,8 @@ class PlacementService:
                 created += 1
                 arrived.append(horse)
             except ValidationError as e:
-                errors.append(f"{horse.name}: {e}")
+                # e.messages, not str(e): that printed "['...']".
+                errors.append(f"{horse.name}: {' '.join(e.messages)}")
             except IntegrityError:
                 # Another request placed the same horse a moment ago: the
                 # overlap check took no lock, and the one-open-stay rule

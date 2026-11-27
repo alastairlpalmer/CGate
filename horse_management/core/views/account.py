@@ -28,8 +28,28 @@ from ..models import AuditEvent
 logger = logging.getLogger(__name__)
 
 
+def email_site(request):
+    """The domain and protocol for links in emails.
+
+    From SITE_URL when it is set, not from the request: the Host header
+    is the sender's to choose, within ALLOWED_HOSTS, and a link in an
+    email must point at the real site (pre-launch review).
+    """
+    from urllib.parse import urlsplit
+
+    base = (getattr(settings, 'SITE_URL', '') or '').strip()
+    if base:
+        parts = urlsplit(base if '://' in base else f'https://{base}')
+        if parts.netloc:
+            return {'domain': parts.netloc, 'protocol': parts.scheme or 'https'}
+    return {'domain': request.get_host(), 'protocol': 'https' if request.is_secure() else 'http'}
+
+
 class RateLimitedPasswordResetView(auth_views.PasswordResetView):
     def form_valid(self, form):
+        # PasswordResetForm.save adds this after its own domain, so the
+        # link uses SITE_URL (email_site).
+        self.extra_email_context = {**(self.extra_email_context or {}), **email_site(self.request)}
         email = form.cleaned_data['email'].strip().lower()
         ip = audit.client_ip(self.request) or ''
         window = settings.PASSWORD_RESET_LIMIT_WINDOW
@@ -138,14 +158,15 @@ def send_invite(request, user):
     from django.utils.http import urlsafe_base64_encode
 
     site = get_current_site(request)
+    where = email_site(request)
     context = {
         'email': user.email,
-        'domain': site.domain,
+        'domain': where['domain'],
         'site_name': site.name,
         'uid': urlsafe_base64_encode(force_bytes(user.pk)),
         'user': user,
         'token': invite_token_generator.make_token(user),
-        'protocol': 'https' if request.is_secure() else 'http',
+        'protocol': where['protocol'],
         'invited_by': request.user.get_full_name() or request.user.email,
         'valid_days': max(1, settings.INVITE_TIMEOUT // (24 * 60 * 60)),
         'google_sign_in': settings.GOOGLE_SIGN_IN_ENABLED,

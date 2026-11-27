@@ -518,13 +518,26 @@ def generate_credit_note_pdf(credit):
     ]
     if invoice.customer_reference:
         info.append(f"Your ref: {_esc(invoice.customer_reference)}")
+    vat_reg = (getattr(settings, 'vat_registration', '') or '').strip()
+    if invoice.vat_rate and vat_reg and vat_reg.upper() not in ('N/A', 'NA', 'NONE', '-'):
+        info.append(f"VAT Reg: {_esc(vat_reg)}")
     meta = Table([[Paragraph(bill_to, normal), Paragraph('<br/>'.join(info), normal)]], colWidths=[85*mm, 85*mm])
     meta.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP')]))
     elements += [meta, Spacer(1, 8*mm)]
-    lines = Table(
-        [['Reason', 'Amount'], [Paragraph(_esc(credit.notes or ''), normal), f"{gbp(credit.amount)}"]],
-        colWidths=[130*mm, 40*mm],
-    )
+    rows = [['Reason', 'Amount'], [Paragraph(_esc(credit.notes or ''), normal), f"{gbp(credit.amount)}"]]
+    # The VAT in the credit, in the invoice's own proportion (a credit on a
+    # VAT invoice must show it, pre-launch review). The same split as the
+    # Finances page uses.
+    if invoice.vat_rate and invoice.total:
+        from decimal import ROUND_HALF_UP, Decimal
+
+        net = (credit.amount * invoice.subtotal / invoice.total).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        rows += [
+            ['Net', gbp(net)],
+            [f"VAT ({_pct(invoice.vat_rate)}%)", gbp(credit.amount - net)],
+            ['Total credited', gbp(credit.amount)],
+        ]
+    lines = Table(rows, colWidths=[130*mm, 40*mm])
     lines.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), FONT),
         ('LINEBELOW', (0, 0), (-1, 0), 0.5, (0.6, 0.6, 0.6)),
