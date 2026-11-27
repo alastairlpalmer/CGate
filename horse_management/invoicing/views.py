@@ -769,10 +769,21 @@ def payment_create(request, pk):
         return popup_saved_response() if in_popup else redirect('invoice_detail', pk=pk)
 
     if request.method == 'POST':
+        # The same form sent again (its reply was lost, then Save again):
+        # the payment is already recorded. Checked before the balance
+        # check, which would otherwise call it an overpayment.
+        token = (request.POST.get('form_token') or '').strip()
+        if token and Payment.all_objects.filter(invoice=invoice, form_token=token).exists():
+            messages.info(request, "This payment is already recorded. It was not recorded again.")
+            return popup_saved_response() if in_popup else redirect('invoice_detail', pk=pk)
         # Validate and save under a row lock so two concurrent submissions
         # cannot both pass the balance check and overpay the invoice.
         with transaction.atomic():
             invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
+            # Again under the lock: two sends of one form at the same moment.
+            if token and Payment.all_objects.filter(form_token=token).exists():
+                messages.info(request, "This payment is already recorded. It was not recorded again.")
+                return popup_saved_response() if in_popup else redirect('invoice_detail', pk=pk)
             form = PaymentForm(request.POST, invoice=invoice)
             if form.is_valid():
                 payment = form.save(commit=False)

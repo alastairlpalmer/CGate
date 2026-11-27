@@ -57,8 +57,13 @@ test('failureMessage: a save is never sent again by the message', () => {
     }
 });
 
-test('failureMessage: a save with no signal says the entries are still there', () => {
-    assert.match(failureMessage('send', 'post', 0).text, /^Not saved: no signal\. Your entries are still here\./);
+test('failureMessage: a save with no signal keeps the entries and says to check first', () => {
+    // The connection can drop after the save arrived, so "Not saved, save
+    // again" made a second payment (pre-launch review).
+    const text = failureMessage('send', 'post', 0).text;
+    assert.match(text, /Your entries are still here\./);
+    assert.match(text, /Check before you save it again\.$/);
+    assert.doesNotMatch(text, /^Not saved/);
 });
 
 test('failureMessage: after a timeout, a save may have arrived: say so', () => {

@@ -217,7 +217,7 @@
         if (old) { old.remove(); }
         var text;
         if (kind === 'htmx:sendError') {
-            text = 'Not saved: no signal. Your entries are still here. Tap Save again when the signal is back.';
+            text = 'No signal. The record may not be saved. Your entries are still here. Close this and check before you save it again.';
         } else if (kind === 'htmx:timeout') {
             text = 'No answer from the server. The record may be saved. Close this and check before you save it again.';
         } else if (status === 403) {

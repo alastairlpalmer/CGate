@@ -560,6 +560,9 @@ class Payment(models.Model):
     # A payment brought in from Xero (xero_integration.services): its
     # PaymentID, so the nightly check records each one once.
     xero_payment_id = models.CharField(max_length=50, null=True, blank=True, unique=True, editable=False)
+    # The one-time token of the form that recorded this payment. The same
+    # form sent twice (a lost reply, then Save again) records one payment.
+    form_token = models.CharField(max_length=36, null=True, blank=True, unique=True, editable=False)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     voided_at = models.DateTimeField(null=True, blank=True, editable=False)
