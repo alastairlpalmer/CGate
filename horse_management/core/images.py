@@ -55,6 +55,14 @@ def _normalise_upload(upload, downscale_oversized):
         upload.seek(0)
         image = Image.open(upload)
         needs_convert = (image.format or '').upper() in _HEIF_FORMATS
+        # A phone photo can hold where it was taken (EXIF GPS). Re-encoding
+        # drops all EXIF, after the rotation is applied (pre-launch review:
+        # photos of horses at an owner's home kept the address).
+        try:
+            has_gps = bool(image.getexif().get(0x8825))
+        except Exception:
+            has_gps = False
+        needs_convert = needs_convert or has_gps
         width, height = image.size
         needs_downscale = (
             (downscale_oversized and max(image.size) > _MAX_DIMENSION)
