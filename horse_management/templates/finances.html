@@ -8,6 +8,11 @@
 
     <!-- Page Header -->
     {% include 'includes/_finance_tabs.html' with finance_tab='overview' %}
+    {% if load_failed %}
+    <div class="alert-error" role="alert">
+        <p>The figures did not load. The fault is on our side. The zeros below are not real figures. <a href="" class="link">Try again</a>.</p>
+    </div>
+    {% endif %}
     <div class="page-header">
         <div>
             <h1 class="page-title page-title-list">Finances</h1>

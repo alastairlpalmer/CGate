@@ -92,3 +92,24 @@ class InvoiceEmailBalanceTests(TestCase):
                                 {'invoice': invoice, 'business': BusinessSettings.get_settings()})
         self.assertIn('£60.00', html)
         self.assertIn('£40.00', html)
+
+
+class FinancesFailureTests(TestCase):
+    def test_a_failure_says_so_instead_of_showing_zeros(self):
+        from unittest import mock
+
+        from core.roles_testutils import make_admin
+
+        self.client.force_login(make_admin('finfail'))
+        with mock.patch('core.views.finances._finances_inner', side_effect=RuntimeError('boom')):
+            response = self.client.get(reverse('finances'))
+        self.assertContains(response, 'The figures did not load')
+
+
+class TrainingRemoveConfirmTests(TestCase):
+    def test_the_board_asks_before_removing_a_record(self):
+        from pathlib import Path
+
+        board = (Path(__file__).resolve().parents[2] / 'templates/training/board.html').read_text()
+        i = board.index("training_activity_delete")
+        self.assertIn('hx-confirm="Remove', board[i:i + 300])
