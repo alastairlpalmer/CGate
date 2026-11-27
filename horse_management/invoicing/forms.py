@@ -2,6 +2,7 @@
 Forms for invoicing app.
 """
 
+from datetime import timedelta
 from decimal import Decimal
 
 from django import forms
@@ -243,6 +244,20 @@ class MonthlyInvoiceForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        now = timezone.now()
-        self.fields['year'].initial = now.year
-        self.fields['month'].initial = now.month
+        # The month just ended, as the 1st-of-month task bills. The current
+        # month was the default, so a click billed days not yet lived.
+        today = timezone.localdate()
+        last_month = today.replace(day=1) - timedelta(days=1)
+        self.fields['year'].initial = last_month.year
+        self.fields['month'].initial = last_month.month
+
+    def clean(self):
+        cleaned = super().clean()
+        year, month = cleaned.get('year'), cleaned.get('month')
+        if year and month:
+            today = timezone.localdate()
+            if (int(year), int(month)) > (today.year, today.month):
+                raise forms.ValidationError(
+                    "That month has not started yet. Choose this month or an earlier one."
+                )
+        return cleaned
