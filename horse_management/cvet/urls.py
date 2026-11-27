@@ -43,4 +43,5 @@ urlpatterns = [
     path('statements/<uuid:client_id>/', office.statement, name='statement'),
     path('reports/', office.reports, name='reports'),
     path('prices/file/', office.price_file, name='price_file'),
+    path('people/', office.people, name='people'),
 ]

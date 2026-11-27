@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C-vet</title>
+</head>
+<body style="font: 16px/1.4 -apple-system, sans-serif; max-width: 30em; margin: 3em auto; padding: 0 1em;">
+    <h1 style="font-size: 20px;">Waiting for {{ practice.name }}</h1>
+    <p>Your login asks to join {{ practice.name }}. A member of the practice must let you in before you can see its records.</p>
+    <p>Ask a colleague to open C-vet, then <strong>People</strong>, and select <strong>Let in</strong>. Then open this page again.</p>
+    <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">Sign out</button></form>
+</body>
+</html>

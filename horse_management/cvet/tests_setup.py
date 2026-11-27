@@ -394,3 +394,84 @@ class SettingsPagesTests(TestCase):
         tim = vet_login()
         self.assertNotContains(self.client.get('/settings/'), SETUP)
         self.assertNotContains(self.client.get(f'/settings/users/{tim.pk}/edit/'), 'it is not in a practice')
+
+
+@override_settings(CVET_ENABLED=True)
+class ApprovalTests(TestCase):
+    """Pre-launch review: a new Vet login joined the practice by itself, so
+    the yard (which gives the role) could read the clinical notes. A member
+    of the practice now lets each new login in."""
+
+    PEOPLE = '/c-vet/people/'
+
+    def setUp(self):
+        self.practice = make_practice()
+        self.first = vet_login('first')
+        self.client.force_login(self.first)
+        self.client.get(APP)  # the first member is let in at once
+        self.assertTrue(PracticeMember.objects.get(user=self.first).is_approved)
+
+    def test_a_second_login_waits_and_reads_nothing(self):
+        second = vet_login('second')
+        self.client.force_login(second)
+        response = self.client.get(APP)
+        self.assertContains(response, 'Waiting for Hill Vets', status_code=403)
+        self.assertEqual(self.client.get(SESSION).json()['error'], 'waiting_approval')
+        self.assertIsNone(access.practice_for(second))
+
+    def test_a_member_lets_the_waiting_login_in(self):
+        second = vet_login('second')
+        self.client.force_login(second)
+        self.client.get(APP)
+        member = PracticeMember.objects.get(user=second)
+
+        self.client.force_login(self.first)
+        self.assertContains(self.client.get(self.PEOPLE), 'second@example.com')
+        self.client.post(self.PEOPLE, {'member': member.pk, 'action': 'approve'})
+        member.refresh_from_db()
+        self.assertEqual(member.approved_by, self.first)
+
+        self.client.force_login(second)
+        self.assertEqual(self.client.get(APP).status_code, 200)
+
+    def test_decline_keeps_the_login_out(self):
+        second = vet_login('second')
+        self.client.force_login(second)
+        self.client.get(APP)
+        member = PracticeMember.objects.get(user=second)
+        self.client.force_login(self.first)
+        self.client.post(self.PEOPLE, {'member': member.pk, 'action': 'decline'})
+        self.client.force_login(second)
+        self.assertContains(self.client.get(APP), 'not set up for C-vet', status_code=403)
+
+    def test_the_set_up_page_cannot_let_a_login_in(self):
+        from cvet.setup import save
+
+        admin_vet = vet_login('adminvet')
+
+        class Form:
+            cleaned_data = None
+        form = Form()
+        form.cleaned_data = {
+            'name': 'Hill Vets', 'link_open': True, 'logins': [self.first, admin_vet],
+            **{name: getattr(self.practice, name) for name in setup.SetupForm.PRACTICE_FIELDS},
+            **setup._link_initial(PracticeYardLink.objects.get(practice=self.practice)),
+        }
+        form.cleaned_data['service_provider'] = None
+        save(form, self.practice)
+        member = PracticeMember.objects.get(user=admin_vet)
+        self.assertTrue(member.is_active)
+        self.assertFalse(member.is_approved)
+        self.assertIsNone(access.practice_for(admin_vet))
+
+    def test_a_waiting_login_cannot_approve(self):
+        second = vet_login('second')
+        third = vet_login('third')
+        for user in (second, third):
+            self.client.force_login(user)
+            self.client.get(APP)
+        member = PracticeMember.objects.get(user=third)
+        self.client.force_login(second)
+        self.client.post(self.PEOPLE, {'member': member.pk, 'action': 'approve'})
+        member.refresh_from_db()
+        self.assertFalse(member.is_approved)

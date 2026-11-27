@@ -31,9 +31,13 @@ def delete_test_notes(practice):
 
 
 class PracticeMemberInline(admin.TabularInline):
+    """A login added here waits for a member of the practice to approve it
+    (cvet.access.approve): a superuser cannot let a login read the notes."""
+
     model = PracticeMember
     extra = 1
-    fields = ('user', 'kind', 'is_active')
+    fields = ('user', 'kind', 'is_active', 'approved_at')
+    readonly_fields = ('approved_at',)
 
 
 class PracticeYardLinkInline(admin.StackedInline):

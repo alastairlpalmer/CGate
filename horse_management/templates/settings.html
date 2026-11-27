@@ -249,6 +249,9 @@ the page name in its top bar, so the heading is for wide screens only.{% endcomm
                         <span class="settings-row-title">No practice yet</span>
                         <span class="settings-row-meta">Make the practice before the vet signs in.</span>
                         {% endif %}
+                        {% if cvet.waiting %}
+                        <span class="text-xs text-sage sm:basis-full">{{ cvet.waiting }} login{{ cvet.waiting|pluralize }} wait{{ cvet.waiting|pluralize:"s," }} for a member of the practice to approve {{ cvet.waiting|pluralize:"it,them" }} in C-vet.</span>
+                        {% endif %}
                         {% if cvet.left_out %}
                         <span class="text-xs text-error-red sm:basis-full">{{ cvet.left_out }} login{{ cvet.left_out|pluralize }} with the Vet role cannot open C-vet. Open Set up.</span>
                         {% endif %}

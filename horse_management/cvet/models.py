@@ -81,6 +81,16 @@ class PracticeMember(models.Model):
     )
     kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.VET)
     is_active = models.BooleanField(default=True)
+    # A new member reads nothing until a member of the practice approves
+    # them (pre-launch review): the yard's administrator gives the Vet
+    # role, but must not be able to put a login of their own in the
+    # practice and read its clinical notes. The first member of a
+    # practice with no approved member is approved at once.
+    approved_at = models.DateTimeField(null=True, blank=True, editable=False)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, editable=False,
+        on_delete=models.SET_NULL, related_name='+',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     # Who could read a practice's clinical records, and when.
@@ -91,6 +101,10 @@ class PracticeMember(models.Model):
 
     def __str__(self):
         return f'{self.user} at {self.practice}'
+
+    @property
+    def is_approved(self):
+        return self.approved_at is not None
 
 
 class PracticeYardLink(models.Model):
