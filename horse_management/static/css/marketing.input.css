@@ -1,0 +1,97 @@
+/* The public marketing pages (templates/marketing) only: built to
+   static/css/marketing.css by `npm run build:css`. The app's styles.css
+   does not include these pages, so a signed-in user downloads none of it. */
+@import "tailwindcss" source(none);
+@config "../../tailwind.config.js";
+@source "../../templates/marketing";
+
+@font-face {
+    font-family: "DM Sans";
+    src: url("../fonts/DMSans-Variable.woff2") format("woff2");
+    font-weight: 400 700; font-style: normal; font-display: swap;
+}
+@font-face {
+    font-family: "Source Sans 3";
+    src: url("../fonts/SourceSans3-Variable.woff2") format("woff2");
+    font-weight: 400 700; font-style: normal; font-display: swap;
+}
+@font-face {
+    font-family: "DM Sans Fallback";
+    src: local("Arial"), local("Liberation Sans"), local("Helvetica");
+    size-adjust: 106.37%; ascent-override: 93.26%; descent-override: 29.14%; line-gap-override: 0.00%;
+}
+@font-face {
+    font-family: "Source Sans 3 Fallback";
+    src: local("Arial"), local("Liberation Sans"), local("Helvetica");
+    size-adjust: 96.47%; ascent-override: 106.14%; descent-override: 41.46%; line-gap-override: 0.00%;
+}
+
+@theme {
+    /* v3 defaults for a bare `ring` (3px, translucent blue) */
+    --default-ring-width: 3px;
+    --default-ring-color: rgb(59 130 246 / 0.5);
+    /* v3 line heights: fixed lengths, not v4's ratios, so a text-* class
+       keeps its line height when another rule changes the font size */
+    --text-xs--line-height: 1rem;
+    --text-sm--line-height: 1.25rem;
+    --text-base--line-height: 1.5rem;
+    --text-lg--line-height: 1.75rem;
+    --text-xl--line-height: 1.75rem;
+    --text-2xl--line-height: 2rem;
+    --text-3xl--line-height: 2.25rem;
+    --text-4xl--line-height: 2.5rem;
+    /* Tailwind 3's default sans stack, kept so unstyled text is unchanged */
+    --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+/* ── Marketing site (templates/marketing, js/marketing.js) ────────────────
+   Animations for the public pages only; the app never uses these classes.
+   Each one stops for a reader who asks for less motion (last block). */
+@keyframes mk-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes mk-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes mk-pulse { 0% { transform: scale(0.6); opacity: 0.8; } 100% { transform: scale(2.6); opacity: 0; } }
+@keyframes mk-draw { to { stroke-dashoffset: 0; } }
+@keyframes mk-flow { to { stroke-dashoffset: -24; } }
+@keyframes mk-fill { from { opacity: 0; } to { opacity: 1; } }
+
+.mk-fade-in { opacity: 0; animation: mk-in 0.8s cubic-bezier(.2,.7,.2,1) forwards; animation-delay: var(--d, 0s); }
+.mk-card { opacity: 0; animation: mk-in 0.7s cubic-bezier(.2,.7,.2,1) forwards, mk-float 7s ease-in-out infinite;
+           animation-delay: var(--d, 0s), calc(var(--d, 0s) + 0.7s); }
+.mk-draw { stroke-dasharray: var(--len, 1200); stroke-dashoffset: var(--len, 1200);
+           animation: mk-draw 1.8s cubic-bezier(.4,0,.2,1) forwards; animation-delay: var(--d, 0s); }
+.mk-fill { opacity: 0; animation: mk-fill 1s ease-out forwards; animation-delay: var(--d, 0s); }
+.mk-flow { stroke-dasharray: 4 8; animation: mk-flow 1.4s linear infinite; }
+.mk-pulse { transform-box: fill-box; transform-origin: center; animation: mk-pulse 2.4s ease-out infinite; animation-delay: var(--d, 0s); }
+
+/* Scroll reveal: only once the script has run (html.js), so the page
+   still shows everything without it. */
+.js .mk-reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.8s cubic-bezier(.2,.7,.2,1), transform 0.8s cubic-bezier(.2,.7,.2,1); transition-delay: var(--d, 0s); }
+.js .mk-reveal.is-visible { opacity: 1; transform: none; }
+/* A bar that grows to its width (--w) when it comes into view. */
+.mk-bar { width: var(--w); }
+.js .mk-bar { width: 0; transition: width 1.4s cubic-bezier(.2,.7,.2,1) 0.3s; }
+.js .is-visible .mk-bar { width: var(--w); }
+/* A line that draws across when it comes into view (How it works). */
+.js .mk-line { transform: scaleX(0); transform-origin: left; transition: transform 1.2s cubic-bezier(.4,0,.2,1) 0.2s; }
+.js .is-visible .mk-line { transform: scaleX(1); }
+
+/* FAQ: the chevron turns when an answer opens. */
+.mk-faq summary::-webkit-details-marker { display: none; }
+.mk-faq[open] .mk-chevron { transform: rotate(180deg); }
+
+/* The horse-count slider on the Pricing page. */
+.mk-range { appearance: none; height: 6px; border-radius: 9999px; background: #E6E1D1; accent-color: #3D5A63; }
+.mk-range::-webkit-slider-thumb { appearance: none; width: 24px; height: 24px; border-radius: 9999px; background: #3D5A63; border: 3px solid #fff; box-shadow: 0 1px 4px rgb(0 0 0 / 0.25); cursor: pointer; }
+.mk-range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 9999px; background: #3D5A63; border: 3px solid #fff; box-shadow: 0 1px 4px rgb(0 0 0 / 0.25); cursor: pointer; }
+.mk-range:focus-visible { outline: 3px solid rgb(61 90 99 / 0.4); outline-offset: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .mk-fade-in, .mk-card, .mk-fill { animation: none; opacity: 1; }
+    .mk-draw { animation: none; stroke-dashoffset: 0; }
+    .mk-flow, .mk-pulse { animation: none; }
+    .mk-pulse { opacity: 0; }
+    .mk-moving { display: none; }
+    .js .mk-reveal { opacity: 1; transform: none; transition: none; }
+    .js .mk-bar { width: var(--w); transition: none; }
+    .js .mk-line { transform: none; transition: none; }
+}

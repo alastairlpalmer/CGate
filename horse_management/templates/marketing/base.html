@@ -6,13 +6,22 @@
     <title>{% block title %}Cgate: livery yard management{% endblock %}</title>
     <meta name="description" content="{% block description %}Cgate runs your livery yard from one place: horses, owners, invoices and health records.{% endblock %}">
     {# No app script bundle, htmx or Alpine on these pages: CSS and one small script only. #}
-    <link rel="stylesheet" href="{% static_v 'css/styles.css' %}">
+    <link rel="stylesheet" href="{% static_v 'css/marketing.css' %}">
     <link rel="preload" as="font" type="font/woff2" crossorigin href="{% static 'fonts/DMSans-Variable.woff2' %}">
     <link rel="preload" as="font" type="font/woff2" crossorigin href="{% static 'fonts/SourceSans3-Variable.woff2' %}">
+    <link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Cgate">
+    <meta property="og:title" content="{% block og_title %}Cgate: livery yard management{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Cgate runs your livery yard from one place: horses, owners, invoices and health records.{% endblock %}">
+    <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+    <meta name="twitter:card" content="summary">
     <meta name="theme-color" content="#3D5A63">
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/favicon-32.png' %}">
     <link rel="icon" type="image/png" sizes="16x16" href="{% static 'icons/favicon-16.png' %}">
     <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+    {# "js" turns on the scroll reveal (input.css .js .mk-reveal); without the script all shows at once. #}
+    <script>document.documentElement.classList.add('js');</script>
     <script defer src="{% static_v 'js/marketing.js' %}"></script>
 </head>
 <body class="font-body antialiased bg-white text-charcoal" data-marketing>

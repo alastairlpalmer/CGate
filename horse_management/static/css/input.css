@@ -33,6 +33,9 @@
 @import "tailwindcss" source(none);
 @config "../../tailwind.config.js";
 @source "../../templates";
+/* The public marketing pages have their own stylesheet (marketing.input.css),
+   so the app does not download their styles. */
+@source not "../../templates/marketing";
 /* Classes built at runtime, which the scan cannot see (was `safelist`) */
 @source inline("bg-info-blue text-info-blue border-l-info-blue bg-saddle text-saddle border-l-saddle bg-error-red text-error-red border-l-error-red bg-sand text-sand border-l-sand bg-sage bg-forest");
 
@@ -3367,3 +3370,4 @@ a.barn-cell.is-occupied:hover { @apply bg-sage-100; }
         color: var(--color-charcoal-light, #4A4A4A);
     }
 }
+

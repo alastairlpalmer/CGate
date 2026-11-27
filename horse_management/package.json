@@ -1,7 +1,7 @@
 {
   "private": true,
   "scripts": {
-    "build:css": "tailwindcss -i static/css/input.css -o static/css/styles.css --minify",
+    "build:css": "tailwindcss -i static/css/input.css -o static/css/styles.css --minify && tailwindcss -i static/css/marketing.input.css -o static/css/marketing.css --minify",
     "watch:css": "tailwindcss -i static/css/input.css -o static/css/styles.css --watch",
     "build:js": "node tools/build_js.mjs"
   },
