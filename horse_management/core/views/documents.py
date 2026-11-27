@@ -113,3 +113,23 @@ def document_restore(request, pk):
     document.restore()
     messages.success(request, f"Document “{document.title}” restored.")
     return _back_to(document.horse, document.owner)
+
+
+@login_required
+def document_open(request, pk):
+    """Open a document's file: a fresh link, made at the click.
+
+    The pages used to hold the file's signed bucket link, which lasts
+    MEDIA_S3_SIGNED_URL_TTL (15 minutes). On a page left open longer, a
+    click opened an "expired" error (pre-launch review). This address
+    checks access, then sends the browser to a link signed now.
+    """
+    document = get_object_or_404(Document, pk=pk)
+    if not has_feature_access(request.user, _document_feature(document.horse, document.owner), LEVEL_VIEW):
+        return deny(request)
+    if not document.file:
+        from django.http import Http404
+        raise Http404
+    response = redirect(document.file.url)
+    response['Cache-Control'] = 'no-store'
+    return response
