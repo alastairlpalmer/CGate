@@ -42,11 +42,11 @@
             <p class="mt-6 max-w-md text-lg text-sage">Stop moving between whiteboards, notebooks and spreadsheets. Record a job once, and Cgate does the rest.</p>
         </div>
         <ul class="border-t border-sand">
-            {% for key, title in yard_links %}
+            {% for key, icon, title in yard_links %}
             <li class="mk-reveal border-b border-sand" style="--d:{{ forloop.counter0 }}00ms">
                 <a href="{% url 'marketing:features' %}#{{ key }}" class="group flex items-center justify-between gap-4 py-6">
                     <span class="flex items-center gap-4">
-                        <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-parchment text-forest transition group-hover:bg-forest group-hover:text-white">{% include "marketing/_icon.html" with name=key %}</span>
+                        <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-parchment text-forest transition group-hover:bg-forest group-hover:text-white">{% include "marketing/_icon.html" with name=icon %}</span>
                         <span class="font-heading text-2xl text-forest">{{ title }}</span>
                     </span>
                     <span class="text-sage transition-transform group-hover:translate-x-1 group-hover:text-saddle">{% include "marketing/_icon.html" with name="arrow" %}</span>
@@ -82,7 +82,7 @@
         <div class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {% for feature in features %}
             <a href="{% url 'marketing:features' %}#{{ feature.key }}" class="mk-reveal group rounded-2xl border border-sand bg-white p-7 transition duration-300 hover:-translate-y-1 hover:border-forest/40 hover:shadow-xl hover:shadow-forest/10" style="--d:{{ forloop.counter0 }}00ms">
-                <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-parchment text-forest transition group-hover:bg-forest group-hover:text-white">{% include "marketing/_icon.html" with name=feature.key %}</span>
+                <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-parchment text-forest transition group-hover:bg-forest group-hover:text-white">{% include "marketing/_icon.html" with name=feature.icon %}</span>
                 <h3 class="mt-6 font-heading text-xl font-semibold text-forest">{{ feature.title }}</h3>
                 <p class="mt-2 leading-relaxed text-sage">{{ feature.line }}</p>
             </a>

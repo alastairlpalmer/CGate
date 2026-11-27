@@ -1,23 +1,76 @@
 {% extends "marketing/base.html" %}
 {% block title %}Pricing - Cgate{% endblock %}
 {% block og_title %}Pricing - Cgate{% endblock %}
-{% block description %}Cgate pricing: a price per horse, per month, for the modules your yard needs. Work out your price, and get {{ offer_percent }}% off your first {{ offer_months }} months.{% endblock %}
+{% block description %}Cgate pricing: one price per horse, per month. Core from £5, Pro £7. {{ offer_percent }}% off your first {{ offer_months }} months.{% endblock %}
 {% block content %}
-{% include "marketing/_page_intro.html" with eyebrow="Pricing" title="Pay for the horses and modules you use" intro="Choose the number of horses and the modules your yard needs. You see your price at once." %}
+{% include "marketing/_page_intro.html" with eyebrow="Pricing" title="One price per horse, per month" intro="Two plans, with onboarding included. All prices exclude VAT." %}
+
+{# ── The two plans ── #}
+<section class="bg-white" aria-label="Plans">
+    <div class="mx-auto grid max-w-5xl items-start gap-6 px-4 pt-16 sm:px-6 md:grid-cols-2 lg:px-8 lg:pt-20">
+        {% for plan in plans %}
+        <article class="mk-reveal relative flex flex-col rounded-3xl border bg-white p-8 transition duration-300 hover:shadow-xl hover:shadow-forest/10 {% if plan.recommended %}border-forest shadow-xl shadow-forest/10{% else %}border-sand{% endif %}" style="--d:{{ forloop.counter0 }}00ms" aria-labelledby="plan-{{ plan.key }}">
+            {% if plan.recommended %}<span class="absolute -top-3 left-8 rounded-full bg-forest px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white">Recommended</span>{% endif %}
+            <div class="flex items-baseline justify-between gap-4">
+                <h2 id="plan-{{ plan.key }}" class="font-heading text-3xl font-semibold text-forest">{{ plan.name }}</h2>
+                <span class="rounded-full bg-meadow/10 px-3 py-1 text-xs font-semibold text-meadow">Onboarding included</span>
+            </div>
+            <p class="mt-1 text-sage">{{ plan.for }}</p>
+            <p class="mt-6 flex items-baseline gap-2">
+                <span class="font-heading text-6xl tracking-[-0.02em] text-charcoal">{{ plan.price_label }}</span>
+                <span class="text-sage">per horse, per month</span>
+            </p>
+            <a href="?plan={{ plan.key }}#calculator" data-choose-plan="{{ plan.key }}" class="mt-6 inline-flex h-12 items-center justify-center rounded-full px-6 font-semibold transition {% if plan.recommended %}bg-saddle text-white hover:bg-saddle-dark{% else %}border border-forest text-forest hover:bg-forest hover:text-white{% endif %}">Work out my price</a>
+
+            <div class="mt-8 space-y-6 border-t border-sand pt-6">
+                {% if plan.includes %}<p class="text-sm font-semibold uppercase tracking-wider text-sage">{{ plan.includes }}</p>{% endif %}
+                {% for group in plan.groups %}
+                <div>
+                    <p class="flex items-center gap-2 font-heading font-semibold text-forest">{% include "marketing/_icon.html" with name=group.icon cls="h-5 w-5" %}{{ group.title }}</p>
+                    <ul class="mt-2 space-y-1.5 pl-7">
+                        {% for point in group.points %}
+                        <li class="flex gap-2 text-sm text-charcoal"><span class="mt-0.5 text-meadow">{% include "marketing/_icon.html" with name="check" cls="h-4 w-4" %}</span>{{ point }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endfor %}
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
 
 {% comment %}
 The calculator. The server fills in the quote, so the page is right without
 the script; js/marketing.js does the same sum as marketing.content.quote().
 {% endcomment %}
-<section class="bg-white" aria-labelledby="calc-title">
-    <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
-        <h2 id="calc-title" class="sr-only">Work out your price</h2>
-        <form class="grid items-start gap-8 lg:grid-cols-[1.35fr_1fr]" data-calculator data-months="{{ offer_months }}" data-offer="{{ offer_percent }}" data-partner="{{ partner_percent }}" action="{% url 'marketing:contact' %}" method="get">
-            {# ── Inputs ── #}
+<section id="calculator" class="scroll-mt-20 bg-white" aria-labelledby="calc-title">
+    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+        <div class="mk-reveal mx-auto max-w-2xl text-center">
+            <p class="text-sm font-semibold uppercase tracking-[0.14em] text-saddle">Your price</p>
+            <h2 id="calc-title" class="mt-3 font-heading text-4xl font-normal tracking-[-0.02em] text-forest">Work out your price</h2>
+        </div>
+        <form class="mt-12 grid items-start gap-8 lg:grid-cols-[1.35fr_1fr]" data-calculator data-months="{{ offer_months }}" data-offer="{{ offer_percent }}" data-partner="{{ partner_percent }}" action="{% url 'marketing:contact' %}" method="get">
             <div class="space-y-6" data-calc-inputs>
-                <div class="mk-reveal rounded-3xl border border-sand bg-white p-6 sm:p-8">
+                {# Plan #}
+                <fieldset class="mk-reveal rounded-3xl border border-sand bg-white p-6 sm:p-8">
+                    <legend class="sr-only">Plan</legend>
+                    <p class="font-heading text-xl font-semibold text-charcoal" aria-hidden="true">1. Choose a plan</p>
+                    <div class="mt-5 grid grid-cols-2 gap-3">
+                        {% for plan in plans %}
+                        <label class="cursor-pointer rounded-2xl border border-sand p-4 transition hover:border-forest/50 has-[:checked]:border-forest has-[:checked]:bg-parchment/60 has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-forest/30">
+                            <input type="radio" name="plan" value="{{ plan.key }}" data-plan data-price="{{ plan.price }}" data-name="{{ plan.name }}" {% if plan.key == quote.plan.key %}checked{% endif %} class="sr-only">
+                            <span class="block font-heading text-lg font-semibold text-forest">{{ plan.name }}</span>
+                            <span class="block text-sm text-sage">{{ plan.price_label }} per horse</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
+
+                {# Horses #}
+                <div class="mk-reveal rounded-3xl border border-sand bg-white p-6 sm:p-8" style="--d:100ms">
                     <div class="flex flex-wrap items-center justify-between gap-4">
-                        <label for="calc-horses" class="font-heading text-xl font-semibold text-charcoal">How many horses?</label>
+                        <label for="calc-horses" class="font-heading text-xl font-semibold text-charcoal">2. How many horses?</label>
                         <div class="flex items-center rounded-full border border-sand">
                             <button type="button" data-step="-1" class="flex h-11 w-11 items-center justify-center rounded-full text-xl text-forest transition hover:bg-parchment" aria-label="One horse fewer">&minus;</button>
                             <input id="calc-horses" name="horses" type="number" inputmode="numeric" min="1" max="2000" value="{{ quote.horses }}" data-horses
@@ -29,31 +82,23 @@ the script; js/marketing.js does the same sum as marketing.content.quote().
                     <div class="mt-2 flex justify-between text-xs text-sage"><span>1</span><span>{{ large_yard }}+</span></div>
                 </div>
 
-                <fieldset class="mk-reveal rounded-3xl border border-sand bg-white p-6 sm:p-8" style="--d:100ms">
-                    <legend class="sr-only">Modules</legend>
-                    <p class="font-heading text-xl font-semibold text-charcoal" aria-hidden="true">Modules</p>
-                    <p class="mt-1 text-sage">Prices are per horse, per month.</p>
-                    <ul class="mt-6 space-y-3">
-                        {% for module in modules %}
+                {# Add-ons #}
+                <fieldset class="mk-reveal rounded-3xl border border-sand bg-white p-6 sm:p-8" style="--d:200ms">
+                    <legend class="sr-only">Add-ons</legend>
+                    <p class="font-heading text-xl font-semibold text-charcoal" aria-hidden="true">3. Add-ons <span class="text-base font-normal text-sage">(optional)</span></p>
+                    <p class="mt-1 text-sage">Help us build these. Add one for {{ partner_percent }}% off your first {{ offer_months }} months.</p>
+                    <ul class="mt-5 space-y-3">
+                        {% for addon in addons %}
                         <li>
-                            <label class="flex cursor-pointer items-center gap-3 rounded-2xl border border-sand p-4 sm:gap-4 transition hover:border-forest/50 has-[:checked]:border-forest has-[:checked]:bg-parchment/60 {% if module.required %}cursor-default{% endif %}">
-                                <span class="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-parchment text-forest sm:flex">{% include "marketing/_icon.html" with name=module.features.0 %}</span>
+                            <label class="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-sand p-4 transition hover:border-saddle/60 has-[:checked]:border-solid has-[:checked]:border-saddle has-[:checked]:bg-parchment/60 sm:gap-4">
+                                <span class="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-parchment text-saddle sm:flex">{% include "marketing/_icon.html" with name=addon.icon %}</span>
                                 <span class="min-w-0 flex-1">
-                                    <span class="flex flex-wrap items-center gap-2 font-semibold text-charcoal">
-                                        {{ module.name }}
-                                        {% if module.required %}<span class="rounded-full bg-forest/10 px-2 py-0.5 text-xs font-semibold text-forest">Included</span>{% endif %}
-                                        {% if module.soon %}<span class="rounded-full bg-saddle/10 px-2 py-0.5 text-xs font-semibold text-saddle">Coming soon</span>{% endif %}
-                                    </span>
-                                    <span class="mt-0.5 block text-sm text-sage">{{ module.line }}</span>
+                                    <span class="flex flex-wrap items-center gap-2 font-semibold text-charcoal">{{ addon.name }}<span class="rounded-full bg-saddle/10 px-2 py-0.5 text-xs font-semibold text-saddle">{{ addon.status }}</span></span>
+                                    <span class="mt-0.5 block text-sm text-sage">{{ addon.line }}</span>
                                 </span>
-                                <span class="shrink-0 text-right">
-                                    <span class="block font-heading font-semibold text-charcoal">{% if not module.required %}+{% endif %}{{ module.price_label }}</span>
-                                    <span class="block text-xs text-sage">per horse</span>
-                                </span>
-                                <input type="checkbox" name="module" value="{{ module.key }}" data-module data-price="{{ module.price }}" {% if module.soon %}data-soon="{{ module.name }}"{% endif %}
-                                       {% if module.required %}checked disabled{% elif module.key in quote.keys %}checked{% endif %}
-                                       class="peer sr-only">
-                                <span class="relative h-7 w-12 shrink-0 rounded-full bg-sand transition peer-checked:bg-forest peer-focus-visible:ring-4 peer-focus-visible:ring-forest/30 after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5 {% if module.required %}opacity-60{% endif %}" aria-hidden="true"></span>
+                                <span class="shrink-0 text-right"><span class="block font-heading font-semibold text-charcoal">+{{ addon.price_label }}</span><span class="block text-xs text-sage">per horse</span></span>
+                                <input type="checkbox" name="addon" value="{{ addon.key }}" data-addon data-price="{{ addon.price }}" data-name="{{ addon.name }}" {% if addon.key in quote.addon_keys %}checked{% endif %} class="peer sr-only">
+                                <span class="relative h-7 w-12 shrink-0 rounded-full bg-sand transition peer-checked:bg-saddle peer-focus-visible:ring-4 peer-focus-visible:ring-saddle/30 after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5" aria-hidden="true"></span>
                             </label>
                         </li>
                         {% endfor %}
@@ -61,12 +106,12 @@ the script; js/marketing.js does the same sum as marketing.content.quote().
                 </fieldset>
             </div>
 
-            {# ── Result and offer ── #}
+            {# Result and offer #}
             <div id="calc-result" class="mk-reveal scroll-mt-24 lg:sticky lg:top-28" style="--d:200ms" aria-live="polite">
                 <div class="overflow-hidden rounded-3xl bg-forest text-white shadow-2xl shadow-forest/20">
                     <div class="relative p-6 sm:p-8">
                         <div class="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-sage-light/25 blur-3xl" aria-hidden="true"></div>
-                        <p class="relative text-sm font-semibold uppercase tracking-[0.14em] text-sand">Your price</p>
+                        <p class="relative text-sm font-semibold uppercase tracking-[0.14em] text-sand"><span data-out="plan">{{ quote.plan.name }}</span> plan</p>
                         <p class="relative mt-3 flex items-baseline gap-2">
                             <span class="font-heading text-5xl tracking-[-0.02em] sm:text-6xl" data-out="monthly">{{ quote.monthly_label }}</span>
                             <span class="text-white/75">a month + VAT</span>
@@ -75,12 +120,12 @@ the script; js/marketing.js does the same sum as marketing.content.quote().
 
                         <div class="relative mt-6 rounded-2xl bg-white/10 p-5 ring-1 ring-white/15">
                             <div data-offer="standard" {% if quote.partner %}hidden{% endif %}>
-                                <p class="flex items-center gap-2 font-heading text-lg font-semibold"><span class="rounded-full bg-saddle px-2.5 py-0.5 text-sm">{{ offer_percent }}% off</span> Sign-up offer</p>
+                                <p class="flex items-center gap-2 font-heading text-lg font-semibold"><span class="rounded-full bg-saddle px-2.5 py-0.5 text-sm">{{ offer_percent }}% off</span><span>Sign-up offer</span></p>
                                 <p class="mt-2 text-white/80">Your first {{ offer_months }} months at <strong class="text-white" data-out="offer-monthly">{{ quote.offer_label }}</strong> a month.</p>
                             </div>
                             <div data-offer="partner" {% if not quote.partner %}hidden{% endif %}>
-                                <p class="flex items-center gap-2 font-heading text-lg font-semibold"><span class="rounded-full bg-saddle px-2.5 py-0.5 text-sm">{{ partner_percent }}% off</span><span>Help us build <span data-out="soon">{{ quote.partner|join:", " }}</span></span></p>
-                                <p class="mt-2 text-white/80"><span data-out="soon-again">{{ quote.partner|join:", " }}</span> is coming soon. Shape it with us, and get your first {{ offer_months }} months at <strong class="text-white" data-out="offer-monthly">{{ quote.offer_label }}</strong> a month.</p>
+                                <p class="flex items-center gap-2 font-heading text-lg font-semibold"><span class="rounded-full bg-saddle px-2.5 py-0.5 text-sm">{{ partner_percent }}% off</span><span>Help us build <span data-out="soon">{{ quote.partner|join:" and " }}</span></span></p>
+                                <p class="mt-2 text-white/80">Shape the new module with us, and get your first {{ offer_months }} months at <strong class="text-white" data-out="offer-monthly">{{ quote.offer_label }}</strong> a month.</p>
                             </div>
                             <p class="mt-3 text-sm text-white/70">You save <strong class="text-white" data-out="saving">{{ quote.saving_label }}</strong> over {{ offer_months }} months.</p>
                         </div>
@@ -91,10 +136,11 @@ the script; js/marketing.js does the same sum as marketing.content.quote().
                         <button type="submit" class="group relative mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-saddle px-6 font-semibold text-white shadow-lg shadow-black/20 transition hover:bg-saddle-dark">
                             Claim this offer {% include "marketing/_icon.html" with name="arrow" cls="h-4 w-4 transition-transform group-hover:translate-x-1" %}
                         </button>
-                        <p class="relative mt-3 text-center text-xs text-white/60">No card needed. We contact you to set up your yard.</p>
+                        <p class="relative mt-3 text-center text-xs text-white/60">No card needed. Onboarding included.</p>
                     </div>
                 </div>
             </div>
+
             <a href="#calc-result" data-calc-bar hidden class="fixed inset-x-3 bottom-3 z-40 flex items-center justify-between gap-3 rounded-2xl bg-forest px-5 py-3 text-white shadow-2xl shadow-black/30 lg:hidden">
                 <span><span class="font-heading text-xl font-semibold" data-out="monthly">{{ quote.monthly_label }}</span> <span class="text-sm text-white/75">a month + VAT</span></span>
                 <span class="rounded-full bg-saddle px-3 py-1.5 text-sm font-semibold"><span data-out="percent">{{ quote.percent }}</span>% off offer</span>
@@ -103,41 +149,12 @@ the script; js/marketing.js does the same sum as marketing.content.quote().
     </div>
 </section>
 
-{# ── What each module includes ── #}
-<section class="bg-parchment/60" aria-labelledby="modules-title">
-    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
-        <div class="mk-reveal max-w-2xl">
-            <p class="text-sm font-semibold uppercase tracking-[0.14em] text-saddle">Modules</p>
-            <h2 id="modules-title" class="mt-3 font-heading text-4xl font-normal tracking-[-0.02em] text-forest">What each module includes</h2>
-        </div>
-        <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {% for module in modules %}
-            <div class="mk-reveal rounded-3xl border border-sand bg-white p-7" style="--d:{{ forloop.counter0 }}00ms">
-                <div class="flex items-start justify-between gap-3">
-                    <h3 class="font-heading text-xl font-semibold text-forest">{{ module.name }}</h3>
-                    <span class="shrink-0 font-heading font-semibold text-charcoal">{% if not module.required %}+{% endif %}{{ module.price_label }}</span>
-                </div>
-                {% if module.soon %}<p class="mt-1 text-sm font-semibold text-saddle">Coming soon</p>{% elif module.required %}<p class="mt-1 text-sm font-semibold text-forest">In every yard</p>{% endif %}
-                <ul class="mt-5 space-y-3">
-                    {% for feature in module.feature_list %}
-                    <li class="flex gap-3">
-                        <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-meadow/15 text-meadow">{% include "marketing/_icon.html" with name="check" cls="h-3.5 w-3.5" %}</span>
-                        <a href="{% url 'marketing:features' %}#{{ feature.key }}" class="text-charcoal hover:text-forest hover:underline">{{ feature.title }}</a>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endfor %}
-        </div>
-        <p class="mk-reveal mt-8 text-sm text-sage">All prices are per horse, per month, and exclude VAT. More than {{ large_yard }} horses, or more than one yard? <a href="{% url 'marketing:contact' %}?topic=pricing" class="font-semibold text-forest underline">Ask us for a price</a>.</p>
-    </div>
-</section>
-
-<section class="bg-white" aria-labelledby="faq-title">
+<section class="bg-parchment/60" aria-labelledby="faq-title">
     <div class="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-3 lg:px-8">
         <div class="mk-reveal">
             <p class="text-sm font-semibold uppercase tracking-[0.14em] text-saddle">FAQ</p>
             <h2 id="faq-title" class="mt-3 font-heading text-4xl font-normal tracking-[-0.02em] text-forest">Questions</h2>
+            <p class="mt-4 text-sage">More than {{ large_yard }} horses, or more than one yard? <a href="{% url 'marketing:contact' %}?topic=pricing" class="font-semibold text-forest underline">Ask us for a price</a>.</p>
         </div>
         <div class="border-t border-sand lg:col-span-2">
             {% for question, answer in faq %}

@@ -72,21 +72,26 @@ def _page(template, name, extra=None):
     return view
 
 
-features = _page('marketing/features.html', 'features', {'features': content.FEATURES, 'modules': content.MODULES})
+features = _page('marketing/features.html', 'features', {
+    'plans': content.PLANS, 'addons': content.ADDONS,
+    'partner_percent': content.PARTNER_PERCENT, 'offer_months': content.OFFER_MONTHS,
+})
 @require_GET
 def pricing(request):
-    """The Pricing page and its calculator. ``?horses=22&modules=a,b`` opens it with that quote."""
+    """The Pricing page and its calculator. ``?plan=pro&horses=22&addon=training`` opens it with that quote."""
     if not site_enabled():
         raise Http404
-    keys = request.GET.getlist('module') or request.GET.get('modules', '').split(',')
+    addons = request.GET.getlist('addon') or [key for key in request.GET.get('addons', '').split(',') if key]
     chosen = content.quote(request.GET.get('horses') or content.EXAMPLE_HORSES,
-                           [key for key in keys if key] if 'horses' in request.GET else content.DEFAULT_MODULES)
+                           request.GET.get('plan') or content.DEFAULT_PLAN, addons)
     return render(request, 'marketing/pricing.html', {
-        'page': 'pricing', 'modules': content.MODULES, 'quote': chosen,
+        'page': 'pricing', 'plans': content.PLANS, 'addons': content.ADDONS, 'quote': chosen,
         'faq': content.PRICING_FAQ, 'large_yard': content.LARGE_YARD_HORSES,
         'offer_months': content.OFFER_MONTHS, 'offer_percent': content.OFFER_PERCENT,
         'partner_percent': content.PARTNER_PERCENT,
     })
+
+
 about = _page('marketing/about.html', 'about', {'beliefs': content.BELIEFS})
 
 
@@ -108,9 +113,11 @@ def contact(request):
     if request.GET.get('topic') in ContactMessage.Topic.values:
         initial['topic'] = request.GET['topic']
     if request.GET.get('horses'):
-        # From the Pricing page form (module=…&module=…) or a link (modules=a,b).
-        modules = ','.join(request.GET.getlist('module')) or request.GET.get('modules', '')
-        initial['quote_spec'] = urlencode({'horses': request.GET['horses'], 'modules': modules})
+        # From the Pricing page form (plan=…&addon=…&addon=…) or a link (addons=a,b).
+        addons = ','.join(request.GET.getlist('addon')) or request.GET.get('addons', '')
+        initial['quote_spec'] = urlencode({
+            'horses': request.GET['horses'], 'plan': request.GET.get('plan', content.DEFAULT_PLAN), 'addons': addons,
+        })
         chosen = content.quote_from_spec(initial['quote_spec'])
         if chosen:
             initial['horses'] = chosen['horses']
