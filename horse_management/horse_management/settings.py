@@ -107,6 +107,7 @@ INSTALLED_APPS = [
     'pedigree.apps.PedigreeConfig',
     'notifications.apps.NotificationsConfig',
     'xero_integration.apps.XeroIntegrationConfig',
+    'marketing.apps.MarketingConfig',
 ]
 
 # Only add celery apps when not on Vercel (no worker process there)
@@ -188,6 +189,7 @@ TEMPLATES = [
                 'core.context_processors.google_sign_in',
                 'core.context_processors.page_frame',
                 'core.user_photos.context',
+                'marketing.context_processors.marketing',
             ],
             'loaders': [
                 ('django.template.loaders.cached.Loader', [
@@ -846,6 +848,11 @@ GOOGLE_SIGN_IN_SKIPS_TWO_STEP = env.bool('GOOGLE_SIGN_IN_SKIPS_TWO_STEP', defaul
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 LOGIN_URL = '/accounts/login/'
+
+# The public marketing pages at / for a visitor who is not signed in
+# (marketing/views.py). Off: / is the dashboard or the sign-in page, as
+# before, and /features/, /pricing/, /about/ and /contact/ are not found.
+MARKETING_SITE_ENABLED = env.bool('MARKETING_SITE_ENABLED', default=False)
 
 # Where the Django admin is mounted.
 # ----------------------------------

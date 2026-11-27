@@ -103,6 +103,7 @@ urlpatterns = [
     path('accounts/google/disconnect/', google_views.google_disconnect, name='google_disconnect'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('', include('core.urls')),
+    path('', include('marketing.urls')),
     path('invoicing/', include('invoicing.urls')),
     path('health/', include('health.urls')),
     # The farrier's own page (docs/FARRIER_PAGE_PLAN.md). The prefix must

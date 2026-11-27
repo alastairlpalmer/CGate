@@ -197,7 +197,9 @@ class ManifestTests(TestCase):
 
     def test_it_has_an_id_so_a_new_start_address_is_still_the_same_app(self):
         self.assertEqual(self.manifest['id'], '/')
-        self.assertEqual(self.manifest['start_url'], '/')
+        # ?source=app: a signed-out phone app opens the sign-in page, not
+        # the marketing Home page (marketing.views.root).
+        self.assertEqual(self.manifest['start_url'], '/?source=app')
         self.assertEqual(self.manifest['scope'], '/')
         self.assertEqual(self.manifest['display'], 'standalone')
 

@@ -1,0 +1,25 @@
+{% now "Y" as year %}
+<footer class="bg-forest text-white">
+    <div class="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-4 lg:px-8">
+        <div class="md:col-span-2">
+            <a href="/" class="inline-flex items-center gap-2 font-heading text-xl font-bold">
+                {% include "marketing/_logo.html" with cls="h-8 w-8" %}
+                <span>Cgate</span>
+            </a>
+            <p class="mt-4 max-w-sm text-white/75">Livery yard management: horses, owners, invoices and health records in one place.</p>
+        </div>
+        <nav aria-label="Site" class="flex flex-col gap-2">
+            <a href="{% url 'marketing:features' %}" class="hover:underline">Features</a>
+            <a href="{% url 'marketing:pricing' %}" class="hover:underline">Pricing</a>
+            <a href="{% url 'marketing:about' %}" class="hover:underline">About</a>
+            <a href="{% url 'marketing:contact' %}" class="hover:underline">Contact</a>
+        </nav>
+        <nav aria-label="Account and legal" class="flex flex-col gap-2">
+            <a href="{% url 'login' %}" class="hover:underline">Sign in</a>
+            <a href="{% url 'privacy_policy' %}" class="hover:underline">Privacy</a>
+        </nav>
+    </div>
+    <div class="border-t border-white/15">
+        <p class="mx-auto max-w-7xl px-4 py-6 text-sm text-white/75 sm:px-6 lg:px-8">&copy; {{ year }} Cgate</p>
+    </div>
+</footer>
