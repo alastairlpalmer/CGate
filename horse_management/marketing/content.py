@@ -2,12 +2,12 @@
 
 Prices: per horse, per month (docs/market/vet-app-market-model.xlsx,
 Assumptions section 9, uses £10 per horse; the owner asked for about £5
-to £10, rising with the modules a yard uses).
+to £10, rising with the modules a yard uses). All prices exclude VAT.
 """
 
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
-# Each feature has an anchor on the Features page (#key) and is in one plan.
+# Each feature has an anchor on the Features page (#key) and is in one module.
 FEATURES = [
     {
         'key': 'horses', 'title': 'Horses and owners',
@@ -119,50 +119,126 @@ _BY_KEY = {feature['key']: feature for feature in FEATURES}
 # The six cards on the Home page.
 HOME_FEATURES = [_BY_KEY[key] for key in ('horses', 'health', 'invoicing', 'xero', 'phone', 'farrier')]
 
-PLANS = [
+EXAMPLE_HORSES = 20
+# Over this many horses, or more than one yard: a price to suit.
+LARGE_YARD_HORSES = 60
+
+# Pricing is per horse, per month, and excludes VAT. Yard CRM is the base;
+# every other module adds to the price per horse. All modules: £10.
+MODULES = [
     {
-        'key': 'essentials', 'name': 'Essentials', 'price': Decimal('5'),
-        'for': 'Run the yard day to day',
-        'features': ['horses', 'locations', 'health', 'phone', 'security'],
+        'key': 'core', 'name': 'Yard CRM', 'price': Decimal('5'), 'required': True,
+        'line': 'Horses, owners, health records, feed and the phone app.',
+        'features': ['horses', 'health', 'phone', 'feed', 'security'],
     },
     {
-        'key': 'professional', 'name': 'Professional', 'price': Decimal('7.50'),
-        'for': 'Run the yard and its money',
-        'features': ['invoicing', 'xero', 'farrier', 'feed'],
-        'includes': 'Everything in Essentials, plus:',
-        'popular': True,
+        'key': 'fields', 'name': 'Field management', 'price': Decimal('1'),
+        'line': 'Stables, fields, turnout and maps.',
+        'features': ['locations'],
     },
     {
-        'key': 'complete', 'name': 'Complete', 'price': Decimal('10'),
-        'for': 'For competition yards and studs',
-        'features': ['training', 'breeding', 'cvet'],
-        'includes': 'Everything in Professional, plus:',
+        'key': 'invoicing', 'name': 'Invoicing and Xero', 'price': Decimal('2'),
+        'line': 'Monthly livery invoices, payments and Xero.',
+        'features': ['invoicing', 'xero'],
+    },
+    {
+        'key': 'providers', 'name': 'Farrier and vet', 'price': Decimal('1'),
+        'line': 'The farrier visit page and C-vet, the vet\'s app.',
+        'features': ['farrier', 'cvet'],
+    },
+    {
+        'key': 'training', 'name': 'Training', 'price': Decimal('0.50'),
+        'line': 'Plan and record the work for each horse.',
+        'features': ['training'],
+    },
+    {
+        'key': 'breeding', 'name': 'Breeding', 'price': Decimal('0.50'), 'soon': True,
+        'line': 'Coverings, foaling and pedigree, for studs.',
+        'features': ['breeding'],
     },
 ]
+_MODULES = {module['key']: module for module in MODULES}
+# Ticked when the Pricing page opens.
+DEFAULT_MODULES = ('core', 'fields', 'invoicing')
 
-EXAMPLE_HORSES = 20
+# Sign-up offers, for the first OFFER_MONTHS months. A yard that picks a
+# module that is coming soon helps us build it, and gets the larger one.
+OFFER_MONTHS = 6
+OFFER_PERCENT = 25
+PARTNER_PERCENT = 50
 
 
 def money(amount):
     """£5, £7.50, £1,200: no pence when the amount is whole (marketing prices)."""
+    amount = Decimal(amount).quantize(Decimal('0.01'))
     return f'£{amount:,.0f}' if amount == amount.to_integral_value() else f'£{amount:,.2f}'
 
 
-for _plan in PLANS:
-    _plan['price_label'] = money(_plan['price'])
-    _plan['example'] = money(_plan['price'] * EXAMPLE_HORSES)
-    _plan['feature_list'] = [_BY_KEY[key] for key in _plan['features']]
-    for _key in _plan['features']:
-        _BY_KEY[_key]['plan'] = _plan['name']
+for _module in MODULES:
+    _module['price_label'] = money(_module['price'])
+    _module['feature_list'] = [_BY_KEY[key] for key in _module['features']]
+    for _key in _module['features']:
+        _BY_KEY[_key]['module'] = _module
 
-# Over this many horses, or more than one yard: a price to suit.
-LARGE_YARD_HORSES = 60
+
+def quote(horses, keys):
+    """The monthly price for ``horses`` with the modules in ``keys`` (Yard CRM always).
+
+    The Pricing page's script (js/marketing.js) does the same sum; the
+    server does it again for the quote sent with a Contact message.
+    """
+    try:
+        horses = max(1, min(int(horses), 2000))
+    except (TypeError, ValueError):
+        horses = EXAMPLE_HORSES
+    chosen = [module for module in MODULES if module.get('required') or module['key'] in set(keys)]
+    per_horse = sum(module['price'] for module in chosen)
+    monthly = per_horse * horses
+    soon = [module['name'] for module in chosen if module.get('soon')]
+    percent = PARTNER_PERCENT if soon else OFFER_PERCENT
+    offer_monthly = (monthly * (100 - percent) / 100).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    saving = (monthly - offer_monthly) * OFFER_MONTHS
+    return {
+        'monthly_label': money(monthly), 'per_horse_label': money(per_horse),
+        'offer_label': money(offer_monthly), 'saving_label': money(saving),
+        'horses': horses, 'modules': chosen, 'keys': [module['key'] for module in chosen],
+        'per_horse': per_horse, 'monthly': monthly, 'percent': percent, 'partner': soon,
+        'offer_monthly': offer_monthly, 'saving': saving,
+        'large': horses >= LARGE_YARD_HORSES,
+    }
+
+
+def quote_from_spec(spec):
+    """A quote from "horses=22&modules=fields,invoicing" (the Contact link), or None."""
+    from urllib.parse import parse_qs
+
+    values = parse_qs(spec or '')
+    if 'horses' not in values:
+        return None
+    keys = [key for key in (values.get('modules') or [''])[0].split(',') if key in _MODULES]
+    return quote(values['horses'][0], keys)
+
+
+def quote_summary(q):
+    """One line for the team's email and the admin."""
+    names = ', '.join(module['name'] for module in q['modules'])
+    offer = f"{q['percent']}% off for {OFFER_MONTHS} months ({money(q['offer_monthly'])} a month)"
+    if q['partner']:
+        offer += f" as a build partner for {', '.join(q['partner'])}"
+    return (f"{q['horses']} horses · {names} · {money(q['monthly'])} a month + VAT "
+            f"({money(q['per_horse'])} per horse) · Offer: {offer}")
+
 
 PRICING_FAQ = [
     ('How do you count horses?',
      'We count the horses at your yard each month. A horse that leaves stops counting the next month.'),
-    ('Can I change plan?',
-     'Yes. Move up or down at any time. The new price starts from your next monthly bill.'),
+    ('Can I change my modules?',
+     'Yes. Add or remove modules at any time. The new price starts from your next monthly bill.'),
+    ('Do the prices include VAT?',
+     'No. All prices exclude VAT.'),
+    ('How does the sign-up offer work?',
+     f'Your first {OFFER_MONTHS} months are {OFFER_PERCENT}% off. If you choose a module that is coming soon, '
+     f'you help us build it: your first {OFFER_MONTHS} months are {PARTNER_PERCENT}% off instead.'),
     ('Is there a contract?',
      'No long contract. You pay month by month.'),
     ('Can I take my data with me?',

@@ -9,6 +9,9 @@ INPUT = ('block w-full rounded-lg border border-sand bg-white px-4 py-3 text-bas
 class ContactForm(forms.ModelForm):
     # A field people never see. A bot that fills every field fills this one.
     website = forms.CharField(required=False, label='Leave this empty')
+    # "horses=22&modules=fields,invoicing" from the Pricing page. The price
+    # is worked out again from it (content.quote_from_spec), never trusted.
+    quote_spec = forms.CharField(required=False, max_length=200, widget=forms.HiddenInput)
     consent = forms.BooleanField(
         label='You can contact me about this message.',
         error_messages={'required': 'Tick this box, so we can reply to you.'},
@@ -32,7 +35,7 @@ class ContactForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
-            if name in ('topic', 'consent'):
+            if name in ('topic', 'consent', 'quote_spec'):
                 continue
             field.widget.attrs.setdefault('class', INPUT)
         self.fields['website'].widget.attrs.update({'tabindex': '-1', 'autocomplete': 'off'})
