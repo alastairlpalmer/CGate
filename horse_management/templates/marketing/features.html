@@ -1,7 +1,36 @@
 {% extends "marketing/base.html" %}
 {% block title %}Features - Cgate{% endblock %}
+{% block description %}Horses, owners, invoicing and Xero, health records, farrier and vet apps: everything a livery yard needs in Cgate.{% endblock %}
 {% block content %}
 {% include "marketing/_page_intro.html" with title="Everything a livery yard needs, in one app." intro="Horses, owners, invoicing, health records, vets and farriers. Built for the yard and the office." %}
-{% include "marketing/_coming.html" %}
+
+<nav aria-label="Features on this page" class="border-b border-sand bg-white">
+    <ul class="mx-auto flex max-w-7xl flex-wrap gap-x-6 gap-y-2 px-4 py-5 text-sm font-medium text-sage sm:px-6 lg:px-8">
+        {% for feature in features %}<li><a href="#{{ feature.key }}" class="hover:text-forest hover:underline">{{ feature.title }}</a></li>{% endfor %}
+    </ul>
+</nav>
+
+<div class="bg-white">
+    {% for feature in features %}
+    <section id="{{ feature.key }}" class="scroll-mt-24 border-b border-sand" aria-labelledby="{{ feature.key }}-title">
+        <div class="mx-auto grid max-w-7xl gap-6 px-4 py-14 sm:px-6 md:grid-cols-2 md:gap-12 lg:px-8 lg:py-20">
+            <div>
+                <p class="text-sm font-semibold uppercase tracking-wider text-saddle">{{ feature.plan }} plan</p>
+                <h2 id="{{ feature.key }}-title" class="mt-2 font-heading text-3xl font-normal tracking-tight text-forest sm:text-4xl">{{ feature.title }}</h2>
+                <p class="mt-4 text-lg text-sage">{{ feature.line }}</p>
+            </div>
+            <ul class="space-y-4 self-center">
+                {% for point in feature.points %}
+                <li class="flex gap-3 text-lg text-charcoal">
+                    <svg class="mt-1 h-5 w-5 shrink-0 text-meadow" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+                    <span>{{ point }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </section>
+    {% endfor %}
+</div>
+
 {% include "marketing/_cta.html" %}
 {% endblock %}

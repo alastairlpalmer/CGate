@@ -853,6 +853,10 @@ LOGIN_URL = '/accounts/login/'
 # (marketing/views.py). Off: / is the dashboard or the sign-in page, as
 # before, and /features/, /pricing/, /about/ and /contact/ are not found.
 MARKETING_SITE_ENABLED = env.bool('MARKETING_SITE_ENABLED', default=False)
+# Where messages from the public Contact page are emailed (comma-separated).
+# Every message is also saved, and listed in the admin under Marketing site.
+MARKETING_CONTACT_EMAIL = env('MARKETING_CONTACT_EMAIL', default='')
+MARKETING_CONTACT_LIMIT_PER_HOUR = env.int('MARKETING_CONTACT_LIMIT_PER_HOUR', default=5)
 
 # Where the Django admin is mounted.
 # ----------------------------------

@@ -33,5 +33,55 @@
     </div>
 </section>
 
+<section class="bg-parchment" aria-labelledby="features-title">
+    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <h2 id="features-title" class="max-w-2xl font-heading text-4xl font-normal leading-tight tracking-tight text-forest sm:text-5xl">Less paperwork. Fewer missed dates. Invoices that add up.</h2>
+        <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {% for feature in features %}
+            <a href="{% url 'marketing:features' %}#{{ feature.key }}" class="group rounded-2xl bg-white p-6 shadow-sm ring-1 ring-sand hover:ring-forest">
+                <h3 class="font-heading text-xl font-semibold text-forest group-hover:underline">{{ feature.title }}</h3>
+                <p class="mt-2 text-sage">{{ feature.line }}</p>
+            </a>
+            {% endfor %}
+        </div>
+        <a href="{% url 'marketing:features' %}" class="mt-10 inline-flex font-semibold text-forest hover:underline">See all features <span aria-hidden="true">&nbsp;&rarr;</span></a>
+    </div>
+</section>
+
+<section class="bg-white" aria-labelledby="how-title">
+    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <h2 id="how-title" class="font-heading text-4xl font-normal tracking-tight text-forest sm:text-5xl">How it works</h2>
+        <ol class="mt-12 grid gap-10 md:grid-cols-3">
+            <li class="border-t-2 border-forest pt-6">
+                <span class="font-heading text-sm font-semibold text-saddle">Step 1</span>
+                <h3 class="mt-2 font-heading text-2xl text-forest">Add your horses and owners</h3>
+                <p class="mt-2 text-sage">We help you bring them in from your spreadsheets.</p>
+            </li>
+            <li class="border-t-2 border-forest pt-6">
+                <span class="font-heading text-sm font-semibold text-saddle">Step 2</span>
+                <h3 class="mt-2 font-heading text-2xl text-forest">Record the day</h3>
+                <p class="mt-2 text-sage">Moves, health jobs, visits and extras, on a phone in the yard.</p>
+            </li>
+            <li class="border-t-2 border-forest pt-6">
+                <span class="font-heading text-sm font-semibold text-saddle">Step 3</span>
+                <h3 class="mt-2 font-heading text-2xl text-forest">Invoices go out each month</h3>
+                <p class="mt-2 text-sage">Made from what you recorded, and sent to owners and to Xero.</p>
+            </li>
+        </ol>
+    </div>
+</section>
+
+<section class="bg-forest text-white" aria-labelledby="who-title">
+    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <h2 id="who-title" class="font-heading text-4xl font-normal tracking-tight sm:text-5xl">For everyone at the yard</h2>
+        <div class="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+            <div><h3 class="font-heading text-xl font-semibold">Yard managers</h3><p class="mt-2 text-white/80">The whole yard on one screen: horses, stables, money and what is due.</p></div>
+            <div><h3 class="font-heading text-xl font-semibold">Staff</h3><p class="mt-2 text-white/80">Their own login, with only the parts they need.</p></div>
+            <div><h3 class="font-heading text-xl font-semibold">Owners</h3><p class="mt-2 text-white/80">Clear invoices, and reminders before health dates are due.</p></div>
+            <div><h3 class="font-heading text-xl font-semibold">Vets and farriers</h3><p class="mt-2 text-white/80">Their own phone page to record visits at the stable door.</p></div>
+        </div>
+    </div>
+</section>
+
 {% include "marketing/_cta.html" %}
 {% endblock %}

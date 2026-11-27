@@ -84,3 +84,117 @@ class SiteOffTests(TestCase):
 
     def test_the_sign_in_page_has_no_home_link(self):
         self.assertNotIn('Back to Cgate home', self.client.get(reverse('login')).content.decode())
+
+
+GOOD_POST = {
+    'topic': 'demo', 'name': 'Sam Rider', 'email': 'sam@example.com', 'phone': '',
+    'yard_name': 'Hill Farm', 'horses': '22', 'message': 'Line one\nLine <two>', 'consent': 'on',
+}
+
+
+@override_settings(
+    MARKETING_SITE_ENABLED=True, MARKETING_CONTACT_EMAIL='team@example.com',
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend', MARKETING_CONTACT_LIMIT_PER_HOUR=3,
+)
+class ContactFormTests(TestCase):
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def test_a_message_is_saved_and_emailed_to_the_team(self):
+        from django.core import mail
+
+        from .models import ContactMessage
+
+        response = self.client.post(reverse('marketing:contact'), GOOD_POST)
+        self.assertRedirects(response, reverse('marketing:contact') + '?sent=1')
+        message = ContactMessage.objects.get()
+        self.assertEqual((message.name, message.horses, message.yard_name), ('Sam Rider', 22, 'Hill Farm'))
+        self.assertIsNotNone(message.emailed_at)
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(email.to, ['team@example.com'])
+        self.assertEqual(email.reply_to, ['sam@example.com'])
+        html = email.alternatives[0][0]
+        self.assertIn('Line one<br>Line &lt;two&gt;', html)
+        self.assertIn('Thank you', self.client.get(response['Location']).content.decode())
+
+    def test_without_a_team_address_the_message_is_still_saved(self):
+        from django.core import mail
+
+        from .models import ContactMessage
+
+        with self.settings(MARKETING_CONTACT_EMAIL=''):
+            self.client.post(reverse('marketing:contact'), GOOD_POST)
+        self.assertEqual(ContactMessage.objects.count(), 1)
+        self.assertIsNone(ContactMessage.objects.get().emailed_at)
+        self.assertEqual(mail.outbox, [])
+
+    def test_a_failed_email_keeps_the_message(self):
+        from unittest import mock
+
+        from .models import ContactMessage
+
+        with mock.patch('notifications.mail._Message.send', side_effect=OSError('smtp down')), \
+                self.assertLogs('marketing.views', 'ERROR'):
+            response = self.client.post(reverse('marketing:contact'), GOOD_POST)
+        self.assertEqual(response.status_code, 302)
+        self.assertIsNone(ContactMessage.objects.get().emailed_at)
+
+    def test_consent_and_name_and_email_are_needed(self):
+        from .models import ContactMessage
+
+        response = self.client.post(reverse('marketing:contact'), {'topic': 'demo'})
+        self.assertEqual(response.status_code, 400)
+        html = response.content.decode()
+        self.assertIn('Tick this box', html)
+        self.assertIn('aria-invalid="true"', html)
+        self.assertEqual(ContactMessage.objects.count(), 0)
+
+    def test_a_bot_that_fills_the_hidden_field_is_thanked_and_ignored(self):
+        from django.core import mail
+
+        from .models import ContactMessage
+
+        response = self.client.post(reverse('marketing:contact'), {**GOOD_POST, 'website': 'http://spam'})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(ContactMessage.objects.count(), 0)
+        self.assertEqual(mail.outbox, [])
+
+    def test_too_many_messages_from_one_address_are_refused(self):
+        from .models import ContactMessage
+
+        for _ in range(3):
+            self.client.post(reverse('marketing:contact'), GOOD_POST)
+        response = self.client.post(reverse('marketing:contact'), GOOD_POST)
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(ContactMessage.objects.count(), 3)
+
+    def test_a_link_can_choose_the_topic(self):
+        html = self.client.get(reverse('marketing:contact') + '?topic=pricing').content.decode()
+        self.assertRegex(html, r'value="pricing"[^>]*checked')
+
+
+@override_settings(MARKETING_SITE_ENABLED=True)
+class PricingTests(TestCase):
+
+    def test_the_three_plans_show_their_price_per_horse(self):
+        html = self.client.get(reverse('marketing:pricing')).content.decode()
+        for name, price, yard in (('Essentials', '5', '100'), ('Professional', '7.50', '150'), ('Complete', '10', '200')):
+            self.assertIn(name, html)
+            self.assertIn(f'£{price}</span>', html)
+            self.assertIn(f'A 20-horse yard pays £{yard} a month', html)
+
+    def test_every_feature_is_in_exactly_one_plan(self):
+        from .content import FEATURES, PLANS
+
+        in_plans = [key for plan in PLANS for key in plan['features']]
+        self.assertCountEqual(in_plans, [feature['key'] for feature in FEATURES])
+
+    def test_the_features_page_links_match_the_anchors(self):
+        from .content import FEATURES
+
+        html = self.client.get(reverse('marketing:features')).content.decode()
+        for feature in FEATURES:
+            self.assertIn(f'id="{feature["key"]}"', html)

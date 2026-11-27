@@ -1,7 +1,29 @@
 {% extends "marketing/base.html" %}
 {% block title %}About - Cgate{% endblock %}
 {% block content %}
-{% include "marketing/_page_intro.html" with title="Why we built Cgate." intro="The problem we set out to fix, and who is behind it." %}
-{% include "marketing/_coming.html" %}
+{% include "marketing/_page_intro.html" with title="Why we built Cgate." intro="Livery yards run on paper, spreadsheets and memory. We built one place for all of it." %}
+
+<section class="bg-white" aria-labelledby="problem-title">
+    <div class="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8">
+        <h2 id="problem-title" class="font-heading text-4xl font-normal leading-tight tracking-tight text-forest">The problem</h2>
+        <div class="space-y-5 text-lg text-charcoal">
+            <p>A yard manager keeps track of many horses, many owners and many dates. Who owns which horse. Which stable it is in. When the farrier is due. What each owner must pay this month.</p>
+            <p>Most of this lives on whiteboards, in notebooks and in spreadsheets. Invoices take days. Health dates get missed. Money is lost when a stay or an extra is not billed.</p>
+        </div>
+    </div>
+</section>
+
+<section class="bg-parchment" aria-labelledby="vision-title">
+    <div class="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8">
+        <h2 id="vision-title" class="font-heading text-4xl font-normal leading-tight tracking-tight text-forest">What we believe</h2>
+        <ul class="space-y-6 text-lg">
+            <li><strong class="block font-heading text-xl text-forest">Record it once.</strong><span class="text-charcoal">A stay, a visit or a charge goes in once. The invoices, the reminders and the records follow from it.</span></li>
+            <li><strong class="block font-heading text-xl text-forest">Simple on a phone.</strong><span class="text-charcoal">The work happens in the yard, not at a desk. Cgate is made for one hand and a busy day.</span></li>
+            <li><strong class="block font-heading text-xl text-forest">Everyone connected.</strong><span class="text-charcoal">Yard, owners, vets and farriers see the same facts about each horse.</span></li>
+            <li><strong class="block font-heading text-xl text-forest">Your data is yours.</strong><span class="text-charcoal">Safe, backed up every day, and yours to take with you.</span></li>
+        </ul>
+    </div>
+</section>
+
 {% include "marketing/_cta.html" %}
 {% endblock %}

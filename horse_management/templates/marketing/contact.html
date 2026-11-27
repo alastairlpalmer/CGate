@@ -1,6 +1,59 @@
 {% extends "marketing/base.html" %}
 {% block title %}Contact - Cgate{% endblock %}
+{% block description %}Book a demo of Cgate, or ask a question about the app or its pricing.{% endblock %}
 {% block content %}
-{% include "marketing/_page_intro.html" with title="Get in touch." intro="Book a demo, or ask us a question." %}
-{% include "marketing/_coming.html" %}
+{% include "marketing/_page_intro.html" with title="Get in touch." intro="Book a demo, or ask us a question. We show you Cgate with your own horses and owners." %}
+
+<section class="bg-white" aria-label="Contact form">
+    <div class="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:py-20">
+        {% if sent %}
+        <div class="rounded-2xl border border-meadow bg-parchment p-8" role="status">
+            <h2 class="font-heading text-2xl font-semibold text-forest">Thank you. We have your message.</h2>
+            <p class="mt-2 text-lg text-sage">We reply by email.</p>
+            <a href="/" class="mt-6 inline-flex font-semibold text-forest hover:underline">Back to the home page</a>
+        </div>
+        {% else %}
+        <form method="post" novalidate class="space-y-6">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            <div class="rounded-lg border border-error-red bg-white p-4 text-error-red" role="alert">{{ form.non_field_errors|join:" " }}</div>
+            {% endif %}
+
+            <fieldset>
+                <legend class="mb-3 font-semibold text-charcoal">{{ form.topic.label }}</legend>
+                <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    {% for choice in form.topic %}
+                    <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-sand px-4 py-3 has-[:checked]:border-forest has-[:checked]:bg-parchment">
+                        {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+
+            <div class="grid gap-6 sm:grid-cols-2">
+                {% include "marketing/_field.html" with field=form.name %}
+                {% include "marketing/_field.html" with field=form.email %}
+                {% include "marketing/_field.html" with field=form.phone %}
+                {% include "marketing/_field.html" with field=form.horses %}
+            </div>
+            {% include "marketing/_field.html" with field=form.yard_name %}
+            {% include "marketing/_field.html" with field=form.message %}
+
+            {# Hidden from people; a bot fills it and is ignored. #}
+            <div class="absolute -left-[9999px]" aria-hidden="true">
+                <label for="{{ form.website.id_for_label }}">{{ form.website.label }}</label>{{ form.website }}
+            </div>
+
+            <div>
+                <label class="flex items-start gap-3">
+                    {{ form.consent }}<span>{{ form.consent.label }} <a href="{% url 'privacy_policy' %}" class="text-forest underline">Privacy policy</a></span>
+                </label>
+                {% if form.consent.errors %}<p class="mt-2 text-sm text-error-red" id="{{ form.consent.id_for_label }}-error">{{ form.consent.errors|join:" " }}</p>{% endif %}
+            </div>
+
+            <button type="submit" class="inline-flex h-12 items-center rounded-full bg-saddle px-8 font-semibold text-white hover:bg-saddle-dark">Send message</button>
+        </form>
+        {% endif %}
+    </div>
+</section>
 {% endblock %}
