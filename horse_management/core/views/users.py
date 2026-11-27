@@ -390,6 +390,11 @@ def user_update(request, pk):
             else:
                 target.is_active = not target.is_active
                 target.save(update_fields=['is_active'])
+                if not target.is_active:
+                    # End the stored sessions too. Django refuses them while
+                    # the login is off, but they came back to life if it was
+                    # turned on again (pre-launch review).
+                    sign_out_everywhere(target)
                 audit.record(
                     AuditEvent.Action.USER_ACTIVATED if target.is_active else AuditEvent.Action.USER_DEACTIVATED,
                     request=request, target=target,
