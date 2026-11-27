@@ -67,8 +67,11 @@ _ADDONS = {addon['key']: addon for addon in ADDONS}
 FEATURES = CORE_GROUPS + PRO_GROUPS
 
 EXAMPLE_HORSES = 20
-# Over this many horses, or more than one yard: a price to suit.
-LARGE_YARD_HORSES = 60
+# No upper limit on yard size: the price is per horse at any size. The
+# slider goes to SLIDER_MAX for quick picking; the box takes any number.
+# MAX_HORSES only stops nonsense input.
+SLIDER_MAX = 250
+MAX_HORSES = 100_000
 
 # Sign-up offers, for the first OFFER_MONTHS months. A yard that adds a
 # module that is not out yet helps us build it, and gets the larger one.
@@ -94,7 +97,7 @@ def quote(horses, plan='pro', addons=()):
     server does it again for the quote sent with a Contact message.
     """
     try:
-        horses = max(1, min(int(horses), 2000))
+        horses = max(1, min(int(horses), MAX_HORSES))
     except (TypeError, ValueError):
         horses = EXAMPLE_HORSES
     chosen_plan = _PLANS.get(plan) or _PLANS[DEFAULT_PLAN]
@@ -109,7 +112,7 @@ def quote(horses, plan='pro', addons=()):
         'horses': horses, 'plan': chosen_plan, 'addons': chosen, 'addon_keys': [a['key'] for a in chosen],
         'names': [chosen_plan['name']] + [addon['name'] for addon in chosen],
         'per_horse': per_horse, 'monthly': monthly, 'percent': percent, 'partner': partner,
-        'offer_monthly': offer_monthly, 'saving': saving, 'large': horses >= LARGE_YARD_HORSES,
+        'offer_monthly': offer_monthly, 'saving': saving,
         'monthly_label': money(monthly), 'per_horse_label': money(per_horse),
         'offer_label': money(offer_monthly), 'saving_label': money(saving),
     }

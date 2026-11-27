@@ -26,7 +26,7 @@ class ContactForm(forms.ModelForm):
         widgets = {
             'topic': forms.RadioSelect,
             'message': forms.Textarea(attrs={'rows': 5}),
-            'horses': forms.NumberInput(attrs={'min': 1, 'max': 2000, 'inputmode': 'numeric'}),
+            'horses': forms.NumberInput(attrs={'min': 1, 'inputmode': 'numeric'}),
             'email': forms.EmailInput(attrs={'autocomplete': 'email'}),
             'name': forms.TextInput(attrs={'autocomplete': 'name'}),
             'phone': forms.TextInput(attrs={'autocomplete': 'tel', 'inputmode': 'tel'}),
@@ -55,8 +55,10 @@ class ContactForm(forms.ModelForm):
 
 
 def _max_horses(value):
-    if value is not None and value > 2000:
-        raise forms.ValidationError('Enter a number of horses up to 2,000.')
+    from .content import MAX_HORSES
+
+    if value is not None and value > MAX_HORSES:
+        raise forms.ValidationError(f'Enter a number of horses up to {MAX_HORSES:,}.')
 
 
 def _mark_invalid(form):

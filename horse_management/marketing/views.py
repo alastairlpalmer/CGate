@@ -85,7 +85,7 @@ def pricing(request):
                            request.GET.get('plan') or content.DEFAULT_PLAN, addons)
     return render(request, 'marketing/pricing.html', {
         'page': 'pricing', 'plans': content.PLANS, 'addons': content.ADDONS, 'quote': chosen,
-        'faq': content.PRICING_FAQ, 'large_yard': content.LARGE_YARD_HORSES,
+        'faq': content.PRICING_FAQ, 'slider_max': content.SLIDER_MAX, 'max_horses': content.MAX_HORSES,
         'offer_months': content.OFFER_MONTHS, 'offer_percent': content.OFFER_PERCENT,
         'partner_percent': content.PARTNER_PERCENT,
     })

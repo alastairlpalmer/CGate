@@ -226,7 +226,8 @@ class PricingTests(TestCase):
 
         self.assertEqual(quote('lots')['horses'], EXAMPLE_HORSES)
         self.assertEqual(quote(-4)['horses'], 1)
-        self.assertEqual(quote(99999)['horses'], 2000)
+        self.assertEqual(quote(150)['horses'], 150)                      # no size limit
+        self.assertEqual(quote(10**9)['horses'], 100_000)
         self.assertEqual(quote(5, 'gold')['plan']['key'], 'pro')
         self.assertEqual(quote_from_spec('horses=5&plan=core&addons=nope,training')['addon_keys'], ['training'])
         self.assertIsNone(quote_from_spec('plan=core'))
@@ -242,6 +243,11 @@ class PricingTests(TestCase):
         self.assertRegex(html, r'value="pro"[^>]*checked')
         self.assertNotRegex(html, r'value="training"[^>]*checked')
         self.assertNotIn('C-vet', html)
+
+    def test_a_large_yard_gets_a_price_with_no_cut_off(self):
+        html = self.client.get(reverse('marketing:pricing') + '?horses=150').content.decode()
+        self.assertIn('data-out="monthly">£1,050</span>', html)    # 150 x 7
+        self.assertNotIn('More than 60', html)
 
     def test_a_link_can_open_the_calculator_with_choices(self):
         html = self.client.get(reverse('marketing:pricing') + '?plan=core&horses=12&addon=training').content.decode()
