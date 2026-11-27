@@ -105,6 +105,9 @@ def export_owner(owner) -> bytes:
     # all_objects: a document in Recently Deleted is still held (for 30
     # days), so a subject access request must include it.
     documents = list(Document.all_objects.filter(owner=owner))
+    # Documents filed on the owner's horses (an insurance policy, a vet
+    # certificate in their name) are about them too. They were left out.
+    documents += [d for d in _horse_documents(owner) if d not in documents]
     files['documents.csv'] = csv_bytes(
         ['Title', 'Type', 'Expires', 'Added', 'File in this ZIP'],
         [[d.title, d.get_doc_type_display(), d.expiry_date, d.uploaded_at,
@@ -208,10 +211,50 @@ def delete_documents(owner) -> None:
     _delete_documents(owner)
 
 
+def _horse_ids(owner, sole_only=False):
+    """Horses the owner has, or had, a share or a stay of.
+
+    ``sole_only``: only the horses no other owner ever had a share or a
+    stay of, and that are no longer on the yard. Their documents can only
+    be about this owner.
+    """
+    from .models import OwnershipShare, Placement
+
+    ids = set(OwnershipShare.objects.filter(owner=owner).values_list('horse_id', flat=True))
+    ids |= set(Placement.objects.filter(owner=owner).values_list('horse_id', flat=True))
+    if not sole_only or not ids:
+        return ids
+    shared = set(
+        OwnershipShare.objects.filter(horse_id__in=ids).exclude(owner=owner).values_list('horse_id', flat=True)
+    ) | set(
+        Placement.objects.filter(horse_id__in=ids).exclude(owner=owner).values_list('horse_id', flat=True)
+    )
+    from .models import Horse
+    still_here = set(Horse.objects.filter(pk__in=ids, is_active=True).values_list('pk', flat=True))
+    return ids - shared - still_here
+
+
+def _horse_documents(owner, sole_only=False):
+    """Documents filed on the owner's horses, not on another owner."""
+    from django.db.models import Q
+
+    from .models import Document
+
+    return list(
+        Document.all_objects.filter(horse_id__in=_horse_ids(owner, sole_only=sole_only))
+        .filter(Q(owner__isnull=True) | Q(owner=owner))
+    )
+
+
 def _delete_documents(owner) -> None:
     from .models import Document
 
-    for document in Document.all_objects.filter(owner=owner):
+    # Also the documents of horses that only this owner ever had and that
+    # have left: nobody else's data is in them. A horse another owner has
+    # or had keeps its documents (a passport goes with the horse).
+    documents = list(Document.all_objects.filter(owner=owner))
+    documents += [d for d in _horse_documents(owner, sole_only=True) if d not in documents]
+    for document in documents:
         if document.file:
             try:
                 document.file.delete(save=False)

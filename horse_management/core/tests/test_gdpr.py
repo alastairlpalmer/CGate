@@ -204,3 +204,42 @@ class ListExportTests(TestCase):
     def test_needs_access(self):
         self.client.force_login(make_user_with_access('noowners', dashboard='full'))
         self.assertNotEqual(self.client.get(reverse('owners_csv')).status_code, 200)
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class HorseDocumentTests(TestCase):
+    """Pre-launch review: export and erase left out the documents filed on
+    the owner's horses."""
+
+    def setUp(self):
+        from core.models import OwnershipShare
+
+        self.client.force_login(make_admin('gdprhorse'))
+        self.owner = _owner()
+        self.horse = Horse.objects.create(name='Ghost', is_active=False)
+        OwnershipShare.objects.create(horse=self.horse, owner=self.owner, share_percentage=Decimal('100'),
+                                      is_primary_contact=True)
+        self.doc = Document.objects.create(
+            horse=self.horse, doc_type='insurance', title='Policy in her name',
+            file=SimpleUploadedFile('p.pdf', b'%PDF-1.4 p', content_type='application/pdf'),
+        )
+
+    def test_the_export_holds_the_horse_documents(self):
+        response = self.client.get(reverse('owner_data_export', args=[self.owner.pk]))
+        archive = zipfile.ZipFile(io.BytesIO(response.content))
+        self.assertIn('Policy in her name', archive.read('documents.csv').decode('utf-8-sig'))
+
+    def test_erase_removes_documents_of_a_horse_only_she_had(self):
+        _archive(self.owner)
+        gdpr.erase_contact_details(self.owner)
+        self.assertFalse(Document.all_objects.filter(pk=self.doc.pk).exists())
+
+    def test_erase_keeps_documents_of_a_horse_another_owner_has(self):
+        from core.models import OwnershipShare
+
+        other = _owner(name='Ben', email='ben@example.com')
+        OwnershipShare.objects.filter(horse=self.horse).update(share_percentage=Decimal('50'))
+        OwnershipShare.objects.create(horse=self.horse, owner=other, share_percentage=Decimal('50'))
+        _archive(self.owner)
+        gdpr.erase_contact_details(self.owner)
+        self.assertTrue(Document.all_objects.filter(pk=self.doc.pk).exists())
