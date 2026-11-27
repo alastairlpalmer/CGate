@@ -10,6 +10,7 @@ class ContactMessage(models.Model):
     """
 
     class Topic(models.TextChoices):
+        OFFER = 'offer', 'Claim the sign-up offer'
         DEMO = 'demo', 'Book a demo'
         PRICING = 'pricing', 'A question about pricing'
         OTHER = 'other', 'Something else'
@@ -21,6 +22,8 @@ class ContactMessage(models.Model):
     yard_name = models.CharField('yard name', max_length=160, blank=True)
     horses = models.PositiveIntegerField('number of horses', null=True, blank=True)
     message = models.TextField(max_length=4000, blank=True)
+    # The quote from the Pricing page, worked out again on the server.
+    quote = models.CharField(max_length=500, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     emailed_at = models.DateTimeField(null=True, blank=True)
     handled = models.BooleanField(default=False)

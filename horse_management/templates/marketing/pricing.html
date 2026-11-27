@@ -1,62 +1,140 @@
 {% extends "marketing/base.html" %}
 {% block title %}Pricing - Cgate{% endblock %}
 {% block og_title %}Pricing - Cgate{% endblock %}
-{% block description %}Cgate pricing: a price per horse, per month. Choose the plan with the modules your yard needs.{% endblock %}
+{% block description %}Cgate pricing: a price per horse, per month, for the modules your yard needs. Work out your price, and get {{ offer_percent }}% off your first {{ offer_months }} months.{% endblock %}
 {% block content %}
-{% include "marketing/_page_intro.html" with eyebrow="Pricing" title="Pay for the horses you have" intro="One price per horse, per month. Choose the plan with the modules your yard needs." %}
+{% include "marketing/_page_intro.html" with eyebrow="Pricing" title="Pay for the horses and modules you use" intro="Choose the number of horses and the modules your yard needs. You see your price at once." %}
 
-<section class="bg-white" aria-label="Plans">
-    <div class="mx-auto max-w-7xl px-4 pt-16 sm:px-6 lg:px-8 lg:pt-20">
-        {# Horse-count slider (js/marketing.js). Without the script the totals show 20 horses. #}
-        <div class="mk-reveal mx-auto max-w-2xl rounded-2xl border border-sand bg-parchment/60 p-6 sm:p-8">
-            <label for="horse-slider" class="flex items-baseline justify-between gap-4">
-                <span class="font-heading text-lg font-semibold text-charcoal">How many horses are at your yard?</span>
-                <span class="font-heading text-3xl text-forest"><span data-horse-count>{{ example_horses }}</span></span>
-            </label>
-            <input id="horse-slider" type="range" min="1" max="{{ large_yard }}" value="{{ example_horses }}" step="1" data-horse-slider class="mk-range mt-5 w-full">
-            <div class="mt-2 flex justify-between text-xs text-sage"><span>1</span><span>{{ large_yard }}+</span></div>
-        </div>
-    </div>
-    <div class="mx-auto grid max-w-7xl items-start gap-6 px-4 py-12 sm:px-6 lg:grid-cols-3 lg:px-8">
-        {% for plan in plans %}
-        <article class="mk-reveal relative flex flex-col rounded-3xl border bg-white p-8 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-forest/10 {% if plan.popular %}border-forest shadow-xl shadow-forest/10 lg:-mt-4 lg:pb-12{% else %}border-sand{% endif %}" style="--d:{{ forloop.counter0 }}00ms" aria-labelledby="plan-{{ plan.key }}">
-            {% if plan.popular %}<span class="absolute -top-3 left-8 rounded-full bg-forest px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white">Recommended</span>{% endif %}
-            <h2 id="plan-{{ plan.key }}" class="font-heading text-2xl font-semibold text-forest">{{ plan.name }}</h2>
-            <p class="mt-2 text-sage">{{ plan.for }}</p>
-            <p class="mt-8 flex items-baseline gap-2">
-                <span class="font-heading text-5xl font-normal tracking-[-0.02em] text-charcoal">{{ plan.price_label }}</span>
-                <span class="text-sage">per horse, per month</span>
-            </p>
-            <p class="mt-3 rounded-lg bg-parchment px-3 py-2 text-sm text-charcoal">
-                <span data-horse-count>{{ example_horses }}</span> horses: <strong class="font-semibold" data-per-horse="{{ plan.price }}">{{ plan.example }}</strong> a month
-            </p>
-            <a href="{% url 'marketing:contact' %}?topic=demo" class="mt-8 inline-flex h-12 items-center justify-center rounded-full px-6 font-semibold transition {% if plan.popular %}bg-saddle text-white hover:bg-saddle-dark{% else %}border border-forest text-forest hover:bg-forest hover:text-white{% endif %}">Book a demo</a>
-            <p class="mt-8 text-sm font-semibold uppercase tracking-wider text-sage">{% if plan.includes %}{{ plan.includes }}{% else %}Includes{% endif %}</p>
-            <ul class="mt-4 space-y-3">
-                {% for feature in plan.feature_list %}
-                <li class="flex gap-3">
-                    <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-meadow/15 text-meadow">{% include "marketing/_icon.html" with name="check" cls="h-3.5 w-3.5" %}</span>
-                    <a href="{% url 'marketing:features' %}#{{ feature.key }}" class="font-medium text-charcoal hover:text-forest hover:underline">{{ feature.title }}</a>
-                </li>
-                {% endfor %}
-            </ul>
-        </article>
-        {% endfor %}
-    </div>
-    <div class="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
-        <div class="mk-reveal flex flex-col gap-4 rounded-3xl border border-sand bg-parchment p-8 md:flex-row md:items-center md:justify-between" data-large-yard-box>
-            <div>
-                <h2 class="font-heading text-2xl font-normal text-forest">More than {{ large_yard }} horses, or more than one yard?</h2>
-                <p class="mt-1 text-sage">Talk to us. We make a price to suit your yards.</p>
-                <p class="mt-2 text-sm font-semibold text-saddle" data-large-yard hidden>Your yard is over {{ large_yard }} horses: ask us for a price.</p>
+{% comment %}
+The calculator. The server fills in the quote, so the page is right without
+the script; js/marketing.js does the same sum as marketing.content.quote().
+{% endcomment %}
+<section class="bg-white" aria-labelledby="calc-title">
+    <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+        <h2 id="calc-title" class="sr-only">Work out your price</h2>
+        <form class="grid items-start gap-8 lg:grid-cols-[1.35fr_1fr]" data-calculator data-months="{{ offer_months }}" data-offer="{{ offer_percent }}" data-partner="{{ partner_percent }}" action="{% url 'marketing:contact' %}" method="get">
+            {# ── Inputs ── #}
+            <div class="space-y-6" data-calc-inputs>
+                <div class="mk-reveal rounded-3xl border border-sand bg-white p-6 sm:p-8">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <label for="calc-horses" class="font-heading text-xl font-semibold text-charcoal">How many horses?</label>
+                        <div class="flex items-center rounded-full border border-sand">
+                            <button type="button" data-step="-1" class="flex h-11 w-11 items-center justify-center rounded-full text-xl text-forest transition hover:bg-parchment" aria-label="One horse fewer">&minus;</button>
+                            <input id="calc-horses" name="horses" type="number" inputmode="numeric" min="1" max="2000" value="{{ quote.horses }}" data-horses
+                                   class="h-11 w-20 border-0 bg-transparent text-center font-heading text-2xl text-charcoal focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none">
+                            <button type="button" data-step="1" class="flex h-11 w-11 items-center justify-center rounded-full text-xl text-forest transition hover:bg-parchment" aria-label="One horse more">+</button>
+                        </div>
+                    </div>
+                    <input type="range" min="1" max="{{ large_yard }}" value="{{ quote.horses }}" data-horse-slider aria-label="Number of horses" class="mk-range mt-6 w-full">
+                    <div class="mt-2 flex justify-between text-xs text-sage"><span>1</span><span>{{ large_yard }}+</span></div>
+                </div>
+
+                <fieldset class="mk-reveal rounded-3xl border border-sand bg-white p-6 sm:p-8" style="--d:100ms">
+                    <legend class="sr-only">Modules</legend>
+                    <p class="font-heading text-xl font-semibold text-charcoal" aria-hidden="true">Modules</p>
+                    <p class="mt-1 text-sage">Prices are per horse, per month.</p>
+                    <ul class="mt-6 space-y-3">
+                        {% for module in modules %}
+                        <li>
+                            <label class="flex cursor-pointer items-center gap-3 rounded-2xl border border-sand p-4 sm:gap-4 transition hover:border-forest/50 has-[:checked]:border-forest has-[:checked]:bg-parchment/60 {% if module.required %}cursor-default{% endif %}">
+                                <span class="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-parchment text-forest sm:flex">{% include "marketing/_icon.html" with name=module.features.0 %}</span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="flex flex-wrap items-center gap-2 font-semibold text-charcoal">
+                                        {{ module.name }}
+                                        {% if module.required %}<span class="rounded-full bg-forest/10 px-2 py-0.5 text-xs font-semibold text-forest">Included</span>{% endif %}
+                                        {% if module.soon %}<span class="rounded-full bg-saddle/10 px-2 py-0.5 text-xs font-semibold text-saddle">Coming soon</span>{% endif %}
+                                    </span>
+                                    <span class="mt-0.5 block text-sm text-sage">{{ module.line }}</span>
+                                </span>
+                                <span class="shrink-0 text-right">
+                                    <span class="block font-heading font-semibold text-charcoal">{% if not module.required %}+{% endif %}{{ module.price_label }}</span>
+                                    <span class="block text-xs text-sage">per horse</span>
+                                </span>
+                                <input type="checkbox" name="module" value="{{ module.key }}" data-module data-price="{{ module.price }}" {% if module.soon %}data-soon="{{ module.name }}"{% endif %}
+                                       {% if module.required %}checked disabled{% elif module.key in quote.keys %}checked{% endif %}
+                                       class="peer sr-only">
+                                <span class="relative h-7 w-12 shrink-0 rounded-full bg-sand transition peer-checked:bg-forest peer-focus-visible:ring-4 peer-focus-visible:ring-forest/30 after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5 {% if module.required %}opacity-60{% endif %}" aria-hidden="true"></span>
+                            </label>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </fieldset>
             </div>
-            <a href="{% url 'marketing:contact' %}?topic=pricing" class="inline-flex h-12 shrink-0 items-center justify-center rounded-full border border-forest px-6 font-semibold text-forest transition hover:bg-forest hover:text-white">Ask about pricing</a>
+
+            {# ── Result and offer ── #}
+            <div id="calc-result" class="mk-reveal scroll-mt-24 lg:sticky lg:top-28" style="--d:200ms" aria-live="polite">
+                <div class="overflow-hidden rounded-3xl bg-forest text-white shadow-2xl shadow-forest/20">
+                    <div class="relative p-6 sm:p-8">
+                        <div class="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-sage-light/25 blur-3xl" aria-hidden="true"></div>
+                        <p class="relative text-sm font-semibold uppercase tracking-[0.14em] text-sand">Your price</p>
+                        <p class="relative mt-3 flex items-baseline gap-2">
+                            <span class="font-heading text-5xl tracking-[-0.02em] sm:text-6xl" data-out="monthly">{{ quote.monthly_label }}</span>
+                            <span class="text-white/75">a month + VAT</span>
+                        </p>
+                        <p class="relative mt-2 text-white/75"><span data-out="horses">{{ quote.horses }}</span> horses &times; <span data-out="per-horse">{{ quote.per_horse_label }}</span> per horse</p>
+
+                        <div class="relative mt-6 rounded-2xl bg-white/10 p-5 ring-1 ring-white/15">
+                            <div data-offer="standard" {% if quote.partner %}hidden{% endif %}>
+                                <p class="flex items-center gap-2 font-heading text-lg font-semibold"><span class="rounded-full bg-saddle px-2.5 py-0.5 text-sm">{{ offer_percent }}% off</span> Sign-up offer</p>
+                                <p class="mt-2 text-white/80">Your first {{ offer_months }} months at <strong class="text-white" data-out="offer-monthly">{{ quote.offer_label }}</strong> a month.</p>
+                            </div>
+                            <div data-offer="partner" {% if not quote.partner %}hidden{% endif %}>
+                                <p class="flex items-center gap-2 font-heading text-lg font-semibold"><span class="rounded-full bg-saddle px-2.5 py-0.5 text-sm">{{ partner_percent }}% off</span><span>Help us build <span data-out="soon">{{ quote.partner|join:", " }}</span></span></p>
+                                <p class="mt-2 text-white/80"><span data-out="soon-again">{{ quote.partner|join:", " }}</span> is coming soon. Shape it with us, and get your first {{ offer_months }} months at <strong class="text-white" data-out="offer-monthly">{{ quote.offer_label }}</strong> a month.</p>
+                            </div>
+                            <p class="mt-3 text-sm text-white/70">You save <strong class="text-white" data-out="saving">{{ quote.saving_label }}</strong> over {{ offer_months }} months.</p>
+                        </div>
+
+                        <p class="relative mt-4 text-sm text-sand" data-large-yard {% if not quote.large %}hidden{% endif %}>More than {{ large_yard }} horses? We make a price to suit your yard.</p>
+
+                        <input type="hidden" name="topic" value="offer">
+                        <button type="submit" class="group relative mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-saddle px-6 font-semibold text-white shadow-lg shadow-black/20 transition hover:bg-saddle-dark">
+                            Claim this offer {% include "marketing/_icon.html" with name="arrow" cls="h-4 w-4 transition-transform group-hover:translate-x-1" %}
+                        </button>
+                        <p class="relative mt-3 text-center text-xs text-white/60">No card needed. We contact you to set up your yard.</p>
+                    </div>
+                </div>
+            </div>
+            <a href="#calc-result" data-calc-bar hidden class="fixed inset-x-3 bottom-3 z-40 flex items-center justify-between gap-3 rounded-2xl bg-forest px-5 py-3 text-white shadow-2xl shadow-black/30 lg:hidden">
+                <span><span class="font-heading text-xl font-semibold" data-out="monthly">{{ quote.monthly_label }}</span> <span class="text-sm text-white/75">a month + VAT</span></span>
+                <span class="rounded-full bg-saddle px-3 py-1.5 text-sm font-semibold"><span data-out="percent">{{ quote.percent }}</span>% off offer</span>
+            </a>
+        </form>
+    </div>
+</section>
+
+{# ── What each module includes ── #}
+<section class="bg-parchment/60" aria-labelledby="modules-title">
+    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+        <div class="mk-reveal max-w-2xl">
+            <p class="text-sm font-semibold uppercase tracking-[0.14em] text-saddle">Modules</p>
+            <h2 id="modules-title" class="mt-3 font-heading text-4xl font-normal tracking-[-0.02em] text-forest">What each module includes</h2>
         </div>
+        <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {% for module in modules %}
+            <div class="mk-reveal rounded-3xl border border-sand bg-white p-7" style="--d:{{ forloop.counter0 }}00ms">
+                <div class="flex items-start justify-between gap-3">
+                    <h3 class="font-heading text-xl font-semibold text-forest">{{ module.name }}</h3>
+                    <span class="shrink-0 font-heading font-semibold text-charcoal">{% if not module.required %}+{% endif %}{{ module.price_label }}</span>
+                </div>
+                {% if module.soon %}<p class="mt-1 text-sm font-semibold text-saddle">Coming soon</p>{% elif module.required %}<p class="mt-1 text-sm font-semibold text-forest">In every yard</p>{% endif %}
+                <ul class="mt-5 space-y-3">
+                    {% for feature in module.feature_list %}
+                    <li class="flex gap-3">
+                        <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-meadow/15 text-meadow">{% include "marketing/_icon.html" with name="check" cls="h-3.5 w-3.5" %}</span>
+                        <a href="{% url 'marketing:features' %}#{{ feature.key }}" class="text-charcoal hover:text-forest hover:underline">{{ feature.title }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+        <p class="mk-reveal mt-8 text-sm text-sage">All prices are per horse, per month, and exclude VAT. More than {{ large_yard }} horses, or more than one yard? <a href="{% url 'marketing:contact' %}?topic=pricing" class="font-semibold text-forest underline">Ask us for a price</a>.</p>
     </div>
 </section>
 
 <section class="bg-white" aria-labelledby="faq-title">
-    <div class="mx-auto grid max-w-7xl gap-10 px-4 pb-8 sm:px-6 lg:grid-cols-3 lg:px-8">
+    <div class="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-3 lg:px-8">
         <div class="mk-reveal">
             <p class="text-sm font-semibold uppercase tracking-[0.14em] text-saddle">FAQ</p>
             <h2 id="faq-title" class="mt-3 font-heading text-4xl font-normal tracking-[-0.02em] text-forest">Questions</h2>

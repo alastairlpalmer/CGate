@@ -9,4 +9,4 @@ class ContactMessageAdmin(admin.ModelAdmin):
     list_filter = ('topic', 'handled')
     list_editable = ('handled',)
     search_fields = ('name', 'email', 'yard_name', 'message')
-    readonly_fields = ('topic', 'name', 'email', 'phone', 'yard_name', 'horses', 'message', 'created_at', 'emailed_at')
+    readonly_fields = ('topic', 'name', 'email', 'phone', 'yard_name', 'horses', 'quote', 'message', 'created_at', 'emailed_at')

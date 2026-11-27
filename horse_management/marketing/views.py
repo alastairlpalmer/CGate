@@ -7,6 +7,7 @@ site be built in steps and turned on when the words are ready.
 """
 
 import logging
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.http import Http404
@@ -71,10 +72,21 @@ def _page(template, name, extra=None):
     return view
 
 
-features = _page('marketing/features.html', 'features', {'features': content.FEATURES, 'plans': content.PLANS})
-pricing = _page('marketing/pricing.html', 'pricing', {
-    'plans': content.PLANS, 'example_horses': content.EXAMPLE_HORSES, 'faq': content.PRICING_FAQ, 'large_yard': content.LARGE_YARD_HORSES,
-})
+features = _page('marketing/features.html', 'features', {'features': content.FEATURES, 'modules': content.MODULES})
+@require_GET
+def pricing(request):
+    """The Pricing page and its calculator. ``?horses=22&modules=a,b`` opens it with that quote."""
+    if not site_enabled():
+        raise Http404
+    keys = request.GET.getlist('module') or request.GET.get('modules', '').split(',')
+    chosen = content.quote(request.GET.get('horses') or content.EXAMPLE_HORSES,
+                           [key for key in keys if key] if 'horses' in request.GET else content.DEFAULT_MODULES)
+    return render(request, 'marketing/pricing.html', {
+        'page': 'pricing', 'modules': content.MODULES, 'quote': chosen,
+        'faq': content.PRICING_FAQ, 'large_yard': content.LARGE_YARD_HORSES,
+        'offer_months': content.OFFER_MONTHS, 'offer_percent': content.OFFER_PERCENT,
+        'partner_percent': content.PARTNER_PERCENT,
+    })
 about = _page('marketing/about.html', 'about', {'beliefs': content.BELIEFS})
 
 
@@ -95,6 +107,13 @@ def contact(request):
     initial = {}
     if request.GET.get('topic') in ContactMessage.Topic.values:
         initial['topic'] = request.GET['topic']
+    if request.GET.get('horses'):
+        # From the Pricing page form (module=…&module=…) or a link (modules=a,b).
+        modules = ','.join(request.GET.getlist('module')) or request.GET.get('modules', '')
+        initial['quote_spec'] = urlencode({'horses': request.GET['horses'], 'modules': modules})
+        chosen = content.quote_from_spec(initial['quote_spec'])
+        if chosen:
+            initial['horses'] = chosen['horses']
     form = ContactForm(initial=initial)
     status = 200
     if request.method == 'POST':
@@ -106,12 +125,18 @@ def contact(request):
             form.add_error(None, 'Too many messages from this address. Try again in an hour, or email us.')
             status = 429
         elif form.is_valid():
-            message = form.save()
+            message = form.save(commit=False)
+            chosen = content.quote_from_spec(form.cleaned_data.get('quote_spec'))
+            if chosen:
+                message.quote = content.quote_summary(chosen)[:500]
+            message.save()
             _email_team(request, message)
             return redirect(f"{request.path}?sent=1")
         else:
             status = 400
+    spec = form['quote_spec'].value()
     return render(request, 'marketing/contact.html', {
+        'quote': content.quote_from_spec(spec), 'offer_months': content.OFFER_MONTHS,
         'page': 'contact', 'form': form, 'sent': sent, 'next_steps': content.CONTACT_STEPS,
     }, status=status)
 
@@ -127,6 +152,7 @@ def _email_team(request, message):
         ('Topic', message.get_topic_display()), ('Name', message.name), ('Email', message.email),
         ('Phone', message.phone), ('Yard', message.yard_name),
         ('Horses', '' if message.horses is None else str(message.horses)),
+        ('Quote', message.quote),
     ]
     body = ''.join(f'<p><strong>{label}:</strong> {escape(value)}</p>' for label, value in rows if value)
     if message.message:

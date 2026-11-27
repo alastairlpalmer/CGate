@@ -51,31 +51,90 @@
     for (var j = 0; j < items.length; j++) { seen.observe(items[j]); }
 })();
 
-// Pricing: the horse-count slider updates each plan's monthly total.
+// Pricing calculator (templates/marketing/pricing.html). The same sum as
+// marketing.content.quote(): price per horse = the ticked modules, times
+// the horses; the offer is larger when a "coming soon" module is ticked.
 (function () {
     'use strict';
-    var slider = document.querySelector('[data-horse-slider]');
-    if (!slider) { return; }
-    var count = document.querySelectorAll('[data-horse-count]');
-    var totals = document.querySelectorAll('[data-per-horse]');
-    var large = document.querySelector('[data-large-yard]');
-    var max = Number(slider.max);
+    var form = document.querySelector('[data-calculator]');
+    if (!form) { return; }
+    var number = form.querySelector('[data-horses]');
+    var slider = form.querySelector('[data-horse-slider]');
+    var modules = form.querySelectorAll('[data-module]');
+    var months = Number(form.getAttribute('data-months'));
+    var standard = Number(form.getAttribute('data-offer'));
+    var partner = Number(form.getAttribute('data-partner'));
+    var large = Number(slider.max);
 
     function money(value) {
-        var whole = Math.round(value * 100) % 100 === 0;
-        return '£' + value.toLocaleString('en-GB', { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
+        var pence = Math.round(value * 100);
+        var whole = pence % 100 === 0;
+        return '£' + (pence / 100).toLocaleString('en-GB', { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
     }
-    function update() {
-        var horses = Number(slider.value);
-        var i;
-        for (i = 0; i < count.length; i++) { count[i].textContent = horses >= max ? max + '+' : horses; }
-        for (i = 0; i < totals.length; i++) {
-            totals[i].textContent = money(Number(totals[i].getAttribute('data-per-horse')) * horses);
+    function put(name, text) {
+        var els = form.querySelectorAll('[data-out="' + name + '"]');
+        for (var i = 0; i < els.length; i++) { els[i].textContent = text; }
+    }
+    function horses() {
+        var value = Math.round(Number(number.value));
+        if (!isFinite(value) || value < 1) { value = 1; }
+        return Math.min(value, 2000);
+    }
+    function update(from) {
+        var count = horses();
+        if (from !== 'number') { number.value = count; }
+        if (from !== 'slider') { slider.value = Math.min(count, large); }
+        var pence = 0;
+        var soon = [];
+        for (var i = 0; i < modules.length; i++) {
+            if (!modules[i].checked) { continue; }
+            pence += Math.round(Number(modules[i].getAttribute('data-price')) * 100);
+            if (modules[i].getAttribute('data-soon')) { soon.push(modules[i].getAttribute('data-soon')); }
         }
-        if (large) { large.hidden = horses < max; }
-        slider.style.background = 'linear-gradient(to right, #3D5A63 ' + ((horses - slider.min) / (max - slider.min) * 100) + '%, #E6E1D1 0)';
-        slider.setAttribute('aria-valuetext', horses + ' horses');
+        var monthly = pence * count / 100;
+        var percent = soon.length ? partner : standard;
+        var offer = Math.round(monthly * (100 - percent)) / 100;
+        put('monthly', money(monthly));
+        put('per-horse', money(pence / 100));
+        put('horses', count);
+        put('offer-monthly', money(offer));
+        put('saving', money((monthly - offer) * months));
+        put('soon', soon.join(', '));
+        put('soon-again', soon.join(', '));
+        put('percent', percent);
+        form.querySelector('[data-offer="standard"]').hidden = soon.length > 0;
+        form.querySelector('[data-offer="partner"]').hidden = soon.length === 0;
+        form.querySelector('[data-large-yard]').hidden = count < large;
+        slider.style.background = 'linear-gradient(to right, #3D5A63 ' + ((Math.min(count, large) - 1) / (large - 1) * 100) + '%, #E6E1D1 0)';
+        slider.setAttribute('aria-valuetext', count + ' horses');
     }
-    slider.addEventListener('input', update);
+    number.addEventListener('input', function () { update('number'); });
+    number.addEventListener('change', function () { update(); });
+    slider.addEventListener('input', function () { number.value = slider.value; update('slider'); });
+    var steps = form.querySelectorAll('[data-step]');
+    for (var s = 0; s < steps.length; s++) {
+        steps[s].addEventListener('click', function () {
+            number.value = horses() + Number(this.getAttribute('data-step'));
+            update();
+        });
+    }
+    for (var m = 0; m < modules.length; m++) { modules[m].addEventListener('change', function () { update(); }); }
     update();
+
+    // Phones: a bar with the price while the inputs are on screen and the result is not.
+    var bar = form.querySelector('[data-calc-bar]');
+    var inputs = form.querySelector('[data-calc-inputs]');
+    var result = document.getElementById('calc-result');
+    if (bar && inputs && result && 'IntersectionObserver' in window) {
+        var inputsShown = false;
+        var resultShown = false;
+        var watch = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.target === inputs) { inputsShown = entry.isIntersecting; } else { resultShown = entry.isIntersecting; }
+            });
+            bar.hidden = !(inputsShown && !resultShown);
+        });
+        watch.observe(inputs);
+        watch.observe(result);
+    }
 })();
