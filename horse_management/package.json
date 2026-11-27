@@ -6,7 +6,7 @@
     "build:js": "node tools/build_js.mjs"
   },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.3.4",
+    "@tailwindcss/cli": "^4.3.5",
     "tailwindcss": "^4.3.3"
   },
   "overrides": {
