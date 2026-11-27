@@ -201,6 +201,23 @@ def _clear(owner, fields) -> None:
     # kind of copy being removed.
     owner.skip_history_when_saving = True
     owner.save(update_fields=list(blank))
+    _clear_invoice_copies(owner, blank)
+
+
+def _clear_invoice_copies(owner, blank) -> None:
+    """The same change in the owner details kept on issued invoices
+    (Invoice.issue_snapshot), which are another copy of them."""
+    from invoicing.models import Invoice
+
+    for invoice in Invoice.objects.filter(owner=owner, issuer__isnull=False).only('pk', 'issuer'):
+        kept = dict(invoice.issuer)
+        bill_to = kept.get('bill_to')
+        if not isinstance(bill_to, dict):
+            continue
+        changed = {field: value for field, value in blank.items() if field in bill_to}
+        if changed:
+            kept['bill_to'] = {**bill_to, **changed}
+            Invoice.objects.filter(pk=invoice.pk).update(issuer=kept)
     del owner.skip_history_when_saving
     # Earlier versions of the row hold the same details.
     owner.history.update(**blank)
