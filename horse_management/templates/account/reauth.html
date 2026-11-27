@@ -1,0 +1,32 @@
+{% extends "account/_auth_layout.html" %}
+{% block title %}Confirm it is you{% endblock %}
+{% block heading %}Confirm it is you{% endblock %}
+{% block subtitle %}This change can give your account to someone else, so we check first.{% endblock %}
+{% block card %}
+<form method="post" class="space-y-5">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    {% if error %}<p class="text-sm text-error-red" role="alert">{{ error }}</p>{% endif %}
+    {% if has_password %}
+    <div>
+        <label for="id_password" class="block text-sm font-medium text-charcoal mb-1.5">Your password</label>
+        <input type="password" name="password" id="id_password" autocomplete="current-password" autofocus
+               class="block w-full rounded-lg border-sage/30 focus:border-sage focus:ring-sage text-base px-3 py-2.5 border shadow-xs min-h-[44px]">
+    </div>
+    {% endif %}
+    {% if has_code %}
+    {% if has_password %}<p class="text-sm text-sage">Or:</p>{% endif %}
+    <div>
+        <label for="id_code" class="block text-sm font-medium text-charcoal mb-1.5">Code from your app, or a recovery code</label>
+        <input type="text" name="code" id="id_code" autocomplete="one-time-code" inputmode="text" autocapitalize="none"
+               spellcheck="false" maxlength="20" placeholder="123456"{% if not has_password %} autofocus{% endif %}
+               class="block w-full rounded-lg border-sage/30 focus:border-sage focus:ring-sage text-base px-3 py-2.5 border shadow-xs placeholder-sage/60 min-h-[44px] tracking-widest">
+    </div>
+    {% endif %}
+    {% if not has_password and not has_code %}
+    <p class="text-sm">Your account has no password and no two-step sign-in. Sign out, then sign in again, and do this within 10 minutes.</p>
+    {% else %}
+    <button type="submit" class="btn-primary w-full min-h-[44px]">Continue</button>
+    {% endif %}
+</form>
+{% endblock %}

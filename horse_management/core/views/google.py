@@ -131,6 +131,13 @@ def google_start(request):
 
     if mode == MODE_CONNECT and not request.user.is_authenticated:
         return redirect('login')
+    if mode == MODE_CONNECT:
+        # Linking a Google account lets that account sign in here, so it
+        # needs a recent "Confirm it is you" (core.reauth).
+        from .. import reauth
+        if not reauth.recently_confirmed(request):
+            messages.info(request, 'Confirm it is you, then select "Connect Google" again.')
+            return redirect(reauth.confirm_url(reverse('profile') + '?tab=security'))
     if mode == MODE_LOGIN and request.user.is_authenticated:
         return redirect(_safe_next(request))
 

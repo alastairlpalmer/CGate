@@ -2064,6 +2064,13 @@ class ProfileDetailsForm(forms.Form):
         max_length=254, label='Email',
         widget=forms.EmailInput(attrs={'autocomplete': 'email'}),
     )
+    # Needed only to change the email address (core.reauth): the address
+    # receives password resets, so changing it takes over the account.
+    confirm_secret = forms.CharField(
+        required=False, max_length=128, label='Your password, to change your email',
+        help_text='Or a code from your authenticator app. Not needed for other changes.',
+        widget=forms.PasswordInput(attrs={'autocomplete': 'current-password'}),
+    )
     phone = forms.CharField(
         max_length=50, required=False, label='Mobile phone',
         widget=forms.TextInput(attrs={'type': 'tel', 'autocomplete': 'tel', 'inputmode': 'tel'}),
@@ -2096,9 +2103,33 @@ class ProfileDetailsForm(forms.Form):
         help_text='How big text and buttons are on a phone or a tablet.',
     )
 
-    def __init__(self, *args, user=None, **kwargs):
+    def __init__(self, *args, user=None, recently_confirmed=False, **kwargs):
         self.user = user
+        self.recently_confirmed = recently_confirmed
         super().__init__(*args, **kwargs)
+
+    def clean(self):
+        from . import reauth
+
+        cleaned = super().clean()
+        email = cleaned.get('email')
+        if email is None or self.user is None or email.lower() == (self.user.email or '').lower():
+            return cleaned
+        secret = cleaned.get('confirm_secret') or ''
+        if self.recently_confirmed or reauth.check(self.user, password=secret, code=secret):
+            return cleaned
+        if not self.user.has_usable_password() and not reauth.can_confirm_with_code(self.user):
+            # Nothing to type (a Google-only login): a fresh sign-in confirms.
+            self.add_error('email', (
+                'To change your email address, sign out and sign in again, '
+                'then change it within 10 minutes.'
+            ))
+        else:
+            self.add_error('confirm_secret', (
+                'To change your email address, enter your password (or a code from your '
+                'authenticator app).' if secret == '' else 'That password or code did not match.'
+            ))
+        return cleaned
 
     def clean_email(self):
         from django.contrib.auth import get_user_model
