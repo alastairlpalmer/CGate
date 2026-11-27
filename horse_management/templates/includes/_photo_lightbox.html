@@ -39,7 +39,7 @@ button and a tap on the photo all close it.
             <h2 id="lightbox-title" class="text-base font-semibold text-white truncate font-heading"
                 x-text="$store.lightbox.title"></h2>
             <span x-show="$store.lightbox.photos.length > 1"
-                  class="text-xs text-white/60 tabular-nums shrink-0"
+                  class="text-xs text-white/80 tabular-nums shrink-0"
                   x-text="($store.lightbox.index + 1) + ' / ' + $store.lightbox.photos.length"></span>
             <template x-if="$store.lightbox.href">
                 <a :href="$store.lightbox.href" @click="$store.lightbox.close()"

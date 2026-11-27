@@ -30,7 +30,7 @@ Optional params: target (CSS selector), autofocus (truthy)
     {# Clear the DOM value first: x-model flushes async, so setting q='' then dispatching 'input' re-captures the stale value into q #}
     <button type="button" x-show="q" x-cloak
             @click="$refs.searchInput.value = ''; $refs.searchInput.dispatchEvent(new Event('input', { bubbles: true })); $refs.searchInput.focus()"
-            class="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 inline-flex items-center justify-center text-sage/60 hover:text-charcoal rounded transition-colors"
+            class="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 inline-flex items-center justify-center text-sage hover:text-charcoal rounded transition-colors"
             title="Clear filter" aria-label="Clear filter">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>

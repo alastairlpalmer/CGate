@@ -1217,7 +1217,7 @@ html.page-pending #main-content { opacity: 0.5; transition: opacity 0.15s ease-o
                transition-colors duration-100 cursor-pointer;
     }
     .cal-day.is-weekend { @apply bg-sand-50/60; }
-    .cal-day.is-outside { @apply text-sage/60; }
+    .cal-day.is-outside { @apply text-sage; }
     .cal-day.is-past .cal-num { @apply text-sage; }
     .cal-day.is-overdue { @apply ring-error-red/30 bg-error-red-50/50; }
     .cal-day.is-today .cal-num { @apply bg-forest text-white; }
@@ -2184,13 +2184,13 @@ a.pane-item-title:hover { @apply text-forest; }
 }
 .side-search-input {
     @apply block w-full h-10 pl-10 pr-9 rounded-btn bg-white/10 border border-white/15 text-sm text-white
-           placeholder:text-white/60 hover:bg-white/[0.14] focus:outline-hidden focus:bg-white/[0.14]
+           placeholder:text-white/75 hover:bg-white/[0.14] focus:outline-hidden focus:bg-white/[0.14]
            focus:border-sand/60 focus:ring-2 focus:ring-sand/25 transition-colors duration-100;
 }
 .side-search-input::-webkit-search-cancel-button { appearance: none; display: none; }
 .side-search-kbd {
     @apply absolute right-2.5 top-1/2 -translate-y-1/2 inline-flex items-center justify-center h-5 min-w-[20px] px-1
-           rounded border border-white/20 font-mono text-[10px] leading-none text-white/60 pointer-events-none;
+           rounded border border-white/20 font-mono text-[10px] leading-none text-white/75 pointer-events-none;
 }
 .side-search-clear {
     @apply absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 inline-flex items-center justify-center
@@ -2627,7 +2627,7 @@ a.pane-item-title:hover { @apply text-forest; }
 .loc-row-count { @apply block text-base font-bold text-charcoal tabular-nums; }
 .loc-row-count.is-over { @apply text-error-red; }
 .loc-row-count.is-quiet { @apply text-sage; }
-.loc-row-pin { @apply block text-[11px] text-sage/70; }
+.loc-row-pin { @apply block text-[11px] text-sage; }
 .loc-empty { @apply px-3 py-6 text-sm text-sage text-center; }
 
 /* ── One location, opened ── */
@@ -2763,7 +2763,7 @@ a.pane-item-title:hover { @apply text-forest; }
 .loc-card-count { @apply block text-sm font-bold text-charcoal tabular-nums; }
 .loc-card-count.is-over { @apply text-error-red; }
 .loc-card-count.is-quiet { @apply text-sage; }
-.loc-card-unit { @apply block text-[11px] text-sage/80; }
+.loc-card-unit { @apply block text-[11px] text-sage; }
 
 /* The map half. */
 .loc-board-map { @apply relative min-h-0 rounded-card border border-light-sage overflow-hidden bg-parchment; isolation: isolate; }

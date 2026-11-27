@@ -65,7 +65,7 @@ every row of its group.
     <div class="flex min-h-0 flex-1 flex-col">
     <div class="log timeline-scroll">
         {% for day in days %}
-        <p class="log-day" x-show="kind === 'all' ? {% if day.folded %}all{% else %}true{% endif %} : '{{ day.groups|join:" " }}'.split(' ').includes(kind)"{% if day.folded %} x-cloak{% endif %}><span>{{ day.label }}{% if day.with_date %} <span class="text-sage/70">&middot; {{ day.date|date:"j M" }}</span>{% endif %}</span></p>
+        <p class="log-day" x-show="kind === 'all' ? {% if day.folded %}all{% else %}true{% endif %} : '{{ day.groups|join:" " }}'.split(' ').includes(kind)"{% if day.folded %} x-cloak{% endif %}><span>{{ day.label }}{% if day.with_date %} <span class="text-sage">&middot; {{ day.date|date:"j M" }}</span>{% endif %}</span></p>
         {% for event in day.events %}
         <div class="log-event" data-group="{{ event.group }}" x-show="kind === 'all' ? {% if event.folded %}all{% else %}true{% endif %} : kind === '{{ event.group }}'"{% if event.folded %} x-cloak{% endif %}>
             <span class="log-icon log-icon-{{ event.group }}" aria-hidden="true"><svg class="w-4 h-4"><use href="#i-{{ event.kind|kind_icon }}"/></svg></span>
