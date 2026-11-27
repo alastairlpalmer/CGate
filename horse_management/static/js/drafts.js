@@ -97,9 +97,11 @@
 
     function offer(draft) {
         root.cgateDraft = { draft: draft, read: read, write: write, pathOf: pathOf, skip: SKIP_TYPES };
-        var src = (doc.querySelector('script[src*="js/drafts.js"]') || {}).src || '';
+        var src = root.YARDWAY_DRAFTS_OFFER ||
+            ((doc.querySelector('script[src*="js/drafts.js"]') || {}).src || '').replace('js/drafts.js', 'js/drafts_offer.js');
+        if (!src) { return; }
         var tag = doc.createElement('script');
-        tag.src = src.replace('js/drafts.js', 'js/drafts_offer.js');
+        tag.src = src;
         doc.head.appendChild(tag);
     }
 

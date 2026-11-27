@@ -384,7 +384,9 @@
         var ok = false;
         return fetch(window.location.href, {
             credentials: 'same-origin',
-            headers: { 'Accept': 'text/html' }
+            // Only the title, the messages and #main-content come back
+            // (core.middleware.MainOnlyMiddleware), not the whole page.
+            headers: { 'Accept': 'text/html', 'X-Main-Only': '1' }
         }).then(function (resp) {
             redirected = resp.redirected;
             ok = resp.ok;

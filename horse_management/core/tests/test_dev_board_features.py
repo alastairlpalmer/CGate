@@ -217,4 +217,5 @@ class DidItLeaveTests(Base):
 class DateButtonsTests(Base):
 
     def test_the_script_is_on_every_page(self):
-        self.assertContains(self.client.get(reverse('dashboard')), 'js/date_quick.js')
+        from core.tests._page_scripts import page_loads
+        self.assertTrue(page_loads(self.client.get(reverse('dashboard')).content.decode(), 'date_quick.js'))

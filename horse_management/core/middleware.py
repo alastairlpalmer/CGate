@@ -408,3 +408,104 @@ class SessionMiddleware(_DjangoSessionMiddleware):
         ):
             return response
         return super().process_response(request, response)
+
+
+def extract_element(html, element_id):
+    """The outer HTML of the element with ``id="element_id"``, or None.
+
+    Reads the page once with the standard parser and counts open and
+    close tags from the start of that element, so nested elements of the
+    same name are handled.
+    """
+    from html.parser import HTMLParser
+
+    void = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link',
+            'meta', 'source', 'track', 'wbr'}
+    lines = html.splitlines(keepends=True)
+    starts = [0]
+    for line in lines:
+        starts.append(starts[-1] + len(line))
+
+    class Finder(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=False)
+            self.begin = self.end = None
+            self.tag = None
+            self.depth = 0
+
+        def _offset(self):
+            line, col = self.getpos()
+            return starts[line - 1] + col
+
+        def handle_starttag(self, tag, attrs):
+            if self.end is not None:
+                return
+            if self.begin is None:
+                if dict(attrs).get('id') == element_id:
+                    self.begin, self.tag, self.depth = self._offset(), tag, 1
+                    if tag in void:
+                        self.end = self._offset() + len(self.get_starttag_text() or '')
+            elif tag == self.tag and tag not in void:
+                self.depth += 1
+
+        def handle_endtag(self, tag):
+            if self.begin is None or self.end is not None or tag != self.tag:
+                return
+            self.depth -= 1
+            if self.depth == 0:
+                rest = html[self._offset():]
+                self.end = self._offset() + rest.index('>') + 1
+
+    finder = Finder()
+    finder.feed(html)
+    finder.close()
+    if finder.begin is None or finder.end is None:
+        return None
+    return html[finder.begin:finder.end]
+
+
+class MainOnlyMiddleware:
+    """Answer the pop-up's refresh with the parts it reads, not the page.
+
+    After a save in the pop-up sheet, js/popup.js fetches the page again
+    and swaps #main-content. It read only the title, the messages
+    (#toast-container) and #main-content, but got the whole page: 141 KB
+    where about 32 KB is enough (pre-launch review). A request sent with
+    ``X-Main-Only: 1`` now gets those three parts. Any other answer (a
+    redirect, an error, a page without #main-content) is left as it is.
+    """
+
+    HEADER = 'HTTP_X_MAIN_ONLY'
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        import re
+
+        from django.utils.cache import patch_vary_headers
+
+        response = self.get_response(request)
+        if request.META.get(self.HEADER) != '1':
+            return response
+        patch_vary_headers(response, ['X-Main-Only'])
+        if (
+            response.status_code != 200
+            or getattr(response, 'streaming', False)
+            or 'text/html' not in response.get('Content-Type', '')
+        ):
+            return response
+        html = response.content.decode(response.charset or 'utf-8')
+        main = extract_element(html, 'main-content')
+        if main is None:
+            return response
+        title = re.search(r'<title>.*?</title>', html, re.S)
+        toasts = extract_element(html, 'toast-container') or ''
+        body = (
+            '<!DOCTYPE html><html><head>' + (title.group(0) if title else '') +
+            '</head><body>' + toasts + main + '</body></html>'
+        )
+        response.content = body.encode(response.charset or 'utf-8')
+        if response.has_header('Content-Length'):
+            response['Content-Length'] = str(len(response.content))
+        return response
