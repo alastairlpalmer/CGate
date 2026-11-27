@@ -32,15 +32,17 @@ def owners_csv(request):
 
 @feature_required('horses', LEVEL_VIEW)
 def horses_csv(request):
+    from core.permissions import has_feature_access
+
+    # Owner names only for a role that may see owners (pre-launch review:
+    # a groom with Horses access read every owner's name here).
+    with_owners = has_feature_access(request.user, 'owners', LEVEL_VIEW)
     shares = {}
-    for s in OwnershipShare.objects.select_related('owner'):
-        shares.setdefault(s.horse_id, []).append(f'{s.owner.name} ({s.share_percentage:g}%)')
+    if with_owners:
+        for s in OwnershipShare.objects.select_related('owner'):
+            shares.setdefault(s.horse_id, []).append(f'{s.owner.name} ({s.share_percentage:g}%)')
     horses = Horse.objects.order_by('-is_active', 'name')
-    header = ['Name', 'Active', 'Date of birth', 'Sex', 'Colour', 'Owners']
-    rows = (
-        [h.name, h.is_active, h.date_of_birth, h.get_sex_display() if h.sex else '', h.get_color_display() if h.color else '',
-         '; '.join(shares.get(h.pk, []))] for h in horses
-    )
+    header = ['Name', 'Active', 'Date of birth', 'Sex', 'Colour'] + (['Owners'] if with_owners else [])
     if settings.BARNS_ENABLED:
         # Where each horse is housed, at the end so the columns a
         # spreadsheet already reads keep their places.
@@ -48,11 +50,17 @@ def horses_csv(request):
         from ..turnout import annotate_turnout
         horses = annotate_turnout(annotate_stable(horses))
         header += ['Stable', 'Turnout location']
-        rows = (
-            [h.name, h.is_active, h.date_of_birth, h.get_sex_display() if h.sex else '', h.get_color_display() if h.color else '',
-             '; '.join(shares.get(h.pk, [])), h.stable_label or '', h.turnout_name or ''] for h in horses
-        )
-    return csv_response(f'horses-{_stamp()}', header, rows)
+
+    def row(h):
+        cells = [h.name, h.is_active, h.date_of_birth, h.get_sex_display() if h.sex else '',
+                 h.get_color_display() if h.color else '']
+        if with_owners:
+            cells.append('; '.join(shares.get(h.pk, [])))
+        if settings.BARNS_ENABLED:
+            cells += [h.stable_label or '', h.turnout_name or '']
+        return cells
+
+    return csv_response(f'horses-{_stamp()}', header, (row(h) for h in horses))
 
 
 @feature_required('charges', LEVEL_VIEW)

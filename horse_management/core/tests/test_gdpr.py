@@ -243,3 +243,27 @@ class HorseDocumentTests(TestCase):
         _archive(self.owner)
         gdpr.erase_contact_details(self.owner)
         self.assertTrue(Document.all_objects.filter(pk=self.doc.pk).exists())
+
+
+class HorseCsvOwnerNamesTests(TestCase):
+    """Pre-launch review: the horse CSV showed owner names to roles
+    without access to Owners."""
+
+    def setUp(self):
+        from core.models import OwnershipShare
+
+        horse = Horse.objects.create(name='Ghost')
+        OwnershipShare.objects.create(horse=horse, owner=_owner(), share_percentage=Decimal('100'),
+                                      is_primary_contact=True)
+
+    def test_a_role_without_owners_gets_no_owner_names(self):
+        self.client.force_login(make_user_with_access('groomcsv', horses='view'))
+        text = self.client.get(reverse('horses_csv')).content.decode('utf-8-sig')
+        self.assertIn('Ghost', text)
+        self.assertNotIn('Brien', text)
+        self.assertNotIn('Owners', text.splitlines()[0])
+
+    def test_a_role_with_owners_gets_them(self):
+        self.client.force_login(make_admin('csvadmin'))
+        text = self.client.get(reverse('horses_csv')).content.decode('utf-8-sig')
+        self.assertIn('Brien', text)
