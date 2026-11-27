@@ -280,6 +280,15 @@ class InvoiceAdmin(admin.ModelAdmin):
     readonly_fields = ['created_at', 'sent_at', 'paid_at']
     inlines = [InvoiceLineItemInline]
 
+    def has_delete_permission(self, request, obj=None):
+        # The same rule as the app (Invoice.deletion_blocker): only a draft
+        # that was never issued can go. An issued invoice is cancelled or
+        # credited, never deleted; deleting it took its payments with it.
+        # No bulk delete, which would skip the per-invoice check.
+        if obj is None:
+            return False
+        return super().has_delete_permission(request, obj) and not obj.deletion_blocker
+
     def is_overdue_display(self, obj):
         if obj.is_overdue:
             return format_html('<span style="color: red;">Overdue</span>')
@@ -296,6 +305,11 @@ class InvoiceLineItemAdmin(admin.ModelAdmin):
     list_filter = ['line_type']
     search_fields = ['description', 'horse__name', 'invoice__invoice_number']
     raw_id_fields = ['invoice', 'horse', 'placement', 'charge']
+
+    def has_delete_permission(self, request, obj=None):
+        if obj is None:
+            return False
+        return super().has_delete_permission(request, obj) and not obj.invoice.deletion_blocker
 
 
 # HorseOwnership is a legacy model: billing, reminders and every view use

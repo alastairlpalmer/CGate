@@ -338,7 +338,9 @@ class Invoice(models.Model):
                 f"{self.invoice_number} is being emailed right now. Wait for the "
                 "send to finish, then cancel it instead."
             )
-        if self.payments.exists():
+        # Voided payments too: they are kept for the record, and the
+        # database refuses to delete their invoice (on_delete=PROTECT).
+        if Payment.all_objects.filter(invoice=self).exists():
             return (
                 f"{self.invoice_number} has payments recorded against it. "
                 "Remove them first, or cancel the invoice instead."
@@ -535,7 +537,7 @@ class Payment(models.Model):
 
     invoice = models.ForeignKey(
         Invoice,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,  # an invoice with payments is never deleted
         related_name='payments'
     )
     date = models.DateField()
