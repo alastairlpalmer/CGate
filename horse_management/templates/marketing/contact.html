@@ -6,7 +6,7 @@
 {% include "marketing/_page_intro.html" with eyebrow="Contact" title="Get in touch" intro="Book a demo, or ask us a question. We show you Cgate with your own horses and owners." %}
 
 <section class="bg-white" aria-label="Contact form">
-    <div class="mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.5fr_1fr] lg:gap-16 lg:px-8 lg:py-24">
+    <div class="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.5fr_1fr] lg:gap-14 lg:px-8 lg:py-14">
     <div class="mk-reveal rounded-3xl border border-sand bg-white p-6 shadow-xl shadow-forest/5 sm:p-10">
         {% if sent %}
         <div class="rounded-2xl bg-parchment p-8" role="status"><span class="flex h-12 w-12 items-center justify-center rounded-full bg-meadow text-white">{% include "marketing/_icon.html" with name="check" %}</span>
@@ -22,7 +22,7 @@
             <div class="rounded-2xl bg-forest p-5 text-white">
                 <p class="text-sm font-semibold uppercase tracking-[0.14em] text-sand">Your quote</p>
                 <p class="mt-2 font-heading text-2xl">{{ quote.monthly_label }} <span class="text-base text-white/75">a month + VAT</span></p>
-                <p class="mt-1 text-sm text-white/80">{{ quote.horses }} horses &middot; {% for module in quote.modules %}{{ module.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+                <p class="mt-1 text-sm text-white/80">{{ quote.horses }} horses &middot; {{ quote.names|join:" + " }}</p>
                 <p class="mt-3 inline-flex rounded-full bg-saddle px-3 py-1 text-sm font-semibold">{{ quote.percent }}% off your first {{ offer_months }} months: {{ quote.offer_label }} a month</p>
                 <p class="mt-3 text-sm"><a href="{% url 'marketing:pricing' %}?{{ form.quote_spec.value }}" class="text-white/80 underline hover:text-white">Change your quote</a></p>
             </div>

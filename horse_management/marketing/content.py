@@ -1,168 +1,77 @@
 """The words and prices on the marketing pages, in one place to edit.
 
-Prices: per horse, per month (docs/market/vet-app-market-model.xlsx,
-Assumptions section 9, uses £10 per horse; the owner asked for about £5
-to £10, rising with the modules a yard uses). All prices exclude VAT.
+Prices: one price per horse, per month, for each plan (Core, Pro), plus
+add-ons that are not out yet. All prices exclude VAT. Background: the
+market model (docs/market/vet-app-market-model.xlsx) uses £10 per horse.
 """
 
 from decimal import ROUND_HALF_UP, Decimal
 
-# Each feature has an anchor on the Features page (#key) and is in one module.
-FEATURES = [
-    {
-        'key': 'horses', 'title': 'Horses and owners',
-        'line': 'Every horse, owner and co-owner share in one record.',
-        'points': [
-            'Passport details, photos and documents for each horse',
-            'Owners, co-owners and the share each one pays',
-            'Arrivals and departures, with the full history kept',
-        ],
-    },
-    {
-        'key': 'locations', 'title': 'Stables, fields and maps',
-        'line': 'See which horse is in which stable or field.',
-        'points': [
-            'Barns, stables and fields, with moves recorded',
-            'Turnout, and rest periods for each field',
-            'A map of your fields drawn on satellite images',
-        ],
-    },
-    {
-        'key': 'health', 'title': 'Health records and reminders',
-        'line': 'Vaccinations, worming, farrier, dentist and vet visits, with reminders.',
-        'points': [
-            'A due list for the whole yard, so nothing is missed',
-            'Email reminders to owners before a date is due',
-            'Worm egg counts, conditions and vet visit notes',
-        ],
-    },
-    {
-        'key': 'phone', 'title': 'Works on a phone in the yard',
-        'line': 'Add Cgate to the home screen. Record a job where it happens.',
-        'points': [
-            'Large buttons, made for use with one hand',
-            'Quick find for any horse or owner',
-            'A login for each member of staff, with the access you choose',
-        ],
-    },
-    {
-        'key': 'security', 'title': 'Security and backups',
-        'line': 'Your data is safe, and it stays yours.',
-        'points': [
-            'Two-step sign-in',
-            'Daily backups',
-            'Export your horses and owners at any time',
-        ],
-    },
-    {
-        'key': 'invoicing', 'title': 'Invoicing and payments',
-        'line': 'Monthly livery invoices in one click, from the stays you record.',
-        'points': [
-            'Livery, extra charges and co-owner splits on each invoice',
-            'Payments, credit notes, statements and aged debtors',
-            'Invoices sent to owners by email as a PDF',
-        ],
-    },
-    {
-        'key': 'xero', 'title': 'Xero accounting',
-        'line': 'Invoices go to Xero. Payments come back and are matched.',
-        'points': [
-            'No typing the same invoice twice',
-            'Payments made in Xero are recorded on the invoice in Cgate',
-        ],
-    },
-    {
-        'key': 'farrier', 'title': 'Farrier visit page',
-        'line': 'The farrier scans a QR code at the yard and logs the visit.',
-        'points': [
-            'No account set-up for the farrier',
-            'Their prices, and today\'s horses, on their phone',
-            'Visits go to the yard to check, then onto invoices',
-        ],
-    },
-    {
-        'key': 'feed', 'title': 'Feed and costs',
-        'line': 'Feed stock, feeding out and yard costs in one place.',
-        'points': [
-            'Stock levels, with a warning before you run out',
-            'Yard costs and a priced list of services',
-        ],
-    },
-    {
-        'key': 'training', 'title': 'Training and exercise',
-        'line': 'Plan and record the work for each horse.',
-        'points': [
-            'A training log for each horse and each rider',
-            'Work charged to the owner when you choose',
-        ],
-    },
-    {
-        'key': 'breeding', 'title': 'Breeding and pedigree',
-        'line': 'Breeding, foaling and pedigree records for studs.',
-        'points': [
-            'Coverings, scans and foaling dates',
-            'A pedigree tree for each horse',
-        ],
-    },
-    {
-        'key': 'cvet', 'title': 'C-vet: the vet\'s app',
-        'line': 'Your vets see the horses they treat, and share records with the yard.',
-        'points': [
-            'Visit notes and charges recorded at the stable door',
-            'Health records go straight onto the horse in Cgate',
-        ],
-    },
+# The plans, their features in groups, and the add-ons. One price per horse,
+# per month, excluding VAT. Pro = Core + maps and fields (+£1) + invoicing
+# and Xero (+£1). Each group has an anchor on the Features page (#key).
+CORE_GROUPS = [
+    {'key': 'horses', 'icon': 'horses', 'title': 'Horses and owners',
+     'line': 'Every horse, owner and co-owner in one record.',
+     'points': ['Horse records and passports', 'Photos and documents', 'Owners and co-owner shares',
+                'Arrivals and departures, with history']},
+    {'key': 'health', 'icon': 'health', 'title': 'Health, farrier and vet',
+     'line': 'Every health job, visit and due date for each horse.',
+     'points': ['Vaccinations and worming', 'Farrier tracking', 'Vet tracking', 'Dentist and worm egg counts',
+                'A due list for the whole yard', 'Email reminders to owners']},
+    {'key': 'yard', 'icon': 'phone', 'title': 'Built for the yard',
+     'line': 'Record a job on a phone, where it happens.',
+     'points': ['Phone, tablet and computer', 'Quick find for any horse or owner', 'Feed stock and feeding',
+                'A login for each member of staff, with set access']},
+    {'key': 'support', 'icon': 'security', 'title': 'Onboarding and security',
+     'line': 'We set you up, and keep your data safe.',
+     'points': ['Onboarding included', 'Two-step sign-in', 'Daily backups', 'Export your data at any time']},
+]
+PRO_GROUPS = [
+    {'key': 'maps', 'icon': 'locations', 'title': 'Maps, stables and fields',
+     'line': 'See where every horse is, on an interactive map.',
+     'points': ['Interactive map tracking of horses', 'Stables, barns and fields', 'Turnout and field rest',
+                'Every move recorded, with history']},
+    {'key': 'invoicing', 'icon': 'invoicing', 'title': 'Invoicing and payments',
+     'line': 'Monthly livery invoices in one click, from what you record.',
+     'points': ['Livery invoices in one click', 'Extra charges and co-owner splits',
+                'Payments, credit notes and statements', 'Aged debtors and a finance overview']},
+    {'key': 'xero', 'icon': 'xero', 'title': 'Xero accounting',
+     'line': 'Invoices go to Xero. Payments come back and are matched.',
+     'points': ['Invoices sent to Xero', 'Payments matched back', 'No typing an invoice twice']},
 ]
 
-_BY_KEY = {feature['key']: feature for feature in FEATURES}
+PLANS = [
+    {'key': 'core', 'name': 'Core', 'price': Decimal('5'), 'for': 'Run the yard day to day',
+     'groups': CORE_GROUPS},
+    {'key': 'pro', 'name': 'Pro', 'price': Decimal('7'), 'for': 'Run the yard and its money',
+     'includes': 'Everything in Core, plus', 'groups': PRO_GROUPS, 'recommended': True},
+]
+_PLANS = {plan['key']: plan for plan in PLANS}
+DEFAULT_PLAN = 'pro'
 
-# The six cards on the Home page.
-HOME_FEATURES = [_BY_KEY[key] for key in ('horses', 'health', 'invoicing', 'xero', 'phone', 'farrier')]
+# Modules that are not out yet. A yard that adds one helps us build it.
+ADDONS = [
+    {'key': 'training', 'icon': 'training', 'name': 'Training', 'price': Decimal('1.50'),
+     'status': 'Coming next', 'call': 'Help develop it',
+     'line': 'Plan and record the work for each horse and rider.',
+     'points': ['A training log for each horse', 'Riders and work types', 'Work charged to the owner']},
+    {'key': 'breeding', 'icon': 'breeding', 'name': 'Breeding', 'price': Decimal('0.50'),
+     'status': 'Coming soon', 'call': 'Help shape it',
+     'line': 'Coverings, scans, foaling and pedigree, for studs.',
+     'points': ['Coverings and scans', 'Foaling dates', 'A pedigree tree for each horse']},
+]
+_ADDONS = {addon['key']: addon for addon in ADDONS}
+
+# Every feature group, for checks (tests).
+FEATURES = CORE_GROUPS + PRO_GROUPS
 
 EXAMPLE_HORSES = 20
 # Over this many horses, or more than one yard: a price to suit.
 LARGE_YARD_HORSES = 60
 
-# Pricing is per horse, per month, and excludes VAT. Yard CRM is the base;
-# every other module adds to the price per horse. All modules: £10.
-MODULES = [
-    {
-        'key': 'core', 'name': 'Yard CRM', 'price': Decimal('5'), 'required': True,
-        'line': 'Horses, owners, health records, feed and the phone app.',
-        'features': ['horses', 'health', 'phone', 'feed', 'security'],
-    },
-    {
-        'key': 'fields', 'name': 'Field management', 'price': Decimal('1'),
-        'line': 'Stables, fields, turnout and maps.',
-        'features': ['locations'],
-    },
-    {
-        'key': 'invoicing', 'name': 'Invoicing and Xero', 'price': Decimal('2'),
-        'line': 'Monthly livery invoices, payments and Xero.',
-        'features': ['invoicing', 'xero'],
-    },
-    {
-        'key': 'providers', 'name': 'Farrier and vet', 'price': Decimal('1'),
-        'line': 'The farrier visit page and C-vet, the vet\'s app.',
-        'features': ['farrier', 'cvet'],
-    },
-    {
-        'key': 'training', 'name': 'Training', 'price': Decimal('0.50'),
-        'line': 'Plan and record the work for each horse.',
-        'features': ['training'],
-    },
-    {
-        'key': 'breeding', 'name': 'Breeding', 'price': Decimal('0.50'), 'soon': True,
-        'line': 'Coverings, foaling and pedigree, for studs.',
-        'features': ['breeding'],
-    },
-]
-_MODULES = {module['key']: module for module in MODULES}
-# Ticked when the Pricing page opens.
-DEFAULT_MODULES = ('core', 'fields', 'invoicing')
-
-# Sign-up offers, for the first OFFER_MONTHS months. A yard that picks a
-# module that is coming soon helps us build it, and gets the larger one.
+# Sign-up offers, for the first OFFER_MONTHS months. A yard that adds a
+# module that is not out yet helps us build it, and gets the larger one.
 OFFER_MONTHS = 6
 OFFER_PERCENT = 25
 PARTNER_PERCENT = 50
@@ -174,15 +83,12 @@ def money(amount):
     return f'£{amount:,.0f}' if amount == amount.to_integral_value() else f'£{amount:,.2f}'
 
 
-for _module in MODULES:
-    _module['price_label'] = money(_module['price'])
-    _module['feature_list'] = [_BY_KEY[key] for key in _module['features']]
-    for _key in _module['features']:
-        _BY_KEY[_key]['module'] = _module
+for _item in PLANS + ADDONS:
+    _item['price_label'] = money(_item['price'])
 
 
-def quote(horses, keys):
-    """The monthly price for ``horses`` with the modules in ``keys`` (Yard CRM always).
+def quote(horses, plan='pro', addons=()):
+    """The monthly price for ``horses`` on ``plan`` with ``addons``.
 
     The Pricing page's script (js/marketing.js) does the same sum; the
     server does it again for the quote sent with a Contact message.
@@ -191,81 +97,67 @@ def quote(horses, keys):
         horses = max(1, min(int(horses), 2000))
     except (TypeError, ValueError):
         horses = EXAMPLE_HORSES
-    chosen = [module for module in MODULES if module.get('required') or module['key'] in set(keys)]
-    per_horse = sum(module['price'] for module in chosen)
+    chosen_plan = _PLANS.get(plan) or _PLANS[DEFAULT_PLAN]
+    chosen = [addon for addon in ADDONS if addon['key'] in set(addons)]
+    per_horse = chosen_plan['price'] + sum(addon['price'] for addon in chosen)
     monthly = per_horse * horses
-    soon = [module['name'] for module in chosen if module.get('soon')]
-    percent = PARTNER_PERCENT if soon else OFFER_PERCENT
+    partner = [addon['name'] for addon in chosen]
+    percent = PARTNER_PERCENT if partner else OFFER_PERCENT
     offer_monthly = (monthly * (100 - percent) / 100).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
     saving = (monthly - offer_monthly) * OFFER_MONTHS
     return {
+        'horses': horses, 'plan': chosen_plan, 'addons': chosen, 'addon_keys': [a['key'] for a in chosen],
+        'names': [chosen_plan['name']] + [addon['name'] for addon in chosen],
+        'per_horse': per_horse, 'monthly': monthly, 'percent': percent, 'partner': partner,
+        'offer_monthly': offer_monthly, 'saving': saving, 'large': horses >= LARGE_YARD_HORSES,
         'monthly_label': money(monthly), 'per_horse_label': money(per_horse),
         'offer_label': money(offer_monthly), 'saving_label': money(saving),
-        'horses': horses, 'modules': chosen, 'keys': [module['key'] for module in chosen],
-        'per_horse': per_horse, 'monthly': monthly, 'percent': percent, 'partner': soon,
-        'offer_monthly': offer_monthly, 'saving': saving,
-        'large': horses >= LARGE_YARD_HORSES,
     }
 
 
 def quote_from_spec(spec):
-    """A quote from "horses=22&modules=fields,invoicing" (the Contact link), or None."""
+    """A quote from "horses=22&plan=pro&addons=training" (the Contact link), or None."""
     from urllib.parse import parse_qs
 
     values = parse_qs(spec or '')
     if 'horses' not in values:
         return None
-    keys = [key for key in (values.get('modules') or [''])[0].split(',') if key in _MODULES]
-    return quote(values['horses'][0], keys)
+    addons = [key for key in (values.get('addons') or [''])[0].split(',') if key in _ADDONS]
+    return quote(values['horses'][0], (values.get('plan') or [DEFAULT_PLAN])[0], addons)
 
 
 def quote_summary(q):
     """One line for the team's email and the admin."""
-    names = ', '.join(module['name'] for module in q['modules'])
     offer = f"{q['percent']}% off for {OFFER_MONTHS} months ({money(q['offer_monthly'])} a month)"
     if q['partner']:
         offer += f" as a build partner for {', '.join(q['partner'])}"
-    return (f"{q['horses']} horses · {names} · {money(q['monthly'])} a month + VAT "
+    return (f"{q['horses']} horses · {' + '.join(q['names'])} · {money(q['monthly'])} a month + VAT "
             f"({money(q['per_horse'])} per horse) · Offer: {offer}")
 
 
 PRICING_FAQ = [
     ('How do you count horses?',
      'We count the horses at your yard each month. A horse that leaves stops counting the next month.'),
-    ('Can I change my modules?',
-     'Yes. Add or remove modules at any time. The new price starts from your next monthly bill.'),
+    ('Can I change plan?',
+     'Yes. Move between Core and Pro, or add a module, at any time. The new price starts from your next monthly bill.'),
     ('Do the prices include VAT?',
      'No. All prices exclude VAT.'),
     ('How does the sign-up offer work?',
-     f'Your first {OFFER_MONTHS} months are {OFFER_PERCENT}% off. If you choose a module that is coming soon, '
-     f'you help us build it: your first {OFFER_MONTHS} months are {PARTNER_PERCENT}% off instead.'),
+     f'Your first {OFFER_MONTHS} months are {OFFER_PERCENT}% off. If you add a module that is coming next or '
+     f'coming soon, you help us build it: your first {OFFER_MONTHS} months are {PARTNER_PERCENT}% off instead.'),
     ('Is there a contract?',
      'No long contract. You pay month by month.'),
     ('Can I take my data with me?',
      'Yes. You can export your horses and owners at any time.'),
     ('Do you help us set up?',
-     'Yes. We help you bring in your horses and owners, and show your staff how it works.'),
+     'Yes. Onboarding is included. We help you bring in your horses and owners, and show your staff how it works.'),
 ]
 
 # Home page lists.
-YARD_LINKS = [
-    ('horses', 'Horses and owners'),
-    ('invoicing', 'Invoicing and Xero'),
-    ('health', 'Health records'),
-    ('cvet', 'Vets and farriers'),
-]
-
 STEPS = [
     ('Set up your yard', 'Add your horses, owners, stables and livery rates.'),
     ('Record the day', 'Moves, health jobs, visits and extras, on a phone in the yard.'),
     ('Send the invoices', 'Made each month from what you recorded, and sent to owners and to Xero.'),
-]
-
-AUDIENCES = [
-    ('manager', 'Yard managers', 'The whole yard on one screen: horses, stables, money and what is due.'),
-    ('staff', 'Staff', 'Their own login, with only the parts they need.'),
-    ('owners', 'Owners', 'Clear invoices, and reminders before health dates are due.'),
-    ('cvet', 'Vets and farriers', 'Their own phone page to record visits at the stable door.'),
 ]
 
 BELIEFS = [

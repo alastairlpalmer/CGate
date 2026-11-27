@@ -13,13 +13,30 @@ Every animation stops with prefers-reduced-motion (input.css, mk-*).
         </defs>
         <rect x="6" y="6" width="548" height="448" rx="28" fill="#fff" fill-opacity=".04" stroke="#fff" stroke-opacity=".12"/>
 
-        {# Fields #}
-        <path class="mk-fill" style="--d:.9s" d="M42 62 228 42l20 150-186 20Z" fill="url(#mk-stripes)"/>
-        <path class="mk-draw" style="--len:760;--d:.1s" d="M42 62 228 42l20 150-186 20Z" stroke="#88A6AD" stroke-width="2" filter="url(#mk-glow)"/>
-        <path class="mk-fill" style="--d:1.1s" d="M272 42 518 62l-10 128-226-8Z" fill="#88A6AD" fill-opacity=".14"/>
-        <path class="mk-draw" style="--len:820;--d:.3s" d="M272 42 518 62l-10 128-226-8Z" stroke="#88A6AD" stroke-width="2" filter="url(#mk-glow)"/>
-        <text x="62" y="86" class="mk-fill" style="--d:1.2s" fill="#fff" fill-opacity=".75" font-size="11" letter-spacing="1.5" font-family="DM Sans, sans-serif">FIELD 1 · 6 HORSES</text>
-        <text x="292" y="66" class="mk-fill" style="--d:1.3s" fill="#fff" fill-opacity=".75" font-size="11" letter-spacing="1.5" font-family="DM Sans, sans-serif">FIELD 2 · RESTING</text>
+        {# Fields: four paddocks that share hedge lines, a tree belt and a track, as on a real yard plan #}
+        <g class="mk-fill" style="--d:.9s">
+            <path d="M40 70Q105 52 180 48Q186 130 178 211Q110 213 46 214Q34 140 40 70Z" fill="url(#mk-stripes)"/>
+            <path d="M180 48Q230 43 280 44L362 46Q356 125 364 203L300 204Q240 207 178 211Q186 130 180 48Z" fill="#88A6AD" fill-opacity=".12"/>
+            <path d="M362 46 520 52Q524 88 520 124Q440 118 360 126Q358 86 362 46Z" fill="url(#mk-stripes)"/>
+            <path d="M360 126Q440 118 520 124Q518 160 516 196L364 203Q358 165 360 126Z" fill="#E6E1D1" fill-opacity=".10"/>
+        </g>
+        <path class="mk-draw" style="--len:1500;--d:.1s" d="M40 70Q105 52 180 48Q230 43 280 44L520 52Q526 124 516 196L300 204Q170 210 46 214Q34 140 40 70Z" stroke="#88A6AD" stroke-width="2" filter="url(#mk-glow)"/>
+        <path class="mk-draw" style="--len:400;--d:.6s" d="M180 48Q186 130 178 211M362 46Q356 125 364 203M360 126Q440 118 520 124" stroke="#88A6AD" stroke-width="1.6" stroke-opacity=".85"/>
+        {# Tree belt along the top hedge #}
+        <g class="mk-fill" style="--d:1.2s" fill="#88A6AD" fill-opacity=".35">
+            <circle cx="62" cy="58" r="9"/><circle cx="80" cy="52" r="7"/><circle cx="98" cy="50" r="9"/><circle cx="118" cy="47" r="6"/>
+            <circle cx="300" cy="40" r="7"/><circle cx="318" cy="41" r="9"/><circle cx="338" cy="42" r="6"/>
+        </g>
+        {# Gates: small breaks in the hedge onto the track #}
+        <path class="mk-fill" style="--d:1.3s" d="M100 214h16M262 206h16M430 199h16" stroke="#2F4850" stroke-width="4"/>
+        {# The track between the paddocks and the yard #}
+        <path class="mk-draw" style="--len:560;--d:.8s" d="M24 228Q280 236 540 222" stroke="#E6E1D1" stroke-opacity=".35" stroke-width="7" stroke-linecap="round"/>
+        <g class="mk-fill" style="--d:1.3s" fill="#fff" font-family="DM Sans, sans-serif">
+            <text x="58" y="96" font-size="11" letter-spacing="1.5" fill-opacity=".85">FIELD 1</text><text x="58" y="111" font-size="10" fill-opacity=".6">6 horses</text>
+            <text x="200" y="74" font-size="11" letter-spacing="1.5" fill-opacity=".85">FIELD 2</text><text x="200" y="89" font-size="10" fill-opacity=".6">Resting</text>
+            <text x="378" y="74" font-size="11" letter-spacing="1.5" fill-opacity=".85">FIELD 3</text><text x="378" y="89" font-size="10" fill-opacity=".6">4 horses</text>
+            <text x="378" y="152" font-size="11" letter-spacing="1.5" fill-opacity=".85">FIELD 4</text><text x="378" y="167" font-size="10" fill-opacity=".6">Hay</text>
+        </g>
 
         {# Arena #}
         <rect class="mk-draw" style="--len:600;--d:.5s" x="330" y="232" width="180" height="108" rx="14" stroke="#E6E1D1" stroke-opacity=".8" stroke-width="2"/>
@@ -45,9 +62,9 @@ Every animation stops with prefers-reduced-motion (input.css, mk-*).
 
         {# Data lines into the office, with dots moving along them #}
         <g stroke="#E6E1D1" stroke-opacity=".55" stroke-width="1.5" class="mk-fill" style="--d:1.8s">
-            <path id="mk-p1" class="mk-flow" d="M150 205v41"/>
+            <path id="mk-p1" class="mk-flow" d="M108 214v32"/>
             <path id="mk-p2" class="mk-flow" d="M171 342c0 22 20 30 26 42"/>
-            <path id="mk-p3" class="mk-flow" d="M395 182c-10 80-80 150-128 214"/>
+            <path id="mk-p3" class="mk-flow" d="M438 199c-10 80-110 150-170 197"/>
             <path id="mk-p4" class="mk-flow" d="M420 340c-20 50-90 70-152 72"/>
         </g>
         <g class="mk-moving" fill="#fff">
@@ -61,14 +78,14 @@ Every animation stops with prefers-reduced-motion (input.css, mk-*).
         <g>
             <circle class="mk-pulse" style="--d:2s" cx="150" cy="268" r="8" fill="#A0522D"/>
             <circle class="mk-fill" style="--d:1.8s" cx="150" cy="268" r="5" fill="#fff" stroke="#A0522D" stroke-width="3"/>
-            <circle class="mk-pulse" style="--d:2.6s" cx="140" cy="130" r="8" fill="#3F7A4F"/>
-            <circle class="mk-fill" style="--d:1.9s" cx="140" cy="130" r="5" fill="#fff" stroke="#3F7A4F" stroke-width="3"/>
+            <circle class="mk-pulse" style="--d:2.6s" cx="118" cy="160" r="8" fill="#3F7A4F"/>
+            <circle class="mk-fill" style="--d:1.9s" cx="118" cy="160" r="5" fill="#fff" stroke="#3F7A4F" stroke-width="3"/>
             <circle class="mk-pulse" style="--d:3.2s" cx="222" cy="384" r="8" fill="#fff"/>
         </g>
     </svg>
 
     {# Floating cards #}
-    <div class="mk-card absolute left-[-2%] top-[30%] flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 text-xs text-charcoal shadow-lg sm:text-sm" style="--d:2.2s">
+    <div class="mk-card absolute left-[-3%] top-[37%] flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 text-xs text-charcoal shadow-lg sm:text-sm" style="--d:2.2s">
         <span class="h-2 w-2 rounded-full bg-meadow"></span><span><strong class="font-semibold">Bramble</strong> moved to Field 1</span>
     </div>
     <div class="mk-card absolute right-[-3%] top-[44%] rounded-xl bg-white/95 px-3 py-2 text-xs text-charcoal shadow-lg sm:text-sm" style="--d:2.8s">

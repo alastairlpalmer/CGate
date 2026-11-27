@@ -5,7 +5,8 @@ from django.urls import reverse
 
 from core.roles_testutils import make_user_with_access
 
-PAGES = ('marketing:features', 'marketing:pricing', 'marketing:about', 'marketing:contact')
+PAGES = ('marketing:pricing', 'marketing:contact')
+OLD_PAGES = ('marketing:features', 'marketing:about')
 
 
 @override_settings(MARKETING_SITE_ENABLED=True)
@@ -38,6 +39,20 @@ class SiteOnTests(TestCase):
         self.assertIn(reverse('login'), response['Location'])
         response = self.client.post('/')
         self.assertNotEqual(response.status_code, 200)
+
+    def test_the_old_features_and_about_pages_go_to_their_home_sections(self):
+        self.assertRedirects(self.client.get(reverse('marketing:features')), '/#features',
+                             status_code=301, fetch_redirect_response=False)
+        self.assertRedirects(self.client.get(reverse('marketing:about')), '/#about',
+                             status_code=301, fetch_redirect_response=False)
+
+    def test_home_holds_the_features_and_about_sections(self):
+        from .content import ADDONS, FEATURES
+
+        html = self.client.get('/').content.decode()
+        for key in ['features', 'about'] + [item['key'] for item in FEATURES + ADDONS]:
+            self.assertIn(f'id="{key}"', html)
+        self.assertIn('Interactive map tracking of horses', html)
 
     def test_each_page_opens_for_a_visitor(self):
         for name in PAGES:
@@ -83,7 +98,7 @@ class SiteOffTests(TestCase):
         self.assertIn(reverse('login'), response['Location'])
 
     def test_the_pages_are_not_found(self):
-        for name in PAGES:
+        for name in PAGES + OLD_PAGES:
             self.assertEqual(self.client.get(reverse(name)).status_code, 404, name)
 
     def test_the_sign_in_page_has_no_home_link(self):
@@ -183,83 +198,67 @@ class ContactFormTests(TestCase):
 @override_settings(MARKETING_SITE_ENABLED=True)
 class PricingTests(TestCase):
 
-    def test_the_quote_adds_the_modules_per_horse(self):
+    def test_core_and_pro_have_one_price_per_horse(self):
         from decimal import Decimal
 
         from .content import quote
 
-        q = quote(22, ['fields', 'invoicing'])
-        self.assertEqual(q['per_horse'], Decimal('8'))           # 5 + 1 + 2
-        self.assertEqual(q['monthly'], Decimal('176'))
+        self.assertEqual(quote(1, 'core')['per_horse'], Decimal('5'))
+        self.assertEqual(quote(1, 'pro')['per_horse'], Decimal('7'))     # Core + maps (+1) + invoicing (+1)
+
+    def test_the_quote_adds_the_add_ons_per_horse(self):
+        from decimal import Decimal
+
+        from .content import quote
+
+        q = quote(22, 'pro')
+        self.assertEqual(q['monthly'], Decimal('154'))
         self.assertEqual(q['percent'], 25)
-        self.assertEqual(q['offer_monthly'], Decimal('132.00'))
-        self.assertEqual(q['saving'], Decimal('264.00'))
-        self.assertEqual(q['monthly_label'], '£176')
-
-    def test_every_module_costs_ten_pounds_per_horse(self):
-        from decimal import Decimal
-
-        from .content import MODULES, quote
-
-        self.assertEqual(quote(1, [m['key'] for m in MODULES])['per_horse'], Decimal('10'))
-        self.assertEqual(quote(1, [])['per_horse'], Decimal('5'))  # Yard CRM is always in
-
-    def test_a_coming_soon_module_gives_the_build_partner_offer(self):
-        from .content import quote
-
-        q = quote(10, ['breeding'])
-        self.assertEqual(q['partner'], ['Breeding'])
+        self.assertEqual(q['offer_label'], '£115.50')
+        q = quote(10, 'core', ['training', 'breeding'])                  # 5 + 1.50 + 0.50
+        self.assertEqual(q['monthly'], Decimal('70'))
+        self.assertEqual(q['partner'], ['Training', 'Breeding'])
         self.assertEqual(q['percent'], 50)
-        self.assertEqual(q['offer_label'], '£27.50')               # 10 x 5.50 = 55, half
+        self.assertEqual(q['offer_label'], '£35')
 
     def test_bad_input_is_made_safe(self):
         from .content import EXAMPLE_HORSES, quote, quote_from_spec
 
-        self.assertEqual(quote('lots', [])['horses'], EXAMPLE_HORSES)
-        self.assertEqual(quote(-4, [])['horses'], 1)
-        self.assertEqual(quote(99999, [])['horses'], 2000)
-        self.assertEqual(quote_from_spec('horses=5&modules=nope,fields')['keys'], ['core', 'fields'])
-        self.assertIsNone(quote_from_spec('modules=fields'))
+        self.assertEqual(quote('lots')['horses'], EXAMPLE_HORSES)
+        self.assertEqual(quote(-4)['horses'], 1)
+        self.assertEqual(quote(99999)['horses'], 2000)
+        self.assertEqual(quote(5, 'gold')['plan']['key'], 'pro')
+        self.assertEqual(quote_from_spec('horses=5&plan=core&addons=nope,training')['addon_keys'], ['training'])
+        self.assertIsNone(quote_from_spec('plan=core'))
 
-    def test_the_page_shows_the_default_quote_without_the_script(self):
+    def test_the_page_opens_on_pro_with_the_default_quote(self):
         html = self.client.get(reverse('marketing:pricing')).content.decode()
-        self.assertIn('data-out="monthly">£160</span>', html)      # 20 x (5 + 1 + 2)
+        self.assertIn('data-out="monthly">£140</span>', html)      # 20 x 7
         self.assertIn('a month + VAT', html)
-        self.assertIn('25% off', html)
-        self.assertIn('Coming soon', html)
-        self.assertRegex(html, r'value="core"[^>]*checked disabled')
-        self.assertRegex(html, r'value="invoicing"[^>]*checked')
+        self.assertIn('Onboarding included', html)
+        self.assertIn('Interactive map tracking of horses', html)
+        self.assertIn('Farrier tracking', html)
+        self.assertIn('Coming next', html)
+        self.assertRegex(html, r'value="pro"[^>]*checked')
         self.assertNotRegex(html, r'value="training"[^>]*checked')
+        self.assertNotIn('C-vet', html)
 
-    def test_claim_this_offer_carries_the_quote_to_the_contact_page(self):
-        url = reverse('marketing:contact') + '?horses=22&module=fields&module=breeding&topic=offer'
-        html = self.client.get(url).content.decode()
-        self.assertIn('Your quote', html)
-        self.assertIn('£143', html)                                # 22 x (5 + 1 + 0.50)
-        self.assertIn('£71.50 a month', html)
-        self.assertRegex(html, r'name="horses" value="22"')
-        self.assertIn('50% off your first 6 months', html)
-        self.assertRegex(html, r'value="offer"[^>]*checked')
-
-    def test_change_your_quote_opens_the_calculator_with_the_same_choices(self):
-        html = self.client.get(reverse('marketing:pricing') + '?horses=12&modules=training,breeding').content.decode()
-        self.assertIn('data-out="monthly">£72</span>', html)        # 12 x (5 + 0.50 + 0.50)
+    def test_a_link_can_open_the_calculator_with_choices(self):
+        html = self.client.get(reverse('marketing:pricing') + '?plan=core&horses=12&addon=training').content.decode()
+        self.assertIn('data-out="monthly">£78</span>', html)       # 12 x 6.50
+        self.assertRegex(html, r'value="core"[^>]*checked')
         self.assertRegex(html, r'value="training"[^>]*checked')
-        self.assertNotRegex(html, r'value="invoicing"[^>]*checked')
         self.assertIn('50% off', html)
 
-    def test_every_feature_is_in_exactly_one_module(self):
-        from .content import FEATURES, MODULES
-
-        in_modules = [key for module in MODULES for key in module['features']]
-        self.assertCountEqual(in_modules, [feature['key'] for feature in FEATURES])
-
-    def test_the_features_page_links_match_the_anchors(self):
-        from .content import FEATURES
-
-        html = self.client.get(reverse('marketing:features')).content.decode()
-        for feature in FEATURES:
-            self.assertIn(f'id="{feature["key"]}"', html)
+    def test_claim_this_offer_carries_the_quote_to_the_contact_page(self):
+        url = reverse('marketing:contact') + '?plan=core&horses=22&addon=breeding&topic=offer'
+        html = self.client.get(url).content.decode()
+        self.assertIn('Your quote', html)
+        self.assertIn('£121', html)                                # 22 x 5.50
+        self.assertIn('Core + Breeding', html)
+        self.assertIn('50% off your first 6 months: £60.50 a month', html)
+        self.assertRegex(html, r'name="horses" value="22"')
+        self.assertRegex(html, r'value="offer"[^>]*checked')
 
 
 @override_settings(
@@ -275,10 +274,10 @@ class QuoteMessageTests(TestCase):
         from .models import ContactMessage
 
         cache.clear()
-        post = {**GOOD_POST, 'topic': 'offer', 'quote_spec': 'horses=22&modules=fields,invoicing'}
+        post = {**GOOD_POST, 'topic': 'offer', 'quote_spec': 'horses=22&plan=pro&addons='}
         self.client.post(reverse('marketing:contact'), post)
         message = ContactMessage.objects.get()
         self.assertIn('22 horses', message.quote)
-        self.assertIn('£176 a month + VAT', message.quote)
-        self.assertIn('25% off for 6 months (£132 a month)', message.quote)
-        self.assertIn('£176 a month + VAT', mail.outbox[0].alternatives[0][0])
+        self.assertIn('Pro · £154 a month + VAT', message.quote)
+        self.assertIn('25% off for 6 months (£115.50 a month)', message.quote)
+        self.assertIn('£154 a month + VAT', mail.outbox[0].alternatives[0][0])
