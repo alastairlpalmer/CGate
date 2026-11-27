@@ -1,98 +1,121 @@
 {% comment %}
-The Home hero: a plan of a yard seen from above, drawn in SVG. Outlines
-draw in, one stable block is "x-rayed" to show its stalls, and dots carry
-data along lines to the office. The cards are HTML, so the words stay sharp.
-Decoration only: the same facts are in the page text (aria-hidden).
-Every animation stops with prefers-reduced-motion (input.css, mk-*).
+The Home hero: the yard seen from above at left, the owner's phone at right.
+Records flow from the fields and the barn to the office; the invoice and a
+health reminder go to the owner; the owner's payment comes back and is
+matched in Xero. That loop (horse records -> owner invoicing -> payment) is
+the product, so it is the picture. Owners get email today (no owner app),
+so the phone shows emails and a payment received, not a "pay" button.
+Decoration only (aria-hidden): the same facts are in the page text.
+Every animation stops with prefers-reduced-motion (marketing.input.css, mk-*).
 {% endcomment %}
-<div class="relative mx-auto w-full max-w-[620px]" aria-hidden="true">
-    <svg viewBox="0 0 560 460" class="h-auto w-full" fill="none">
+<div class="relative mx-auto w-full max-w-[640px]" aria-hidden="true">
+    <svg viewBox="0 0 560 460" class="h-auto w-full" fill="none" font-family="DM Sans, sans-serif">
         <defs>
             <pattern id="mk-stripes" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0v8" stroke="#88A6AD" stroke-opacity=".25" stroke-width="2"/></pattern>
             <filter id="mk-glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
         </defs>
-        <rect x="6" y="6" width="548" height="448" rx="28" fill="#fff" fill-opacity=".04" stroke="#fff" stroke-opacity=".12"/>
+        <rect x="6" y="6" width="370" height="448" rx="26" fill="#fff" fill-opacity=".04" stroke="#fff" stroke-opacity=".12"/>
+        <text x="26" y="32" class="mk-fill" style="--d:.2s" fill="#fff" fill-opacity=".6" font-size="10" letter-spacing="2">THE YARD</text>
 
-        {# Fields: four paddocks that share hedge lines, a tree belt and a track, as on a real yard plan #}
+        {# Fields: three paddocks that share hedge lines #}
         <g class="mk-fill" style="--d:.9s">
-            <path d="M40 70Q105 52 180 48Q186 130 178 211Q110 213 46 214Q34 140 40 70Z" fill="url(#mk-stripes)"/>
-            <path d="M180 48Q230 43 280 44L362 46Q356 125 364 203L300 204Q240 207 178 211Q186 130 180 48Z" fill="#88A6AD" fill-opacity=".12"/>
-            <path d="M362 46 520 52Q524 88 520 124Q440 118 360 126Q358 86 362 46Z" fill="url(#mk-stripes)"/>
-            <path d="M360 126Q440 118 520 124Q518 160 516 196L364 203Q358 165 360 126Z" fill="#E6E1D1" fill-opacity=".10"/>
+            <path d="M26 58Q80 46 136 44Q141 120 134 190Q80 192 30 193Q20 125 26 58Z" fill="url(#mk-stripes)"/>
+            <path d="M136 44 246 42Q241 118 248 188L134 190Q141 120 136 44Z" fill="#88A6AD" fill-opacity=".12"/>
+            <path d="M246 42 352 48Q358 118 350 186L248 188Q241 118 246 42Z" fill="url(#mk-stripes)"/>
         </g>
-        <path class="mk-draw" style="--len:1500;--d:.1s" d="M40 70Q105 52 180 48Q230 43 280 44L520 52Q526 124 516 196L300 204Q170 210 46 214Q34 140 40 70Z" stroke="#88A6AD" stroke-width="2" filter="url(#mk-glow)"/>
-        <path class="mk-draw" style="--len:400;--d:.6s" d="M180 48Q186 130 178 211M362 46Q356 125 364 203M360 126Q440 118 520 124" stroke="#88A6AD" stroke-width="1.6" stroke-opacity=".85"/>
-        {# Tree belt along the top hedge #}
-        <g class="mk-fill" style="--d:1.2s" fill="#88A6AD" fill-opacity=".35">
-            <circle cx="62" cy="58" r="9"/><circle cx="80" cy="52" r="7"/><circle cx="98" cy="50" r="9"/><circle cx="118" cy="47" r="6"/>
-            <circle cx="300" cy="40" r="7"/><circle cx="318" cy="41" r="9"/><circle cx="338" cy="42" r="6"/>
-        </g>
-        {# Gates: small breaks in the hedge onto the track #}
-        <path class="mk-fill" style="--d:1.3s" d="M100 214h16M262 206h16M430 199h16" stroke="#2F4850" stroke-width="4"/>
-        {# The track between the paddocks and the yard #}
-        <path class="mk-draw" style="--len:560;--d:.8s" d="M24 228Q280 236 540 222" stroke="#E6E1D1" stroke-opacity=".35" stroke-width="7" stroke-linecap="round"/>
-        <g class="mk-fill" style="--d:1.3s" fill="#fff" font-family="DM Sans, sans-serif">
-            <text x="58" y="96" font-size="11" letter-spacing="1.5" fill-opacity=".85">FIELD 1</text><text x="58" y="111" font-size="10" fill-opacity=".6">6 horses</text>
-            <text x="200" y="74" font-size="11" letter-spacing="1.5" fill-opacity=".85">FIELD 2</text><text x="200" y="89" font-size="10" fill-opacity=".6">Resting</text>
-            <text x="378" y="74" font-size="11" letter-spacing="1.5" fill-opacity=".85">FIELD 3</text><text x="378" y="89" font-size="10" fill-opacity=".6">4 horses</text>
-            <text x="378" y="152" font-size="11" letter-spacing="1.5" fill-opacity=".85">FIELD 4</text><text x="378" y="167" font-size="10" fill-opacity=".6">Hay</text>
+        <path class="mk-draw" style="--len:1100;--d:.1s" d="M26 58Q80 46 136 44L246 42 352 48Q358 118 350 186L134 190Q80 192 30 193Q20 125 26 58Z" stroke="#88A6AD" stroke-width="2" filter="url(#mk-glow)"/>
+        <path class="mk-draw" style="--len:320;--d:.6s" d="M136 44Q141 120 134 190M246 42Q241 118 248 188" stroke="#88A6AD" stroke-width="1.6" stroke-opacity=".85"/>
+        <g class="mk-fill" style="--d:1.3s" fill="#fff">
+            <text x="42" y="80" font-size="11" letter-spacing="1.5" fill-opacity=".85">FIELD 1</text><text x="42" y="95" font-size="10" fill-opacity=".6">5 horses</text>
+            <text x="152" y="72" font-size="11" letter-spacing="1.5" fill-opacity=".85">FIELD 2</text><text x="152" y="87" font-size="10" fill-opacity=".6">Resting</text>
+            <text x="262" y="72" font-size="11" letter-spacing="1.5" fill-opacity=".85">FIELD 3</text><text x="262" y="87" font-size="10" fill-opacity=".6">3 horses</text>
         </g>
 
-        {# Arena #}
-        <rect class="mk-draw" style="--len:600;--d:.5s" x="330" y="232" width="180" height="108" rx="14" stroke="#E6E1D1" stroke-opacity=".8" stroke-width="2"/>
-        <text x="350" y="256" class="mk-fill" style="--d:1.4s" fill="#fff" fill-opacity=".75" font-size="11" letter-spacing="1.5" font-family="DM Sans, sans-serif">ARENA</text>
-
-        {# Barn A, x-rayed: stalls with a horse in each #}
+        {# Barn A, x-rayed: five stalls with a horse in each #}
         <g class="mk-fill" style="--d:1s">
-            <rect x="48" y="246" width="246" height="96" rx="8" fill="#fff" fill-opacity=".07"/>
-            <rect x="130" y="250" width="40" height="88" rx="4" fill="#A0522D" fill-opacity=".55"/>
+            <rect x="26" y="232" width="220" height="84" rx="8" fill="#fff" fill-opacity=".07"/>
+            <rect x="114" y="236" width="44" height="76" rx="4" fill="#A0522D" fill-opacity=".55"/>
         </g>
-        <rect class="mk-draw" style="--len:700;--d:.6s" x="48" y="246" width="246" height="96" rx="8" stroke="#fff" stroke-opacity=".9" stroke-width="2"/>
-        <path class="mk-draw" style="--len:500;--d:1s" d="M89 246v96M130 246v96M171 246v96M212 246v96M253 246v96" stroke="#fff" stroke-opacity=".35"/>
-        <g class="mk-fill" style="--d:1.6s" fill="#fff" font-size="9.5" font-family="Source Sans 3, sans-serif" text-anchor="middle">
-            <text x="68" y="300" fill-opacity=".85">Bramble</text><text x="109" y="300" fill-opacity=".85">Duke</text>
-            <text x="150" y="300">Pip</text><text x="191" y="300" fill-opacity=".85">Maple</text>
-            <text x="232" y="300" fill-opacity=".85">Otis</text><text x="273" y="300" fill-opacity=".85">Rosa</text>
+        <rect class="mk-draw" style="--len:620;--d:.6s" x="26" y="232" width="220" height="84" rx="8" stroke="#fff" stroke-opacity=".9" stroke-width="2"/>
+        <path class="mk-draw" style="--len:400;--d:1s" d="M70 232v84M114 232v84M158 232v84M202 232v84" stroke="#fff" stroke-opacity=".35"/>
+        <g class="mk-fill" style="--d:1.6s" fill="#fff" font-size="10" font-family="Source Sans 3, sans-serif" text-anchor="middle">
+            <text x="48" y="279" fill-opacity=".85">Bramble</text><text x="92" y="279" fill-opacity=".85">Duke</text>
+            <text x="136" y="279">Pip</text><text x="180" y="279" fill-opacity=".85">Maple</text><text x="224" y="279" fill-opacity=".85">Otis</text>
         </g>
-        <text x="48" y="364" class="mk-fill" style="--d:1.5s" fill="#fff" fill-opacity=".75" font-size="11" letter-spacing="1.5" font-family="DM Sans, sans-serif">BARN A · 6 STALLS</text>
+        <text x="26" y="336" class="mk-fill" style="--d:1.5s" fill="#fff" fill-opacity=".75" font-size="11" letter-spacing="1.5">BARN A</text>
 
-        {# Office: where the data goes #}
-        <rect class="mk-draw" style="--len:300;--d:.8s" x="176" y="384" width="92" height="50" rx="10" stroke="#fff" stroke-width="2"/>
-        <text x="222" y="414" class="mk-fill" style="--d:1.6s" fill="#fff" font-size="12" font-weight="600" text-anchor="middle" font-family="DM Sans, sans-serif">Office</text>
+        {# Office, and Xero under it #}
+        <rect class="mk-draw" style="--len:300;--d:.8s" x="268" y="246" width="88" height="52" rx="10" stroke="#fff" stroke-width="2"/>
+        <text x="312" y="277" class="mk-fill" style="--d:1.6s" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">Office</text>
+        <rect class="mk-draw" style="--len:260;--d:1s" x="276" y="362" width="72" height="40" rx="10" stroke="#E6E1D1" stroke-opacity=".7" stroke-width="1.5"/>
+        <text x="312" y="387" class="mk-fill" style="--d:1.7s" fill="#E6E1D1" font-size="12" font-weight="600" text-anchor="middle">Xero</text>
 
-        {# Data lines into the office, with dots moving along them #}
+        {# The owner's phone #}
+        <text x="466" y="32" class="mk-fill" style="--d:.4s" fill="#fff" fill-opacity=".6" font-size="10" letter-spacing="2" text-anchor="middle">THE OWNER</text>
+        <rect class="mk-draw" style="--len:900;--d:.5s" x="394" y="44" width="146" height="326" rx="24" stroke="#fff" stroke-opacity=".85" stroke-width="2"/>
+        <rect class="mk-fill" style="--d:.9s" x="394" y="44" width="146" height="326" rx="24" fill="#fff" fill-opacity=".06"/>
+        <rect class="mk-fill" style="--d:1s" x="447" y="54" width="40" height="5" rx="2.5" fill="#fff" fill-opacity=".35"/>
+        <g class="mk-fill" style="--d:1.2s">
+            <circle cx="418" cy="84" r="10" fill="#E6E1D1"/><text x="418" y="88" fill="#3D5A63" font-size="10" font-weight="700" text-anchor="middle">S</text>
+            <text x="434" y="82" fill="#fff" font-size="11" font-weight="600">Sarah</text><text x="434" y="95" fill="#fff" fill-opacity=".6" font-size="9">Owner of Pip</text>
+        </g>
+        {# 1. The invoice arrives #}
+        <g class="mk-fill" style="--d:2.4s">
+            <rect x="404" y="112" width="126" height="92" rx="12" fill="#fff"/>
+            <text x="416" y="132" fill="#56737A" font-size="8.5" letter-spacing="1">INVOICE · EMAIL</text>
+            <text x="416" y="150" fill="#2D2D2D" font-size="10.5" font-weight="600">Livery, November</text>
+            <text x="416" y="164" fill="#56737A" font-size="9">Pip · INV-1042</text>
+            <text x="416" y="191" fill="#3D5A63" font-size="17" font-weight="700">£640.00</text>
+            <rect x="496" y="180" width="24" height="14" rx="4" fill="#F5F2EA"/><text x="508" y="190" fill="#56737A" font-size="7.5" font-weight="700" text-anchor="middle">PDF</text>
+        </g>
+        {# 2. A health reminder #}
+        <g class="mk-fill" style="--d:3s">
+            <rect x="404" y="214" width="126" height="56" rx="12" fill="#fff" fill-opacity=".92"/>
+            <circle cx="417" cy="232" r="3.5" fill="#A0522D"/>
+            <text x="426" y="235" fill="#56737A" font-size="8.5" letter-spacing="1">REMINDER</text>
+            <text x="416" y="253" fill="#2D2D2D" font-size="10" font-weight="600">Pip: flu jab due</text>
+            <text x="416" y="264" fill="#56737A" font-size="9">12 December</text>
+        </g>
+        {# 3. The payment comes back, matched in Xero #}
+        <g class="mk-fill" style="--d:4.2s">
+            <rect x="404" y="282" width="126" height="62" rx="12" fill="#3F7A4F"/>
+            <circle cx="420" cy="302" r="7" fill="#fff"/><path d="m416.5 302 2.5 2.5 4.5-5" stroke="#3F7A4F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="432" y="306" fill="#fff" font-size="10.5" font-weight="700">Paid £640.00</text>
+            <text x="416" y="328" fill="#fff" fill-opacity=".85" font-size="9">Matched in Xero</text>
+        </g>
+
+        {# Data lines #}
         <g stroke="#E6E1D1" stroke-opacity=".55" stroke-width="1.5" class="mk-fill" style="--d:1.8s">
-            <path id="mk-p1" class="mk-flow" d="M108 214v32"/>
-            <path id="mk-p2" class="mk-flow" d="M171 342c0 22 20 30 26 42"/>
-            <path id="mk-p3" class="mk-flow" d="M438 199c-10 80-110 150-170 197"/>
-            <path id="mk-p4" class="mk-flow" d="M420 340c-20 50-90 70-152 72"/>
+            <path id="mk-p1" class="mk-flow" d="M80 193v39"/>
+            <path id="mk-p2" class="mk-flow" d="M246 274h22"/>
+            <path id="mk-p3" class="mk-flow" d="M300 188c4 20 8 40 8 58"/>
+            <path id="mk-p5" class="mk-flow" d="M312 298v64"/>
         </g>
-        <g class="mk-moving" fill="#fff">
-            <circle r="3.5"><animateMotion dur="2.4s" repeatCount="indefinite" begin="2s"><mpath href="#mk-p1"/></animateMotion></circle>
-            <circle r="3.5"><animateMotion dur="2.2s" repeatCount="indefinite" begin="2.4s"><mpath href="#mk-p2"/></animateMotion></circle>
-            <circle r="3.5" fill="#E6E1D1"><animateMotion dur="3.4s" repeatCount="indefinite" begin="2.2s"><mpath href="#mk-p3"/></animateMotion></circle>
-            <circle r="3.5" fill="#E6E1D1"><animateMotion dur="3s" repeatCount="indefinite" begin="2.8s"><mpath href="#mk-p4"/></animateMotion></circle>
+        <g stroke-width="1.8" class="mk-fill" style="--d:2s">
+            <path id="mk-out" class="mk-flow" d="M356 262c22 0 24-104 48-104" stroke="#fff" stroke-opacity=".8"/>
+            <path id="mk-back" class="mk-flow" d="M404 314c-26 0-24-30-48-30" stroke="#88D39B" stroke-opacity=".9"/>
+        </g>
+        <g class="mk-moving">
+            <circle r="3.5" fill="#fff"><animateMotion dur="2.4s" repeatCount="indefinite" begin="2s"><mpath href="#mk-p1"/></animateMotion></circle>
+            <circle r="3.5" fill="#fff"><animateMotion dur="1.6s" repeatCount="indefinite" begin="2.3s"><mpath href="#mk-p2"/></animateMotion></circle>
+            <circle r="3.5" fill="#E6E1D1"><animateMotion dur="2.6s" repeatCount="indefinite" begin="2.2s"><mpath href="#mk-p3"/></animateMotion></circle>
+            <circle r="3.5" fill="#E6E1D1"><animateMotion dur="2.2s" repeatCount="indefinite" begin="3s"><mpath href="#mk-p5"/></animateMotion></circle>
+            <circle r="4.5" fill="#fff"><animateMotion dur="2.2s" repeatCount="indefinite" begin="2.2s"><mpath href="#mk-out"/></animateMotion></circle>
+            <circle r="4.5" fill="#88D39B"><animateMotion dur="2.2s" repeatCount="indefinite" begin="3.6s"><mpath href="#mk-back"/></animateMotion></circle>
         </g>
 
         {# Live pins #}
-        <g>
-            <circle class="mk-pulse" style="--d:2s" cx="150" cy="268" r="8" fill="#A0522D"/>
-            <circle class="mk-fill" style="--d:1.8s" cx="150" cy="268" r="5" fill="#fff" stroke="#A0522D" stroke-width="3"/>
-            <circle class="mk-pulse" style="--d:2.6s" cx="118" cy="160" r="8" fill="#3F7A4F"/>
-            <circle class="mk-fill" style="--d:1.9s" cx="118" cy="160" r="5" fill="#fff" stroke="#3F7A4F" stroke-width="3"/>
-            <circle class="mk-pulse" style="--d:3.2s" cx="222" cy="384" r="8" fill="#fff"/>
-        </g>
+        <circle class="mk-pulse" style="--d:2s" cx="136" cy="252" r="8" fill="#A0522D"/>
+        <circle class="mk-fill" style="--d:1.8s" cx="136" cy="252" r="5" fill="#fff" stroke="#A0522D" stroke-width="3"/>
+        <circle class="mk-pulse" style="--d:2.6s" cx="80" cy="150" r="8" fill="#3F7A4F"/>
+        <circle class="mk-fill" style="--d:1.9s" cx="80" cy="150" r="5" fill="#fff" stroke="#3F7A4F" stroke-width="3"/>
     </svg>
 
-    {# Floating cards #}
-    <div class="mk-card absolute left-[-3%] top-[37%] flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 text-xs text-charcoal shadow-lg sm:text-sm" style="--d:2.2s">
+    {# Floating cards (HTML, so the words stay sharp) #}
+    <div class="mk-card absolute left-[-3%] top-[24%] flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 text-xs text-charcoal shadow-lg sm:text-sm" style="--d:2.2s">
         <span class="h-2 w-2 rounded-full bg-meadow"></span><span><strong class="font-semibold">Bramble</strong> moved to Field 1</span>
     </div>
-    <div class="mk-card absolute right-[-3%] top-[44%] rounded-xl bg-white/95 px-3 py-2 text-xs text-charcoal shadow-lg sm:text-sm" style="--d:2.8s">
-        <span class="flex items-center gap-2"><span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-meadow text-white">{% include "marketing/_icon.html" with name="check" cls="h-3 w-3" %}</span><strong class="font-semibold">Invoice sent to Xero</strong></span>
-        <span class="mt-0.5 block pl-6 text-sage">INV-1042 · &pound;1,240.00</span>
-    </div>
-    <div class="mk-card absolute bottom-[3%] right-[4%] flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 text-xs text-charcoal shadow-lg sm:text-sm" style="--d:3.4s">
-        <span class="h-2 w-2 rounded-full bg-saddle"></span><span><strong class="font-semibold">Farrier due</strong> · Pip, Barn A</span>
+    <div class="mk-card absolute bottom-[14%] left-[1%] flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 text-xs text-charcoal shadow-lg sm:text-sm" style="--d:2.8s">
+        <span class="h-2 w-2 rounded-full bg-saddle"></span><span><strong class="font-semibold">Farrier due</strong> · Pip</span>
     </div>
 </div>
