@@ -224,3 +224,110 @@ for _index, _horse in enumerate(HERO_HORSES):
     # five 52-unit stalls from x = 26. "left" places its button, in %.
     _horse['x'] = 52 + 52 * _index
     _horse['left'] = f'{(26 + 52 * _index) / 560 * 100:.3f}'
+
+# "See it working" on Home (marketing/_showcase.html): example data only.
+# Owners and shares for the Horse records demo, by horse key.
+SHOWCASE_SHARES = {
+    'bramble': [('Tom Hart', 100)],
+    'duke': [('Amy Cole', 50), ('Ben Cole', 50)],
+    'pip': [('Sarah Jones', 100)],
+    'maple': [('Raj Patel', 60), ('Priya Patel', 40)],
+    'otis': [('Claire Moss', 100)],
+}
+for _horse in HERO_HORSES:
+    _horse['shares'] = SHOWCASE_SHARES[_horse['key']]
+    _horse['coowned'] = len(_horse['shares']) > 1
+
+# The yard map, drawn in a 520 x 340 box. Usage words as in the app
+# (core.models.Location.Usage). Area as the app works it out from the
+# drawn boundary (hectares).
+SHOWCASE_FIELDS = [
+    {'key': 'top', 'name': 'Top Field', 'path': 'M20 30 190 20 200 120 24 132Z', 'lx': 40, 'ly': 58,
+     'usage': 'Horses', 'area': '2.1', 'capacity': 6, 'horses': ['Bramble', 'Duke', 'Pip', 'Maple', 'Otis'],
+     'dots': [(60, 100), (95, 112), (130, 96), (165, 108), (165, 76)]},
+    {'key': 'meadow', 'name': 'Long Meadow', 'path': 'M190 20 360 26 356 112 200 120Z', 'lx': 210, 'ly': 52,
+     'usage': 'Mixed grazing', 'area': '1.8', 'capacity': 4, 'horses': ['Rosa', 'Jet', 'Willow'],
+     'dots': [(235, 96), (280, 104), (325, 90)]},
+    {'key': 'hay', 'name': 'Hay Field', 'path': 'M360 26 500 40 496 150 356 112Z', 'lx': 376, 'ly': 58,
+     'usage': 'Hay', 'area': '2.6', 'capacity': 0, 'horses': [], 'note': 'Shut up for hay since 1 April',
+     'dots': []},
+    {'key': 'bottom', 'name': 'Bottom Paddock', 'path': 'M24 132 200 120 206 228 30 238Z', 'lx': 42, 'ly': 160,
+     'usage': 'Horses', 'area': '1.2', 'capacity': 3, 'horses': ['Hector', 'Bonnie'],
+     'dots': [(80, 205), (130, 200)]},
+    {'key': 'mare', 'name': 'Mare Paddock', 'path': 'M200 120 356 112 360 210 206 228Z', 'lx': 218, 'ly': 150,
+     'usage': 'Horses', 'area': '1.4', 'capacity': 4, 'horses': ['Clover', 'Daisy', 'Fern', 'Hazel'],
+     'dots': [(232, 200), (268, 196), (300, 186), (332, 198)]},
+    {'key': 'winter', 'name': 'Winter Field', 'path': 'M356 112 496 150 490 300 372 300 360 210Z', 'lx': 382, 'ly': 176,
+     'usage': 'Rested', 'area': '2.3', 'capacity': 6, 'horses': [], 'note': 'Resting since 1 October',
+     'dots': []},
+]
+for _field in SHOWCASE_FIELDS:
+    # The capacity ring (marketing/_location_card.html): 88 is its length.
+    _field['dash'] = round(88 * len(_field['horses']) / _field['capacity'], 1) if _field['capacity'] else 0
+
+SHOWCASE_TABS = [
+    ('dashboard', 'Dashboard', 'manager'),
+    ('horses', 'Horses', 'horses'),
+    ('maps', 'Locations', 'locations'),
+    ('invoicing', 'Invoices', 'invoicing'),
+]
+# The app's side bar (templates/base.html), and which item each tab lights.
+SHOWCASE_NAV = [
+    ('Overview', [('dashboard', 'Dashboard', 'calendar')]),
+    ('Manage', [('horses', 'Horses', 'horse'), ('maps', 'Locations', 'fence'), ('health', 'Health', 'stethoscope'),
+                ('farrier', 'Farrier', 'horseshoe'), ('breeding', 'Breeding', 'foal'), ('feed', 'Feed', 'hay')]),
+    ('Finance', [('owners', 'Owners', 'pound'), ('invoicing', 'Finances', 'document')]),
+]
+SHOWCASE_STATS = [
+    ('Horses', '22', '18 owners'), ('Capacity', '22/32', '1 resting'),
+    ('Notifications', '3', 'Need action'), ('Outstanding', '£774.00', '3 invoices'),
+]
+SHOWCASE_WEEK = [
+    ('Today', 'Mon 23 Nov', [('Pip', 'Vaccination · Flu and tetanus · Barn A', 'Record vaccination', False)]),
+    ('Tomorrow', 'Tue 24 Nov', [('Farrier', '3 horses · Barn A', 'Record for 3', True)]),
+    ('Friday', 'Fri 27 Nov', [('Vaccination · Flu and tetanus', '2 horses · Top Field', 'Record for 2', True)]),
+]
+SHOWCASE_TIMELINE = [
+    ('Mon 23 Nov', [([('Bramble', '#9A4A22'), ('Maple', '#B98A4E')], 'Moved to Top Field'),
+                    ([('Otis', '#2A2622')], 'Arrived at Long Meadow')]),
+    ('Sat 21 Nov', [([('Duke', '#8C8F94')], 'Dentist · routine'),
+                    ([('Pip', '#6B3A1F')], 'Farrier · shod all round')]),
+]
+
+# Extra detail for the app-style demo (marketing/_showcase.html).
+_HORSE_DETAIL = {
+    'bramble': {'age': '12yo', 'colour': 'Chestnut', 'sex': 'Gelding', 'rate': 'Grass livery · £6.00/day',
+                'arrived': '3 Mar 2025', 'stay': '1 year 8 months on site', 'location': 'Top Field', 'light': False},
+    'duke': {'age': '15yo', 'colour': 'Grey', 'sex': 'Gelding', 'rate': 'Full livery · £20.00/day',
+             'arrived': '12 Jan 2024', 'stay': '2 years 10 months on site', 'location': 'Barn A', 'light': True},
+    'pip': {'age': '9yo', 'colour': 'Bay', 'sex': 'Mare', 'rate': 'Full livery · £20.00/day',
+            'arrived': '11 May 2026', 'stay': '6 months on site', 'location': 'Barn A', 'light': False},
+    'maple': {'age': '6yo', 'colour': 'Dun', 'sex': 'Mare', 'rate': 'Grass livery · £6.00/day',
+              'arrived': '2 Sep 2026', 'stay': '2 months on site', 'location': 'Top Field', 'light': True},
+    'otis': {'age': '7yo', 'colour': 'Black', 'sex': 'Gelding', 'rate': 'Grass livery · £6.00/day',
+             'arrived': '1 Nov 2026', 'stay': '3 weeks on site', 'location': 'Long Meadow', 'light': False},
+}
+for _horse in HERO_HORSES:
+    _horse.update(_HORSE_DETAIL[_horse['key']])
+    _horse['owner_line'] = ', '.join(name for name, _share in _horse['shares'])
+
+# Invoices for the Invoicing demo, as the app lists and shows them.
+SHOWCASE_INVOICES = [
+    {'key': 'inv6', 'number': 'INV00216', 'owner': 'Sarah Jones', 'email': 'sarah@example.com', 'total': '£707.50',
+     'status': 'Paid', 'xero': True, 'paid': '£707.50', 'due': '£0.00',
+     'lines': [('Pip', '', 'Full livery £20.00 per day - 30 days (1 Nov to 30 Nov 2026)', '£600.00'),
+               ('Pip', '', 'Farrier: shod all round (12 Nov)', '£95.00'),
+               ('Pip', '', 'Wormer (3 Nov)', '£12.50')]},
+    {'key': 'inv5', 'number': 'INV00215', 'owner': 'Amy Cole', 'email': 'amy@example.com', 'total': '£300.00',
+     'status': 'Sent', 'xero': True, 'paid': '£0.00', 'due': '£300.00',
+     'lines': [('Duke', '50.00% share', 'Full livery £20.00 per day - 30 days (1 Nov to 30 Nov 2026) (50.00% share)', '£300.00')]},
+    {'key': 'inv4', 'number': 'INV00214', 'owner': 'Ben Cole', 'email': 'ben@example.com', 'total': '£300.00',
+     'status': 'Sent', 'xero': True, 'paid': '£0.00', 'due': '£300.00',
+     'lines': [('Duke', '50.00% share', 'Full livery £20.00 per day - 30 days (1 Nov to 30 Nov 2026) (50.00% share)', '£300.00')]},
+    {'key': 'inv3', 'number': 'INV00213', 'owner': 'Tom Hart', 'email': 'tom@example.com', 'total': '£180.00',
+     'status': 'Paid', 'xero': True, 'paid': '£180.00', 'due': '£0.00',
+     'lines': [('Bramble', '', 'Grass livery £6.00 per day - 30 days (1 Nov to 30 Nov 2026)', '£180.00')]},
+    {'key': 'inv2', 'number': 'INV00212', 'owner': 'Claire Moss', 'email': 'claire@example.com', 'total': '£174.00',
+     'status': 'Draft', 'xero': False, 'paid': '£0.00', 'due': '£174.00',
+     'lines': [('Otis', '', 'Grass livery £6.00 per day - 29 days (2 Nov to 30 Nov 2026)', '£174.00')]},
+]

@@ -199,3 +199,209 @@
     document.addEventListener('click', function (e) { if (open && !e.target.closest('[data-horse-card]')) { hide(); } });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { hide(); } });
 })();
+
+// "See it working" (marketing/_showcase.html): tabs light the matching
+// side-bar item; [data-go] links switch the view inside a tab (a list to
+// a horse or an invoice, map to cards); the map picks a paddock. It also
+// plays by itself: each tab shows a few seconds of use, then the next tab.
+// It stops for good when the visitor clicks, taps or types in it, pauses
+// while off screen, has a Pause button, and never plays with less motion.
+(function () {
+    'use strict';
+    var box = document.querySelector('[data-showcase]');
+    if (!box) { return; }
+    var tabs = Array.prototype.slice.call(box.querySelectorAll('[data-tab]'));
+    var navs = box.querySelectorAll('[data-nav]');
+    var fields = box.querySelectorAll('[data-pick-field]');
+
+    function $(sel) { return box.querySelector(sel); }
+    function $$(sel) { return Array.prototype.slice.call(box.querySelectorAll(sel)); }
+
+    function select(tab, focus) {
+        var key = tab.getAttribute('data-tab');
+        tabs.forEach(function (t) {
+            var on = t === tab;
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+            t.tabIndex = on ? 0 : -1;
+            $('[data-panel="' + t.getAttribute('data-tab') + '"]').hidden = !on;
+        });
+        for (var n = 0; n < navs.length; n++) { navs[n].classList.toggle('is-on', navs[n].getAttribute('data-nav') === key); }
+        if (focus) { tab.focus(); }
+    }
+    function go(panel, target, link) {
+        $$('[data-panel="' + panel + '"] [data-view]').forEach(function (v) { v.hidden = v.getAttribute('data-view') !== target; });
+        var group = link && link.closest('[role="group"]');
+        if (group) {
+            group.querySelectorAll('[data-go]').forEach(function (p) { p.setAttribute('aria-pressed', p === link ? 'true' : 'false'); });
+        }
+    }
+    function pick(key) {
+        for (var i = 0; i < fields.length; i++) { fields[i].setAttribute('aria-pressed', fields[i].getAttribute('data-pick-field') === key ? 'true' : 'false'); }
+        $$('[data-field-info]').forEach(function (info) { info.hidden = info.getAttribute('data-field-info') !== key; });
+    }
+
+    tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () { select(this); });
+        tab.addEventListener('keydown', function (e) {
+            var at = tabs.indexOf(this);
+            if (e.key === 'ArrowRight') { select(tabs[(at + 1) % tabs.length], true); e.preventDefault(); }
+            if (e.key === 'ArrowLeft') { select(tabs[(at - 1 + tabs.length) % tabs.length], true); e.preventDefault(); }
+        });
+    });
+    box.addEventListener('click', function (e) {
+        var link = e.target.closest('[data-go]');
+        if (!link) { return; }
+        go(link.closest('[data-panel]').getAttribute('data-panel'), link.getAttribute('data-go'), link);
+    });
+    for (var f = 0; f < fields.length; f++) {
+        fields[f].addEventListener('click', function () { pick(this.getAttribute('data-pick-field')); });
+        fields[f].addEventListener('mouseenter', function () { if (!playing) { pick(this.getAttribute('data-pick-field')); } });
+        fields[f].addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { pick(this.getAttribute('data-pick-field')); e.preventDefault(); }
+        });
+    }
+
+    // ── Playing by itself ──
+    var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var toggle = $('[data-autoplay-toggle]');
+    var label = $('[data-autoplay-label]');
+    var bar = $('[data-demo-progress]');
+    var windowEl = $('[data-demo-window]');
+    var playing = false;
+    var stopped = false;
+    var onScreen = false;
+    var timers = [];
+    var current = 0;
+
+    function later(ms, fn) { timers.push(setTimeout(fn, ms)); }
+    function clear() { timers.forEach(clearTimeout); timers = []; }
+    function tap(el) { if (!el) { return; } el.classList.remove('mk-tap'); void el.offsetWidth; el.classList.add('mk-tap'); }
+    function show(el) { if (el) { el.hidden = false; } }
+    function hide(el) { if (el) { el.hidden = true; } }
+
+    function countUp(el) {
+        var text = el.getAttribute('data-final') || el.textContent;
+        el.setAttribute('data-final', text);
+        var m = text.match(/^(\D*)([\d,]+(?:\.\d+)?)(.*)$/);
+        if (!m) { return; }
+        var target = Number(m[2].replace(/,/g, ''));
+        var decimals = (m[2].split('.')[1] || '').length;
+        var start = performance.now();
+        (function step(now) {
+            var t = Math.min(1, (now - start) / 900);
+            var value = (target * (1 - Math.pow(1 - t, 3))).toLocaleString('en-GB', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+            el.textContent = m[1] + value + m[3];
+            if (t < 1 && playing) { requestAnimationFrame(step); } else { el.textContent = text; }
+        })(start);
+    }
+
+    // Each scene: how long it plays, a reset to its first state, and its steps.
+    var scenes = {
+        dashboard: { ms: 9000, reset: function () {
+            hide($('[data-demo="timeline-new"]'));
+            var rec = $('[data-demo="record"]');
+            if (rec) { rec.textContent = rec.getAttribute('data-text'); rec.classList.remove('bg-meadow'); rec.classList.add('bg-saddle'); }
+        }, steps: function () {
+            $$('[data-count]').forEach(countUp);
+            later(3200, function () { tap($('[data-demo="record"]')); });
+            later(4400, function () {
+                var rec = $('[data-demo="record"]');
+                if (rec) { rec.textContent = 'Recorded ✓'; rec.classList.remove('bg-saddle'); rec.classList.add('bg-meadow'); }
+            });
+            later(5400, function () { show($('[data-demo="timeline-new"]')); });
+        } },
+        horses: { ms: 12000, reset: function () {
+            go('horses', 'list');
+            $$('[data-demo-lit]').forEach(function (el) { el.classList.remove('mk-lit'); el.removeAttribute('data-demo-lit'); });
+            $$('[data-demo^="new-"]').forEach(hide);
+        }, steps: function () {
+            later(1800, function () { var row = $('[data-go="horse-pip"]'); row.classList.add('mk-lit'); row.setAttribute('data-demo-lit', ''); });
+            later(3200, function () { go('horses', 'horse-pip'); });
+            later(6800, function () { show($('[data-demo="new-pip"]')); });
+        } },
+        maps: { ms: 11000, reset: function () {
+            go('maps', 'map', $('[data-panel="maps"] [data-go="map"]'));
+            pick('top');
+            var mover = $('[data-demo="mover"]');
+            if (mover) { mover.style.transform = ''; }
+        }, steps: function () {
+            later(2600, function () { var m = $('[data-demo="mover"]'); if (m) { m.style.transform = 'translate(118px, 22px)'; } });
+            later(4800, function () { pick('meadow'); });
+            later(7400, function () { pick('winter'); });
+        } },
+        invoicing: { ms: 13000, reset: function () {
+            go('invoicing', 'list');
+            $$('[data-demo-row]').forEach(function (r) { r.hidden = false; r.classList.remove('mk-row-in'); r.style.animationDelay = ''; });
+            $$('[data-demo="sent-badge"]').forEach(hide);
+            $$('[data-demo="draft-badge"]').forEach(show);
+        }, steps: function () {
+            var rows = $$('[data-demo-row]');
+            later(800, function () { tap($('[data-demo="generate"]')); rows.forEach(function (r) { r.hidden = true; }); });
+            later(1800, function () {
+                rows.forEach(function (r, i) { r.style.animationDelay = (i * 180) + 'ms'; r.hidden = false; r.classList.add('mk-row-in'); });
+            });
+            later(5200, function () { go('invoicing', 'inv2'); });
+            later(7400, function () { tap($('[data-view="inv2"] [data-demo="send"]')); });
+            later(8400, function () {
+                $$('[data-demo="draft-badge"]').forEach(hide);
+                $$('[data-demo="sent-badge"]').forEach(show);
+            });
+        } }
+    };
+
+    function playScene(index) {
+        clear();
+        current = index % tabs.length;
+        var tab = tabs[current];
+        var scene = scenes[tab.getAttribute('data-tab')];
+        select(tab);
+        scene.reset();
+        if (bar) {
+            bar.style.transition = 'none';
+            bar.style.width = '0';
+            void bar.offsetWidth;
+            bar.style.transition = 'width ' + scene.ms + 'ms linear';
+            bar.style.width = '100%';
+        }
+        scene.steps();
+        later(scene.ms, function () { playScene(current + 1); });
+    }
+    function setLabel() { if (label) { label.textContent = playing ? 'Pause' : 'Play'; } if (toggle) { toggle.setAttribute('aria-pressed', playing ? 'false' : 'true'); } }
+    function start() {
+        if (stopped || playing || !onScreen) { return; }
+        playing = true;
+        setLabel();
+        playScene(current);
+    }
+    function pause() {
+        playing = false;
+        clear();
+        // A scene may have hidden the invoice rows to show them arriving.
+        $$('[data-demo-row]').forEach(function (r) { r.hidden = false; });
+        if (bar) { bar.style.transition = 'none'; bar.style.width = '0'; }
+        setLabel();
+    }
+    // The visitor takes over: the demo stops for good, everything stays usable.
+    function takeOver() {
+        if (stopped) { return; }
+        stopped = true;
+        pause();
+        if (toggle) { toggle.hidden = true; }
+    }
+
+    if (still || !('IntersectionObserver' in window) || !windowEl) { return; }
+    if (toggle) {
+        toggle.hidden = false;
+        toggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (playing) { pause(); stopped = true; } else { stopped = false; start(); }
+        });
+    }
+    ['pointerdown', 'keydown'].forEach(function (type) {
+        box.addEventListener(type, function (e) { if (!e.target.closest('[data-autoplay-toggle]')) { takeOver(); } }, true);
+    });
+    new IntersectionObserver(function (entries) {
+        onScreen = entries[0].isIntersecting;
+        if (onScreen) { start(); } else if (playing) { pause(); }
+    }, { threshold: 0.4 }).observe(windowEl);
+})();
