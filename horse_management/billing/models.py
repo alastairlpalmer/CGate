@@ -139,6 +139,17 @@ class ExtraCharge(SoftDeleteModel):
             validate_file_content,
         ],
     )
+    # A livery adjustment: the livery an issued invoice missed, because a
+    # stay was recorded or changed after the invoice was made
+    # (invoicing/adjustments.py). Counted as billed for that invoice.
+    adjusts_invoice = models.ForeignKey(
+        'invoicing.Invoice',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        editable=False,
+        related_name='livery_adjustments',
+    )
     feed_out = models.ForeignKey(
         'FeedOut',
         on_delete=models.SET_NULL,

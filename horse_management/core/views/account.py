@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 class RateLimitedPasswordResetView(auth_views.PasswordResetView):
     def form_valid(self, form):
         email = form.cleaned_data['email'].strip().lower()
-        ip = self.request.META.get('REMOTE_ADDR', '')
+        ip = audit.client_ip(self.request) or ''
         window = settings.PASSWORD_RESET_LIMIT_WINDOW
         within_limit = ratelimit.allow(
             'password-reset-email', email, settings.PASSWORD_RESET_LIMIT_PER_EMAIL, window,

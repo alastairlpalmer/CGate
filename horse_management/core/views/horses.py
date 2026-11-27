@@ -1565,14 +1565,20 @@ class HorseCreateView(FeatureAccessMixin, CreateView):
             return self.render_to_response(
                 self.get_context_data(form=form, ownership_formset=ownership_formset)
             )
-        with transaction.atomic():
-            self.object = form.save()
-            ownership_formset.instance = self.object
-            ownership_formset.save()
-            # The open stay is billed to the Ownership card's primary owner,
-            # as on the ownership screen (manage_ownership_shares).
-            from ..services import PlacementService
-            PlacementService.sync_placement_owner(self.object)
+        try:
+            with transaction.atomic():
+                self.object = form.save()
+                ownership_formset.instance = self.object
+                ownership_formset.save()
+                # The open stay is billed to the Ownership card's primary owner,
+                # as on the ownership screen (manage_ownership_shares).
+                from ..services import PlacementService
+                PlacementService.sync_placement_owner(self.object)
+        except ValidationError as error:
+            ownership_formset.report(error)
+            return self.render_to_response(
+                self.get_context_data(form=form, ownership_formset=ownership_formset)
+            )
         _warn_if_incomplete_ownership(self.request, ownership_formset)
         messages.success(self.request, f"Horse '{self.object.name}' created successfully.")
         _warn_identity(self.request, self.object)
@@ -1607,14 +1613,20 @@ class HorseUpdateView(FeatureAccessMixin, UpdateView):
             return self.render_to_response(
                 self.get_context_data(form=form, ownership_formset=ownership_formset)
             )
-        with transaction.atomic():
-            self.object = form.save()
-            ownership_formset.instance = self.object
-            ownership_formset.save()
-            # The open stay is billed to the Ownership card's primary owner,
-            # as on the ownership screen (manage_ownership_shares).
-            from ..services import PlacementService
-            PlacementService.sync_placement_owner(self.object)
+        try:
+            with transaction.atomic():
+                self.object = form.save()
+                ownership_formset.instance = self.object
+                ownership_formset.save()
+                # The open stay is billed to the Ownership card's primary owner,
+                # as on the ownership screen (manage_ownership_shares).
+                from ..services import PlacementService
+                PlacementService.sync_placement_owner(self.object)
+        except ValidationError as error:
+            ownership_formset.report(error)
+            return self.render_to_response(
+                self.get_context_data(form=form, ownership_formset=ownership_formset)
+            )
         _warn_if_incomplete_ownership(self.request, ownership_formset)
         messages.success(self.request, f"Horse '{self.object.name}' updated successfully.")
         _warn_identity(self.request, self.object)
@@ -2730,10 +2742,16 @@ def manage_ownership_shares(request, pk):
 
     if request.method == 'POST':
         formset = OwnershipShareFormSet(request.POST, instance=horse)
+        saved = False
         if formset.is_valid():
-            with transaction.atomic():
-                formset.save()
-                billed_to = PlacementService.sync_placement_owner(horse)
+            try:
+                with transaction.atomic():
+                    formset.save()
+                    billed_to = PlacementService.sync_placement_owner(horse)
+                saved = True
+            except ValidationError as error:
+                formset.report(error)
+        if saved:
             _warn_if_incomplete_ownership(request, formset)
             note = f"Ownership shares for {horse.name} updated."
             if billed_to is not None:

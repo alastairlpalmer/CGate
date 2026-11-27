@@ -117,6 +117,9 @@ class InvoiceListView(FeatureAccessMixin, ListView):
         context['summary_count'] = summary['count'] or 0
         context['summary_invoiced'] = summary['invoiced'] or Decimal('0.00')
         context['summary_outstanding'] = outstanding
+        # Stays recorded or changed after their invoice: livery to add.
+        from . import adjustments
+        context['livery_shortfalls'] = len(adjustments.shortfalls())
         return context
 
 
@@ -653,6 +656,37 @@ def invoice_delete(request, pk):
         )
     messages.success(request, msg)
     return redirect('invoice_list')
+
+
+@feature_required('invoices', LEVEL_VIEW)
+def livery_check(request):
+    """Livery that issued invoices missed: stays recorded or changed after
+    the invoice was made (invoicing/adjustments.py)."""
+    from . import adjustments
+
+    return render(request, 'invoicing/livery_check.html', {
+        'shortfalls': adjustments.shortfalls(),
+        'can_add': has_feature_access(request.user, 'invoices', LEVEL_FULL),
+    })
+
+
+@feature_required('invoices', LEVEL_FULL)
+@require_POST
+def livery_check_add(request, invoice_pk, horse_pk):
+    """Add one shortfall as a charge for the owner's next invoice."""
+    from core.templatetags.ui_extras import gbp
+
+    from . import adjustments
+
+    charge = adjustments.add_charge(invoice_pk, horse_pk)
+    if charge is None:
+        messages.info(request, 'Nothing to add. That livery is already billed.')
+    else:
+        messages.success(
+            request,
+            f'Added {gbp(charge.amount)} for {charge.horse.name} to the next invoice of {charge.owner.name}.',
+        )
+    return redirect('livery_check')
 
 
 @feature_required('invoices', LEVEL_VIEW)

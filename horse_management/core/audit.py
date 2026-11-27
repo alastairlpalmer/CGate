@@ -43,9 +43,26 @@ def _label(user) -> str:
 
 
 def client_ip(request) -> str | None:
-    """The address of the client that sent ``request``."""
+    """The address of the client that sent ``request``.
+
+    Behind Railway or Vercel, REMOTE_ADDR is the platform's proxy, the same
+    for every visitor: one script could then use up a rate limit for all.
+    The proxy appends the address it saw to X-Forwarded-For. With
+    CLIENT_IP_PROXY_COUNT proxies in front (default 1), the client is the
+    entry that many places from the right. Entries further left are sent
+    by the client and can be anything, so they are never used.
+    CLIENT_IP_PROXY_COUNT=0 uses REMOTE_ADDR only.
+    """
+    from django.conf import settings
+
     if request is None:
         return None
+    hops = getattr(settings, 'CLIENT_IP_PROXY_COUNT', 0)
+    forwarded = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    if hops and forwarded:
+        entries = [part.strip() for part in forwarded.split(',') if part.strip()]
+        if len(entries) >= hops:
+            return entries[-hops]
     return request.META.get('REMOTE_ADDR') or None
 
 

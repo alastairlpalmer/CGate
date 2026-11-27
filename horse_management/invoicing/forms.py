@@ -91,7 +91,8 @@ class InvoiceCreateForm(forms.Form):
                 raise forms.ValidationError(
                     f"{owner.name} already has invoice {existing.invoice_number} "
                     f"covering {existing.period_start} to {existing.period_end} "
-                    f"which overlaps with this period."
+                    f"which overlaps with this period. For a stay recorded after that "
+                    f"invoice, use Livery check on the Invoices page."
                 )
             # Invoices cover only the start of the range: bill from the
             # first day they do not cover.

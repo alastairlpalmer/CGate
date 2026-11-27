@@ -28,6 +28,38 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
+def _above_own_access(user, access):
+    """Names of the areas where ``access`` is higher than ``user``'s own.
+
+    A user manager who is not an Administrator may not make or change a
+    role to reach more than they reach themselves. Without this, they
+    could give their own role Full on every area: Administrator in all
+    but name, and with no two-step sign-in (that is required only of the
+    Administrator role).
+    """
+    from ..features import FEATURES, LEVEL_ORDER
+    from ..permissions import access_map
+
+    if mfa.is_administrator(user):
+        return []
+    own = access_map(user)
+    return [
+        feature['label'] for feature in FEATURES
+        if LEVEL_ORDER.get(access.get(feature['key']), 0) > LEVEL_ORDER.get(own.get(feature['key']), 0)
+    ]
+
+
+def _role_above_own(request, form, role):
+    """Add a form error and return True if ``role`` reaches above the user."""
+    above = _above_own_access(request.user, role.resolved_access()) if role else []
+    if above:
+        form.add_error('role', (
+            "You can only give a role with access you have yourself. Too high for you: "
+            + ", ".join(above) + ". Ask an Administrator."
+        ))
+    return bool(above)
+
+
 def _grants_user_management(role):
     return LEVEL_ORDER[role.resolved_access()['users']] >= LEVEL_ORDER[LEVEL_FULL]
 
@@ -108,7 +140,9 @@ def user_create(request):
     """Create a login account. The email address is the sign-in identifier."""
     if request.method == 'POST':
         form = UserCreateForm(request.POST, can_grant_admin=mfa.is_administrator(request.user))
-        if form.is_valid():
+        if form.is_valid() and _role_above_own(request, form, form.cleaned_data['role']):
+            pass
+        elif form.is_valid():
             user = form.save()
             audit.record(
                 AuditEvent.Action.USER_INVITED if form.sends_invite else AuditEvent.Action.USER_CREATED,
@@ -181,7 +215,9 @@ def user_update(request, pk):
                     and not getattr(new_role, 'is_system', False)
                     and _is_last_administrator(target)
                 )
-                if losing_admin:
+                if new_role != current_role and _role_above_own(request, form, new_role):
+                    pass
+                elif losing_admin:
                     messages.error(request, "This is the only Administrator. Make someone else an Administrator first.")
                 elif demoting and is_self:
                     messages.error(request, "You can't remove your own user-management access. Ask another administrator to change your role.")

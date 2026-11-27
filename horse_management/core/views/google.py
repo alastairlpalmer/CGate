@@ -150,7 +150,7 @@ def google_start(request):
         # Selects the right Google account for a person who has more than one.
         login_hint = invited.email
 
-    ip = request.META.get('REMOTE_ADDR', '')
+    ip = audit.client_ip(request) or ''
     if not ratelimit.allow(
         'google-start-ip', ip, settings.GOOGLE_SIGN_IN_LIMIT_PER_IP,
         settings.GOOGLE_SIGN_IN_LIMIT_WINDOW,

@@ -19,6 +19,10 @@ class Migration(migrations.Migration):
         # state before that re-point leaves a dangling FK, so on a fresh
         # database this migration must run after the xero FK has moved.
         ('xero_integration', '0002_alter_xeroinvoicesync_invoice'),
+        # The same for ExtraCharge.invoice, which billing 0013 re-points.
+        # The order used to be right by chance; billing 0024 (which depends
+        # on invoicing) changed it, and billing 0002 then failed.
+        ('billing', '0013_alter_extracharge_invoice'),
     ]
 
     operations = [

@@ -10,7 +10,7 @@ from ..forms import RoleForm
 from ..models import Role, UserRole
 from .. import mfa
 from ..permissions import feature_required
-from .users import _grants_user_management, _managers_excluding
+from .users import _above_own_access, _grants_user_management, _managers_excluding
 
 
 def _demotion_locks_out(role, new_access_grants_users):
@@ -28,11 +28,22 @@ def _demotion_locks_out(role, new_access_grants_users):
     return not _managers_excluding(members).exists()
 
 
+def _refuse_above_own(request, form):
+    """Add a form error and return True if the role reaches above the user."""
+    above = _above_own_access(request.user, form.access_value())
+    if above:
+        form.add_error(None, (
+            "You can only give a role access you have yourself. Too high for you: "
+            + ", ".join(above) + ". Ask an Administrator to make this change."
+        ))
+    return bool(above)
+
+
 @feature_required('users')
 def role_create(request):
     if request.method == 'POST':
         form = RoleForm(request.POST)
-        if form.is_valid():
+        if form.is_valid() and not _refuse_above_own(request, form):
             role = form.save()
             messages.success(request, f"Role “{role.name}” created. Assign it to users from their edit page.")
             return redirect('app_settings')
@@ -46,7 +57,7 @@ def role_update(request, pk):
     role = get_object_or_404(Role, pk=pk)
     if request.method == 'POST':
         form = RoleForm(request.POST, instance=role)
-        if form.is_valid():
+        if form.is_valid() and not _refuse_above_own(request, form):
             from ..features import LEVEL_FULL
             new_grants_users = (
                 role.is_system

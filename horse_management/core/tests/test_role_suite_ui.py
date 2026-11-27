@@ -241,3 +241,65 @@ class UserFormRoleAssignmentTests(TestCase):
         user = User.objects.get(email="gail@example.com")
         self.assertEqual(UserRole.objects.get(user=user).role, role)
         self.assertFalse(user.is_staff)  # roles no longer touch is_staff
+
+
+class UserManagerCannotRaiseRolesTests(TestCase):
+    """Pre-launch review: a user manager could give their own role Full
+    on every area, with no two-step sign-in."""
+
+    def setUp(self):
+        self.manager = make_user_with_access(username="manager", dashboard="full", users="full", horses="view")
+        self.client.force_login(self.manager)
+        self.own_role = self.manager.role_assignment.role
+
+    def test_cannot_raise_their_own_role(self):
+        resp = self.client.post(reverse("role_update", args=[self.own_role.pk]), matrix_post(
+            self.own_role.name, dashboard="full", users="full", horses="full", invoices="full",
+        ))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "You can only give a role access you have yourself")
+        self.own_role.refresh_from_db()
+        self.assertEqual(self.own_role.resolved_access()["invoices"], "hidden")
+        self.assertEqual(self.own_role.resolved_access()["horses"], "view")
+
+    def test_cannot_create_a_role_above_their_own(self):
+        resp = self.client.post(reverse("role_create"), matrix_post("Boss", invoices="full"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Role.objects.filter(name="Boss").exists())
+
+    def test_can_create_a_role_within_their_own(self):
+        resp = self.client.post(reverse("role_create"), matrix_post("Looker", horses="view"))
+        self.assertRedirects(resp, reverse("app_settings"))
+
+    def test_an_administrator_can_give_any_access(self):
+        self.client.force_login(make_admin("boss"))
+        resp = self.client.post(reverse("role_create"), matrix_post("Bookkeeper", invoices="full"))
+        self.assertRedirects(resp, reverse("app_settings"))
+
+
+class UserManagerCannotGiveHigherRolesTests(TestCase):
+    """The user form: a user manager could give themselves an existing
+    role that reaches further than their own."""
+
+    def setUp(self):
+        self.manager = make_user_with_access(username="manager@example.com", dashboard="full", users="full")
+        self.client.force_login(self.manager)
+        self.boss = Role.objects.create(name="Boss", access={"dashboard": "full", "users": "full", "invoices": "full"})
+
+    def test_cannot_give_themselves_a_higher_role(self):
+        own = self.manager.role_assignment.role
+        resp = self.client.post(reverse("user_update", args=[self.manager.pk]), {
+            "save_details": "1", "first_name": "Man", "last_name": "Ager",
+            "email": "manager@example.com", "role": self.boss.pk,
+        })
+        self.assertContains(resp, "You can only give a role with access you have yourself")
+        self.manager.refresh_from_db()
+        self.assertEqual(UserRole.objects.get(user=self.manager).role, own)
+
+    def test_cannot_create_a_user_with_a_higher_role(self):
+        resp = self.client.post(reverse("user_create"), {
+            "email": "new@example.com", "first_name": "N", "last_name": "U",
+            "role": self.boss.pk, "password_choice": "invite",
+        })
+        self.assertContains(resp, "You can only give a role with access you have yourself")
+        self.assertFalse(User.objects.filter(email="new@example.com").exists())
