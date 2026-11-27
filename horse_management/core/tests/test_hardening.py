@@ -88,6 +88,19 @@ class UploadContentTests(SimpleTestCase):
         self.assertEqual(storage.get_object_parameters('documents/a.docx')['ContentDisposition'], 'attachment')
         self.assertEqual(storage.get_object_parameters('documents/a.pdf')['ContentDisposition'], 'inline')
 
+    def test_bucket_objects_take_their_type_from_the_extension(self):
+        storage = MediaStorage(bucket_name='b', access_key='a', secret_key='s')
+        self.assertEqual(storage.get_object_parameters('documents/a.pdf')['ContentType'], 'application/pdf')
+        self.assertEqual(storage.get_object_parameters('horses/x.JPG')['ContentType'], 'image/jpeg')
+        self.assertEqual(storage.get_object_parameters('documents/odd')['ContentType'], 'application/octet-stream')
+
+    def test_the_upload_type_is_not_used(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        storage = MediaStorage(bucket_name='b', access_key='a', secret_key='s')
+        upload = SimpleUploadedFile('passport.pdf', b'%PDF-1.4 <html>', content_type='text/html')
+        self.assertEqual(storage._get_write_parameters('documents/passport.pdf', upload)['ContentType'], 'application/pdf')
+
 
 class DocumentUploadTests(TestCase):
     def setUp(self):
@@ -296,3 +309,44 @@ class XeroErrorSummaryTests(SimpleTestCase):
         self.assertIn('Bad request', str(caught.exception))
         self.assertNotIn('owner@example.com', str(caught.exception))
         self.assertNotIn('owner@example.com', caught.exception.response_body)
+
+
+class ImagePixelLimitTests(TestCase):
+    """Pre-launch review: a 17 KB PNG of 20,000 x 20,000 pixels used about
+    570 MB to decode. It is refused from its header now."""
+
+    def _png(self, width, height):
+        import io
+
+        from PIL import Image
+
+        buffer = io.BytesIO()
+        Image.new('1', (width, height)).save(buffer, format='PNG', optimize=True)
+        return buffer.getvalue()
+
+    def test_a_huge_png_is_refused_from_its_header(self):
+        from django.core.exceptions import ValidationError
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        data = self._png(10000, 6000)
+        self.assertLess(len(data), 200_000)
+        with self.assertRaises(ValidationError):
+            validate_file_content(SimpleUploadedFile('bomb.png', data, content_type='image/png'))
+
+    def test_a_normal_photo_passes(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        validate_file_content(SimpleUploadedFile('ok.png', self._png(400, 300), content_type='image/png'))
+
+
+class RequestSizeLimitTests(TestCase):
+    def test_an_oversized_body_is_refused_before_sign_in(self):
+        with self.settings(MAX_REQUEST_BYTES=1000):
+            response = self.client.post(
+                '/accounts/login/', data=b'x' * 5000, content_type='application/octet-stream',
+            )
+        self.assertEqual(response.status_code, 413)
+
+    def test_a_normal_body_passes(self):
+        response = self.client.post('/accounts/login/', {'username': 'a', 'password': 'b'})
+        self.assertNotEqual(response.status_code, 413)

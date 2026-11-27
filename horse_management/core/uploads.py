@@ -92,6 +92,59 @@ def validate_file_content(value):
             f'This file is not a real .{extension} file. Save it again as '
             f'.{extension} (or choose the right type), then upload it.'
         )
+    if extension in IMAGE_EXTENSIONS:
+        validate_image_pixels(value)
+
+
+IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'}
+
+# Above this, an image is refused before it is decoded. Bytes are not the
+# limit that matters: a 17 KB PNG of one colour can be 20,000 x 20,000
+# pixels, and decoding it takes about 1.6 GB. 50 million pixels is more
+# than any phone camera makes. core.apps also sets Pillow's own limit.
+MAX_IMAGE_PIXELS = 50_000_000
+
+
+def validate_image_pixels(value):
+    """Refuse an image with more than MAX_IMAGE_PIXELS, reading only its header."""
+    from PIL import Image
+
+    try:
+        value.seek(0)
+        with Image.open(value) as image:
+            width, height = image.size
+    except Image.DecompressionBombError:
+        width = height = MAX_IMAGE_PIXELS
+    except Exception:
+        # Not readable as an image: the ImageField or the content check says so.
+        return
+    finally:
+        value.seek(0)
+    if width * height > MAX_IMAGE_PIXELS:
+        raise ValidationError(
+            'This image is too large. Upload a photo of at most 50 million pixels '
+            '(for example 8000 x 6000).'
+        )
+
+
+# The Content-Type each stored file is served with, from its extension.
+# Never from the upload: the browser that sent the file chose that, and a
+# "passport.pdf" sent as text/html would open as a page from the bucket.
+_CONTENT_TYPES = {
+    'pdf': 'application/pdf',
+    'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'webp': 'image/webp',
+    'heic': 'image/heic', 'heif': 'image/heif',
+    'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'csv': 'text/csv',
+}
+
+
+def content_type(name):
+    """The type a stored file is served with; unknown types download."""
+    return _CONTENT_TYPES.get(_extension(name), 'application/octet-stream')
 
 
 def content_disposition(name):

@@ -17,6 +17,13 @@ class CoreConfig(AppConfig):
         except ImportError:
             pass
 
+        # Pillow refuses to decode an image of more than twice this many
+        # pixels anywhere in the app (a decompression bomb), and warns above it.
+        from PIL import Image
+
+        from core.uploads import MAX_IMAGE_PIXELS
+        Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
+
         # Connect the analytics receivers (sign in / sign out). They do
         # nothing unless POSTHOG_API_KEY is set.
         from core import signals  # noqa: F401
