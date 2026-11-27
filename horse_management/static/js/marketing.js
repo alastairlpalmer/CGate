@@ -199,3 +199,69 @@
     document.addEventListener('click', function (e) { if (open && !e.target.closest('[data-horse-card]')) { hide(); } });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { hide(); } });
 })();
+
+// "See it working" (marketing/_showcase.html): tabs, pick a horse, pick a
+// paddock on the map, and the invoice steps that light up in turn.
+(function () {
+    'use strict';
+    var box = document.querySelector('[data-showcase]');
+    if (!box) { return; }
+    var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var tabs = box.querySelectorAll('[data-tab]');
+    var timers = [];
+
+    function playSteps() {
+        var steps = box.querySelectorAll('[data-step]');
+        timers.forEach(clearTimeout);
+        timers = [];
+        for (var i = 0; i < steps.length; i++) { steps[i].classList.toggle('is-done', still); }
+        if (still) { return; }
+        Array.prototype.forEach.call(steps, function (step, index) {
+            timers.push(setTimeout(function () { step.classList.add('is-done'); }, 500 + index * 900));
+        });
+    }
+    function select(tab, focus) {
+        for (var i = 0; i < tabs.length; i++) {
+            var on = tabs[i] === tab;
+            tabs[i].setAttribute('aria-selected', on ? 'true' : 'false');
+            tabs[i].tabIndex = on ? 0 : -1;
+            box.querySelector('[data-panel="' + tabs[i].getAttribute('data-tab') + '"]').hidden = !on;
+        }
+        if (focus) { tab.focus(); }
+        if (tab.getAttribute('data-tab') === 'invoicing') { playSteps(); }
+    }
+    for (var t = 0; t < tabs.length; t++) {
+        tabs[t].addEventListener('click', function () { select(this); });
+        tabs[t].addEventListener('keydown', function (e) {
+            var list = Array.prototype.slice.call(tabs);
+            var at = list.indexOf(this);
+            if (e.key === 'ArrowRight') { select(list[(at + 1) % list.length], true); e.preventDefault(); }
+            if (e.key === 'ArrowLeft') { select(list[(at - 1 + list.length) % list.length], true); e.preventDefault(); }
+        });
+    }
+    var replay = box.querySelector('[data-replay]');
+    if (replay) { replay.addEventListener('click', playSteps); }
+
+    // One of a group is chosen: a horse (shows its record) or a paddock (its details).
+    function chooser(pickAttr, showAttr) {
+        var picks = box.querySelectorAll('[' + pickAttr + ']');
+        function choose(key) {
+            for (var i = 0; i < picks.length; i++) {
+                picks[i].setAttribute('aria-pressed', picks[i].getAttribute(pickAttr) === key ? 'true' : 'false');
+            }
+            var shows = box.querySelectorAll('[' + showAttr + ']');
+            for (var j = 0; j < shows.length; j++) { shows[j].hidden = shows[j].getAttribute(showAttr) !== key; }
+        }
+        for (var p = 0; p < picks.length; p++) {
+            picks[p].addEventListener('click', function () { choose(this.getAttribute(pickAttr)); });
+            picks[p].addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') { choose(this.getAttribute(pickAttr)); e.preventDefault(); }
+            });
+            if (pickAttr === 'data-pick-field') {
+                picks[p].addEventListener('mouseenter', function () { choose(this.getAttribute(pickAttr)); });
+            }
+        }
+    }
+    chooser('data-pick-horse', 'data-record');
+    chooser('data-pick-field', 'data-field-info');
+})();

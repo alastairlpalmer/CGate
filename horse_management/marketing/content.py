@@ -224,3 +224,55 @@ for _index, _horse in enumerate(HERO_HORSES):
     # five 52-unit stalls from x = 26. "left" places its button, in %.
     _horse['x'] = 52 + 52 * _index
     _horse['left'] = f'{(26 + 52 * _index) / 560 * 100:.3f}'
+
+# "See it working" on Home (marketing/_showcase.html): example data only.
+# Owners and shares for the Horse records demo, by horse key.
+SHOWCASE_SHARES = {
+    'bramble': [('Tom Hart', 100)],
+    'duke': [('Amy Cole', 50), ('Ben Cole', 50)],
+    'pip': [('Sarah Jones', 100)],
+    'maple': [('Raj Patel', 60), ('Priya Patel', 40)],
+    'otis': [('Claire Moss', 100)],
+}
+for _horse in HERO_HORSES:
+    _horse['shares'] = SHOWCASE_SHARES[_horse['key']]
+    _horse['coowned'] = len(_horse['shares']) > 1
+
+# The yard map, drawn in a 520 x 340 box. Usage words as in the app
+# (core.models.Location.Usage). Area as the app works it out from the
+# drawn boundary (hectares).
+SHOWCASE_FIELDS = [
+    {'key': 'top', 'name': 'Top Field', 'path': 'M20 30 190 20 200 120 24 132Z', 'lx': 40, 'ly': 58,
+     'usage': 'Horses', 'area': '2.1', 'capacity': 6, 'horses': ['Bramble', 'Duke', 'Pip', 'Maple', 'Otis'],
+     'dots': [(60, 100), (95, 112), (130, 96), (165, 108), (165, 76)]},
+    {'key': 'meadow', 'name': 'Long Meadow', 'path': 'M190 20 360 26 356 112 200 120Z', 'lx': 210, 'ly': 52,
+     'usage': 'Mixed grazing', 'area': '1.8', 'capacity': 4, 'horses': ['Rosa', 'Jet', 'Willow'],
+     'dots': [(235, 96), (280, 104), (325, 90)]},
+    {'key': 'hay', 'name': 'Hay Field', 'path': 'M360 26 500 40 496 150 356 112Z', 'lx': 376, 'ly': 58,
+     'usage': 'Hay', 'area': '2.6', 'capacity': 0, 'horses': [], 'note': 'Shut up for hay since 1 April',
+     'dots': []},
+    {'key': 'bottom', 'name': 'Bottom Paddock', 'path': 'M24 132 200 120 206 228 30 238Z', 'lx': 42, 'ly': 160,
+     'usage': 'Horses', 'area': '1.2', 'capacity': 3, 'horses': ['Hector', 'Bonnie'],
+     'dots': [(80, 205), (130, 200)]},
+    {'key': 'mare', 'name': 'Mare Paddock', 'path': 'M200 120 356 112 360 210 206 228Z', 'lx': 218, 'ly': 150,
+     'usage': 'Horses', 'area': '1.4', 'capacity': 4, 'horses': ['Clover', 'Daisy', 'Fern', 'Hazel'],
+     'dots': [(232, 200), (268, 196), (300, 186), (332, 198)]},
+    {'key': 'winter', 'name': 'Winter Field', 'path': 'M356 112 496 150 490 300 372 300 360 210Z', 'lx': 382, 'ly': 176,
+     'usage': 'Rested', 'area': '2.3', 'capacity': 6, 'horses': [], 'note': 'Resting since 1 October',
+     'dots': []},
+]
+SHOWCASE_INVOICE = {
+    'number': 'INV-1042', 'owner': 'Sarah Jones', 'horse': 'Pip', 'period': '1 to 30 November',
+    'lines': [('Full livery, 30 days', '£600.00'), ('Farrier: shod all round (12 Nov)', '£95.00'),
+              ('Wormer (3 Nov)', '£12.50')],
+    'total': '£707.50',
+    'steps': [('Made from the month\'s records', 'Stays, extras and visits'),
+              ('Emailed to Sarah', 'With the PDF'), ('Sent to Xero', 'No typing it twice'),
+              ('Paid, and matched', 'The payment comes back from Xero')],
+}
+SHOWCASE_TABS = [
+    ('dashboard', 'Dashboard', 'manager'),
+    ('horses', 'Horse records', 'horses'),
+    ('maps', 'Maps', 'locations'),
+    ('invoicing', 'Invoicing', 'invoicing'),
+]

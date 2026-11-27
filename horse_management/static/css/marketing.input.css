@@ -85,6 +85,10 @@
 .mk-range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 9999px; background: #3D5A63; border: 3px solid #fff; box-shadow: 0 1px 4px rgb(0 0 0 / 0.25); cursor: pointer; }
 .mk-range:focus-visible { outline: 3px solid rgb(61 90 99 / 0.4); outline-offset: 4px; }
 
+/* "See it working", Invoicing: each step lights up in turn (js/marketing.js). */
+.mk-step.is-done { border-color: rgb(63 122 79 / 0.35); }
+.mk-step.is-done .mk-step-dot { background: #3F7A4F; }
+
 @media (prefers-reduced-motion: reduce) {
     .mk-fade-in, .mk-card, .mk-fill { animation: none; opacity: 1; }
     .mk-draw { animation: none; stroke-dashoffset: 0; }

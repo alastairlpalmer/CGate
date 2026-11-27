@@ -59,6 +59,16 @@ class SiteOnTests(TestCase):
         self.assertIn('id="horse-pip"', html)
         self.assertIn('Dun Harley', html)
 
+    def test_home_shows_the_features_working(self):
+        html = self.client.get('/').content.decode()
+        for tab in ('dashboard', 'horses', 'maps', 'invoicing'):
+            self.assertIn(f'id="panel-{tab}"', html)
+        self.assertIn('data-pick-horse="duke"', html)
+        self.assertIn('Each owner is invoiced their share.', html)   # Duke is co-owned
+        self.assertIn('data-pick-field="winter"', html)
+        self.assertIn('Resting since 1 October', html)
+        self.assertIn('£707.50', html)
+
     def test_each_page_opens_for_a_visitor(self):
         for name in PAGES:
             response = self.client.get(reverse(name))
