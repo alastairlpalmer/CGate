@@ -47,3 +47,27 @@ class EmailLinkHostTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn('https://app.example.com/', mail.outbox[0].body)
         self.assertNotIn('http://testserver/', mail.outbox[0].body)
+
+
+class ErrorTextTests(TestCase):
+    """Pre-launch review: some messages showed Python list brackets."""
+
+    def test_a_refused_departure_has_no_brackets(self):
+        from datetime import date
+
+        from django.contrib.messages import get_messages
+
+        from core.models import Horse, Location, Owner, Placement, RateType
+        from core.roles_testutils import make_admin
+
+        self.client.force_login(make_admin('departadmin'))
+        horse = Horse.objects.create(name='Ghost')
+        Placement.objects.create(
+            horse=horse, owner=Owner.objects.create(name='Anna'),
+            location=Location.objects.create(site='Colgate', name='Top'),
+            rate_type=RateType.objects.create(name='Grass', daily_rate=10), start_date=date(2026, 6, 1),
+        )
+        response = self.client.post(reverse('horse_depart', args=[horse.pk]), {'departure_date': '2026-05-01'})
+        texts = [str(m) for m in get_messages(response.wsgi_request)]
+        self.assertTrue(texts)
+        self.assertFalse(any(t.startswith("['") for t in texts), texts)
