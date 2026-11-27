@@ -2083,11 +2083,11 @@ class ProfileDetailsForm(forms.Form):
     display_size = forms.ChoiceField(
         label='Size on a computer',
         choices=[
-            ('compact', 'Compact (best on a laptop)'),
-            ('medium', 'Medium'),
+            ('compact', 'Compact (smallest)'),
+            ('medium', 'Medium (best on a laptop)'),
             ('large', 'Large'),
         ],
-        initial='compact',
+        initial='medium',
         help_text='How big text and buttons are on a computer. A phone has its own size, below.',
     )
     # Not required: a form sent without it (a page that was open before

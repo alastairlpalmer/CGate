@@ -11,7 +11,7 @@ until the next sign-in or profile save.
 SESSION_KEY = '_profile_photo'
 SIZE_KEY = '_display_size'
 SIZES = ('compact', 'medium', 'large')
-DEFAULT_SIZE = 'compact'
+DEFAULT_SIZE = 'medium'
 # The size of everything on a phone or a tablet, kept the same way.
 PHONE_KEY = '_phone_text_size'
 PHONE_SIZES = ('standard', 'large')

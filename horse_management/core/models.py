@@ -2894,14 +2894,16 @@ class UserProfile(models.Model):
 
     class DisplaySize(models.TextChoices):
         # The size of everything on a computer (lg and up). Phones are not
-        # changed. Compact matches a browser zoom of 75%, which suits a
-        # laptop screen best.
+        # changed. Compact is a browser zoom of 75% (9px small text), Medium
+        # 87.5%, Large 100%. Medium is the default (pre-launch review:
+        # Compact's small text and 18px row buttons were too small).
         COMPACT = 'compact', 'Compact'
         MEDIUM = 'medium', 'Medium'
         LARGE = 'large', 'Large'
 
     display_size = models.CharField(
-        max_length=10, choices=DisplaySize.choices, default=DisplaySize.COMPACT,
+        max_length=10, choices=DisplaySize.choices, default=DisplaySize.MEDIUM,
+        db_default=DisplaySize.MEDIUM,
     )
 
     class PhoneTextSize(models.TextChoices):
