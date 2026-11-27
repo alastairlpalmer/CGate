@@ -125,6 +125,9 @@ MIDDLEWARE = [
     # gzip cuts them to a fifth. Django masks the CSRF token per request,
     # which is what makes compressing pages with forms safe (BREACH).
     'django.middleware.gzip.GZipMiddleware',
+    # The pop-up's refresh gets only the parts it swaps (X-Main-Only: 1).
+    # After GZip in this list, so it runs on the page before it is compressed.
+    'core.middleware.MainOnlyMiddleware',
     'core.middleware.ServerTimingMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     # Django's, except that a background poll does not count as activity.
