@@ -98,6 +98,10 @@
     <script defer src="{% static_v 'js/alpine-collapse.min.js' %}"></script>
     <script defer src="{% static_v 'js/alpine.min.js' %}"></script>
     <!-- HTMX -->
+    {# No page copies in the browser's storage (pre-launch review): each was a #}
+    {# full page, 190 KB, with owners' names, phone numbers and form tokens, #}
+    {# kept after sign-out. Back and Forward fetch the page from the server. #}
+    <meta name="htmx-config" content='{"historyCacheSize": 0}'>
     <script src="{% static_v 'js/htmx.min.js' %}"></script>
     <!-- Chart.js (vendored, 209 KB) is used on two pages only, so it loads
          lazily: this loader stays in <head> (surviving hx-boost swaps) and

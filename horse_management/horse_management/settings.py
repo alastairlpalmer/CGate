@@ -127,7 +127,8 @@ MIDDLEWARE = [
     'django.middleware.gzip.GZipMiddleware',
     'core.middleware.ServerTimingMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
+    # Django's, except that a background poll does not count as activity.
+    'core.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
