@@ -307,6 +307,11 @@ Come back here for 4C when that week is up.
 - [ ] Confirm Railway is genuinely serving: check that a reminder email
       actually went out this week
 - [ ] Confirm `worker` and `beat` are both running
+- [ ] Confirm the `worker` and `beat` start commands begin with
+      `python manage.py wait_for_migrations && `. The files in
+      `horse_management/railway/` have it; a start command typed in the
+      Railway service settings overrides the file. Without it, new task code
+      can run before the web deploy has migrated.
 
 Then go to 4C.
 
@@ -346,8 +351,9 @@ Do these **one at a time**, checking the app after each:
 ### 4E — Delete the dead code
 
 Once Vercel is gone, ask for this as a PR — roughly 40 lines of
-host-detection branching in `settings.py`, the `migrate`-on-cold-start block
-in `wsgi.py`, and `vercel.json` all become dead. Dead conditional logic
+host-detection branching in `settings.py` and `vercel.json` become dead.
+(The `migrate`-on-cold-start block in `wsgi.py` is already gone: it let a
+preview build change the production schema.) Dead conditional logic
 around security settings is exactly what a reviewer flags.
 
 ---
@@ -450,6 +456,29 @@ says otherwise. If a database without TLS refuses it, set
       address. It is a 404 until `SECURITY_CONTACT` is set.
 
 ---
+
+## Phase 7 — Settings and first-day steps added by the pre-launch review
+
+- [ ] **`SITE_URL`** — set to the real address, for example
+      `https://app.example.com`. Password reset and invitation links use it.
+      Without it they take the address from the request.
+- [ ] **`CLIENT_IP_PROXY_COUNT`** — leave at `1` on Railway. It tells the
+      app which `X-Forwarded-For` entry is the visitor, for the sign-in rate
+      limits and the audit log. Set `0` only if nothing sits in front of the
+      app.
+- [ ] **`BACKUP_STALE_HOURS`** — default 26. `/_health/` reports the
+      backup as `stale` when the last good one is older.
+- [ ] **`MEDIA_S3_*`** — set all three of bucket, access key and secret
+      key, or none. With only some, the app refuses to start.
+- [ ] **Farrier QR code** — open **Farrier → Print QR code** and print it.
+      Codes printed before the review no longer work. If a photo of the code
+      gets out, select **Make a new QR code**.
+- [ ] **C-vet** — the practice's first login is let in at once. Each later
+      login waits until a member of the practice selects **Let in** under
+      **C-vet → People**.
+- [ ] **Livery check** — after a month-end run, open **Invoices → Livery
+      check**. It lists livery that an invoice missed because a stay was
+      recorded or changed after the invoice was made.
 
 ## When you are done
 
