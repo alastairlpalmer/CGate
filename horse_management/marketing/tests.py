@@ -61,11 +61,16 @@ class SiteOnTests(TestCase):
 
     def test_home_shows_the_app_working(self):
         html = self.client.get('/').content.decode()
-        for tab in ('dashboard', 'horses', 'maps', 'invoicing'):
+        for tab in ('dashboard', 'horses', 'maps', 'owners', 'invoicing'):
             self.assertIn(f'id="panel-{tab}"', html)
+        for sub in ('overview', 'timeline', 'breeding'):
+            self.assertIn(f'data-subview="{sub}"', html)
+        self.assertIn('Foal due', html)                                      # Pip's breeding records
+        self.assertIn('data-view="create-amy"', html)                        # an owner's Create Invoice
+        self.assertIn('data-cursor', html)
         self.assertIn('data-go="horse-duke"', html)
         self.assertIn('data-view="horse-duke"', html)
-        self.assertIn('Co-owned: each owner is invoiced their share.', html)   # Duke
+        self.assertIn('Owners · co-owned', html)                              # Duke
         self.assertIn('data-pick-field="winter"', html)
         self.assertIn('Resting since 1 October', html)
         self.assertIn('(50.00% share)', html)                                # an invoice line, as in the app

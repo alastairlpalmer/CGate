@@ -269,6 +269,7 @@ SHOWCASE_TABS = [
     ('dashboard', 'Dashboard', 'manager'),
     ('horses', 'Horses', 'horses'),
     ('maps', 'Locations', 'locations'),
+    ('owners', 'Owners', 'owners'),
     ('invoicing', 'Invoices', 'invoicing'),
 ]
 # The app's side bar (templates/base.html), and which item each tab lights.
@@ -331,3 +332,57 @@ SHOWCASE_INVOICES = [
      'status': 'Draft', 'xero': False, 'paid': '£0.00', 'due': '£174.00',
      'lines': [('Otis', '', 'Grass livery £6.00 per day - 29 days (2 Nov to 30 Nov 2026)', '£174.00')]},
 ]
+
+# The Horses demo in full: timeline and breeding, per horse (example data).
+_GRANDPARENTS = {
+    'bramble': ('Brigadoon', 'Hazel Wood', 'Highland Mist', 'Glen Rosa', 'Oak Ridge', 'Fern Hollow'),
+    'duke': ('Silver Duke', 'Moonlight', 'Grey Baron', 'Duchess Ann', 'Night Owl', 'Luna Bay'),
+    'pip': ('Dun Harley', 'Mistral Lady', 'Harley Star', 'Dunmore Belle', 'West Wind', 'Lady Grace'),
+    'maple': ('Golden Oak', 'Sycamore', 'Sunny Acre', 'Goldie', 'Woodland Way', 'Silver Birch'),
+    'otis': ('Night Watch', 'Ebony Rose', 'Dark Knight', 'Watchful', 'Black Tulip', 'Rosebay'),
+}
+_BREEDING = {
+    'pip': [('Covered by Kilbrook Star', '12 Apr 2026'), ('Scanned in foal', '30 Apr 2026'), ('Foal due', '19 Mar 2027')],
+    'maple': [('Covered by Golden Ember', '2 May 2026'), ('Scanned: not in foal', '20 May 2026')],
+}
+for _horse in HERO_HORSES:
+    sire, dam, ss, sd, ds, dd = _GRANDPARENTS[_horse['key']]
+    _horse['pedigree'] = {'sire': sire, 'dam': dam, 'ss': ss, 'sd': sd, 'ds': ds, 'dd': dd}
+    _horse['breeding'] = _BREEDING.get(_horse['key'], [])
+    _horse['timeline_full'] = [
+        ('Weight', 'Weight recorded', _horse['weight'], 'Today'),
+        ('Farrier', 'Farrier visit', 'Shod all round', '12 Nov'),
+        ('Vaccination', 'Flu and tetanus', 'Next due 12 Dec', '3 Oct'),
+        ('Move', 'Moved to ' + _horse['location'], 'Placement updated', '28 Sep'),
+        ('Dentist', 'Dentist: routine', 'No issues found', '2 Aug'),
+        ('Worming', 'Worm egg count', 'Low: no dose needed', '14 Jul'),
+        ('Arrived', 'Arrived at the yard', _horse['rate'], _horse['arrived']),
+    ]
+
+# The Owners demo: the owner list, an owner's page, and making an invoice.
+_DAILY = {'Full livery': Decimal('20.00'), 'Grass livery': Decimal('6.00')}
+SHOWCASE_OWNERS = []
+for _key, _name in [('sarah', 'Sarah Jones'), ('tom', 'Tom Hart'), ('amy', 'Amy Cole'),
+                    ('ben', 'Ben Cole'), ('raj', 'Raj Patel'), ('claire', 'Claire Moss')]:
+    _horses, _lines, _total = [], [], Decimal('0')
+    for _horse in HERO_HORSES:
+        for _owner, _share in _horse['shares']:
+            if _owner != _name:
+                continue
+            _rate = _horse['rate'].split(' · ')[0]
+            _amount = (_DAILY[_rate] * 30 * _share / 100).quantize(Decimal('0.01'))
+            _share_text = f' ({_share:.2f}% share)' if _share != 100 else ''
+            _horses.append({'name': _horse['name'], 'share': _share, 'details': f"{_horse['age']} {_horse['colour']} {_horse['sex']}",
+                            'location': _horse['location']})
+            _lines.append({'horse': _horse['name'] + _share_text,
+                           'item': f"{_rate} £{_DAILY[_rate]} per day - 30 days (1 Nov to 30 Nov 2026){_share_text}",
+                           'amount': f'£{_amount:,.2f}'})
+            _total += _amount
+    SHOWCASE_OWNERS.append({
+        'key': _key, 'name': _name, 'initial': _name[0], 'email': _name.split()[0].lower() + '@example.com',
+        'horses': _horses, 'lines': _lines, 'total': f'£{_total:,.2f}',
+        'outstanding': '£0.00', 'last_payment': '3 Nov', 'number': 'INV00217',
+    })
+
+# A horse page's own tabs in the demo.
+HORSE_TABS = [('overview', 'Overview'), ('timeline', 'Timeline'), ('breeding', 'Breeding')]

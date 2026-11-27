@@ -34,7 +34,7 @@
 {% include "marketing/_showcase.html" %}
 
 {# ── Features, by plan (the old Features page) ── #}
-<section id="features" class="scroll-mt-16 bg-white" aria-labelledby="features-title">
+<section id="features" class="scroll-mt-16 bg-sage-light/15" aria-labelledby="features-title">
     <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
         <div class="mk-reveal flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
@@ -43,30 +43,34 @@
             </div>
             <a href="{% url 'marketing:pricing' %}" class="group inline-flex shrink-0 items-center gap-2 font-semibold text-forest">See pricing {% include "marketing/_icon.html" with name="arrow" cls="h-4 w-4 transition-transform group-hover:translate-x-1" %}</a>
         </div>
-        <div class="mt-10 grid gap-5 lg:grid-cols-3">
+        <div class="mt-10 grid items-start gap-5 lg:grid-cols-3">
             {% for plan in plans %}
-            <div class="mk-reveal rounded-3xl border {% if plan.recommended %}border-forest{% else %}border-sand{% endif %} bg-white p-6 sm:p-7" style="--d:{{ forloop.counter0 }}00ms">
-                <div class="flex items-baseline justify-between gap-3 border-b border-sand pb-4">
-                    <h3 class="font-heading text-2xl font-semibold text-forest">{{ plan.name }}</h3>
-                    <p class="text-sm text-sage"><strong class="font-heading text-lg text-charcoal">{{ plan.price_label }}</strong> per horse</p>
+            <div class="mk-reveal overflow-hidden rounded-3xl bg-white shadow-sm ring-1 {% if plan.recommended %}ring-forest shadow-xl shadow-forest/10{% else %}ring-sand{% endif %}" style="--d:{{ forloop.counter0 }}00ms">
+                <div class="flex items-baseline justify-between gap-3 px-6 py-5 {% if plan.recommended %}bg-forest text-white{% else %}bg-parchment text-forest{% endif %}">
+                    <div><h3 class="font-heading text-2xl font-semibold">{{ plan.name }}</h3><p class="text-sm {% if plan.recommended %}text-white/75{% else %}text-sage{% endif %}">{{ plan.for }}</p></div>
+                    <p class="text-right text-sm"><strong class="font-heading text-2xl">{{ plan.price_label }}</strong><br><span class="{% if plan.recommended %}text-white/75{% else %}text-sage{% endif %}">per horse</span></p>
                 </div>
-                {% if plan.includes %}<p class="mt-4 text-xs font-semibold uppercase tracking-wider text-sage">{{ plan.includes }}</p>{% endif %}
-                {% include "marketing/_groups.html" with groups=plan.groups %}
+                <div class="px-6 pb-6 pt-1">
+                    {% if plan.includes %}<p class="mt-4 text-xs font-semibold uppercase tracking-wider text-sage">{{ plan.includes }}</p>{% endif %}
+                    {% include "marketing/_groups.html" with groups=plan.groups %}
+                </div>
             </div>
             {% endfor %}
-            <div class="mk-reveal rounded-3xl border-2 border-dashed border-saddle/40 bg-parchment/40 p-6 sm:p-7" style="--d:200ms">
-                <div class="flex items-baseline justify-between gap-3 border-b border-sand pb-4">
-                    <h3 class="font-heading text-2xl font-semibold text-saddle">Coming next</h3>
-                    <p class="text-sm font-semibold text-saddle">{{ partner_percent }}% off</p>
+            <div class="mk-reveal overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-saddle/30" style="--d:200ms">
+                <div class="flex items-baseline justify-between gap-3 bg-saddle/10 px-6 py-5 text-saddle">
+                    <div><h3 class="font-heading text-2xl font-semibold">Coming next</h3><p class="text-sm">Help us build these</p></div>
+                    <p class="rounded-full bg-saddle px-3 py-1 text-sm font-semibold text-white">{{ partner_percent }}% off</p>
                 </div>
-                <p class="mt-4 text-sm text-sage">Help us build these. Add one for {{ partner_percent }}% off your first {{ offer_months }} months.</p>
-                {% for addon in addons %}
-                <div id="{{ addon.key }}" class="mt-5 scroll-mt-24">
-                    <p class="flex items-center gap-2 font-heading font-semibold text-forest">{% include "marketing/_icon.html" with name=addon.icon cls="h-5 w-5 text-saddle" %}{{ addon.name }} <span class="text-sm font-normal text-sage">+{{ addon.price_label }} &middot; {{ addon.status }}</span></p>
-                    <p class="mt-1 pl-7 text-sm leading-relaxed text-charcoal">{{ addon.points|join:" · " }}</p>
+                <div class="px-6 pb-6">
+                    <p class="mt-4 text-sm text-sage">Add one for {{ partner_percent }}% off your first {{ offer_months }} months.</p>
+                    {% for addon in addons %}
+                    <div id="{{ addon.key }}" class="mt-5 scroll-mt-24">
+                        <p class="flex items-center gap-2 font-heading font-semibold text-forest"><span class="flex h-7 w-7 items-center justify-center rounded-lg bg-saddle/10 text-saddle">{% include "marketing/_icon.html" with name=addon.icon cls="h-4 w-4" %}</span>{{ addon.name }} <span class="text-sm font-normal text-sage">+{{ addon.price_label }} · {{ addon.status }}</span></p>
+                        <ul class="mt-2 flex flex-wrap gap-1.5 pl-9">{% for point in addon.points %}<li class="rounded-full bg-saddle/5 px-2.5 py-1 text-xs text-charcoal ring-1 ring-saddle/20">{{ point }}</li>{% endfor %}</ul>
+                    </div>
+                    {% endfor %}
+                    <a href="{% url 'marketing:pricing' %}?addon=training#calculator" class="group mt-6 inline-flex items-center gap-2 text-sm font-semibold text-saddle">Help develop Training {% include "marketing/_icon.html" with name="arrow" cls="h-4 w-4 transition-transform group-hover:translate-x-1" %}</a>
                 </div>
-                {% endfor %}
-                <a href="{% url 'marketing:pricing' %}?addon=training#calculator" class="group mt-6 inline-flex items-center gap-2 text-sm font-semibold text-saddle">Help develop Training {% include "marketing/_icon.html" with name="arrow" cls="h-4 w-4 transition-transform group-hover:translate-x-1" %}</a>
             </div>
         </div>
     </div>

@@ -1,9 +1,11 @@
-{# A plan's features, compact: each group is a title and one line of points (Home and Pricing). #}
-<div class="mt-4 space-y-4">
+{# A plan's features: each group is a title and its points as small tags (Home and Pricing). #}
+<div class="mt-5 space-y-5">
     {% for group in groups %}
     <div id="{{ group.key }}" class="scroll-mt-24">
-        <p class="flex items-center gap-2 font-heading font-semibold text-forest">{% include "marketing/_icon.html" with name=group.icon cls="h-5 w-5" %}{{ group.title }}</p>
-        <p class="mt-1 pl-7 text-sm leading-relaxed text-charcoal">{{ group.points|join:" · " }}</p>
+        <p class="flex items-center gap-2 font-heading font-semibold text-forest"><span class="flex h-7 w-7 items-center justify-center rounded-lg bg-forest/10 text-forest">{% include "marketing/_icon.html" with name=group.icon cls="h-4 w-4" %}</span>{{ group.title }}</p>
+        <ul class="mt-2 flex flex-wrap gap-1.5 pl-9">
+            {% for point in group.points %}<li class="rounded-full bg-parchment px-2.5 py-1 text-xs text-charcoal ring-1 ring-sand">{{ point }}</li>{% endfor %}
+        </ul>
     </div>
     {% endfor %}
 </div>

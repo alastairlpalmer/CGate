@@ -56,7 +56,8 @@ def root(request):
         response = render(request, 'marketing/home.html', {
             'page': 'home', 'hero_horses': content.HERO_HORSES, 'showcase_tabs': content.SHOWCASE_TABS,
             'showcase_fields': content.SHOWCASE_FIELDS, 'showcase_invoices': content.SHOWCASE_INVOICES,
-            'showcase_nav': content.SHOWCASE_NAV, 'showcase_stats': content.SHOWCASE_STATS,
+            'showcase_nav': content.SHOWCASE_NAV, 'showcase_owners': content.SHOWCASE_OWNERS,
+            'horse_tabs': content.HORSE_TABS, 'showcase_stats': content.SHOWCASE_STATS,
             'showcase_week': content.SHOWCASE_WEEK, 'showcase_timeline': content.SHOWCASE_TIMELINE, 'plans': content.PLANS, 'addons': content.ADDONS, 'steps': content.STEPS,
             'beliefs': content.BELIEFS, 'partner_percent': content.PARTNER_PERCENT, 'offer_months': content.OFFER_MONTHS,
         })
