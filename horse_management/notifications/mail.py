@@ -45,9 +45,29 @@ def html_to_text(markup: str) -> str:
     return re.sub(r'\n{3,}', '\n\n', text).strip() + '\n'
 
 
+class EmailNotSetUp(RuntimeError):
+    """The server has no real mail backend, so nothing would be delivered."""
+
+
+class _Message(EmailMultiAlternatives):
+    """An app email that refuses to "send" when email is not set up.
+
+    With the console backend on a live server, send() printed the email
+    into the worker log and returned, so each reminder task counted it as
+    sent and never tried again (pre-launch review). Raising makes every
+    send function return False, and the tasks keep the reminder for the
+    next run.
+    """
+
+    def send(self, fail_silently=False):
+        if not email_is_set_up():
+            raise EmailNotSetUp(EMAIL_NOT_SET_UP)
+        return super().send(fail_silently=fail_silently)
+
+
 def message(subject, html_body, to, *, unsubscribe_url=None) -> EmailMultiAlternatives:
     """An email with HTML and plain-text parts, ready for attachments."""
-    msg = EmailMultiAlternatives(
+    msg = _Message(
         subject=subject,
         body=html_to_text(html_body),
         from_email=settings.DEFAULT_FROM_EMAIL,

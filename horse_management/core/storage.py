@@ -2,7 +2,7 @@
 
 from storages.backends.s3 import S3Storage
 
-from .uploads import content_disposition
+from .uploads import content_disposition, content_type
 
 
 class MediaStorage(S3Storage):
@@ -11,10 +11,14 @@ class MediaStorage(S3Storage):
     PDFs and photos open in a new tab, as staff expect. Anything else
     (Word files, HEIC photos) is stored with ``Content-Disposition:
     attachment``, so the bucket's signed link downloads it and the browser
-    never renders it as a page.
+    never renders it as a page. The Content-Type comes from the extension,
+    so a file the browser sent as text/html is never served as a page.
     """
 
     def get_object_parameters(self, name):
         params = super().get_object_parameters(name)
         params.setdefault('ContentDisposition', content_disposition(name))
+        # From the extension, never from the upload (core.uploads.content_type).
+        # S3Storage only takes the upload's type when this is not set.
+        params['ContentType'] = content_type(name)
         return params

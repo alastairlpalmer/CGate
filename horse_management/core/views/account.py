@@ -247,13 +247,48 @@ def mfa_verify(request):
 
 
 @login_required
+def reauth(request):
+    """"Confirm it is you": the password, or a two-step code (core.reauth)."""
+    from .. import reauth as reauth_rules
+    from .. import ratelimit
+
+    next_url = _safe_next(request)
+    user = request.user
+    error = ''
+    if request.method == 'POST':
+        if not ratelimit.allow('reauth-user', str(user.pk), 10, 15 * 60):
+            error = 'Too many tries. Wait 15 minutes, then try again.'
+        elif reauth_rules.check(user, request.POST.get('password', ''), request.POST.get('code', '')):
+            reauth_rules.mark_confirmed(request)
+            return redirect(next_url)
+        else:
+            error = 'That did not match. Try again.'
+    return render(request, 'account/reauth.html', {
+        'next': next_url,
+        'error': error,
+        'has_password': user.has_usable_password(),
+        'has_code': reauth_rules.can_confirm_with_code(user),
+    })
+
+
+@login_required
 def mfa_setup(request):
-    """Add (or replace) the authenticator app, then show recovery codes."""
+    """Add (or replace) the authenticator app, then show recovery codes.
+
+    Replacing an authenticator needs a recent "Confirm it is you"
+    (core.reauth): otherwise anyone at an open session could move the
+    account to their own phone.
+    """
     from .. import mfa
+    from .. import reauth as reauth_rules
 
     error = None
     replacing = mfa.has_mfa(request.user)
     device = mfa.pending_device(request.user, request.session.get(PENDING_DEVICE_KEY))
+    # Checked when a new set-up starts. A set-up already started passed it,
+    # so a slow scan does not send the person back to confirm again.
+    if replacing and device is None and not reauth_rules.recently_confirmed(request):
+        return redirect(reauth_rules.confirm_url(request.get_full_path()))
     if request.method == 'POST' and device is not None:
         codes = mfa.confirm_setup(request.user, device, request.POST.get('code'))
         if codes is not None:

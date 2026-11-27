@@ -94,6 +94,7 @@ urlpatterns = [
     path('accounts/security/sign-out-others/', account_views.sign_out_other_devices, name='sign_out_other_devices'),
     path('accounts/two-step/', account_views.mfa_verify, name='mfa_verify'),
     path('accounts/two-step/setup/', account_views.mfa_setup, name='mfa_setup'),
+    path('accounts/confirm/', account_views.reauth, name='reauth'),
     path('accounts/two-step/recovery-codes/', account_views.mfa_new_recovery_codes, name='mfa_new_recovery_codes'),
     path('accounts/two-step/off/', account_views.mfa_disable, name='mfa_disable'),
     # Sign in with Google. 404 unless GOOGLE_OAUTH_CLIENT_ID is set.

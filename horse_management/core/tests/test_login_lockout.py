@@ -97,6 +97,15 @@ class LoginLockoutTests(TestCase):
         response = self._attempt(BAD, username='JO@EXAMPLE.COM')
         self.assertEqual(response.status_code, 429)
 
+    def test_username_and_email_share_one_allowance(self):
+        """An account whose username is not its email could be guessed at
+        under both names: two allowances (pre-launch review)."""
+        get_user_model().objects.create_user(username='sam', email='sam@example.com', password=PW)
+        for _ in range(2):
+            self._attempt(BAD, username='sam')
+        response = self._attempt(BAD, username='sam@example.com')
+        self.assertEqual(response.status_code, 429)
+
     def test_lockout_page_does_not_confirm_the_account_exists(self):
         """Anyone can reach the lockout page by guessing at an address, so
         it must not say whether that address is registered."""

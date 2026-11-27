@@ -353,3 +353,31 @@ class ProviderPortalMiddleware:
         if request.headers.get('HX-Request') == 'true':
             return HttpResponseClientRedirect(url)
         return HttpResponseRedirect(url)
+
+
+class RequestSizeLimitMiddleware:
+    """Refuse a request body larger than MAX_REQUEST_BYTES, before it is read.
+
+    DATA_UPLOAD_MAX_MEMORY_SIZE does not count uploaded files, and Django
+    writes a large upload to disk before any view (or sign-in check) runs.
+    Without this, anyone could send a request of any size to any address.
+    The limit is the largest form a person can send: a few 5 MB files.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from django.conf import settings
+        from django.http import HttpResponse
+
+        try:
+            length = int(request.META.get('CONTENT_LENGTH') or 0)
+        except ValueError:
+            length = 0
+        if length > settings.MAX_REQUEST_BYTES:
+            return HttpResponse(
+                'This upload is too large. Each file can be at most 5 MB.',
+                status=413, content_type='text/plain; charset=utf-8',
+            )
+        return self.get_response(request)

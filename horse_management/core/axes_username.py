@@ -25,4 +25,29 @@ def normalise_username(request, credentials=None):
             username = post.get('username')
     if not username:
         return ''
-    return str(username).strip().lower()
+    typed = str(username).strip().lower()
+    return _account_key(typed)
+
+
+def _account_key(typed):
+    """One key for one account, whichever of its names was typed.
+
+    An account whose username is not its email address could be signed in
+    to with either, and each had its own five tries: ten in all. The key is
+    the account's own username, found by the same rule as the sign-in
+    backend. A name that matches no account (or more than one) is counted
+    as typed.
+    """
+    from django.contrib.auth import get_user_model
+    from django.db.models import Q
+
+    users = list(
+        get_user_model()._default_manager
+        .filter(Q(username__iexact=typed) | Q(email__iexact=typed))
+        .values_list('username', flat=True)[:3]
+    )
+    if len(users) > 1:
+        users = [name for name in users if name.lower() == typed]
+    if len(users) == 1:
+        return users[0].lower()
+    return typed

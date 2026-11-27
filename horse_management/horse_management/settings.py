@@ -118,6 +118,8 @@ if not os.environ.get('VERCEL'):
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # First, so an oversized body is refused before anything reads it.
+    'core.middleware.RequestSizeLimitMiddleware',
     'core.middleware.PermissionsPolicyMiddleware',
     # Compress responses: the map pages carry field geometry as JSON and
     # gzip cuts them to a fifth. Django masks the CSRF token per request,
@@ -362,6 +364,8 @@ SERVE_MEDIA = env.bool('SERVE_MEDIA', default=False) and not MEDIA_ON_S3
 # Upload limits — 10MB max per file, 12MB max request body
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024   # 12MB
+# A whole request, files included (core.middleware.RequestSizeLimitMiddleware).
+MAX_REQUEST_BYTES = env.int('MAX_REQUEST_BYTES', default=30 * 1024 * 1024)
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

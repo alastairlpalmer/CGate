@@ -86,7 +86,11 @@ def profile(request):
         action = request.POST.get('action')
         if action == 'details':
             tab = 'details'
-            details_form = ProfileDetailsForm(request.POST, request.FILES, user=user)
+            from ..reauth import recently_confirmed
+            details_form = ProfileDetailsForm(
+                request.POST, request.FILES, user=user,
+                recently_confirmed=recently_confirmed(request),
+            )
             if details_form.is_valid():
                 _save_details(request, details_form, profile_obj)
                 from ..user_photos import remember

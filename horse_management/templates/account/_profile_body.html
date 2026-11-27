@@ -55,6 +55,7 @@ invalid post shows its errors here, a valid one closes the sheet.
                     {% else %}
                     {% include 'includes/form_field.html' with field=form.email span='2' help='Password reset emails go to this address.' %}
                     {% endif %}
+                    {% if not user.has_usable_password and not mfa.enabled %}{% else %}{% include 'includes/form_field.html' with field=form.confirm_secret span='2' %}{% endif %}
                     {% include 'includes/form_field.html' with field=form.phone span='2' %}
                     {% include 'includes/form_field.html' with field=form.display_size span='2' %}
                     {% include 'includes/form_field.html' with field=form.phone_text_size span='2' %}
